@@ -239,4 +239,15 @@ void HiAudit::WriteForCloudSyncAlbum(const std::string& albumName, const std::st
     auditLog.size = albumSubType;
     Write(auditLog);
 }
+
+void HiAudit::WriteForCloudExit(const std::string& bundleName,
+    const int32_t retainType, const std::string& operationStatus)
+{
+    AuditLog auditLog = {true, "DFX", "CLOUD_EXIT", "0", 1};
+    auditLog.operationStatus = operationStatus;
+    auditLog.extend = "ForceRetainDownloadCloudMedia";
+    auditLog.id = bundleName;
+    auditLog.type = retainType;
+    Write(auditLog);
+}
 }

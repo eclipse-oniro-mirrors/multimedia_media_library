@@ -444,6 +444,12 @@ static napi_value HandleObserverUriType(napi_env env, napi_handle_scope scope,
                 MediaLibraryNotifyUtils::BuildPhotoAssetRecheckChangeInfos(env) :
                 MediaLibraryNotifyUtils::BuildPhotoAssetChangeInfos(env, mediaChangeInfo);
             break;
+        case Notification::SHARE_PHOTO_URI:
+            buildResult = mediaChangeInfo == nullptr ?
+                MediaLibraryNotifyUtils::BuildPhotoAssetRecheckChangeInfos(env) :
+                MediaLibraryNotifyUtils::BuildPhotoAssetChangeInfos(env, mediaChangeInfo,
+                    Notification::NotifyUriType::SHARE_PHOTO_URI);
+            break;
         case Notification::HIDDEN_PHOTO_URI:
             buildResult = mediaChangeInfo == nullptr ?
                 MediaLibraryNotifyUtils::BuildPhotoAssetRecheckChangeInfos(env) :
@@ -457,6 +463,7 @@ static napi_value HandleObserverUriType(napi_env env, napi_handle_scope scope,
         case Notification::HIDDEN_ALBUM_URI:
         case Notification::TRASH_ALBUM_URI:
         case Notification::ANALYSIS_ALBUM_URI:
+        case Notification::SHARE_PHOTO_ALBUM_URI:
             buildResult = mediaChangeInfo == nullptr ?
                 MediaLibraryNotifyUtils::BuildAlbumRecheckChangeInfos(env) :
                 MediaLibraryNotifyUtils::BuildAlbumChangeInfos(env, mediaChangeInfo);

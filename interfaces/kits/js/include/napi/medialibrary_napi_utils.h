@@ -45,10 +45,26 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_WITH_INT_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_COND_WITH_MESSAGE(env, cond, msg)                 \
     do {                                                            \
         if (!(cond)) {                                    \
             NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_COND_WITH_INT_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, OHOS_INVALID_PARAM_CODE, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                          \
         }                                                           \
     } while (0)
@@ -65,6 +81,14 @@
     do {                                                                                      \
         if (!(cond)) {                                                                        \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                                                   \
+        }                                                                                     \
+    } while (0)
+
+#define CHECK_COND_WITH_INT_ERR_MESSAGE(env, cond, err, msg)                                       \
+    do {                                                                                      \
+        if (!(cond)) {                                                                        \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                                                   \
         }                                                                                     \
     } while (0)
@@ -179,7 +203,23 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, retVal)                     \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return retVal;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_ARGS_WITH_CODE(env, cond, err)                     \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_ARGS_WITH_INT_CODE(env, cond, err)                 \
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
             NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
@@ -189,9 +229,13 @@
 
 #define CHECK_ARGS(env, cond, err) CHECK_ARGS_BASE(env, cond, err, nullptr)
 
+#define CHECK_ARGS_WITH_INT(env, cond, err) CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, nullptr)
+
 #define CHECK_ARGS_THROW_INVALID_PARAM(env, cond) CHECK_ARGS(env, cond, OHOS_INVALID_PARAM_CODE)
 
 #define CHECK_ARGS_RET_VOID(env, cond, err) CHECK_ARGS_BASE(env, cond, err, NAPI_RETVAL_NOTHING)
+
+#define CHECK_ARGS_RET_VOID_WITH_INT(env, cond, err) CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, NAPI_RETVAL_NOTHING)
 
 #define CHECK_COND(env, cond, err)                                  \
     do {                                                            \
@@ -201,10 +245,26 @@
         }                                                           \
     } while (0)
 
+#define CHECK_COND_WITH_INT(env, cond, err)                                  \
+    do {                                                            \
+        if (!(cond)) {                                              \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                         \
+        }                                                           \
+    } while (0)
+
 #define CHECK_COND_WITH_MSG(env, cond, err, msg)                                  \
     do {                                                            \
         if (!(cond)) {                                              \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                         \
+        }                                                           \
+    } while (0)
+
+#define CHECK_COND_WITH_INT_MSG(env, cond, err, msg)                                  \
+    do {                                                            \
+        if (!(cond)) {                                              \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                         \
         }                                                           \
     } while (0)
@@ -231,10 +291,26 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_WITH_INT_MEG(env, cond, err, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_ARGS_WITH_MSG(env, cond, err, msg)                 \
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_ARGS_WITH_INT_MSG(env, cond, err, msg)                 \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                          \
         }                                                           \
     } while (0)
@@ -246,6 +322,15 @@
             return;                                                     \
         }                                                               \
     } while (0)
+
+#define CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, cond, err, msg)                 \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
+            return;                                                     \
+        }                                                               \
+    } while (0)
+
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))

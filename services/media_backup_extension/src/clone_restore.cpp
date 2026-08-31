@@ -3283,7 +3283,8 @@ vector<FileInfo> CloneRestore::QueryFileInfos(const string &tableName, int32_t o
 
 static void PrintCinematicCloneSize(const FileInfo &fileInfo)
 {
-    if (fileInfo.subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (fileInfo.subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        fileInfo.subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         MEDIA_INFO_LOG("Clone cinematic video, displayName: %{public}s, videoSize: %{public}ld",
             MediaFileUtils::DesensitizeName(fileInfo.displayName).c_str(),
             (long)fileInfo.fileSize);

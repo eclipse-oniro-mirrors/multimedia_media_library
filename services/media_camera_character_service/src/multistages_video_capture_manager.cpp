@@ -348,7 +348,9 @@ void MultiStagesVideoCaptureManager::SyncWithDeferredVideoProcSessionInternal()
         std::string videoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
         std::string filePath = GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, resultSet);
         bool isMovingPhoto = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet) > 0;
-        bool isCinematicVideo = QuerySubType(videoId) == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO);
+        int32_t videoSubType = QuerySubType(videoId);
+        bool isCinematicVideo = (videoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+            videoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
         bool isTrashed = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
         int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
         VideoInfo videoInfo = {fileId, isCinematicVideo ? VideoCount::DOUBLE : VideoCount::SINGLE,
@@ -495,7 +497,8 @@ static int32_t UpdateIsTempAndDirty(const SaveCameraPhotoDto &dto, int32_t subTy
     }
     int32_t updateRows = 0;
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::SAVE_CAMERA_PHOTO_BUSSINESS_NAME);
-    if (subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         updateRows = assetRefresh.UpdateWithDateTime(values, predicates);
         CHECK_AND_RETURN_RET_LOG(updateRows >= 0, E_ERR, "update temp flag fail.");
         predicates.EqualTo(PhotoColumn::PHOTO_QUALITY, to_string(static_cast<int32_t>(MultiStagesPhotoQuality::FULL)));

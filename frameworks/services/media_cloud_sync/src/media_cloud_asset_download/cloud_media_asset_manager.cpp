@@ -168,7 +168,8 @@ static bool IsSouthDeviceSyncCleaning(CloudMediaRetainType retainType, bool chec
     return ((nowTime - timeStamp) < SOUTH_DEVICE_CLEAN_DATA_TIMEOUT_MILLISECOND);
 }
 
-static void WaitIfBackUpingOrRestoring(const std::string& key, int64_t waitTimeout, const std::string& info = "unknown")
+void CloudMediaAssetManager::WaitIfBackUpingOrRestoring(const std::string& key, int64_t waitTimeout,
+    const std::string& info)
 {
     constexpr int64_t defaultValueTime = 0;
     int64_t startTimeClone = system::GetIntParameter(key, defaultValueTime);
@@ -193,7 +194,7 @@ static void WaitIfBackUpingOrRestoring(const std::string& key, int64_t waitTimeo
         info.c_str(), MediaFileUtils::UTCTimeSeconds());
 }
 
-static void WaitIfBackUpingOrRestoring()
+void CloudMediaAssetManager::WaitIfBackUpingOrRestoring()
 {
     WaitIfBackUpingOrRestoring(MEIDA_RESTORE_FLAG,
         FORCE_RETAIN_CLOUD_MEDIA_WAIT_RESTORE_TIMEOUT_SECOND, "db restore");

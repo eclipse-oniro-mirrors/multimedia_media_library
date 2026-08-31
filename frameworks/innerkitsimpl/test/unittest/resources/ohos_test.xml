@@ -404,6 +404,7 @@
             <option name="push" value="cloudsync_datafile/data_client-photo_album.csv -> /data/test/cloudsync" src="res"/>
             <option name="push" value="cloudsync_datafile/photo_handler-photos.csv -> /data/test/cloudsync" src="res"/>
             <option name="push" value="cloudsync_datafile/photo_handler-photo_album.csv -> /data/test/cloudsync" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_photo_handler-photos.csv -> /data/test/cloudsync" src="res"/>
             <option name="push" value="cloudsync_datafile/database_mock-photos.csv -> /data/test/cloudsync" src="res"/>
             <option name="push" value="cloudsync_datafile/database_mock-photo_album.csv -> /data/test/cloudsync" src="res"/>
             <option name="push" value="cloudsync_datafile/photo_album_handler-photos.csv -> /data/test/cloudsync" src="res"/>

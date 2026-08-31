@@ -271,6 +271,27 @@ static void HandleMovingPhoto(const Metadata &metadata, ValuesBucket &values)
     HandleMovingPhotoDirty(metadata, values);
 }
 
+// 电影模式V2资产的shooting_mode相关字段由相机侧写入（AddPhotoProxy/UpdatePhotoProxy），
+// 扫描器解析视频元数据为空时会覆盖，因此对V2资产跳过这两个字段的更新
+// 注意：values.Delete仅从本次UPDATE的SET子句移除该列，不修改数据库已有值
+static bool IsCinematicVideoV2Asset(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, int32_t fileId)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr when query subtype");
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    std::vector<std::string> columns = { PhotoColumn::PHOTO_SUBTYPE };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "query subtype failed, fileId: %{public}d", fileId);
+    bool isCinematicVideoV2 = false;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        isCinematicVideoV2 = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet) ==
+            static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
+    }
+    resultSet->Close();
+
+    return isCinematicVideoV2;
+}
+
 static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, ValuesBucket &values, bool isInsert,
     bool skipPhoto)
 {
@@ -504,6 +525,14 @@ string MediaScannerDb::UpdateMetadata(const Metadata &metadata, string &tableNam
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, "", "rdbStore is nullptr");
+
+    if (tableName == PhotoColumn::PHOTOS_TABLE && IsCinematicVideoV2Asset(rdbStore, metadata.GetFileId())) {
+        // 电影模式V2的shooting_mode由相机侧写入，扫描器解析视频元数据为空时会覆盖，跳过这两个字段
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE);
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+        MEDIA_INFO_LOG("skip update shooting mode fields for cinematic video v2, fileId: %{public}d",
+            metadata.GetFileId());
+    }
 
     int32_t result = -1;
     if (refresh != nullptr && tableName == PhotoColumn::PHOTOS_TABLE) {

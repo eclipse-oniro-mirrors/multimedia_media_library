@@ -166,7 +166,7 @@ int32_t CustomRestoreScannerObj::ExecuteDuplicateUpdates(
     if (rdbStore == nullptr) {
         return E_ERR;
     }
-    const std::string updateSql =
+    std::string updateSql =
         "UPDATE Photos SET unique_id = ? WHERE data = ? AND "
         "(unique_id IS NULL OR unique_id = '' OR unique_id = '-1') AND (media_type = ? OR media_type = ?)";
     for (const auto &[filePath, uuid] : dupUpdatePairs) {

@@ -292,6 +292,8 @@ public:
     static void PhotoAccessOnPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void PhotoAccessOnHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnSharePhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnSharePhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void AvailabilityRegisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOn);
 
     static void PhotoAccessOffPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
@@ -300,6 +302,8 @@ public:
     static void PhotoAccessOffPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffSharePhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffSharePhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void AvailabilityUnregisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void SetPreferredCompatibleMode(ani_env *env, ani_object object, ani_string bundleName, ani_int mode);
     static ani_int GetPreferredCompatibleMode(ani_env *env, ani_object object, ani_string bundleName);

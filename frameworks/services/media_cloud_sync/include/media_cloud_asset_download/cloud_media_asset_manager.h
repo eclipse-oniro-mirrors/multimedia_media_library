@@ -81,6 +81,7 @@ public:
     GetBatchDownloadCloudResourcesStatusReqBody &reqBody, GetBatchDownloadCloudResourcesStatusRespBody &respBody);
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(
         GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody);
+    EXPORT static void WaitIfBackUpingOrRestoring();
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     EXPORT void CleanDownloadTasksTable();
 #endif
@@ -119,6 +120,8 @@ private:
     EXPORT int32_t ForceRetainDownloadCloudMediaEx(CloudMediaRetainType retainType, SmartDataProcessingMode mode);
     EXPORT std::vector<int32_t> QueryEmptyAlbumsAndBackup();
     EXPORT std::string BuildEmptyAlbumsWhereClause(const std::vector<int32_t>& albumIds);
+    EXPORT static void WaitIfBackUpingOrRestoring(const std::string& key, int64_t waitTimeout,
+        const std::string& info = "unknown");
 private:
     std::shared_ptr<CloudMediaAssetDownloadOperation> operation_{nullptr};
     inline static std::atomic<TaskDeleteState> doDeleteTask_{TaskDeleteState::IDLE};

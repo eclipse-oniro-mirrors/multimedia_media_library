@@ -88,6 +88,10 @@ public:
     virtual double GetLatitude() = 0;
     virtual double GetLongitude() = 0;
     virtual int32_t GetShootingMode() = 0;
+    virtual std::string GetShootingVersion() // 获取拍摄版本号，写入shooting_mode_tag字段
+    {
+        return "";
+    }
     virtual uint32_t GetCloudImageEnhanceFlag() = 0;
     virtual int32_t GetStageVideoTaskStatus() // 动态照片是否需要下发分段式视频任务，返回状态枚举值
     {

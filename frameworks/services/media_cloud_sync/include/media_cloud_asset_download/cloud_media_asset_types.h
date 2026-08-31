@@ -38,7 +38,8 @@ enum class CloudMediaAssetTaskStatus : int32_t {
 
 enum class CloudMediaRetainType : int32_t {
     RETAIN_FORCE = 0, // 删除原文件在云端的本地元数据和缩略图
-    HDC_RETAIN_FORCE = 1 // 删除原文件在家庭存储端的本地元数据和缩略图
+    HDC_RETAIN_FORCE = 1, // 删除原文件在家庭存储端的本地元数据和缩略图
+    SHARE_RETAIN_FORCE = 2 // 删除共享资产在本地的元数据和缩略图
 };
 
 enum class CloudMediaTaskPauseCause : int32_t {

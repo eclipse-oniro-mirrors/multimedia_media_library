@@ -41,11 +41,13 @@
 #include "thumbnail_source_loading.h"
 #include "thumbnail_utils.h"
 #include "medialibrary_tracer.h"
+#include "photo_album_column.h"
+#include "cloud_media_context.h"
 
 namespace OHOS::Media::CloudSync {
-NativeRdb::AbsRdbPredicates CloudMediaDownloadDao::GetDownloadThmsConditions(const int32_t type)
+NativeRdb::RdbPredicates CloudMediaDownloadDao::GetDownloadThmsConditions(const int32_t type)
 {
-    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    NativeRdb::RdbPredicates predicates = NativeRdb::RdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
     predicates.NotEqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL))
@@ -72,7 +74,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThmNum(const int32_t type, int32_t &to
     MEDIA_INFO_LOG("GetDownloadThmNum begin %{public}d", type);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Query Thumbs to Download Failed to get rdbStore.");
-    NativeRdb::AbsRdbPredicates predicates = this->GetDownloadThmsConditions(type);
+    NativeRdb::RdbPredicates predicates = this->GetDownloadThmsConditions(type);
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, {"COUNT(1) AS count"});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
     bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
@@ -89,7 +91,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
     MEDIA_INFO_LOG("QueryThumbsToDownload begin %{public}s", queryDto.ToString().c_str());
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Query Thumbs to Download Failed to get rdbStore.");
-    NativeRdb::AbsRdbPredicates predicates = this->GetDownloadThmsConditions(queryDto.type);
+    NativeRdb::RdbPredicates predicates = this->GetDownloadThmsConditions(queryDto.type);
     if (queryDto.isDownloadDisplayFirst) {
         predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, 0);       // NOT_IN_TRASH
         predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);       // NOT_IN_PENDING
@@ -105,6 +107,41 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
     int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Query Thumbs to Download Failed to read records, ret: %{public}d", ret);
     MEDIA_INFO_LOG("GetDownloadThms, photos size: %{public}zu", photos.size());
+    return E_OK;
+}
+
+int32_t CloudMediaDownloadDao::GetDownloadThmsShare(const DownloadThumbnailQueryDto &queryDto,
+    std::vector<PhotosPo> &photos)
+{
+    MEDIA_INFO_LOG("QueryThumbsToDownload begin %{public}s", queryDto.ToString().c_str());
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Query Thumbs to Download Failed to get rdbStore.");
+    NativeRdb::RdbPredicates predicates = this->GetDownloadThmsConditions(queryDto.type);
+
+    std::vector<std::string> onClause = {
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_OWNER_ALBUM_ID + " = " +
+        PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+    };
+    predicates.LeftOuterJoin(PhotoAlbumColumns::TABLE)->On(onClause);
+
+    if (queryDto.isDownloadDisplayFirst) {
+        predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, 0);       // NOT_IN_TRASH
+        predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);       // NOT_IN_PENDING
+        predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);             // NOT_HIDDEN
+        predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);            // NOT_TEMP_FILE
+        predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);  // IS_BURST_COVER
+    }
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
+    predicates.Limit(queryDto.offset, queryDto.size);
+    // 先按PhotoAlbum.date_added降序，再按Photos.share_group降序、Photos.date_added降序
+    predicates.OrderByDesc(PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SHARE_GROUP);
+    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_ADDED);
+
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, this->DOWNLOAD_THUMBNAIL_COLUMNS);
+    int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photos);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Query Thumbs to Download Failed to read records, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("GetDownloadThmsShare, photos size: %{public}zu", photos.size());
     return E_OK;
 }
 

@@ -83,6 +83,8 @@ public:
     std::string hiddenCoverOrderKey_ = EMPTY_STR;
     std::string hiddenCoverOrderSubKey_ = EMPTY_STR;
     int32_t hiddenCoverOrderType_ = INVALID_INT32_VALUE;
+    int32_t shareRiskStatus_ = 0;
+    std::string shareRiskType_ = EMPTY_STR;
 
     NativeRdb::ValuesBucket GetUpdateValues(const AlbumChangeInfo &oldAlbumInfo, NotifyType &type);
     std::string ToString(bool isDetail = false) const;
@@ -110,6 +112,8 @@ private:
         const shared_ptr<NativeRdb::ResultSet> &resultSet);
     void GetUpdatePhotoAlbumHidden(const AlbumChangeInfo &oldAlbumInfo, NativeRdb::ValuesBucket &values,
         stringstream &ss);
+    static void SetPhotoAlbumForShareAlbum(AlbumChangeInfo &albumChangeInfo,
+        const shared_ptr<NativeRdb::ResultSet> &resultSet);
 private:
     static const std::vector<std::string> albumInfoColumns_;
     static const std::vector<std::string> analysisAlbumInfoColumns_;

@@ -102,6 +102,11 @@ int32_t AlbumAccurateRefresh::NotifyAddAlbums(const vector<string> &albumIdsStr)
     return Notify(dataManager_.GetAlbumDatasFromAddAlbum(albumIdsStr));
 }
 
+int32_t AlbumAccurateRefresh::NotifyShareAlbumUpdateForMemberChange(const std::vector<int32_t> &albumIds)
+{
+    return Notify(dataManager_.GetAlbumDatasForUpdateNoChange(albumIds));
+}
+
 int32_t AlbumAccurateRefresh::UpdateModifiedDatasInner(const std::vector<int> &albumIds, RdbOperation operation,
     PendingInfo pendingInfo)
 {

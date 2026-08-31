@@ -1,0 +1,117 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+config("media_share_album_lite_config") {
+  include_dirs =
+      [ "${MEDIALIB_INTERFACES_PATH}/inner_api/media_share_album_lite/include" ]
+}
+
+ohos_shared_library("media_share_album_lite") {
+  install_enable = true
+
+  sources = [
+    "./src/media_share_photo_data_client.cpp",
+    "./src/media_share_photo_data_client_handler.cpp",
+  ]
+
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_share_album_lite/include",
+  ]
+
+  include_ipc_client_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
+  ]
+
+  include_media_library_helper_dirs = [
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+  ]
+
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_media_share_album_data = [ "${MEDIALIB_SHARE_ALBUM_DATA}/include" ]
+
+  include_common_utils_dirs = [
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_UTILS_PATH}/include",
+  ]
+
+  include_dirs += include_ipc_client_dirs
+  include_dirs += include_media_library_helper_dirs
+  include_dirs += include_media_ipc_common
+  include_dirs += include_media_share_album_data
+  include_dirs += include_common_utils_dirs
+
+  public_configs = [ ":media_share_album_lite_config" ]
+
+  deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_SHARE_ALBUM_DATA}:media_share_album_lite_data",
+  ]
+
+  external_deps = [
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:napi_base_context",
+    "napi:ace_napi",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "data_share:datashare_consumer",
+    "data_share:datashare_provider",
+    "hilog:libhilog",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  ldflags = [ "-Wl,--gc-sections" ]
+
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+
+  cflags_cc = [ "-Os" ]
+
+  if (!media_library_link_opt) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+      ubsan = true
+      boundary_sanitize = true
+      stack_protector_ret = true
+    }
+  }
+
+  subsystem_name = "multimedia"
+  part_name = "media_library"
+}

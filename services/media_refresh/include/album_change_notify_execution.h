@@ -33,6 +33,8 @@ private:
     void InsertNotifyInfo(Notification::AlbumRefreshOperation operation, const AlbumChangeData &changeData);
     void InsertNotifyInfoForAdd(const AlbumChangeData& changeData);
     void AddInfosToNewNotify();
+    bool IsShareAlbumChangeInfo(const AlbumChangeData& changeData);
+    void HandleInsertShareNotifyInfo(AlbumChangeData& changeData);
 
 private:
     std::map<Notification::AlbumRefreshOperation, std::vector<AlbumChangeData>> notifyInfos_;

@@ -1392,7 +1392,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryWithFilter(const Abs
     return QueryInternal(predicates, columns, true);
 }
 
-int32_t MediaLibraryRdbStore::ExecuteSql(const string &sql)
+int32_t MediaLibraryRdbStore::ExecuteSql(const std::string &sql)
 {
     auto store = MediaLibraryRdbStore::GetRawChecked();
     if (store == nullptr) {

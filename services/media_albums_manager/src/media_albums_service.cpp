@@ -20,6 +20,7 @@
 #include <string>
 #include <map>
 #include <sys/stat.h>
+#include <cerrno>
 
 #include "analysis_album_attribute_dispatcher.h"
 #include "analysis_album_attribute_request_utils.h"
@@ -27,6 +28,7 @@
 #include "media_albums_rdb_operations.h"
 #include "media_cloud_permission_check.h"
 #include "media_log.h"
+#include "media_library_error_code.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
@@ -101,6 +103,16 @@ int32_t MediaAlbumsService::DeletePhotoAlbums(const std::vector<std::string> &al
     NativeRdb::RdbPredicates rdbPredicate(PhotoAlbumColumns::TABLE);
     rdbPredicate.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
     return MediaLibraryAlbumOperations::DeletePhotoAlbum(rdbPredicate);
+}
+
+int32_t MediaAlbumsService::SetShareAlbumName(const SetShareAlbumNameReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::SetShareAlbumName(reqBody.albumId, reqBody.owner, reqBody.albumName);
+}
+
+int32_t MediaAlbumsService::DeleteSharePhotoAlbums(const std::string &owner, const std::vector<int32_t> &albumIds)
+{
+    return MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(owner, albumIds);
 }
 
 int32_t MediaAlbumsService::CreatePhotoAlbum(const std::string& albumName)
@@ -1053,7 +1065,7 @@ void MediaAlbumsService::ReportFirstDbStatus()
     }
 }
 
-void MediaAlbumsService::ReportCloneDbStatus(bool reverseCloneStatus)
+void MediaAlbumsService::ReportCloneDbStatus(int32_t reverseCloneStatus)
 {
     if (reverseCloneStatus <= 0) {
         std::string cloneFlagStr = OHOS::system::GetParameter("multimedia.medialibrary.cloneFlag", "0");

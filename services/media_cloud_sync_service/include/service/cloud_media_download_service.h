@@ -49,6 +49,7 @@ public:
     void UpdateVideoMode(std::vector<PhotosPo> &photosPoVec);
     int32_t GetDownloadThmNum(const int32_t type, int32_t &totalNum);
     int32_t GetDownloadThms(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosDto> &photosDtos);
+    int32_t GetDownloadThmsShare(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosDto> &photosDtos);
     std::vector<PhotosDto> GetDownloadThmsByUri(const std::vector<int32_t> &fileIds, const int32_t type);
     int32_t OnDownloadThms(const std::unordered_map<std::string, int32_t> &downloadThumbnailMap,
         std::vector<MediaOperateResultDto> &result, const int32_t sceneCode = 0);

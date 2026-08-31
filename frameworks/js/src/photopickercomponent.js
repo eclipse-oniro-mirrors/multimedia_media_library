@@ -135,7 +135,7 @@ export class PhotoPickerComponent extends ViewPU {
         this.onDeselect = void 0;
         this.onItemClicked = void 0;
         this.onItemClickedNotify = void 0;
-        this.unSelectableItemClicked = void 0;
+        this.onUnselectableItemClicked = void 0;
         this.onEnterPhotoBrowser = void 0;
         this.onExitPhotoBrowser = void 0;
         this.onPhotoBrowserChangeStart = void 0;
@@ -174,7 +174,7 @@ export class PhotoPickerComponent extends ViewPU {
         void 0 !== e.onDeselect && (this.onDeselect = e.onDeselect);
         void 0 !== e.onItemClicked && (this.onItemClicked = e.onItemClicked);
         void 0 !== e.onItemClickedNotify && (this.onItemClickedNotify = e.onItemClickedNotify);
-        void 0 !== e.unSelectableItemClicked && (this.unSelectableItemClicked = e.unSelectableItemClicked);
+        void 0 !== e.onUnselectableItemClicked && (this.onUnselectableItemClicked = e.onUnselectableItemClicked);
         void 0 !== e.onEnterPhotoBrowser && (this.onEnterPhotoBrowser = e.onEnterPhotoBrowser);
         void 0 !== e.onExitPhotoBrowser && (this.onExitPhotoBrowser = e.onExitPhotoBrowser);
         void 0 !== e.onPhotoBrowserChanged && (this.onPhotoBrowserChanged = e.onPhotoBrowserChanged);
@@ -531,7 +531,7 @@ export class PhotoPickerComponent extends ViewPU {
                     maxVideoSelectNumber: null === (P = this.pickerOptions) || void 0 === P ? void 0 : P.maxVideoSelectNumber,
                     isOnItemClickedSet: !!this.onItemClicked,
                     isOnItemClickedNotifySet: !!this.onItemClickedNotify,
-                    isUnSelectableItemClickedSet: !!this.unSelectableItemClicked,
+                    isUnSelectableItemClickedSet: !!this.onUnselectableItemClicked,
                     isPreviewForSingleSelectionSupported: null === (_ = this.pickerOptions) || void 0 === _ ? void 0 : _.isPreviewForSingleSelectionSupported,
                     singleSelectionMode: null === (_ = this.pickerOptions) || void 0 === _ ? void 0 : _.singleSelectionMode,
                     isSlidingSelectionSupported: null === (b = this.pickerOptions) || void 0 === b ? void 0 : b.isSlidingSelectionSupported,
@@ -601,7 +601,7 @@ export class PhotoPickerComponent extends ViewPU {
         } else if ('itemClickedNotify' === o) {
             this.handleItemClickedNotify(e);
         } else if ('unSelectableItemClicked' === o) {
-            this.handleUnSelectableItemClicked(e);
+            this.handleUnselectableItemClicked(e);
         } else if ('onPhotoBrowserStateChanged' === o) {
             this.handleEnterOrExitPhotoBrowser(e);
         } else if ('remoteReady' === o) {
@@ -752,16 +752,16 @@ export class PhotoPickerComponent extends ViewPU {
         }
     }
 
-    handleUnSelectableItemClicked(e) {
-        if (this.unSelectableItemClicked) {
-            let itemInfo = this.getUnSelectableItemInfo(e);
-            this.unSelectableItemClicked(itemInfo);
-            console.info('PhotoPickerComponent onReceive: unSelectableItemClicked = ' + JSON.stringify(itemInfo));
+    handleUnselectableItemClicked(e) {
+        if (this.onUnselectableItemClicked) {
+            const itemInfo = this.getUnselectableItemInfo(e);
+            this.onUnselectableItemClicked(itemInfo);
+            console.info('PhotoPickerComponent onReceive: unselectableItemClicked = ' + JSON.stringify(itemInfo));
         }
     }
 
-    getUnSelectableItemInfo(e) {
-        let itemInfo = new UnSelectableItemInfo();
+    getUnselectableItemInfo(e) {
+        let itemInfo = new UnselectableItemInfo();
         let itemType = e.itemType;
 
         if ('thumbnail' === itemType || 'browser' === itemType) {
@@ -1383,7 +1383,7 @@ export class BaseItemInfo {
 export class ItemInfo extends BaseItemInfo {
 }
 
-export class UnSelectableItemInfo {
+export class UnselectableItemInfo {
 }
 
 export class PhotoBrowserInfo {
@@ -1544,7 +1544,7 @@ export let MovingPhotoBadgeStateType;
     e[e.DELETE_DATA = 2] = 'MOVING_PHOTO_DISABLED';
 }(MovingPhotoBadgeStateType || (MovingPhotoBadgeStateType = {}));
 
-export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, UnSelectableItemInfo, PhotoBrowserInfo, 
+export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, UnselectableItemInfo, PhotoBrowserInfo,
     AnimatorParams, MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, PhotoBrowserRange, 
     PhotoBrowserUIElement, VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType, BadgeConfig, UpdatablePickerConfigs, 
     MovingPhotoBadgeStateType, PickerError, CompletedResult };

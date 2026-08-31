@@ -43,6 +43,8 @@ public:
     static const std::string USER_CLIENT_CHANGE EXPORT;
     static const std::string ANALYSIS_PHOTO_CHANGE EXPORT;
     static const std::string ANALYSIS_ALBUM_CHANGE EXPORT;
+    static const std::string SHARE_PHOTO_CHANGE EXPORT;
+    static const std::string SHARE_PHOTO_ALBUM_CHANGE EXPORT;
     static const std::string MEDIALIBRARY_AVAILABILITY_CHANGE EXPORT;
 };
 

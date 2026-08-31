@@ -1801,6 +1801,10 @@ int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskS
         "invalid photoRiskStatus: %{public}d", photoRiskStatus);
     CHECK_AND_RETURN_RET_LOG(isCritical == 0 || isCritical == 1, E_INVALID_VALUES,
         "invalid isCritical: %{public}d", isCritical);
+    int32_t expectedCritical = (photoRiskStatus >= static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS)) ? 1 : 0;
+    CHECK_AND_RETURN_RET_LOG(isCritical == expectedCritical, E_INVALID_VALUES,
+        "isCritical does not match photoRiskStatus %{public}d, expected isCritical: %{public}d",
+        photoRiskStatus, expectedCritical);
 
     shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);

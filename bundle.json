@@ -157,6 +157,7 @@
             "//foundation/multimedia/media_library/services/media_backup_extension:media_backup_package",
             "//foundation/multimedia/media_library/services/media_mtp:media_mtp_package",
             "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_library_cloud_sync:media_library_cloud_sync",
+            "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_share_album_lite:media_share_album_lite",
             "//foundation/multimedia/media_library/common:media_library_common",
             "//foundation/multimedia/media_library/frameworks/client:media_library_client",
             "//foundation/multimedia/media_library/frameworks/innerkitsimpl/analysis_data_kits:analysis_data_kits",
@@ -306,6 +307,15 @@
                 ]
               },
               "name": "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_library_camera_helper:media_library_camera_helper"
+            },
+            {
+              "header": {
+                "header_base": "//foundation/multimedia/media_library/interfaces/inner_api/media_share_album_lite/include",
+                "header_files": [
+                  "media_share_photo_data_client.h"
+                ]
+              },
+              "name": "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_share_album_lite:media_share_album_lite"
             }
         ],
         "test": [

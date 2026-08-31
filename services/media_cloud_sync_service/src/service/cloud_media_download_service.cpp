@@ -80,6 +80,16 @@ int32_t CloudMediaDownloadService::GetDownloadThms(
     return ret;
 }
 
+int32_t CloudMediaDownloadService::GetDownloadThmsShare(
+    const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosDto> &photosDtos)
+{
+    std::vector<PhotosPo> photosPos;
+    int32_t ret = this->dao_.GetDownloadThmsShare(queryDto, photosPos);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetDownloadThms failed, ret:%{public}d", ret);
+    photosDtos = this->processor_.GetPhotosDto(photosPos);
+    return ret;
+}
+
 std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadThmsByUri(
     const std::vector<int32_t> &fileIds, const int32_t type)
 {

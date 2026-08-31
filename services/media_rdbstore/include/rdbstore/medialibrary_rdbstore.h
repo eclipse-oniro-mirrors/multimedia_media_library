@@ -103,7 +103,7 @@ public:
         const std::vector<NativeRdb::ValueObject> &args = {});
 
     // ExecuteSql
-    EXPORT int32_t ExecuteSql(const string &sql) override;
+    EXPORT int32_t ExecuteSql(const std::string &sql) override;
     EXPORT int32_t ExecuteSql(std::string &sql, const std::vector<NativeRdb::ValueObject> &args)
     {
         const int32_t E_HAS_DB_ERROR = -222;

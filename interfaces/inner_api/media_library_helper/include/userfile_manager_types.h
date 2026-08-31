@@ -170,6 +170,7 @@ enum class PhotoSubType : int32_t {
     CINEMATIC_VIDEO,
     SLOW_MOTION_VIDEO,
     SPATIAL_3DGS = 7,
+    CINEMATIC_VIDEO_V2 = 8, // V2电影模式（包含希区柯克等特性）
     SUBTYPE_END
 };
 
@@ -350,6 +351,12 @@ enum PhotoAlbumShareType : int32_t {
     SHARE_TYPE_SHAREALBUM = 2,
 };
 
+enum ShareMemberStatus : int32_t {
+    INVITING = 0,
+    ACCEPTED = 1,
+    DECLINED = 2,
+    REQUESTIING = 3
+};
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H

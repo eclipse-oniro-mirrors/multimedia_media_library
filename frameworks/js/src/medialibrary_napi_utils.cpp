@@ -25,6 +25,7 @@
 #include "media_asset_change_request_napi.h"
 #include "media_assets_change_request_napi.h"
 #include "media_album_change_request_napi.h"
+#include "media_share_album_change_request_napi.h"
 #include "media_asset_manager_napi.h"
 #include "media_device_column.h"
 #include "media_file_uri.h"
@@ -990,6 +991,9 @@ static int32_t TransCommonErrorCode(int error)
         case E_SCENE_HAS_CANCEL:
             return JS_E_PARAM_INVALID;
 
+        case E_SHARE_ALBUM_INVALID_ID_ARG:
+            return MEDIA_LIBRARY_INVALID_PARAMETER_ERROR;
+        case E_SET_SHARE_ALBUM_NAME_DB_FAIL:
         case E_INNER_CONVERT_FORMAT:
         case E_INNER_FAIL:
         case E_OPR_DEBUG_DB_FAIL:
@@ -2877,8 +2881,16 @@ template napi_status MediaLibraryNapiUtils::AsyncContextGetArgs<unique_ptr<Cloud
     napi_env env, napi_callback_info info, unique_ptr<CloudMediaAssetAsyncContext>& asyncContext,
     const size_t minArgs, const size_t maxArgs);
 
+template napi_status MediaLibraryNapiUtils::AsyncContextGetArgs<unique_ptr<MediaShareAlbumChangeRequestAsyncContext>>(
+    napi_env env, napi_callback_info info, unique_ptr<MediaShareAlbumChangeRequestAsyncContext>& asyncContext,
+    const size_t minArgs, const size_t maxArgs);
+
 template napi_value MediaLibraryNapiUtils::NapiCreateAsyncWork<MediaLibraryAsyncContext>(napi_env env,
     unique_ptr<MediaLibraryAsyncContext> &asyncContext, const string &resourceName,
+    void (*execute)(napi_env, void *), void (*complete)(napi_env, napi_status, void *));
+
+template napi_value MediaLibraryNapiUtils::NapiCreateAsyncWork<MediaShareAlbumChangeRequestAsyncContext>(napi_env env,
+    unique_ptr<MediaShareAlbumChangeRequestAsyncContext> &asyncContext, const string &resourceName,
     void (*execute)(napi_env, void *), void (*complete)(napi_env, napi_status, void *));
 
 template napi_value MediaLibraryNapiUtils::NapiCreateAsyncWork<FileAssetAsyncContext>(napi_env env,
@@ -2976,6 +2988,9 @@ template napi_status MediaLibraryNapiUtils::ParsePredicates<unique_ptr<MediaLibr
 
 template void MediaLibraryNapiUtils::DeleteAsyncContextWithRef<MediaAlbumChangeRequestAsyncContext*>(
     napi_env env, MediaAlbumChangeRequestAsyncContext*& context);
+
+template void MediaLibraryNapiUtils::DeleteAsyncContextWithRef<MediaShareAlbumChangeRequestAsyncContext*>(
+    napi_env env, MediaShareAlbumChangeRequestAsyncContext*& context);
 
 template void MediaLibraryNapiUtils::DeleteAsyncContextWithRef<MediaAssetChangeRequestAsyncContext*>(
     napi_env env, MediaAssetChangeRequestAsyncContext*& context);

@@ -22,15 +22,18 @@
 namespace OHOS {
 namespace Media::AccurateRefresh {
 
-bool AlbumAssetHelper::IsCommonSystemAsset(const PhotoAssetChangeInfo &assetInfo, bool isHiddenAsset)
+bool AlbumAssetHelper::IsCommonSystemAsset(const PhotoAssetChangeInfo &assetInfo, bool isHiddenAsset,
+    int32_t isShared)
 {
-    return assetInfo.syncStatus_ == static_cast<int32_t> (SyncStatusType::TYPE_VISIBLE) &&
+    bool isSystemAsset = assetInfo.syncStatus_ == static_cast<int32_t> (SyncStatusType::TYPE_VISIBLE) &&
         assetInfo.cleanFlag_ == static_cast<int32_t> (CleanType::TYPE_NOT_CLEAN) &&
         assetInfo.dateTrashedMs_ == 0 &&
         assetInfo.isHidden_ == isHiddenAsset &&
         assetInfo.timePending_ == 0 &&
         !assetInfo.isTemp_ &&
         assetInfo.burstCoverLevel_ == static_cast<int32_t> (BurstCoverLevelType::COVER);
+
+    return isSystemAsset && (assetInfo.isShared_ == isShared);
 }
 
 bool AlbumAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)

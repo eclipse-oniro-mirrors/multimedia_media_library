@@ -52,7 +52,13 @@ export namespace userFileManager {
   enum PhotoSubType {
     DEFAULT,
     SCREENSHOT,
-    CAMERA
+    CAMERA,
+    MOVING_PHOTO,
+    BURST,
+    CINEMATIC_VIDEO,
+    SLOW_MOTION_VIDEO,
+    SPATIAL_3DGS = 7,
+    CINEMATIC_VIDEO_V2
   }
 
   enum PositionType {

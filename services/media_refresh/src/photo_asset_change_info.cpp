@@ -70,6 +70,13 @@ const map<std::string, ResultSetDataType> PhotoAssetChangeInfo::photoAssetCloumn
     { PhotoColumn::PHOTO_FRONT_CAMERA, TYPE_STRING },
     { PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, TYPE_INT32 },
     { PhotoColumn::LOCAL_ASSET_SIZE, TYPE_INT64 },
+
+    { PhotoColumn::PHOTO_IS_SHARED, TYPE_INT32 },
+    { PhotoColumn::PHOTO_SHARE_GROUP, TYPE_INT64 },
+    { PhotoColumn::PHOTO_VISIBILITY, TYPE_INT32 },
+    { PhotoColumn::PHOTO_SHARE_DATE_DAY, TYPE_INT64 },
+    { PhotoColumn::PHOTO_SHARE_RISK_STATUS, TYPE_INT32 },
+    { PhotoColumn::PHOTO_SHARE_RISK_TYPE, TYPE_STRING },
 };
 
 static void AlbumChangeInfosToString(stringstream &ss,
@@ -97,6 +104,20 @@ const vector<std::string> PhotoAssetChangeInfo::photoAssetColumns_ = []() {
 const vector<string>& PhotoAssetChangeInfo::GetPhotoAssetColumns()
 {
     return photoAssetColumns_;
+}
+
+static void FillSharedAlbumFields(PhotoAssetChangeInfo &assetChangeInfo,
+    const shared_ptr<ResultSet> &resultSet,
+    const function<int32_t(const string &)> &getInt,
+    const function<int64_t(const string &)> &getLong,
+    const function<string(const string &)> &getStr)
+{
+    assetChangeInfo.isShared_ = getInt(PhotoColumn::PHOTO_IS_SHARED);
+    assetChangeInfo.shareDateDay_ = getLong(PhotoColumn::PHOTO_SHARE_DATE_DAY);
+    assetChangeInfo.shareGroup_ = getLong(PhotoColumn::PHOTO_SHARE_GROUP);
+    assetChangeInfo.shareRiskStatus_ = getInt(PhotoColumn::PHOTO_SHARE_RISK_STATUS);
+    assetChangeInfo.shareRiskType_ = getStr(PhotoColumn::PHOTO_SHARE_RISK_TYPE);
+    assetChangeInfo.photoVisibility_ = getInt(PhotoColumn::PHOTO_VISIBILITY);
 }
 
 static void FillFromResultSet(PhotoAssetChangeInfo &assetChangeInfo, const shared_ptr<ResultSet> &resultSet)
@@ -145,11 +166,11 @@ static void FillFromResultSet(PhotoAssetChangeInfo &assetChangeInfo, const share
     assetChangeInfo.position_ = getInt(PhotoColumn::PHOTO_POSITION);
     assetChangeInfo.size_ = getLong(PhotoColumn::MEDIA_SIZE);
     assetChangeInfo.shootingMode_ = getStr(PhotoColumn::PHOTO_SHOOTING_MODE);
-    assetChangeInfo.movingPhotoEffectMode_ =
-        getInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE);
+    assetChangeInfo.movingPhotoEffectMode_ = getInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE);
     assetChangeInfo.frontCamera_ = getStr(PhotoColumn::PHOTO_FRONT_CAMERA);
     assetChangeInfo.livephoto4dStatus_ = getInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS);
     assetChangeInfo.localAssetSize_ = getLong(PhotoColumn::LOCAL_ASSET_SIZE);
+    FillSharedAlbumFields(assetChangeInfo, resultSet, getInt, getLong, getStr);
 }
 
 vector<PhotoAssetChangeInfo> PhotoAssetChangeInfo::GetInfoFromResult(
@@ -210,6 +231,10 @@ string PhotoAssetChangeInfo::ToString(bool isDetail) const
         ss << ", frontCamera_: " << frontCamera_ << ", movingPhotoEffectMode_: " << movingPhotoEffectMode_;
         ss << ", livephoto4dStatus_: " << livephoto4dStatus_ << ", dateModifiedMs_: " << dateModifiedMs_;
         ss << ", file_source_type: " << fileSourceType_;
+        // 共享相册字段
+        ss << ", isShared_: " << isShared_ << ", shareDateDay_: " << shareDateDay_;
+        ss << ", shareGroup_: " << shareGroup_ << ", photoVisibility_: " << photoVisibility_;
+        ss << ", shareRiskStatus_: " << shareRiskStatus_ << ", shareRiskType_: " << shareRiskType_;
         AlbumChangeInfosToString(ss, albumChangeInfos_);
     } else {
         ss << "fileId_: " << fileId_ << ", ownerAlbumId_: " << ownerAlbumId_;
@@ -265,6 +290,14 @@ bool PhotoAssetChangeInfo::Marshalling(Parcel &parcel, bool isSystem) const
         ret = ret && MarshallingAlbumChangeInfos(parcel);
         ret = ret && parcel.WriteInt32(livephoto4dStatus_);
         ret = ret && parcel.WriteInt32(fileSourceType_);
+        // 共享相册字段
+        ret = ret && parcel.WriteInt32(isShared_);
+        if (isShared_ != 0) {
+            ret = ret && parcel.WriteInt64(shareDateDay_);
+            ret = ret && parcel.WriteInt64(shareGroup_);
+            ret = ret && parcel.WriteInt32(shareRiskStatus_);
+            ret = ret && parcel.WriteInt32(photoVisibility_);
+        }
     }
     return ret;
 }
@@ -318,6 +351,14 @@ bool PhotoAssetChangeInfo::ReadFromParcel(Parcel &parcel)
         ret = ret && ReadAlbumChangeInfos(parcel);
         ret = ret && parcel.ReadInt32(livephoto4dStatus_);
         ret = ret && parcel.ReadInt32(fileSourceType_);
+        // 共享相册字段
+        ret = ret && parcel.ReadInt32(isShared_);
+        if (isShared_ != 0) {
+            ret = ret && parcel.ReadInt64(shareDateDay_);
+            ret = ret && parcel.ReadInt64(shareGroup_);
+            ret = ret && parcel.ReadInt32(shareRiskStatus_);
+            ret = ret && parcel.ReadInt32(photoVisibility_);
+        }
     }
     return ret;
 }
@@ -368,6 +409,13 @@ PhotoAssetChangeInfo& PhotoAssetChangeInfo::operator=(const PhotoAssetChangeInfo
         albumChangeInfos_ = info.albumChangeInfos_;
         livephoto4dStatus_ = info.livephoto4dStatus_;
         fileSourceType_ = info.fileSourceType_;
+        // 共享相册字段
+        isShared_ = info.isShared_;
+        shareDateDay_ = info.shareDateDay_;
+        shareGroup_ = info.shareGroup_;
+        shareRiskStatus_ = info.shareRiskStatus_;
+        shareRiskType_ = info.shareRiskType_;
+        photoVisibility_ = info.photoVisibility_;
     }
     return *this;
 }
@@ -407,12 +455,34 @@ bool PhotoAssetChangeInfo::operator==(const PhotoAssetChangeInfo &info) const
         frontCamera_ == info.frontCamera_ &&
         livephoto4dStatus_ == info.livephoto4dStatus_ &&
         albumChangeInfos_ == info.albumChangeInfos_ &&
-        fileSourceType_ == info.fileSourceType_;
+        fileSourceType_ == info.fileSourceType_ &&
+        // 共享相册字段
+        isShared_ == info.isShared_ &&
+        shareDateDay_ == info.shareDateDay_ &&
+        shareGroup_ == info.shareGroup_ &&
+        shareRiskStatus_ == info.shareRiskStatus_ &&
+        shareRiskType_ == info.shareRiskType_ &&
+        photoVisibility_ == info.photoVisibility_;
 }
 
 bool PhotoAssetChangeInfo::operator!=(const PhotoAssetChangeInfo &info) const
 {
     return !((*this) == info);
+}
+
+static bool CompareAssetFileIdAndUri(const PhotoAssetChangeInfo &asset,
+    const PhotoAssetChangeInfo &compare, std::stringstream &ss)
+{
+    if (asset.fileId_ != compare.fileId_) {
+        ss << "diff asset info fileId: " << asset.fileId_ << ", compare fileId: " << compare.fileId_;
+        return false;
+    }
+    ss << "asset info fileId[" << asset.fileId_ << "]: ";
+    if (asset.uri_ != compare.uri_) {
+        ss << "uri_: " << MediaFileUtils::DesensitizeUri(asset.uri_) << " -> ";
+        ss << MediaFileUtils::DesensitizeUri(compare.uri_);
+    }
+    return true;
 }
 
 template <typename T>
@@ -426,15 +496,7 @@ void GetDiff(const T &value, const T &compareValue, const std::string &name, std
 string PhotoAssetChangeInfo::GetAssetDiff(const PhotoAssetChangeInfo &asset, const PhotoAssetChangeInfo &compare)
 {
     stringstream ss;
-    if (asset.fileId_ != compare.fileId_) {
-        ss << "diff asset info fileId: " << asset.fileId_ << ", compare fileId: " << compare.fileId_;
-        return ss.str();
-    }
-    ss << "asset info fileId[" << asset.fileId_ << "]: ";
-    if (asset.uri_ != compare.uri_) {
-        ss << "uri_: " << MediaFileUtils::DesensitizeUri(asset.uri_) << " -> ";
-        ss << MediaFileUtils::DesensitizeUri(compare.uri_);
-    }
+    CHECK_AND_RETURN_RET(CompareAssetFileIdAndUri(asset, compare, ss), ss.str());
     GET_ASSET_DIFF(dateDay_);
     GET_ASSET_DIFF(ownerAlbumUri_);
     GET_ASSET_DIFF(isFavorite_);
@@ -460,6 +522,12 @@ string PhotoAssetChangeInfo::GetAssetDiff(const PhotoAssetChangeInfo &asset, con
     GET_ASSET_DIFF(size_);
     GET_ASSET_DIFF(livephoto4dStatus_);
     GET_ASSET_DIFF(fileSourceType_);
+    GET_ASSET_DIFF(isShared_);
+    GET_ASSET_DIFF(shareDateDay_);
+    GET_ASSET_DIFF(shareGroup_);
+    GET_ASSET_DIFF(photoVisibility_);
+    GET_ASSET_DIFF(shareRiskStatus_);
+    GET_ASSET_DIFF(shareRiskType_);
     if (asset.displayName_ != compare.displayName_) {
         ss << "displayName_: " << MediaFileUtils::DesensitizeName(asset.displayName_) << " -> ";
         ss << MediaFileUtils::DesensitizeName(compare.displayName_) << ", ";

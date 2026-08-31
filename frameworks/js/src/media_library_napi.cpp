@@ -413,6 +413,7 @@ thread_local napi_ref MediaLibraryNapi::sAppLinkStateRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sLivePhoto4dStatusEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sAvailabilityStatusEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sDeepOptimizeStateRef_ = nullptr;
+thread_local napi_ref MediaLibraryNapi::sShareMemberStatusEnumRef_ = nullptr;
 
 constexpr int32_t DEFAULT_REFCOUNT = 1;
 constexpr int32_t DEFAULT_ALBUM_COUNT = 1;
@@ -612,6 +613,10 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("offAnalysisPhotoChange", AnalysisPhotoAccessUnregisterCallback),
             DECLARE_NAPI_FUNCTION("onAnalysisAlbumChange", AnalysisAlbumAccessRegisterCallback),
             DECLARE_NAPI_FUNCTION("offAnalysisAlbumChange", AnalysisAlbumAccessUnregisterCallback),
+            DECLARE_NAPI_FUNCTION("onSharePhotoChange", PhotoAccessSharePhotoRegisterCallback),
+            DECLARE_NAPI_FUNCTION("offSharePhotoChange", PhotoAccessSharePhotoUnregisterCallback),
+            DECLARE_NAPI_FUNCTION("onSharePhotoAlbumChange", PhotoAccessShareAlbumRegisterCallback),
+            DECLARE_NAPI_FUNCTION("offSharePhotoAlbumChange", PhotoAccessShareAlbumUnregisterCallback),
             DECLARE_NAPI_FUNCTION("isMediaDataReady", QueryMediaDataReady),
 			DECLARE_NAPI_FUNCTION("convertToAsset", JSConvertToAsset),
             DECLARE_NAPI_FUNCTION("cloneToAlbum", JSCloneToAlbum),
@@ -696,6 +701,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
         DECLARE_NAPI_PROPERTY("VideoMode", CreateVideoModeEnum(env)),
         DECLARE_NAPI_PROPERTY("DynamicRangeType", CreateDynamicRangeTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("AvailabilityStatus", CreateAvailabilityStatusEnum(env)),
+        DECLARE_NAPI_PROPERTY("ShareMemberStatus", CreateShareMemberStatusEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -9474,6 +9480,27 @@ napi_value MediaLibraryNapi::CreateHighlightAlbumInfoTypeEnum(napi_env env)
     }
 
     CHECK_ARGS(env, napi_create_reference(env, result, NAPI_INIT_REF_COUNT, &sHighlightUserActionType_), JS_INNER_FAIL);
+    return result;
+}
+
+napi_value MediaLibraryNapi::CreateShareMemberStatusEnum(napi_env env)
+{
+    struct AnalysisProperty property[] = {
+        { "INVITING", ShareMemberStatus::INVITING },
+        { "ACCEPTED", ShareMemberStatus::ACCEPTED },
+        { "DECLINED", ShareMemberStatus::DECLINED },
+        { "REQUESTIING", ShareMemberStatus::REQUESTIING },
+    };
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_create_object(env, &result), JS_INNER_FAIL);
+
+    for (uint32_t i = 0; i < sizeof(property) / sizeof(property[0]); i++) {
+        CHECK_ARGS(env, AddIntegerNamedProperty(env, result, property[i].enumName, property[i].enumValue),
+            JS_INNER_FAIL);
+    }
+
+    CHECK_ARGS(env, napi_create_reference(env, result, NAPI_INIT_REF_COUNT, &sShareMemberStatusEnumRef_), JS_INNER_FAIL);
     return result;
 }
 
@@ -18427,6 +18454,52 @@ napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "TransAssetToCompatibleAsset",
         JSTransAssetToCompatibleAssetExecute, JSTransAssetToCompatibleAssetCompleteCallback);
+}
+
+napi_value MediaLibraryNapi::PhotoAccessSharePhotoRegisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessSharePhotoRegisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessSharePhotoRegisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    CHECK_AND_RETURN_RET(RegisterAnalysisAccessCallbackInternal(env, info,
+        Notification::NotifyUriType::SHARE_PHOTO_URI), undefinedResult);
+    return undefinedResult;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessSharePhotoUnregisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessSharePhotoUnregisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessSharePhotoUnregisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    UnregisterAnalysisAccessCallbackInternal(env, info, Notification::NotifyUriType::SHARE_PHOTO_URI);
+    return undefinedResult;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessShareAlbumRegisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessShareAlbumRegisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessShareAlbumRegisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    CHECK_AND_RETURN_RET(RegisterAnalysisAccessCallbackInternal(env, info,
+        Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI), undefinedResult);
+    return undefinedResult;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessShareAlbumUnregisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessShareAlbumUnregisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessShareAlbumUnregisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    UnregisterAnalysisAccessCallbackInternal(env, info, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI);
+    return undefinedResult;
 }
 } // namespace Media
 } // namespace OHOS

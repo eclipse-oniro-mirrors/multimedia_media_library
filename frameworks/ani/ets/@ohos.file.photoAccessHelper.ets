@@ -151,10 +151,13 @@ export namespace photoAccessHelper {
   export enum PhotoSubtype {
     DEFAULT = 0,
     SCREENSHOT = 1,
+    CAMERA = 2,
     MOVING_PHOTO = 3,
     BURST = 4,
+    CINEMATIC_VIDEO = 5,
     SLOW_MOTION_VIDEO = 6,
     SPATIAL_3DGS = 7,
+    CINEMATIC_VIDEO_V2 = 8,
   }
 
   export enum DynamicRangeType {

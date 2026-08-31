@@ -65,7 +65,7 @@ export struct PhotoPickerComponent {
   onDeselect?: (uri: string) => void;
   onItemClicked?: (itemInfo: ItemInfo, clickType: ClickType) => boolean;
   onItemClickedNotify?: (itemInfo: ItemInfo, clickType: ClickType) => void;
-  unSelectableItemClicked?: (unSelectableItemInfo: UnSelectableItemInfo) => void;
+  onUnselectableItemClicked?: (unselectableItemInfo: UnselectableItemInfo) => void;
   onEnterPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
   onExitPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
   onPickerControllerReady?: () => void;
@@ -349,7 +349,7 @@ export struct PhotoPickerComponent {
             maxVideoSelectNumber: this.pickerOptions?.maxVideoSelectNumber as number,
             isOnItemClickedSet: this.onItemClicked ? true : false,
             isOnItemClickedNotifySet: this.onItemClickedNotify ? true : false,
-            isUnSelectableItemClickedSet: this.unSelectableItemClicked ? true : false,
+            isUnSelectableItemClickedSet: this.onUnselectableItemClicked ? true : false,
             isPreviewForSingleSelectionSupported: this.pickerOptions?.isPreviewForSingleSelectionSupported as boolean,
             singleSelectionMode: this.pickerOptions?.singleSelectionMode as number,
             isSlidingSelectionSupported: this.pickerOptions?.isSlidingSelectionSupported as boolean,
@@ -428,7 +428,7 @@ export struct PhotoPickerComponent {
     } else if (dataType === 'itemClickedNotify') {
       this.handleItemClickedNotify(wantParam); 
     } else if (dataType === 'unSelectableItemClicked') {
-      this.handleUnSelectableItemClicked(wantParam);
+      this.handleUnselectableItemClicked(wantParam);
     } else if (dataType === 'onPhotoBrowserStateChanged') {
       this.handleEnterOrExitPhotoBrowser(wantParam);
     } else if (dataType === 'remoteReady') {
@@ -580,35 +580,35 @@ export struct PhotoPickerComponent {
     }
   }
 
-  private handleUnSelectableItemClicked(wantParam: Record<string, Object>): void {
-    if (this.unSelectableItemClicked) {
-      let unSelectableItemInfo: UnSelectableItemInfo = this.getUnSelectableItemInfo(wantParam);
-      this.unSelectableItemClicked(unSelectableItemInfo);
-      console.info('PhotoPickerComponent onReceive: unSelectableItemClicked = ' +
-        JSON.stringify(unSelectableItemInfo));
+  private handleUnselectableItemClicked(wantParam: Record<string, Object>): void {
+    if (this.onUnselectableItemClicked) {
+      let unselectableItemInfo: UnselectableItemInfo = this.getUnselectableItemInfo(wantParam);
+      this.onUnselectableItemClicked(unselectableItemInfo);
+      console.info('PhotoPickerComponent onReceive: unselectableItemClicked = ' +
+        JSON.stringify(unselectableItemInfo));
     }
   }
 
-  private getUnSelectableItemInfo(wantParam: Record<string, Object>): UnSelectableItemInfo {
-    let unSelectableItemInfo: UnSelectableItemInfo = new UnSelectableItemInfo();
+  private getUnselectableItemInfo(wantParam: Record<string, Object>): UnselectableItemInfo {
+    let unselectableItemInfo: UnselectableItemInfo = new UnselectableItemInfo();
     let itemType: string = wantParam['itemType'] as string;
 
     if (itemType === 'thumbnail' || itemType === 'browser') {
-      unSelectableItemInfo.mimeType = wantParam['mimeType'] as string;
-      unSelectableItemInfo.photoSubType =
+      unselectableItemInfo.mimeType = wantParam['mimeType'] as string;
+      unselectableItemInfo.photoSubType =
         wantParam['photoSubType'] !== undefined
           ? wantParam['photoSubType'] as photoAccessHelper.photoSubType
           : wantParam['subtype'] as photoAccessHelper.photoSubType;
     } else if (itemType === 'camera') {
-      unSelectableItemInfo.mimeType = '';
-      unSelectableItemInfo.photoSubType = 0 as photoAccessHelper.photoSubType;
+      unselectableItemInfo.mimeType = '';
+      unselectableItemInfo.photoSubType = 0 as photoAccessHelper.photoSubType;
     } else {
       console.info('PhotoPickerComponent onReceive: other unSelectable itemType');
-      unSelectableItemInfo.mimeType = '';
-      unSelectableItemInfo.photoSubType = 0 as photoAccessHelper.photoSubType;
+      unselectableItemInfo.mimeType = '';
+      unselectableItemInfo.photoSubType = 0 as photoAccessHelper.photoSubType;
     }
 
-    return unSelectableItemInfo;
+    return unselectableItemInfo;
   }
 
   private getClickType(wantParam: Record<string, Object>): ClickType {
@@ -1309,7 +1309,7 @@ export class ItemInfo extends BaseItemInfo {
   itemType?: ItemType;
 }
 
-export class UnSelectableItemInfo {
+export class UnselectableItemInfo {
   mimeType?: string;
   photoSubType?: photoAccessHelper.photoSubType;
 }

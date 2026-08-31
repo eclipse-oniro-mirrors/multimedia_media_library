@@ -70,7 +70,11 @@ int32_t CloudMediaAlbumControllerService::OnFetchRecords(MessageParcel &data, Me
         MEDIA_DEBUG_LOG("OnFetchRecords albumDto: %{public}s", albumDto.ToString().c_str());
         MEDIA_DEBUG_LOG("OnFetchRecords album: %{public}s", album.ToString().c_str());
     }
-    ret = this->albumService_.OnFetchRecords(albumDtoList, resp);
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->albumService_.OnFetchRecords(albumDtoList, resp);
+    } else {
+        ret = this->shareAlbumService_.OnFetchRecords(albumDtoList, resp.stats, resp.failedRecords);
+    }
     MEDIA_INFO_LOG("OnFetchRecords Resp: %{public}s", resp.ToString().c_str());
     return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
 }

@@ -24,6 +24,7 @@ enum GLOBAL_CODE {
     OPERATION_CODE_BASE = MEDIA_CLOUD_CODE_START,
     OPERATION_PHOTO_CODE_BASE = MEDIA_CLOUD_CODE_START + 100,
     OPERATION_ALBUM_CODE_BASE = MEDIA_CLOUD_CODE_START + 200,
+    OPERATION_SHARE_PHOTO_CODE_BASE = MEDIA_CLOUD_CODE_START + 300,
 };
 
 enum class CloudMediaOperationCode : uint32_t {
@@ -102,4 +103,10 @@ enum class ThumbState : int32_t {
 
 static inline const int32_t DOWNLOAD_LIMIT_SIZE = 200;
 }  // namespace OHOS::Media::CloudSync
+ 
+namespace OHOS::Media::ShareAlbum {
+enum class CloudMediaSharePhotoOperationCode : uint32_t {
+    CMD_GET_SHARE_ALBUM_OWNER_ID = CloudSync::OPERATION_SHARE_PHOTO_CODE_BASE,
+};
+}  // namespace OHOS::Media::ShareAlbum
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_OPERATION_CODE_H
