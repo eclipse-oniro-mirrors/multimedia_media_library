@@ -42,6 +42,7 @@
 #include "media_string_utils.h"
 #include "cloud_media_context.h"
 #include "userfile_manager_types.h"
+#include "settings_data_manager.h"
 
 namespace OHOS::Media::CloudSync {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
@@ -754,8 +755,7 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
         FillAlbumCoverValues(record.coverUriSource, record.coverCloudId, values);
     }
     values.PutString(PhotoAlbumColumns::UNIQUE_ID, record.uniqueId);
-    values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS,
-        PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(record.lPath));
+    UpdateAlbumUploadStatusValues(record, values);
     ret = UpdateAlbumOrderInfo(record, values);
     CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateAlbumOrderInfo failed. ret %{public}d.", ret);
     int64_t rowId;
@@ -1389,6 +1389,16 @@ void CloudMediaAlbumDao::AddShareTypeCondition(NativeRdb::AbsRdbPredicates &pred
         predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE,
             to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
     }
+}
+
+void CloudMediaAlbumDao::UpdateAlbumUploadStatusValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS,
+            PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(record.lPath));
+        return;
+    }
+    values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, static_cast<int32_t>(AlbumUploadSwitchStatus::OPEN));
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync
