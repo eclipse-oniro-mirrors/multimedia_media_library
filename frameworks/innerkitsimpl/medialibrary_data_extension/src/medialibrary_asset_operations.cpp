@@ -1060,6 +1060,20 @@ static void ExtractHandlePhotoInfo(MediaLibraryCommand &cmd,
         fileAsset.GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         outValues.PutInt(PhotoColumn::STAGE_VIDEO_TASK_STATUS, stageVideoTaskStatus);
     }
+
+    std::string shootingMode;
+    if (cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_SHOOTING_MODE, value)) {
+        value.GetString(shootingMode);
+        MEDIA_INFO_LOG("ExtractHandlePhotoInfo: shootingMode='%{public}s'", shootingMode.c_str());
+        outValues.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, shootingMode);
+    }
+
+    std::string shootingModeTag;
+    if (cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, value)) {
+        value.GetString(shootingModeTag);
+        MEDIA_INFO_LOG("ExtractHandlePhotoInfo: shootingModeTag='%{public}s'", shootingModeTag.c_str());
+        outValues.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, shootingModeTag);
+    }
 }
 
 static void UpdateEnhanceParam(MediaLibraryCommand &cmd, ValuesBucket &outValues, ValueObject &value)
@@ -1792,7 +1806,8 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
         path = fileAsset->GetPath();
         MEDIA_DEBUG_LOG("##### file path is %{private}s", path.c_str());
         SolveMovingPhotoVideoCreation(path, mode, isMovingPhotoVideo);
-        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+            fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
             SolveMoviePhotoVideoCreation(path, mode);
         }
     } else {
@@ -2563,6 +2578,8 @@ const std::unordered_map<std::string, std::vector<VerifyFunction>>
     { AudioColumn::AUDIO_ARTIST, { Forbidden } },
     { PhotoColumn::CAMERA_SHOT_KEY, { IsString } },
     { PhotoColumn::PHOTO_USER_COMMENT, { IsString } },
+    { PhotoColumn::PHOTO_SHOOTING_MODE, { IsString } },
+    { PhotoColumn::PHOTO_SHOOTING_MODE_TAG, { IsString } },
     { PhotoColumn::PHOTO_ID, { IsString } },
     { PhotoColumn::PHOTO_QUALITY, { IsInt32 } },
     { PhotoColumn::PHOTO_FIRST_VISIT_TIME, { IsInt64 } },

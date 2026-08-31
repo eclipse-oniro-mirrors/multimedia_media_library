@@ -805,7 +805,8 @@ int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string
     CHECK_AND_RETURN_RET_LOG(CheckPermissionToOpenFileAsset(fileAsset),
         E_PERMISSION_DENIED, "Open not allowed");
 
-    if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         errCode = ProcessCinematicVideoOprnKey(cmd, fileAsset, id);
         CHECK_AND_RETURN_RET(errCode == E_OK, errCode);
     }

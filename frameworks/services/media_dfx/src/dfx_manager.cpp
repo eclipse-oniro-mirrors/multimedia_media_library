@@ -755,7 +755,8 @@ static bool QueryCinematicVideoStatus(const string &fileId, MultiStagesCaptureVi
     resultSet->GetColumnIndex(PhotoColumn::PHOTO_SUBTYPE, columnIndexSubtype);
     int32_t currentSubtype = 0;
     resultSet->GetInt(columnIndexSubtype, currentSubtype);
-    if (currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) &&
+        currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         MEDIA_INFO_LOG("Current photo is not cinematic video");
         return false;
     }

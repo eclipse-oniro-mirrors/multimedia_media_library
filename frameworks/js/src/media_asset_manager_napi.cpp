@@ -1283,7 +1283,8 @@ void MediaAssetManagerNapi::RequestVidoForFastMode(napi_env env, MediaAssetManag
     if (asyncContext->needsExtraInfo) {
         asyncContext->photoQuality = MediaAssetManagerAdapter::QueryPhotoStatusWithDfx(param, asyncContext->photoId);
     }
-    if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO) {
+    if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO ||
+        asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO_V2) {
         DfxLogCinematicVideo(asyncContext->photoQuality == MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS,
             asyncContext->userId);
     }
@@ -1305,7 +1306,8 @@ void MediaAssetManagerNapi::RequestVideoForHighQualityMode(napi_env env, MediaAs
     };
     auto status = MediaAssetManagerAdapter::QueryPhotoStatusWithDfx(param, asyncContext->photoId);
     asyncContext->photoQuality = status;
-    if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO) {
+    if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO ||
+        asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO_V2) {
         if (status == MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS) {
             MediaAssetManagerNapi::NotifyDataPreparedWithoutRegister(env, asyncContext);
             ReleaseSafeFunc(asyncContext->onDataPreparedPtr2);
@@ -2352,7 +2354,8 @@ void MediaAssetManagerNapi::JSRequestExecute(napi_env env, void *data)
 ProgressMode GetProgressMode(napi_env env, MediaAssetManagerAsyncContext *asyncContext)
 {
     if (asyncContext->compatibleMode == CompatibleMode::COMPATIBLE_FORMAT_MODE) {
-        if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO) {
+        if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO ||
+            asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO_V2) {
             if (asyncContext->sourceMode == SourceMode::EDITED_MODE) {
                 return ProgressMode::CAMERA_AND_TRANSCODING;
             }
@@ -2361,7 +2364,8 @@ ProgressMode GetProgressMode(napi_env env, MediaAssetManagerAsyncContext *asyncC
             return ProgressMode::ONLY_FOR_TRANSCODING;
         }
     } else {
-        if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO) {
+        if (asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO ||
+            asyncContext->subType == PhotoSubType::CINEMATIC_VIDEO_V2) {
             return ProgressMode::ONLY_FOR_CAMERA;
         }
         if (asyncContext->subType == PhotoSubType::SLOW_MOTION_VIDEO) {

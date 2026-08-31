@@ -130,6 +130,7 @@ private:
     void SetAssetLivePhoto4dValues(NativeRdb::ValuesBucket &values);
     void PutStringVal(NativeRdb::ValuesBucket &values, const std::string &columnName, const std::string &columnVal);
     int32_t UpdateAssetInDatabase();
+    bool IsCinematicVideoV2Asset();
     bool ShouldGenerateThumbnail();
     ThumbnailInfo GetThumbnailInfo();
     int32_t SetAssetSubtypeValues(NativeRdb::ValuesBucket &values);

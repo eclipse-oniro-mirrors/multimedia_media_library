@@ -80,7 +80,8 @@ int32_t MultiStagesCaptureDeferredVideoProcSessionCallback::UpdateVideoQuality(
     int32_t subType = fileAsset->GetPhotoSubType();
     MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
     NativeRdb::ValuesBucket updateValues;
-    if (subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         updateValues.Put(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_NEW));
     } else {
         if ((fileAsset->GetPosition()) != static_cast<int32_t>(PhotoPositionType::LOCAL)) {
@@ -111,7 +112,9 @@ int32_t GetDfxCaptureMediaType(const std::shared_ptr<FileAsset> &fileAsset, bool
     if (isMovingPhoto) {
         return static_cast<int32_t>(MultiStagesCaptureMediaType::MOVING_PHOTO_VIDEO);
     }
-    bool isCinematicVideo = (fileAsset->GetPhotoSubType()) == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO);
+    int32_t photoSubType = fileAsset->GetPhotoSubType();
+    bool isCinematicVideo = (photoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        photoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
     if (isCinematicVideo) {
         return static_cast<int32_t>(MultiStagesCaptureMediaType::CINEMATIC_VIDEO);
     }
@@ -169,7 +172,8 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::OnProcessVideoDone(cons
         .Build();
     MediaLibraryObjectUtils::ScanFileAsync(config);
     CheckEditSize(fileAsset);
-    if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_VIDEO_DONE);
         NotifyIfTempFile(fileAsset);
     }
@@ -202,7 +206,8 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::HandleVideoProcFailedAn
     if (fileAsset != nullptr) {
         int32_t fileId = fileAsset->GetId();
         UpdateVideoQuality(fileId, fileAsset, false);
-        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+            fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
             NotifyIfTempFile(fileAsset, true);
             MEDIA_ERR_LOG("cinematic video process failed, videoId: %{public}s", videoId.c_str());
         }
@@ -217,7 +222,8 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::HandleVideoProcInterrup
 {
     MultiStagesVideoCaptureManager::GetInstance().ClearCinematicProgressMap(videoId);
     if (fileAsset != nullptr) {
-        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+            fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
             MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_ERROR_VIDEO);
             NotifyIfTempFile(fileAsset, true);
             MEDIA_ERR_LOG("cinematic video process failed, videoId: %{public}s", videoId.c_str());

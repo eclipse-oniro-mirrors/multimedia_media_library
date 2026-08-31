@@ -49,6 +49,7 @@ const std::string IS_CAPTURE = "is_capture";
 const double TIMER_MULTIPLIER = 60.0;
 const std::string MEDIA_FILEMODE_READWRITE = "rw";
 constexpr int32_t MAX_QUALITY = 100;
+constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
 
 const std::unordered_map<CameraShotType, PhotoSubType> CAMERASHOT_TO_SUBTYPE_MAP = {
     {CameraShotType::MOVING_PHOTO, PhotoSubType::MOVING_PHOTO},
@@ -145,6 +146,19 @@ void PhotoAssetProxy::UpdateValuesForExtInfo(const sptr<PhotoProxy> &photoProxy,
                                        : static_cast<int32_t>(BurstCoverLevelType::MEMBER));
         values.Put(PhotoColumn::PHOTO_DIRTY, -1);
     } else if (cameraShotType_ == CameraShotType::VIDEO) {
+        if (photoProxy->GetShootingMode() == CINEMATIC_SHOOTING_MODE) {
+            // V2电影模式（包含希区柯克等特性）
+            values.Put(PhotoColumn::PHOTO_QUALITY, static_cast<int32_t>(PhotoQuality::LOW));
+            values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+
+            // 写入shooting_Mode和shooting_mode_tag
+            values.Put(PhotoColumn::PHOTO_SHOOTING_MODE, std::to_string(CINEMATIC_SHOOTING_MODE));
+            std::string shootingVersion = photoProxy->GetShootingVersion();
+            values.Put(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, shootingVersion);
+            MEDIA_INFO_LOG("V2 asset: shooting_mode=%{public}d, shooting_mode_tag='%{public}s'",
+                CINEMATIC_SHOOTING_MODE, shootingVersion.c_str());
+            return;
+        }
         values.Put(PhotoColumn::PHOTO_QUALITY, static_cast<int32_t>(photoProxy->GetPhotoQuality()));
         return;
     } else if (cameraShotType_ == CameraShotType::CINEMATIC_VIDEO) {
@@ -704,6 +718,23 @@ void PhotoAssetProxy::UpdatePhotoProxy(const sptr<PhotoProxy> &photoProxy)
     CHECK_AND_RETURN_LOG(!cond, "input param invalid, photo proxy or dataShareHelper is nullptr");
     MediaLibraryTracer tracer;
     tracer.Start("PhotoAssetProxy::UpdatePhotoProxy " + photoProxy->GetPhotoId());
+
+    // 电影模式版本信息此时才从HAL回调上来，更新shooting_mode相关字段
+    std::string shootingVersion = photoProxy->GetShootingVersion();
+    if (!shootingVersion.empty() && !uri_.empty()) {
+        Uri updateUri(uri_);
+        DataShare::DataSharePredicates predicates;
+        predicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(fileId_));
+        DataShare::DataShareValuesBucket updateValues;
+        updateValues.Put(PhotoColumn::PHOTO_SHOOTING_MODE, std::to_string(photoProxy->GetShootingMode()));
+        updateValues.Put(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, shootingVersion);
+        int32_t changeRows = dataShareHelper_->Update(updateUri, predicates, updateValues);
+        MEDIA_INFO_LOG("UpdatePhotoProxy: update shootingMode=%{public}d, tag='%{public}s', ret=%{public}d",
+            photoProxy->GetShootingMode(), shootingVersion.c_str(), changeRows);
+    } else {
+        MEDIA_WARN_LOG("UpdatePhotoProxy: shootingVersion is empty or uri is invalid, version='%{public}s'",
+            shootingVersion.c_str());
+    }
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} UpdatePhotoProxy begin, photoId: %{public}s.",
         MLOG_TAG, __FUNCTION__, __LINE__, photoProxy->GetPhotoId().c_str());
     AddProcessVideo(dataShareHelper_, photoProxy, fileId_, videoCount_);
