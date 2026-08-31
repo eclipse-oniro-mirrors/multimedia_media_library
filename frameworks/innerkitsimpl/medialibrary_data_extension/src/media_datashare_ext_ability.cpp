@@ -73,6 +73,7 @@
 #include "qos.h"
 #include "concurrent_task_client.h"
 #include "media_string_utils.h"
+#include "media_share_assets_service.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -362,6 +363,7 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
     dataManager->SetStartupParameter();
     DfxReporter::ReportStartResult(DfxType::START_SUCCESS, 0, startTime);
     CloudMediaAssetManager::GetInstance().RestartForceRetainCloudAssets();
+    MediaShareAssetsService::GetInstance().RestartRemoveShareAlbumAndAsset();
     dataManager->RestoreInvalidHDCCloudDataPos();
     PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable();
 }

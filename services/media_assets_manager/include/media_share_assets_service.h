@@ -31,12 +31,15 @@ namespace OHOS::Media {
 
 class MediaShareAssetsService {
 public:
-    MediaShareAssetsService() {}
-    ~MediaShareAssetsService() {}
+    static MediaShareAssetsService &GetInstance();
 
     int32_t RemoveShareAlbumAndAsset();
+    // 重启后续跑上次未完成的共享资产删除任务
+    void RestartRemoveShareAlbumAndAsset();
 
 private:
+    MediaShareAssetsService() {}
+    ~MediaShareAssetsService() {}
     MediaShareAssetsService(const MediaShareAssetsService &) = delete;
     const MediaShareAssetsService &operator=(const MediaShareAssetsService &) = delete;
 
@@ -58,7 +61,10 @@ private:
 private:
     MediaShareAssetsDao shareAssetsDao_;
     CloudShareSyncFoundationService cloudShareSyncFoundationService_;
+    // 防止 RemoveShareAssetsTask 异步删除任务重入
     std::mutex updateMutex_;
+    // 防止 RestartRemoveShareAlbumAndAsset 重复触发删除流程
+    std::mutex restartMutex_;
 };
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP

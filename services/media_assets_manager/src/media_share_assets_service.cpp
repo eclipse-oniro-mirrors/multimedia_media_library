@@ -22,6 +22,7 @@
 #include "cloud_media_asset_manager.h"
 #include "hi_audit.h"
 #include "media_assets_utils.h"
+#include "media_share_assets_utils.h"
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -32,6 +33,7 @@
 #include "operation/photo_file_operation.h"
 #include "parameters.h"
 #include "thumbnail_service.h"
+#include "cloud_sync_notify_handler.h"
 
 namespace OHOS::Media {
 
@@ -40,6 +42,12 @@ using namespace FileManagement::CloudSync;
 constexpr int32_t CYCLE_NUMBER = 5000;
 constexpr int32_t SLEEP_FOR_DELETE = 600;
 const std::string START_QUERY_ZERO = "0";
+
+MediaShareAssetsService &MediaShareAssetsService::GetInstance()
+{
+    static MediaShareAssetsService instance;
+    return instance;
+}
 
 int32_t MediaShareAssetsService::MarkShareAssetsToRemove()
 {
@@ -162,10 +170,12 @@ void MediaShareAssetsService::BeforeRemoveShareAlbumAndAsset()
 
     // 清除批量下载任务列表
     CleanShareAssetsDownloadTasksTable();
+    MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus::CLOUD_CLEANING);
 }
 
 void MediaShareAssetsService::AfterRemoveShareAlbumAndAsset()
 {
+    MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus::SYNC_SWITCHED_OFF);
     // 重置端云同步水位
     this->cloudShareSyncFoundationService_.ResetCursor();
 
@@ -190,5 +200,21 @@ int32_t MediaShareAssetsService::RemoveShareAlbumAndAsset()
 
     AfterRemoveShareAlbumAndAsset();
     return ret;
+}
+
+void MediaShareAssetsService::RestartRemoveShareAlbumAndAsset()
+{
+    // 防重入：已有重启删除流程在运行时直接返回，避免重复清理
+    std::unique_lock<std::mutex> lock(restartMutex_, std::defer_lock);
+    CHECK_AND_RETURN_WARN_LOG(lock.try_lock(), "share assets is cleaning, skipping this restart operation");
+    std::thread([&] {
+        MediaLibraryTracer tracer;
+        tracer.Start("CLOUD_EXIT: RestartRemoveShareAlbumAndAsset");
+        TimeLogger timeLogger;
+        timeLogger.Start("RestartRemoveShareAlbumAndAsset");
+        if (MediaShareAssetsCloudExitUtils::IsShareAssetCleaning()) {
+            RemoveShareAlbumAndAsset();
+        }
+    }).detach();
 }
 } // namespace OHOS::Media
