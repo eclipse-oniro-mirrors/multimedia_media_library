@@ -39,8 +39,10 @@ int32_t CloudMediaShareAlbumService::OnFetchRecords(
     std::vector<PhotoAlbumDto> &albumDtoList, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords)
 {
     for (auto &record : albumDtoList) {
+        int32_t ret = this->albumDao_.HandleLPathAndAlbumType(record);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, FileManagement::E_STOP, "OnFetchRecords HandleLPathAndAlbumType Error");
         // 先按 lPath/cloudId 匹配本地相册，填充 record.localAlbumInfo
-        int32_t ret = FindAlbumInfo(record);
+        ret = FindAlbumInfo(record);
         CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "GetPhotoAlbum failed, ret: %{public}d, record: %{public}s",
             ret, record.ToString().c_str());
         // 再处理记录

@@ -113,6 +113,7 @@ private:
     void FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
         NativeRdb::ValuesBucket &values);
     void AddShareTypeCondition(NativeRdb::AbsRdbPredicates &predicates);
+    void UpdateAlbumUploadStatusValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
 
 private:
     /* album failure records */
