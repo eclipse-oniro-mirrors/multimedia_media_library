@@ -502,6 +502,8 @@ TTLPriorityQueue::~TTLPriorityQueue()
 
     bool TTLPriorityQueue::UpdatePhotoRiskStatus(const std::string& displayName, const int32_t risk_status)
     {
+        CHECK_AND_RETURN_RET_LOG(!displayName.empty(), false,
+            "UpdatePhotoRiskStatus displayName is empty, skip update");
         auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
 
@@ -527,13 +529,13 @@ TTLPriorityQueue::~TTLPriorityQueue()
         CHECK_AND_RETURN_RET_LOG(cloudAuditInstance != nullptr, false, "cloudAuditInstance is nullptr");
         MEDIA_DEBUG_LOG("UploadInfoToAudit Start: Asset sending: %{public}s at: %{public}" PRId64,
                 element->truncated_path_.c_str(), element->insertion_time_);
+        auto instance = MedialibraryRelatedSystemStateManager::GetInstance();
+        CHECK_AND_RETURN_RET_LOG(instance != nullptr, false,
+            "MedialibraryRelatedSystemStateManager instance is nullptr");
         int32_t maxRetryCount = 3;
         int32_t retryCount = 0;
         int32_t res = -1;
         while (res != 0 && retryCount < maxRetryCount) {
-            auto instance = MedialibraryRelatedSystemStateManager::GetInstance();
-            CHECK_AND_RETURN_RET_LOG(instance != nullptr, false,
-                "MedialibraryRelatedSystemStateManager instance is nullptr");
             bool isWifiConnected = instance->IsNetAvailableInOnlyWifiCondition();
             bool networkAvaliable = isWifiConnected
                     || (instance->IsNetValidatedAtRealTime() && instance->IsCellularNetConnected());
