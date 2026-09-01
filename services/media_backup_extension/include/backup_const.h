@@ -301,6 +301,16 @@ const std::string CLONE_KVSTORE_YEAR_STOREID = "medialibrary_year_astc_data_clon
 const std::string MEDIA_KVDB_DIR = "/data/storage/el2/database";
 const std::string CLONE_KVDB_BACKUP_DIR = "/storage/media/local/files/.backup/backup/media_temp_kvdb";
 
+constexpr int64_t ROM_LOW_SPACE_THRESHOLD = 3LL * 1024 * 1024 * 1024;
+constexpr int32_t ROM_DROP_ANALYSIS_BATCH_ROWS = 1000;
+const std::vector<std::string> ROM_DROP_ANALYSIS_TABLES = {
+    "tab_analysis_segmentation",
+    "tab_analysis_label",
+    "tab_analysis_ocr",
+    "tab_analysis_pose",
+    "tab_analysis_image_face",
+};
+
 const std::string FILE_SEPARATOR = "/";
 
 constexpr int32_t INDEX_TYPE = 0;

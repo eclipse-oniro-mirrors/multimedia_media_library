@@ -23,6 +23,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "result_set_utils.h"
+#include "rom_low_space_guard.h"
 #include "upgrade_restore_task_report.h"
 
 namespace OHOS::Media {
@@ -94,6 +95,8 @@ void CloneRestoreClassify::Restore(const std::unordered_map<int32_t, PhotoInfo> 
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     GetMaxIds();
     RestoreByVersion(photoInfoMap);
+    // flush remaining buffered source label rows (< ROM_DROP_ANALYSIS_BATCH_ROWS)
+    AnalysisDataDropper::FlushRows(mediaRdb_, ANALYSIS_LABEL_TABLE);
     AddSpecialAlbum();
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     restoreTimeCost_ = end - start;
@@ -411,10 +414,30 @@ void CloneRestoreClassify::InsertClassifyAlbums(std::vector<ClassifyCloneInfo> &
         } else {
             // 插入成功后，记录 BIT1（图像意义分）
             recordScoreMask(values.size());
+            RomCheckMode mode = RomCheckMode::MONITORING;
+            CHECK_AND_EXECUTE(values.empty(), mode = RomLowSpaceGuard::EvaluateCheckpoint(ROM_CHECK_RDB_DIR));
+            // 边融合边删除
+            if (mode == RomCheckMode::DROP_LATCHED && AnalysisDataDropper::IsDropTable(ANALYSIS_LABEL_TABLE)) {
+                AnalysisDataDropper::DropRowsBuffered(mediaRdb_, ANALYSIS_LABEL_TABLE,
+                    CollectBatchFileIds(classifyInfos, offset));
+            }
         }
         offset += PAGE_SIZE;
         successInsertLabelCnt_ += rowNum;
     } while (offset < classifyInfos.size());
+}
+
+std::vector<int32_t> CloneRestoreClassify::CollectBatchFileIds(const std::vector<ClassifyCloneInfo> &classifyInfos,
+    size_t offset)
+{
+    std::vector<int32_t> batchFileIds;
+    for (size_t index = 0; index < PAGE_SIZE && index + offset < classifyInfos.size(); index++) {
+        if (classifyInfos[index + offset].fileIdNew.has_value() &&
+            classifyInfos[index + offset].fileIdOld.has_value()) {
+            batchFileIds.push_back(classifyInfos[index + offset].fileIdOld.value());
+        }
+    }
+    return batchFileIds;
 }
 
 void CloneRestoreClassify::InsertClassifyVideoAlbums(std::vector<ClassifyVideoCloneInfo> &classifyVideoInfos)

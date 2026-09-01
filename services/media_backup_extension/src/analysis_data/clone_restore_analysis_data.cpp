@@ -20,6 +20,7 @@
 #include "media_log.h"
 #include "medialibrary_data_manager_utils.h"
 #include "result_set_utils.h"
+#include "rom_low_space_guard.h"
 #include "upgrade_restore_task_report.h"
 
 namespace OHOS::Media {
@@ -144,6 +145,7 @@ void CloneRestoreAnalysisData::GetAnalysisDataRowInfo(AnalysisDataInfo &info,
     const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     info.fileId = GetInt32Val(FILE_ID, resultSet);
+    info.fileIdOld = info.fileId;
     for (auto it = tableCommonColumns_.begin(); it != tableCommonColumns_.end(); ++it) {
         std::string columnName = it->first;
         std::string columnType = it->second;
@@ -286,6 +288,27 @@ void CloneRestoreAnalysisData::DeleteDuplicateInfos()
     RemoveDuplicateInfos(existingFileIds);
 }
 
+void CloneRestoreAnalysisData::DropFusedBatchSourceRows(const std::vector<NativeRdb::ValuesBucket> &values,
+    int32_t errCode, int64_t rowNum, size_t offset)
+{
+    if (values.empty() || errCode != E_OK || rowNum != static_cast<int64_t>(values.size())) {
+        MEDIA_INFO_LOG("drop fused batch source rows errCode: %{public}d, rowNum: %{public}" PRId64
+            ", valuesSize: %{public}zu", errCode, rowNum, values.size());
+        return;
+    }
+    RomCheckMode mode = RomLowSpaceGuard::EvaluateCheckpoint(ROM_CHECK_RDB_DIR);
+    if (mode != RomCheckMode::DROP_LATCHED || !AnalysisDataDropper::IsDropTable(table_)) {
+        MEDIA_INFO_LOG("drop fused batch source rows, mode: %{public}d, table: %{public}s", static_cast<int32_t>(mode),
+            table_.c_str());
+        return;
+    }
+    std::vector<int32_t> batchFileIds;
+    for (size_t index = 0; index < PAGE_SIZE && index + offset < analysisDataInfos_.size(); index++) {
+        batchFileIds.push_back(analysisDataInfos_[index + offset].fileIdOld);
+    }
+    AnalysisDataDropper::DropRowsBuffered(mediaRdb_, table_, batchFileIds);
+}
+
 void CloneRestoreAnalysisData::InsertIntoAnalysisTable()
 {
     DeleteDuplicateInfos();
@@ -309,9 +332,12 @@ void CloneRestoreAnalysisData::InsertIntoAnalysisTable()
             cloneRestoreAnalysisTotal_.UpdateRestoreStatusAsFailed();
             UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).ReportError(errorInfo);
         }
+        DropFusedBatchSourceRows(values, errCode, rowNum, offset);
         offset += PAGE_SIZE;
         successCnt_ += rowNum;
     } while (offset < analysisDataInfos_.size());
+    // flush remaining buffered source rows (< ROM_DROP_ANALYSIS_BATCH_ROWS) of this table
+    AnalysisDataDropper::FlushRows(mediaRdb_, table_);
 }
 
 void CloneRestoreAnalysisData::RestoreAnalysisDataMaps()

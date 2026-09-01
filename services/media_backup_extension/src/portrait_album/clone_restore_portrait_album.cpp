@@ -22,6 +22,7 @@
 #include "backup_dfx_utils.h"
 #include "media_file_utils.h"
 #include "backup_const_column.h"
+#include "rom_low_space_guard.h"
 #include "upgrade_restore_task_report.h"
 #include "medialibrary_gdbstore.h"
 #include "medialibrary_gdbstore_manager.h"
@@ -686,8 +687,17 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
         std::vector<int32_t> fileIdChunk(oldFileIds.begin() + chunkStart, oldFileIds.begin() + chunkEnd);
         std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(fileIdChunk, commonColumns);
         auto imageFaces = ProcessImageFaceTbls(imageFaceTbls, photoInfoMap_);
+        uint64_t faceNumberBefore = migratePortraitFaceNumber_.load();
         BatchInsertImageFaces(imageFaces);
+        bool isBatchRestored = !imageFaces.empty() &&
+            migratePortraitFaceNumber_.load() - faceNumberBefore == imageFaces.size();
+        // 边融合边删除
+        if (isBatchRestored && RomLowSpaceGuard::GetMode() == RomCheckMode::DROP_LATCHED &&
+            AnalysisDataDropper::IsDropTable(VISION_IMAGE_FACE_TABLE)) {
+            AnalysisDataDropper::DropRowsBuffered(mediaRdb_, VISION_IMAGE_FACE_TABLE, fileIdChunk);
+        }
     }
+    AnalysisDataDropper::FlushRows(mediaRdb_, VISION_IMAGE_FACE_TABLE);
 
     // 记录需要刷新的分数类型的 mask 值
     MEDIA_INFO_LOG("record bit2 of mask");
@@ -833,6 +843,9 @@ void  CloneRestorePortrait::ParseImageFaceResultSet1(const std::shared_ptr<Nativ
 
 void CloneRestorePortrait::BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls)
 {
+    if (imageFaceTbls.empty()) {
+        return;
+    }
     std::unordered_set<int32_t> fileIdSet;
     int64_t rowNum = 0;
     size_t total = imageFaceTbls.size();
@@ -854,8 +867,11 @@ void CloneRestorePortrait::BatchInsertImageFaces(const std::vector<ImageFaceTbl>
         if (ret == E_OK) {
             rowNum += subRowNum;
             fileIdSet.insert(subFileIdSet.begin(), subFileIdSet.end());
+            CHECK_AND_EXECUTE(subRowNum != static_cast<int64_t>(valuesBuckets.size()),
+                RomLowSpaceGuard::EvaluateCheckpoint(ROM_CHECK_RDB_DIR));
         } else {
-            MEDIA_ERR_LOG("Failed to batch insert image faces, ret=%{public}d", ret);
+            MEDIA_ERR_LOG("Failed to batch insert image faces, ret=%{public}d, rowNum=%{public}" PRId64,
+                ret, subRowNum);
         }
     }
 
