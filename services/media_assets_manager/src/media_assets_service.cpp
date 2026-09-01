@@ -64,6 +64,7 @@
 #include "query_composite_auxiliary_image_dto.h"
 #include "medialibrary_asset_operations.h"
 #include "media_file_utils.h"
+#include "media_privacy_manager.h"
 #include "media_column.h"
 #include "media_old_photos_column.h"
 #include "cloud_media_asset_manager.h"
@@ -1894,7 +1895,10 @@ static int32_t GetCompositeAuxiliaryPath(const shared_ptr<FileAsset> &fileAsset,
         compositeAuxiliaryPath = MediaEditUtils::GetEditDataSourcePath(path);
     } else if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED) ||
         compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED_EDIT)) {
-        compositeAuxiliaryPath = MediaEditUtils::GetEditDataSourceBackPath(path);
+        // 云端无独立 source_back 对象（上传仅 FILE_CONTENT+FILE_RAW(source)）；本地有 source_back 直读，
+        // 纯云（无 source_back）回退 source 路径（对应云端 FILE_RAW，可走 dentry 流读）
+        compositeAuxiliaryPath = MediaEditUtils::IsEditDataSourceBackExists(path) ?
+            MediaEditUtils::GetEditDataSourceBackPath(path) : MediaEditUtils::GetEditDataSourcePath(path);
     } else {
         MEDIA_ERR_LOG("QueryCompositeAuxiliaryImage: not composite photo, fileId=%{public}d",
             fileAsset->GetId());
@@ -1929,19 +1933,20 @@ int32_t MediaAssetsService::QueryCompositeAuxiliaryImage(const QueryCompositeAux
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_URI,
         "QueryCompositeAuxiliaryImage: can not get file path, fileId=%{public}d", dto.fileId);
 
-    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::IsEditDataSourceBackExists(path), E_INVALID_VALUES,
-        "QueryCompositeAuxiliaryImage: no source_back, fileId=%{public}d", dto.fileId);
-
     string compositeAuxiliaryPath;
     int32_t ret = GetCompositeAuxiliaryPath(fileAsset, path, compositeAuxiliaryPath);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
         "QueryCompositeAuxiliaryImage: failed to get composite auxiliary path, fileId=%{public}d", dto.fileId);
 
-    CHECK_AND_RETURN_RET_LOG(!compositeAuxiliaryPath.empty() &&
-        MediaFileUtils::IsFileExists(compositeAuxiliaryPath), E_INVALID_VALUES,
-        "QueryCompositeAuxiliaryImage: file not exist, path=%{private}s", compositeAuxiliaryPath.c_str());
+    CHECK_AND_RETURN_RET_LOG(!compositeAuxiliaryPath.empty(), E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: composite auxiliary path is empty, fileId=%{public}d", dto.fileId);
+    if (!MediaFileUtils::IsFileExists(compositeAuxiliaryPath)) {
+        MEDIA_INFO_LOG("QueryCompositeAuxiliaryImage: file not exist locally, try cloud stream read, "
+            "path=%{private}s", compositeAuxiliaryPath.c_str());
+    }
 
-    int32_t fd = MediaFileUtils::OpenFile(compositeAuxiliaryPath, MEDIA_FILEMODE_READONLY);
+    int32_t fd = MediaPrivacyManager(compositeAuxiliaryPath, MEDIA_FILEMODE_READONLY,
+        to_string(dto.fileId)).Open();
     CHECK_AND_RETURN_RET_LOG(fd >= 0, E_INVALID_VALUES,
         "QueryCompositeAuxiliaryImage: open file failed, fileId=%{public}d", dto.fileId);
     respBody.fd = fd;
