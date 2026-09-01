@@ -376,6 +376,23 @@ void SettingsDataManager::ComfirmUploadStatus()
     }
 }
 
+int32_t SettingsDataManager::SetCloseDatabaseStatus(const std::string& value)
+{
+    const std::string CLOSE_DATABASE_KEY = "media_reverse_backup_close_database";
+    std::string existingValue;
+    int32_t ret = QueryParamInSettingData(CLOSE_DATABASE_KEY, existingValue);
+    if (ret == E_OK) {
+        return UpdateParamInSettingData(CLOSE_DATABASE_KEY, value);
+    }
+    return InsertParamInSettingData(CLOSE_DATABASE_KEY, value);
+}
+
+int32_t SettingsDataManager::GetCloseDatabaseStatus(std::string& value)
+{
+    const std::string CLOSE_DATABASE_KEY = "media_reverse_backup_close_database";
+    return QueryParamInSettingData(CLOSE_DATABASE_KEY, value);
+}
+
 int32_t SettingsDataManager::CheckAndInitUserSettings()
 {
     std::string configValue;

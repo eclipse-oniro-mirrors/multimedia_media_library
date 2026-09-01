@@ -21,6 +21,7 @@
 #include <vector>
 #include <regex>
 #include <map>
+#include <unordered_map>
 #include "rdb_store.h"
 
 namespace OHOS {
@@ -102,6 +103,17 @@ public:
     bool MigrateAnalysisTotalScore(std::shared_ptr<NativeRdb::RdbStore> oldDb,
         std::shared_ptr<NativeRdb::RdbStore> newDb,
         const std::unordered_map<int32_t, int32_t>& fileIdMap);
+    bool SetSearchIndex(std::shared_ptr<NativeRdb::RdbStore> oldDb);
+    bool SetColumnForTabAnalysisTotal(std::shared_ptr<NativeRdb::RdbStore> oldDb);
+
+    /**
+     * @brief 偏移 tab_highlight_play_info 中 play_info 的 file_id，并移动 .backup 下 highlight 文件
+     * @param db 数据库句柄（旧设备数据库）
+     * @param backupDir 备份目录路径，指向 highlight 根目录
+     * @return true 成功，false 失败
+     */
+    bool MigrateHighlightPlayInfo(std::shared_ptr<NativeRdb::RdbStore> db,
+                                  const std::string &backupDir);
 
     /**
      * @brief 获取迁移时计算的 newMaxExtended 值
@@ -160,6 +172,16 @@ private:
     bool TableExists(std::shared_ptr<NativeRdb::RdbStore> db, const std::string &tableName);
     bool ExecuteSql(std::shared_ptr<NativeRdb::RdbStore> db, const std::string &sql,
                     const std::vector<NativeRdb::ValueObject> &args);
+
+    // highlight play_info 偏移
+    std::unordered_map<int32_t, int32_t> BuildFileIdMap(std::shared_ptr<NativeRdb::RdbStore> db);
+    bool UpdatePlayInfoField(std::shared_ptr<NativeRdb::RdbStore> db,
+        const std::unordered_map<int32_t, int32_t> &fileIdMap);
+    bool MoveHighlightVideoDirs(const std::string &backupDir,
+        const std::unordered_map<int32_t, int32_t> &fileIdMap);
+    bool MoveSingleFile(const std::string &srcPath, const std::string &dstPath);
+    int32_t MoveFilesInDir(const std::string &oldDir, int32_t newId,
+        const std::string &videoDir, const std::unordered_map<int32_t, int32_t> &fileIdMap);
 
     int64_t newMaxExtended_ = 0;  // 迁移时 file_id 偏移后的上限值（用于判重）
     std::regex regexPattern_;

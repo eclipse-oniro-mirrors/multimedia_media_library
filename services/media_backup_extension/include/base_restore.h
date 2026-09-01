@@ -255,6 +255,7 @@ protected:
     std::atomic<int32_t> otherProcessStatus_{ProcessStatus::STOP};
     std::string dualDirName_ = "";
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
+    std::unique_ptr<NativeRdb::RdbStoreConfig> mediaLibraryRdbConfig_;
     std::string backupRestoreDir_;
     std::string upgradeRestoreDir_;
     std::string albumOdid_;

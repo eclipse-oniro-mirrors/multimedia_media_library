@@ -397,12 +397,15 @@ int32_t DoUpdateSmartDataAlbum()
             return;
         }
         MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore);
-        auto watch = MediaLibraryNotify::GetInstance();
-        if (watch != nullptr) {
-            watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
+        
+        auto rawStore = MediaLibraryRdbStore::GetRawChecked();
+        if (rawStore != nullptr) {
+            LcdAgingService::GetInstance().MarkRecentLcdPhotos(rawStore);
+        } else {
+            MEDIA_ERR_LOG("rdbStore_ is null, skip MarkRecentLcdPhotos");
         }
+
         MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread end");
-        LcdAgingService::GetInstance().MarkRecentLcdPhotos(MediaLibraryRdbStore::GetRaw());
     }).detach();
 
     MEDIA_INFO_LOG("Successfully scheduled UpdateSmartDataAlbumAsync task.");

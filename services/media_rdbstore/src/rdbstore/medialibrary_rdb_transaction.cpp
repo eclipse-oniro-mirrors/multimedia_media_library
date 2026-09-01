@@ -54,10 +54,10 @@ int32_t TransactionOperations::Start(bool isBackup)
     if (isBackup) {
         rdbStore_ = backupRdbStore_;
         if (rdbStore_ == nullptr) {
-            rdbStore_ = MediaLibraryRdbStore::GetRaw();
+            rdbStore_ = MediaLibraryRdbStore::GetRawChecked();
         }
     } else {
-        rdbStore_ = MediaLibraryRdbStore::GetRaw();
+        rdbStore_ = MediaLibraryRdbStore::GetRawChecked();
     }
     if (rdbStore_ == nullptr) {
         reporter_.ReportError(DfxTransaction::AbnormalType::NULLPTR_ERROR, E_HAS_DB_ERROR);

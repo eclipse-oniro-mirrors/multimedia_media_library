@@ -16,12 +16,15 @@
 #ifndef OHOS_MEDIALIBRARY_UNISTORE_MANAGER_H
 #define OHOS_MEDIALIBRARY_UNISTORE_MANAGER_H
 
+#include <atomic>
 #include <memory>
+#include <thread>
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore.h"
+#include "settings_data_manager.h"
 
 namespace OHOS {
 namespace Media {
@@ -36,45 +39,90 @@ public:
 
     EXPORT int32_t Init(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context)
     {
-        if (rdbStorePtr_) {
+        if (std::atomic_load(&rdbStorePtr_) != nullptr) {
             return E_OK;
         }
-
-        rdbStorePtr_ = std::make_shared<MediaLibraryRdbStore>(context);
-        if (!rdbStorePtr_) {
+        auto store = std::make_shared<MediaLibraryRdbStore>(context);
+        if (!store) {
             MEDIA_ERR_LOG("create rdbStore failed");
             return E_ERR;
         }
-        return rdbStorePtr_->Init();
+        int32_t ret = store->Init();
+        if (ret != E_OK) {
+            return ret;
+        }
+        std::atomic_store(&rdbStorePtr_, store);
+        return E_OK;
     }
 
     EXPORT int32_t Init(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context,
         const NativeRdb::RdbStoreConfig &config, int version, NativeRdb::RdbOpenCallback &openCallback)
     {
-        if (rdbStorePtr_) {
+        if (std::atomic_load(&rdbStorePtr_) != nullptr) {
             return E_OK;
         }
-
-        rdbStorePtr_ = std::make_shared<MediaLibraryRdbStore>(context);
-        if (!rdbStorePtr_) {
+        auto store = std::make_shared<MediaLibraryRdbStore>(context);
+        if (!store) {
             MEDIA_ERR_LOG("create rdbStore failed");
             return E_ERR;
         }
-        return rdbStorePtr_->Init(config, version, openCallback);
+        int32_t ret = store->Init(config, version, openCallback);
+        if (ret != E_OK) {
+            return ret;
+        }
+        std::atomic_store(&rdbStorePtr_, store);
+        return E_OK;
     }
 
     EXPORT void Stop()
     {
-        if (rdbStorePtr_) {
-            rdbStorePtr_->Stop();
+        auto old = std::atomic_load(&rdbStorePtr_);
+        if (old) {
+            old->Stop();
         }
-        rdbStorePtr_ = nullptr;
+        std::atomic_store(&rdbStorePtr_, std::shared_ptr<MediaLibraryRdbStore>());
+    }
+
+    EXPORT void CloseDatabase(bool async, int32_t timeOut)
+    {
+        bool expected = false;
+        if (!isClosing_.compare_exchange_strong(expected, true)) {
+            MEDIA_INFO_LOG("CloseDatabase already in progress, skip");
+            return;
+        }
+        MEDIA_INFO_LOG("CloseDatabase started");
+        bool closeReady = false;
+
+        auto old = std::atomic_load(&rdbStorePtr_);
+        if (old) {
+            const auto &config = old->GetConfig();
+            int32_t ret = old->Close(timeOut);
+            if (ret == E_OK) {
+                std::atomic_store(&rdbStorePtr_, std::shared_ptr<MediaLibraryRdbStore>());
+                NativeRdb::RdbHelper::ClearStoreCache(config);
+                closeReady = true;
+            } else {
+                MEDIA_ERR_LOG("CloseDatabase: Close failed, ret=%{public}d", ret);
+            }
+        }
+
+        if (async && closeReady) {
+            const std::string CLOSE_READY = "0";
+            int32_t ret = SettingsDataManager::SetCloseDatabaseStatus(CLOSE_READY);
+            if (ret != E_OK) {
+                MEDIA_ERR_LOG("CloseDatabaseAsync: SetCloseDatabaseStatus failed, ret=%{public}d", ret);
+            } else {
+                MEDIA_INFO_LOG("CloseDatabaseAsync: SetCloseDatabaseStatus success");
+            }
+        }
+        isClosing_ = false;
     }
 
     EXPORT std::shared_ptr<MediaLibraryRdbStore> GetRdbStore() const
     {
-        if (rdbStorePtr_ != nullptr && rdbStorePtr_->CheckRdbStore()) {
-            return rdbStorePtr_;
+        auto store = std::atomic_load(&rdbStorePtr_);
+        if (store != nullptr && store->CheckRdbStore()) {
+            return store;
         }
         MEDIA_ERR_LOG("MediaLibraryRdbStore or rdbStore is nullptr");
         return nullptr;
@@ -84,7 +132,8 @@ private:
     MediaLibraryUnistoreManager() = default;
     virtual ~MediaLibraryUnistoreManager() = default;
 
-    std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr_;
+    mutable std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr_;
+    std::atomic<bool> isClosing_{false};
 };
 } // namespace Media
 } // namespace OHOS

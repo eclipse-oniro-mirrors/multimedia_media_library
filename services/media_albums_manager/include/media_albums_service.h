@@ -107,7 +107,7 @@ public:
         bool disable, bool isAsyncRefreshAlbum);
     int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
         bool disable, bool isAsyncRefreshAlbum);
-    void ReportCloneDbStatus(bool isReverseClone = false);
+    void ReportCloneDbStatus(int32_t reverseCloneStatus);
     int32_t SetShareAlbumName(const SetShareAlbumNameReqBody &reqBody);
     int32_t DeleteSharePhotoAlbums(const std::string &owner, const std::vector<int32_t> &albumIds);
 

@@ -417,7 +417,7 @@ bool VideoFaceClone::CopyAnalysisVideoTotalTab(const std::string &tableName, con
 
 void VideoFaceClone::ResetAnalysisVideoTotalStatus()
 {
-    std::string updateSql = "UPDATE tab_analysis_video_total SET status = 0";
+    std::string updateSql = "UPDATE tab_analysis_video_total SET status = 0 WHERE status <> -1";
 
     int32_t errCode = BackupDatabaseUtils::ExecuteSQL(destRdb_, updateSql);
     CHECK_AND_PRINT_LOG(errCode >= 0,

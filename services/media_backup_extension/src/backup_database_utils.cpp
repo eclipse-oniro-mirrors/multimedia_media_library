@@ -83,64 +83,73 @@ static const std::unordered_map<int32_t, SouthDeviceType> INT_SOUTH_DEVICE_TYPE_
 };
 // LCOV_EXCL_START
 int32_t BackupDatabaseUtils::InitDb(std::shared_ptr<NativeRdb::RdbStore> &rdbStore, const std::string &dbName,
-    const std::string &dbPath, const std::string &bundleName, bool isMediaLibrary, int32_t area, bool needSetSearchable)
+    const std::string &dbPath, const std::string &bundleName, bool isMediaLibrary, int32_t area, bool needSetSearchable,
+    std::unique_ptr<NativeRdb::RdbStoreConfig> *outConfig)
 {
-    NativeRdb::RdbStoreConfig config(dbName);
-    config.SetPath(dbPath);
-    config.SetBundleName(bundleName);
-    config.SetReadConSize(CONNECT_SIZE);
-    config.SetSecurityLevel(NativeRdb::SecurityLevel::S3);
-    config.SetHaMode(NativeRdb::HAMode::MANUAL_TRIGGER);
-    config.SetAllowRebuild(true);
-    config.SetWalLimitSize(WAL_LIMIT_SIZE);
+    auto config = std::make_unique<NativeRdb::RdbStoreConfig>(dbName);
+    config->SetPath(dbPath);
+    config->SetBundleName(bundleName);
+    config->SetReadConSize(CONNECT_SIZE);
+    config->SetSecurityLevel(NativeRdb::SecurityLevel::S3);
+    config->SetHaMode(NativeRdb::HAMode::MANUAL_TRIGGER);
+    config->SetAllowRebuild(true);
+    config->SetWalLimitSize(WAL_LIMIT_SIZE);
     if (area != DEFAULT_AREA_VERSION) {
-        config.SetArea(area);
+        config->SetArea(area);
     }
     if (isMediaLibrary) {
-        config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
-        config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
-        config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
-        config.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
-        config.SetScalarFunction("begin_generate_highlight_thumbnail", STAMP_PARAM, BeginGenerateHighlightThumbnail);
+        config->SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
+        config->SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
+        config->SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+        config->SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
+        config->SetScalarFunction("begin_generate_highlight_thumbnail", STAMP_PARAM, BeginGenerateHighlightThumbnail);
         bool enableOldPath =
             system::GetBoolParameter("persist.multimedia.media_analysis_service.search_oldpath_enable", true);
         if (needSetSearchable && !enableOldPath) {
-            config.SetSearchable(true);
+            config->SetSearchable(true);
         }
     }
     int32_t err;
     RdbCallback cb;
-    rdbStore = NativeRdb::RdbHelper::GetRdbStore(config, MEDIA_RDB_VERSION, cb, err);
+    rdbStore = NativeRdb::RdbHelper::GetRdbStore(*config, MEDIA_RDB_VERSION, cb, err);
+    if (outConfig != nullptr) {
+        *outConfig = std::move(config);
+    }
     return err;
 }
 
 int32_t BackupDatabaseUtils::InitDbForOldVersion(std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
     const std::string &dbName, const std::string &dbPath, const std::string &bundleName,
-    bool isMediaLibrary, int32_t& oldVersion, int32_t area)
+    bool isMediaLibrary, int32_t& oldVersion, int32_t area,
+    std::unique_ptr<NativeRdb::RdbStoreConfig> *outConfig)
 {
-    NativeRdb::RdbStoreConfig config(dbName);
-    config.SetPath(dbPath);
-    config.SetCustomDir("../../../../../../../storage/media/local/files/.backup/restore/data/storage/el2/database/rdb");
-    config.SetBundleName(bundleName);
-    config.SetReadConSize(CONNECT_SIZE);
-    config.SetSecurityLevel(NativeRdb::SecurityLevel::S3);
-    config.SetHaMode(NativeRdb::HAMode::MANUAL_TRIGGER);
-    config.SetAllowRebuild(true);
-    config.SetWalLimitSize(WAL_LIMIT_SIZE);
+    auto config = std::make_unique<NativeRdb::RdbStoreConfig>(dbName);
+    config->SetPath(dbPath);
+    config->SetCustomDir(
+        "../../../../../../../storage/media/local/files/.backup/restore/data/storage/el2/database/rdb");
+    config->SetBundleName(bundleName);
+    config->SetReadConSize(CONNECT_SIZE);
+    config->SetSecurityLevel(NativeRdb::SecurityLevel::S3);
+    config->SetHaMode(NativeRdb::HAMode::MANUAL_TRIGGER);
+    config->SetAllowRebuild(true);
+    config->SetWalLimitSize(WAL_LIMIT_SIZE);
     if (area != DEFAULT_AREA_VERSION) {
-        config.SetArea(area);
+        config->SetArea(area);
     }
     if (isMediaLibrary) {
-        config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
-        config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
-        config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
-        config.SetScalarFunction("begin_generate_highlight_thumbnail", STAMP_PARAM, BeginGenerateHighlightThumbnail);
+        config->SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
+        config->SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
+        config->SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+        config->SetScalarFunction("begin_generate_highlight_thumbnail", STAMP_PARAM, BeginGenerateHighlightThumbnail);
     }
     int32_t err;
     RdbCallback cb;
-    rdbStore = NativeRdb::RdbHelper::GetRdbStore(config, MEDIA_RDB_VERSION, cb, err);
+    rdbStore = NativeRdb::RdbHelper::GetRdbStore(*config, MEDIA_RDB_VERSION, cb, err);
     oldVersion = cb.oldVersion_;
     MEDIA_INFO_LOG("InitDbForOldVersion oldVersion is %{public}d", oldVersion);
+    if (outConfig != nullptr) {
+        *outConfig = std::move(config);
+    }
     return err;
 }
 

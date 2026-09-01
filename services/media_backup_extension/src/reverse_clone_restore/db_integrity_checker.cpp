@@ -107,7 +107,7 @@ bool DbIntegrityChecker::OpenAndCheckDatabase(const std::string& dbPath)
 
     std::shared_ptr<NativeRdb::RdbStore> rdbStore;
     int32_t err = BackupDatabaseUtils::InitDb(rdbStore, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-        dbPath, CONST_BUNDLE_NAME, true, context->GetArea());
+        dbPath, CONST_BUNDLE_NAME, true, context->GetArea(), false);
     if (rdbStore == nullptr) {
         MEDIA_ERR_LOG("DbIntegrityChecker: open db failed, err=%{public}d", err);
         return false;

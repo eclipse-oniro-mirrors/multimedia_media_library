@@ -114,7 +114,8 @@ public:
 
     EXPORT std::shared_ptr<MediaLibraryRdbStore> rdbStore_;
 
-    EXPORT void ReOpenRdbStore();
+    void CloseRdbStore(bool async, int32_t timeOut);
+    void OpenRdbStore(bool async);
     EXPORT int32_t InitMediaLibraryMgr(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context,
         const std::shared_ptr<OHOS::AbilityRuntime::Context> &extensionContext,
         int32_t &sceneCode, bool isNeedCreateDir = true, bool isInMediaLibraryOnStart = false);

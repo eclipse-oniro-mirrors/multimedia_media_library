@@ -16,11 +16,17 @@
 #define MLOG_TAG "Media_Reverse_Restore"
 #include "file_id_migrator.h"
 #include "media_log.h"
+#include "play_info_mapper.h"
+#include "backup_database_utils.h"
+#include "backup_file_utils.h"
+#include "media_file_utils.h"
 #include <regex>
 #include <algorithm>
 #include <sstream>
+#include <cstdio>
+#include <filesystem>
 
-#include <medialibrary_data_manager_utils.h>
+#include "medialibrary_data_manager_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -359,7 +365,8 @@ bool FileIdMigrator::UpdateDirectFileIdTables(std::shared_ptr<RdbStore> db,
         {"tab_photos_ext", "photo_id", "photo_id > 0 AND photo_id <= ?"},
         {"tab_analysis_watermark", "file_id", "file_id > 0 AND file_id <= ?"},
         {"tab_map_photo_map", "file_id", "file_id > 0 AND file_id <= ?"},
-        {"tab_analysis_composition", "file_id", "file_id > 0 AND file_id <= ?"}
+        {"tab_analysis_composition", "file_id", "file_id > 0 AND file_id <= ?"},
+        {"tab_analysis_pet_face", "file_id", "file_id > 0 AND file_id <= ?"},
     };
 
     for (const auto &upd : updates) {
@@ -391,7 +398,7 @@ bool FileIdMigrator::UpdateEmbeddedFileIds(std::shared_ptr<RdbStore> db,
     static const std::vector<std::tuple<std::string, std::string, std::string>> tables = {
         {"PhotoAlbum", "album_id", "cover_uri"},
         {"AnalysisAlbum", "album_id", "cover_uri"},
-        {"tab_highlight_cover_info", "album_id", "cover_key"}
+        {"tab_highlight_cover_info", "album_id", "cover_key"},
     };
 
     for (const auto &[table, idCol, valueCol] : tables) {
@@ -814,6 +821,7 @@ bool FileIdMigrator::UpdateAllSmartAlbumTables(std::shared_ptr<RdbStore> db,
         {"AnalysisPhotoMap", "map_album", "map_album > 0 AND map_album <= ?"},
         {"tab_highlight_album", "album_id", "album_id > 0 AND album_id <= ?"},
         {"tab_highlight_album", "ai_album_id", "ai_album_id > 0 AND ai_album_id <= ?"},
+        {"tab_analysis_nick_name", "album_id", "album_id > 0 AND album_id <= ?"},
     };
 
     for (const auto &upd : updates) {
@@ -889,6 +897,30 @@ bool FileIdMigrator::SetBit20InTotalScore(std::shared_ptr<RdbStore> oldDb)
         return false;
     }
     MEDIA_INFO_LOG("FileIdMigrator: SetBit20InTotalScore completed");
+    return true;
+}
+
+bool FileIdMigrator::SetSearchIndex(std::shared_ptr<RdbStore> oldDb)
+{
+    const std::string sql =
+        "UPDATE tab_analysis_search_index SET photo_status = 0, cv_status = 0, geo_status = 0, face_status = 0,"
+        " album_status = 0;";
+    if (!ExecuteSql(oldDb, sql, {})) {
+        MEDIA_ERR_LOG("FileIdMigrator: SetSearchIndex failed");
+        return false;
+    }
+    MEDIA_INFO_LOG("FileIdMigrator: SetSearchIndex completed");
+    return true;
+}
+ 
+bool FileIdMigrator::SetColumnForTabAnalysisTotal(std::shared_ptr<RdbStore> oldDb)
+{
+    const std::string sql = "UPDATE tab_analysis_total SET graph_db = 0, similarity = 1, duplicate = 1;";
+    if (!ExecuteSql(oldDb, sql, {})) {
+        MEDIA_ERR_LOG("FileIdMigrator: SetColumnForTabAnalysisTotal failed");
+        return false;
+    }
+    MEDIA_INFO_LOG("FileIdMigrator: SetColumnForTabAnalysisTotal completed");
     return true;
 }
 
@@ -987,5 +1019,225 @@ bool FileIdMigrator::UpdateTotalScoreByMapping(std::shared_ptr<RdbStore> oldDb,
     return true;
 }
 // LCOV_EXCL_STOP
+
+// highlight play_info 偏移实现
+bool FileIdMigrator::MigrateHighlightPlayInfo(std::shared_ptr<RdbStore> db,
+    const std::string &backupDir)
+{
+    MEDIA_DEBUG_LOG("FileIdMigrator::MigrateHighlightPlayInfo begin, backupDir=%{public}s",
+        MediaFileUtils::DesensitizePath(backupDir).c_str());
+    if (!db) {
+        MEDIA_ERR_LOG("FileIdMigrator: invalid db handle for highlight play_info migration");
+        return false;
+    }
+    if (!TableExists(db, "tab_highlight_play_info")) {
+        MEDIA_INFO_LOG("FileIdMigrator: tab_highlight_play_info not exist, skip");
+        return true;
+    }
+
+    auto fileIdMap = BuildFileIdMap(db);
+    if (fileIdMap.empty()) {
+        MEDIA_INFO_LOG("FileIdMigrator: fileIdMap is empty, skip highlight play_info migration");
+        return true;
+    }
+
+    if (!UpdatePlayInfoField(db, fileIdMap)) {
+        MEDIA_ERR_LOG("FileIdMigrator: UpdatePlayInfoField failed");
+        return false;
+    }
+
+    if (!backupDir.empty()) {
+        if (!MoveHighlightVideoDirs(backupDir, fileIdMap)) {
+            MEDIA_ERR_LOG("FileIdMigrator: MoveHighlightVideoDirs failed");
+            return false;
+        }
+    } else {
+        MEDIA_INFO_LOG("FileIdMigrator: backupDir is empty, skip MoveHighlightVideoDirs");
+    }
+
+    MEDIA_INFO_LOG("FileIdMigrator::MigrateHighlightPlayInfo success");
+    return true;
+}
+
+std::unordered_map<int32_t, int32_t> FileIdMigrator::BuildFileIdMap(std::shared_ptr<RdbStore> db)
+{
+    std::unordered_map<int32_t, int32_t> fileIdMap;
+    if (!TableExists(db, "tab_cloned_old_photos")) {
+        MEDIA_INFO_LOG("FileIdMigrator: tab_cloned_old_photos not exist, skip");
+        return fileIdMap;
+    }
+    const std::string querySql = "SELECT old_file_id, file_id FROM tab_cloned_old_photos;";
+    auto resultSet = db->QuerySql(querySql);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("FileIdMigrator: query tab_cloned_old_photos failed");
+        return fileIdMap;
+    }
+    while (resultSet->GoToNextRow() == E_OK) {
+        int32_t oldFileId = 0;
+        int32_t newFileId = 0;
+        resultSet->GetInt(0, oldFileId);
+        resultSet->GetInt(1, newFileId);
+        if (oldFileId > 0 && newFileId > 0 && oldFileId != newFileId) {
+            MEDIA_DEBUG_LOG("FileIdMigrator: fileIdMap entry oldFileId=%{public}d -> newFileId=%{public}d",
+                oldFileId, newFileId);
+            fileIdMap[oldFileId] = newFileId;
+        }
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("FileIdMigrator: BuildFileIdMap total size=%{public}zu", fileIdMap.size());
+    return fileIdMap;
+}
+
+bool FileIdMigrator::UpdatePlayInfoField(std::shared_ptr<RdbStore> db,
+    const std::unordered_map<int32_t, int32_t> &fileIdMap)
+{
+    PlayInfoMapperCallbacks callbacks = CreateFileIdMapCallbacks(fileIdMap);
+
+    const std::string selectSql =
+        "SELECT album_id, play_info FROM tab_highlight_play_info WHERE play_info IS NOT NULL;";
+    auto resultSet = db->QuerySql(selectSql);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("FileIdMigrator: query tab_highlight_play_info failed");
+        return false;
+    }
+
+    int32_t totalRows = 0;
+    std::vector<std::pair<int64_t, std::string>> updates;
+    while (resultSet->GoToNextRow() == E_OK) {
+        totalRows++;
+        int64_t albumId = 0;
+        std::string playInfo;
+        resultSet->GetLong(0, albumId);
+        resultSet->GetString(1, playInfo);
+        if (playInfo.empty()) {
+            MEDIA_INFO_LOG("FileIdMigrator: albumId=%{public}" PRId64 " play_info is empty, skip", albumId);
+            continue;
+        }
+        std::string newPlayInfo = MapPlayInfo(playInfo, callbacks, playInfo);
+        if (newPlayInfo != playInfo) {
+            MEDIA_INFO_LOG("FileIdMigrator: albumId=%{public}" PRId64 " play_info changed, "
+                "oldLen=%{public}zu, newLen=%{public}zu", albumId, playInfo.length(), newPlayInfo.length());
+            updates.emplace_back(albumId, std::move(newPlayInfo));
+        } else {
+            MEDIA_INFO_LOG("FileIdMigrator: albumId=%{public}" PRId64 " play_info unchanged", albumId);
+        }
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("FileIdMigrator: UpdatePlayInfoField scanned=%{public}d, needUpdate=%{public}zu",
+        totalRows, updates.size());
+
+    const std::string updateSql = "UPDATE tab_highlight_play_info SET play_info = ? WHERE album_id = ?;";
+    int32_t updatedCount = 0;
+    for (const auto &[albumId, newPlayInfo] : updates) {
+        std::vector<ValueObject> args;
+        args.emplace_back(ValueObject(newPlayInfo));
+        args.emplace_back(ValueObject(albumId));
+        if (!ExecuteSql(db, updateSql, args)) {
+            MEDIA_ERR_LOG("FileIdMigrator: update play_info failed, albumId=%{public}" PRId64, albumId);
+            return false;
+        }
+        updatedCount++;
+    }
+    MEDIA_INFO_LOG("FileIdMigrator: UpdatePlayInfoField updated %{public}d/%{public}zu rows",
+        updatedCount, updates.size());
+    return true;
+}
+
+bool FileIdMigrator::MoveSingleFile(const std::string &srcPath, const std::string &dstPath)
+{
+    if (!MediaFileUtils::IsFileExists(srcPath)) {
+        MEDIA_WARN_LOG("FileIdMigrator: src not exist, skip, src=%{public}s",
+            MediaFileUtils::DesensitizePath(srcPath).c_str());
+        return true;
+    }
+    if (MediaFileUtils::IsFileExists(dstPath)) {
+        MEDIA_WARN_LOG("FileIdMigrator: dst file already exists, skip, dst=%{public}s",
+            MediaFileUtils::DesensitizePath(dstPath).c_str());
+        return true;
+    }
+    int32_t errCode = BackupFileUtils::PreparePath(dstPath);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
+        "FileIdMigrator: PreparePath failed, err=%{public}d, dst=%{public}s",
+        errCode, MediaFileUtils::DesensitizePath(dstPath).c_str());
+    errCode = BackupFileUtils::MoveFile(srcPath, dstPath, 0);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
+        "FileIdMigrator: MoveFile failed, err=%{public}d, src=%{public}s",
+        errCode, MediaFileUtils::DesensitizePath(srcPath).c_str());
+    return true;
+}
+
+int32_t FileIdMigrator::MoveFilesInDir(const std::string &oldDir, int32_t newId,
+    const std::string &videoDir, const std::unordered_map<int32_t, int32_t> &fileIdMap)
+{
+    int32_t movedCount = 0;
+    std::error_code ec;
+    for (const auto &entry : std::filesystem::directory_iterator(oldDir, ec)) {
+        if (ec) {
+            MEDIA_ERR_LOG("FileIdMigrator: directory_iterator failed, dir=%{public}s",
+                MediaFileUtils::DesensitizePath(oldDir).c_str());
+            return -1;
+        }
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        std::string oldFilename = entry.path().filename().string();
+        std::string newFilename = RemapFilenameByFileIdMap(oldFilename, fileIdMap);
+        std::string srcPath = oldDir + "/" + oldFilename;
+        std::string dstPath = videoDir + std::to_string(newId) + "/" + newFilename;
+
+        MEDIA_DEBUG_LOG("FileIdMigrator: move file oldFilename=%{public}s -> newFilename=%{public}s",
+            MediaFileUtils::DesensitizePath(srcPath).c_str(),
+            MediaFileUtils::DesensitizePath(dstPath).c_str());
+
+        if (!MoveSingleFile(srcPath, dstPath)) {
+            return -1;
+        }
+        movedCount++;
+    }
+    return movedCount;
+}
+
+bool FileIdMigrator::MoveHighlightVideoDirs(const std::string &backupDir,
+    const std::unordered_map<int32_t, int32_t> &fileIdMap)
+{
+    std::string videoDir = backupDir;
+    if (!videoDir.empty() && videoDir.back() != '/') {
+        videoDir += '/';
+    }
+    videoDir += "video/";
+    MEDIA_INFO_LOG("FileIdMigrator: MoveHighlightVideoDirs videoDir=%{public}s",
+        MediaFileUtils::DesensitizePath(videoDir).c_str());
+
+    if (!MediaFileUtils::IsDirectory(videoDir)) {
+        MEDIA_INFO_LOG("FileIdMigrator: highlight video dir not exist, skip move");
+        return true;
+    }
+
+    int32_t movedFiles = 0;
+    int32_t skippedDirs = 0;
+    for (const auto &[oldId, newId] : fileIdMap) {
+        std::string oldDir = videoDir + std::to_string(oldId);
+        if (!MediaFileUtils::IsDirExists(oldDir)) {
+            skippedDirs++;
+            continue;
+        }
+        MEDIA_INFO_LOG("FileIdMigrator: processing dir oldId=%{public}d -> newId=%{public}d", oldId, newId);
+
+        int32_t dirFileCount = MoveFilesInDir(oldDir, newId, videoDir, fileIdMap);
+        if (dirFileCount < 0) {
+            return false;
+        }
+        movedFiles += dirFileCount;
+        MEDIA_INFO_LOG("FileIdMigrator: dir oldId=%{public}d moved %{public}d files", oldId, dirFileCount);
+
+        if (MediaFileUtils::IsDirectory(oldDir) && MediaFileUtils::IsDirEmpty(oldDir)) {
+            MediaFileUtils::DeleteDir(oldDir);
+            MEDIA_INFO_LOG("FileIdMigrator: removed empty dir oldId=%{public}d", oldId);
+        }
+    }
+    MEDIA_INFO_LOG("FileIdMigrator: MoveHighlightVideoDirs done, movedFiles=%{public}d, skippedDirs=%{public}d",
+        movedFiles, skippedDirs);
+    return true;
+}
 } // namespace Media
 } // namespace OHOS

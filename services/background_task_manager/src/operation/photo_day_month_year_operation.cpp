@@ -194,11 +194,15 @@ int32_t PhotoDayMonthYearOperation::UpdatePhotosDateAndIdx(const std::shared_ptr
 {
     MEDIA_INFO_LOG("update phots date start");
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    bool cond = (rdbStore == nullptr || !rdbStore->CheckRdbStore());
+    bool cond = (rdbStore == nullptr);
     CHECK_AND_RETURN_RET_LOG(!cond, NativeRdb::E_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
 
-    auto ret = UpdatePhotosDateUpgrade(*rdbStore->GetRaw().get());
+    auto rawStore = rdbStore->GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(rawStore != nullptr, NativeRdb::E_ERROR,
+        "rdbStore_ is nullptr. Maybe it didn't init successfully.");
+
+    auto ret = UpdatePhotosDateUpgrade(*rawStore.get());
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "update day month year failed, ret=%{public}d", ret);
     MEDIA_INFO_LOG("update phots date end, startTime: %{public}" PRId64 ", cost: %{public}" PRId64, startTime,
         (MediaFileUtils::UTCTimeMilliSeconds() - startTime));

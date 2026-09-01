@@ -81,7 +81,7 @@ public:
 
     /**
      * @brief 为断点续传初始化数据库
-     *        初始化 sourceRdb_ 和 destRdb_，用于 ResumeAbsorbData
+     *        初始化 mediaRdb_ 和 mediaLibraryRdb_，用于 ResumeAbsorbData
      * @return true表示成功，false表示失败
      */
     bool InitDatabasesForResume();
@@ -94,7 +94,7 @@ public:
     bool PrepareForResume();
 
     /**
-     * @brief 初始化 destRdb_ 和 sourceRdb_ 的公共方法
+     * @brief 初始化 mediaLibraryRdb_ 和 mediaRdb_ 的公共方法
      * @param newDbPath 新数据库路径
      * @param newDbSourcePath 源数据库路径
      * @param logTag 日志标签
@@ -363,9 +363,7 @@ protected:
     int64_t newMaxExtended_ = 0;        // 迁移时 file_id 偏移的分割线
 
 private:
-
-    std::shared_ptr<NativeRdb::RdbStore> sourceRdb_;
-    std::shared_ptr<NativeRdb::RdbStore> destRdb_;
+    std::unique_ptr<NativeRdb::RdbStoreConfig> oldDbTempConfig_;
     TableDataAdapter tableDataAdapter_;
     AlbumAssetAbsorb albumAssetAbsorb_;
     ReverseCloneResourceInheritHelper resourceInheritHelper_;
@@ -446,8 +444,6 @@ private:
     void SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
         int32_t maxDestDbFileId);
     void CollectLocalErrorInfos(const std::vector<std::string> &localErrorInfos);
-
-    bool RecoverSourceDbFromSlave();
     bool CheckSourceRdbIntegrityAndFallback(const std::string &backupRestorePath,
                                             const std::string &upgradePath);
     bool TryRecoverFromBackupDb();

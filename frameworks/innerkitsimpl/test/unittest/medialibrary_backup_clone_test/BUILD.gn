@@ -102,6 +102,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/clone_restore_cv_analysis.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/clone_restore_highlight.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/highlight_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/play_info_mapper.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/group_photo_album/clone_restore_group_photo.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/group_photo_album/group_photo_album_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/log/backup_hi_audit.cpp",

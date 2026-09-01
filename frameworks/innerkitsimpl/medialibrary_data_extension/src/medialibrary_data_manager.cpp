@@ -991,7 +991,9 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_FILE_MANAGER_RELATED, "Album", AddFileMa
 static int32_t UpdateTabPhotosExt(RdbStore& store)
 {
     MEDIA_INFO_LOG("start update tab_photos_ext");
-    LcdAgingService::GetInstance().MarkRecentLcdPhotos(MediaLibraryRdbStore::GetRaw());
+    auto rawStore = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(rawStore != nullptr, E_HAS_DB_ERROR, "rdbStore_ is null");
+    LcdAgingService::GetInstance().MarkRecentLcdPhotos(rawStore);
     MEDIA_INFO_LOG("end update tab_photos_ext");
     return NativeRdb::E_OK;
 }
@@ -1018,7 +1020,12 @@ void MediaLibraryDataManager::HandleUpgradeRdbAsync(bool isInMediaLibraryOnStart
             // 使用新的数据库异步升级框架
             UpgradeManagerConfig config(false, RDB_UPGRADE_EVENT, RDB_CONFIG, oldVersion, MEDIA_RDB_VERSION);
             UpgradeManager::GetInstance().Initialize(config);
-            UpgradeManager::GetInstance().UpgradeAsync(*rdbStore->GetRaw().get());
+            auto rawStore = rdbStore->GetRawChecked();
+            if (rawStore == nullptr) {
+                MEDIA_ERR_LOG("rdbStore_ is null, skip UpgradeAsync");
+            } else {
+                UpgradeManager::GetInstance().UpgradeAsync(*rawStore.get());
+            }
         }
         // !! Do not add index here !!
         MediaLibraryRdbStore::AddUpgradeTable(rdbStore);
@@ -1090,12 +1097,33 @@ __attribute__((no_sanitize("cfi"))) void MediaLibraryDataManager::ClearMediaLibr
 #endif
 }
 
-void MediaLibraryDataManager::ReOpenRdbStore()
+void MediaLibraryDataManager::CloseRdbStore(bool async, int32_t timeOut)
 {
-    // 释放现有 UnistoreManager 缓存的旧主库句柄
-    MediaLibraryUnistoreManager::GetInstance().Stop();
-    rdbStore_ = nullptr;
+    if (!async) {
+        MEDIA_INFO_LOG("ReOpenRdbStore: CloseRdbStore begin");
+        MediaLibraryUnistoreManager::GetInstance().CloseDatabase(async, timeOut);
+        return;
+    }
+    std::thread([this, async, timeOut]() {
+        MEDIA_INFO_LOG("ReOpenRdbStore: detach thread begin");
+        // 释放现有 UnistoreManager 缓存的旧主库句柄
+        MediaLibraryUnistoreManager::GetInstance().CloseDatabase(async, timeOut);
+        rdbStore_ = nullptr;
+        const std::string CLOSE_READY = "0";
+        std::string value;
+        int32_t ret = SettingsDataManager::GetCloseDatabaseStatus(value);
+        if (ret == E_OK && value == CLOSE_READY) {
+            // 正常关库结束，等10s后再开库，防止异常场景
+            int32_t OPEN_DATABASE_TIME = 1000 * 10;
+            std::this_thread::sleep_for(std::chrono::milliseconds(OPEN_DATABASE_TIME));
+        }
+        // 无论是否超时，都需要重新开库
+        OpenRdbStore(true);
+    }).detach();
+}
 
+void MediaLibraryDataManager::OpenRdbStore(bool async)
+{
     // 重新初始化 UnistoreManager，打开新的主库文件
     int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(context_);
     if (ret != E_OK) {
@@ -1106,6 +1134,17 @@ void MediaLibraryDataManager::ReOpenRdbStore()
     if (rdbStore_ == nullptr) {
         MEDIA_ERR_LOG("ReOpenRdbStore: GetRdbStore failed");
         return;
+    }
+
+    // 异步场景方才处理
+    if (async) {
+        const std::string OPEN_READY = "1";
+        ret = SettingsDataManager::SetCloseDatabaseStatus(OPEN_READY);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("OpenRdbStore: SetCloseDatabaseStatus failed, ret=%{public}d", ret);
+        } else {
+            MEDIA_INFO_LOG("OpenRdbStore: SetCloseDatabaseStatus success");
+        }
     }
 
     // 重置缩略图服务，使其使用新的 rdbStore

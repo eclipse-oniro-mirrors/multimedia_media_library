@@ -47,6 +47,8 @@ const std::string MEDIA_LIBRARY_STARTUP_PARAM_PREFIX = "multimedia.medialibrary.
 constexpr uint32_t BASE_USER_RANGE = 200000;
 const int32_t ARG_COUNT = 2;
 constexpr int STORAGE_MANAGER_MANAGER_ID = 5003;
+constexpr int32_t MILLIS_PER_SEC = 1000;
+constexpr int32_t MILLIS_FIVE_SECONDS = 5 * 1000;
 static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
 const std::unordered_set<OperationObject> OPERATION_OBJECT_SET = {
     OperationObject::UFM_PHOTO,
@@ -197,21 +199,21 @@ int32_t MediaAssetRdbStore::OpenRdbStore(bool isIgnoreSELinux)
     }
     string dbPath = databaseDir.append("/").append(name);
     int32_t errCode = 0;
-    NativeRdb::RdbStoreConfig config {""};
-    config.SetName(name);
-    config.SetVisitorDir(dbPath);
-    config.SetBundleName(context->GetBundleName());
-    config.SetArea(context->GetArea());
-    config.SetSecurityLevel(SecurityLevel::S3);
-    config.SetRoleType(RoleType::VISITOR);
-    config.SetReadOnly(true);
-    config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
-    config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
-    config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
-    config.SetCollatorLocales("zh_CN");
+    config_.SetName(name);
+    config_.SetVisitorDir(dbPath);
+    config_.SetBundleName(context->GetBundleName());
+    config_.SetArea(context->GetArea());
+    config_.SetSecurityLevel(SecurityLevel::S3);
+    config_.SetRoleType(RoleType::VISITOR);
+    config_.SetReadOnly(true);
+    config_.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
+    config_.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
+    config_.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+    config_.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
+    config_.SetCollatorLocales("zh_CN");
 
     MediaLibraryAssetCallBack rdbDataCallBack;
-    rdbStore_ = RdbHelper::GetRdbStore(config, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
+    rdbStore_ = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
     if (rdbStore_ == nullptr || errCode != NativeRdb::E_OK) {
         MEDIA_WARN_LOG("Failed to get visitor RdbStore, errCode: %{public}d", errCode);
         rdbStore_ = nullptr;
@@ -222,6 +224,26 @@ int32_t MediaAssetRdbStore::OpenRdbStore(bool isIgnoreSELinux)
     return NativeRdb::E_OK;
 }
 
+static void CloseRdbStore(std::shared_ptr<NativeRdb::RdbStore> &store, const NativeRdb::RdbStoreConfig& config,
+    int32_t timeOut = MILLIS_PER_SEC)
+{
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("store is nullptr");
+        return;
+    }
+    NativeRdb::RdbStore::ReleaseOption option;
+    option.waitTime = std::max(MILLIS_PER_SEC, timeOut);
+    option.clearMetadata = false;
+    int32_t ret = store->Release(option);
+    if (ret == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("CloseRdbStore: Release succeeded");
+    } else {
+        MEDIA_ERR_LOG("CloseRdbStore: Release failed, ret=%{public}d", ret);
+    }
+    std::atomic_store(&store, std::shared_ptr<NativeRdb::RdbStore>());
+    NativeRdb::RdbHelper::ClearStoreCache(config);
+}
+
 std::shared_ptr<NativeRdb::RdbStore> MediaAssetRdbStore::GetRdbStoreForQuery(bool isIgnoreSELinux)
 {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -230,7 +252,8 @@ std::shared_ptr<NativeRdb::RdbStore> MediaAssetRdbStore::GetRdbStoreForQuery(boo
         markerTime > openedRdbTimeMs_) {
         MEDIA_INFO_LOG("reverse restore marker newer than visitor rdb, openedRdbTimeMs=%{public}lld, "
             "markerTimeMs=%{public}lld", static_cast<long long>(openedRdbTimeMs_), static_cast<long long>(markerTime));
-        rdbStore_ = nullptr;
+        // 5s内链接未释放完毕，也要清理缓存
+        CloseRdbStore(rdbStore_, config_, MILLIS_FIVE_SECONDS);
     }
     CHECK_AND_RETURN_RET(rdbStore_ != nullptr || OpenRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, nullptr);
     return rdbStore_;

@@ -158,6 +158,7 @@ void MediaLibraryRdbStore::StatEditAndAttachmentSize(const std::string &rootPath
 const std::string SLAVE = "slave";
 
 constexpr ssize_t RDB_WAL_LIMIT_SIZE = 1024 * 1024 * 1024; /* default wal file maximum size : 1GB */
+constexpr int32_t MILLIS_PER_SEC = 1000;
 
 shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::rdbStore_;
 
@@ -931,7 +932,10 @@ namespace {
 void MediaLibraryRdbStore::CheckAndAddPhotoTableColumns(const shared_ptr<MediaLibraryRdbStore> store)
 {
     MEDIA_INFO_LOG("start check and add photo table columns");
-    auto &rdbStore = *store->GetRaw().get();
+    CHECK_AND_RETURN_LOG(store != nullptr, "CheckAndAddPhotoTableColumns rdbStore is nullptr!");
+    auto rawStore = store->GetRawChecked();
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    auto &rdbStore = *rawStore.get();
 
     for (size_t i = 0; i < PHOTO_TABLE_COLUMN_COUNT; ++i) {
         MediaLibraryRdbHelper::AddColumnIfNotExists(rdbStore, PHOTO_TABLE_COLUMNS[i].name, PHOTO_TABLE_COLUMNS[i].type,
@@ -955,7 +959,9 @@ void MediaLibraryRdbStore::AddUpgradeIndex(const shared_ptr<MediaLibraryRdbStore
         PhotoUpgrade::INDEX_QUERY_THUMBNAIL_WHITE_BLOCKS
     };
     MEDIA_INFO_LOG("start create idx again");
-    ExecSqls(sqls, *store->GetRaw().get());
+    auto rawStore = store->GetRawChecked();
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    ExecSqls(sqls, *rawStore.get());
     MEDIA_INFO_LOG("end create idx again");
 }
 
@@ -1075,24 +1081,22 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_ALBUM_SUBTYPE_AND_NAME_INDEX, "Vision", 
 int32_t MediaLibraryRdbStore::Init()
 {
     MEDIA_INFO_LOG("Init rdb store: [version: %{public}d]", MEDIA_RDB_VERSION);
-    CHECK_AND_RETURN_RET(rdbStore_ == nullptr, E_OK);
+    if (std::atomic_load(&rdbStore_) != nullptr) {
+        return E_OK;
+    }
 
     int32_t errCode = 0;
     MediaLibraryDataCallBack rdbDataCallBack;
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::Init GetRdbStore");
-    rdbStore_ = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
+    auto store = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
     tracer.Finish();
-    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, errCode, "GetRdbStore is failed");
-    int version = 0;
-    NativeRdb::RebuiltType rebuilt;
-    bool isRebuilt = rdbStore_->GetRebuilt(rebuilt) == NativeRdb::E_OK && rebuilt == NativeRdb::RebuiltType::REBUILT;
-    bool isInitVersion = rdbStore_->GetVersion(version) == NativeRdb::E_OK && version == 0;
-    if (isRebuilt || isInitVersion) {
-        MEDIA_INFO_LOG("MediaLibraryRdbStore::Init, OnCreate, isRebuilt: %{public}d isInitVersion: %{public}d",
-            static_cast<uint32_t>(isRebuilt), static_cast<uint32_t>(isInitVersion));
-        rdbDataCallBack.OnCreate(*rdbStore_);
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("GetRdbStore is failed ");
+        return errCode;
     }
+
+    std::atomic_store(&rdbStore_, store);
     MEDIA_INFO_LOG("MediaLibraryRdbStore::Init(), SUCCESS");
     return E_OK;
 }
@@ -1125,18 +1129,20 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_UPDATE_MDIRTY_TRIGGER_FOR_TDIRTY, "Photos", 
 int32_t MediaLibraryRdbStore::Init(const RdbStoreConfig &config, int version, RdbOpenCallback &openCallback)
 {
     MEDIA_INFO_LOG("Init rdb store: [version: %{public}d]", version);
-    if (rdbStore_ != nullptr) {
+    if (std::atomic_load(&rdbStore_) != nullptr) {
         return E_OK;
     }
     int32_t errCode = 0;
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::Init GetRdbStore with config");
-    rdbStore_ = RdbHelper::GetRdbStore(config, version, openCallback, errCode);
+    auto store = RdbHelper::GetRdbStore(config, version, openCallback, errCode);
     tracer.Finish();
-    if (rdbStore_ == nullptr) {
+    if (store == nullptr) {
         MEDIA_ERR_LOG("GetRdbStore with config is failed");
         return errCode;
     }
+
+    std::atomic_store(&rdbStore_, store);
     MEDIA_INFO_LOG("MediaLibraryRdbStore::Init with config, SUCCESS");
     return E_OK;
 }
@@ -1145,17 +1151,54 @@ MediaLibraryRdbStore::~MediaLibraryRdbStore() = default;
 
 void MediaLibraryRdbStore::Stop()
 {
-    rdbStore_ = nullptr;
+    auto old = std::atomic_load(&rdbStore_);
+    if (old) {
+        std::atomic_store(&rdbStore_, std::shared_ptr<NativeRdb::RdbStore>());
+    }
+    MEDIA_INFO_LOG("Stop() done");
+}
+
+int32_t MediaLibraryRdbStore::Close(int32_t timeoutMs)
+{
+    if (rdbStore_ == nullptr) {
+        MEDIA_INFO_LOG("Close: rdbStore is already null");
+        return E_OK;
+    }
+    NativeRdb::RdbStore::ReleaseOption option;
+    option.waitTime = std::max(MILLIS_PER_SEC, timeoutMs);
+    option.clearMetadata = true;
+    int32_t ret = rdbStore_->Release(option);
+    if (ret == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("CloseRdbStore: Release succeeded");
+        std::atomic_store(&rdbStore_, std::shared_ptr<NativeRdb::RdbStore>());
+        return E_OK;
+    }
+    MEDIA_ERR_LOG("Close: Release failed, ret=%{public}d, timeout=%{public}dms", ret, timeoutMs);
+    return E_ERR;
+}
+
+const NativeRdb::RdbStoreConfig &MediaLibraryRdbStore::GetConfig() const
+{
+    return config_;
 }
 
 bool MediaLibraryRdbStore::CheckRdbStore()
 {
-    return rdbStore_ != nullptr;
+    return std::atomic_load(&rdbStore_) != nullptr;
 }
 
 shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::GetRaw()
 {
-    return rdbStore_;
+    return std::atomic_load(&rdbStore_);
+}
+
+shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::GetRawChecked()
+{
+    auto store = std::atomic_load(&rdbStore_);
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("rdbStore_ is null, maybe not initialized or already stopped");
+    }
+    return store;
 }
 
 int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
@@ -1177,10 +1220,8 @@ int MediaLibraryRdbStore::Insert(int64_t &outRowId, const std::string &table, Va
 int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::string &table,
     const NativeRdb::ValuesBucket &row)
 {
-    DfxTimer dfxTimer(DfxType::RDB_INSERT, INVALID_DFX, RDB_TIME_OUT, false);
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR, "rdbStore_ is nullptr");
     NativeRdb::ValuesBucket tmpValues = row;
     TableStrategyConfig config = {
         .enableDefault = true,
@@ -1192,9 +1233,8 @@ int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::strin
         return strategyRet;
     }
 
-    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues);
-    });
+    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry(
+        [&, store]() { return store->Insert(outRowId, table, tmpValues); });
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Insert failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
@@ -1300,21 +1340,17 @@ int32_t MediaLibraryRdbStore::Delete(MediaLibraryCommand &cmd, int32_t &deletedR
 
 int32_t MediaLibraryRdbStore::Update(MediaLibraryCommand &cmd, int32_t &changedRows)
 {
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("rdbStore_ is nullptr");
+        return E_HAS_DB_ERROR;
+    }
+
     DfxTimer dfxTimer(DfxType::RDB_UPDATE_BY_CMD, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->UpdateByCmd");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-
-    NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
-    TableStrategyConfig config = {
-        .enableDefault = true,
-    };
-    RdbTableStrategyManager::GetInstance().ExtendUpdateValues(cmd.GetTableName(), tmpValues, config);
-
-    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Update(changedRows, cmd.GetTableName(), tmpValues,
+    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() {
+        return store->Update(changedRows, cmd.GetTableName(), cmd.GetValueBucket(),
             cmd.GetAbsRdbPredicates()->GetWhereClause(), cmd.GetAbsRdbPredicates()->GetWhereArgs());
     });
     if (ret != NativeRdb::E_OK) {
@@ -1356,18 +1392,17 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryWithFilter(const Abs
     return QueryInternal(predicates, columns, true);
 }
 
-int32_t MediaLibraryRdbStore::ExecuteSql(const string &sql, const std::vector<NativeRdb::ValueObject> &args)
+int32_t MediaLibraryRdbStore::ExecuteSql(const std::string &sql)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+        return E_HAS_DB_ERROR;
+    }
     DfxTimer dfxTimer(RDB_EXECUTE_SQL, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->ExecuteSql");
-
-    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->ExecuteSql(sql, args);
-    });
+    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() { return store->ExecuteSql(sql); });
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->ExecuteSql failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
@@ -1421,15 +1456,18 @@ std::shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryInternal(const 
  */
 int32_t MediaLibraryRdbStore::ExecuteForLastInsertedRowId(const string &sql, const vector<ValueObject> &bindArgs)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+        return E_HAS_DB_ERROR;
+    }
     DfxTimer dfxTimer(RDB_EXECUTE_SQL, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->ExecuteForLastInsertedRowId");
 
     int64_t lastInsertRowId = 0;
     int32_t err = MediaLibraryRdbHelper::ExecSqlWithRetry(
-        [&]() { return MediaLibraryRdbStore::GetRaw()->ExecuteForLastInsertedRowId(lastInsertRowId, sql, bindArgs); });
+        [&, store]() { return store->ExecuteForLastInsertedRowId(lastInsertRowId, sql, bindArgs); });
     if (err != E_OK) {
         MEDIA_ERR_LOG("Failed to execute insert, err: %{public}d", err);
         MediaLibraryRestore::GetInstance().CheckRestore(err);
@@ -1462,8 +1500,11 @@ int32_t MediaLibraryRdbStore::UpdateWithDateTime(ValuesBucket &values, const Abs
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::UpdateWithDateTime by predicates");
 
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+        return E_HAS_DB_ERROR;
+    }
     
     NativeRdb::ValuesBucket tmpValues = values;
     TableStrategyConfig config = {
@@ -1472,9 +1513,8 @@ int32_t MediaLibraryRdbStore::UpdateWithDateTime(ValuesBucket &values, const Abs
     RdbTableStrategyManager::GetInstance().ExtendUpdateValues(predicates.GetTableName(), tmpValues, config);
 
     int32_t changedRows = -1;
-    int32_t err = MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Update(changedRows, tmpValues, predicates);
-    });
+    int32_t err = MediaLibraryRdbHelper::ExecSqlWithRetry(
+        [&, store]() { return store->Update(changedRows, values, predicates); });
     if (err != E_OK) {
         MEDIA_ERR_LOG("Failed to execute update, err: %{public}d", err);
         MediaLibraryRestore::GetInstance().CheckRestore(err);
@@ -1486,7 +1526,8 @@ int32_t MediaLibraryRdbStore::UpdateWithDateTime(ValuesBucket &values, const Abs
 
 shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QuerySql(const string &sql, const vector<string> &selectionArgs)
 {
-    if (!MediaLibraryRdbStore::CheckRdbStore()) {
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
         MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
             {KEY_OPT_TYPE, OptType::QUERY}};
@@ -1497,7 +1538,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QuerySql(const string &sq
     DfxTimer dfxTimer(RDB_EXECUTE_SQL, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->QuerySql by selectionArgs");
-    auto resultSet = MediaLibraryRdbStore::GetRaw()->QuerySql(sql, selectionArgs);
+    auto resultSet = store->QuerySql(sql, selectionArgs);
     MediaLibraryRestore::GetInstance().CheckResultSet(resultSet);
     if (resultSet == nullptr) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
@@ -6487,116 +6528,95 @@ int32_t MediaLibraryDataCallBack::OnUpgrade(RdbStore &store, int32_t oldVersion,
 int MediaLibraryRdbStore::Update(int &changedRows, const std::string &table, const ValuesBucket &row,
     const std::string &whereClause, const std::vector<std::string> &args)
 {
-    DfxTimer dfxTimer(DfxType::RDB_UPDATE, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("MediaLibraryRdbStore::UpdateByWhereArgs");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Update(changedRows, table, row, whereClause, args);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry(
+        [&, store]() { return store->Update(changedRows, table, row, whereClause, args); });
 }
 
 std::string MediaLibraryRdbStore::ObtainDistributedTableName(const std::string &device, const std::string &table,
     int &errCode)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), "",
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, "",
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbStore::GetRaw()->ObtainDistributedTableName(device, table, errCode);
+    return store->ObtainDistributedTableName(device, table, errCode);
 }
 
 int MediaLibraryRdbStore::Backup(const std::string &databasePath, const std::vector<uint8_t> &encryptKey)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Backup(databasePath, encryptKey);
-    });
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+        return E_HAS_DB_ERROR;
+    }
+    return MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() { return store->Backup(databasePath, encryptKey); });
 }
 
 int MediaLibraryRdbStore::Backup(const std::string &databasePath, bool integrityCheck,
     const std::vector<uint8_t> &encryptKey)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Backup(databasePath, encryptKey, integrityCheck);
+    return MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() {
+        return store->Backup(databasePath, encryptKey, integrityCheck);
     });
 }
 
 int MediaLibraryRdbStore::Sync(const DistributedRdb::SyncOption &option, const AbsRdbPredicates &predicate,
     const DistributedRdb::AsyncBrief &async)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Sync(option, predicate, async);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() { return store->Sync(option, predicate, async); });
 }
 
 std::shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryByStep(const std::string &sql,
     const std::vector<ValueObject> &args)
 {
-    DfxTimer dfxTimer(RDB_QUERY, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("QueryByStep by sql");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), nullptr,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, nullptr,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbStore::GetRaw()->QueryByStep(sql, args);
+    return store->QueryByStep(sql, args);
 }
 
 std::shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryByStep(const AbsRdbPredicates &predicates,
     const std::vector<std::string> &columns)
 {
-    DfxTimer dfxTimer(RDB_QUERY, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("QueryByStep by predicates");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), nullptr,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, nullptr,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbStore::GetRaw()->QueryByStep(predicates, columns);
+    return store->QueryByStep(predicates, columns);
 }
 
 int MediaLibraryRdbStore::Update(int &changedRows, const ValuesBucket &row, const AbsRdbPredicates &predicates)
 {
-    DfxTimer dfxTimer(DfxType::RDB_UPDATE, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("MediaLibraryRdbStore::UpdateByPredicates");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Update(changedRows, row, predicates);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry(
+        [&, store]() { return store->Update(changedRows, row, predicates); });
 }
 
 int MediaLibraryRdbStore::Delete(int &deletedRows, const std::string &table, const std::string &whereClause,
     const std::vector<std::string> &args)
 {
-    DfxTimer dfxTimer(DfxType::RDB_DELETE, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("MediaLibraryRdbStore::DeleteByWhereArgs");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Delete(deletedRows, table, whereClause, args);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry(
+        [&, store]() { return store->Delete(deletedRows, table, whereClause, args); });
 }
 
 int MediaLibraryRdbStore::Delete(int &deletedRows, const AbsRdbPredicates &predicates)
 {
-    DfxTimer dfxTimer(DfxType::RDB_DELETE, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("MediaLibraryRdbStore::DeleteByPredicates");
-
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Delete(deletedRows, predicates);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() { return store->Delete(deletedRows, predicates); });
 }
 
 pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsertWithReturn(const string &table,
@@ -6605,12 +6625,14 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsertWithReturn(co
     DfxTimer dfxTimer(DfxType::RDB_BATCHINSERT, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::BatchInsertWithReturn");
-
-    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), retWithResults,
-        "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+        return {E_HAS_DB_ERROR, -1};
+    }
 
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     TableStrategyConfig config = {
         .enableDefault = true,
     };
@@ -6621,8 +6643,8 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsertWithReturn(co
         return retWithResults;
     }
 
-    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        retWithResults = MediaLibraryRdbStore::GetRaw()->BatchInsert(table, tmpValues, { returningField });
+    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() {
+        retWithResults = store->BatchInsert(table, tmpValues, { returningField });
         return retWithResults.first;
     });
     if (ret != NativeRdb::E_OK) {
@@ -6639,9 +6661,9 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::ExecuteSqlWithReturn(con
     const std::vector<NativeRdb::ValueObject> &args, const std::string &returningField)
 {
     pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), retWithResults,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, retWithResults,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-
     DfxTimer dfxTimer(RDB_EXECUTE_SQL, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->ExecuteSqlWithReturn");
@@ -6649,8 +6671,8 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::ExecuteSqlWithReturn(con
     string execSql = sql;
     execSql.append(" returning ").append(returningField);
     MEDIA_INFO_LOG("AccurateRefresh, sql:%{public}s", execSql.c_str());
-    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        retWithResults = MediaLibraryRdbStore::GetRaw()->ExecuteExt(execSql, args);
+    int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() {
+        retWithResults = store->ExecuteExt(execSql, args);
         return retWithResults.first;
     });
     if (ret != NativeRdb::E_OK) {
@@ -6664,16 +6686,13 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::ExecuteSqlWithReturn(con
 pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::UpdateWithReturn(const ValuesBucket &row,
     const AbsRdbPredicates &predicates, const string &returningField)
 {
-    DfxTimer dfxTimer(DfxType::RDB_UPDATE, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("MediaLibraryRdbStore::UpdateWithReturn");
-
     pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), retWithResults,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, retWithResults,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-
-    MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        retWithResults = MediaLibraryRdbStore::GetRaw()->Update(row, predicates, { returningField });
+   
+    MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() {
+        retWithResults = store->Update(row, predicates, { returningField });
         return retWithResults.first;
     });
 
@@ -6683,16 +6702,13 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::UpdateWithReturn(const V
 pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::DeleteWithReturn(const AbsRdbPredicates &predicates,
     const string &returningField)
 {
-    DfxTimer dfxTimer(DfxType::RDB_DELETE, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("RdbStore->DeleteWithReturn");
-
     pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), retWithResults,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, retWithResults,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-
-    MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        retWithResults = MediaLibraryRdbStore::GetRaw()->Delete(predicates, { returningField });
+   
+    MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() {
+        retWithResults = store->Delete(predicates, { returningField });
         return retWithResults.first;
     });
     return retWithResults;
@@ -6701,71 +6717,69 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::DeleteWithReturn(const A
 std::shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::Query(const NativeRdb::AbsRdbPredicates &predicates,
     const std::vector<std::string> &columns)
 {
-    DfxTimer dfxTimer(RDB_QUERY, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::Query");
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), nullptr,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, nullptr,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbStore::GetRaw()->Query(predicates, columns);
+    return store->Query(predicates, columns);
 }
 
 std::shared_ptr<AbsSharedResultSet> MediaLibraryRdbStore::QuerySql(const std::string &sql,
     const std::vector<ValueObject> &args)
 {
-    DfxTimer dfxTimer(RDB_EXECUTE_SQL, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
-    tracer.Start("MediaLibraryRdbStore::QuerySql by args");
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), nullptr,
+    tracer.Start("MediaLibraryRdbStore::QuerySql");
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, nullptr,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbStore::GetRaw()->QuerySql(sql, args);
+    return store->QuerySql(sql, args);
 }
 
 int MediaLibraryRdbStore::InterruptBackup()
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->InterruptBackup();
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() { return store->InterruptBackup(); });
 }
 
 bool MediaLibraryRdbStore::IsSlaveDiffFromMaster() const
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), false,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, false,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbStore::GetRaw()->IsSlaveDiffFromMaster();
+    return store->IsSlaveDiffFromMaster();
 }
 
 int MediaLibraryRdbStore::Restore(const std::string &backupPath, const std::vector<uint8_t> &newKey)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->ForceRestore(backupPath, newKey);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry([&, store]() { return store->Restore(backupPath, newKey); });
 }
 
 int32_t MediaLibraryRdbStore::DataCallBackOnCreate()
 {
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR, "rdbStore_ is nullptr");
     MediaLibraryDataCallBack callback;
-    int32_t ret = callback.OnCreate(*GetRaw());
-    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
-        "MediaLibraryDataCallBack OnCreate error, ret: %{public}d", ret);
+    int32_t ret = callback.OnCreate(*store);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("MediaLibraryDataCallBack OnCreate error, ret: %{public}d", ret);
+    }
     return ret;
 }
 
 int MediaLibraryRdbStore::ExecuteForChangedRowCount(int64_t &outValue, const std::string &sql,
     const std::vector<NativeRdb::ValueObject> &args)
 {
-    DfxTimer dfxTimer(RDB_EXECUTE_SQL, INVALID_DFX, RDB_TIME_OUT, false);
-    MediaLibraryTracer tracer;
-    tracer.Start("RdbStore->ExecuteForChangedRowCount");
-
-    CHECK_AND_RETURN_RET_LOG(CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
-    return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return GetRaw()->ExecuteForChangedRowCount(outValue, sql, args);
-    });
+    return MediaLibraryRdbHelper::ExecSqlWithRetry(
+        [&, store]() { return store->ExecuteForChangedRowCount(outValue, sql, args); });
 }
 
 void MediaLibraryRdbStore::AddUpgradeTable(const shared_ptr<MediaLibraryRdbStore> store)
@@ -6776,25 +6790,28 @@ void MediaLibraryRdbStore::AddUpgradeTable(const shared_ptr<MediaLibraryRdbStore
         CREATE_SEARCH_TOTAL_TABLE,
     };
     MEDIA_INFO_LOG("start create table");
-    ExecSqls(sqls, *store->GetRaw().get());
+    auto rawStore = store->GetRawChecked();
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    ExecSqls(sqls, *rawStore.get());
     MEDIA_INFO_LOG("end create table");
 }
 
 void MediaLibraryRdbStore::CheckAndAddPhotoAlbumColumns(const shared_ptr<MediaLibraryRdbStore> store)
 {
     MEDIA_INFO_LOG("start check and add columns");
+    CHECK_AND_RETURN_LOG(store != nullptr, "CheckAndAddPhotoAlbumColumns rdbStore is nullptr!");
+    auto rawStore = store->GetRawChecked();
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
     std::vector<std::string> sqls;
-    if (!MediaLibraryRdbHelper::HasColumnInTable(
-        *store->GetRaw(), PhotoColumn::PHOTO_CHANGE_TIME, PhotoColumn::PHOTOS_TABLE)) {
-        sqls.push_back("ALTER TABLE " + PhotoColumn::PHOTOS_TABLE + " ADD COLUMN " + PhotoColumn::PHOTO_CHANGE_TIME +
-            " BIGINT NOT NULL DEFAULT 0");
+    if (!MediaLibraryRdbHelper::HasColumnInTable(*rawStore, PhotoAlbumColumns::CHANGE_TIME,
+        PhotoAlbumColumns::TABLE)) {
+        sqls.emplace_back("ALTER TABLE PhotoAlbum ADD COLUMN change_time BIGINT NOT NULL DEFAULT 0");
     }
-    if (!MediaLibraryRdbHelper::HasColumnInTable(
-        *store->GetRaw(), PhotoAlbumColumns::CHANGE_TIME, PhotoAlbumColumns::TABLE)) {
-        sqls.push_back("ALTER TABLE " + PhotoAlbumColumns::TABLE + " ADD COLUMN " + PhotoAlbumColumns::CHANGE_TIME +
-            " BIGINT NOT NULL DEFAULT 0");
+    if (!MediaLibraryRdbHelper::HasColumnInTable(*rawStore, PhotoAlbumColumns::ALBUM_HIDDEN,
+        PhotoAlbumColumns::TABLE)) {
+        sqls.emplace_back("ALTER TABLE PhotoAlbum ADD COLUMN hidden INT NOT NULL DEFAULT 0");
     }
-    ExecSqls(sqls, *store->GetRaw().get());
+    ExecSqls(sqls, *rawStore.get());
     MEDIA_INFO_LOG("end check and add columns");
 }
 } // namespace OHOS::Media
