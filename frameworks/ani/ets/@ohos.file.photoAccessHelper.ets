@@ -668,6 +668,33 @@ export class ContextRecoveryInfo {
       });
     }
 
+    static requestCompositeAuxiliaryImageData(context: Context, asset: PhotoAsset,
+      dataHandler: MediaAssetDataHandler<ArrayBuffer>): Promise<string> {
+      return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
+        let cb = (): string | MediaLibraryAniError => {
+          let result: string | MediaLibraryAniError;
+          try {
+            result = MediaAssetManager.requestCompositeAuxiliaryImageDataInner(context, asset, dataHandler);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as string);
+            }
+          }
+        });
+      });
+    }
+
     static requestMovingPhoto(context: Context, asset: PhotoAsset, requestOptions: RequestOptions,
       dataHandler: MediaAssetDataHandler<MovingPhoto>): Promise<string> {
       return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
@@ -780,6 +807,8 @@ export class ContextRecoveryInfo {
     native static quickRequestImageInner(context: Context, asset: PhotoAsset, requestOptions: RequestOptions,
       dataHandler: QuickImageDataHandler<image.Picture>): string;
     native static requestImageDataInner(context: Context, asset: PhotoAsset, requestOptions: RequestOptions,
+      dataHandler: MediaAssetDataHandler<ArrayBuffer>): string;
+    native static requestCompositeAuxiliaryImageDataInner(context: Context, asset: PhotoAsset,
       dataHandler: MediaAssetDataHandler<ArrayBuffer>): string;
     native static requestMovingPhotoInner(context: Context, asset: PhotoAsset, requestOptions: RequestOptions,
       dataHandler: MediaAssetDataHandler<MovingPhoto>): string;

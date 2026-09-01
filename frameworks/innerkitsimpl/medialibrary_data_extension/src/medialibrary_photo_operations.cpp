@@ -772,6 +772,31 @@ static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeTyp
     }
 }
 
+bool MediaLibraryPhotoOperations::CheckPermissionToOpenHiddenFileAsset(const shared_ptr<FileAsset>& fileAsset)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, false, "File asset is nullptr");
+
+    if (!(fileAsset->IsHidden() && fileAsset->GetDateTrashed() == 0)) {
+        return true;
+    }
+
+    CHECK_AND_RETURN_RET_LOG(PermissionUtils::CheckCallerPermission(PERM_MANAGE_PRIVATE_PHOTOS),
+        false, "MANAGE_PRIVATE_PHOTOS permission is required to open hidden photo");
+    bool cond = (!(PermissionUtils::IsSystemApp() || PermissionUtils::IsNativeSAApp() ||
+        (PermissionUtils::IsHdcShell() &&
+        OHOS::system::GetBoolParameter("const.security.developermode.state", true))));
+
+    CHECK_AND_RETURN_RET_LOG(!cond, false, "Non-system app is not allowed to open hidden photo,"
+        " %{public}d, %{public}d, %{public}d, %{public}d", PermissionUtils::IsSystemApp(),
+        PermissionUtils::IsNativeSAApp(), PermissionUtils::IsHdcShell(),
+        OHOS::system::GetBoolParameter("const.security.developermode.state", true));
+
+    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    CHECK_AND_RETURN_RET_LOG(!(bundleName == FILE_MANAGER_BUNDLE_NAME), false,
+        "The filemanager application is not allowed to open hidden photo");
+    return true;
+}
+
 int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string &mode)
 {
     MediaLibraryTracer tracer;

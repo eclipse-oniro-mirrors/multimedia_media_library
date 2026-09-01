@@ -63,6 +63,8 @@
 #include "request_edit_data_vo.h"
 #include "get_edit_data_dto.h"
 #include "get_edit_data_vo.h"
+#include "query_composite_auxiliary_image_vo.h"
+#include "query_composite_auxiliary_image_dto.h"
 #include "start_asset_change_scan_dto.h"
 #include "get_cloud_enhancement_pair_dto.h"
 #include "get_cloud_enhancement_pair_vo.h"
@@ -190,6 +192,8 @@ public:
     int32_t RetainCloudMediaAsset(CloudMediaRetainType retainType = CloudMediaRetainType::RETAIN_FORCE);
     int32_t IsEdited(const IsEditedDto &dto, IsEditedRespBody &respBody);
     int32_t RequestEditData(const RequestEditDataDto &dto, RequestEditDataRespBody &respBody);
+    int32_t QueryCompositeAuxiliaryImage(const QueryCompositeAuxiliaryImageDto &dto,
+        QueryCompositeAuxiliaryImageRespBody &respBody);
     int32_t GetEditData(const GetEditDataDto &dto, GetEditDataRespBody &respBody);
     int32_t GetCloudMediaAssetStatus(std::string &status);
     int32_t StartBatchDownloadCloudResources(StartBatchDownloadCloudResourcesReqBody &reqBody,

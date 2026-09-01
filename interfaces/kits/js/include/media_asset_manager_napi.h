@@ -106,6 +106,9 @@ struct MediaAssetManagerAsyncContext : NapiError {
     ReturnDataType returnDataType;
     bool hasReadPermission;
     bool needsExtraInfo;
+    bool isCompositeAuxiliary = false;
+    int compositeFd = -1;
+    bool useIntCodeError = false;
     MultiStagesCapturePhotoStatus photoQuality = MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
     napi_ref dataHandlerRef2;
     napi_threadsafe_function onDataPreparedPtr;     // 直接回调
@@ -142,6 +145,7 @@ public:
     static void OnProgress(napi_env env, napi_value cb, void *context, void *data);
     static void GetByteArrayNapiObject(const std::string &requestUri, napi_value &arrayBuffer, bool isSource,
         napi_env env);
+    static void GetByteArrayNapiObjectByFd(napi_value &arrayBuffer, int imageFd, napi_env env);
     static void GetImageSourceNapiObject(const std::string &fileUri, napi_value &imageSourceNapiObj, bool isSource,
         napi_env env);
     static void GetPictureNapiObject(const std::string &fileUri, napi_value &imageSourceNapiObj, bool isSource,
@@ -164,6 +168,7 @@ private:
     static napi_value JSRequestImage(napi_env env, napi_callback_info info);
     static napi_value JSRequestEfficientIImage(napi_env env, napi_callback_info info);
     static napi_value JSRequestImageData(napi_env env, napi_callback_info info);
+    static napi_value JSRequestCompositeAuxiliaryImageData(napi_env env, napi_callback_info info);
     static napi_value JSRequestMovingPhoto(napi_env env, napi_callback_info info);
     static napi_value JSCancelRequest(napi_env env, napi_callback_info info);
     static napi_value JSRequestVideoFile(napi_env env, napi_callback_info info);
@@ -172,6 +177,7 @@ private:
     static void AddImage(const int fileId, DeliveryMode deliveryMode);
 
     static void OnHandleRequestImage(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
+    static void OnHandleRequestCompositeAuxiliaryImage(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
     static void RegisterTaskNewObserver(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
     static void ProcessImage(const int fileId, const int deliveryMode);
 
@@ -200,6 +206,7 @@ private:
     static void JSRequestExecute(napi_env env, void *data);
     static void JSRequestVideoFileExecute(napi_env env, void *data);
     static void JSRequestComplete(napi_env env, napi_status, void *data);
+    static void JSRequestCompositeAuxiliaryComplete(napi_env env, napi_status, void *data);
     static void JSCancelRequestExecute(napi_env env, void *data);
     static void JSCancelRequestComplete(napi_env env, napi_status, void *data);
 
@@ -216,6 +223,8 @@ private:
     static bool CheckDataHandler(napi_env env, unique_ptr<MediaAssetManagerAsyncContext>& asyncContext);
     static void SetCinematicResult(const std::shared_ptr<NapiMediaAssetDataHandler>& dataHandler,
         AssetHandler *assetHandler);
+    static bool ParseAndValidateCompositeAuxiliaryArgs(napi_env env, napi_callback_info info,
+        unique_ptr<MediaAssetManagerAsyncContext> &asyncContext);
 
     static void Run();
     static void StartThreadForProgress();

@@ -58,6 +58,12 @@
 #include "close_asset_vo.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_object_utils.h"
+#include "media_edit_utils.h"
+#include "medialibrary_type_const.h"
+#include "query_composite_auxiliary_image_vo.h"
+#include "query_composite_auxiliary_image_dto.h"
+#include "medialibrary_asset_operations.h"
+#include "media_file_utils.h"
 #include "media_column.h"
 #include "media_old_photos_column.h"
 #include "cloud_media_asset_manager.h"
@@ -1875,6 +1881,70 @@ int32_t MediaAssetsService::RequestEditData(const RequestEditDataDto &dto, Reque
     auto resultSet = MediaLibraryRdbOperations::QueryEditDataExists(rdbPredicate);
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
+    return E_OK;
+}
+
+static int32_t GetCompositeAuxiliaryPath(const shared_ptr<FileAsset> &fileAsset,
+    const string &path, string &compositeAuxiliaryPath)
+{
+    int32_t compositeDisplayStatus = fileAsset->GetCompositeDisplayStatus();
+    if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ORIGINAL)) {
+        compositeAuxiliaryPath = path;
+    } else if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ORIGINAL_EDIT)) {
+        compositeAuxiliaryPath = MediaEditUtils::GetEditDataSourcePath(path);
+    } else if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED) ||
+        compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED_EDIT)) {
+        compositeAuxiliaryPath = MediaEditUtils::GetEditDataSourceBackPath(path);
+    } else {
+        MEDIA_ERR_LOG("QueryCompositeAuxiliaryImage: not composite photo, fileId=%{public}d",
+            fileAsset->GetId());
+        return E_INVALID_VALUES;
+    }
+    return E_OK;
+}
+
+int32_t MediaAssetsService::QueryCompositeAuxiliaryImage(const QueryCompositeAuxiliaryImageDto &dto,
+    QueryCompositeAuxiliaryImageRespBody &respBody)
+{
+    vector<string> columns = {
+        MediaColumn::MEDIA_FILE_PATH,
+        MediaColumn::MEDIA_TYPE,
+        PhotoColumn::PHOTO_EDIT_TIME,
+        PhotoColumn::MEDIA_TIME_PENDING,
+        PhotoColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::MEDIA_HIDDEN,
+        PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
+    };
+    shared_ptr<FileAsset> fileAsset = MediaLibraryAssetOperations::GetFileAssetFromDb(
+        PhotoColumn::MEDIA_ID, to_string(dto.fileId), OperationObject::FILESYSTEM_PHOTO, columns);
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: fileAsset is null, fileId=%{public}d", dto.fileId);
+    CHECK_AND_RETURN_RET_LOG(fileAsset->GetTimePending() == 0, E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: fileAsset is in pending, fileId=%{public}d", dto.fileId);
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryPhotoOperations::CheckPermissionToOpenHiddenFileAsset(fileAsset),
+        E_PERMISSION_DENIED,
+        "QueryCompositeAuxiliaryImage: open hidden file not allowed, fileId=%{public}d", dto.fileId);
+
+    string path = fileAsset->GetFilePath();
+    CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_URI,
+        "QueryCompositeAuxiliaryImage: can not get file path, fileId=%{public}d", dto.fileId);
+
+    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::IsEditDataSourceBackExists(path), E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: no source_back, fileId=%{public}d", dto.fileId);
+
+    string compositeAuxiliaryPath;
+    int32_t ret = GetCompositeAuxiliaryPath(fileAsset, path, compositeAuxiliaryPath);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
+        "QueryCompositeAuxiliaryImage: failed to get composite auxiliary path, fileId=%{public}d", dto.fileId);
+
+    CHECK_AND_RETURN_RET_LOG(!compositeAuxiliaryPath.empty() &&
+        MediaFileUtils::IsFileExists(compositeAuxiliaryPath), E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: file not exist, path=%{private}s", compositeAuxiliaryPath.c_str());
+
+    int32_t fd = MediaFileUtils::OpenFile(compositeAuxiliaryPath, MEDIA_FILEMODE_READONLY);
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: open file failed, fileId=%{public}d", dto.fileId);
+    respBody.fd = fd;
     return E_OK;
 }
 
