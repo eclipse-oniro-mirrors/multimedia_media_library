@@ -2888,5 +2888,247 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_012, Tes
     // 负小数 - 截断
     EXPECT_EQ(MediaFileUtils::IsValidInteger("-1.00000"), true);
 }
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_001
+ * @tc.desc: 验证status小于下界时CheckLivePhoto4dStatus返回false
+ *           [覆盖分支] livePhoto4dStatus < TYPE_UNIDENTIFIED
+ *           [触发条件] 传入-1
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(-1), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_002
+ * @tc.desc: 验证status等于下界时CheckLivePhoto4dStatus返回true
+ *           [覆盖分支] livePhoto4dStatus == TYPE_UNIDENTIFIED(0)
+ *           [触发条件] 传入0
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_002, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_003
+ * @tc.desc: 验证status等于上界时CheckLivePhoto4dStatus返回true
+ *           [覆盖分支] livePhoto4dStatus == TYPE_GRAMMY(9)
+ *           [触发条件] 传入9
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_003, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_004
+ * @tc.desc: 验证status大于上界时CheckLivePhoto4dStatus返回false
+ *           [覆盖分支] livePhoto4dStatus > TYPE_GRAMMY
+ *           [触发条件] 传入10
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_004, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(10), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_005
+ * @tc.desc: 验证中间值(1-8)时CheckLivePhoto4dStatus返回true
+ *           [覆盖分支] TYPE_UNSUPPORTED(1)~TYPE_HITCHCOCK(8)
+ *           [触发条件] 依次传入1,2,3,5,6,7,8
+ *           [业务验证] 全部返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_005, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_SUPPORTED)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UP_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_ZOOM_OUT)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_HITCHCOCK)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_001
+ * @tc.desc: 验证UNIDENTIFIED(0)不是效果模式
+ *           [覆盖分支] livePhoto4dStatus < TYPE_LIVEPHOTO_4D
+ *           [触发条件] 传入0
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED)), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_002
+ * @tc.desc: 验证USED(3)不是效果模式
+ *           [覆盖分支] livePhoto4dStatus == TYPE_USED，刚低于下界
+ *           [触发条件] 传入3
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_002, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED)), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_003
+ * @tc.desc: 验证LIVEPHOTO_4D(4)是效果模式
+ *           [覆盖分支] livePhoto4dStatus == TYPE_LIVEPHOTO_4D(4)，下界
+ *           [触发条件] 传入4
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_003, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_004
+ * @tc.desc: 验证GRAMMY(9)是效果模式
+ *           [覆盖分支] livePhoto4dStatus == TYPE_GRAMMY(9)，上界
+ *           [触发条件] 传入9
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_004, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_005
+ * @tc.desc: 验证大于上界不是效果模式
+ *           [覆盖分支] livePhoto4dStatus > TYPE_GRAMMY
+ *           [触发条件] 传入10
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_005, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(10), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_006
+ * @tc.desc: 验证中间效果模式值(5-8)全部是效果模式
+ *           [覆盖分支] TYPE_LEFT_ROTATE(5)~TYPE_HITCHCOCK(8)
+ *           [触发条件] 依次传入5,6,7,8
+ *           [业务验证] 全部返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_006, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UP_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_ZOOM_OUT)), true);
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_HITCHCOCK)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_001
+ * @tc.desc: 验证空字符串不是合法UUID
+ *           [覆盖分支] uuidStr.empty()为true
+ *           [触发条件] 传入空字符串
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid(""), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_002
+ * @tc.desc: 验证DB默认值"-1"不是合法UUID
+ *           [覆盖分支] uuidStr == "-1"
+ *           [触发条件] 传入"-1"
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_002, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("-1"), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_003
+ * @tc.desc: 验证有效小写UUID是合法UUID
+ *           [覆盖分支] 正则匹配成功
+ *           [触发条件] 传入有效小写UUID格式字符串
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_003, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_004
+ * @tc.desc: 验证有效大写UUID是合法UUID（正则icase）
+ *           [覆盖分支] 大写字母正则匹配成功
+ *           [触发条件] 传入大写UUID格式字符串
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_004, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D"), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_005
+ * @tc.desc: 验证非法格式字符串不是合法UUID
+ *           [覆盖分支] 正则匹配失败
+ *           [触发条件] 传入"not-a-uuid"
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_005, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("not-a-uuid"), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_006
+ * @tc.desc: 验证UUID尾部有多余字符时不是合法UUID
+ *           [覆盖分支] 正则匹配失败（多余字符）
+ *           [触发条件] 传入UUID+extra
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_006, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d-extra"), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_007
+ * @tc.desc: 验证段缺失时不是合法UUID
+ *           [覆盖分支] 正则匹配失败（段缺失）
+ *           [触发条件] 传入不完整的UUID
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_007, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b"), false);
+}
 } // namespace Media
 } // namespace OHOS
