@@ -118,9 +118,9 @@ int32_t AnalysisDataVisionDao::DeleteFromOcrByFileId(const string &fileId)
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is null");
     string RESET_STATUS_AND_OCR = "\
         UPDATE tab_analysis_total \
-        SET status = 0, ocr = 0 \
+        SET status = 0, ocr = 0, cls_sched = 0, sheet = 0 \
         WHERE \
-            file_id = ? AND ocr = 1;";
+            file_id = ? AND (ocr = 1 OR cls_sched != 0 OR sheet != 0);";
     const std::vector<NativeRdb::ValueObject> bindArgs = {fileId};
 
     int64_t changedRowCount = 0;

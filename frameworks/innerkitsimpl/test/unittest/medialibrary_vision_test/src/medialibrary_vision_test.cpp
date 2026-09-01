@@ -4399,5 +4399,142 @@ HWTEST_F(MediaLibraryVisionTest, Vision_DeleteCaption_Test_001, TestSize.Level1)
     EXPECT_EQ(retVal, 2);
     MEDIA_INFO_LOG("Vision_DeleteCaption_Test_001::retVal = %{public}d. End", retVal);
 }
+
+HWTEST_F(MediaLibraryVisionTest, Vision_InsertClsSched_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_InsertClsSched_Test_001::Start");
+    Uri ocrUri(URI_OCR);
+    MediaLibraryCommand cmd(ocrUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 600);
+    valuesBucket.Put(OCR_TEXT, "course schedule");
+    valuesBucket.Put(OCR_VERSION, "1.0");
+    valuesBucket.Put(IS_CLS_SCHED, 1);
+    valuesBucket.Put(IS_SHEET, 1);
+    valuesBucket.Put(CLS_SCHED_VERSION, "1.0");
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    vector<string> columns;
+    columns.push_back(IS_CLS_SCHED);
+    columns.push_back(IS_SHEET);
+    columns.push_back(CLS_SCHED_VERSION);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(600));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int isClsSched = 0;
+    int isSheet = 0;
+    string clsSchedVersion;
+    resultSet->GetInt(0, isClsSched);
+    resultSet->GetInt(1, isSheet);
+    resultSet->GetString(2, clsSchedVersion);
+    EXPECT_EQ(isClsSched, 1);
+    EXPECT_EQ(isSheet, 1);
+    EXPECT_EQ(clsSchedVersion, "1.0");
+    MEDIA_INFO_LOG("Vision_InsertClsSched_Test_001::isClsSched=%{public}d isSheet=%{public}d. End",
+        isClsSched, isSheet);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_InsertClsSched_UserReject_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_InsertClsSched_UserReject_Test_001::Start");
+    Uri ocrUri(URI_OCR);
+    MediaLibraryCommand cmd(ocrUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 601);
+    valuesBucket.Put(OCR_TEXT, "not a schedule");
+    valuesBucket.Put(OCR_VERSION, "1.0");
+    valuesBucket.Put(IS_CLS_SCHED, -1);
+    valuesBucket.Put(IS_SHEET, 0);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    vector<string> columns;
+    columns.push_back(IS_CLS_SCHED);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(601));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int isClsSched = 0;
+    resultSet->GetInt(0, isClsSched);
+    EXPECT_EQ(isClsSched, -1);
+    MEDIA_INFO_LOG("Vision_InsertClsSched_UserReject_Test_001::isClsSched=%{public}d. End", isClsSched);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_TotalNewFields_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_TotalNewFields_Test_001::Start");
+    Uri totalUri(URI_TOTAL);
+    MediaLibraryCommand cmd(totalUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 800);
+    valuesBucket.Put(CLS_SCHED, 1);
+    valuesBucket.Put(SHEET, 1);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    vector<string> columns;
+    columns.push_back(CLS_SCHED);
+    columns.push_back(SHEET);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(800));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int clsSched = 0;
+    int sheet = 0;
+    resultSet->GetInt(0, clsSched);
+    resultSet->GetInt(1, sheet);
+    EXPECT_EQ(clsSched, 1);
+    EXPECT_EQ(sheet, 1);
+    MEDIA_INFO_LOG("Vision_TotalNewFields_Test_001::End");
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_TotalClsSched_DefaultZero_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_TotalClsSched_DefaultZero_Test_001::Start");
+    Uri totalUri(URI_TOTAL);
+    MediaLibraryCommand cmd(totalUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 902);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    vector<string> columns;
+    columns.push_back(CLS_SCHED);
+    columns.push_back(SHEET);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(902));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int clsSched = -1;
+    int sheet = -1;
+    resultSet->GetInt(0, clsSched);
+    resultSet->GetInt(1, sheet);
+    EXPECT_EQ(clsSched, 0);
+    EXPECT_EQ(sheet, 0);
+    MEDIA_INFO_LOG("Vision_TotalClsSched_DefaultZero_Test_001::clsSched=%{public}d sheet=%{public}d. End",
+        clsSched, sheet);
+}
 } // namespace Media
 } // namespace OHOS

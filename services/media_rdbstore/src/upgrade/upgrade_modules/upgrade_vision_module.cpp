@@ -70,5 +70,19 @@ static vector<pair<int32_t, int32_t>> AddOcrTimeSubtype(NativeRdb::RdbStore &sto
     return UpgradeHelper::ExecuteCommands(commands, store);
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_OCR_TIME_SUBTYPE, VISION_MODULE_NAME, AddOcrTimeSubtype)
+
+static vector<pair<int32_t, int32_t>> VersionAddClsSched(NativeRdb::RdbStore& store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_IS_CLS_SCHED, "INT DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_IS_SHEET, "INT DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_CLS_SCHED_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_CLS_SCHED, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_SHEET, "INT NOT NULL DEFAULT 0")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(
+    VERSION_ADD_CLS_SCHED, VISION_MODULE_NAME, VersionAddClsSched)
 }
 }

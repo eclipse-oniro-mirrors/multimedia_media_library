@@ -25,15 +25,49 @@ void CloneRestoreAnalysisTotal::Init(const std::string &type, int32_t pageSize,
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb, std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
     const std::string &totalTableName)
 {
-    type_ = type;
+    Init(std::vector<std::string>{type}, pageSize, mediaRdb, mediaLibraryRdb, totalTableName);
+}
+
+void CloneRestoreAnalysisTotal::Init(const std::vector<std::string> &types, int32_t pageSize,
+    std::shared_ptr<NativeRdb::RdbStore> mediaRdb, std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
+    const std::string &totalTableName)
+{
     pageSize_ = pageSize;
     mediaRdb_ = mediaRdb;
     mediaLibraryRdb_ = mediaLibraryRdb;
     totalTableName_ = totalTableName;
+    types_ = types;
+    columnsValidated_ = false;
+}
+
+void CloneRestoreAnalysisTotal::FilterValidColumns()
+{
+    CHECK_AND_RETURN(!columnsValidated_);
+    columnsValidated_ = true;
+    if (mediaRdb_ == nullptr || mediaLibraryRdb_ == nullptr) {
+        return;
+    }
+    std::unordered_map<std::string, std::string> srcColumnInfoMap =
+        BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_, totalTableName_);
+    std::unordered_map<std::string, std::string> dstColumnInfoMap =
+        BackupDatabaseUtils::GetColumnInfoMap(mediaLibraryRdb_, totalTableName_);
+    std::vector<std::string> validTypes;
+    for (const auto &type : types_) {
+        CHECK_AND_CONTINUE(srcColumnInfoMap.count(type) > 0 && dstColumnInfoMap.count(type) > 0);
+        validTypes.emplace_back(type);
+    }
+    MEDIA_INFO_LOG("CloneRestoreAnalysisTotal::FilterValidColumns types %{public}zu -> %{public}zu",
+        types_.size(), validTypes.size());
+    types_.swap(validTypes);
 }
 
 int32_t CloneRestoreAnalysisTotal::GetTotalNumber()
 {
+    FilterValidColumns();
+    if (types_.empty()) {
+        totalCnt_ = 0;
+        return totalCnt_;
+    }
     const std::string QUERY_SQL = "SELECT count(1) as count FROM " + totalTableName_;
     totalCnt_ = BackupDatabaseUtils::QueryInt(mediaRdb_, QUERY_SQL, "count");
     return totalCnt_;
@@ -41,8 +75,14 @@ int32_t CloneRestoreAnalysisTotal::GetTotalNumber()
 
 void CloneRestoreAnalysisTotal::GetInfos(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
 {
+    FilterValidColumns();
     analysisTotalInfos_.clear();
-    std::string querySql = "SELECT file_id, " + type_ + " FROM " + totalTableName_ +
+    CHECK_AND_RETURN(!types_.empty());
+    std::string columns = types_[0];
+    for (size_t i = 1; i < types_.size(); i++) {
+        columns += ", " + types_[i];
+    }
+    std::string querySql = "SELECT file_id, " + columns + " FROM " + totalTableName_ +
         " WHERE file_id > ? ORDER BY file_id LIMIT ?";
     std::vector<NativeRdb::ValueObject> params = { lastId_, pageSize_ };
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, querySql, params);
@@ -50,7 +90,6 @@ void CloneRestoreAnalysisTotal::GetInfos(const std::unordered_map<int32_t, Photo
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t fileIdOld = GetInt32Val("file_id", resultSet);
-        int32_t status = GetInt32Val(type_, resultSet);
         lastId_ = fileIdOld;
         if (photoInfoMap.count(fileIdOld) == 0) {
             MEDIA_ERR_LOG("Cannot find %{public}d", fileIdOld);
@@ -59,7 +98,10 @@ void CloneRestoreAnalysisTotal::GetInfos(const std::unordered_map<int32_t, Photo
         AnalysisTotalInfo info;
         info.fileIdOld = fileIdOld;
         info.fileIdNew = photoInfoMap.at(fileIdOld).fileIdNew;
-        info.status = status;
+        info.status = GetInt32Val(types_.front(), resultSet);
+        for (size_t i = 1; i < types_.size(); i++) {
+            info.statusMap_[types_[i]] = GetInt32Val(types_[i], resultSet);
+        }
         analysisTotalInfos_.emplace_back(info);
     }
     resultSet->Close();
@@ -122,6 +164,7 @@ void CloneRestoreAnalysisTotal::UpdateRestoreStatusAsFailed()
 
 void CloneRestoreAnalysisTotal::UpdateDatabase()
 {
+    FilterValidColumns();
     std::unordered_map<int32_t, std::vector<std::string>> statusFileIdsMap = GetStatusFileIdsMap();
     for (auto it : statusFileIdsMap) {
         int32_t updatedRows = UpdateDatabaseByStatus(it.first, it.second);
@@ -129,11 +172,33 @@ void CloneRestoreAnalysisTotal::UpdateDatabase()
         MEDIA_INFO_LOG("status: %{public}d, size: %{public}zu, updatedRows: %{public}d", it.first,
             it.second.size(), updatedRows);
     }
+    for (size_t i = 1; i < types_.size(); i++) {
+        const std::string &type = types_[i];
+        std::unordered_map<int32_t, std::vector<std::string>> extraStatusFileIdsMap;
+        for (const auto &info : analysisTotalInfos_) {
+            if (info.restoreStatus != RestoreStatus::SUCCESS) {
+                continue;
+            }
+            auto it = info.statusMap_.find(type);
+            CHECK_AND_CONTINUE(it != info.statusMap_.end());
+            extraStatusFileIdsMap[it->second].emplace_back(std::to_string(info.fileIdNew));
+        }
+        int32_t typeUpdatedRows = 0;
+        for (auto it : extraStatusFileIdsMap) {
+            int32_t updatedRows = UpdateDatabaseByStatus(type, it.first, it.second);
+            typeUpdatedRows += updatedRows;
+        }
+        typeSuccessCnt_[type] += typeUpdatedRows;
+        MEDIA_INFO_LOG("type: %{public}s, totalUpdatedRows: %{public}d, will report TOTAL",
+            type.c_str(), typeUpdatedRows);
+    }
+    typeSuccessCnt_[types_.front()] = successCnt_;
 }
 
 std::unordered_map<int32_t, std::vector<std::string>> CloneRestoreAnalysisTotal::GetStatusFileIdsMap()
 {
     std::unordered_map<int32_t, std::vector<std::string>> statusFileIdsMap;
+    CHECK_AND_RETURN_RET(!types_.empty(), statusFileIdsMap);
     for (const auto &info : analysisTotalInfos_) {
         if (info.restoreStatus != RestoreStatus::SUCCESS) {
             continue;
@@ -146,11 +211,18 @@ std::unordered_map<int32_t, std::vector<std::string>> CloneRestoreAnalysisTotal:
 
 int32_t CloneRestoreAnalysisTotal::UpdateDatabaseByStatus(int32_t status, const std::vector<std::string> &fileIds)
 {
+    CHECK_AND_RETURN_RET(!fileIds.empty() && !types_.empty(), 0);
+    return UpdateDatabaseByStatus(types_.front(), status, fileIds);
+}
+
+int32_t CloneRestoreAnalysisTotal::UpdateDatabaseByStatus(const std::string &type, int32_t status,
+    const std::vector<std::string> &fileIds)
+{
     CHECK_AND_RETURN_RET(!fileIds.empty(), 0);
 
     int32_t updatedRows = 0;
     NativeRdb::ValuesBucket valuesBucket;
-    valuesBucket.PutInt(type_, status);
+    valuesBucket.PutInt(type, status);
     std::unique_ptr<NativeRdb::AbsRdbPredicates> updatePredicates =
         std::make_unique<NativeRdb::AbsRdbPredicates>(totalTableName_);
     updatePredicates->In("file_id", fileIds);
@@ -189,5 +261,15 @@ void CloneRestoreAnalysisTotal::AddSuccessVideoFileIds()
 std::vector<int32_t> CloneRestoreAnalysisTotal::GetSuccessVideoFileIds()
 {
     return successVideoFileIds_;
+}
+
+const std::vector<std::string>& CloneRestoreAnalysisTotal::GetTypes() const
+{
+    return types_;
+}
+
+const std::unordered_map<std::string, int32_t>& CloneRestoreAnalysisTotal::GetTypeSuccessCnt() const
+{
+    return typeSuccessCnt_;
 }
 }

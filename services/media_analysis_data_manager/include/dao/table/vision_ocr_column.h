@@ -29,6 +29,9 @@ const std::string OCR_CARD_TEXT = "ocr_card_text";
 const std::string OCR_CARD_TEXT_MSG = "ocr_card_text_msg";
 const std::string OCR_TIME = "ocr_time";
 const std::string OCR_SUBTYPE = "ocr_subtype";
+const std::string IS_CLS_SCHED = "is_cls_sched";
+const std::string IS_SHEET = "is_sheet";
+const std::string CLS_SCHED_VERSION = "cls_sched_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_OCR_COLUMN_H

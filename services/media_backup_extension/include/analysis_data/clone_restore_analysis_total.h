@@ -17,6 +17,8 @@
 #define CLONE_RESTORE_ANALYSIS_TOTAL_H
 
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "backup_const.h"
 #include "media_backup_report_data_type.h"
@@ -26,6 +28,9 @@ namespace OHOS::Media {
 class CloneRestoreAnalysisTotal {
 public:
     void Init(const std::string &type, int32_t pageSize, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
+        std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
+        const std::string &totalTableName = "tab_analysis_total");
+    void Init(const std::vector<std::string> &types, int32_t pageSize, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
         std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
         const std::string &totalTableName = "tab_analysis_total");
     int32_t GetTotalNumber();
@@ -40,6 +45,8 @@ public:
     void SetRestoreTaskInfo(RestoreTaskInfo &info);
     void AddSuccessVideoFileIds();
     std::vector<int32_t> GetSuccessVideoFileIds();
+    const std::vector<std::string>& GetTypes() const;
+    const std::unordered_map<std::string, int32_t>& GetTypeSuccessCnt() const;
 private:
     enum AnalysisStatus : int32_t {
         UNANALYZED = 0
@@ -53,11 +60,14 @@ private:
         int32_t fileIdOld {-1};
         int32_t fileIdNew {-1};
         int32_t status {AnalysisStatus::UNANALYZED};
+        std::unordered_map<std::string, int32_t> statusMap_;
         int32_t restoreStatus {RestoreStatus::SUCCESS};
     };
+    void FilterValidColumns();
 
     std::unordered_map<int32_t, std::vector<std::string>> GetStatusFileIdsMap();
     int32_t UpdateDatabaseByStatus(int32_t status, const std::vector<std::string> &fileIds);
+    int32_t UpdateDatabaseByStatus(const std::string &type, int32_t status, const std::vector<std::string> &fileIds);
 
 private:
     int32_t lastId_ {0};
@@ -66,7 +76,9 @@ private:
     int32_t successCnt_{0};
     int32_t failedCnt_{0};
     int32_t duplicateCnt_{0};
-    std::string type_;
+    std::vector<std::string> types_;
+    bool columnsValidated_ {false};
+    std::unordered_map<std::string, int32_t> typeSuccessCnt_;
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
     std::vector<AnalysisTotalInfo> analysisTotalInfos_;

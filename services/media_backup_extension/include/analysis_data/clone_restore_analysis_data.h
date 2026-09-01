@@ -17,6 +17,8 @@
 #define CLONE_RESTORE_ANALYSIS_DATA_H
 
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "backup_const.h"
 #include "clone_restore_analysis_total.h"
@@ -24,6 +26,11 @@
 #include "rdb_store.h"
 
 namespace OHOS::Media {
+struct TableTypePair {
+    std::string table;
+    std::vector<std::string> types;
+    bool enableTimeout;
+};
 class CloneRestoreAnalysisData {
 public:
     struct AnalysisDataInfo {
@@ -57,7 +64,7 @@ public:
     void ReportRestoreTaskofData();
     void ReportAnalysisTableRestoreTask();
     void GetMaxIds();
-    void CloneAnalysisData(const std::string &table, const std::string &type,
+    void CloneAnalysisData(const std::string &table, const std::vector<std::string> &types,
         const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
         const std::unordered_set<std::string> &excludedColumns,
         bool enableTimeout = false);

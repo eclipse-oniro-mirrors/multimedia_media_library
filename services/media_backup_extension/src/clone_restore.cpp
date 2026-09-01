@@ -2927,41 +2927,22 @@ void CloneRestore::RestoreAnalysisTablesData()
 {
     cloneRestoreAnalysisData_.Init(this->sceneCode_, this->taskId_, mediaRdb_, mediaLibraryRdb_);
     std::unordered_set<std::string> excludedColumns = {"id", "file_id"};
-    vector<std::string> analysisTables = {
-        "tab_analysis_head",
-        "tab_analysis_pose",
-        "tab_analysis_composition",
-        "tab_analysis_ocr",
-        "tab_analysis_segmentation",
-        "tab_analysis_object",
-        "tab_analysis_saliency_detect",
-        "tab_analysis_recommendation",
-        "tab_analysis_crop",
-        "tab_analysis_caption"
+    std::vector<TableTypePair> tableTypePairs = {
+        {"tab_analysis_head",           {"head"},                     false},
+        {"tab_analysis_pose",           {"pose"},                     false},
+        {"tab_analysis_composition",    {"composition"},              false},
+        {"tab_analysis_ocr",            {"ocr", "cls_sched", "sheet"}, false},
+        {"tab_analysis_segmentation",   {"segmentation"},             false},
+        {"tab_analysis_object",         {"object"},                   false},
+        {"tab_analysis_saliency_detect", {"saliency"},                false},
+        {"tab_analysis_recommendation", {"recommendation"},           false},
+        {"tab_analysis_crop",           {"aesthetics_crop"},          false},
+        {"tab_analysis_caption",        {"caption"},                  true}
     };
 
-    vector<std::string> totalTypes = {
-        "head",
-        "pose",
-        "composition",
-        "ocr",
-        "segmentation",
-        "object",
-        "saliency",
-        "recommendation",
-        "aesthetics_crop",
-        "caption"
-    };
-
-    const std::unordered_set<std::string> timeoutEnabledTables = {
-        "tab_analysis_caption"
-    };
-
-    for (size_t index = 0; index < analysisTables.size(); index++) {
-        std::string table = analysisTables[index];
-        std::string type = totalTypes[index];
-        bool enableTimeout = timeoutEnabledTables.find(table) != timeoutEnabledTables.end();
-        cloneRestoreAnalysisData_.CloneAnalysisData(table, type, photoInfoMap_, excludedColumns, enableTimeout);
+    for (const auto &pair : tableTypePairs) {
+        cloneRestoreAnalysisData_.CloneAnalysisData(pair.table, pair.types, photoInfoMap_, excludedColumns,
+            pair.enableTimeout);
     }
 }
 
