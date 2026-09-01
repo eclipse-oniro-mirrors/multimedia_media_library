@@ -219,7 +219,13 @@ bool MediaFileMonitorRdbUtils::UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbSt
         targetAlbumIdList.push_back(std::to_string(id));
     }
     MediaLibraryRdbUtils::UpdateCommonAlbumInternal(rdbStore, targetAlbumIdList, true, true);
-    MediaLibraryRdbUtils::UpdateSystemAlbumInternal(rdbStore, {}, true);
+    MediaLibraryRdbUtils::UpdateSystemAlbumInternal(rdbStore, {
+        std::to_string(PhotoAlbumSubType::FAVORITE),
+        std::to_string(PhotoAlbumSubType::VIDEO),
+        std::to_string(PhotoAlbumSubType::HIDDEN),
+        std::to_string(PhotoAlbumSubType::TRASH),
+        std::to_string(PhotoAlbumSubType::IMAGE),
+        std::to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT)}, true);
     return true;
 }
 
