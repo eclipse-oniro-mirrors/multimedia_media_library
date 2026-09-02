@@ -5119,14 +5119,98 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_preprocess_001, TestSi
     EXPECT_FALSE(restoreService->dstDeviceBackupInfo_.hdcEnabled);
 
     restoreService->srcCloneRestoreConfigInfo_.switchStatus = SwitchStatus::CLOUD;
-    EXPECT_TRUE(restoreService->BackupPreprocess());
+    EXPECT_FALSE(restoreService->BackupPreprocess());
     EXPECT_FALSE(restoreService->dstDeviceBackupInfo_.hdcEnabled);
 
     restoreService->restoreInfo_ = GenerateBackupInfo(BACKUP_DST_DEVICE_HDC_ENABLE_KEY, "true");
-    EXPECT_TRUE(restoreService->BackupPreprocess());
+    EXPECT_FALSE(restoreService->BackupPreprocess());
     EXPECT_TRUE(restoreService->dstDeviceBackupInfo_.hdcEnabled);
+    EXPECT_TRUE(restoreService->dirMappingList_.empty());
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_is_enough_free_space_for_backup_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_is_enough_free_space_for_backup_001");
+    const int64_t threshold = 5LL * 1024 * 1024 * 1024;
+    const int64_t dbSize = 100LL * 1024 * 1024;   // 100MB
+    const int64_t walSize = 10LL * 1024 * 1024;   // 10MB
+    // 剩余空间恰好等于阈值：增强路径视为空间不足，转入兼容流程。
+    EXPECT_FALSE(restoreService->IsEnoughFreeSpaceForBackup(threshold + dbSize + walSize, dbSize, walSize));
+    // 阈值 + 1 字节：通过检查，创建临时 DB
+    EXPECT_TRUE(restoreService->IsEnoughFreeSpaceForBackup(threshold + dbSize + walSize + 1, dbSize, walSize));
+    // DB 文件极大（>100GB）：int64 计算不溢出
+    const int64_t hugeDb = 100LL * 1024 * 1024 * 1024 + 1;
+    EXPECT_TRUE(restoreService->IsEnoughFreeSpaceForBackup(threshold + hugeDb + 1, hugeDb, 0));
+    // GetFreeSize 调用失败（返回 -1）：视为空间不足，降级处理
+    EXPECT_FALSE(restoreService->IsEnoughFreeSpaceForBackup(-1, dbSize, walSize));
+    // WAL 文件不存在（walSize=0）时正常计算
+    EXPECT_TRUE(restoreService->IsEnoughFreeSpaceForBackup(threshold + dbSize + 1, dbSize, 0));
+}
+
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_preprocess_invalidate_fail_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_preprocess_invalidate_fail_001");
+    restoreService->restoreInfo_ = GenerateBackupInfo(BACKUP_DST_DEVICE_HDC_ENABLE_KEY, "false");
+    restoreService->backupRestoreDir_ = "/data/test/backup";
+    restoreService->dirMappingList_.clear();
+    CloneSource cloneSource;
+    std::vector<std::string> tableList = {PhotoColumn::PHOTOS_TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    // 删除 Photos 表，使临时库上的 InvalidateHdcCloudData（UPDATE Photos）失败
+    ExecuteSqls(cloneSource.cloneStorePtr_, { "DROP TABLE Photos" });
+    restoreService->mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    restoreService->srcCloneRestoreConfigInfo_ = {
+        .deviceId = DEFAULT_DEVICE_ID,
+        .isValid = false,
+        .switchStatus = SwitchStatus::HDC
+    };
+
+    // 特定 HDC 条件直接进入兼容路径；标记失败后清理并返回 false。
+    EXPECT_FALSE(restoreService->BackupPreprocess());
+    EXPECT_TRUE(restoreService->dirMappingList_.empty());
+    std::string tmpDir = "/data/test/backup/storage/media/local/files/.backup/backup/media_temp_rdb";
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(tmpDir));
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    restoreService->backupRestoreDir_ = "";
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_preprocess_prepare_path_fail_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_preprocess_prepare_path_fail_001");
+    restoreService->restoreInfo_ = GenerateBackupInfo(BACKUP_DST_DEVICE_HDC_ENABLE_KEY, "false");
+    restoreService->backupRestoreDir_ = "/data/test/backup";
+    restoreService->dirMappingList_.clear();
+    CloneSource cloneSource;
+    std::vector<std::string> tableList = {PhotoColumn::PHOTOS_TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    restoreService->mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    restoreService->srcCloneRestoreConfigInfo_ = {
+        .deviceId = DEFAULT_DEVICE_ID,
+        .isValid = false,
+        .switchStatus = SwitchStatus::HDC
+    };
+
+    // 在 tmpDir 位置放置同名普通文件。
+    // PreparePath 在其父目录存在时直接返回 E_OK（不检查目标是否为目录），
+    // 因此实际触发的是 Backup() 失败（ENOTDIR: 无法在普通文件路径下创建 DB 文件）。
+    // 特定 HDC 条件直接进入兼容路径，无法在同名普通文件下创建 DB：返回 false。
+    std::string tmpDir = "/data/test/backup/storage/media/local/files/.backup/backup/media_temp_rdb";
+    EXPECT_EQ(BackupFileUtils::PreparePath(tmpDir + "/placeholder"), E_OK);
+    MediaFileUtils::DeleteDir(tmpDir);
+    std::ofstream file(tmpDir);
+    EXPECT_TRUE(file.is_open());
+    file.close();
+
+    EXPECT_FALSE(restoreService->BackupPreprocess());
+    EXPECT_TRUE(restoreService->dirMappingList_.empty());
+
+    MediaFileUtils::DeleteFile(tmpDir);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    restoreService->backupRestoreDir_ = "";
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_is_table_exist_001, TestSize.Level2)
