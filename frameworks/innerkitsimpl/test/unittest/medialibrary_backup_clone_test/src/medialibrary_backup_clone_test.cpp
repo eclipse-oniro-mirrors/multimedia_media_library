@@ -3462,7 +3462,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
     PhotoInfo photoInfo;
     photoInfoMap[1] = photoInfo;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.mediaRdb_ = cloneSource.cloneStorePtr_;
-    cloneAnalysisData->cloneRestoreAnalysisTotal_.type_ = SEGMENTATION_TYPE;
+    cloneAnalysisData->cloneRestoreAnalysisTotal_.types_ = { SEGMENTATION_TYPE };
     cloneAnalysisData->cloneRestoreAnalysisTotal_.lastId_ = 0;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.pageSize_ = 200;
 
@@ -3487,7 +3487,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
     PhotoInfo photoInfo;
     photoInfoMap[1] = photoInfo;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.mediaRdb_ = cloneSource.cloneStorePtr_;
-    cloneAnalysisData->cloneRestoreAnalysisTotal_.type_ = SEGMENTATION_TYPE;
+    cloneAnalysisData->cloneRestoreAnalysisTotal_.types_ = { SEGMENTATION_TYPE };
     cloneAnalysisData->cloneRestoreAnalysisTotal_.lastId_ = 0;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.pageSize_ = 200;
 
@@ -3516,7 +3516,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
     photoInfoMap[1] = photoInfo;
     std::unordered_set<std::string> excludedColumns = {"id", "file_id"};
 
-    cloneAnalysisData->CloneAnalysisData(SEGMENTATION_ANALYSIS_TABLE, SEGMENTATION_TYPE, photoInfoMap,
+    cloneAnalysisData->CloneAnalysisData(SEGMENTATION_ANALYSIS_TABLE, { SEGMENTATION_TYPE }, photoInfoMap,
         excludedColumns);
     EXPECT_EQ(cloneAnalysisData->successCnt_, 1);
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
@@ -6900,5 +6900,75 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_parse_file_trans
     
     MEDIA_INFO_LOG("End medialibrary_backup_clone_parse_file_transfer_config_test_001");
 }
+
+static const std::string CREATE_TAB_ANALYSIS_OCR_FOR_TEST =
+    "CREATE TABLE IF NOT EXISTS tab_analysis_ocr ("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+    "file_id INT UNIQUE, "
+    "ocr_text TEXT, "
+    "ocr_version TEXT, "
+    "ocr_text_msg TEXT, "
+    "width INT, "
+    "height INT, "
+    "analysis_version TEXT)";
+
+int32_t GetTotalFieldValue(const std::string &fieldName, int32_t fileId)
+{
+    std::string querySql = "SELECT " + fieldName + " FROM " + VISION_TOTAL_TABLE + " WHERE " + FILE_ID + " = " +
+        std::to_string(fileId);
+    auto resultSet = restoreService->mediaLibraryRdb_->QuerySql(querySql);
+    if (resultSet == nullptr) {
+        return -1;
+    }
+    int32_t value = -1;
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        int index = 0;
+        (void)resultSet->GetColumnIndex(fieldName, index);
+        resultSet->GetInt(index, value);
+    }
+    resultSet->Close();
+    return value;
+}
+
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_total_multi_col_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_total_multi_col_001");
+    CloneSource cloneSource;
+    vector<string> tableList = { VISION_TOTAL_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    cloneSource.cloneStorePtr_->ExecuteSql(CREATE_TAB_ANALYSIS_OCR_FOR_TEST);
+    cloneSource.cloneStorePtr_->ExecuteSql(
+        "INSERT INTO tab_analysis_ocr (file_id, ocr_text, analysis_version) VALUES (1, 'sched', '1.0')");
+    cloneSource.cloneStorePtr_->ExecuteSql(
+        "UPDATE " + VISION_TOTAL_TABLE + " SET " + OCR + " = 1, " + CLS_SCHED + " = 1, " + SHEET + " = 1 WHERE " +
+        FILE_ID + " = 1");
+
+    restoreService->mediaLibraryRdb_->ExecuteSql(CREATE_TAB_ANALYSIS_OCR_FOR_TEST);
+    restoreService->mediaLibraryRdb_->ExecuteSql(
+        "INSERT INTO " + VISION_TOTAL_TABLE + " (" + FILE_ID + ", " + OCR + ", " + CLS_SCHED + ", " + SHEET +
+        ") VALUES (" + std::to_string(FILE_INFO_NEW_ID) + ", -1, -1, -1)");
+    restoreService->mediaLibraryRdb_->ExecuteSql(
+        "DELETE FROM tab_analysis_ocr WHERE " + FILE_ID + " = " + std::to_string(FILE_INFO_NEW_ID));
+
+    std::shared_ptr<CloneRestoreAnalysisData> cloneAnalysisData = make_shared<CloneRestoreAnalysisData>();
+    cloneAnalysisData->Init(CLONE_RESTORE_ID, TASK_ID, cloneSource.cloneStorePtr_, restoreService->mediaLibraryRdb_);
+    std::unordered_map<int32_t, PhotoInfo> photoInfoMap;
+    PhotoInfo photoInfo;
+    photoInfo.fileIdNew = FILE_INFO_NEW_ID;
+    photoInfoMap[1] = photoInfo;
+    std::unordered_set<std::string> excludedColumns = {"id", "file_id"};
+
+    cloneAnalysisData->CloneAnalysisData("tab_analysis_ocr", {"ocr", "cls_sched", "sheet"}, photoInfoMap,
+        excludedColumns);
+
+    EXPECT_EQ(GetTotalFieldValue(OCR, FILE_INFO_NEW_ID), 1);
+    EXPECT_EQ(GetTotalFieldValue(CLS_SCHED, FILE_INFO_NEW_ID), 1);
+    EXPECT_EQ(GetTotalFieldValue(SHEET, FILE_INFO_NEW_ID), 1);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_total_multi_col_001");
+}
+
 } // namespace Media
 } // namespace OHOS

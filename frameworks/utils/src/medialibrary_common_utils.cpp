@@ -258,6 +258,8 @@ static const std::unordered_set<std::string> FILE_KEY_WHITE_LIST {
     DUPLICATE,
     TOTAL_SCORE_STATUS,
     CAPTION,
+    CLS_SCHED,
+    SHEET,
     HIGHLIGHT_FLUSH,
     GROUP_ID_REP,
     GROUP_ID_SIM,

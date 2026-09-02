@@ -23,6 +23,11 @@
 #define COLUMN_ANALYSIS_CAPTION "caption"
 #define COLUMN_OCR_TIME "ocr_time"
 #define COLUMN_OCR_SUBTYPE "ocr_subtype"
+#define COLUMN_IS_CLS_SCHED "is_cls_sched"
+#define COLUMN_IS_SHEET "is_sheet"
+#define COLUMN_CLS_SCHED_VERSION "cls_sched_version"
+#define COLUMN_CLS_SCHED "cls_sched"
+#define COLUMN_SHEET "sheet"
 // trigger name should be added here
 #define TRIGGER_ANALYSIS_UPDATE_SEARCH_TRIGGER "analysis_update_search_trigger"
 

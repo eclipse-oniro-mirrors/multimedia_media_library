@@ -372,15 +372,21 @@ void CloneRestoreAnalysisData::AnalysisDataRestoreBatch()
 
 void CloneRestoreAnalysisData::ReportRestoreTaskOfTotal()
 {
-    RestoreTaskInfo info;
-    cloneRestoreAnalysisTotal_.SetRestoreTaskInfo(info);
-    info.type = "CLONE_RESTORE_" + ToUpper(analysisType_) +"_TOTAL";
-    info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
-    info.errorInfo = "timeCost: " + std::to_string(restoreTimeCost_);
-    if (enableTimeout_) {
-        info.errorInfo += ", exitCode: " + std::to_string(exitCode_);
+    const auto &typeSuccessCnt = cloneRestoreAnalysisTotal_.GetTypeSuccessCnt();
+    const auto &types = cloneRestoreAnalysisTotal_.GetTypes();
+    for (const auto &type : types) {
+        RestoreTaskInfo info;
+        cloneRestoreAnalysisTotal_.SetRestoreTaskInfo(info);
+        auto it = typeSuccessCnt.find(type);
+        info.successCount = (it != typeSuccessCnt.end()) ? it->second : 0;
+        info.type = "CLONE_RESTORE_" + ToUpper(type) + "_TOTAL";
+        info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
+        info.errorInfo = "timeCost: " + std::to_string(restoreTimeCost_);
+        if (enableTimeout_) {
+            info.errorInfo += ", exitCode: " + std::to_string(exitCode_);
+        }
+        UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
     }
-    UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
 }
 
 void CloneRestoreAnalysisData::ReportRestoreTaskofData()
@@ -423,7 +429,7 @@ int64_t CloneRestoreAnalysisData::GetShouldEndTime(
         * CAPTION_SINGLE_OVER_THRESHOLD_DATA_TIME;
 }
 
-void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const std::string &type,
+void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const std::vector<std::string> &types,
     const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
     const std::unordered_set<std::string> &excludedColumns, bool enableTimeout)
 {
@@ -432,14 +438,14 @@ void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const
     failCnt_ = 0;
     duplicateCnt_ = 0;
     table_ = table;
-    analysisType_ = type;
+    analysisType_ = types.empty() ? "" : types.front();
     photoInfoMap_ = photoInfoMap;
     enableTimeout_ = enableTimeout;
 
     CloneRestoreAnalysisTotal cloneRestoreAnalysisTotal;
-    cloneRestoreAnalysisTotal.Init(analysisType_, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_);
+    cloneRestoreAnalysisTotal.Init(types, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_);
     cloneRestoreAnalysisTotal_ = cloneRestoreAnalysisTotal;
-    
+
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t shouldEndTime = enableTimeout ? GetShouldEndTime(photoInfoMap) : INT64_MAX;
     bool firstBatch = true;
