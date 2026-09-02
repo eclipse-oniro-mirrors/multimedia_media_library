@@ -354,6 +354,11 @@ void PhotoAlbumNapi::PhotoAlbumNapiDestructor(napi_env env, void *nativeObject, 
 
 napi_value UnwrapPhotoAlbumObject(napi_env env, napi_callback_info info, PhotoAlbumNapi** obj)
 {
+    if (obj == nullptr) {
+        NAPI_ERR_LOG("PhotoAlbumNapi** obj is nullptr");
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_undefined(env, &result), JS_INNER_FAIL);
 
@@ -365,9 +370,10 @@ napi_value UnwrapPhotoAlbumObject(napi_env env, napi_callback_info info, PhotoAl
     }
 
     CHECK_ARGS(env, napi_unwrap(env, thisVar, reinterpret_cast<void **>(obj)), JS_INNER_FAIL);
-    if (obj == nullptr) {
+    if (*obj == nullptr) {
+        NAPI_ERR_LOG("Napi unwraped obj is nullptr");
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
-        return result;
+        return nullptr;
     }
 
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
@@ -413,6 +419,10 @@ napi_value PhotoAlbumNapi::JSPhotoAccessGetAlbumUri(napi_env env, napi_callback_
     CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
 
     napi_value jsResult = nullptr;
+    if (obj == nullptr) {
+        NAPI_ERR_LOG("Unwrap PhotoAlbumObject failed, obj is nullptr");
+        return nullptr;
+    }
     CHECK_ARGS(env, napi_create_string_utf8(env, obj->GetAlbumUri().c_str(), NAPI_AUTO_LENGTH, &jsResult),
         JS_INNER_FAIL);
     return jsResult;
