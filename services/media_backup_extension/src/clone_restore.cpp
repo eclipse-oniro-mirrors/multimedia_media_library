@@ -1086,6 +1086,10 @@ void CloneRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int64_t &fi
     int64_t lakeVideoFileMoveCount = 0;
     vector<std::string> moveFailedData;
     for (size_t i = 0; i < fileInfos.size(); i++) {
+        if (fileInfos[i].needMergeThumbnail) {
+            MergeDuplicateThumbnail(fileInfos[i]);
+            continue;
+        }
         if (!MediaFileUtils::IsFileExists(fileInfos[i].filePath) ||
             fileInfos[i].cloudPath.empty() || !fileInfos[i].needMove) {
             fileInfos[i].needVisible = false;
@@ -1467,8 +1471,8 @@ bool CloneRestore::FillMergedPhotoValues(const FileInfo &fileInfo, NativeRdb::Va
         return false;
     }
     values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
-    if (FileAdapter::IsLakeFile(fileInfo)) {
-        values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::MEDIA_HO_LAKE);
+    if (fileInfo.needStoreAtStoragePath) {
+        FillLakeMergedValues(fileInfo, values);
     }
     SetAttachmentSizeForCloudDuplicate(fileInfo, values);
     values.PutInt(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, fileInfo.compositeDisplayStatus);
@@ -1732,15 +1736,46 @@ void CloneRestore::AnalyzeSource()
     MEDIA_INFO_LOG("analyze source later");
 }
 
+std::string CloneRestore::ResolveLocalPath(FileInfo &fileInfo)
+{
+    if (!fileInfo.needStoreAtStoragePath) {
+        return BackupFileUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL,
+            fileInfo.cloudPath);
+    }
+    std::string localPath = BackupFileUtils::ConvertToStoragePath(fileInfo.dstStoragePath);
+    if (FileAdapter::IsLakeFile(fileInfo)) {
+        return localPath;
+    }
+    // Non-lake source moves file from backup package to storagePath,
+    // target may have same-name conflict, need resolve first.
+    std::string resolvedPath = BackupFileUtils::ResolveLakeTargetStoragePath(localPath);
+    if (resolvedPath.empty()) {
+        MEDIA_ERR_LOG("ResolveLocalPath failed, targetPath = %{public}s",
+            MediaFileUtils::DesensitizePath(localPath).c_str());
+        return "";
+    }
+    if (resolvedPath != localPath) {
+        fileInfo.needRenameOnConflict = true;
+        fileInfo.dstStoragePath = resolvedPath;
+    }
+    return resolvedPath;
+}
+
 int32_t CloneRestore::MovePicture(FileInfo &fileInfo)
 {
-    if (FileAdapter::IsLakeFile(fileInfo)) {
+    if (FileAdapter::IsLakeFile(fileInfo) && fileInfo.isNew) {
         MediaFileUtils::UpdateModifyTimeInMsec(fileInfo.filePath, fileInfo.dateModified);
         return E_OK;
     }
     bool deleteOriginalFile = fileInfo.isRelatedToPhotoMap == 1 ? false : true;
-    string localPath = BackupFileUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL,
-        fileInfo.cloudPath);
+    string localPath = ResolveLocalPath(fileInfo);
+    CHECK_AND_RETURN_RET_LOG(!localPath.empty(), E_FAIL,
+        "ResolveLocalPath failed, filePath = %{public}s",
+        BackupFileUtils::GarbleFilePath(fileInfo.filePath, CLONE_RESTORE_ID, garbagePath_).c_str());
+    if (fileInfo.needStoreAtStoragePath && FileAdapter::IsLakeFile(fileInfo) && localPath == fileInfo.filePath) {
+        MediaFileUtils::UpdateModifyTimeInMsec(localPath, fileInfo.dateModified);
+        return E_OK;
+    }
     int32_t opRet = E_FAIL;
     if (deleteOriginalFile) {
         opRet = this->MoveFile(fileInfo.filePath, localPath);
@@ -3693,6 +3728,47 @@ void CloneRestore::SetSpecialAttributes(const string &tableName, const shared_pt
     GetOrientationAndExifRotateValue(resultSet, fileInfo);
 }
 
+void CloneRestore::HandleLakeDuplicateMigration(FileInfo &fileInfo, const PhotosDao::PhotosRowData &rowData)
+{
+    // New device is lake-inside (storagePath non-empty) and non-hidden/non-deleted
+    // Pure cloud lake assets have file_source_type=0.
+    fileInfo.needStoreAtStoragePath = !rowData.storagePath.empty() &&
+        rowData.hidden == 0 && rowData.dateTrashed == 0;
+    fileInfo.dstStoragePath = rowData.storagePath;
+    bool srcIsMovingPhoto = fileInfo.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
+        fileInfo.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
+    bool dstIsMovingPhoto = rowData.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
+        rowData.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
+    bool srcInsideLake = FileAdapter::IsLakeFile(fileInfo);
+    bool dstInsideLake = !rowData.storagePath.empty();
+    if ((srcIsMovingPhoto && dstInsideLake) || (srcInsideLake && dstIsMovingPhoto)) {
+        MEDIA_INFO_LOG("skip sross-lake moving photo, srcIsMovingPhoto = %{public}d, "
+            "dstIsMovingPhoto = %{public}d, srcInsideLake = %{public}d, dstInsideLake = %{public}d",
+            srcIsMovingPhoto, dstIsMovingPhoto, srcInsideLake, dstInsideLake);
+        fileInfo.needMove = false;
+        fileInfo.needStoreAtStoragePath = false;
+        fileInfo.needUpdatePositionToLocalAndCloud = false;
+        fileInfo.needMergeThumbnail = true;
+    }
+}
+
+void CloneRestore::FillLakeMergedValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
+{
+    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::MEDIA_HO_LAKE);
+    std::string dstPath = BackupFileUtils::ConvertToStoragePath(fileInfo.dstStoragePath);
+    values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, dstPath);
+    if (fileInfo.needRenameOnConflict) {
+        std::string newDisplayName = MediaFileUtils::GetFileName(dstPath);
+        values.PutString(MediaColumn::MEDIA_TITLE, MediaFileUtils::GetTitleFromDisplayName(newDisplayName));
+        values.PutString(MediaColumn::MEDIA_NAME, newDisplayName);
+        if (!fileInfo.sourcePath.empty()) {
+            std::string newSourcePath = MediaFileUtils::GetParentPath(fileInfo.sourcePath)
+                + "/" + newDisplayName;
+            values.PutString(PhotoColumn::PHOTO_SOURCE_PATH, newSourcePath);
+        }
+    }
+}
+
 bool CloneRestore::IsSameFileForClone(const string &tableName, FileInfo &fileInfo)
 {
     CHECK_AND_RETURN_RET(tableName == PhotoColumn::PHOTOS_TABLE,
@@ -3710,9 +3786,9 @@ bool CloneRestore::IsSameFileForClone(const string &tableName, FileInfo &fileInf
     bool isDstPureCloud = rowData.position == static_cast<int32_t>(PhotoPositionType::CLOUD);
     auto isSandboxMediaAsset = [](int32_t fileSourceType, const std::string &lPath,
         const std::string &storagePath) {
-        return fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA) &&
-            !FileAdapter::IsFromDocsLpath(lPath) &&
-            storagePath.empty();
+        bool isMedia = fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA) ||
+            fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+        return isMedia && !FileAdapter::IsFromDocsLpath(lPath);
     };
     bool isDstSandboxMedia = isSandboxMediaAsset(rowData.fileSourceType, rowData.lPath, rowData.storagePath);
     bool isSrcSandboxMedia = isSandboxMediaAsset(fileInfo.fileSourceType, fileInfo.lPath, fileInfo.storagePath);
@@ -3721,13 +3797,16 @@ bool CloneRestore::IsSameFileForClone(const string &tableName, FileInfo &fileInf
         if (fileInfo.needMove && fileInfo.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             fileInfo.needMove = false;
             fileInfo.needMergeThumbnail = true;
-            UpdateDuplicateNumber(fileInfo);
         } else {
             // Old phone holds a local copy (position=1/3): keep needMove=true so the
             // original payload is cloned over, and upgrade new-phone position to
             // LOCAL_AND_CLOUD afterwards.
             fileInfo.position = static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
             fileInfo.needUpdatePositionToLocalAndCloud = true;
+            HandleLakeDuplicateMigration(fileInfo, rowData);
+        }
+        if (!fileInfo.needMove) {
+            UpdateDuplicateNumber(fileInfo);
         }
         return false;
     }

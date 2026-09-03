@@ -110,6 +110,10 @@ void PhotosDao::ParseResultSetOfSameFile(PhotosDao::PhotosRowData &rowData,
     rowData.cleanFlag = GetInt32Val("clean_flag", resultSet);
     rowData.position = GetInt32Val("position", resultSet);
     rowData.fileSourceType = GetInt32Val("file_source_type", resultSet);
+    rowData.subtype = GetInt32Val("subtype", resultSet);
+    rowData.effectMode = GetInt32Val("moving_photo_effect_mode", resultSet);
+    rowData.hidden = GetInt32Val("hidden", resultSet);
+    rowData.dateTrashed = GetInt64Val("date_trashed", resultSet);
     rowData.storagePath = GetStringVal("storage_path", resultSet);
     rowData.lPath = GetStringVal("lpath", resultSet);
     rowData.packageName = GetStringVal("package_name", resultSet);

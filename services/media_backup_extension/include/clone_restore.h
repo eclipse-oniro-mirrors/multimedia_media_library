@@ -200,6 +200,9 @@ protected:
     void SetSpecialAttributes(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         FileInfo &fileInfo);
     bool IsSameFileForClone(const std::string &tableName, FileInfo &fileInfo);
+    void HandleLakeDuplicateMigration(FileInfo &fileInfo, const PhotosDao::PhotosRowData &rowData);
+    void FillLakeMergedValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    std::string ResolveLocalPath(FileInfo &fileInfo);
     int32_t MovePicture(FileInfo &fileInfo);
     int32_t MoveMovingPhotoVideo(FileInfo &fileInfo, bool isFromMergeDuplicate = false);
     int32_t MoveEditedData(FileInfo &fileInfo);

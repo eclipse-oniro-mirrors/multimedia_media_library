@@ -198,7 +198,6 @@ const std::array<ThumbnailSpec, 5> THUMBNAIL_SPECS = {{
 }};
 const std::string LAKE_STORAGE_ROOT = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 const std::string CLOUD_DENTRY_ROOT = "/storage/media/cloud/files/";
-constexpr int32_t MAX_RENAME_NUMBER = 1000;
 
 // LCOV_EXCL_START
 bool IsPathUnderDirectory(const std::string &path, const std::string &directory)
@@ -243,30 +242,6 @@ bool ShouldUseLakeStorageAsTarget(const ReverseCloneAssetResource &resource)
     return HasRealLakeStoragePath(resource) && !IsInactiveAsset(resource);
 }
 
-std::string GetNumberedStoragePath(const std::string &storagePath, int32_t number)
-{
-    size_t slashPos = storagePath.find_last_of('/');
-    size_t dotPos = storagePath.find_last_of('.');
-    if (dotPos == std::string::npos || (slashPos != std::string::npos && dotPos < slashPos)) {
-        return storagePath + "(" + std::to_string(number) + ")";
-    }
-    return storagePath.substr(0, dotPos) + "(" + std::to_string(number) + ")" + storagePath.substr(dotPos);
-}
-
-std::string ResolveLakeTargetStoragePath(const std::string &storagePath)
-{
-    if (!MediaFileUtils::IsFileExists(storagePath)) {
-        return storagePath;
-    }
-    for (int32_t number = 1; number <= MAX_RENAME_NUMBER; ++number) {
-        std::string numberedPath = GetNumberedStoragePath(storagePath, number);
-        if (!MediaFileUtils::IsFileExists(numberedPath)) {
-            return numberedPath;
-        }
-    }
-    return "";
-}
-
 bool IsLakeTargetAlreadyOwnedByDonor(const ReverseCloneResourcePlan &plan)
 {
     return CanUseLakeStorageAsSource(plan.donor) && plan.donor.storagePath == plan.absorbed.storagePath;
@@ -280,7 +255,7 @@ int32_t PrepareLakeStorageTarget(ReverseCloneResourcePlan &plan)
     if (IsLakeTargetAlreadyOwnedByDonor(plan)) {
         return E_OK;
     }
-    std::string resolvedPath = ResolveLakeTargetStoragePath(plan.absorbed.storagePath);
+    std::string resolvedPath = BackupFileUtils::ResolveLakeTargetStoragePath(plan.absorbed.storagePath);
     CHECK_AND_RETURN_RET_LOG(!resolvedPath.empty(), E_FAIL,
         "RevRes resolve lake target storage path failed, targetFileId=%{public}d, path=%{public}s",
         plan.absorbed.fileId, MediaFileUtils::DesensitizePath(plan.absorbed.storagePath).c_str());

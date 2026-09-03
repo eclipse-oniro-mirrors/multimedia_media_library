@@ -972,6 +972,35 @@ std::string BackupFileUtils::ConvertToStoragePath(const std::string& input)
     return input;
 }
 
+std::string BackupFileUtils::GetNumberedStoragePath(const std::string &path, int32_t number)
+{
+    size_t slashPos = path.find_last_of('/');
+    size_t dotPos = path.find_last_of('.');
+    if (dotPos == std::string::npos || (slashPos != std::string::npos && dotPos < slashPos)) {
+        return path + "(" + std::to_string(number) + ")";
+    }
+    return path.substr(0, dotPos) + "(" + std::to_string(number) + ")" + path.substr(dotPos);
+}
+
+std::string BackupFileUtils::ResolveLakeTargetStoragePath(const std::string &storagePath)
+{
+    if (!MediaFileUtils::IsFileExists(storagePath)) {
+        return storagePath;
+    }
+    constexpr int32_t MAX_RENAME_NUMBER = 1000;
+    for (int32_t number = 1; number <= MAX_RENAME_NUMBER; ++number) {
+        std::string numberedPath = GetNumberedStoragePath(storagePath, number);
+        if (!MediaFileUtils::IsFileExists(numberedPath)) {
+            MEDIA_INFO_LOG("file renamed, original: %{public}s, number: %{public}d",
+                MediaFileUtils::DesensitizePath(storagePath).c_str(), number);
+            return numberedPath;
+        }
+    }
+    MEDIA_ERR_LOG("ResolveLakeTargetStoragePath exhausted: %{public}s",
+        MediaFileUtils::DesensitizePath(storagePath).c_str());
+    return "";
+}
+
 void BackupFileUtils::DeleteCloneFileInfoDb()
 {
     const std::string dbPath = CLONE_RESTORE_BACKUP_DIR + CLONE_FILE_INFO_DB;
