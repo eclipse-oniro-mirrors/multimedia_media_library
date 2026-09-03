@@ -3166,50 +3166,71 @@ shared_ptr<FileAsset> FileAssetNapi::GetFileAssetInstance() const
     return fileAssetPtr;
 }
 
+namespace {
+    const set<string> &GetSystemApiKeys()
+    {
+        static const set<string> SYSTEM_API_KEYS = {
+            MediaColumn::MEDIA_DATE_TRASHED,
+            MediaColumn::MEDIA_HIDDEN,
+            PhotoColumn::PHOTO_USER_COMMENT,
+            PhotoColumn::CAMERA_SHOT_KEY,
+            PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
+            PhotoColumn::SUPPORTED_WATERMARK_TYPE,
+            PhotoColumn::PHOTO_IS_AUTO,
+            PhotoColumn::PHOTO_IS_RECENT_SHOW,
+            PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
+            PhotoColumn::PHOTO_APPLINK,
+            PhotoColumn::PHOTO_HAS_APPLINK,
+            PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
+            PhotoColumn::PHOTO_CLOUD_ID,
+            PENDING_STATUS,
+            CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
+            CONST_MEDIA_SUM_SIZE,
+            PhotoColumn::PHOTO_EXIF_ROTATE,
+            PhotoColumn::PHOTO_STORAGE_PATH,
+            PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+            MediaColumn::MEDIA_OWNER_PACKAGE,
+            PhotoColumn::PHOTO_DATE_ADDED_YEAR,
+            PhotoColumn::PHOTO_DATE_ADDED_MONTH,
+            PhotoColumn::PHOTO_DATE_ADDED_DAY,
+            PhotoColumn::UNIQUE_ID,
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+            PhotoColumn::PHOTO_HIDDEN_TIME,
+            PhotoColumn::PHOTO_RISK_STATUS,
+            PhotoColumn::ATTACHMENT_SIZE,
+            PhotoColumn::PHOTO_LCD_FILE_SIZE,
+            PhotoColumn::PHOTO_THUMB_STATUS,
+            PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+            PhotoColumn::PHOTO_TRANSCODE_TIME,
+        };
+        return SYSTEM_API_KEYS;
+    }
+
+    const set<string> &GetSystemApiKeysSinceApi26()
+    {
+        static const set<string> SYSTEM_API_KEYS_SINCE_API26 = {
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+        };
+        return SYSTEM_API_KEYS_SINCE_API26;
+    }
+}
+
 int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
 {
-    static const set<string> SYSTEM_API_KEYS = {
-        MediaColumn::MEDIA_DATE_TRASHED,
-        MediaColumn::MEDIA_HIDDEN,
-        PhotoColumn::PHOTO_USER_COMMENT,
-        PhotoColumn::CAMERA_SHOT_KEY,
-        PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
-        PhotoColumn::SUPPORTED_WATERMARK_TYPE,
-        PhotoColumn::PHOTO_IS_AUTO,
-        PhotoColumn::PHOTO_IS_RECENT_SHOW,
-        PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
-        PhotoColumn::PHOTO_APPLINK,
-        PhotoColumn::PHOTO_HAS_APPLINK,
-        PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
-        PhotoColumn::PHOTO_CLOUD_ID,
-        PENDING_STATUS,
-        CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
-        CONST_MEDIA_SUM_SIZE,
-        PhotoColumn::PHOTO_EXIF_ROTATE,
-        PhotoColumn::PHOTO_STORAGE_PATH,
-        PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
-        MediaColumn::MEDIA_OWNER_PACKAGE,
-        PhotoColumn::PHOTO_DATE_ADDED_YEAR,
-        PhotoColumn::PHOTO_DATE_ADDED_MONTH,
-        PhotoColumn::PHOTO_DATE_ADDED_DAY,
-        PhotoColumn::UNIQUE_ID,
-        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
-        PhotoColumn::PHOTO_HIDDEN_TIME,
-        PhotoColumn::PHOTO_RISK_STATUS,
-        PhotoColumn::ATTACHMENT_SIZE,
-        PhotoColumn::PHOTO_LCD_FILE_SIZE,
-        PhotoColumn::PHOTO_THUMB_STATUS,
-        PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
-        PhotoColumn::PHOTO_TRANSCODE_TIME,
-    };
-
+    const auto &SYSTEM_API_KEYS = GetSystemApiKeys();
+    const auto &SYSTEM_API_KEYS_SINCE_API26 = GetSystemApiKeysSinceApi26();
     if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 
     if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
+        if (SYSTEM_API_KEYS_SINCE_API26.count(key) > 0) {
+            NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+                "This key can only be used by system apps");
+        } else {
+            NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
+        }
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
