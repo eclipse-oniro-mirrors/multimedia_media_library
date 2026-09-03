@@ -941,12 +941,21 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_RISK_STATUS,
     };
 
+    static const set<string> SYSTEM_API_KEYS_SINCE_API26 = {
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+    };
+
     if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || SendableMediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 
     if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
+        if (SYSTEM_API_KEYS_SINCE_API26.count(key) > 0) {
+            NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+                "This key can only be used by system apps");
+        } else {
+            NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
+        }
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
