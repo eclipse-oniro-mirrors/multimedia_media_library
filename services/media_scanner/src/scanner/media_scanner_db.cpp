@@ -36,8 +36,6 @@ using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::DataShare;
 
-constexpr double DOUBLE_EPSILON = 1e-15;
-
 MediaScannerDb::MediaScannerDb() {}
 
 unique_ptr<MediaScannerDb> MediaScannerDb::GetDatabaseInstance()
@@ -70,8 +68,13 @@ static inline void SetRemainFileMetadataApi9(const Metadata &metadata, ValuesBuc
     values.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, metadata.GetAlbumName());
     values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, metadata.GetParentId());
     values.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, metadata.GetParentId());
-    values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-    values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+    if (metadata.HasLatitude() && metadata.HasLongitude()) {
+        values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
+        values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+    } else {
+        values.PutNull(CONST_MEDIA_DATA_DB_LATITUDE);
+        values.PutNull(CONST_MEDIA_DATA_DB_LONGITUDE);
+    }
 }
 
 static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket &values, MediaType mediaType,
@@ -85,8 +88,13 @@ static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket 
             values.PutInt(CONST_MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
             values.PutInt(CONST_MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
             values.PutInt(CONST_MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
-            values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-            values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+            if (metadata.HasLatitude() && metadata.HasLongitude()) {
+                values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
+                values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+            } else {
+                values.PutNull(CONST_MEDIA_DATA_DB_LATITUDE);
+                values.PutNull(CONST_MEDIA_DATA_DB_LONGITUDE);
+            }
             SetVirtualPath(metadata, values);
             if (metadata.GetPhotoSubType() != 0) {
                 values.PutInt(PhotoColumn::PHOTO_SUBTYPE, metadata.GetPhotoSubType());
@@ -303,7 +311,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     values.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
     values.PutInt(PhotoColumn::PHOTO_ORIENTATION, metadata.GetOrientation());
     values.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, metadata.GetExifRotate());
-    if (fabs(metadata.GetLongitude()) > DOUBLE_EPSILON || fabs(metadata.GetLatitude()) > DOUBLE_EPSILON) {
+    if (metadata.HasLongitude() && metadata.HasLatitude()) {
         values.PutDouble(PhotoColumn::PHOTO_LONGITUDE, metadata.GetLongitude());
         values.PutDouble(PhotoColumn::PHOTO_LATITUDE, metadata.GetLatitude());
     } else {

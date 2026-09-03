@@ -17,6 +17,7 @@
 #define METADATA_H
 
 #include <unordered_map>
+#include <optional>
 #include <variant>
 #include "scanner_utils.h"
 #include "fetch_result.h"
@@ -111,9 +112,11 @@ public:
 
     EXPORT void SetLongitude(const VariantData &longitude);
     EXPORT double GetLongitude() const;
+    EXPORT bool HasLongitude() const;
 
     EXPORT void SetLatitude(const VariantData &latitude);
     EXPORT double GetLatitude() const;
+    EXPORT bool HasLatitude() const;
 
     EXPORT void SetTimePending(const VariantData &timePending);
     EXPORT int64_t GetTimePending() const;
@@ -258,8 +261,8 @@ private:
     int64_t dateTaken_ {0};
 
     // image
-    double longitude_;
-    double latitude_;
+    std::optional<double> longitude_;
+    std::optional<double> latitude_;
     std::string userComment_;
     std::string allExif_;
 
