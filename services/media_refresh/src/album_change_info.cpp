@@ -459,7 +459,6 @@ string AlbumChangeInfo::GetAlbumDiff(const AlbumChangeInfo &album, const AlbumCh
     GET_ALBUM_DIFF(videoCount_);
     GET_ALBUM_DIFF(albumType_);
     GET_ALBUM_DIFF(albumSubType_);
-    GET_ALBUM_DIFF(albumName_);
     GET_ALBUM_DIFF(albumUri_);
     GET_ALBUM_DIFF(count_);
     GET_ALBUM_DIFF(hiddenCount_);
@@ -474,6 +473,11 @@ string AlbumChangeInfo::GetAlbumDiff(const AlbumChangeInfo &album, const AlbumCh
     GET_ALBUM_DIFF(hidden_);
     GET_ALBUM_DIFF(shareRiskStatus_);
     GET_ALBUM_DIFF(shareRiskType_);
+
+    if (album.albumName_ != compare.albumName_) {
+        ss << "albumName_: " << MediaFileUtils::DesensitizeName(album.albumName_) << " -> ";
+        ss << MediaFileUtils::DesensitizeName(compare.albumName_) << ", ";
+    }
 
     if (album.coverUri_ != compare.coverUri_) {
         ss << "coverUri_: " << MediaFileUtils::DesensitizeUri(album.coverUri_) << " -> ";

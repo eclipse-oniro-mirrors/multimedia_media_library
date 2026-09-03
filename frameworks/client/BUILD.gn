@@ -25,6 +25,8 @@ config("media_library_client_config") {
 }
 
 ohos_shared_library("media_library_client") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   public_configs = [ ":media_library_client_config" ]
@@ -106,7 +108,6 @@ ohos_shared_library("media_library_client") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

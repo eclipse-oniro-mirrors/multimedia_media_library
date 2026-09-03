@@ -124,7 +124,7 @@ class SelfDuplicateAlbumAssetAbsorb {
 public:
     void CheckAndRemoveDuplicatePhotos(const std::shared_ptr<NativeRdb::RdbStore> &,
         std::vector<FileInfo> &fileInfos, int32_t, std::vector<ReverseCloneResourcePlan> &resourcePlans,
-        const std::unordered_set<int32_t> &)
+        const std::unordered_set<int32_t> &, DuplicateCount &, unordered_map<int32_t, int32_t> &)
     {
         if (fileInfos.empty()) {
             return;

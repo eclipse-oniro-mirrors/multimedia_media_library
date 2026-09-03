@@ -126,6 +126,7 @@ bool BeautyScoreClone::CloneBeautyScoreInfo()
     return true;
 }
 
+// Reverse clone: sourceRdb_=new DB, destRdb_=old DB, no fileId remapping
 bool BeautyScoreClone::ReverseCloneBeautyScoreInfo()
 {
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
@@ -517,6 +518,7 @@ void BeautyScoreClone::UpdateScoreMask(int32_t fileId, uint32_t mask)
 
 bool BeautyScoreClone::QueryAndInsertSourceBeautyScores()
 {
+    // photoInfoMap_ key=new fileId, fileIdNew=same key (identity mapping)
     std::vector<int32_t> sourceFileIds = QuerySourceFileIds();
     if (sourceFileIds.empty()) {
         MEDIA_INFO_LOG("ReverseCloneBeautyScoreInfo: No source file IDs found to clone");
@@ -530,13 +532,24 @@ bool BeautyScoreClone::QueryAndInsertSourceBeautyScores()
     CHECK_AND_RETURN_RET_LOG(!commonColumns.empty(), false,
         "No common columns found for aesthetics score table after exclusion.");
 
-    std::vector<BeautyScoreTbl> sourceBeautyScores = QuerySourceBeautyScores(sourceFileIds, commonColumns);
-    if (sourceBeautyScores.empty()) {
-        MEDIA_INFO_LOG("ReverseCloneBeautyScoreInfo: No source beauty score records found");
-        return true;
-    }
+    for (size_t i = 0; i < sourceFileIds.size(); i += SQL_BATCH_SIZE) {
+        auto batchBegin = sourceFileIds.begin() + i;
+        auto batchEnd = (i + SQL_BATCH_SIZE < sourceFileIds.size()) ?
+            (sourceFileIds.begin() + i + SQL_BATCH_SIZE) : sourceFileIds.end();
+        std::vector<int32_t> batchIds(batchBegin, batchEnd);
 
-    return InsertOrUpdateDestBeautyScores(sourceBeautyScores);
+        // (1) INSERT detail scores: no maxBeautyFileId_ filter needed,
+        //     old fileIds already shifted > newMaxExtended
+        std::string fileIdClause = "(" + BackupDatabaseUtils::JoinValues<int>(batchIds, ", ") + ")";
+        std::vector<BeautyScoreTbl> beautyScores = QueryBeautyScoreTbl(fileIdClause, commonColumns);
+        if (!beautyScores.empty()) {
+            InsertNewDestBeautyScores(beautyScores);
+        }
+
+        // (2) Overwrite old DB total with new DB total values
+        ReverseUpdateTotalScoresBatch(batchIds);
+    }
+    return true;
 }
 
 std::vector<int32_t> BeautyScoreClone::QuerySourceFileIds()
@@ -551,160 +564,7 @@ std::vector<int32_t> BeautyScoreClone::QuerySourceFileIds()
     return fileIds;
 }
 
-std::vector<BeautyScoreTbl> BeautyScoreClone::QuerySourceBeautyScores(const std::vector<int32_t>& fileIds,
-    const std::vector<std::string>& commonColumns)
-{
-    std::vector<BeautyScoreTbl> result;
-    if (fileIds.empty()) {
-        return result;
-    }
-
-    for (size_t i = 0; i < fileIds.size(); i += SQL_BATCH_SIZE) {
-        auto batch_begin = fileIds.begin() + i;
-        auto batch_end = (i + SQL_BATCH_SIZE < fileIds.size()) ?
-            (fileIds.begin() + i + SQL_BATCH_SIZE) : fileIds.end();
-        std::vector<int32_t> batchFileIds(batch_begin, batch_end);
-
-        if (batchFileIds.empty()) {
-            continue;
-        }
-
-        std::string fileIdClause = "(" + BackupDatabaseUtils::JoinValues<int>(batchFileIds, ", ") + ")";
-        std::vector<BeautyScoreTbl> beautyScoreTbls = QueryBeautyScoreTbl(fileIdClause, commonColumns);
-
-        if (beautyScoreTbls.empty()) {
-            MEDIA_WARN_LOG("Query returned empty result for batch starting at index %{public}zu", i);
-            continue;
-        }
-
-        result.insert(result.end(), beautyScoreTbls.begin(), beautyScoreTbls.end());
-    }
-
-    return result;
-}
-
-bool BeautyScoreClone::InsertOrUpdateDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls)
-{
-    if (beautyScoreTbls.empty()) {
-        return true;
-    }
-
-    std::vector<int32_t> fileIds;
-    fileIds.reserve(beautyScoreTbls.size());
-    for (const auto& tbl : beautyScoreTbls) {
-        if (tbl.fileId.has_value()) {
-            fileIds.push_back(tbl.fileId.value());
-        }
-    }
-
-    if (fileIds.empty()) {
-        return true;
-    }
-
-    std::unordered_set<int32_t> existingFileIds = QueryExistingDestFileIds(fileIds);
-
-    std::vector<BeautyScoreTbl> toUpdate;
-    std::vector<BeautyScoreTbl> toInsert;
-    toUpdate.reserve(beautyScoreTbls.size());
-    toInsert.reserve(beautyScoreTbls.size());
-
-    for (const auto& tbl : beautyScoreTbls) {
-        if (!tbl.fileId.has_value()) {
-            continue;
-        }
-        const int32_t fileId = tbl.fileId.value();
-        if (existingFileIds.count(fileId) > 0) {
-            toUpdate.push_back(tbl);
-        } else {
-            toInsert.push_back(tbl);
-        }
-    }
-
-    bool updateSuccess = true;
-    if (!toUpdate.empty()) {
-        updateSuccess = UpdateDestBeautyScores(toUpdate);
-    }
-
-    bool insertSuccess = true;
-    if (!toInsert.empty()) {
-        insertSuccess = InsertNewDestBeautyScores(toInsert);
-    }
-
-    return updateSuccess && insertSuccess;
-}
-
-std::unordered_set<int32_t> BeautyScoreClone::QueryExistingDestFileIds(const std::vector<int32_t>& fileIds)
-{
-    std::unordered_set<int32_t> existingIds;
-
-    for (size_t i = 0; i < fileIds.size(); i += SQL_BATCH_SIZE) {
-        auto batch_begin = fileIds.begin() + i;
-        auto batch_end = (i + SQL_BATCH_SIZE < fileIds.size()) ?
-            (fileIds.begin() + i + SQL_BATCH_SIZE) : fileIds.end();
-        std::vector<int32_t> batchFileIds(batch_begin, batch_end);
-
-        if (batchFileIds.empty()) {
-            continue;
-        }
-
-        const std::string fileIdList = BackupDatabaseUtils::JoinValues(batchFileIds, ", ");
-        const std::string querySql = "SELECT " + BEAUTY_SCORE_COL_FILE_ID +
-            " FROM " + VISION_AESTHETICS_TABLE +
-            " WHERE " + BEAUTY_SCORE_COL_FILE_ID + " IN (" + fileIdList + ")" +
-            " AND " + BEAUTY_SCORE_COL_FILE_ID + " <= " + std::to_string(maxBeautyFileId_);
-
-        auto resultSet = BackupDatabaseUtils::GetQueryResultSet(destRdb_, querySql);
-        CHECK_AND_RETURN_RET(resultSet != nullptr, existingIds);
-
-        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-            int32_t fileId = 0;
-            if (resultSet->GetInt(0, fileId) == NativeRdb::E_OK) {
-                existingIds.insert(fileId);
-            }
-        }
-        resultSet->Close();
-    }
-
-    return existingIds;
-}
-
-bool BeautyScoreClone::UpdateDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls)
-{
-    if (beautyScoreTbls.empty()) {
-        return true;
-    }
-
-    int32_t updatedCount = 0;
-    std::vector<std::pair<NativeRdb::ValuesBucket, std::string>> updates;
-    updates.reserve(beautyScoreTbls.size());
-
-    for (const auto& tbl : beautyScoreTbls) {
-        if (!tbl.fileId.has_value()) {
-            continue;
-        }
-
-        NativeRdb::ValuesBucket values = CreateValuesBucketFromBeautyScoreTbl(tbl);
-        const std::string whereClause = BEAUTY_SCORE_COL_FILE_ID + " = " +
-            std::to_string(tbl.fileId.value()) +
-            " AND " + BEAUTY_SCORE_COL_FILE_ID + " <= " + std::to_string(maxBeautyFileId_);
-
-        updates.emplace_back(std::move(values), whereClause);
-    }
-
-    if (updates.empty()) {
-        return true;
-    }
-
-    int32_t errCode = BatchUpdateWithRetry(VISION_AESTHETICS_TABLE, updates);
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false, "Failed to update beauty scores");
-
-    updatedCount = static_cast<int32_t>(updates.size());
-    migrateScoreNum_ += updatedCount;
-    migrateScoreFileNumber_ += static_cast<int64_t>(updates.size());
-    MEDIA_INFO_LOG("ReverseCloneBeautyScoreInfo: Updated %{public}d beauty score records", updatedCount);
-    return true;
-}
-
+// Direct INSERT only; old fileIds already migrated, no duplicates with new fileIds
 bool BeautyScoreClone::InsertNewDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls)
 {
     if (beautyScoreTbls.empty()) {
@@ -736,6 +596,51 @@ bool BeautyScoreClone::InsertNewDestBeautyScores(const std::vector<BeautyScoreTb
     MEDIA_INFO_LOG("ReverseCloneBeautyScoreInfo: Inserted %{public}lld new beauty score records",
         (long long)rowNum);
     return true;
+}
+
+// Copy aesthetics_score/aesthetics_score_all from new DB total to old DB total by fileId
+void BeautyScoreClone::ReverseUpdateTotalScoresBatch(const std::vector<int32_t>& batchIds)
+{
+    if (batchIds.empty()) {
+        return;
+    }
+
+    // Query from new DB (sourceRdb_)
+    std::string inClause = "(" + BackupDatabaseUtils::JoinValues<int>(batchIds, ", ") + ")";
+    std::string querySql = "SELECT file_id, aesthetics_score, aesthetics_score_all "
+        "FROM tab_analysis_total WHERE file_id IN " + inClause;
+
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(sourceRdb_, querySql);
+    if (resultSet == nullptr) {
+        MEDIA_WARN_LOG("ReverseUpdateTotalScoresBatch: query failed");
+        return;
+    }
+
+    // Collect updates from query result
+    std::vector<std::pair<NativeRdb::ValuesBucket, std::string>> updates;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t fileId = 0;
+        int32_t aestheticsScore = 0;
+        int32_t aestheticsScoreAll = 0;
+        resultSet->GetInt(0, fileId);
+        resultSet->GetInt(1, aestheticsScore);
+        resultSet->GetInt(2, aestheticsScoreAll);
+
+        NativeRdb::ValuesBucket values;
+        values.Put("aesthetics_score", aestheticsScore);
+        values.Put("aesthetics_score_all", aestheticsScoreAll);
+        std::string whereClause = "file_id = " + std::to_string(fileId);
+        updates.emplace_back(std::move(values), whereClause);
+    }
+    resultSet->Close();
+
+    if (updates.empty()) {
+        return;
+    }
+
+    int32_t errCode = BatchUpdateWithRetry("tab_analysis_total", updates);
+    CHECK_AND_PRINT_LOG(errCode == E_OK,
+        "ReverseUpdateTotalScoresBatch: BatchUpdateWithRetry failed, ret:%{public}d", errCode);
 }
 
 int32_t BeautyScoreClone::BatchUpdateWithRetry(const std::string& tableName,

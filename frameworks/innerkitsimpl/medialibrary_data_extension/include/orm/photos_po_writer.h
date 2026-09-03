@@ -113,6 +113,7 @@ private:
         {PhotoColumn::PHOTO_SOURCE_PATH, {&PhotosPoWriter::GetSourcePath, &PhotosPoWriter::SetSourcePath}},
         {PhotoColumn::SUPPORTED_WATERMARK_TYPE,
             {&PhotosPoWriter::GetSupportedWatermarkType, &PhotosPoWriter::SetSupportedWatermarkType}},
+        {PhotoColumn::IS_STYLE_PHOTO, {&PhotosPoWriter::GetIsStylePhoto, &PhotosPoWriter::SetIsStylePhoto}},
         {PhotoColumn::PHOTO_STRONG_ASSOCIATION,
             {&PhotosPoWriter::GetStrongAssociation, &PhotosPoWriter::SetStrongAssociation}},
         {MediaColumn::MEDIA_ID, {&PhotosPoWriter::GetMediaId, &PhotosPoWriter::SetMediaId}},
@@ -138,6 +139,8 @@ private:
         {PhotoColumn::PHOTO_SHARE_DATE_DAY,
             {&PhotosPoWriter::GetPhotoShareDateDay, &PhotosPoWriter::SetPhotoShareDateDay}},
         {PhotoColumn::PHOTO_SHARE_GROUP, {&PhotosPoWriter::GetPhotoShareGroup, &PhotosPoWriter::SetPhotoShareGroup}},
+        {PhotoColumn::PHOTO_EDIT_DATA_EXIST,
+            {&PhotosPoWriter::GetEditDataExist, &PhotosPoWriter::SetEditDataExist}},
     };
     const std::map<std::string, GetSetNode> EXTRA_HANDLERS = {
         {"album_cloud_id", {&PhotosPoWriter::GetAlbumCloudId, &PhotosPoWriter::SetAlbumCloudId}},
@@ -240,6 +243,8 @@ private:
     bool GetSourcePath(std::string &val);
     void SetSupportedWatermarkType(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetSupportedWatermarkType(std::string &val);
+    void SetIsStylePhoto(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetIsStylePhoto(std::string &val);
     void SetStrongAssociation(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetStrongAssociation(std::string &val);
     void SetMediaId(std::variant<int32_t, int64_t, double, std::string> &val);
@@ -261,6 +266,8 @@ private:
     void SetThumbSize(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetThumbSize(std::string &val);
     std::string GetStringValByPrecision(const double doubleVal, const int32_t precision);
+    void SetEditDataExist(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetEditDataExist(std::string &val);
     bool GetPackageName(std::string &val);
     void SetPackageName(std::variant<int32_t, int64_t, double, std::string> &val);
     void SetSouthDeviceType(std::variant<int32_t, int64_t, double, std::string> &val);

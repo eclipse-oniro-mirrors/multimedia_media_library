@@ -86,6 +86,7 @@ public:
     std::optional<int64_t> lcdVisitTime;              // PhotoColumn::PHOTO_LCD_VISIT_TIME
     std::optional<int64_t> thumbnailReady;            // PhotoColumn::PHOTO_THUMBNAIL_READY
     std::optional<int64_t> timePending;               // PhotoColumn::MEDIA_TIME_PENDING
+    std::optional<int32_t> editDataExist;             // PhotoColumn::PHOTO_EDIT_DATA_EXIST
     std::optional<int32_t> fileSourceType;            // PhotoColumn::PHOTO_FILE_SOURCE_TYPE
     std::optional<std::string> storagePath;           // PhotoColumn::PHOTO_STORAGE_PATH
     std::optional<std::string> lcdSize;               // PhotoColumn::PHOTO_LCD_SIZE
@@ -110,6 +111,9 @@ public:
     /* Photo Album */
     std::optional<std::string> albumCloudId;  // SetSourceAlbum()函数相关
     std::optional<std::string> albumLPath;
+
+    /* exit transcode file */
+    std::optional<int32_t> exitTranscodeFile;
 
     /* Photo Map */
     std::vector<std::string> removeAlbumCloudId;

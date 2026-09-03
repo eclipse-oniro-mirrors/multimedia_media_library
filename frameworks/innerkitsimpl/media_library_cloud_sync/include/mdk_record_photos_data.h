@@ -145,6 +145,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetMovingPhotoEffectMode(const int32_t movingPhotoEffectMode);
     std::optional<int32_t> GetSupportedWatermarkType() const;
     MDKRecordPhotosData &SetSupportedWatermarkType(const int32_t supportedWatermarkType);
+    std::optional<int32_t> GetIsStylePhoto() const;
+    MDKRecordPhotosData &SetIsStylePhoto(const int32_t isStylePhoto);
     std::optional<int32_t> GetStrongAssociation() const;
     MDKRecordPhotosData &SetStrongAssociation(const int32_t strongAssociation);
     std::optional<int32_t> GetCloudFileId() const;
@@ -173,6 +175,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetFileSourceType(int32_t fileSourceType);
     std::optional<std::string> GetStoragePath() const;
     MDKRecordPhotosData &SetStoragePath(const std::string &storagePath);
+    std::optional<int32_t> GetEditDataExist() const;
+    MDKRecordPhotosData &SetEditDataExist(const int32_t editDataExist);
     std::optional<int32_t> GetCompressionQuality() const;
     MDKRecordPhotosData &SetCompressionQuality(const int32_t compressionQuality);
     std::optional<std::string> GetUniqueId() const;

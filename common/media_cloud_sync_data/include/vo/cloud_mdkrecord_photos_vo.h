@@ -52,6 +52,7 @@ public:
     int32_t exifRotate;
     int32_t movingPhotoEffectMode;
     int32_t supportedWatermarkType;
+    int32_t isStylePhoto;
     int32_t strongAssociation;
     int32_t fileId;
     std::string cloudId;
@@ -82,6 +83,7 @@ public:
     bool isNew;
     int32_t fileSourceType;
     std::string storagePath;
+    int32_t editDataExist;
     std::string uniqueId;
     std::string packageName;
     int32_t photoRiskStatus;

@@ -398,6 +398,7 @@ config("media_data_extension_public_config") {
 }
 
 ohos_shared_library("medialibrary_data_extension") {
+  stack_protector_ret = true
   install_enable = true
   defines = []
 
@@ -720,6 +721,8 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/restore_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/stop_restore_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/heif_transcoding_check_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/slow_motion_transcode_progress_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/slow_motion_transcode_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_download_cloud_media_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/pause_batch_download_cloud_resources_vo.cpp",
@@ -1056,6 +1059,8 @@ ohos_shared_library("medialibrary_data_extension") {
     "src/operation/photo_owner_album_id_operation.cpp",
     "src/operation/photo_source_path_operation.cpp",
     "src/operation/photo_storage_operation.cpp",
+    "src/operation/slow_motion_transcode_operation.cpp",
+    "src/operation/video_slow_motion_operation.cpp",
     "src/photo_album_operation/photo_album_lpath_operation.cpp",
     "src/photo_album_operation/photo_album_merge_operation.cpp",
     "src/photo_album_operation/photo_album_update_date_modified_operation.cpp",
@@ -1066,6 +1071,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "src/picture_manager_thread.cpp",
     "src/preferred_compatible_mode_check_utils.cpp",
     "src/reverse_clone_restore_marker.cpp",
+    # "src/slow_motion_transcode_callback.cpp",
     "src/tlv_util.cpp",
     "src/transcode_compatible_info_operations.cpp",
     "src/trash_async_worker.cpp",
@@ -1571,7 +1577,6 @@ ohos_shared_library("medialibrary_data_extension") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

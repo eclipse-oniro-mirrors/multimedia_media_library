@@ -70,6 +70,7 @@ const std::string GALLERY_MEDIA_TABLE_NAME = "gallery_media";
 const std::string PHOTO_ALBUM_TABLE_NAME = "PhotoAlbum";
 const std::string INTEGRITY_CHECK_OK = "ok";
 const std::string INTEGRITY_CHECK_ERROR = "integrity error";
+constexpr int32_t NO_NEED_CALLBACK_VERSION = -1;
 
 const std::vector<uint32_t> HEX_MAX = { 0xff, 0xffff, 0xffffff, 0xffffffff };
 static SafeMap<int32_t, int32_t> fileIdOld2NewForCloudEnhancement;
@@ -144,41 +145,13 @@ int32_t BackupDatabaseUtils::InitDbForOldVersion(std::shared_ptr<NativeRdb::RdbS
     }
     int32_t err;
     RdbCallback cb;
-    rdbStore = NativeRdb::RdbHelper::GetRdbStore(*config, MEDIA_RDB_VERSION, cb, err);
-    oldVersion = cb.oldVersion_;
+    rdbStore = NativeRdb::RdbHelper::GetRdbStore(*config, NO_NEED_CALLBACK_VERSION, cb, err);
+    CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "GetRdbStore failed, ret: %{public}d", err);
+    err = rdbStore->GetVersion(oldVersion);
     MEDIA_INFO_LOG("InitDbForOldVersion oldVersion is %{public}d", oldVersion);
     if (outConfig != nullptr) {
         *outConfig = std::move(config);
     }
-    return err;
-}
-
-int32_t BackupDatabaseUtils::InitDbForOldVersion(std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
-    const std::string &dbName, const std::string &dbPath, const std::string &bundleName,
-    bool isMediaLibrary, int32_t& oldVersion, int32_t area)
-{
-    NativeRdb::RdbStoreConfig config(dbName);
-    config.SetPath(dbPath);
-    config.SetBundleName(bundleName);
-    config.SetReadConSize(CONNECT_SIZE);
-    config.SetSecurityLevel(NativeRdb::SecurityLevel::S3);
-    config.SetHaMode(NativeRdb::HAMode::MANUAL_TRIGGER);
-    config.SetAllowRebuild(true);
-    config.SetWalLimitSize(WAL_LIMIT_SIZE);
-    if (area != DEFAULT_AREA_VERSION) {
-        config.SetArea(area);
-    }
-    if (isMediaLibrary) {
-        config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
-        config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
-        config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
-        config.SetScalarFunction("begin_generate_highlight_thumbnail", STAMP_PARAM, BeginGenerateHighlightThumbnail);
-    }
-    int32_t err;
-    RdbCallback cb;
-    rdbStore = NativeRdb::RdbHelper::GetRdbStore(config, MEDIA_RDB_VERSION, cb, err);
-    oldVersion = cb.oldVersion_;
-    MEDIA_INFO_LOG("InitDbForOldVersion oldVersion is %{public}d", oldVersion);
     return err;
 }
 

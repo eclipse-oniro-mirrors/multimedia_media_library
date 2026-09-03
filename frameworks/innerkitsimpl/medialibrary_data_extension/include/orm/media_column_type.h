@@ -96,6 +96,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::PHOTO_BURST_KEY, DataType::STRING},
     {PhotoColumn::PHOTO_CE_AVAILABLE, DataType::INT},
     {PhotoColumn::PHOTO_CE_STATUS_CODE, DataType::INT},
+    {PhotoColumn::IS_STYLE_PHOTO, DataType::INT},
     {PhotoColumn::PHOTO_STRONG_ASSOCIATION, DataType::INT},
     {PhotoColumn::PHOTO_ASSOCIATE_FILE_ID, DataType::INT},
     {PhotoColumn::PHOTO_HAS_CLOUD_WATERMARK, DataType::INT},
@@ -116,6 +117,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::PHOTO_VIDEO_MODE, DataType::INT},
     {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, DataType::INT},
     {PhotoColumn::PHOTO_STORAGE_PATH, DataType::STRING},
+    {PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, DataType::INT},
     {PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, DataType::INT},
     {PhotoColumn::UNIQUE_ID, DataType::STRING},
     {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, DataType::INT},
@@ -132,6 +134,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::PHOTO_VISIBILITY, DataType::INT},
     {PhotoColumn::PHOTO_SHARE_RISK_STATUS, DataType::INT},
     {PhotoColumn::PHOTO_SHARE_RISK_TYPE, DataType::STRING},
+    {PhotoColumn::PHOTO_EDIT_DATA_EXIST, DataType::INT},
 };
 
 static const std::map<std::string, DataType> PHOTO_ALBUM_COLUMNS = {

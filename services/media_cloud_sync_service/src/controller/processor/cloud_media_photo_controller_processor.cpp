@@ -173,6 +173,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.exifRotate = record.exifRotate.value_or(0);
     photosVo.movingPhotoEffectMode = record.movingPhotoEffectMode.value_or(0);
     photosVo.supportedWatermarkType = record.supportedWatermarkType.value_or(0);
+    photosVo.isStylePhoto = record.isStylePhoto.value_or(0);
     photosVo.strongAssociation = record.strongAssociation.value_or(0);
     photosVo.fileId = record.fileId.value_or(0);
     photosVo.data = record.data.value_or("");
@@ -188,6 +189,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.shareAlbumOwner = record.shareAlbumOwner.value_or("");
     photosVo.shareDateDay = record.shareDateDay.value_or(0);
     photosVo.shareGroup = record.shareGroup.value_or(0);
+    photosVo.editDataExist = record.editDataExist.value_or(0);
     return true;
 }
 
@@ -285,6 +287,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.exifRotate = photosVo.exifRotate;
     data.attributesEditDataCamera = photosVo.editDataCamera;
     data.attributesSupportedWatermarkType = photosVo.supportedWatermarkType;
+    data.attributesIsStylePhoto = photosVo.isStylePhoto;
     data.attributesStrongAssociation = photosVo.strongAssociation;
     data.attributesUniqueId = photosVo.uniqueId;
     data.attributesPackageName = photosVo.packageName;
@@ -297,6 +300,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.attributesShareGroup = photosVo.shareGroup;
     data.attributesIsCritical = photosVo.isCritical;
     data.compressionQuality = photosVo.compressionQuality;
+    data.editDataExist = photosVo.editDataExist;
     return true;
 }
 

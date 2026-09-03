@@ -200,6 +200,7 @@ public:
         NativeRdb::RdbPredicates &predicates, const std::string &photoId, const std::string &albumId);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> HandleAnalysisIndex(MediaLibraryCommand &cmd,
         const std::string &photoId, const std::string &albumId);
+    EXPORT static int32_t SlowMotionMove(int32_t id);
     EXPORT static int32_t SetLivePhoto4dStatus(const int32_t fileId, const int32_t livePhoto4dStatus,
         const std::string &livePhoto4dLatestPair);
     EXPORT static int32_t SetExtraDataVersion(const int32_t fileId, const uint32_t version);
@@ -256,6 +257,8 @@ private:
     static int32_t SaveCameraPhotoWithFilters(MediaLibraryCommand& cmd, const shared_ptr<FileAsset>& fileAsset);
     static int32_t SubmitEditCacheExecute(MediaLibraryCommand &cmd,
         const std::shared_ptr<FileAsset> &fileAsset, const std::string &cachePath, bool isWriteGpsAdvanced);
+    static int32_t SubmitSlowMotionExecute(const shared_ptr<FileAsset>& fileAsset,
+        MoveCacheFileInfo& moveCacheFileInfo);
     static int32_t UpdateAssetPathInSubmitExistFile(int32_t fileId, std::string &path);
     static int32_t SubmitCacheExecute(MediaLibraryCommand &cmd,
         const std::shared_ptr<FileAsset> &fileAsset, const std::string &cachePath);

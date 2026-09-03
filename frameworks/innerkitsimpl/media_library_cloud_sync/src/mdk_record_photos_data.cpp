@@ -488,6 +488,15 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetStrongAssociation(const int32_t str
     this->attributes_[PhotoColumn::PHOTO_STRONG_ASSOCIATION] = MDKRecordField(strongAssociation);
     return *this;
 }
+std::optional<int32_t> MDKRecordPhotosData::GetIsStylePhoto() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::IS_STYLE_PHOTO);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetIsStylePhoto(const int32_t isStylePhoto)
+{
+    this->attributes_[PhotoColumn::IS_STYLE_PHOTO] = MDKRecordField(isStylePhoto);
+    return *this;
+}
 std::optional<int32_t> MDKRecordPhotosData::GetCloudFileId() const
 {
     return this->recordReader_.GetIntValue(this->attributes_, MediaColumn::MEDIA_ID);
@@ -807,5 +816,16 @@ std::optional<std::string> MDKRecordPhotosData::GetAttributeFieldValue(const std
 std::optional<int64_t> MDKRecordPhotosData::GetAttributeFieldLongValue(const std::string &fieldName) const
 {
     return this->recordReader_.GetLongValue(this->attributes_, fieldName);
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetEditDataExist() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_EDIT_DATA_EXIST);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetEditDataExist(const int32_t editDataExist)
+{
+    this->attributes_[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = MDKRecordField(editDataExist);
+    return *this;
 }
 }  // namespace OHOS::Media::CloudSync

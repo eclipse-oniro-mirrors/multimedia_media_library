@@ -26,6 +26,8 @@
 #include "rdb_helper.h"
 #include "preferences.h"
 #include "preferences_helper.h"
+#include "medialibrary_errno.h"
+#include "upgrade_restore_task_report.h"
 #include <thread>
 
 namespace OHOS {
@@ -125,6 +127,101 @@ std::vector<ReverseCloneRestore::AssetMoveState> LoadCompletedAssetMovesFromXml(
     return moves;
 }
 
+static bool IsPathExists(const std::string& path)
+{
+    struct stat st;
+    return (stat(path.c_str(), &st) == 0);
+}
+
+/*
+ * backup 仍存在，说明原目标目录尚未恢复，此时 dstLocal 中是从 src 搬入的数据，可以删除。
+ *
+ * backup 已不存在且 dstLocal 存在时，可能是上一次回滚已经完成了
+ * backup -> dstMerge，不能再把 dstLocal 删除，否则会误删已恢复的新机数据。
+ */
+static bool RollbackSingleAssetMove(const ReverseCloneRestore::AssetMoveState &move)
+{
+    bool ret = true;
+    bool backupExists = move.backedUpDst && IsPathExists(move.backup);
+    if (move.movedSrc && (!move.backedUpDst || backupExists)) {
+        if (IsPathExists(move.dstLocal)) {
+            MEDIA_INFO_LOG("RollbackSingleAssetMove: removing dstLocal=%{public}s",
+                move.dstLocal.c_str());
+            if (!MediaFileUtils::DeleteDir(move.dstLocal)) {
+                MEDIA_ERR_LOG("RollbackSingleAssetMove: failed to remove dstLocal=%{public}s",
+                    move.dstLocal.c_str());
+                ret = false;
+            }
+        } else {
+            MEDIA_INFO_LOG("RollbackSingleAssetMove: dstLocal already removed, dstLocal=%{public}s",
+                move.dstLocal.c_str());
+        }
+    }
+
+    CHECK_AND_RETURN_RET(move.backedUpDst, ret);
+
+    if (!IsPathExists(move.backup)) {
+        if (IsPathExists(move.dstLocal)) {
+            MEDIA_INFO_LOG("RollbackSingleAssetMove: backup already restored, dstLocal=%{public}s",
+                move.dstLocal.c_str());
+            return ret;
+        }
+        MEDIA_ERR_LOG("RollbackSingleAssetMove: backup and dstLocal are both missing, "
+            "backup=%{public}s, dstLocal=%{public}s",
+            move.backup.c_str(), move.dstLocal.c_str());
+        return false;
+    }
+
+    if (IsPathExists(move.dstLocal)) {
+        MEDIA_ERR_LOG("RollbackSingleAssetMove: dstLocal still exists before restoring backup, "
+            "dstLocal=%{public}s", move.dstLocal.c_str());
+        return false;
+    }
+
+    if (rename(move.backup.c_str(), move.dstMerge.c_str()) != 0) {
+        MEDIA_ERR_LOG("RollbackSingleAssetMove: restore backup %{public}s to dstMerge %{public}s failed, "
+            "errno=%{public}d",
+            move.backup.c_str(), move.dstMerge.c_str(), errno);
+        return false;
+    }
+
+    MEDIA_INFO_LOG("RollbackSingleAssetMove: restored backup %{public}s to dstMerge %{public}s",
+        move.backup.c_str(), move.dstMerge.c_str());
+    return ret;
+}
+
+static bool RollbackAssetMovesDirectly(const std::vector<ReverseCloneRestore::AssetMoveState> &moves)
+{
+    MEDIA_INFO_LOG("RollbackAssetMovesDirectly: rolling back %{public}zu moves", moves.size());
+    bool ret = true;
+    for (auto iter = moves.rbegin(); iter != moves.rend(); ++iter) {
+        const auto &move = *iter;
+        if (!RollbackSingleAssetMove(move)) {
+            ret = false;
+        }
+    }
+    return ret;
+}
+
+static std::string GetResumeStageString(ReverseCloneRestoreStage stage, bool success)
+{
+    std::string result = success ? "SUCCESS" : "FAIL";
+    switch (stage) {
+        case ReverseCloneRestoreStage::EARLY_STAGE:
+            return "RESUME:ROLLBACK:EARLY_STAGE:" + result;
+        case ReverseCloneRestoreStage::DB_SWITCHED:
+            return "RESUME:ROLLBACK:DB_SWITCHED:" + result;
+        case ReverseCloneRestoreStage::ABSORBING_DATA:
+            return "RESUME:ABSORBING_DATA:" + result;
+        case ReverseCloneRestoreStage::ANALYSIS_RESTORE:
+            return "RESUME:FINISH:ANALYSIS_RESTORE:" + result;
+        case ReverseCloneRestoreStage::FINISHING:
+            return "RESUME:FINISH:FINISHING:" + result;
+        default:
+            return "RESUME:UNKNOWN:" + result;
+    }
+}
+
 void ReverseCloneRestoreResume::CheckAndStartResumeImpl()
 {
     MEDIA_INFO_LOG("CheckAndStartResume: start checking");
@@ -163,6 +260,14 @@ void ReverseCloneRestoreResume::ResumeWorker(ReverseCloneRestoreStage stage)
         static_cast<int>(stage));
     // 执行恢复
     bool success = DoResume(stage);
+    ReverseRestoreReportInfo reportInfo;
+    reportInfo.restoreDirection = "REVERSE";
+    reportInfo.cloneRestoreInfo = GetResumeStageString(stage, success);
+    reportInfo.cloneRestoreCount = "1";
+    UpgradeRestoreTaskReport()
+        .SetSceneCode(CLONE_RESTORE_ID)
+        .SetTaskId(std::to_string(MediaFileUtils::UTCTimeSeconds()))
+        .ReportReverse(reportInfo);
     if (success) {
         MEDIA_INFO_LOG("Reverse clone resume completed successfully");
     } else {
@@ -216,21 +321,22 @@ bool ReverseCloneRestoreResume::RollbackAndIgnore()
         MEDIA_ERR_LOG("Failed to create ReverseCloneRestore instance");
         return false;
     }
-    if (!reverseRestore->RollbackReverseRestore(isEarlyStage)) {
-        MEDIA_ERR_LOG("Rollback reverse restore failed");
-        return false;
-    }
     // 非早期阶段：从XML文件加载已完成的资产移动状态并回滚
     if (!isEarlyStage) {
         MEDIA_INFO_LOG("RollbackAndIgnore: restoring directories from XML");
         std::vector<ReverseCloneRestore::AssetMoveState> moves = LoadCompletedAssetMovesFromXml();
-        if (!reverseRestore->SetCompletedAssetMovesAndRollback(moves)) {
+        if (!RollbackAssetMovesDirectly(moves)) {
             MEDIA_ERR_LOG("RollbackAndIgnore: restore directories failed");
             return false;
         }
     }
+    if (!reverseRestore->RollbackReverseRestore(isEarlyStage)) {
+        MEDIA_ERR_LOG("Rollback reverse restore failed");
+        return false;
+    }
     // 删除标记位
     ReverseCloneReliabilityMarker::Delete();
+    reverseRestore->StopParametersForResume();
     return true;
 }
 

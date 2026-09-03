@@ -129,6 +129,7 @@ public:
     static const std::string PHOTO_CLEAN_FLAG EXPORT;
     static const std::string PHOTO_DYNAMIC_RANGE_TYPE EXPORT;
     static const std::string PHOTO_HDR_MODE EXPORT;
+    static const std::string PHOTO_EDIT_DATA_EXIST EXPORT;
     static const std::string MOVING_PHOTO_EFFECT_MODE EXPORT;
     static const std::string PHOTO_HAS_ASTC EXPORT; // This attribute has been replaced by "thumbnail_ready"
     static const std::string PHOTO_THUMBNAIL_READY EXPORT;
@@ -185,7 +186,6 @@ public:
     static const std::string PHOTO_CRITICAL_TYPE EXPORT;
     static const std::string PHOTO_RISK_STATUS EXPORT;
     static const std::string PHOTO_CHANGE_TIME EXPORT;
-    static const std::string PHOTO_EDIT_DATA_EXIST EXPORT;
     static const std::string PHOTO_DATE_ADDED_YEAR EXPORT;
     static const std::string PHOTO_DATE_ADDED_MONTH EXPORT;
     static const std::string PHOTO_DATE_ADDED_DAY EXPORT;

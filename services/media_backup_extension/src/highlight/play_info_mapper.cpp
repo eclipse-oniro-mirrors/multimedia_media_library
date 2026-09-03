@@ -236,20 +236,18 @@ std::string BuildRemappedUri(const std::string &uri, const UriFileIdSegment &seg
     auto it = fileIdMap.find(seg.fileId);
     std::string newIdStr = std::to_string(it->second);
 
-    size_t queryPos = uri.find("?", lastSlash);
-    std::string filename = (queryPos != std::string::npos)
-        ? uri.substr(lastSlash + 1, queryPos - lastSlash - 1)
-        : uri.substr(lastSlash + 1);
-    std::string suffix = (queryPos != std::string::npos) ? uri.substr(queryPos) : "";
-    std::string newFilename = RemapFilenameByFileIdMap(filename, fileIdMap);
-
     // seg.slashAfterId == lastSlash means 2-level pattern (id is directly before filename)
     if (seg.slashAfterId == lastSlash) {
+        size_t queryPos = uri.find("?", lastSlash);
+        std::string filename = (queryPos != std::string::npos)
+            ? uri.substr(lastSlash + 1, queryPos - lastSlash - 1)
+            : uri.substr(lastSlash + 1);
+        std::string suffix = (queryPos != std::string::npos) ? uri.substr(queryPos) : "";
+        std::string newFilename = RemapFilenameByFileIdMap(filename, fileIdMap);
         return uri.substr(0, seg.slashBeforeId + 1) + newIdStr + "/" + newFilename + suffix;
     }
-    // 3-level pattern: prefix + newId + "/{dirName}/" + newFilename + suffix
-    return uri.substr(0, seg.slashBeforeId + 1) + newIdStr +
-        uri.substr(seg.slashAfterId, lastSlash - seg.slashAfterId + 1) + newFilename + suffix;
+    // 3-level pattern: only replace fileId in path, preserve filename as-is
+    return uri.substr(0, seg.slashBeforeId + 1) + newIdStr + uri.substr(seg.slashAfterId);
 }
 
 // Extract file_id from URI path and remap it.

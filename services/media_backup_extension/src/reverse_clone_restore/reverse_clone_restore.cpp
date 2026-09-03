@@ -17,6 +17,7 @@
 #include "reverse_clone_restore.h"
 
 #include "backup_database_utils.h"
+#include "backup_const_column.h"
 #include "medialibrary_db_const.h"
 #include "backup_file_utils.h"
 #include "media_file_utils.h"
@@ -1960,13 +1961,6 @@ bool ReverseCloneRestore::RollbackCompletedAssetMoves()
     return ret;
 }
 
-bool ReverseCloneRestore::SetCompletedAssetMovesAndRollback(const std::vector<AssetMoveState> &moves)
-{
-    MEDIA_INFO_LOG("SetCompletedAssetMovesAndRollback: setting %{public}zu moves", moves.size());
-    completedAssetMoves_ = moves;
-    return RollbackCompletedAssetMoves();
-}
-
 bool ReverseCloneRestore::SaveAssetMoveToXml(const AssetMoveState &move, int index)
 {
     int32_t errCode = 0;
@@ -2108,6 +2102,8 @@ bool ReverseCloneRestore::DoDataBaseUpgrade(std::shared_ptr<NativeRdb::RdbStore>
     reverseRestoreReportInfo_.beforeTransformTimeCost.append(" UpgradeCost: ")
         .append(std::to_string(endTime - startTime) + ";");
     CHECK_AND_RETURN_RET_LOG(isSubset, false, "Upgraded new db schema is not subset of old db");
+    CHECK_AND_RETURN_RET_LOG(oldDbTempStore->SetVersion(MEDIA_RDB_VERSION) == NativeRdb::E_OK, false,
+        "Set database version failed");
     return true;
 }
 
@@ -2245,6 +2241,8 @@ void ReverseCloneRestore::ReverseRestoreSelectionData()
         selectionRestore.RefreshTotalNumber();
         selectionRestore.Restore();
     }
+    // 反向克隆时，无论是否旧机有数据，都把scene置位
+    SetSceneBitForClone();
 }
 
 void ReverseCloneRestore::ReverseRestoreAnalysisTablesData()
@@ -2872,11 +2870,11 @@ int32_t ReverseCloneRestore::RepairFinalAncoAssetsAfterSecondaryMigration()
 
 void ReverseCloneRestore::ProcessPostSecondarySpecialTables()
 {
-    MEDIA_INFO_LOG("Processing tab_asset_and_album_operation after secondary migration");
+    MEDIA_INFO_LOG("Processing tab_asset_and_album_operation");
     int32_t ret = tableDataAdapter_.ProcessSingleTableByRecreate("tab_asset_and_album_operation",
         mediaLibraryRdb_, mediaRdb_);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("Failed to process tab_asset_and_album_operation after secondary migration");
+        MEDIA_ERR_LOG("Failed to process tab_asset_and_album_operation");
     }
 }
 
@@ -2886,8 +2884,11 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
 
     MEDIA_INFO_LOG("Updating special fields in Photos table after db conversion");
     resourceInheritHelper_.SnapshotPureCloudFileIds(mediaLibraryRdb_);
+    // 旧机数据库photos表字段特殊处理
     UpdatePhotosSpecialFields();
+    // 旧机数据库photoalbum表字段特殊处理
     UpdateChangeTime();
+    // 旧机数据库智慧表字段特殊处理
     UpdateAnalysisAlbum();
 
     CheckTableColumnStatus(mediaLibraryRdb_, CLONE_TABLE_LISTS_PHOTO);
@@ -2935,7 +2936,6 @@ void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
         .append(std::to_string(endTime - startTime) + ";");
     ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::ANALYSIS_RESTORE);
     ReverseRestoreAnalysisData();
-    ProcessPostSecondarySpecialTables();
 }
 
 void ReverseCloneRestore::CalculateMigrateNumbers(std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore)
@@ -3123,6 +3123,9 @@ void ReverseCloneRestore::FinishReverseRestore()
         .append(std::to_string(endTime - startTime) + ";");
     startTime = MediaFileUtils::UTCTimeMilliSeconds();
     HandleRestData();
+    // 最后处理需要特殊处理的表
+    ProcessPostSecondarySpecialTables();
+    // 数据融合结束，处理sequence
     FileIdMigrator::UpdateSqliteSequenceForPhotos(mediaLibraryRdb_);
     FileIdMigrator::UpdateSqliteSequenceForAlbums(mediaLibraryRdb_);
     SetMediaAnalysisClearDirtyDataParameter();
@@ -3134,8 +3137,11 @@ void ReverseCloneRestore::FinishReverseRestore()
         CHECK_AND_PRINT_LOG(CompensateActiveDeleteCloudMediaAssetsLocked() == E_OK,
             "ReverseCloneRestore: compensate cloud media delete failed");
     }
+    // 清理数据库文件
     CleanReverseRestoreTempFiles();
     LcdAgingService::GetInstance().MarkRecentLcdPhotos(mediaLibraryRdb_);
+    // 最后处理需要特殊处理的表
+    ProcessPostSecondarySpecialTables();
     endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" PostProcess: ")
         .append(std::to_string(endTime - startTime) + ";");
@@ -3153,6 +3159,12 @@ void ReverseCloneRestore::FinishReverseRestore()
 void ReverseCloneRestore::SetCloneParameterAndStopSyncForResume()
 {
     SetCloneParameterAndStopSync();
+}
+
+void ReverseCloneRestore::StopParametersForResume()
+{
+    StopParameterForRestore();
+    StopParameterForClone();
 }
 
 bool ReverseCloneRestore::PrepareReverseDbBeforeAbsorb(const std::string &backupRestorePath,
@@ -3334,11 +3346,6 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
                                         PhotoColumn::PHOTO_METADATA_FLAGS + " = 0";
     BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateMetadataFlagsSql, {});
 
-    // 4. 旧机保留的 Photos 行不继承 ce_available；新机 absorbed 行插入时保留自身值。
-    std::string updateCeAvailableSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
-        PhotoColumn::PHOTO_CE_AVAILABLE + " = 0";
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateCeAvailableSql, {});
-
     // 5. 更新所有 Photos 表中的 change_time 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::string updateChangeTimeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
@@ -3401,6 +3408,19 @@ void ReverseCloneRestore::SetAggregateBitThird()
     resultSet->Close();
     int32_t bitPosition = 2;
     medialibraryDbUpgrade.SetAggregateBit(bitPosition);
+}
+
+void ReverseCloneRestore::SetSceneBitForClone()
+{
+    MEDIA_INFO_LOG("ReverseCloneRestore SetSceneBitForClone start");
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "SetSceneBitForClone failed, mediaLibraryRdb_ is nullptr");
+    const int32_t SCENE_CLONE_BIT_VALUE = 1 << SCENE_BIT_POSITION_CLONE;
+    std::string updateSql = "UPDATE tab_analysis_total SET " + TOTAL_COL_SCENE + " = " +
+        std::to_string(SCENE_CLONE_BIT_VALUE);
+    int32_t errCode = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateSql);
+    CHECK_AND_PRINT_LOG(errCode >= 0, "ReverseCloneRestore SetSceneBitForClone update failed, ret=%{public}d",
+        errCode);
+    MEDIA_INFO_LOG("ReverseCloneRestore SetSceneBitForClone end");
 }
 
 void ReverseCloneRestore::AbsorbNewAlbums()

@@ -66,6 +66,7 @@ public:
     int32_t videoMode;
     int32_t movingPhotoEffectMode;
     int32_t supportedWatermarkType;
+    int32_t isStylePhoto;
     int32_t strongAssociation;
     int64_t fixVersion;
     int64_t version;
@@ -101,6 +102,7 @@ public:
     int64_t shareDateDay{0};
     int64_t shareGroup{0};
     std::string shareAlbumOwner;
+    int32_t editDataExist;
 
 public:  // functions of Parcelable.
     virtual ~OnFetchPhotosVo() = default;

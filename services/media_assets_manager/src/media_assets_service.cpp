@@ -53,6 +53,7 @@
 #include "query_result_vo.h"
 #include "user_photography_info_column.h"
 #include "userfile_manager_types.h"
+#include "slow_motion_transcode_operation.h"
 #include "datashare_predicates.h"
 #include "medialibrary_file_operations.h"
 #include "close_asset_vo.h"
@@ -1241,6 +1242,30 @@ int32_t MediaAssetsService::CreateTmpCompatibleDup(const CreateTmpCompatibleDupD
         }
     }
     return err;
+}
+
+int32_t MediaAssetsService::SlowMotionTranscode(const SlowMotionTranscodeReqBody &transcodeReq,
+    SlowMotionTranscodeRespBody &resp)
+{
+    MEDIA_DEBUG_LOG("enter MediaAssetsService::SlowMotionTranscode fileId %{public}d", transcodeReq.fileId);
+    auto err = SlowMotionTranscodeOperation::ProcessSlowMotionTranscode(transcodeReq.fileId, transcodeReq.requestId,
+        resp.editTime);
+    return err;
+}
+
+int32_t MediaAssetsService::SlowMotionTranscodeProgress(const std::string &requestId,
+    SlowMotionTranscodeProgressRespBody &resp)
+{
+    MEDIA_DEBUG_LOG("enter MediaAssetsService::SlowMotionTranscodeProgress requestId %{public}s", requestId.c_str());
+    // SlowMotionTranscodeCallback::GetProgressInfo(requestId, resp.isCompleted, resp.progress, resp.result);
+    return E_OK;
+}
+
+int32_t MediaAssetsService::CancelSlowMotionTranscode(const std::string &requestId)
+{
+    MEDIA_DEBUG_LOG("enter MediaAssetsService::CancelSlowMotionTranscode requestId %{public}s", requestId.c_str());
+    // return SlowMotionTranscodeCallback::CancelSlowMotionTranscode(requestId);
+    return E_OK;
 }
 
 int32_t MediaAssetsService::RevertToOriginal(const RevertToOriginalDto& revertToOriginalDto)

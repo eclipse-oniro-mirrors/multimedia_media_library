@@ -334,7 +334,7 @@ void CloneReverseRestoreGeo::InsertCityAlbumsToOld(std::vector<AnalysisAlbumTbl>
                 album.albumName.value().c_str(), duplicateAlbumId);
 
             // 更新 tab_old_albums 中的 album_id 为新机 album_id
-            UpdateTabOldAlbumsId(album.albumId.value(), duplicateAlbumId);
+            UpdateTabOldAlbumsId(duplicateAlbumId, album.albumId.value());
 
             // 更新 mediaRdb_ 中的重复相册数据
             DeleteDuplicateCityAlbum(duplicateAlbumId, album.albumId.value());

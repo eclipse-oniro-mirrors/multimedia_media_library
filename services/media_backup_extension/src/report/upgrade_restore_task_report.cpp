@@ -180,6 +180,7 @@ UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportTimeCost(const uint64_
 
 UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportReverse(const ReverseRestoreReportInfo &reportInfo)
 {
+    MEDIA_INFO_LOG("Enter ReportReverse");
     std::string type = "Reverse";
     std::string errorCode = "";
     std::string errorInfo = "";

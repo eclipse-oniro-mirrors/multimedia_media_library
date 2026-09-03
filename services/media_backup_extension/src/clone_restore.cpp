@@ -3443,6 +3443,12 @@ void CloneRestore::InsertAudio(vector<FileInfo> &fileInfos)
             BackupFileUtils::GarbleFilePath(fileInfo.filePath, CLONE_RESTORE_ID, garbagePath_).c_str());
         CHECK_AND_CONTINUE(PrepareCloudPath(AudioColumn::AUDIOS_TABLE, fileInfo));
         string localPath = RESTORE_MUSIC_LOCAL_DIR + fileInfo.displayName;
+        if (localPath.find("../") != string::npos || localPath.find("..\\") != string::npos) {
+            MEDIA_ERR_LOG("Invalid displayName with path traversal: %{public}s",
+                BackupFileUtils::GarbleFileName(fileInfo.displayName).c_str());
+            UpdateFailedFiles(fileInfo.fileType, fileInfo, RestoreError::MOVE_FAILED);
+            continue;
+        }
         if (MediaFileUtils::IsFileExists(localPath)) {
             MEDIA_INFO_LOG("localPath %{public}s already exists.",
                 BackupFileUtils::GarbleFilePath(fileInfo.filePath, CLONE_RESTORE_ID, garbagePath_).c_str());

@@ -78,6 +78,7 @@ public:
         const std::vector<ReverseCloneKvStoreTask> &retainedOldPhotoKvStoreTasks);
     void FinishReverseRestore();
     void SetCloneParameterAndStopSyncForResume();
+    void StopParametersForResume();
 
     /**
      * @brief 为断点续传初始化数据库
@@ -114,9 +115,6 @@ public:
         bool movedSrc {false};
         bool backedUpDst {false};
     };
-
-    // 用于断点续传：设置已完成的资产移动状态并回滚
-    bool SetCompletedAssetMovesAndRollback(const std::vector<AssetMoveState> &moves);
 
     // 保存资产移动状态到XML文件
     bool SaveAssetMoveToXml(const AssetMoveState &move, int index);
@@ -344,6 +342,8 @@ protected:
     void ReverseRestoreDupSim();
     // 精选视图
     void ReverseRestoreSelectionData();
+    // 精选视图事件聚类
+    void SetSceneBitForClone();
     // 人像昵称
     void ReverseRestorePortraitNickNameData();
     // 相册映射

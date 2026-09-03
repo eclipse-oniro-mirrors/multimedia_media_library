@@ -915,7 +915,12 @@ bool FileIdMigrator::SetSearchIndex(std::shared_ptr<RdbStore> oldDb)
  
 bool FileIdMigrator::SetColumnForTabAnalysisTotal(std::shared_ptr<RdbStore> oldDb)
 {
-    const std::string sql = "UPDATE tab_analysis_total SET graph_db = 0, similarity = 1, duplicate = 1;";
+    const std::string sql =
+        "UPDATE tab_analysis_total "
+        "SET similarity = CASE WHEN similarity > 0 AND similarity != 3 THEN 1 ELSE similarity END, "
+        "    duplicate  = CASE WHEN duplicate > 0 AND duplicate != 3 THEN 1 ELSE duplicate END, "
+        "    graph_db   = CASE WHEN graph_db != 0 THEN 0 ELSE graph_db END "
+        "WHERE (similarity > 0 AND similarity != 3) OR (duplicate > 0 AND duplicate != 3) OR (graph_db != 0);";
     if (!ExecuteSql(oldDb, sql, {})) {
         MEDIA_ERR_LOG("FileIdMigrator: SetColumnForTabAnalysisTotal failed");
         return false;
@@ -1066,7 +1071,7 @@ std::unordered_map<int32_t, int32_t> FileIdMigrator::BuildFileIdMap(std::shared_
         MEDIA_INFO_LOG("FileIdMigrator: tab_cloned_old_photos not exist, skip");
         return fileIdMap;
     }
-    const std::string querySql = "SELECT old_file_id, file_id FROM tab_cloned_old_photos;";
+    const std::string querySql = "SELECT old_file_id, file_id FROM tab_cloned_old_photos WHERE old_file_id <> file_id;";
     auto resultSet = db->QuerySql(querySql);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("FileIdMigrator: query tab_cloned_old_photos failed");

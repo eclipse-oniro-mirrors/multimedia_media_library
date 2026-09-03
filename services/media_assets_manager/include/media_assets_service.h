@@ -73,6 +73,8 @@
 #include "get_uri_from_filepath_vo.h"
 #include "heif_transcoding_check_vo.h"
 #include "start_batch_download_cloud_resources_vo.h"
+#include "slow_motion_transcode_vo.h"
+#include "slow_motion_transcode_progress_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
@@ -173,6 +175,9 @@ public:
     std::shared_ptr<DataShare::DataShareResultSet> ConvertFormat(const ConvertFormatDto &convertFormatDto);
     bool CheckMimeType(const int32_t fileId);
     int32_t CreateTmpCompatibleDup(const CreateTmpCompatibleDupDto &createTmpCompatibleDupDto);
+    int32_t SlowMotionTranscode(const SlowMotionTranscodeReqBody &transcodeReq, SlowMotionTranscodeRespBody &resp);
+    int32_t SlowMotionTranscodeProgress(const std::string &requestId, SlowMotionTranscodeProgressRespBody &resp);
+    int32_t CancelSlowMotionTranscode(const std::string &requestId);
     int32_t GetResultSetFromDb(const GetResultSetFromDbDto &getResultSetFromDbDto, GetResultSetFromDbRespBody &resp);
     int32_t GetResultSetFromPhotosExtend(const std::string &value, std::vector<std::string> &columns,
         GetResultSetFromPhotosExtendRespBody &resp);

@@ -246,7 +246,7 @@ int32_t TableSchemaHandler::DropTable(std::shared_ptr<NativeRdb::RdbStore> rdbSt
     }
 
     std::string sql = "DROP TABLE IF EXISTS " + tableName;
-    int32_t ret = rdbStore->ExecuteSql(sql);
+    int32_t ret = BackupDatabaseUtils::ExecuteSQL(rdbStore, sql);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("DropTable: failed to drop table %{public}s, ret=%{public}d", tableName.c_str(), ret);
         return E_ERR;
@@ -264,7 +264,7 @@ int32_t TableSchemaHandler::CreateTable(std::shared_ptr<NativeRdb::RdbStore> rdb
     }
 
     // 1. 创建表
-    int32_t ret = rdbStore->ExecuteSql(schema.sqlCreate);
+    int32_t ret = BackupDatabaseUtils::ExecuteSQL(rdbStore, schema.sqlCreate);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("CreateTable: failed to create table %{public}s, ret=%{public}d", schema.tableName.c_str(), ret);
         return E_ERR;
@@ -274,7 +274,7 @@ int32_t TableSchemaHandler::CreateTable(std::shared_ptr<NativeRdb::RdbStore> rdb
 
     // 2. 创建索引
     for (const auto &indexSql : schema.indexSqls) {
-        ret = rdbStore->ExecuteSql(indexSql);
+        ret = BackupDatabaseUtils::ExecuteSQL(rdbStore, indexSql);
         if (ret != NativeRdb::E_OK) {
             MEDIA_WARN_LOG("CreateTable: failed to create index for table %{public}s, ret=%{public}d, sql=%{public}s",
                 schema.tableName.c_str(), ret, indexSql.c_str());
@@ -283,7 +283,7 @@ int32_t TableSchemaHandler::CreateTable(std::shared_ptr<NativeRdb::RdbStore> rdb
 
     // 3. 创建触发器
     for (const auto &triggerSql : schema.triggerSqls) {
-        ret = rdbStore->ExecuteSql(triggerSql);
+        ret = BackupDatabaseUtils::ExecuteSQL(rdbStore, triggerSql);
         if (ret != NativeRdb::E_OK) {
             MEDIA_WARN_LOG("CreateTable: failed to create trigger for table %{public}s, ret=%{public}d, sql=%{public}s",
                 schema.tableName.c_str(), ret, triggerSql.c_str());
@@ -777,21 +777,21 @@ int32_t TableDataAdapter::ProcessTableByRecreate(const std::string &tableName,
         return E_ERR;
     }
 
-    // 1. Drop表（从destRdb / srcdb）
+    // 1. Drop表（从destRdb）
     int32_t ret = schemaHandler_.DropTable(destRdb, tableName);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("ProcessTableByRecreate: failed to drop table %{public}s", tableName.c_str());
         return ret;
     }
 
-    // 2. 从sourceRdb (dstdb)获取表结构并在destRdb (srcdb)中重新创建
+    // 2. 从sourceRdb获取表结构并在destRdb中重新创建
     ret = schemaHandler_.RecreateTableFromDst(destRdb, sourceRdb, tableName);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("ProcessTableByRecreate: failed to recreate table %{public}s from dst", tableName.c_str());
         return ret;
     }
 
-    // 3. 复制数据（sourceRdb / dstdb → destRdb / srcdb）
+    // 3. 复制数据（sourceRdb → destRdb）
     ret = dataCopier_.CopyTableData(destRdb, sourceRdb, tableName);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("ProcessTableByRecreate: failed to copy data for table %{public}s", tableName.c_str());
@@ -815,14 +815,12 @@ int32_t TableDataAdapter::ProcessTableByCreateOnly(const std::string &tableName,
         return ret;
     }
 
-    // 2. 从sourceRdb (dstdb)获取表结构并在destRdb (srcdb)中重新创建（不复制数据）
+    // 2. 从sourceRdb 获取表结构并在destRdb 中重新创建
     ret = schemaHandler_.RecreateTableFromDst(destRdb, sourceRdb, tableName);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("ProcessTableByCreateOnly: failed to recreate table %{public}s from dst", tableName.c_str());
         return ret;
     }
-
-    // 注意：不复制数据，只创建空表
 
     MEDIA_INFO_LOG(
         "ProcessTableByCreateOnly: successfully processed table (DROP_AND_CREATE): %{public}s", tableName.c_str());

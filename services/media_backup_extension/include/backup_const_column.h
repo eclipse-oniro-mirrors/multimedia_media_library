@@ -241,6 +241,8 @@ const std::string AI_RETOUCH_COL_ANALYSIS_VERSION = "analysis_version";
 const std::string TOTAL_COL_FILE_ID = "file_id";
 const std::string TOTAL_COL_AI_RETOUCH = "ai_retouch";
 const std::string TOTAL_COL_MAGIC_EMOJI = "magic_emoji";
+const std::string TOTAL_COL_SCENE = "scene";
+constexpr int32_t SCENE_BIT_POSITION_CLONE = 4;
 
 // tab_analysis_watermark TBL COL_NAME
 #define ANALYSIS_WATERMARK_TABLE          "tab_analysis_watermark"

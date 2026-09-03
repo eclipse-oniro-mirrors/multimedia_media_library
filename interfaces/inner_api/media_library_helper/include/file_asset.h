@@ -287,6 +287,9 @@ public:
     EXPORT int32_t GetExistCompatibleDuplicate() const;
     EXPORT void SetExistCompatibleDuplicate(int32_t existCompatibleDuplicate);
 
+    EXPORT int32_t GetEditDataExist() const;
+    EXPORT void SetEditDataExist(int32_t editDataExist);
+
     EXPORT void SetStageVideoTaskStatus(int32_t stageVideoTaskStatus);
     EXPORT int32_t GetStageVideoTaskStatus() const;
 

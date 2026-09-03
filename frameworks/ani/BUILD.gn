@@ -75,6 +75,7 @@ config("ani_config") {
 }
 
 ohos_shared_library("medialibrary_ani_utils") {
+  stack_protector_ret = true
   configs = [ ":ani_config" ]
   include_dirs = [
     "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include",
@@ -313,7 +314,6 @@ ohos_shared_library("medialibrary_ani_utils") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -328,6 +328,7 @@ ohos_shared_library("medialibrary_ani_utils") {
 }
 
 ohos_shared_library("photo_access_helper_ani") {
+  stack_protector_ret = true
   shlib_type = "ani"
   configs = [ ":ani_config" ]
 
@@ -377,7 +378,6 @@ ohos_shared_library("photo_access_helper_ani") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -387,6 +387,7 @@ ohos_shared_library("photo_access_helper_ani") {
 }
 
 ohos_shared_library("userfile_manager_ani") {
+  stack_protector_ret = true
   shlib_type = "ani"
   configs = [ ":ani_config" ]
 
@@ -430,7 +431,6 @@ ohos_shared_library("userfile_manager_ani") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

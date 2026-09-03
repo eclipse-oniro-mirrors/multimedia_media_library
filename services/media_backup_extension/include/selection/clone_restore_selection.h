@@ -110,6 +110,7 @@ private:
     void DeleteExistingSelectionInfos();
     void DeleteExistingSelectionTable();
     void DeleteExistingAtomEventTable();
+    void SetSceneBitForClone();
     void ClearTotalTableSelectionFields();
     void RestoreSelectionData();
     void RestoreAtomEventData();

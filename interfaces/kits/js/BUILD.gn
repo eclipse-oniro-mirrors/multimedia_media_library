@@ -188,6 +188,7 @@ config("public_napi_config") {
 }
 
 ohos_shared_library("medialibrary_nutils") {
+  stack_protector_ret = true
   public_configs = [ ":public_napi_config" ]
   configs = [ ":napi_config" ]
   sources = [
@@ -260,6 +261,9 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/form_info_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_tmp_compatible_dup_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/slow_motion_transcode_progress_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/slow_motion_transcode_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_slow_motion_transcode_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/clone_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/convert_format_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_vo.cpp",
@@ -476,7 +480,6 @@ ohos_shared_library("medialibrary_nutils") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -527,6 +530,7 @@ ohos_shared_library("medialibrary_nutils") {
 }
 
 ohos_shared_library("medialibrary") {
+  stack_protector_ret = true
   configs = [
     ":public_napi_config",
     ":napi_config",
@@ -584,7 +588,6 @@ ohos_shared_library("medialibrary") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -608,6 +611,7 @@ ohos_shared_library("medialibrary") {
 }
 
 ohos_shared_library("userfilemanager") {
+  stack_protector_ret = true
   configs = [
     ":public_napi_config",
     ":napi_config",
@@ -658,7 +662,6 @@ ohos_shared_library("userfilemanager") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -691,6 +694,7 @@ ohos_abc("photoaccesshelper") {
 }
 
 ohos_shared_library("photoaccesshelpernative") {
+  stack_protector_ret = true
   configs = [
     ":public_napi_config",
     ":napi_config_photoaccesshelpernative",
@@ -743,7 +747,6 @@ ohos_shared_library("photoaccesshelpernative") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -790,6 +793,7 @@ gen_js_obj("photopickercomponent_abc") {
 }
 
 ohos_shared_library("photopickercomponent") {
+  stack_protector_ret = true
   sources = [ "${MEDIALIB_JS_PATH}/src/photopickercomponent.cpp" ]
 
   deps = [ ":photopickercomponent_abc" ]
@@ -809,7 +813,6 @@ ohos_shared_library("photopickercomponent") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -842,6 +845,7 @@ gen_js_obj("albumpickercomponent_abc") {
 }
 
 ohos_shared_library("albumpickercomponent") {
+  stack_protector_ret = true
   sources = [ "${MEDIALIB_JS_PATH}/src/albumpickercomponent.cpp" ]
 
   deps = [ ":albumpickercomponent_abc" ]
@@ -861,7 +865,6 @@ ohos_shared_library("albumpickercomponent") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -894,6 +897,7 @@ gen_js_obj("recentphotocomponent_abc") {
 }
 
 ohos_shared_library("recentphotocomponent") {
+  stack_protector_ret = true
   sources = [ "${MEDIALIB_JS_PATH}/src/recentphotocomponent.cpp" ]
 
   deps = [ ":recentphotocomponent_abc" ]
@@ -913,7 +917,6 @@ ohos_shared_library("recentphotocomponent") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -923,6 +926,7 @@ ohos_shared_library("recentphotocomponent") {
 }
 
 ohos_shared_library("sendablephotoaccesshelper") {
+  stack_protector_ret = true
   include_dirs = [
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
@@ -1023,7 +1027,6 @@ ohos_shared_library("sendablephotoaccesshelper") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
