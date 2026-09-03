@@ -383,6 +383,7 @@ enum RestoreError {
     DEDUPLICATION_FILE_SIZE_MISMATCH,
     ANCO_TRANSFER_FAILED,
     PHOTOS_CLOUD_ID_EMPTY,
+    BACKUP_INVALIDATE_SHARE_DATA_FAILED,
 };
 
 enum class PhotoRelatedType {
@@ -445,6 +446,7 @@ const std::unordered_map<int32_t, std::string> RESTORE_ERROR_MAP = {
     { RestoreError::DEDUPLICATION_FILE_SIZE_MISMATCH, "DEDUPLICATION_FILE_SIZE_MISMATCH" },
     { RestoreError::ANCO_TRANSFER_FAILED, "ANCO_TRANSFER_FAILED" },  
     { RestoreError::PHOTOS_CLOUD_ID_EMPTY, "PHOTOS_CLOUD_ID_EMPTY" },
+    { RestoreError::BACKUP_INVALIDATE_SHARE_DATA_FAILED, "BACKUP_INVALIDATE_SHARE_DATA_FAILED" },
 };
 
 const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {
@@ -937,6 +939,7 @@ constexpr size_t SQL_BATCH_SIZE = 1000;
 const std::string CONFIG_INFO_CLONE_PHOTO_SYNC_OPTION_KEY = "photo_sync_status";
 const std::string CONFIG_INFO_CLONE_HDC_DEVICE_ID_KEY = "hdc_device_id";
 const std::string BACKUP_DST_DEVICE_HDC_ENABLE_KEY = "backupHdcEnable";
+const std::string BACKUP_DST_DEVICE_SHARE_KEY = "share";
 const std::string BACKUP_SRC_DEV_ANCO_FILE_LIST_CLONE_KEY = "anco_file_list_clone";
 const std::string BACKUP_SRC_DEV_FILE_MANAGER_FILE_LIST_CLONE_KEY = "file_manager_file_list_clone";
 const std::string BACKUP_DST_DEV_ANCO_FILE_TRANSFER_KEY = "anco_file_transfer";

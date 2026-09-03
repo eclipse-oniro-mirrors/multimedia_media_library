@@ -5250,6 +5250,45 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_invalidate_hdc_cloud_data_001
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
+/*
+ * Test interface: CloneRestore::MarkShareAssetsInvalid
+ * Test content: null rdbStore returns false; valid rdbStore marks shared assets (position=INVALID, is_temp=1).
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_mark_share_assets_invalid_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_mark_share_assets_invalid_001");
+
+    restoreService->mediaLibraryRdb_ = nullptr;
+    EXPECT_FALSE(restoreService->MarkShareAssetsInvalid(restoreService->mediaLibraryRdb_));
+
+    CloneSource cloneSource;
+    std::vector<std::string> tableList = {PhotoColumn::PHOTOS_TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    restoreService->mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    EXPECT_TRUE(restoreService->MarkShareAssetsInvalid(restoreService->mediaLibraryRdb_));
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_temp_db_backup_helpers_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_temp_db_backup_helpers_001");
+    constexpr int64_t threshold = 5LL * 1024 * 1024 * 1024;
+    constexpr int64_t dbSize = 100LL * 1024 * 1024;
+    constexpr int64_t walSize = 10LL * 1024 * 1024;
+
+    EXPECT_FALSE(restoreService->IsEnoughFreeSpaceForBackup(threshold + dbSize + walSize, dbSize, walSize));
+    EXPECT_TRUE(restoreService->IsEnoughFreeSpaceForBackup(threshold + dbSize + walSize + 1, dbSize, walSize));
+
+    std::string backupRestoreDir = restoreService->backupRestoreDir_;
+    restoreService->backupRestoreDir_.clear();
+    EXPECT_FALSE(restoreService->CleanupTempBackupDir());
+    restoreService->backupRestoreDir_ = backupRestoreDir;
+
+    EXPECT_TRUE(restoreService->ReportBackupDbPerf(dbSize, 1, true));
+    EXPECT_FALSE(restoreService->ReportBackupDbPerf(-1, 1, false));
+}
+
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_current_clone_config_info_001, TestSize.Level2)
 {
     MEDIA_INFO_LOG("Start medialibrary_get_current_clone_config_info_001");
