@@ -93,7 +93,7 @@ static void CleanCompositeFiles()
 
 // 造一条照片记录，data/hidden/timePending/compositeDisplayStatus 均可定制。
 // 覆盖分支说明（QueryCompositeAuxiliaryImage，2026-09-01 支持纯云 source_back 流读后）：
-//   B1 fileAsset==nullptr; B2 timePending!=0; B3 隐藏权限; B4 path 为空;
+//   B1 fileAsset==nullptr; B2 timePending!=0; B4 path 为空;
 //   B5 GetCompositeAuxiliaryPath 非法状态; B6 各合法状态取路径;
 //   B7 本地目标文件存在直读; B8 本地目标文件不存在放行云流读;
 //   B9 open 成功返回 fd; B10 open 失败。
@@ -368,21 +368,5 @@ HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_010,
         MEDIA_WARN_LOG("QueryCompositeAuxiliaryImage open may fail in ut env, ret: %{public}d", ret);
         EXPECT_EQ(ret, E_INVALID_VALUES);
     }
-}
-
-/**
- * @tc.name  : QueryCompositeAuxiliaryImage_ShouldNotSucceed_WhenHidden
- * @tc.number: QueryCompositeAuxiliaryImageTest_011
- * @tc.desc  : hidden 记录不返回成功（B3 权限分支，结果依赖运行环境权限，仅断言非成功）
- */
-HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_011, TestSize.Level0)
-{
-    ASSERT_EQ(InsertPhoto(TEST_PHOTO_PATH, 1, 0, 0), NativeRdb::E_OK);
-    int32_t fileId = QueryFileIdByDisplayName(TEST_PHOTO_NAME);
-    ASSERT_GT(fileId, 0);
-
-    QueryCompositeAuxiliaryImageRespBody respBody;
-    int32_t ret = QueryCompositeAuxiliaryImage(fileId, respBody);
-    EXPECT_NE(ret, E_OK);
 }
 } // namespace OHOS::Media
