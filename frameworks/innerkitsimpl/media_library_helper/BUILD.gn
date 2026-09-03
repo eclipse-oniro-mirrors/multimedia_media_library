@@ -65,6 +65,7 @@ ohos_shared_library("media_library") {
     "src/album_order.cpp",
     "src/album_scan_info_column.cpp",
     "src/base_column.cpp",
+    "src/c2pa_utils.cpp",
     "src/cover_record_columns.cpp",
     "src/custom_records_column.cpp",
     "src/download_resources_column.cpp",
@@ -178,6 +179,13 @@ ohos_shared_library("media_library") {
     external_deps += [ "graphic_surface:surface" ]
     external_deps += [ "image_effect:image_effect_impl" ]
     external_deps += [ "media_foundation:histreamer_plugin_base" ]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.tee_trusted_service_client) &&
+      global_parts_info.tee_trusted_service_client) {
+    defines += [ "C2PA_SUPPORT" ]
+    external_deps += [ "trusted_service_client:libtrusted_app_service_client" ]
   }
 
   if (!media_library_link_opt) {

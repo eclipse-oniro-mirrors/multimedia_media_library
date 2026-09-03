@@ -123,6 +123,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::LOCAL_ASSET_SIZE, DataType::LONG},
     {PhotoColumn::ATTACHMENT_SIZE, DataType::LONG},
     {PhotoColumn::PHOTO_LCD_FILE_SIZE, DataType::INT},
+    {PhotoColumn::C2PA_CONFIG_INFO, DataType::STRING},
     {PhotoColumn::COMPRESSION_QUALITY, DataType::INT},
     {PhotoColumn::PHOTO_IS_SHARED, DataType::INT},
     {PhotoColumn::PHOTO_SHARE_OWNER_INFO, DataType::STRING},

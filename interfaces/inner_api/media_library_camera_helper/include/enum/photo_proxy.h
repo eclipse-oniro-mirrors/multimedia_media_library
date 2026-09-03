@@ -67,6 +67,12 @@ enum class DeferredProcType : int32_t {
     OFFLINE,
 };
 
+struct C2PAConfigInfo {
+    bool enableC2PA{false};
+    std::string authorId{""};
+    std::string authorName{""};
+};
+
 class PhotoProxy : public RefBase {
 public:
     PhotoProxy() {}
@@ -93,6 +99,10 @@ public:
         return "";
     }
     virtual uint32_t GetCloudImageEnhanceFlag() = 0;
+    virtual C2PAConfigInfo GetC2PAConfigInfo()
+    {
+        return C2PAConfigInfo();
+    }
     virtual int32_t GetStageVideoTaskStatus() // 动态照片是否需要下发分段式视频任务，返回状态枚举值
     {
         return 0;

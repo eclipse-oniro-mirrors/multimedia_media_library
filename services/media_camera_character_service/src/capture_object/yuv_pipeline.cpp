@@ -44,6 +44,7 @@
 #include "refresh_business_name.h"
 #include "thumbnail_utils.h"
 #include "userfile_manager_types.h"
+#include "c2pa_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -304,6 +305,10 @@ int32_t YuvPipeline::SavePictureForFirstStage(bool needDfx)
         SaveOnePictureForFirstStage(path, mimetype, needDfx);          // 仅存在原图
     } else {
         SaveTwoPictureForFirstStage(path, mimetype, editData, needDfx);  // 原图 + 效果图
+    }
+    auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
+    if (c2paConfigInfo.enableC2PA) {
+        C2paUtils::SignForCreate(path, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
     }
 
     // 3.若落盘高质量, 需要更新photo_quality && dirty
@@ -631,6 +636,10 @@ int32_t YuvPipeline::SaveOnePictureForOnProcess(
         MEDIA_ERR_LOG("SavePicture failed, ret: %{public}d, path: %{public}s, photoId: %{public}s.",
             ret, MediaFileUtils::DesensitizePath(assetInfo.GetPath()).c_str(), assetInfo.GetPhotoId().c_str());
     }
+    auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
+    if (c2paConfigInfo.enableC2PA) {
+        C2paUtils::SignForCreate(assetInfo.GetPath(), c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+    }
     resultPictureForOnProcess_ = picture;
     return ret;
 }
@@ -664,6 +673,10 @@ int32_t YuvPipeline::SaveTwoPictureForOnProcess(
     EnableYuvAndNotify(assetInfo, picture);
 
     FileUtils::DealPicture(assetInfo.GetMimeType(), path, picture, true);
+    auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
+    if (c2paConfigInfo.enableC2PA) {
+        C2paUtils::SignForCreate(assetInfo.GetPath(), c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+    }
     resultPictureForOnProcess_ = picture;
     return E_OK;
 }

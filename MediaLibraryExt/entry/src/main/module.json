@@ -312,6 +312,28 @@
           ],
           "when": "always"
         }
+      },
+      {
+        "name": "ohos.permission.CREATE_SIGN_CONTENT_TRUST",
+        "reason": "$string:permission_create_sign_content_trust",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
+      },
+      {
+        "name": "ohos.permission.APPEND_SIGN_CONTENT_TRUST",
+        "reason": "$string:permission_append_sign_content_trust",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
       }
     ],
     "proxyDatas": [

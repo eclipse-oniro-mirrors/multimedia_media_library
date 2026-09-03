@@ -323,6 +323,9 @@ public:
     EXPORT void SetLcdFileSize(int32_t lcdFileSize);
     EXPORT int32_t GetLcdFileSize() const;
 
+    EXPORT void SetC2paConfigInfo(const std::string &c2paConfigInfo);
+    EXPORT const std::string &GetC2paConfigInfo() const;
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;

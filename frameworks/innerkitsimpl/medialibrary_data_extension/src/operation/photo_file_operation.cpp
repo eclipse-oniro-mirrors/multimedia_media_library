@@ -39,6 +39,7 @@
 #include "media_file_access_utils.h"
 #endif
 #include "file_manager_asset_operations.h"
+#include "c2pa_utils.h"
 
 namespace OHOS::Media {
 // LCOV_EXCL_START
@@ -730,6 +731,9 @@ int32_t PhotoFileOperation::ConvertFormatFile(const std::string &srcFilePath, co
     bool ret = false;
     if (!extension.empty()) {
         ret = MediaFileUtils::ConvertFormatCopy(tmpPath, dstFilePath, extension);
+        if (ret) {
+            C2paUtils::SignForTranscode(tmpPath, dstFilePath);
+        }
     } else {
         ret = MediaFileUtils::CopyFileUtil(tmpPath, dstFilePath);
     }
