@@ -22,6 +22,8 @@
 #include "mdk_asset.h"
 #include "mdk_error.h"
 #include "mdk_reference.h"
+#include "mdk_participant.h"
+#include "mdk_scadetail.h"
 #include "json/json.h"
 
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -39,11 +41,14 @@ enum class MDKRecordFieldType {
     FIELD_TYPE_MAP,        // std::map<std::string, MDKRecordField>
     FIELD_TYPE_ASSET,      // MDKAsset
     FIELD_TYPE_REFERENCE,  // MDKReference
+    FIELD_TYPE_PARTICIPANT, // Participant
+    FIELD_TYPE_SCADETAIL,  // MDKScadetail
 };
 struct MDKSchemaField;
 class MDKRecordField;
 using MDKFieldValue = std::variant<std::monostate, int64_t, double, std::string, bool, std::vector<uint8_t>,
-    std::vector<MDKRecordField>, std::map<std::string, MDKRecordField>, MDKAsset, MDKReference>;
+    std::vector<MDKRecordField>, std::map<std::string, MDKRecordField>, MDKAsset, MDKReference, MDKParticipant,
+    MDKScadetail>;
 // MDKRecordField用来保存记录中的值
 
 class EXPORT MDKRecordField {
@@ -63,6 +68,8 @@ public:
     explicit MDKRecordField(std::vector<MDKRecordField> &val);
     explicit MDKRecordField(MDKAsset &val);
     explicit MDKRecordField(MDKReference &val);
+    explicit MDKRecordField(MDKParticipant &val);
+    explicit MDKRecordField(MDKScadetail &val);
     MDKRecordField &operator=(const MDKRecordField &recordField);
     MDKRecordFieldType GetType() const;
     MDKFieldValue GetFieldValue() const;
@@ -76,6 +83,8 @@ public:
     MDKLocalErrorCode GetRecordMap(std::map<std::string, MDKRecordField> &val) const;
     MDKLocalErrorCode GetAsset(MDKAsset &val) const;
     MDKLocalErrorCode GetReference(MDKReference &val) const;
+    MDKLocalErrorCode GetParticipant(MDKParticipant &val) const;
+    MDKLocalErrorCode GetScadetail(MDKScadetail &val) const;
 
     operator int() const
     {
@@ -117,6 +126,14 @@ public:
     {
         return std::get<MDKReference>(value_);
     }
+    operator MDKParticipant() const
+    {
+        return std::get<MDKParticipant>(value_);
+    }
+    operator MDKScadetail() const
+    {
+        return std::get<MDKScadetail>(value_);
+    }
     operator MDKFieldValue() const
     {
         return value_;
@@ -130,6 +147,8 @@ private:
     Json::Value AssetToJsonValue(const MDKAsset &asset);
     Json::Value FieldAssetToJsonValue();
     Json::Value FieldReferenceToJsonValue();
+    Json::Value FieldParticipantToJsonValue();
+    Json::Value FieldScadetailToJsonValue();
     bool ParseIntFromJson(const Json::Value &jvData);
     bool ParseDoubleFromJson(const Json::Value &jvData);
     bool ParseStringFromJson(const Json::Value &jvData);
@@ -139,6 +158,8 @@ private:
     bool ParseMapFromJson(const Json::Value &jvData);
     bool ParseAssetFromJson(const Json::Value &jvData);
     bool ParseReferenceFromJson(const Json::Value &jvData);
+    bool ParseParticipantFromJson(const Json::Value &jvData);
+    bool ParseScadetailFromJson(const Json::Value &jvData);
 
     MDKAsset ParseAssetFromJsonValue(const Json::Value &jvData);
 

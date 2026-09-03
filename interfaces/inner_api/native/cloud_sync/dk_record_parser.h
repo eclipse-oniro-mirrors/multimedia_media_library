@@ -24,6 +24,8 @@
 #include "dk_record_field.h"
 #include "dk_record.h"
 #include "dk_reference.h"
+#include "dk_participant.h"
+#include "dk_scadetail.h"
 #include "dk_result.h"
 
 #include "mdk_asset.h"
@@ -32,6 +34,8 @@
 #include "mdk_record_field.h"
 #include "mdk_record.h"
 #include "mdk_reference.h"
+#include "mdk_participant.h"
+#include "mdk_scadetail.h"
 #include "mdk_result.h"
 
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -51,7 +55,9 @@ template <typename ORIGIN_RECORD_TYPE, typename TARGET_RECORD_TYPE,             
     typename ORIGIN_ORDER_TABLE_TYPE, typename TARGET_ORDER_TABLE_TYPE,          // DKOrderTable
     typename ORIGIN_ERROR_DETAIL_TYPE, typename TARGET_ERROR_DETAIL_TYPE,        // DKErrorDetail
     typename ORIGIN_ERROR_TYPE, typename TARGET_ERROR_TYPE,                      // DKError
-    typename ORIGIN_RESULT_TYPE, typename TARGET_RESULT_TYPE                     // DKRecordOperResult
+    typename ORIGIN_RESULT_TYPE, typename TARGET_RESULT_TYPE,                    // DKRecordOperResult
+    typename ORIGIN_PARTICIPANT_TYPE, typename TARGET_PARTICIPANT_TYPE,          // Participant
+    typename ORIGIN_SCADETAIL_TYPE, typename TARGET_SCADETAIL_TYPE              // DKScadetail
     >
 class EXPORT DKRecordParser {
 private:
@@ -233,6 +239,88 @@ private:
         return dkReference;
     }
 
+    MDKRoleType CDKRoleType(const Roletype &roleType)
+    {
+        return static_cast<MDKRoleType>(static_cast<int32_t>(roleType));
+    }
+
+    MDKRoleType CDKRoleType(const MDKRoleType &roleType)
+    {
+        return static_cast<MDKRoleType>(static_cast<int32_t>(roleType));
+    }
+
+    MDKUserType CDKUserType(const UserType &userType)
+    {
+        return static_cast<MDKUserType>(static_cast<int32_t>(userType));
+    }
+
+    UserType CDKUserType(const MDKUserType &userType)
+    {
+        return static_cast<UserType>(static_cast<int32_t>(userType));
+    }
+
+    MDKAccountType CDKAccountType(const AccountType &accountType)
+    {
+        return static_cast<MDKAccountType>(static_cast<int32_t>(accountType));
+    }
+
+    AccountType CDKAccountType(const MDKAccountType &accountType)
+    {
+        return static_cast<AccountType>(static_cast<int32_t>(accountType));
+    }
+
+    MDKShareStatus CDKShareStatus(const ShareStatus&shareStatus)
+    {
+        return static_cast<MDKShareStatus>(static_cast<int32_t>(shareStatus));
+    }
+
+    ShareStatus CDKShareStatus(const MDKShareStatus &shareStatus)
+    {
+        return static_cast<ShareStatus>(static_cast<int32_t>(shareStatus));
+    }
+
+    MDKCategory CDKCategoryType(const Category &category)
+    {
+        return static_cast<MDKCategory>(static_cast<int32_t>(category));
+    }
+
+    Category CDKCategoryType(const MDKCategory &category)
+    {
+        return static_cast<Category>(static_cast<int32_t>(category));
+    }
+
+    TARGET_PARTICIPANT_TYPE CDKParticipant(const ORIGIN_PARTICIPANT_TYPE &participant)
+    {
+        TARGET_PARTICIPANT_TYPE dkParticipant;
+        dkParticipant.userId = participant.userId;
+        dkParticipant.role = CDKRoleType(participant.role);
+        dkParticipant.type = CDKUserType(participant.type);
+        dkParticipant.userAccount = participant.userAccount;
+        dkParticipant.displayName = participant.displayName;
+        dkParticipant.profilePhotoLink = participant.profilePhotoLink;
+        dkParticipant.accountType = CDKAccountType(participant.accountType);
+        dkParticipant.status = CDKShareStatus(participant.status);
+        dkParticipant.id = participant.id;
+        dkParticipant.properties = participant.properties;
+        dkParticipant.createdTime = participant.createdTime;
+        dkParticipant.modifiedTime = participant.modifiedTime;
+        dkParticipant.expirationTime = participant.expirationTime;
+        dkParticipant.category = CDKCategoryType(participant.category);
+        return dkParticipant;
+    }
+
+    TARGET_SCADETAIL_TYPE CDKScadetail(const ORIGIN_SCADETAIL_TYPE &scadetail)
+    {
+        TARGET_SCADETAIL_TYPE dkScadetail;
+        dkScadetail.usage = scadetail.usage;
+        dkScadetail.scaState = scadetail.scaState;
+        dkScadetail.scaRank = scadetail.scaRank;
+        dkScadetail.scaVersion = scadetail.scaVersion;
+        dkScadetail.scaAttributes = scadetail.scaAttributes;
+        dkScadetail.riskResult = scadetail.riskResult;
+        return dkScadetail;
+    }
+
     bool CDKRecordFieldInt(const ORIGIN_FIELD_TYPE &field, TARGET_FIELD_TYPE &value)
     {
         int32_t type = static_cast<int32_t>(field.GetType());
@@ -360,6 +448,30 @@ private:
         return false;
     }
 
+    bool CDKRecordFieldParticipant(const ORIGIN_FIELD_TYPE &field, TARGET_FIELD_TYPE &value)
+    {
+        int32_t type = static_cast<int32_t>(field.GetType());
+        if (type == static_cast<int32_t>(MDKRecordFieldType::FIELD_TYPE_PARTICIPANT)) {
+            ORIGIN_PARTICIPANT_TYPE participant;
+            field.GetParticipant(participant);
+            value = TARGET_FIELD_TYPE(CDKParticipant(participant));
+            return true;
+        }
+        return false;
+    }
+
+    bool CDKRecordFieldScadetail(const ORIGIN_FIELD_TYPE &field, TARGET_FIELD_TYPE &value)
+    {
+        int32_t type = static_cast<int32_t>(field.GetType());
+        if (type == static_cast<int32_t>(MDKRecordFieldType::FIELD_TYPE_SCADETAIL)) {
+            ORIGIN_SCADETAIL_TYPE scadetail;
+            field.GetScadetail(scadetail);
+            value = TARGET_FIELD_TYPE(CDKScadetail(scadetail));
+            return true;
+        }
+        return false;
+    }
+
     TARGET_FIELD_TYPE CDKRecordField(const ORIGIN_FIELD_TYPE &field)
     {
         TARGET_FIELD_TYPE dkField;
@@ -370,6 +482,8 @@ private:
         isValid = isValid || CDKRecordFieldBlob(field, dkField);
         isValid = isValid || CDKRecordFieldAsset(field, dkField);
         isValid = isValid || CDKRecordFieldReference(field, dkField);
+        isValid = isValid || CDKRecordFieldParticipant(field, dkField);
+        isValid = isValid || CDKRecordFieldScadetail(field, dkField);
         isValid = isValid || CDKRecordFieldList(field, dkField);
         isValid = isValid || CDKRecordFieldMap(field, dkField);
         return dkField;

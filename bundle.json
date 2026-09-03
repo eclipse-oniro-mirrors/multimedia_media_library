@@ -201,6 +201,8 @@
                   "mdk_record_field.h",
                   "mdk_record.h",
                   "mdk_reference.h",
+                  "mdk_participant.h",
+                  "mdk_scadetail.h",
                   "dk_record_parser.h",
                   "cloud_media_factory.h",
                   "i_cloud_media_data_handler.h",
