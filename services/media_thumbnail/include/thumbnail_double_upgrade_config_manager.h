@@ -59,14 +59,14 @@ private:
     EXPORT void OnParameterChanged(const char *key, const char *value, void *context);
     EXPORT void LoadInfoFromSp();
     EXPORT void SaveInProcessInfoToSp(int64_t currentTime);
-    EXPORT void SaveCompleteInfoToSp(int64_t currentTime);    
+    EXPORT void SaveCompleteInfoToSp(int64_t currentTime);
     EXPORT void SaveDataReportFlagToSp();
-    EXPORT void StartCallbackTimer(int64_t currentTime);    
+    EXPORT void StartCallbackTimer(int64_t currentTime);
     EXPORT void StopCallbackTimer();
     EXPORT void OnTimerTimeout();
     EXPORT void DataReport();
     EXPORT void HandleProcess(int64_t currentTime, bool isNewFlag, const std::string& doubleUpgradeFlag = "");
-    EXPORT bool IsTimeout(int64_t currentTime);    
+    EXPORT bool IsTimeout(int64_t currentTime);
 
     enum class DoubleUpgradeStatus : int32_t {
         NOT_STARTED = 0,

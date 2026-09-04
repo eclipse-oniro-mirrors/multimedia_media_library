@@ -18,10 +18,8 @@
 #include <memory>
 
 #define private public
-#define protected public
 #include "thumbnail_double_upgrade_config_manager.h"
 #undef private
-#undef protected
 
 #include "media_log.h"
 

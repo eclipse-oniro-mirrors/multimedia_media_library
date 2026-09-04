@@ -40,30 +40,30 @@
 namespace OHOS {
 namespace Media {
 namespace {
-    const char* DOUBLE_UPGRADE_SP_FILE = "/data/storage/el2/base/preferences/double_upgrade_config_sp.xml";
+const char* DOUBLE_UPGRADE_SP_FILE = "/data/storage/el2/base/preferences/double_upgrade_config_sp.xml";
 
-    const char* KEY_DOUBLE_UPGRADE_STATUS = "double_update_single_flag";
-    const char* KEY_DOUBLE_UPGRADE_START_TIME = "double_upgrade_start_time";
-    const char* KEY_DOUBLE_UPGRADE_END_TIME = "double_upgrade_end_time";
-    const char* KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG = "double_upgrade_data_report_flag";
+const char* KEY_DOUBLE_UPGRADE_STATUS = "double_update_single_flag";
+const char* KEY_DOUBLE_UPGRADE_START_TIME = "double_upgrade_start_time";
+const char* KEY_DOUBLE_UPGRADE_END_TIME = "double_upgrade_end_time";
+const char* KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG = "double_upgrade_data_report_flag";
 
-    const std::string DOUBLE_UPGRADE_IN_PROGRESS = "1";
-    const std::string DOUBLE_UPGRADE_COMPLETED = "0";
+const std::string DOUBLE_UPGRADE_IN_PROGRESS = "1";
+const std::string DOUBLE_UPGRADE_COMPLETED = "0";
 
-    const char* MAIN_SPACE_DOUBLE_UPGRADE_FLAG = "persist.update.hmos_to_next_flag";
-    const char* PRIVATE_SPACE_DOUBLE_UPGRADE_FLAG = "persist.update.private_hmos_to_next_flag";    
+const char* MAIN_SPACE_DOUBLE_UPGRADE_FLAG = "persist.update.hmos_to_next_flag";
+const char* PRIVATE_SPACE_DOUBLE_UPGRADE_FLAG = "persist.update.private_hmos_to_next_flag";
 
-    constexpr uint32_t DOUBLE_UPGRADE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
+constexpr uint32_t DOUBLE_UPGRADE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 
-    constexpr int32_t STORAGE_SIZE_256G = 256;
-    constexpr int32_t STORAGE_SIZE_512G = 512;
-    constexpr int32_t STORAGE_SIZE_1T = 1024;
+constexpr int32_t STORAGE_SIZE_256G = 256;
+constexpr int32_t STORAGE_SIZE_512G = 512;
+constexpr int32_t STORAGE_SIZE_1T = 1024;
 
-    constexpr int32_t STORAGE_SIZE_LEFT_THRESHOLD_256G = 30;
-    constexpr int32_t STORAGE_SIZE_LEFT_THRESHOLD_512G = 20;
-    constexpr int32_t STORAGE_SIZE_LEFT_THRESHOLD_1T = 15;
+constexpr int32_t STORAGE_SIZE_LEFT_THRESHOLD_256G = 30;
+constexpr int32_t STORAGE_SIZE_LEFT_THRESHOLD_512G = 20;
+constexpr int32_t STORAGE_SIZE_LEFT_THRESHOLD_1T = 15;
 
-    constexpr int64_t ONE_GB_CAST_BYTE = 1024 * 1024 * 1024;
+constexpr int64_t ONE_GB_CAST_BYTE = 1024 * 1024 * 1024;
 } // namespace
 
 ThumbnailDoubleUpgradeConfigManager& ThumbnailDoubleUpgradeConfigManager::GetInstance()
@@ -155,7 +155,7 @@ int32_t ThumbnailDoubleUpgradeConfigManager::GetCurrentSpaceThreshold(bool isClo
     } else {
         threshold = isCloudSyncOn ? THUMBNAIL_FREE_SIZE_LIMIT_5 : THUMBNAIL_FREE_SIZE_LIMIT_10;
     }
-    MEDIA_DEBUG_LOG("GetCurrentSpaceThreshold, threshold:%{public}d, isCloudSyncOn:%{public}d", 
+    MEDIA_DEBUG_LOG("GetCurrentSpaceThreshold, threshold:%{public}d, isCloudSyncOn: %{public}d", 
         threshold, isCloudSyncOn);
     return threshold;
 }
@@ -221,7 +221,8 @@ void ThumbnailDoubleUpgradeConfigManager::OnParameterChanged(const char *key, co
     }
 }
 
-void ThumbnailDoubleUpgradeConfigManager::OnDoubleUpgradeParameterChanged(const char *key, const char *value, void *context)
+void ThumbnailDoubleUpgradeConfigManager::OnDoubleUpgradeParameterChanged(const char *key,
+    const char *value, void *context)
 {
     ThumbnailDoubleUpgradeConfigManager::GetInstance().OnParameterChanged(key, value, context);
 }
@@ -327,8 +328,8 @@ AccountSA::OsAccountType ThumbnailDoubleUpgradeConfigManager::GetOsAccountType()
     if (ret != ERR_OK) {
         MEDIA_ERR_LOG("GetOsAccountType, get osAccountType failed, ret: %{public}d", ret);
     }
-     MEDIA_INFO_LOG("GetOsAccountType, accountType:%{public}d", static_cast<int32_t>(accountType));
-     return accountType;
+    MEDIA_INFO_LOG("GetOsAccountType, accountType:%{public}d", static_cast<int32_t>(accountType));
+    return accountType;
 }
 
 bool ThumbnailDoubleUpgradeConfigManager::IsMainUser() const
@@ -369,7 +370,7 @@ void ThumbnailDoubleUpgradeConfigManager::StartCallbackTimer(int64_t currentTime
     const auto interval = static_cast<uint32_t>(
         std::abs(DOUBLE_UPGRADE_TIMEOUT_MS - std::abs(currentTime - startTimeMs_)));
     MEDIA_INFO_LOG("StartCallbackTimer, interval:%{public}u, startTime:%{public}" PRId64
-        ", currentTime:%{public}" PRId64, interval, startTimeMs_, currentTime);   
+        ", currentTime:%{public}" PRId64, interval, startTimeMs_, currentTime);
     callbackTimerId_ = callbackTimer_.Register(callback, interval, true);
     if (callbackTimerId_ == 0) {
         MEDIA_ERR_LOG("StartCallbackTimer, Callback timer register failed");
@@ -412,7 +413,6 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
     } else {
         MEDIA_INFO_LOG("HandleProcess, invalid value, do nothing");
     }
-
 }
 
  void ThumbnailDoubleUpgradeConfigManager::SaveInProcessInfoToSp(int64_t currentTime)
@@ -424,7 +424,7 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
         return;
     }
   
-    int32_t ret = preferences->PutInt(KEY_DOUBLE_UPGRADE_STATUS, 
+    int32_t ret = preferences->PutInt(KEY_DOUBLE_UPGRADE_STATUS,
         static_cast<int32_t>(DoubleUpgradeStatus::IN_PROGRESS));
     CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to put status, "
         "ret=%{public}d", ret);
@@ -445,17 +445,17 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
     }
     MEDIA_INFO_LOG("SaveInProcessInfoToSp, status:%{public}d, startTime:%{public}" PRId64
         ", currentTime:%{public}" PRId64, static_cast<int32_t>(status_), startTimeMs_, currentTime);
- }
+}
 
- void ThumbnailDoubleUpgradeConfigManager::SaveCompleteInfoToSp(int64_t currentTime)
- {
+void ThumbnailDoubleUpgradeConfigManager::SaveCompleteInfoToSp(int64_t currentTime)
+{
     int32_t errCode = 0;
     auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
     if (preferences == nullptr || errCode != 0) {
         MEDIA_ERR_LOG("SaveCompleteInfoToSp, failed to get preferences, errCode:%{public}d", errCode);
         return;
     }
-  
+
     int32_t ret = preferences->PutInt(KEY_DOUBLE_UPGRADE_STATUS, static_cast<int32_t>(DoubleUpgradeStatus::COMPLETED));
     CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to put status, "
         "ret=%{public}d", ret);
@@ -465,7 +465,7 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
         CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to put end time, "
             "ret=%{public}d", ret);
     }
-    
+
     ret = preferences->FlushSync();
     CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to flush preferences, "
         "ret=%{public}d", ret);
@@ -476,7 +476,7 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
     }
     MEDIA_INFO_LOG("SaveCompleteInfoToSp, status:%{public}d, endTime:%{public}" PRId64
         ", currentTime:%{public}" PRId64, static_cast<int32_t>(status_), endTimeMs_, currentTime);
- }  
+}
 
 bool ThumbnailDoubleUpgradeConfigManager::IsTimeout(int64_t currentTime)
 {
@@ -487,6 +487,6 @@ bool ThumbnailDoubleUpgradeConfigManager::IsTimeout(int64_t currentTime)
     MEDIA_INFO_LOG("IsTimeout, isTimeout:%{public}d, startTime:%{public}" PRId64
         ", currentTime:%{public}" PRId64, isTimeout, startTimeMs_, currentTime);
     return isTimeout;
-}   
+}
 } // namespace Media
 } // namespace OHOS
