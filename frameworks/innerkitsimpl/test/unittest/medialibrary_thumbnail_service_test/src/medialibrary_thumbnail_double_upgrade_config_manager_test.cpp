@@ -338,7 +338,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, SaveCompleteInfoTo
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.endTimeMs_ = TEST_TIME_3S_MS;
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::IN_PROGRESS;
-    manager.SaveCompleteInfoToSpp(TEST_TIME_4S_MS);
+    manager.SaveCompleteInfoToSp(TEST_TIME_4S_MS);
     EXPECT_EQ(manager.endTimeMs_, TEST_TIME_3S_MS);
 }
 

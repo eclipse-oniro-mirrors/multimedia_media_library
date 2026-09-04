@@ -130,7 +130,7 @@ void ThumbnailDoubleUpgradeConfigManager::DataReport()
     }
 
     const int64_t updateDuration = GetUpdateDuration();
-    const std::string uidType = IsMainUser() ? "main_hmos" : (IsPrivateUser() ? "private_hmos", "");
+    const std::string uidType = IsMainUser() ? "main_hmos" : (IsPrivateUser() ? "private_hmos" : "");
     MediaLibraryAstcStat::GetInstance().SetDoubleUpgradeInfo(updateDuration, uidType);
 
     LcdAndAstcCount count = {};
