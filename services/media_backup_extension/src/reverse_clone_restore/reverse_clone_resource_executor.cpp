@@ -1070,6 +1070,8 @@ void AppendOriginMetadataIfNeeded(const ResourceExecuteResult &result, std::vect
     }
     AppendSetValue(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
         NativeRdb::ValueObject(result.origin.source.compositeDisplayStatus), setClauses, args);
+    AppendSetValue(PhotoColumn::PHOTO_CE_AVAILABLE,
+        NativeRdb::ValueObject(result.origin.source.ceAvailable), setClauses, args);
 }
 
 std::string GetFileInode(const std::string &path)

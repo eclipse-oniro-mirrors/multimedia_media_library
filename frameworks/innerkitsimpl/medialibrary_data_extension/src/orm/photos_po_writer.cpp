@@ -639,6 +639,19 @@ bool PhotosPoWriter::GetSupportedWatermarkType(std::string &val)
     val = std::to_string(this->photosPo_.supportedWatermarkType.value());
     return true;
 }
+
+void PhotosPoWriter::SetIsStylePhoto(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.isStylePhoto = std::get<int32_t>(val);
+}
+bool PhotosPoWriter::GetIsStylePhoto(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.isStylePhoto.has_value(), false);
+    val = std::to_string(this->photosPo_.isStylePhoto.value());
+    return true;
+}
 void PhotosPoWriter::SetStrongAssociation(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<int32_t>(val);
@@ -766,6 +779,20 @@ std::string PhotosPoWriter::GetStringValByPrecision(const double doubleVal, cons
     stream.precision(precision);
     stream << doubleVal;
     return stream.str();
+}
+
+void PhotosPoWriter::SetEditDataExist(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.editDataExist = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetEditDataExist(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.editDataExist.has_value(), false);
+    val = std::to_string(this->photosPo_.editDataExist.value());
+    return true;
 }
 
 bool PhotosPoWriter::GetPackageName(std::string &val)

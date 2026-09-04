@@ -845,6 +845,12 @@ void BaseRestore::InsertAudio(int32_t sceneCode, std::vector<FileInfo> &fileInfo
             relativePath1.erase(0, 1);
         }
         string dstPath = RESTORE_MUSIC_LOCAL_DIR + relativePath1;
+        if (dstPath.find("../") != string::npos || dstPath.find("..\\") != string::npos) {
+            MEDIA_ERR_LOG("Invalid relativePath with path traversal: %{public}s",
+                BackupFileUtils::GarbleFilePath(fileInfos[i].relativePath, sceneCode).c_str());
+            UpdateFailedFiles(fileInfos[i].fileType, fileInfos[i], RestoreError::MOVE_FAILED);
+            continue;
+        }
         RecursiveCreateDir(relativePath0, relativePath1);
         if (MediaFileUtils::IsFileExists(dstPath)) {
             MEDIA_INFO_LOG("dstPath %{public}s already exists.",

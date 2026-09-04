@@ -528,6 +528,7 @@ static int32_t SystemApiCheck(MediaLibraryCommand &cmd)
         OperationObject::ALL_DEVICE,
         OperationObject::ACTIVE_DEVICE,
         OperationObject::PAH_FORM_MAP,
+        OperationObject::MEDIA_APP_URI_PERMISSION,
     };
 
     static const set<string> SYSTEM_API_URIS = {

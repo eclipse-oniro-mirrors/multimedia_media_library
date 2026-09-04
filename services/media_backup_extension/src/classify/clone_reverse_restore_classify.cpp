@@ -24,6 +24,7 @@
 #include "result_set_utils.h"
 #include "upgrade_restore_task_report.h"
 #include "media_library_db_upgrade.h"
+#include "classify_aggregate_types.h"
 
 namespace OHOS::Media {
 // LCOV_EXCL_START
@@ -50,7 +51,7 @@ void CloneReverseRestoreClassify::Restore()
     RestoreAlbum();
     RestoreMap();
     RestoreReverseByVersion();
-    AddReverseSpecialAlbum();
+    DealReverseSpecialAlbum();
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     restoreTimeCost_ = end - start;
     ReportReverseRestoreTask();
@@ -72,7 +73,7 @@ void CloneReverseRestoreClassify::InsertClassifyAlbumData()
 
             // 更新 tab_old_albums 中的 album_id 为新机 album_id
             if (album.albumId.has_value()) {
-                UpdateTabOldAlbumsId(album.albumId.value(), duplicateAlbumId);
+                UpdateTabOldAlbumsId(duplicateAlbumId, album.albumId.value());
             }
 
             // 更新 mediaRdb_ 中的重复相册数据
@@ -459,21 +460,29 @@ void CloneReverseRestoreClassify::QueryAndUpdateTotal(const string& tableName, c
     }
 }
 
-void CloneReverseRestoreClassify::AddReverseSpecialAlbum()
+void CloneReverseRestoreClassify::DealReverseSpecialAlbum()
 {
-    MEDIA_INFO_LOG("AddReverseSpecialAlbum start");
-    AddReverseSelfieAlbum();
-    AddReverseUserCommentAlbum();
-}
+    MEDIA_INFO_LOG("DealReverseSpecialAlbum start");
+    CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr, "mediaRdb_ is nullptr");
 
-void CloneReverseRestoreClassify::AddReverseSelfieAlbum()
-{
-    // 暂不需要
-}
+    NativeRdb::ValuesBucket values;
+    values.PutInt(ANALYSIS_COL_COUNT, 0);
+    std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
+        std::make_unique<NativeRdb::AbsRdbPredicates>(ANALYSIS_ALBUM_TABLE);
+    std::vector<NativeRdb::ValueObject> albumNames = {
+        NativeRdb::ValueObject(std::to_string(static_cast<int32_t>(AggregateType::SELFIE_ALBUM))),
+        NativeRdb::ValueObject(std::to_string(static_cast<int32_t>(AggregateType::USER_COMMENT_ALBUM)))
+    };
+    predicates->In(ANALYSIS_COL_ALBUM_NAME, albumNames);
+    int32_t updatedRows = 0;
+    int32_t ret = BackupDatabaseUtils::Update(mediaRdb_, updatedRows, values, predicates);
+    if (ret == E_OK) {
+        MEDIA_INFO_LOG("DealReverseSpecialAlbum updated count to 0, rows=%{public}d", updatedRows);
+    } else {
+        MEDIA_ERR_LOG("DealReverseSpecialAlbum failed to update count, ret=%{public}d", ret);
+    }
 
-void CloneReverseRestoreClassify::AddReverseUserCommentAlbum()
-{
-    // 暂不需要
+    MEDIA_INFO_LOG("DealReverseSpecialAlbum end");
 }
 
 void CloneReverseRestoreClassify::DeleteDuplicateAlbum(int32_t oldAlbumId, int32_t newAlbumId)

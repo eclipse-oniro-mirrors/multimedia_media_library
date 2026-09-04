@@ -3687,6 +3687,7 @@ static int32_t UpdateEditTime(int32_t fileId, int64_t time)
     MediaLibraryCommand updatePendingCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
     updatePendingCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
+    updateValues.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, 1);
     updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, time);
     updatePendingCmd.SetValueBucket(updateValues);
     int32_t rowId = 0;
@@ -3704,6 +3705,7 @@ static int32_t RevertMetadata(int32_t fileId, int64_t time, int32_t effectMode, 
     cmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
     updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, time);
+    updateValues.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, 0);
     if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
             static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
@@ -4140,7 +4142,8 @@ int32_t MediaLibraryPhotoOperations::DoRevertEdit(const std::shared_ptr<FileAsse
         // thumbnail needs to be deleted before CHECK_AND_RETURN.
         ThumbnailService::GetInstance()->HasInvalidateThumbnail(fileIdStr, PhotoColumn::PHOTOS_TABLE);
     }
-    CHECK_AND_RETURN_RET_INFO_LOG(fileAsset->GetPhotoEditTime() !=0, E_OK, "File %{public}d is not edit", fileId);
+    bool isRevert = (fileAsset->GetPhotoEditTime() != 0 || fileAsset->GetEditDataExist() == 1);
+    CHECK_AND_RETURN_RET_INFO_LOG(isRevert, E_OK, "File %{public}d is not edit or not slowmotion", fileId);
 
     string path = fileAsset->GetFilePath();
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_URI, "Can not get file path, fileId=%{public}d", fileId);
@@ -5517,6 +5520,83 @@ int32_t MediaLibraryPhotoOperations::AddFiltersForCloudEnhancementPhoto(int32_t 
     MediaFileUtils::ReadStrFromFile(editDataCameraSourcePath, editData);
     ParseCloudEnhancementEditData(editData);
     return AddFiltersToPhoto(sourcePath, assetPath, editData);
+}
+
+static int32_t UpdateEditData(const int32_t &fileId, const int32_t existEditData)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET(rdbStore != nullptr, E_HAS_DB_ERROR);
+    MediaLibraryCommand updatePendingCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
+    updatePendingCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    ValuesBucket updateValues;
+    updateValues.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, existEditData);
+    updatePendingCmd.SetValueBucket(updateValues);
+    int32_t rowId = 0;
+    int32_t result = rdbStore->Update(updatePendingCmd, rowId);
+    CHECK_AND_RETURN_RET_LOG(result == NativeRdb::E_OK && rowId > 0, E_HAS_DB_ERROR,
+        "Update existEditData failed. Result %{public}d.", result);
+    return E_OK;
+}
+
+int32_t MediaLibraryPhotoOperations::SlowMotionMove(int32_t id)
+{
+    vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME,
+        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MEDIA_TIME_PENDING, PhotoColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
+        PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, MediaColumn::MEDIA_TYPE };
+    shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(
+        PhotoColumn::MEDIA_ID, to_string(id), OperationObject::FILESYSTEM_PHOTO, columns);
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES,
+        "Failed to getmapmanagerthread:: FileAsset, fileId=%{public}d", id);
+    string path = fileAsset->GetFilePath();
+    auto editPath = MediaEditUtils::GetEditDataDir(path);
+    string cachePath = editPath + "/transcode.mp4";
+    MoveCacheFileInfo moveCacheFileInfo(0, cachePath, "", false, false, 0);
+    int32_t errCode =  MediaLibraryPhotoOperations::SubmitSlowMotionExecute(fileAsset, moveCacheFileInfo);
+    return errCode;
+}
+
+int32_t MediaLibraryPhotoOperations::SubmitSlowMotionExecute(const shared_ptr<FileAsset>& fileAsset,
+    MoveCacheFileInfo& moveCacheFileInfo)
+{
+    string editData;
+    MEDIA_INFO_LOG("SubmitSlowMotionExecute enter");
+    int32_t id = fileAsset->GetId();
+    nlohmann::json editDataJson;
+    nlohmann::json editJson;
+    editJson["canvas"] = "SlowMotion";
+    editDataJson[CONST_COMPATIBLE_FORMAT] = "SlowMotion";
+    editDataJson[CONST_FORMAT_VERSION] = "SlowMotion";
+    editDataJson[CONST_EDIT_DATA] = editJson.dump();
+    editDataJson[CONST_APP_ID] = "SlowMotion";
+    editData = editDataJson.dump();
+    int32_t errCode = SaveSourceAndEditData(fileAsset, editData);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to save source and editData");
+    string assetPath = fileAsset->GetFilePath();
+    moveCacheFileInfo.destPath = assetPath;
+    errCode = MediaFileAccessUtils::MoveFileInEditScene(moveCacheFileInfo.cachePath, moveCacheFileInfo.destPath);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_FILE_OPER_FAIL,
+        "Failed to move %{private}s to %{private}s, errCode: %{public}d",
+        moveCacheFileInfo.cachePath.c_str(), assetPath.c_str(), errCode);
+    errCode = UpdateEditData(id, 1);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to update edit data, fileId:%{public}d", id);
+    UpdateAlbumDateModified(fileAsset->GetOwnerAlbumId());
+    ResetOcrInfo(id);
+        // delete cloud enhacement task
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
+    vector<string> fileIds;
+    fileIds.emplace_back(to_string(fileAsset->GetId()));
+    vector<string> photoIds;
+    EnhancementManager::GetInstance().CancelTasksInternal(fileIds, photoIds, CloudEnhancementAvailableType::EDIT);
+#endif
+    ScanFile(assetPath, false, true, true);
+    MediaLibraryAnalysisAlbumOperations::UpdatePortraitAlbumCoverSatisfied(id);
+    string fileIdStr = to_string(fileAsset->GetId());
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
+    albumRefresh.IsCoverContentChange({fileIdStr});
+    NotifyFormMap(id, assetPath, false);
+    MEDIA_INFO_LOG("SubmitSlowMotionExecute success.");
+    return errCode;
 }
 
 int32_t MediaLibraryPhotoOperations::SubmitEditCacheExecute(MediaLibraryCommand& cmd,

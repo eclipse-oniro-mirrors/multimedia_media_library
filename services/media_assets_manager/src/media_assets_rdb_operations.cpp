@@ -477,6 +477,7 @@ const static vector<string> EDITED_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
     PhotoColumn::PHOTO_STORAGE_PATH,
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+    PhotoColumn::PHOTO_EDIT_DATA_EXIST,
 };
 
 // 图库编辑还原

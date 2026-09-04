@@ -39,6 +39,8 @@
 #include "permission_utils.h"
 #include "picture_handle_client.h"
 #include "query_photo_vo.h"
+#include "slow_motion_transcode_vo.h"
+#include "slow_motion_transcode_progress_vo.h"
 #include "ui_extension_context.h"
 #include "user_define_ipc_client.h"
 #include "userfile_client.h"
@@ -63,6 +65,10 @@ const int32_t UUID_STR_LENGTH = 37;
 const int32_t MAX_URI_SIZE = 384; // 256 for display name and 128 for relative path
 const int32_t REQUEST_ID_MAX_LEN = 64;
 const int32_t PROGRESS_MAX = 100;
+const std::size_t MAX_REQUEST_NUM = 5;
+constexpr int32_t INVALID_PROGRESS = 999;
+constexpr uint32_t MAX_INVALID_PROGRESS_COUNT = 6;
+constexpr int32_t SLOW_MOTION_CANCEL_MODE = 2;
 
 const std::string HIGH_TEMPERATURE = "high_temperature";
 const std::string HIGH_TEMPERATURE_VIDEO = "high_temperature_video";
@@ -80,6 +86,7 @@ static SafeMap<std::string, AssetHandler*> inProcessFastRequests;
 static SafeMap<std::string, AssetHandler*> onPreparedResult_;
 static SafeMap<std::string, napi_value> onPreparedResultValue_;
 static SafeMap<std::string, bool> isTranscoderMap_;
+static SafeMap<std::string, bool> isSlowTranscoderMap_;
 
 std::unique_ptr<std::thread> MediaAssetManagerNapi::progressThread_ = nullptr;
 std::mutex MediaAssetManagerNapi::runningMutex_;
@@ -87,6 +94,15 @@ std::mutex MediaAssetManagerNapi::sleepMutex_;
 std::condition_variable MediaAssetManagerNapi::condition_;
 std::atomic_bool MediaAssetManagerNapi::pauseFlag_ = true; // 暂停标识
 std::atomic_bool MediaAssetManagerNapi::stopFlag_ = true; // 停止标识
+
+std::mutex MediaAssetManagerNapi::slowMotionSleepMutex_;
+std::condition_variable MediaAssetManagerNapi::slowMotionCondition_;
+std::unordered_map<std::string, uint32_t> MediaAssetManagerNapi::slowMotionReqs_;
+std::mutex MediaAssetManagerNapi::slowMotionReqsMutex_;
+std::mutex MediaAssetManagerNapi::slowMotionMutex_;
+std::atomic_bool MediaAssetManagerNapi::isTranscodeRunning_ = false;
+std::mutex MediaAssetManagerNapi::cancelMutex_;
+std::condition_variable MediaAssetManagerNapi::cvCancel_;
 
 static const std::map<MultistagesCaptureNotifyType, std::vector<ObserverType>> MATCH_NOTIFY_TO_OBSERVER = {
     { MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE, {ObserverType::REQUEST_IMAGE} },
@@ -1092,6 +1108,35 @@ napi_value MediaAssetManagerNapi::JSRequestEfficientIImage(napi_env env, napi_ca
         JSRequestComplete);
 }
 
+static int32_t ProcessSlowMotion(MediaAssetManagerAsyncContext *asyncContext)
+{
+    SlowMotionTranscodeReqBody reqBody;
+    reqBody.fileId = asyncContext->fileId;
+    reqBody.requestId = asyncContext->requestId;
+    int32_t editTime = 0;
+    SlowMotionTranscodeRespBody respBody;
+    respBody.editTime = editTime;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SLOW_MOTION_TRANSCODE);
+    IPC::UserDefineIPCClient client;
+    std::unordered_map<std::string, std::string> headerMap = {
+        { MediaColumn::MEDIA_ID, std::to_string(reqBody.fileId) },
+        { URI_TYPE, TYPE_PHOTOS },
+    };
+
+    int32_t err = client.SetHeader(headerMap).Call(businessCode, reqBody, respBody);
+    if (err != E_OK) {
+        NAPI_ERR_LOG("Failed to transcode slow motion, ret: %{public}d", err);
+        asyncContext->SaveError(err);
+        return err;
+    }
+    NAPI_INFO_LOG("respBody.editTime:%{public}d", respBody.editTime);
+    if (respBody.editTime != 0) {
+        NAPI_INFO_LOG("Is have transcode, donot transcode again");
+        return E_ERR;
+    }
+    return err;
+}
+
 void MediaAssetManagerNapi::ReleaseSafeFunc(napi_threadsafe_function &threadSafeFunc)
 {
     if (threadSafeFunc == nullptr) {
@@ -1104,7 +1149,10 @@ void MediaAssetManagerNapi::ReleaseSafeFunc(napi_threadsafe_function &threadSafe
 bool MediaAssetManagerNapi::CreateOnProgressHandlerInfo(napi_env env,
     unique_ptr<MediaAssetManagerAsyncContext> &asyncContext)
 {
-    if (asyncContext->compatibleMode != CompatibleMode::COMPATIBLE_FORMAT_MODE) {
+    bool ret = (asyncContext->compatibleMode == CompatibleMode::COMPATIBLE_FORMAT_MODE ||
+        asyncContext->sourceMode == SourceMode::EDITED_MODE);
+    if (!ret) {
+        MEDIA_INFO_LOG("CreateOnProgressHandlerInfo is not do transcode.");
         return true;
     }
     if (asyncContext->mediaAssetProgressHandler == nullptr) {
@@ -1555,6 +1603,17 @@ static napi_value GetNapiValueOfMedia(napi_env env, AssetHandler *assetHandler)
         MediaAssetManagerNapi::GetImageSourceNapiObject(dataHandler->GetRequestUri(), napiValueOfMedia,
             dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env);
     } else if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_TARGET_PATH) {
+        MediaAssetManagerNapi::slowMotionMutex_.lock();
+        bool isTranscoder;
+        if (!isSlowTranscoderMap_.Find(dataHandler->GetRequestId(), isTranscoder)) {
+            NAPI_INFO_LOG("not find key from map");
+            isTranscoder = false;
+        }
+        MediaAssetManagerNapi::slowMotionMutex_.unlock();
+        if (isTranscoder) {
+            napi_get_boolean(env, true, &napiValueOfMedia);
+            return napiValueOfMedia;
+        }
         WriteData param;
         param.compatibleMode = dataHandler->GetCompatibleMode();
         param.destUri = dataHandler->GetDestUri();
@@ -1686,7 +1745,6 @@ void CallPreparedCallbackAfterProgress(napi_env env, ProgressHandler *progressHa
         DeleteAssetHandlerSafe(assetHandler, env);
         return;
     }
-
     NotifyMode notifyMode = dataHandler->GetNotifyMode();
     napi_value napiValueOfInfoMap = nullptr;
     if (assetHandler->needsExtraInfo) {
@@ -1695,6 +1753,24 @@ void CallPreparedCallbackAfterProgress(napi_env env, ProgressHandler *progressHa
             NAPI_ERR_LOG("Failed to get info map");
             napi_get_undefined(env, &napiValueOfInfoMap);
         }
+    }
+    WriteData param;
+    param.compatibleMode = dataHandler->GetCompatibleMode();
+    param.destUri = dataHandler->GetDestUri();
+    param.requestUri = dataHandler->GetRequestUri();
+    param.env = env;
+    param.isSource = dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE;
+    napi_value napiValueOfWriteData = nullptr;
+    bool isSlowTranscoder = true;
+    MediaAssetManagerNapi::slowMotionMutex_.lock();
+    if (isSlowTranscoderMap_.Find(progressHandler->requestId, isSlowTranscoder)) {
+        isSlowTranscoderMap_.Erase(progressHandler->requestId);
+    } else {
+        isSlowTranscoder = false;
+    }
+    MediaAssetManagerNapi::slowMotionMutex_.unlock();
+    if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_TARGET_PATH && isSlowTranscoder) {
+        MediaAssetManagerNapi::WriteDataToDestPath(param, napiValueOfWriteData, dataHandler->GetRequestId());
     }
     dataHandler->JsOnDataPrepared(env, napiValueOfMedia, napiValueOfInfoMap);
     NAPI_INFO_LOG("delete assetHandler");
@@ -1766,7 +1842,6 @@ void MediaAssetManagerNapi::OnProgress(napi_env env, napi_value cb, void *contex
         if (isTranscoderMap_.Find(progressHandler->requestId, isTranscoder)) {
             isTranscoderMap_.Erase(progressHandler->requestId);
         }
-
         napi_value napiValueOfMedia;
         if (onPreparedResultValue_.Find(progressHandler->requestId, napiValueOfMedia)) {
             onPreparedResultValue_.Erase(progressHandler->requestId);
@@ -2551,6 +2626,33 @@ void MediaAssetManagerNapi::OnHandleProgressForRequest(
     MediaAssetManagerNapi::OnHandleProgress(env, asyncContext, progressMode, cameraProgressMode);
 }
 
+static void EraseFromSlowMotionReqs(const std::string &requestId)
+{
+    MediaAssetManagerNapi::slowMotionReqsMutex_.lock();
+    MediaAssetManagerNapi::slowMotionReqs_.erase(requestId);
+    MediaAssetManagerNapi::slowMotionReqsMutex_.unlock();
+}
+
+void MediaAssetManagerNapi::WaitForSlowMotionCancel(const std::string &requestId)
+{
+    NAPI_INFO_LOG("WaitForSlowMotionCancel requestId: %{public}s", (requestId).c_str());
+    static const int WAIT_TIMEOUT = 5;
+    std::thread([&] {
+        slowMotionReqsMutex_.lock();
+        bool exist = slowMotionReqs_.count(requestId) > 0;
+        slowMotionReqsMutex_.unlock();
+        while (exist) {
+            {
+                std::unique_lock<std::mutex> lock(cancelMutex_);
+                cvCancel_.wait_for(lock, std::chrono::milliseconds(WAIT_TIMEOUT));
+            }
+            slowMotionReqsMutex_.lock();
+            exist = slowMotionReqs_.count(requestId) > 0;
+            slowMotionReqsMutex_.unlock();
+        }
+    }).join();
+}
+
 void MediaAssetManagerNapi::JSRequestVideoFileExecute(napi_env env, void *data)
 {
     MediaLibraryTracer tracer;
@@ -2558,11 +2660,109 @@ void MediaAssetManagerNapi::JSRequestVideoFileExecute(napi_env env, void *data)
     MediaAssetManagerAsyncContext *context = static_cast<MediaAssetManagerAsyncContext*>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     OnHandleRequestVideo(env, context);
+    if (context->subType == PhotoSubType::SLOW_MOTION_VIDEO && context->sourceMode == SourceMode::EDITED_MODE) {
+        slowMotionReqsMutex_.lock();
+        slowMotionReqs_[context->requestId] = 0;
+        auto reqs = slowMotionReqs_.size();
+        slowMotionReqsMutex_.unlock();
+        if (reqs > MAX_REQUEST_NUM) {
+            NAPI_ERR_LOG("transcode thread is full");
+            DeleteProcessHandlerSafe(context->progressHandler, env);
+            context->SaveError(E_INNER_FAIL);
+            if (context->assetHandler != nullptr) {
+                context->assetHandler->isError = true;
+            }
+            EraseFromSlowMotionReqs(context->requestId);
+            return;
+        }
+        MediaAssetManagerNapi::OnHandleProgress(env, context, ProgressMode::ONLY_FOR_TRANSCODING,
+            CameraProgressMode::UNDEFINED);
+        if (ProcessSlowMotion(context) == E_OK) {
+            isTranscoderMap_.Insert(context->requestId, true);
+            slowMotionMutex_.lock();
+            isSlowTranscoderMap_.Insert(context->requestId, true);
+            slowMotionMutex_.unlock();
+            StartSlowMotionThreadForProgress();
+        } else {
+            EraseFromSlowMotionReqs(context->requestId);
+            DeleteProcessHandlerSafe(context->progressHandler, env);
+        }
+        return;
+    }
     CameraProgressMode cameraProgressMode = CameraProgressMode::UNDEFINED;
     OnHandleProgressForRequest(env, context, cameraProgressMode);
     if (cameraProgressMode == CameraProgressMode::WAIT_FOR_POLLOT && context->onProgressPtr != nullptr) {
         StartThreadForProgress();
     }
+}
+
+void MediaAssetManagerNapi::RequestTranscodeProcess()
+{
+    std::unordered_map<std::string, uint32_t> reqs;
+    slowMotionReqsMutex_.lock();
+    reqs.insert(slowMotionReqs_.begin(), slowMotionReqs_.end());
+    slowMotionReqsMutex_.unlock();
+
+    for (const auto& [requestId, count] : reqs) {
+        uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SLOW_MOTION_TRANSCODE_PROGRESS);
+        SlowMotionTranscodeProgressReqBody reqBody;
+        reqBody.requestId = requestId;
+        SlowMotionTranscodeProgressRespBody respBody;
+        IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+        int32_t progress = respBody.progress;
+        int32_t result = respBody.result;
+        MEDIA_INFO_LOG("SlowMotionProgressThread progress: %{public}d, result:%{public}d, isCompleted:%{public}d",
+            progress, result, respBody.isCompleted);
+        if (result == SLOW_MOTION_CANCEL_MODE) {
+            EraseFromSlowMotionReqs(requestId);
+            MEDIA_INFO_LOG("slowMotion transcode is cancel");
+            continue;
+        }
+        uint32_t invalidCnt = (progress == INVALID_PROGRESS) ? count + 1 : 0;
+        if (respBody.isCompleted || invalidCnt >= MAX_INVALID_PROGRESS_COUNT) {
+            int32_t type = (result == E_OK) ?
+                static_cast<int32_t>(ProgressReturnInfoType::INFO_TYPE_TRANSCODER_COMPLETED) :
+                static_cast<int32_t>(ProgressReturnInfoType::INFO_TYPE_ERROR);
+            NotifyOnProgress(type, progress, requestId);
+            EraseFromSlowMotionReqs(requestId);
+            MEDIA_INFO_LOG("SlowMotionProgressThread end [%{public}d] [%{public}d].", result, invalidCnt);
+            continue;
+        }
+        slowMotionReqsMutex_.lock();
+        slowMotionReqs_[requestId] = invalidCnt;
+        slowMotionReqsMutex_.unlock();
+        if (progress == INVALID_PROGRESS) {
+            continue;
+        }
+        NotifyOnProgress(static_cast<int32_t>(ProgressReturnInfoType::INFO_TYPE_PROGRESS_UPDATE),
+            progress, requestId);
+    }
+    reqs.clear();
+    std::unordered_map<std::string, uint32_t>().swap(reqs);
+}
+
+void MediaAssetManagerNapi::SlowMotionRun()
+{
+    while (isTranscodeRunning_.load()) {
+        {
+            std::unique_lock<mutex> locker(slowMotionSleepMutex_);
+            slowMotionCondition_.wait_for(locker, std::chrono::milliseconds(SLEEP_100_MS));
+        }
+        RequestTranscodeProcess();
+        slowMotionReqsMutex_.lock();
+        if (slowMotionReqs_.empty()) {
+            isTranscodeRunning_.store(false);
+        }
+        slowMotionReqsMutex_.unlock();
+    }
+}
+
+void MediaAssetManagerNapi::StartSlowMotionThreadForProgress()
+{
+    MEDIA_INFO_LOG("enter StartSlowMotionThreadForProgress");
+    CHECK_IF_EQUAL(!isTranscodeRunning_.load(), "SlowMotionThreadForProgress is running");
+    isTranscodeRunning_.store(true);
+    std::thread([]() { MediaAssetManagerNapi::SlowMotionRun(); }).detach();
 }
 
 void MediaAssetManagerNapi::Run()
@@ -2733,6 +2933,28 @@ void MediaAssetManagerNapi::JSCancelRequestExecute(napi_env env, void *data)
     IPC::UserDefineIPCClient().Call(businessCode, reqBody);
 }
 
+void MediaAssetManagerNapi::CancelToDeleteSource(napi_env env, const std::string &requestId)
+{
+    NAPI_INFO_LOG("CancelToDeleteSource requestId: %{public}s", (requestId).c_str());
+    bool isTranscoder;
+    if (isTranscoderMap_.Find(requestId, isTranscoder)) {
+        isTranscoderMap_.Erase(requestId);
+    }
+    napi_value napiValueOfMedia;
+    if (onPreparedResultValue_.Find(requestId, napiValueOfMedia)) {
+        onPreparedResultValue_.Erase(requestId);
+    }
+    AssetHandler *assetHandler = nullptr;
+    if (onPreparedResult_.Find(requestId, assetHandler)) {
+        onPreparedResult_.Erase(requestId);
+        DeleteAssetHandlerSafe(assetHandler, env);
+    }
+    ProgressHandler *progressHandler = nullptr;
+    if (MediaAssetManagerNapi::progressHandlerMap_.Find(requestId, progressHandler)) {
+        DeleteProcessHandlerSafe(progressHandler, env);
+    }
+}
+
 void MediaAssetManagerNapi::JSCancelRequestComplete(napi_env env, napi_status, void *data)
 {
     MediaAssetManagerAsyncContext *context = static_cast<MediaAssetManagerAsyncContext*>(data);
@@ -2758,6 +2980,10 @@ void MediaAssetManagerNapi::JSCancelRequestComplete(napi_env env, napi_status, v
     }
     napi_get_undefined(env, &jsContext->data);
 
+    if (slowMotionReqs_.count(context->requestId) > 0) {
+        WaitForSlowMotionCancel(context->requestId);
+        CancelToDeleteSource(env, context->requestId);
+    }
     if (context->work != nullptr) {
         MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
             context->work, *jsContext);

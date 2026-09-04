@@ -20,6 +20,8 @@ config("media_permission_helper_config") {
 }
 
 ohos_shared_library("media_permission_helper") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   include_dirs = [
@@ -104,7 +106,6 @@ ohos_shared_library("media_permission_helper") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

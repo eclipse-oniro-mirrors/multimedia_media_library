@@ -944,6 +944,16 @@ void FileAsset::SetHiddenTime(int64_t hiddenTime)
     member_[PhotoColumn::PHOTO_HIDDEN_TIME] = hiddenTime;
 }
 
+int32_t FileAsset::GetEditDataExist() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_EDIT_DATA_EXIST);
+}
+
+void FileAsset::SetEditDataExist(int32_t editDataExist)
+{
+    member_[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = editDataExist;
+}
+
 void FileAsset::SetResultTypeMap(const string &colName, ResultSetDataType type)
 {
     lock_guard<mutex> lock(resultTypeMapMutex_);

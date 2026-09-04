@@ -140,9 +140,23 @@ void CloneRestoreSelection::DeleteExistingAtomEventTable()
 
     std::string deleteSql = "DELETE FROM " + ATOM_EVENT_TABLE;
     BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, deleteSql);
+    // 当旧机没有精选数据，不会走到当前函数，无操作；旧机有数据，进入到当前函数并在此处将scene置位
+    SetSceneBitForClone();
 
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("DeleteExistingAtomEventTable cost %{public}lld", (long long)(end - start));
+}
+
+void CloneRestoreSelection::SetSceneBitForClone()
+{
+    MEDIA_INFO_LOG("SetSceneBitForClone start");
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "SetSceneBitForClone failed, rdbStore is nullptr");
+    const int32_t SCENE_CLONE_BIT_VALUE = 1 << SCENE_BIT_POSITION_CLONE;
+    std::string updateSql = "UPDATE tab_analysis_total SET " + TOTAL_COL_SCENE + " = " +
+        std::to_string(SCENE_CLONE_BIT_VALUE);
+    int32_t errCode = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateSql);
+    CHECK_AND_PRINT_LOG(errCode >= 0, "SetSceneBitForClone update failed, ret=%{public}d", errCode);
+    MEDIA_INFO_LOG("SetSceneBitForClone end");
 }
 
 void CloneRestoreSelection::AppendExtraWhereClause(std::string &whereClause)

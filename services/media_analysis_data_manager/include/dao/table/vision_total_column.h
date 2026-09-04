@@ -50,6 +50,7 @@ const std::string TOTAL_SCORE_STATUS = "total_score";
 const std::string CAPTION = "caption";
 const std::string CLS_SCHED = "cls_sched";
 const std::string SHEET = "sheet";
+const std::string SCENE = "scene";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_TOTAL_COLUMN_H

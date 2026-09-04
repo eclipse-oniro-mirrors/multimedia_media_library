@@ -139,6 +139,9 @@ public:
     EXPORT int32_t ReleaseDebugDatabase(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StartChangeScanAssetInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetFusionAssetsInfo(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SlowMotionTranscode(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SlowMotionTranscodeProgress(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CancelSlowMotionTranscode(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteLocalAssetsWithUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteCloudAssetsWithUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteAssetsPermanentlyWithUri(MessageParcel &data, MessageParcel &reply);

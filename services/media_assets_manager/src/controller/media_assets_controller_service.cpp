@@ -91,6 +91,8 @@
 #include "cloud_media_asset_types.h"
 #include "is_edited_dto.h"
 #include "request_edit_data_dto.h"
+#include "slow_motion_transcode_progress_vo.h"
+#include "slow_motion_transcode_vo.h"
 #include "get_edit_data_dto.h"
 #include "get_cloud_enhancement_pair_dto.h"
 #include "permission_utils.h"
@@ -602,6 +604,18 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::HEIF_TRANSCODING_CHECK),
         &MediaAssetsControllerService::HeifTranscodingCheck
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::SLOW_MOTION_TRANSCODE),
+        &MediaAssetsControllerService::SlowMotionTranscode
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::SLOW_MOTION_TRANSCODE_PROGRESS),
+        &MediaAssetsControllerService::SlowMotionTranscodeProgress
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CANCEL_SLOW_MOTION_TRANSCODE),
+        &MediaAssetsControllerService::CancelSlowMotionTranscode
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_SET_COMPOSITE_DISPLAY_MODE),
@@ -3130,6 +3144,52 @@ int32_t MediaAssetsControllerService::ReleaseDebugDatabase(MessageParcel &data, 
         MEDIA_ERR_LOG("MediaAssetsControllerService::ReleaseDebugDatabase fail, ret: %{public}d", ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::SlowMotionTranscode(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter SlowMotionTranscode");
+    SlowMotionTranscodeReqBody reqBody;
+    SlowMotionTranscodeRespBody resp;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("SlowMotionTranscode Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaAssetsService::GetInstance().SlowMotionTranscode(reqBody, resp);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
+}
+
+int32_t MediaAssetsControllerService::SlowMotionTranscodeProgress(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter SlowMotionTranscodeProgress");
+    SlowMotionTranscodeProgressReqBody reqBody;
+    SlowMotionTranscodeProgressRespBody resp;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("SlowMotionTranscodeProgress Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaAssetsService::GetInstance().SlowMotionTranscodeProgress(reqBody.requestId, resp);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
+}
+
+int32_t MediaAssetsControllerService::CancelSlowMotionTranscode(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter CancelSlowMotionTranscode");
+    SlowMotionTranscodeProgressReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CancelSlowMotionTranscode Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaAssetsService::GetInstance().CancelSlowMotionTranscode(reqBody.requestId);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 

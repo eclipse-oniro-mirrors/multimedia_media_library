@@ -56,7 +56,10 @@ void CloudMediaPullDataDto::GetAttributesInfo(std::stringstream &ss) const
        << "\"cDateDay\": \"" << attributesDateDay << "\","
        << "\"exifRotate\": " << exifRotate << ","
        << "\"cEditedTimeMs\": " << attributesEditedTimeMs << ","
-       << "\"cFixVersion\": " << attributesFixVersion << ",";
+       << "\"cFixVersion\": " << attributesFixVersion << ","
+       << "\"storagePath\": " << attributesStoragePath << ","
+       << "\"attributesIsStylePhoto\": " << attributesIsStylePhoto << ","
+       << "\"editDataExist\": " << editDataExist << ",";
 }
 void CloudMediaPullDataDto::GetPropertiesInfo(std::stringstream &ss) const
 {

@@ -95,7 +95,6 @@ public:
     {
         threadsafeFunction_ = threadsafeFunction;
     }
-
 private:
     napi_env env_ = nullptr;
     napi_ref dataHandlerRef_ = nullptr;

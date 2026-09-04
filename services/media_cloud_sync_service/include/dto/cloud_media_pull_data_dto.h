@@ -81,6 +81,7 @@ public:
     int32_t exifRotate{-1};                       /* exif_rotate*/
     int32_t attributesMovingPhotoEffectMode{-1};  /* moving_photo_effect_mode */
     int32_t attributesSupportedWatermarkType{-1}; /* supported_watermark_type */
+    int32_t attributesIsStylePhoto{-1};           /* is_style_photo */
     int32_t attributesStrongAssociation{-1};      /* strong_association */
     int32_t attributesFileId{-1};                 /* file_id */
     std::string attributesCloudId;                /* cloud_id */
@@ -137,6 +138,7 @@ public:
     std::map<std::string, std::string> stringfields;
     std::map<std::string, int64_t> int64fields;
     int32_t compressionQuality{-1}; /* compression_quality */
+    int32_t editDataExist{-1};
 
 public:  // basic function
     std::string ToString() const;

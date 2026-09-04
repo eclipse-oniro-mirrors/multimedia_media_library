@@ -86,12 +86,8 @@ private:
         const std::vector<int32_t>& fileIdOld);
 
     bool QueryAndInsertSourceBeautyScores();
+    void ReverseUpdateTotalScoresBatch(const std::vector<int32_t>& batchIds);
     std::vector<int32_t> QuerySourceFileIds();
-    std::vector<BeautyScoreTbl> QuerySourceBeautyScores(const std::vector<int32_t>& fileIds,
-        const std::vector<std::string>& commonColumns);
-    bool InsertOrUpdateDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
-    std::unordered_set<int32_t> QueryExistingDestFileIds(const std::vector<int32_t>& fileIds);
-    bool UpdateDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
     bool InsertNewDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
     int32_t BatchUpdateWithRetry(const std::string& tableName,
         const std::vector<std::pair<NativeRdb::ValuesBucket, std::string>>& updates);

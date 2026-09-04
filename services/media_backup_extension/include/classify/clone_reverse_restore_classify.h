@@ -43,9 +43,7 @@ private:
     std::string GetFileIdsStr(const std::vector<ClassifyCloneInfo> &imageInfos);
     std::string GetFileIdsStr(const std::vector<ClassifyVideoCloneInfo> &videoInfos);
     void QueryAndUpdateTotal(const std::string& tableName, const std::string& fileIdClause);
-    void AddReverseSpecialAlbum();
-    void AddReverseSelfieAlbum();
-    void AddReverseUserCommentAlbum();
+    void DealReverseSpecialAlbum();
     void RestoreAlbum();
     void InsertClassifyAlbumData();
     std::unordered_map<std::string, int32_t> QueryExistingAlbumNames();

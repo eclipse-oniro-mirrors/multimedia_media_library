@@ -362,26 +362,35 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
         if (duplicateFileIds.empty()) {
             continue;
         }
-        int32_t donorFileId = duplicateFileIds.front();
         for (int32_t duplicateFileId : duplicateFileIds) {
             duplicateDonorMap.emplace(duplicateFileId, fileInfo.fileIdOld);
         }
-        ReverseCloneResourcePlan plan = resourceInheritService.BuildDuplicatePlanByFileId(
-            fileInfo, donorFileId, destRdb, originalPureCloudFileIds);
-        if (plan.donor.fileId > 0) {
-            resourcePlans.emplace_back(plan);
+        
+        // All candidates will be deleted; one valid donor is enough to provide inherited resources.
+        fileInfo.deletedSrcdbFileId = duplicateFileIds.front();
+        bool planBuilt = false;
+        for (int32_t duplicateFileId : duplicateFileIds) {
+            ReverseCloneResourcePlan plan = resourceInheritService.BuildDuplicatePlanByFileId(
+                fileInfo, duplicateFileId, destRdb, originalPureCloudFileIds);
+            if (plan.donor.fileId <= 0) {
+                MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: build duplicate resource plan failed, "
+                    "fileId=%{public}d", duplicateFileId);
+                continue;
+            }
             SolveDuplicate(duplicateCount, plan);
-        } else {
-            MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: build duplicate resource plan failed, "
-                "donorFileId=%{public}d, absorbedFileId=%{public}d, use source resources",
-                donorFileId, fileInfo.fileIdOld);
+            fileInfo.deletedSrcdbFileId = duplicateFileId;
+            resourcePlans.emplace_back(plan);
+            planBuilt = true;
+            break;
         }
-
-        fileInfo.deletedSrcdbFileId = donorFileId;
         duplicateCount.total++;
         MEDIA_INFO_LOG("CheckAndRemoveDuplicatePhotos: duplicate photo found, absorbedFileId=%{public}d, "
-            "resourceDonorFileId=%{public}d, candidates=%{public}zu, planBuilt=%{public}d",
-            fileInfo.fileIdOld, donorFileId, duplicateFileIds.size(), plan.donor.fileId > 0);
+            "primaryDonorFileId=%{public}d, donorCount=%{public}zu, planBuilt=%{public}d",
+            fileInfo.fileIdOld, fileInfo.deletedSrcdbFileId, duplicateFileIds.size(), planBuilt);
+        if (!planBuilt) {
+            MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: no donor resource plan built, "
+                "absorbedFileId=%{public}d, donorCount=%{public}zu", fileInfo.fileIdOld, duplicateFileIds.size());
+        }
     }
 
     int64_t cost = MediaFileUtils::UTCTimeMilliSeconds() - start;

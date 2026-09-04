@@ -280,6 +280,16 @@ int32_t CloudSyncConvert::CompensateAttSupportedWatermarkType(
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateIsStylePhoto(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t isStylePhoto = data.attributesIsStylePhoto;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        isStylePhoto != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::isStylePhoto.");
+    values.PutInt(PhotoColumn::IS_STYLE_PHOTO, isStylePhoto);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateAttStrongAssociation(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
@@ -618,6 +628,16 @@ int32_t CloudSyncConvert::CompensatePackageName(
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateEditDataExist(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t editDataExist = data.editDataExist;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        editDataExist != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::editDataExist.");
+    values.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, editDataExist);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::TryCompensateValue(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     CHECK_AND_RETURN_RET_WARN_LOG(data.hasProperties, E_OK, "Data cannot find properties");
@@ -659,6 +679,7 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttIsRectificationCover(data, values);
     CompensateAttMovingPhotoEffectMode(data, values);
     CompensateAttSupportedWatermarkType(data, values);
+    CompensateIsStylePhoto(data, values);
     CompensateAttStrongAssociation(data, values);
     CompensateUniqueId(data, values);
     CompensatePackageName(data, values);
@@ -671,6 +692,7 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttShareAlbumOwner(data, values);
     CompensateAttShareDateDay(data, values);
     CompensateAttShareGroup(data, values);
+    CompensateEditDataExist(data, values);
     return E_OK;
 }
 

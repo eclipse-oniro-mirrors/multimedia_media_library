@@ -229,6 +229,11 @@ private:
     static void Run();
     static void StartThreadForProgress();
     static void StopThreadForProgress();
+    static void SlowMotionRun();
+    static void StartSlowMotionThreadForProgress();
+    static void RequestTranscodeProcess();
+    static void WaitForSlowMotionCancel(const std::string &requestId);
+    static void CancelToDeleteSource(napi_env env, const std::string &requestId);
 
 public:
     std::mutex sMediaAssetMutex_;
@@ -240,6 +245,15 @@ public:
     static std::condition_variable condition_;
     static std::atomic_bool pauseFlag_; // 暂停标识
     static std::atomic_bool stopFlag_; // 停止标识
+
+    static std::mutex slowMotionSleepMutex_;
+    static std::condition_variable slowMotionCondition_;
+    static std::atomic_bool isTranscodeRunning_;
+    static std::unordered_map<std::string, uint32_t> slowMotionReqs_;
+    static std::mutex slowMotionReqsMutex_;
+    static std::mutex slowMotionMutex_;
+    static std::mutex cancelMutex_;
+    static std::condition_variable cvCancel_;
 };
 } // Media
 } // OHOS

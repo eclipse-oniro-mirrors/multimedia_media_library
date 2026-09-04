@@ -224,6 +224,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_IS_RECTIFICATION_COVER] = MDKRecordField(upLoadRecord.isRectificationCover);
     map[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = MDKRecordField(upLoadRecord.movingPhotoEffectMode);
     map[PhotoColumn::SUPPORTED_WATERMARK_TYPE] = MDKRecordField(upLoadRecord.supportedWatermarkType);
+    map[PhotoColumn::IS_STYLE_PHOTO] = MDKRecordField(upLoadRecord.isStylePhoto);
     map[PhotoColumn::PHOTO_STRONG_ASSOCIATION] = MDKRecordField(upLoadRecord.strongAssociation);
     map[MediaColumn::MEDIA_ID] = MDKRecordField(upLoadRecord.fileId);
     map[PhotoColumn::MEDIA_FILE_PATH] = MDKRecordField(upLoadRecord.data);
@@ -245,6 +246,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_SHARE_ALBUM_OWNER] = MDKRecordField(upLoadRecord.shareAlbumOwner);
     map[PhotoColumn::PHOTO_SHARE_DATE_DAY] = MDKRecordField(upLoadRecord.shareDateDay);
     map[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(upLoadRecord.shareGroup);
+    map[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = MDKRecordField(upLoadRecord.editDataExist);
     HandleAttributesHashMap(map, upLoadRecord);
     int32_t ret = HandleThumbSize(map, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleThumbSize err: %{public}d", ret);
@@ -1007,6 +1009,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.packageName = data.GetPackageName().value_or("");
     onFetchPhotoVo.photoRiskStatus = data.GetPhotoRiskStatus().value_or(0);
     onFetchPhotoVo.compressionQuality = data.GetCompressionQuality().value_or(-1);
+    onFetchPhotoVo.editDataExist = data.GetEditDataExist().value_or(0);
     ConvertShareAlbumInfoToVo(data, onFetchPhotoVo);
 }
 

@@ -25,6 +25,8 @@ config("analysis_data_kits_config") {
 }
  
 ohos_shared_library("analysis_data_kits") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
  
   sources = [
@@ -127,7 +129,6 @@ ohos_shared_library("analysis_data_kits") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
  

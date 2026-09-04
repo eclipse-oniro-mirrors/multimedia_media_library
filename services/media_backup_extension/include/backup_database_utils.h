@@ -20,6 +20,8 @@
 #include <sstream>
 #include <vector>
 #include <type_traits>
+#include <stdint.h>
+#include <limits.h>
 
 #include "backup_const.h"
 #include "rdb_helper.h"
@@ -228,7 +230,22 @@ public:
         oldVersion_ = oldVersion;
         return 0;
     }
-    int32_t oldVersion_ {MEDIA_RDB_VERSION};
+
+    virtual int32_t OnDowngrade(NativeRdb::RdbStore &rdb, int32_t oldVersion,
+        int32_t newVersion) override
+    {
+        oldVersion_ = oldVersion;
+        return 0;
+    }
+    
+    virtual int OnOpen(NativeRdb::RdbStore &rdb) override
+    {
+        if (oldVersion_ == INT32_MAX) {
+            oldVersion_ = MEDIA_RDB_VERSION;
+        }
+        return 0;
+    }
+    int32_t oldVersion_ {INT32_MAX};
 };
 
 class CloneFileInfoRestoreDbCallback : public RdbCallback {
