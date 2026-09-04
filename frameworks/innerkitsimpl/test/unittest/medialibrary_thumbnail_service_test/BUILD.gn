@@ -43,6 +43,7 @@ ohos_unittest("medialibrary_thumbnail_service_test") {
     "./src/medialibrary_thumbnail_source_loading_test.cpp",
     "./src/medialibrary_thumbnail_utils_test.cpp",
     "./src/medialibrary_thumbnail_worker_test.cpp",
+    "./src/medialibrary_thumbnail_double_upgrade_config_manager_test.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
@@ -94,6 +95,7 @@ ohos_unittest("medialibrary_thumbnail_service_test") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "graphic_surface:surface",
+    "os_account:os_account_innerkits",
   ]
 
   sanitize = {

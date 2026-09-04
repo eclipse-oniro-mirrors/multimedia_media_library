@@ -72,9 +72,13 @@ static nlohmann::json ConvertPhaseStatToJson(const PhaseStat &phaseStat, AstcPha
 }
 
 bool MediaLibraryAstcStat::ConvertToJson(nlohmann::json& jsonPhasesStat, const PhasesStat& phasesStat,
-    int32_t totalAstcCount)
+    int32_t totalAstcCount, int64_t updateDuration, const std::string& uidType)
 {
     jsonPhasesStat["totalAstcCount"] = totalAstcCount;
+    if (updateDuration > 0 && !uidType.empty()) {
+        jsonPhasesStat["updateDuration"] = updateDuration;
+        jsonPhasesStat["uid"] = uidType;
+    }
     for (const auto &[phaseType, phaseStat] : phasesStat.phases_) {
         std::string key = "phase" + std::to_string(enum_to_value(phaseType));
         jsonPhasesStat[key] = ConvertPhaseStatToJson(phaseStat, phaseType);
@@ -391,7 +395,7 @@ std::string MediaLibraryAstcStat::GetJson()
 std::string MediaLibraryAstcStat::GetJsonStr()
 {
     nlohmann::json jsn;
-    ConvertToJson(jsn, phasesStat_, totalAstcCount_);
+    ConvertToJson(jsn, phasesStat_, totalAstcCount_, updateDuration_, uidType_);
     MEDIA_INFO_LOG("json %{public}s", jsn.dump().c_str());
     return jsn.dump();
 }
@@ -401,9 +405,20 @@ void MediaLibraryAstcStat::ClearOldData()
     std::lock_guard<std::mutex> lock(mutex_);
     phasesStat_.phases_.clear();
     totalAstcCount_ = 0;
+    updateDuration_ = 0;
+    uidType_ = "";
     if (FileUtils::IsFileExist(ASTC_JSON_FILE_PATH)) {
         FileUtils::DeleteFile(ASTC_JSON_FILE_PATH);
     }
+}
+
+void MediaLibraryAstcStat::SetDoubleUpgradeInfo(int64_t updateDuration, const std::string& uidType)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    updateDuration_ = updateDuration;
+    uidType_ = uidType;
+    MEDIA_INFO_LOG("SetDoubleUpgradeInfo: updateDuration=%{public}" PRID64 ", uidType=%{public}s",
+        updateDuration, uidType.c_str());
 }
 } // namespace Media
 } // namespace OHOS
