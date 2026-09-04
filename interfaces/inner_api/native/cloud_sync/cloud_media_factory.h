@@ -25,19 +25,22 @@ private:
     static DKRecordParser<DKRecord, MDKRecord, DKRecordField, MDKRecordField, DKAsset, MDKAsset, DKReference,
         MDKReference, DKRelation, MDKRelation, DKRecordsResponse, MDKRecordsResponse, DKSchemaField, MDKSchemaField,
         DKSchemaRelation, MDKSchemaRelation, DKSchemaNode, MDKSchemaNode, DKOrderTable, MDKOrderTable, DKErrorDetail,
-        MDKErrorDetail, DKError, MDKError, DKRecordOperResult, MDKRecordOperResult>
+        MDKErrorDetail, DKError, MDKError, DKRecordOperResult, MDKRecordOperResult, Participant, MDKParticipant,
+        DKScadetail, MDKScadetail>
         DK_PARSER;
     static DKRecordParser<MDKRecord, DKRecord, MDKRecordField, DKRecordField, MDKAsset, DKAsset, MDKReference,
         DKReference, MDKRelation, DKRelation, MDKRecordsResponse, DKRecordsResponse, MDKSchemaField, DKSchemaField,
         MDKSchemaRelation, DKSchemaRelation, MDKSchemaNode, DKSchemaNode, MDKOrderTable, DKOrderTable, MDKErrorDetail,
-        DKErrorDetail, MDKError, DKError, MDKRecordOperResult, DKRecordOperResult>
+        DKErrorDetail, MDKError, DKError, MDKRecordOperResult, DKRecordOperResult, MDKParticipant, Participant,
+        MDKScadetail, DKScadetail>
         MDK_PARSER;
 
 public:
     static DKRecordParser<DKRecord, MDKRecord, DKRecordField, MDKRecordField, DKAsset, MDKAsset, DKReference,
         MDKReference, DKRelation, MDKRelation, DKRecordsResponse, MDKRecordsResponse, DKSchemaField, MDKSchemaField,
         DKSchemaRelation, MDKSchemaRelation, DKSchemaNode, MDKSchemaNode, DKOrderTable, MDKOrderTable, DKErrorDetail,
-        MDKErrorDetail, DKError, MDKError, DKRecordOperResult, MDKRecordOperResult>
+        MDKErrorDetail, DKError, MDKError, DKRecordOperResult, MDKRecordOperResult, Participant, MDKParticipant,
+        DKScadetail, MDKScadetail>
         GetDkParser()
     {
         return DK_PARSER;
@@ -46,7 +49,8 @@ public:
     static DKRecordParser<MDKRecord, DKRecord, MDKRecordField, DKRecordField, MDKAsset, DKAsset, MDKReference,
         DKReference, MDKRelation, DKRelation, MDKRecordsResponse, DKRecordsResponse, MDKSchemaField, DKSchemaField,
         MDKSchemaRelation, DKSchemaRelation, MDKSchemaNode, DKSchemaNode, MDKOrderTable, DKOrderTable, MDKErrorDetail,
-        DKErrorDetail, MDKError, DKError, MDKRecordOperResult, DKRecordOperResult>
+        DKErrorDetail, MDKError, DKError, MDKRecordOperResult, DKRecordOperResult, MDKParticipant, Participant,
+        MDKScadetail, DKScadetail>
         GetMdkParser()
     {
         return MDK_PARSER;
