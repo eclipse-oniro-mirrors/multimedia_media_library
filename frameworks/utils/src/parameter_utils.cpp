@@ -26,6 +26,9 @@
 #include "media_file_uri.h"
 #include "medialibrary_common_utils.h"
 #include "post_event_utils.h"
+#include "medialibrary_bundle_manager.h"
+#include "datashare_predicates_verify.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace Media {
@@ -458,6 +461,23 @@ int32_t ParameterUtils::CheckDeleteMemberShareAlbum(const DeleteMemberShareAlbum
         CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "invalid albumId: %{public}d", albumId);
     }
     return E_OK;
+}
+
+int32_t ParameterUtils::HandleIllegalKey(const DataShare::DataSharePredicates &predicates)
+{
+    if (PermissionUtils::IsSystemApp() || PermissionUtils::IsNativeSAApp()) {
+        MEDIA_INFO_LOG("system app or SA, skipped judge");
+        return E_OK;
+    }
+    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    DataSharePredicatesVerify predicatesVerify;
+    auto [predicatesType, errCode] = predicatesVerify.VerifyPredicates(predicates);
+    if (errCode != E_OK) {
+        int32_t callingUid = IPCSkeleton::GetCallingUid();
+        MEDIA_WARN_LOG("callingUid: %{public}d, predicates:%{public}d invalid, err:%{public}d",
+            callingUid, predicatesType, errCode);
+    }
+    return errCode;
 }
 }  // namespace Media
 }  // namespace OHOS

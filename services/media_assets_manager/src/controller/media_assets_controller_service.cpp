@@ -1506,11 +1506,12 @@ int32_t MediaAssetsControllerService::GetAssets(
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
         MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+     }
     GetAssetsDto dto = GetAssetsDto::Create(reqBody);
     int32_t passCode = E_SUCCESS;
     if (context.GetByPassCode() == E_PERMISSION_DB_BYPASS) {
@@ -1555,11 +1556,12 @@ int32_t MediaAssetsControllerService::GetBurstAssets(
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK || reqBody.burstKey.empty()) {
-        MEDIA_ERR_LOG("CheckWhereClause fialed or burstKey is empty");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid || reqBody.burstKey.empty()) {
+         MEDIA_ERR_LOG("CheckWhereClause fialed or burstKey is empty");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+     }
     GetAssetsDto dto = GetAssetsDto::Create(reqBody);
     int32_t passCode = E_SUCCESS;
     if (context.GetByPassCode() == E_PERMISSION_DB_BYPASS) {
@@ -1607,10 +1609,11 @@ int32_t MediaAssetsControllerService::GetAllDuplicateAssets(MessageParcel &data,
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
     GetAssetsDto dto = GetAssetsDto::Create(reqBody);
     auto resultSet = MediaAssetsService::GetInstance().GetAllDuplicateAssets(dto);
@@ -1636,10 +1639,11 @@ int32_t MediaAssetsControllerService::GetDuplicateAssetsToDelete(MessageParcel &
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
     GetAssetsDto dto = GetAssetsDto::Create(reqBody);
     auto resultSet = MediaAssetsService::GetInstance().GetDuplicateAssetsToDelete(dto);
@@ -2449,6 +2453,13 @@ int32_t MediaAssetsControllerService::StartThumbnailCreationTask(MessageParcel &
         MEDIA_ERR_LOG("StartThumbnailCreationTask Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
     StartThumbnailCreationTaskDto startCreationTaskDto;
     startCreationTaskDto.predicates = reqBody.predicates;
     startCreationTaskDto.requestId = reqBody.requestId;
@@ -2510,6 +2521,12 @@ int32_t MediaAssetsControllerService::RequestEditData(MessageParcel &data, Messa
         MEDIA_ERR_LOG("RequestEditData Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
 
     RequestEditDataDto dto;
     dto.predicates = reqBody.predicates;
@@ -2549,6 +2566,13 @@ int32_t MediaAssetsControllerService::GetEditData(MessageParcel &data, MessagePa
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetEditData Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
 
     GetEditDataDto dto;
