@@ -1501,5 +1501,103 @@ HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_test_043, TestSize.
     OH_MediaAsset_Release(mediaAsset);
     OH_MediaAssetChangeRequest_Release(changeRequest);
 }
+
+static std::shared_ptr<MediaAsset> CreateSharedMediaAsset(MediaType mediaType)
+{
+    std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
+    fileAsset->SetResultNapiType(OHOS::Media::ResultNapiType::TYPE_PHOTOACCESS_HELPER);
+    fileAsset->SetMediaType(mediaType);
+    fileAsset->SetIsShared(static_cast<int32_t>(PhotoSharedType::SHARED));
+    return MediaAssetFactory::CreateMediaAsset(fileAsset);
+}
+
+/**
+ * @tc.name: media_library_capi_shared_001
+ * @tc.desc: OH_MediaAssetChangeRequest_Create rejects shared asset
+ */
+HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_shared_001, TestSize.Level0)
+{
+    auto mediaAssetImpl = CreateSharedMediaAsset(OHOS::Media::MEDIA_TYPE_IMAGE);
+    auto* mediaAsset = new OH_MediaAsset(mediaAssetImpl);
+    auto changeRequest = OH_MediaAssetChangeRequest_Create(mediaAsset);
+    EXPECT_EQ(changeRequest, nullptr);
+
+    OH_MediaAsset_Release(mediaAsset);
+    OH_MediaAssetChangeRequest_Release(changeRequest);
+}
+
+/**
+ * @tc.name: media_library_capi_shared_002
+ * @tc.desc: AddResourceWithBuffer rejects shared asset
+ */
+HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_shared_002, TestSize.Level0)
+{
+    auto mediaAssetImpl = CreateSharedMediaAsset(OHOS::Media::MEDIA_TYPE_IMAGE);
+    auto request = std::make_shared<MediaAssetChangeRequestImpl>(mediaAssetImpl);
+
+    uint8_t buffer[] = {0x01, 0x02, 0x03, 0x04};
+    uint32_t result = request->AddResourceWithBuffer(MediaLibrary_ResourceType::MEDIA_LIBRARY_IMAGE_RESOURCE,
+        buffer, sizeof(buffer));
+    EXPECT_EQ(result, MEDIA_LIBRARY_PARAMETER_ERROR);
+}
+
+/**
+ * @tc.name: media_library_capi_shared_003
+ * @tc.desc: GetWriteCacheHandler rejects shared asset
+ */
+HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_shared_003, TestSize.Level0)
+{
+    auto mediaAssetImpl = CreateSharedMediaAsset(OHOS::Media::MEDIA_TYPE_IMAGE);
+    auto request = std::make_shared<MediaAssetChangeRequestImpl>(mediaAssetImpl);
+
+    int32_t fd = 0;
+    uint32_t result = request->GetWriteCacheHandler(&fd);
+    EXPECT_EQ(result, MEDIA_LIBRARY_PARAMETER_ERROR);
+}
+
+/**
+ * @tc.name: media_library_capi_shared_004
+ * @tc.desc: SaveCameraPhoto rejects shared asset
+ */
+HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_shared_004, TestSize.Level0)
+{
+    auto mediaAssetImpl = CreateSharedMediaAsset(OHOS::Media::MEDIA_TYPE_IMAGE);
+    auto request = std::make_shared<MediaAssetChangeRequestImpl>(mediaAssetImpl);
+
+    uint32_t result = request->SaveCameraPhoto(MEDIA_LIBRARY_IMAGE_JPEG);
+    EXPECT_EQ(result, MEDIA_LIBRARY_PARAMETER_ERROR);
+}
+
+/**
+ * @tc.name: media_library_capi_shared_005
+ * @tc.desc: DiscardCameraPhoto rejects shared asset
+ */
+HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_shared_005, TestSize.Level0)
+{
+    auto mediaAssetImpl = CreateSharedMediaAsset(OHOS::Media::MEDIA_TYPE_IMAGE);
+    auto request = std::make_shared<MediaAssetChangeRequestImpl>(mediaAssetImpl);
+
+    uint32_t result = request->DiscardCameraPhoto();
+    EXPECT_EQ(result, MEDIA_LIBRARY_PARAMETER_ERROR);
+}
+
+/**
+ * @tc.name: media_library_capi_shared_006
+ * @tc.desc: ApplyChanges rejects shared asset
+ */
+HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_shared_006, TestSize.Level0)
+{
+    std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
+    fileAsset->SetResultNapiType(OHOS::Media::ResultNapiType::TYPE_PHOTOACCESS_HELPER);
+    fileAsset->SetMediaType(OHOS::Media::MEDIA_TYPE_IMAGE);
+    fileAsset->SetId(1);
+    fileAsset->SetIsShared(static_cast<int32_t>(PhotoSharedType::SHARED));
+    auto mediaAssetImpl = MediaAssetFactory::CreateMediaAsset(fileAsset);
+    auto request = std::make_shared<MediaAssetChangeRequestImpl>(mediaAssetImpl);
+    request->RecordChangeOperation(AssetChangeOperation::SAVE_CAMERA_PHOTO);
+
+    uint32_t result = request->ApplyChanges();
+    EXPECT_EQ(result, MEDIA_LIBRARY_PARAMETER_ERROR);
+}
 } // namespace Media
 } // namespace OHOS

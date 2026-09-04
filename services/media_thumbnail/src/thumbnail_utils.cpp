@@ -1641,6 +1641,7 @@ void ThumbnailUtils::QueryThumbnailDataFromFileId(ThumbRdbOpt &opts, const std::
         CONST_MEDIA_DATA_DB_DIRTY,
         MediaColumn::MEDIA_NAME,
         CONST_MEDIA_DATA_DB_THUMBNAIL_READY,
+        PhotoColumn::PHOTO_IS_SHARED,
     };
 
     {

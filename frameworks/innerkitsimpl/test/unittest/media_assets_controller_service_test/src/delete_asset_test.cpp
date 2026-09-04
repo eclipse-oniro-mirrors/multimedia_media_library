@@ -35,6 +35,7 @@
 #include "result_set_utils.h"
 #include "media_file_uri.h"
 #include "medialibrary_asset_operations.h"
+#include "test_data_builder.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -155,6 +156,30 @@ int32_t SystemDeleteAsset(std::vector<std::string> &testUris)
         return -1;
     }
     MEDIA_INFO_LOG("System ErrCode:%{public}d", respVo.GetErrCode());
+    return respVo.GetErrCode();
+}
+
+int32_t DeletePhotos(std::vector<std::string> &testUris)
+{
+    DeletePhotosReqBody reqBody;
+    reqBody.uris = testUris;
+
+    MessageParcel data;
+    if (reqBody.Marshalling(data) != true) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+        return -1;
+    }
+
+    MessageParcel reply;
+    auto service = make_shared<MediaAssetsControllerService>();
+    service->DeletePhotos(data, reply);
+
+    IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
+    if (respVo.Unmarshalling(reply) != true) {
+        MEDIA_ERR_LOG("respVo.Unmarshalling failed");
+        return -1;
+    }
+    MEDIA_INFO_LOG("DeletePhotos ErrCode:%{public}d", respVo.GetErrCode());
     return respVo.GetErrCode();
 }
 
@@ -297,5 +322,91 @@ HWTEST_F(DeleteAssetTest, SystemDeleteAsset_Test_002, TestSize.Level0)
     std::vector<std::string> testUris = {uri};
     int32_t result = SystemDeleteAsset(testUris);
     ASSERT_GT(result, 0);
+}
+
+static int64_t QueryDateTrashed(int32_t fileId)
+{
+    RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns = { MediaColumn::MEDIA_DATE_TRASHED };
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicates, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Can not get fileId: %{public}d", fileId);
+        return 0;
+    }
+    int64_t dateTrashed = GetInt64Val(MediaColumn::MEDIA_DATE_TRASHED, resultSet);
+    resultSet->Close();
+    return dateTrashed;
+}
+
+HWTEST_F(DeleteAssetTest, PublicDeleteAsset_SharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("PublicDeleteAsset_SharedAsset_Test_001 Begin");
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t sharedId = builder.CreateSharedAsset(0, "SharedDeleteTest001");
+    ASSERT_GT(sharedId, 0);
+
+    InsertAsset();
+    int32_t normalId = QueryPhotoIdByDisplayName("cam_pic.jpg");
+    ASSERT_GT(normalId, 0);
+
+    std::vector<std::string> testUris = {
+        "file://media/Photo/" + to_string(sharedId),
+        "file://media/Photo/" + to_string(normalId),
+    };
+    int32_t result = PublicDeleteAsset(testUris);
+    ASSERT_GT(result, 0);
+
+    EXPECT_EQ(QueryDateTrashed(sharedId), 0);
+    EXPECT_GT(QueryDateTrashed(normalId), 0);
+    MEDIA_INFO_LOG("PublicDeleteAsset_SharedAsset_Test_001 End");
+}
+
+HWTEST_F(DeleteAssetTest, PublicDeleteAsset_AllSharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("PublicDeleteAsset_AllSharedAsset_Test_001 Begin");
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t sharedId = builder.CreateSharedAsset(0, "SharedDeleteOnlyTest001");
+    ASSERT_GT(sharedId, 0);
+
+    std::vector<std::string> testUris = { "file://media/Photo/" + to_string(sharedId) };
+    int32_t result = PublicDeleteAsset(testUris);
+    ASSERT_EQ(result, 0);
+
+    EXPECT_EQ(QueryDateTrashed(sharedId), 0);
+    MEDIA_INFO_LOG("PublicDeleteAsset_AllSharedAsset_Test_001 End");
+}
+
+static bool QueryAssetExists(int32_t fileId)
+{
+    RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns = { MediaColumn::MEDIA_ID };
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicates, columns);
+    if (resultSet == nullptr) {
+        return false;
+    }
+    bool exists = (resultSet->GoToFirstRow() == NativeRdb::E_OK);
+    resultSet->Close();
+    return exists;
+}
+
+HWTEST_F(DeleteAssetTest, DeletePhotos_SharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("DeletePhotos_SharedAsset_Test_001 Begin");
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t sharedId = builder.CreateSharedAsset(0, "SharedDeletePhotos001");
+    ASSERT_GT(sharedId, 0);
+
+    std::vector<std::string> testUris = {
+        "file://media/Photo/" + to_string(sharedId),
+    };
+    DeletePhotos(testUris);
+
+    EXPECT_TRUE(QueryAssetExists(sharedId));
+    MEDIA_INFO_LOG("DeletePhotos_SharedAsset_Test_001 End");
 }
 }  // namespace OHOS::Media

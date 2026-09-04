@@ -32,11 +32,16 @@
 #include "photo_file_utils.h"
 #include "media_file_utils.h"
 #include "userfile_manager_types.h"
+#include "userfile_client.h"
+#include "result_set_utils.h"
+#include "media_column.h"
+#include "userfilemgr_uri.h"
 
 using namespace std;
 
 namespace OHOS {
 namespace Media {
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 
 static bool CheckPropertyListner(napi_env env, napi_value arg, const string &property, napi_value &listener)
 {
@@ -344,6 +349,28 @@ static napi_value ParsePhotoAlbum(napi_env env, napi_value arg, shared_ptr<Photo
     RETURN_NAPI_TRUE(env);
 }
 
+static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds)
+{
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    DataShare::DataSharePredicates predicates;
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    int32_t errCode = 0;
+    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+    if (resultSet == nullptr) {
+        return false;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            return true;
+        }
+    }
+    resultSet->Close();
+    return false;
+}
+
 napi_value MediaLibraryNapi::JSCloneToAlbum(napi_env env, napi_callback_info info)
 {
     NAPI_INFO_LOG("JSCloneToAlbum start");
@@ -370,6 +397,18 @@ napi_value MediaLibraryNapi::JSCloneToAlbum(napi_env env, napi_callback_info inf
 
     if (ctx->argc >= ARGS_THREE) {
         ParseOptions(env, ctx->argv[PARAM2], ctx.get());
+    }
+    std::vector<std::string> fileIds;
+    for (const auto &uri : ctx->cloneCtx.fileUris) {
+        int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(uri);
+        if (fileId >= 0) {
+            fileIds.push_back(std::to_string(fileId));
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
     }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, ctx, "JSCloneToAlbum",

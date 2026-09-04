@@ -36,6 +36,7 @@
 #include "media_asset.h"
 #include "userfilemgr_uri.h"
 #include "media_library_comm_ani.h"
+#include "media_asset_capi.h"
 
 using namespace std;
 using namespace OHOS;
@@ -667,6 +668,44 @@ HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_011, TestSi
     int32_t captureId = 0;
     ani_object ret = MediaLibraryCommAni::CreatePhotoAssetAni(env, uri, shotType, captureId, burstKey);
     EXPECT_EQ(ret, nullptr);
+}
+
+static void CallbackFuncitonOnQuickImageDataPrepared(MediaLibrary_ErrorCode result,
+    MediaLibrary_RequestId requestId, MediaLibrary_MediaQuality mediaQuality,
+    MediaLibrary_MediaContentType type, OH_ImageSourceNative* imageSourceNative, OH_PictureNative* pictureNative)
+{
+    MEDIA_INFO_LOG("CallbackFuncitonOnQuickImageDataPrepared::result: %{public}d", result);
+}
+
+HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_shared_001, TestSize.Level1)
+{
+    OH_MediaAssetManager *manager = OH_MediaAssetManager_Create();
+    ASSERT_NE(manager, nullptr);
+
+    MediaLibrary_RequestOptions requestOptions;
+    requestOptions.deliveryMode = MediaLibrary_DeliveryMode::MEDIA_LIBRARY_HIGH_QUALITY_MODE;
+    static OH_MediaLibrary_OnImageDataPrepared callback = CallbackFuncitonOnImageDataPrepared;
+    static OH_MediaLibrary_OnQuickImageDataPrepared quickCallback = CallbackFuncitonOnQuickImageDataPrepared;
+
+    std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
+    fileAsset->SetResultNapiType(OHOS::Media::ResultNapiType::TYPE_MEDIALIBRARY);
+    fileAsset->SetMediaType(OHOS::Media::MEDIA_TYPE_IMAGE);
+    fileAsset->SetDisplayName(TEST_DISPLAY_NAME);
+    fileAsset->SetIsShared(static_cast<int32_t>(PhotoSharedType::SHARED));
+    auto mediaAssetImpl = MediaAssetFactory::CreateMediaAsset(fileAsset);
+    auto mediaAsset = new OH_MediaAsset(mediaAssetImpl);
+    ASSERT_NE(mediaAsset, nullptr);
+
+    MediaLibrary_RequestId requestID;
+    MediaLibrary_ErrorCode ret = OH_MediaAssetManager_RequestImage(manager, mediaAsset, requestOptions,
+        &requestID, callback);
+    EXPECT_EQ(ret, MEDIA_LIBRARY_PARAMETER_ERROR);
+
+    ret = OH_MediaAssetManager_QuickRequestImage(manager, mediaAsset, requestOptions, &requestID, quickCallback);
+    EXPECT_EQ(ret, MEDIA_LIBRARY_PARAMETER_ERROR);
+
+    OH_MediaAsset_Release(mediaAsset);
+    OH_MediaAssetManager_Release(manager);
 }
 } // namespace Media
 } // namespace OHOS

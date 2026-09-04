@@ -101,6 +101,7 @@
 #include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdb_operations.h"
 #include "medialibrary_unistore_manager.h"
+#include "media_manage_share_permission_check.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -523,6 +524,7 @@ const static vector<string> PHOTO_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_HEIGHT,
     MediaColumn::MEDIA_MIME_TYPE,
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+    PhotoColumn::PHOTO_IS_SHARED,
 };
 
 bool CheckOpenMovingPhoto(int32_t photoSubType, int32_t effectMode, const string& request)
@@ -831,6 +833,8 @@ int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string
         "Get FileAsset From Uri Failed, uri:%{public}s", uriString.c_str());
     CHECK_AND_RETURN_RET_LOG(CheckPermissionToOpenFileAsset(fileAsset),
         E_PERMISSION_DENIED, "Open not allowed");
+    CHECK_AND_RETURN_RET_LOG(ManageSharePermissionCheck::CheckOpenPermission(fileAsset, mode),
+        E_INVALID_VALUES, "invalid values");
 
     if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
         fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
@@ -1521,6 +1525,9 @@ int32_t MediaLibraryPhotoOperations::TrashPhotos(MediaLibraryCommand &cmd)
     std::shared_ptr<AlbumData> albumData = std::make_shared<AlbumData>();
     vector<string> fileIds = rdbPredicate.GetWhereArgs();
     MEDIA_INFO_LOG("Start trash %{public}zu photos", fileIds.size());
+    MediaLibraryPhotoOperations::FilterSharedAssets(fileIds, true);
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), 0, "fileIds is empty after filter shared");
+    notifyUris = fileIds;
     TrashSceneInfo sceneInfo;
     HandleQualityAndHidden(rdbPredicate, fileIds, albumData, sceneInfo);
     // 1、AssetRefresh -> Init(rdbPredicate)
@@ -2150,6 +2157,28 @@ static void SendHideNotify(vector<string> &notifyUris, const int32_t hiddenState
     }
 }
 
+static bool HasShareAsset(NativeRdb::RdbPredicates predicates, const vector<string> &fileIds)
+{
+    if (predicates.GetTableName() != PhotoColumn::PHOTOS_TABLE) {
+        MEDIA_INFO_LOG("Invalid table name: %{public}s", predicates.GetTableName().c_str());
+        return false;
+    }
+    NativeRdb::AbsRdbPredicates predicatesNew(predicates.GetTableName());
+    predicatesNew.In(PhotoColumn::MEDIA_ID, fileIds);
+    predicatesNew.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(static_cast<int>(PhotoSharedType::SHARED)));
+    vector<string> columns { MediaColumn::MEDIA_ID };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicatesNew, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "resultSet is nullptr");
+    int32_t rowCount = 0;
+    if (resultSet->GetRowCount(rowCount) != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("GetRowCount error");
+        resultSet->Close();
+        return false;
+    }
+    resultSet->Close();
+    return (rowCount > 0) ? true : false;
+}
+
 static int32_t HidePhotos(MediaLibraryCommand &cmd)
 {
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::HIDE_PHOTOS_BUSSINESS_NAME);
@@ -2164,6 +2193,9 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     vector<string> notifyUris = predicates.GetWhereArgs();
     MEDIA_INFO_LOG("Hide %{public}zu Photos, hiddenState: %{public}d", notifyUris.size(), hiddenState);
     MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
+    vector<string> hideFileIds = predicates.GetWhereArgs();
+    CHECK_AND_RETURN_RET_LOG(!HasShareAsset(predicates, hideFileIds), E_INVALID_VALUES,
+        "HidePhotos does not support shared album asset");
     if (hiddenState != 0) {
         MediaLibraryPhotoOperations::UpdateSourcePath(predicates.GetWhereArgs());
     } else {
@@ -3280,6 +3312,10 @@ int32_t MediaLibraryPhotoOperations::UpdateFileAsset(MediaLibraryCommand &cmd, b
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(*(cmd.GetAbsRdbPredicates()),
         OperationObject::FILESYSTEM_PHOTO, GetUpdateFileAssetColumns());
     CHECK_AND_RETURN_RET(fileAsset != nullptr, E_INVALID_VALUES);
+    if (fileAsset->GetIsShared()) {
+        MEDIA_ERR_LOG("UpdateFileAsset does not support shared album asset, fileId=%{public}d", fileAsset->GetId());
+        return E_INVALID_VALUES;
+    }
 
     bool isNeedScan = false;
     int32_t errCode = RevertToOriginalEffectMode(cmd, fileAsset, isNeedScan);
@@ -3946,6 +3982,11 @@ int32_t MediaLibraryPhotoOperations::CommitEditInsert(MediaLibraryCommand &cmd)
         PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
         return E_INVALID_VALUES;
     }
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        MEDIA_ERR_LOG("CommitEditInsert does not support shared album asset, fileId=%{public}d", id);
+        PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
+        return E_INVALID_VALUES;
+    }
     fileAsset->SetId(id);
     int32_t ret = CommitEditInsertExecute(fileAsset, editData);
     PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
@@ -4058,6 +4099,10 @@ int32_t MediaLibraryPhotoOperations::RevertToOrigin(MediaLibraryCommand &cmd)
         return E_INVALID_VALUES;
     }
     fileAsset->SetId(fileId);
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        MEDIA_ERR_LOG("RevertToOrigin does not support shared album asset, fileId=%{public}d", fileId);
+        return E_INVALID_VALUES;
+    }
     CHECK_AND_RETURN_RET(PhotoEditingRecord::GetInstance()->StartRevert(fileId), E_IS_IN_COMMIT);
 
     int32_t errCode = DoRevertEdit(fileAsset);
@@ -5987,11 +6032,13 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
         "Failed to check effect mode: %{public}d", effectMode);
     vector<string> columns = { PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME, PhotoColumn::PHOTO_SUBTYPE,
         PhotoColumn::MEDIA_TIME_PENDING, PhotoColumn::MEDIA_DATE_TRASHED, PhotoColumn::PHOTO_EDIT_TIME,
-        PhotoColumn::MOVING_PHOTO_EFFECT_MODE };
+        PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_IS_SHARED };
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, to_string(id),
         OperationObject::FILESYSTEM_PHOTO, columns);
     int32_t errCode = CheckFileAssetStatus(fileAsset, true);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to check status of fileAsset, id: %{public}d", id);
+    CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        E_INVALID_VALUES, "asset belong to shared album, not support the operation");
 
     string imageCachePath;
     string videoCachePath;
@@ -6064,11 +6111,13 @@ int32_t MediaLibraryPhotoOperations::SubmitCache(MediaLibraryCommand& cmd)
     vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME,
         PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MEDIA_TIME_PENDING, PhotoColumn::MEDIA_DATE_TRASHED,
         PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
-        PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_ID };
+        PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_IS_SHARED };
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(
         PhotoColumn::MEDIA_ID, to_string(id), OperationObject::FILESYSTEM_PHOTO, columns);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES,
         "Failed to getmapmanagerthread:: FileAsset, fileId=%{public}d", id);
+    CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        E_INVALID_VALUES, "asset belong to shared album, not support the operation");
     int32_t errCode = SubmitCacheExecute(cmd, fileAsset, cachePath);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to submit cache, fileId=%{public}d", id);
     return id;
@@ -7888,6 +7937,34 @@ static bool IsLegalKey(const std::string &key)
     return std::all_of(key.begin(), key.end(), [](unsigned char c) {
         return std::islower(c) || c == '_' || std::isdigit(c);
     });
+}
+
+int32_t MediaLibraryPhotoOperations::FilterSharedAssets(std::vector<std::string> &fileIds, bool excludeShared)
+{
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_ERR, "FilterSharedAssets fileIds is empty");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "FilterSharedAssets Failed to get rdbStore.");
+
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(PhotoColumn::MEDIA_ID, fileIds);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED,
+        std::to_string(static_cast<int32_t>(excludeShared ? PhotoSharedType::NOT_SHARED : PhotoSharedType::SHARED)));
+
+    std::vector<std::string> columns = { PhotoColumn::MEDIA_ID };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "FilterSharedAssets query failed");
+
+    std::vector<std::string> filteredFileIds;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t fileId = GetInt32Val(PhotoColumn::MEDIA_ID, resultSet);
+        filteredFileIds.push_back(std::to_string(fileId));
+    }
+    resultSet->Close();
+
+    fileIds.swap(filteredFileIds);
+    MEDIA_INFO_LOG("FilterSharedAssets excludeShared=%{public}d, after=%{public}zu",
+        excludeShared, fileIds.size());
+    return E_OK;
 }
 } // namespace Media
 } // namespace OHOS

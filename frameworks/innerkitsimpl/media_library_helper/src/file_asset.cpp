@@ -1119,5 +1119,16 @@ const std::string &FileAsset::GetC2paConfigInfo() const
 {
     return GetStrMember(PhotoColumn::C2PA_CONFIG_INFO);
 }
+
+void FileAsset::SetIsShared(int32_t isShared)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_IS_SHARED] = isShared;
+}
+
+int32_t FileAsset::GetIsShared() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_IS_SHARED);
+}
 }  // namespace Media
 }  // namespace OHOS

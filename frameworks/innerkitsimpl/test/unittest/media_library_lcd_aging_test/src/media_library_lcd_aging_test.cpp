@@ -18,6 +18,7 @@
 #include <fstream>
 
 #include "lcd_aging_manager.h"
+#include "lcd_aging_dao.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_worker.h"
 #include "media_column.h"
@@ -84,6 +85,7 @@ struct PhotoTestData {
     int32_t thumbStatus = 0;
     int64_t dateTrashed = 0;
     int64_t realLcdVisitTime = DATE_TAKEN_TEST_VALUE - THIRTY_DAYS_MS;
+    int32_t isShared = 0;
 };
 
 static void InitRdbStore()
@@ -165,6 +167,7 @@ static int32_t InsertPhotoData(int64_t &testId, const PhotoTestData &data)
     values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, data.thumbStatus);
     values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, data.dateTrashed);
     values.PutLong(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, data.realLcdVisitTime);
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, data.isShared);
     return g_rdbStore->Insert(testId, PhotoColumn::PHOTOS_TABLE, values);
 }
 
@@ -2483,6 +2486,43 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_ThumbS
     EXPECT_FALSE(hasReleasable);
 
     CleanupLcdEnvironment(testIds);
+}
+
+// 用例说明：共享资产被 QueryAgingLcdDataByFileIds 过滤
+// 覆盖场景：fileIds 混合共享与非共享资产
+// 业务验证：共享 fileId 不出现在查询结果，非共享正常返回
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingDao_QueryAgingLcdDataByFileIds_SharedAsset_test_001, TestSize.Level1)
+{
+    PhotoTestData sharedData;
+    sharedData.isShared = 1;
+    int64_t sharedId;
+    ASSERT_EQ(InsertPhotoData(sharedId, sharedData), NativeRdb::E_OK);
+
+    PhotoTestData normalData;
+    int64_t normalId;
+    ASSERT_EQ(InsertPhotoData(normalId, normalData), NativeRdb::E_OK);
+
+    LcdAgingDao dao;
+    vector<int64_t> fileIds = { sharedId, normalId };
+    vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    int32_t ret = dao.QueryAgingLcdDataByFileIds(fileIds, lcdAgingFileInfoList);
+    EXPECT_EQ(ret, E_OK);
+
+    bool hasShared = false;
+    bool hasNormal = false;
+    for (const auto& info : lcdAgingFileInfoList) {
+        if (info.fileId == sharedId) {
+            hasShared = true;
+        }
+        if (info.fileId == normalId) {
+            hasNormal = true;
+        }
+    }
+    EXPECT_FALSE(hasShared);
+    EXPECT_TRUE(hasNormal);
+
+    DeletePhotoDataById(sharedId);
+    DeletePhotoDataById(normalId);
 }
 } // namespace Media
 } // namespace OHOS

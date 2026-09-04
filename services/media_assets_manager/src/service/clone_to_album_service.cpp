@@ -63,6 +63,7 @@ constexpr int32_t DOCS_LPATH_LENGTH = 9;
 const std::string CLONE_FILE_ROOT_LPATH = "/FromDocs/";
 const std::string CLONE_FILE_ROOT_ALBUM = "根目录";
 const std::string  RELATIVE_PATH = "../";
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 
 
 shared_ptr<NativeRdb::ResultSet> QueryGetAlbumByAlbumId(const int32_t &albumId)
@@ -393,6 +394,37 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
     return E_OK;
 }
 
+int32_t CheckSharedAssetsNotSupported(const std::vector<std::string> &assetsArray)
+{
+    std::vector<std::string> fileIds;
+    for (const auto &uri : assetsArray) {
+        int32_t fileId = MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(uri);
+        if (fileId >= 0) {
+            fileIds.push_back(std::to_string(fileId));
+        }
+    }
+    if (fileIds.empty()) {
+        return E_OK;
+    }
+    NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicate.In(MediaColumn::MEDIA_ID, fileIds);
+    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+    if (resultSet == nullptr) {
+        return E_OK;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            MEDIA_ERR_LOG("CloneToAlbum does not support shared album asset");
+            return E_OPERATION_NOT_SUPPORT;
+        }
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 int32_t CloneToAlbumService::CloneToAlbum(CloneToAlbumReqBody &reqBody)
 {
     MediaLibraryTracer tracer;
@@ -404,6 +436,11 @@ int32_t CloneToAlbumService::CloneToAlbum(CloneToAlbumReqBody &reqBody)
         CHECK_AND_RETURN_RET_LOG(ret != E_INNER_FAIL, E_INNER_FAIL, "validate request failed.");
         MEDIA_INFO_LOG("ValidateRequest error");
         return E_SCENE_PARAM_INVALID;
+    }
+
+    int32_t sharedRet = CheckSharedAssetsNotSupported(reqBody.assetsArray);
+    if (sharedRet != E_OK) {
+        return sharedRet;
     }
 
     CloneTaskInfo cloneTaskInfo;

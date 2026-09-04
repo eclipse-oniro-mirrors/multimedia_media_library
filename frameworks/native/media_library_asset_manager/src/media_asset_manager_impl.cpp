@@ -588,6 +588,9 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestImageSource(OH_MediaA
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr && mediaAsset->mediaAsset_ != nullptr,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "mediaAsset or mediaAsset_ is null");
     std::shared_ptr<FileAsset> fileAsset_ = mediaAsset->mediaAsset_->GetFileAssetInstance();
+    CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset_ is null");
+    CHECK_AND_RETURN_RET_LOG(fileAsset_->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
     MediaLibraryTracer tracer;
     tracer.Start("NativeRequestImageSource");
 
@@ -632,6 +635,13 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestImageSource(OH_MediaA
     }
 }
 
+static MediaLibrary_ErrorCode SetMovingPhotoErrorRequestId(MediaLibrary_RequestId* requestId,
+    MediaLibrary_ErrorCode code)
+{
+    strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+    return code;
+}
+
 MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestMovingPhoto(OH_MediaAsset* mediaAsset,
     NativeRequestOptions requestOptions, MediaLibrary_RequestId* requestId,
     OH_MediaLibrary_OnMovingPhotoDataPrepared callback)
@@ -641,6 +651,8 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestMovingPhoto(OH_MediaA
     std::shared_ptr<FileAsset> fileAsset_ = mediaAsset->mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset_ is nullptr");
+    CHECK_AND_RETURN_RET_LOG(fileAsset_->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
     MediaLibraryTracer tracer;
     tracer.Start("NativeRequestMovingPhoto");
 
@@ -662,14 +674,12 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestMovingPhoto(OH_MediaA
     if (asyncContext->requestUri.length() > MAX_URI_SIZE) {
         MEDIA_ERR_LOG("Request image uri lens out of limit requestUri lens: %{public}zu",
             asyncContext->requestUri.length());
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
-        return MEDIA_LIBRARY_PARAMETER_ERROR;
+        return SetMovingPhotoErrorRequestId(requestId, MEDIA_LIBRARY_PARAMETER_ERROR);
     }
 
     if (MediaFileUtils::GetMediaType(asyncContext->displayName) != MEDIA_TYPE_IMAGE) {
         MEDIA_ERR_LOG("Request image file type invalid");
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
-        return MEDIA_LIBRARY_PARAMETER_ERROR;
+        return SetMovingPhotoErrorRequestId(requestId, MEDIA_LIBRARY_PARAMETER_ERROR);
     }
 
     bool isSuccess = false;
@@ -685,10 +695,8 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestMovingPhoto(OH_MediaA
     if (isSuccess) {
         strncpy_s(requestId->requestId, UUID_STR_LENGTH, (asyncContext->requestId.c_str()), UUID_STR_LENGTH);
         return MEDIA_LIBRARY_OK;
-    } else {
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
-        return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
+    return SetMovingPhotoErrorRequestId(requestId, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED);
 }
 
 OH_ImageSourceNative* MediaAssetManagerImpl::CreateImageSource(const std::string requestId,
@@ -951,6 +959,9 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr && mediaAsset->mediaAsset_ != nullptr,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "mediaAsset or mediaAsset_ is null");
     std::shared_ptr<FileAsset> fileAsset_ = mediaAsset->mediaAsset_->GetFileAssetInstance();
+    CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset_ is null");
+    CHECK_AND_RETURN_RET_LOG(fileAsset_->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
     MediaLibraryTracer tracer;
     tracer.Start("NativeQuickRequestImage");
 
@@ -986,10 +997,8 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
         return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
 
-    bool isSuccess = false;
     asyncContext->requestId = GenerateRequestId();
-    isSuccess = OnHandleRequestImage(asyncContext);
-    if (isSuccess) {
+    if (OnHandleRequestImage(asyncContext)) {
         strncpyResult = strncpy_s(requestId->requestId,
             UUID_STR_LENGTH, (asyncContext->requestId.c_str()), UUID_STR_LENGTH);
         CHECK_AND_RETURN_RET_LOG(strncpyResult == E_OK, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "strncpy failed");

@@ -48,6 +48,7 @@
 #include "delete_photos_completed_vo.h"
 #include "trash_photos_vo.h"
 #include "rdb_utils.h"
+#include "result_set_utils.h"
 #include "submit_cache_vo.h"
 #include "save_camera_photo_vo.h"
 #include "add_image_vo.h"
@@ -154,6 +155,8 @@ constexpr int32_t NO = 0;
 
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 constexpr int32_t MAX_DELETE_NUMBER = 300;
+
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 
 const std::string PAH_SUBTYPE = "subtype";
 const std::string CAMERA_SHOT_KEY = "cameraShotKey";
@@ -1103,6 +1106,41 @@ static void DeleteAssetsComplete(ani_env *env, std::unique_ptr<MediaAssetChangeR
     context.reset();
 }
 
+static bool HasSharedAssetInDeleteUris(const std::vector<std::string>& uris)
+{
+    vector<string> fileIds;
+    for (const auto& uri : uris) {
+        string fileId = MediaFileUtils::GetIdFromUri(uri);
+        if (!fileId.empty()) {
+            fileIds.push_back(fileId);
+        }
+    }
+    if (fileIds.empty()) {
+        return false;
+    }
+
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    DataShare::DataSharePredicates predicates;
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    int32_t errCode = 0;
+    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+    if (resultSet == nullptr) {
+        ANI_ERR_LOG("Query photo is shared failed, errCode:%{public}d", errCode);
+        return false;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            ANI_ERR_LOG("DeleteAssets does not support shared album asset");
+            return true;
+        }
+    }
+    resultSet->Close();
+    return false;
+}
+
 bool PrepareAssetDeletion(ani_env *env, const std::vector<std::string>& uris,
     MediaAssetChangeRequestAniContext& context)
 {
@@ -1124,27 +1162,27 @@ bool PrepareAssetDeletion(ani_env *env, const std::vector<std::string>& uris,
     return true;
 }
 
-ani_object MediaAssetChangeRequestAni::DeleteAssets(ani_env *env, [[maybe_unused]] ani_class clazz,
-    ani_object context, ani_object assets)
+static bool CheckSharedAssetForDelete(ani_env *env, const std::vector<std::string>& uris)
 {
-    ANI_CHECK_RETURN_RET_LOG(env != nullptr, nullptr, "env is null");
-    auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
-    ANI_CHECK_RETURN_RET_LOG(aniContext != nullptr, nullptr, "aniContext is null");
-    std::vector<std::string> uris;
-    CHECK_COND(env, MediaAssetChangeRequestAni::InitUserFileClient(env, context), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAssets(env, assets, uris) == ANI_OK, "Failed to parse args");
-    CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "Failed to check empty array");
-    if (!PrepareAssetDeletion(env, uris, *aniContext)) {
-        return nullptr;
+    if (!HasSharedAssetInDeleteUris(uris)) {
+        return true;
     }
+    AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+        "The current asset belongs to a shared album and does not support this operation");
+    return false;
+}
 
-    // Delete assets
-    if (MediaLibraryAniUtils::IsSystemApp()) {
-        DeleteAssetsExecute(env, aniContext);
-        DeleteAssetsComplete(env, aniContext);
-        return ReturnAniUndefined(env);
-    }
+static ani_object DeleteAssetsForSystemApp(ani_env *env,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &aniContext)
+{
+    DeleteAssetsExecute(env, aniContext);
+    DeleteAssetsComplete(env, aniContext);
+    return ReturnAniUndefined(env);
+}
 
+static ani_object DeleteAssetsByModalUIExtension(ani_env *env, ani_object context,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &aniContext)
+{
 #ifdef HAS_ACE_ENGINE_PART
     // Deletion control by ui extension
     CHECK_COND(env, HasWritePermission(), OHOS_PERMISSION_DENIED_CODE);
@@ -1181,6 +1219,29 @@ ani_object MediaAssetChangeRequestAni::DeleteAssets(ani_env *env, [[maybe_unused
     AniError::ThrowError(env, JS_INNER_FAIL, "ace_engine is not support");
     return nullptr;
 #endif
+}
+
+ani_object MediaAssetChangeRequestAni::DeleteAssets(ani_env *env, [[maybe_unused]] ani_class clazz,
+    ani_object context, ani_object assets)
+{
+    ANI_CHECK_RETURN_RET_LOG(env != nullptr, nullptr, "env is null");
+    auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
+    ANI_CHECK_RETURN_RET_LOG(aniContext != nullptr, nullptr, "aniContext is null");
+    std::vector<std::string> uris;
+    CHECK_COND(env, MediaAssetChangeRequestAni::InitUserFileClient(env, context), JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAssets(env, assets, uris) == ANI_OK, "Failed to parse args");
+    CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "Failed to check empty array");
+    if (!CheckSharedAssetForDelete(env, uris)) {
+        return nullptr;
+    }
+    if (!PrepareAssetDeletion(env, uris, *aniContext)) {
+        return nullptr;
+    }
+
+    if (MediaLibraryAniUtils::IsSystemApp()) {
+        return DeleteAssetsForSystemApp(env, aniContext);
+    }
+    return DeleteAssetsByModalUIExtension(env, context, aniContext);
 }
 
 ani_object MediaAssetChangeRequestAni::SetEditData(ani_env *env, ani_object aniObject, ani_object editData)
@@ -3195,6 +3256,11 @@ ani_object MediaAssetChangeRequestAni::SetFavorite(ani_env *env, ani_object obje
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    if (changeRequest->GetFileAssetInstance()->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     changeRequest->GetFileAssetInstance()->SetFavorite(isFavorite);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_FAVORITE);
     return ReturnAniUndefined(env);

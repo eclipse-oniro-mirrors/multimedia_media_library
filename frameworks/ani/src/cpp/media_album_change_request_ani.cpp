@@ -318,6 +318,18 @@ ani_status MediaAlbumChangeRequestAni::PlaceBefore([[maybe_unused]] ani_env *env
     auto albumAni = PhotoAlbumAni::UnwrapPhotoAlbumObject(env, albumHandle);
     CHECK_COND_RET(albumAni != nullptr, ANI_INVALID_ARGS, "albumAni is nullptr");
     aniContext->objectInfo->referencePhotoAlbum_ = albumAni->GetPhotoAlbumInstance();
+    auto sourceAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
+    if (sourceAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(sourceAlbum->GetPhotoAlbumType(), sourceAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "The current album type does not support this operation");
+        return ANI_ERROR;
+    }
+    auto referenceAlbum = aniContext->objectInfo->referencePhotoAlbum_;
+    if (referenceAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(referenceAlbum->GetPhotoAlbumType(), referenceAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "The current album type does not support this operation");
+        return ANI_ERROR;
+    }
     aniContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ORDER_ALBUM);
     return ANI_OK;
 }
@@ -487,6 +499,10 @@ ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object
 
     auto photoAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_WITH_RET_MESSAGE(env, photoAlbum != nullptr, ANI_INVALID_ARGS, "photoAlbum is null");
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "The current album type does not support this operation");
+        return ANI_ERROR;
+    }
     if (!IsPortraitAlbumAttributeTarget(photoAlbum)) {
         AniError::ThrowError(env, JS_E_OPR_TYPE_NOT_SUPPORT, "Only portrait album can operate attribute");
         return ANI_ERROR;

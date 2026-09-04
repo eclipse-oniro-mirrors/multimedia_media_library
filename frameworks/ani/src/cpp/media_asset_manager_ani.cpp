@@ -33,6 +33,7 @@
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_ani_utils_ext.h"
 #include "medialibrary_business_code.h"
+#include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_operation.h"
 #include "moving_photo_ani.h"
@@ -41,6 +42,7 @@
 #include "picture_handle_client.h"
 #include "query_photo_vo.h"
 #include "query_composite_auxiliary_image_vo.h"
+#include "result_set_utils.h"
 #include "userfile_client.h"
 #include "image_source_taihe_ani.h"
 #include "picture_taihe_ani.h"
@@ -63,6 +65,8 @@ const std::string HIGH_TEMPERATURE = "high_temperature";
 
 static const std::string URI_TYPE = "uriType";
 static const std::string TYPE_PHOTOS = "1";
+
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 
 static std::map<std::string, std::shared_ptr<MultiStagesTaskObserver>> multiStagesObserverMap;
 static std::map<std::string, std::map<std::string, AssetHandler*>> inProcessUriMap;
@@ -1996,6 +2000,30 @@ ani_object MediaAssetManagerAni::LoadMovingPhoto(ani_env *env, [[maybe_unused]] 
     unique_ptr<MediaAssetManagerAniContext> aniContext = make_unique<MediaAssetManagerAniContext>();
     if (ParseArgsForLoadMovingPhoto(env, imageFileUri, videoFileUri, aniContext) != ANI_OK) {
         return nullptr;
+    }
+    std::string movingPhotoUri = aniContext->photoUri;
+    std::size_t splitPos = movingPhotoUri.find(MOVING_PHOTO_URI_SPLIT);
+    if (splitPos != std::string::npos) {
+        movingPhotoUri = movingPhotoUri.substr(0, splitPos);
+    }
+    int32_t fileId = MediaLibraryAniUtils::GetFileIdFromPhotoUri(movingPhotoUri);
+    if (fileId > 0) {
+        std::vector<std::string> fileIds = { std::to_string(fileId) };
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, fileIds);
+        std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        if (resultSet != nullptr && resultSet->GoToFirstRow() == E_OK) {
+            int32_t isShared = std::get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return nullptr;
+            }
+        }
     }
     return LoadMovingPhotoComplete(env, aniContext);
 }

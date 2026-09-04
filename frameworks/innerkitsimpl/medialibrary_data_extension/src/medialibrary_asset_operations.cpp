@@ -100,6 +100,8 @@ static const std::string ANALYSIS_FILE_PATH = "/storage/cloud/files/highlight/mu
 static const std::string DELETED_FILE_EVENT = "/data/storage/el2/base/preferences/deleted_file_events.xml";
 const double TIMER_MULTIPLIER = 60.0;
 
+constexpr int32_t SHARED_ASSET_FLAG = 1;
+
 struct DeletedFilesParams {
     vector<string> ids;
     vector<string> paths;
@@ -215,6 +217,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::ATTACHMENT_SIZE, MEMBER_TYPE_INT64 },
     { PhotoColumn::COMPRESSION_QUALITY, MEMBER_TYPE_INT32 },
     { PhotoColumn::C2PA_CONFIG_INFO, MEMBER_TYPE_STRING },
+    { PhotoColumn::PHOTO_IS_SHARED, MEMBER_TYPE_INT32 },
 };
 
 const std::unordered_map<std::string, int>& GetFileAssetMemberMap()
@@ -2296,6 +2299,23 @@ int32_t MediaLibraryAssetOperations::SetPendingFalse(const shared_ptr<FileAsset>
     return E_OK;
 }
 
+static bool IsSharedPhotoAsset(int32_t fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "Failed to get rdbStore");
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Failed to query photo is shared");
+    int32_t isShared = 0;
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED, resultSet, TYPE_INT32));
+    }
+    resultSet->Close();
+    return isShared == SHARED_ASSET_FLAG;
+}
+
 int32_t MediaLibraryAssetOperations::SetPendingStatus(MediaLibraryCommand &cmd)
 {
     int32_t pendingStatus = 0;
@@ -2311,6 +2331,10 @@ int32_t MediaLibraryAssetOperations::SetPendingStatus(MediaLibraryCommand &cmd)
     };
     auto fileAsset = GetFileAssetFromDb(*(cmd.GetAbsRdbPredicates()), cmd.GetOprnObject(), columns);
     if (fileAsset == nullptr) {
+        return E_INVALID_VALUES;
+    }
+    if (cmd.GetOprnObject() == OperationObject::FILESYSTEM_PHOTO && IsSharedPhotoAsset(fileAsset->GetId())) {
+        MEDIA_ERR_LOG("SetPendingStatus does not support shared album asset, fileId=%{public}d", fileAsset->GetId());
         return E_INVALID_VALUES;
     }
     if (pendingStatus == 1) {
@@ -3797,15 +3821,22 @@ std::string BuildFileUri(const std::string &fileId, const std::string &filePath,
     return fileUri.ToString();
 }
 
+static std::string GenSqlForDeletePermanently(const std::string &inClause)
+{
+    std::string sql = "SELECT file_id, data, display_name, media_type FROM Photos WHERE burst_key IN ("
+        "SELECT DISTINCT burst_key FROM Photos WHERE file_id IN (" + inClause + ") "
+        "AND burst_cover_level = 1 AND subtype = 4 ) OR file_id IN (" + inClause + ");";
+    return sql;
+}
+
 int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &predicates)
 {
     vector<string> fileIds = predicates.GetWhereArgs();
+    MediaLibraryPhotoOperations::FilterSharedAssets(fileIds, true);
     MEDIA_INFO_LOG("Start delete permanently %{public}zu photos", fileIds.size());
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), 0, "fileIds is empty.");
     string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
-    string sql = "SELECT file_id, data, display_name, media_type FROM Photos WHERE burst_key IN ("
-        "SELECT DISTINCT burst_key FROM Photos WHERE file_id IN (" + inClause + ") "
-        "AND burst_cover_level = 1 AND subtype = 4 ) OR file_id IN (" + inClause + ");";
+    string sql = GenSqlForDeletePermanently(inClause);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, 0, "get rdb store fail");
     auto resultSet = rdbStore->QuerySql(sql);

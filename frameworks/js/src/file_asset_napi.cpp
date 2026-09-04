@@ -1475,6 +1475,11 @@ napi_value FileAssetNapi::JSCommitModify(napi_env env, napi_callback_info info)
         ASSERT_NULLPTR_CHECK(env, result);
         asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
         CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, result, "FileAsset is nullptr");
+        if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
 
         result = MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSCommitModify", JSCommitModifyExecute,
             JSCommitModifyCompleteCallback);
@@ -1762,6 +1767,11 @@ napi_value FileAssetNapi::JSClose(napi_env env, napi_callback_info info)
 
         asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
         CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, result, "FileAsset is nullptr");
+        if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
 
         status = napi_create_async_work(
             env, nullptr, resource, [](napi_env env, void *data) {
@@ -3069,6 +3079,11 @@ napi_value FileAssetNapi::PhotoAccessHelperCreateTmpCompatibleDup(napi_env env, 
     asyncContext->objectPtr = changeRequest->fileAssetPtr;
     auto fileAsset = asyncContext->objectPtr;
     CHECK_COND(env, fileAsset != nullptr, JS_E_PARAM_INVALID);
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     if (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_IMAGE) {
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Only image file type is supported");
@@ -3491,6 +3506,11 @@ napi_value FileAssetNapi::UserFileMgrSet(napi_env env, napi_callback_info info)
     napi_value jsResult = nullptr;
     napi_get_undefined(env, &jsResult);
     auto obj = asyncContext->objectInfo;
+    if (obj->fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return jsResult;
+    }
     if (!obj->HandleParamSet(inputKey, value, obj->fileAssetPtr->GetResultNapiType())) {
         NapiError::ThrowError(env, JS_E_FILE_KEY);
         return jsResult;
@@ -3510,6 +3530,11 @@ napi_value FileAssetNapi::UserFileMgrCommitModify(napi_env env, napi_callback_in
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "UserFileMgrCommitModify",
         JSCommitModifyExecute, JSCommitModifyCompleteCallback);
@@ -4004,6 +4029,11 @@ napi_value FileAssetNapi::UserFileMgrClose(napi_env env, napi_callback_info info
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetPhotoAssets", UserFileMgrCloseExecute,
         UserFileMgrCloseCallbackComplete);
@@ -4073,6 +4103,11 @@ napi_value FileAssetNapi::UserFileMgrSetHidden(napi_env env, napi_callback_info 
         JS_ERR_PARAMETER_INVALID);
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULLPTR_RET(asyncContext->objectPtr);
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "UserFileMgrSetHidden",
         UserFileMgrSetHiddenExecute, UserFileMgrSetHiddenComplete);
@@ -4149,6 +4184,11 @@ napi_value FileAssetNapi::UserFileMgrSetPending(napi_env env, napi_callback_info
         MediaLibraryNapiUtils::ParseArgsBoolCallBack(env, info, asyncContext, asyncContext->isPending));
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULLPTR_RET(asyncContext->objectPtr);
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "UserFileMgrSetPending",
         UserFileMgrSetPendingExecute, UserFileMgrSetPendingComplete);
@@ -4276,6 +4316,12 @@ napi_value FileAssetNapi::UserFileMgrSetUserComment(napi_env env, napi_callback_
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     if (asyncContext->objectPtr == nullptr) {
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
+
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
         return nullptr;
     }
 
@@ -4514,6 +4560,11 @@ napi_value FileAssetNapi::PhotoAccessHelperClose(napi_env env, napi_callback_inf
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", asyncContext->fd,
         MediaFileUtils::DesensitizePath(asyncContext->objectPtr->GetUri()).c_str());
 
@@ -4635,6 +4686,11 @@ napi_value FileAssetNapi::PhotoAccessHelperCloneAsset(napi_env env, napi_callbac
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     string title;
     MediaLibraryNapiUtils::GetParamStringPathMax(env, asyncContext->argv[ARGS_ZERO], title);
@@ -4787,6 +4843,11 @@ napi_value FileAssetNapi::PhotoAccessHelperConvertFormat(napi_env env, napi_call
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_E_PARAM_INVALID);
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     string title;
     MediaLibraryNapiUtils::GetParamStringPathMax(env, asyncContext->argv[ARGS_ZERO], title);
@@ -4821,6 +4882,11 @@ napi_value FileAssetNapi::PhotoAccessHelperCommitModify(napi_env env, napi_callb
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperCommitModify",
         JSCommitModifyExecute, JSCommitModifyCompleteCallback);
@@ -4927,6 +4993,12 @@ napi_value FileAssetNapi::PhotoAccessHelperFavorite(napi_env env, napi_callback_
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperFavorite",
         PhotoAccessHelperFavoriteExecute, PhotoAccessHelperFavoriteComplete);
@@ -5085,6 +5157,12 @@ napi_value FileAssetNapi::PhotoAccessHelperCancelPhotoRequest(napi_env env, napi
     string requestKey;
     CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ONE,
         ARGS_ONE), OHOS_INVALID_PARAM_CODE);
+    if (asyncContext->objectInfo->fileAssetPtr != nullptr &&
+        asyncContext->objectInfo->fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     CHECK_ARGS(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, asyncContext->argv[ARGS_ZERO], requestKey),
         OHOS_INVALID_PARAM_CODE);
     napi_value jsResult = nullptr;
@@ -5188,6 +5266,11 @@ napi_value FileAssetNapi::PhotoAccessHelperSetHidden(napi_env env, napi_callback
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperSetHidden",
         PhotoAccessHelperSetHiddenExecute, PhotoAccessHelperSetHiddenComplete);
@@ -5297,6 +5380,11 @@ napi_value FileAssetNapi::PhotoAccessHelperSetPending(napi_env env, napi_callbac
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperSetPending",
         PhotoAccessHelperSetPendingExecute, PhotoAccessHelperSetPendingComplete);
@@ -5415,6 +5503,12 @@ napi_value FileAssetNapi::PhotoAccessHelperSetUserComment(napi_env env, napi_cal
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     if (asyncContext->objectPtr == nullptr) {
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
+
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
         return nullptr;
     }
 
@@ -6147,6 +6241,11 @@ napi_value FileAssetNapi::PhotoAccessHelperCommitEditedAsset(napi_env env, napi_
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     napi_value ret = nullptr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
@@ -6232,6 +6331,11 @@ napi_value FileAssetNapi::PhotoAccessHelperRevertToOriginal(napi_env env, napi_c
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     napi_value ret = nullptr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     asyncContext->valuesBucket.Put(MediaColumn::MEDIA_ID, asyncContext->objectPtr->GetId());
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperRevertToOriginal",
         PhotoAccessHelperRevertToOriginalExecute, PhotoAccessHelperRevertToOriginalComplete);

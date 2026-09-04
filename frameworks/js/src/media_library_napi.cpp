@@ -17,6 +17,7 @@
 #define ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE "ability.want.params.uiExtensionTargetType"
 
 #include "media_library_napi.h"
+#include "media_log.h"
 
 #include <sys/sendfile.h>
 
@@ -180,6 +181,7 @@ const int32_t MAX_FILE_FD = 1023;
 const std::string CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
 const std::string TARGET_DIR = "/storage/media/local/files";
 const int32_t MAX_ASSETS_NUMBER = 200;
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 const std::string DOCS_DIR = "/Docs/";
 const std::string DOCS_DIR_PRE = "/Docs";
 const std::string FILE_MANAGEMENT_PREFIX = "/storage/media/local/files";
@@ -6184,6 +6186,28 @@ napi_value MediaLibraryNapi::PhotoAccessCheckPhotoUrisReadPermission(napi_env en
         CheckPhotoUrisReadPermissionExecute, CheckPhotoUrisReadPermissionComplete);
 }
 
+static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds)
+{
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    DataShare::DataSharePredicates predicates;
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    int32_t errCode = 0;
+    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+    if (resultSet == nullptr) {
+        return false;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            return true;
+        }
+    }
+    resultSet->Close();
+    return false;
+}
+
 static napi_value ParseArgsGrantPhotoUriPermissionInner(napi_env env, napi_callback_info info,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
@@ -6202,6 +6226,11 @@ static napi_value ParseArgsGrantPhotoUriPermissionInner(napi_env env, napi_callb
     int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(uri);
     NAPI_ASSERT(env, fileId >= 0, "Invalid uri");
     context->valuesBucket.Put(AppUriPermissionColumn::FILE_ID, fileId);
+    if (HasSharedAlbumAsset(vector<string> { to_string(fileId) })) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     // parse permissionType
     int32_t permissionType;
@@ -6301,6 +6330,32 @@ static napi_value ParseArgsGrantPhotoUrisForForceSensitive(napi_env env, napi_ca
     return result;
 }
 
+static void SetPermissionTokenIds(MediaLibraryAsyncContext &context, napi_env env)
+{
+    uint32_t tokenId = 0;
+    ParseTokenId(env, context.argv[ARGS_ZERO], tokenId);
+    context.valuesBucket.Put(AppUriPermissionColumn::TARGET_TOKENID, static_cast<int64_t>(tokenId));
+    uint32_t srcTokenId = IPCSkeleton::GetCallingTokenID();
+    context.valuesBucket.Put(AppUriSensitiveColumn::SOURCE_TOKENID, static_cast<int64_t>(srcTokenId));
+}
+
+static bool ParseAndCheckSharedAlbumUris(napi_env env, const vector<string>& uris)
+{
+    vector<string> fileIds;
+    for (const auto &uri : uris) {
+        int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(uri);
+        if (fileId >= 0) {
+            fileIds.push_back(to_string(fileId));
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return false;
+    }
+    return true;
+}
+
 static napi_value ParseArgsGrantPhotoUrisPermission(napi_env env, napi_callback_info info,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
@@ -6342,6 +6397,10 @@ static napi_value ParseArgsGrantPhotoUrisPermission(napi_env env, napi_callback_
         napi_ok, "Invalid uris");
     NAPI_ASSERT(env, ParseUriTypes(uris, context) == napi_ok, "ParseUriTypes failed");
 
+    if (!ParseAndCheckSharedAlbumUris(env, uris)) {
+        return nullptr;
+    }
+
     napi_value result = nullptr;
     NAPI_CALL(env, napi_get_boolean(env, true, &result));
     return result;
@@ -6380,6 +6439,11 @@ static napi_value ParseArgsCancelPhotoUriPermission(napi_env env, napi_callback_
         return nullptr;
     }
     context->valuesBucket.Put(AppUriPermissionColumn::FILE_ID, fileId);
+    if (HasSharedAlbumAsset(vector<string> { to_string(fileId) })) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     // parse permissionType
     int32_t permissionType;
@@ -7337,6 +7401,33 @@ static void SaveFormInfoAsyncCallbackComplete(napi_env env, napi_status status, 
     delete context;
 }
 
+static void ParseAssetUrisArray(napi_env env, napi_value optionValue,
+    vector<DataShare::DataShareValuesBucket>& valuesBucketArray)
+{
+    bool urisPresent = false;
+    do {
+        CHECK_AND_BREAK(napi_has_named_property(env, optionValue, "assetUris", &urisPresent) == napi_ok
+            && urisPresent);
+        napi_value urisValue = nullptr;
+        CHECK_AND_BREAK(napi_get_named_property(env, optionValue, "assetUris", &urisValue) == napi_ok);
+        bool isArray = false;
+        CHECK_AND_BREAK(napi_is_array(env, urisValue, &isArray) == napi_ok && isArray);
+        uint32_t length = 0;
+        CHECK_AND_BREAK(napi_get_array_length(env, urisValue, &length) == napi_ok);
+        for (uint32_t i = 0; i < length; i++) {
+            napi_value uriValue = nullptr;
+            CHECK_AND_CONTINUE(napi_get_element(env, urisValue, i, &uriValue) == napi_ok);
+            char uriBuffer[ARG_BUF_SIZE];
+            size_t uriRes = 0;
+            CHECK_AND_CONTINUE(napi_get_value_string_utf8(env, uriValue, uriBuffer, ARG_BUF_SIZE, &uriRes)
+                == napi_ok);
+            OHOS::DataShare::DataShareValuesBucket bucket;
+            bucket.Put(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, string(uriBuffer));
+            valuesBucketArray.push_back(move(bucket));
+        }
+    } while (false);
+}
+
 static napi_value ParseArgsRemoveGalleryFormInfo(napi_env env, napi_callback_info info,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
@@ -7367,6 +7458,9 @@ static napi_value ParseArgsRemoveGalleryFormInfo(napi_env env, napi_callback_inf
         "failed to get string param");
     context->formId = string(buffer);
     CHECK_COND_WITH_MESSAGE(env, CheckFormId(context->formId) == napi_ok, "FormId is invalid");
+
+    ParseAssetUrisArray(env, context->argv[ARGS_ZERO], context->valuesBucketArray);
+
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
     return result;
@@ -7397,6 +7491,20 @@ static napi_value ParseArgsRemoveFormInfo(napi_env env, napi_callback_info info,
         "failed to get string param");
     context->formId = string(buffer);
     CHECK_COND_WITH_MESSAGE(env, CheckFormId(context->formId) == napi_ok, "FormId is invalid");
+
+    // parse uri (optional) for shared album interception
+    bool uriPresent = false;
+    if (napi_has_named_property(env, context->argv[ARGS_ZERO], "uri", &uriPresent) == napi_ok && uriPresent) {
+        napi_value uriValue = nullptr;
+        if (napi_get_named_property(env, context->argv[ARGS_ZERO], "uri", &uriValue) == napi_ok) {
+            char uriBuffer[ARG_BUF_SIZE];
+            size_t uriRes = 0;
+            if (napi_get_value_string_utf8(env, uriValue, uriBuffer, ARG_BUF_SIZE, &uriRes) == napi_ok) {
+                context->valuesBucket.Put(FormMap::FORMMAP_URI, string(uriBuffer));
+            }
+        }
+    }
+
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
     return result;
@@ -7520,6 +7628,17 @@ napi_value MediaLibraryNapi::PhotoAccessSaveFormInfo(napi_env env, napi_callback
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsSaveFormInfo(env, info, asyncContext));
 
+    bool isValid = false;
+    string formUri = asyncContext->valuesBucket.Get(FormMap::FORMMAP_URI, isValid);
+    if (isValid && !formUri.empty()) {
+        string fileId = MediaFileUtils::GetIdFromUri(formUri);
+        if (!fileId.empty() && HasSharedAlbumAsset(vector<string> { fileId })) {
+            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
+    }
+
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessSaveFormInfo",
         PhotoAccessSaveFormInfoExec, SaveFormInfoAsyncCallbackComplete);
@@ -7534,6 +7653,23 @@ napi_value MediaLibraryNapi::PhotoAccessSaveGalleryFormInfo(napi_env env, napi_c
 {
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsSaveGalleryFormInfo(env, info, asyncContext));
+
+    vector<string> fileIds;
+    for (const auto& bucket : asyncContext->valuesBucketArray) {
+        bool isValid = false;
+        string assetUri = bucket.Get(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, isValid);
+        if (isValid && !assetUri.empty()) {
+            string fileId = MediaFileUtils::GetIdFromUri(assetUri);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessSaveGalleryFormInfo",
@@ -7560,6 +7696,21 @@ napi_value MediaLibraryNapi::PhotoAccessRemoveGalleryFormInfo(napi_env env, napi
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsRemoveGalleryFormInfo(env, info, asyncContext));
 
+    vector<string> fileIds;
+    for (const auto& bucket : asyncContext->valuesBucketArray) {
+        bool isValid = false;
+        string assetUri = bucket.Get(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, isValid);
+        if (isValid && !assetUri.empty()) {
+            string fileId = MediaFileUtils::GetIdFromUri(assetUri);
+            CHECK_AND_EXECUTE(fileId.empty(), fileIds.push_back(fileId));
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
+
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessRemoveGalleryFormInfo",
         PhotoAccessRemoveGalleryFormInfoExec, RemoveFormInfoAsyncCallbackComplete);
@@ -7570,6 +7721,23 @@ napi_value MediaLibraryNapi::PhotoAccessUpdateGalleryFormInfo(napi_env env, napi
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUpdateGalleryFormInfo(env, info, asyncContext));
 
+    vector<string> fileIds;
+    for (const auto& bucket : asyncContext->valuesBucketArray) {
+        bool isValid = false;
+        string assetUri = bucket.Get(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, isValid);
+        if (isValid && !assetUri.empty()) {
+            string fileId = MediaFileUtils::GetIdFromUri(assetUri);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
+
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessRemoveGalleryFormInfo",
         PhotoAccessUpdateGalleryFormInfoExec, RemoveFormInfoAsyncCallbackComplete);
@@ -7579,6 +7747,17 @@ napi_value MediaLibraryNapi::PhotoAccessRemoveFormInfo(napi_env env, napi_callba
 {
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsRemoveFormInfo(env, info, asyncContext));
+
+    bool isValid = false;
+    string formUri = asyncContext->valuesBucket.Get(FormMap::FORMMAP_URI, isValid);
+    if (isValid && !formUri.empty()) {
+        string fileId = MediaFileUtils::GetIdFromUri(formUri);
+        if (!fileId.empty() && HasSharedAlbumAsset(vector<string> { fileId })) {
+            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
+    }
 
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessRemoveFormInfo",
@@ -7773,6 +7952,24 @@ napi_value MediaLibraryNapi::PhotoAccessStartCreateThumbnailTask(napi_env env, n
     tracer.Start("PhotoAccessStartCreateThumbnailTask");
     std::unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsStartCreateThumbnailTask(env, info, asyncContext));
+    vector<string> columns = { PhotoColumn::MEDIA_ID };
+    int32_t errCode = 0;
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    auto resultSet = UserFileClient::Query(queryUri, asyncContext->predicates, columns, errCode);
+    if (resultSet != nullptr) {
+        vector<string> fileIds;
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t id = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_ID,
+                resultSet, TYPE_INT32));
+            fileIds.push_back(to_string(id));
+        }
+        resultSet->Close();
+        if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
+    }
 
     lock_guard<mutex> lock(thumbnailMutex_);
     ReleaseThumbnailTask(GetRequestId());
@@ -11608,6 +11805,22 @@ napi_value MediaLibraryNapi::PhotoAccessStartAssetAnalysis(napi_env env, napi_ca
     CHECK_COND_WITH_MESSAGE(env, ParseArgsStartAssetAnalysis(env, info, asyncContext) != nullptr,
         "Failed to parse js args");
 
+    do {
+        CHECK_AND_BREAK(!asyncContext->uris.empty());
+        vector<string> fileIds;
+        for (const auto &uri : asyncContext->uris) {
+            string fileId = MediaLibraryNapiUtils::GetFileIdFromUriString(uri);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+        CHECK_AND_BREAK(!fileIds.empty());
+        if (HasSharedAlbumAsset(fileIds)) {
+            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
+    } while (false);
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessStartAssetAnalysis",
         JSStartAssetAnalysisExecute, JSStartAssetAnalysisCallback);
@@ -11817,6 +12030,11 @@ napi_value MediaLibraryNapi::PhotoAccessStartActiveAnalysis(napi_env env, napi_c
     asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
     asyncContext->assetType = TYPE_PHOTO;
     CHECK_NULLPTR_RET(ParseArgsStartActiveAnalysis(env, info, asyncContext));
+    if (!asyncContext->activeAnalysisFileIds.empty() && HasSharedAlbumAsset(asyncContext->activeAnalysisFileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessStartActiveAnalysis",
@@ -11835,6 +12053,11 @@ napi_value MediaLibraryNapi::PhotoAccessStopActiveAnalysis(napi_env env, napi_ca
     asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
     asyncContext->assetType = TYPE_PHOTO;
     CHECK_NULLPTR_RET(ParseArgsStopActiveAnalysis(env, info, asyncContext));
+    if (!asyncContext->activeAnalysisFileIds.empty() && HasSharedAlbumAsset(asyncContext->activeAnalysisFileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
 
     SetUserIdFromObjectInfo(asyncContext);
     StopActiveAnalysisReqBody reqBody = BuildStopActiveAnalysisReqBody(asyncContext.get());
@@ -13593,6 +13816,40 @@ napi_value MediaLibraryNapi::JSApplyChanges(napi_env env, napi_callback_info inf
     return obj->ApplyChanges(env, info);
 }
 
+static bool HasSharedAssetInDeleteUris(napi_env env, napi_value uriArray)
+{
+    uint32_t len = 0;
+    if (napi_get_array_length(env, uriArray, &len) != napi_ok || len == 0) {
+        return false;
+    }
+
+    vector<string> fileIds;
+    char uriBuffer[ARG_BUF_SIZE];
+    for (uint32_t i = 0; i < len; i++) {
+        napi_value uri = nullptr;
+        if (napi_get_element(env, uriArray, i, &uri) != napi_ok || uri == nullptr) {
+            continue;
+        }
+        size_t uriRes = 0;
+        if (napi_get_value_string_utf8(env, uri, uriBuffer, ARG_BUF_SIZE, &uriRes) != napi_ok) {
+            continue;
+        }
+        string fileId = MediaFileUtils::GetIdFromUri(string(uriBuffer));
+        if (!fileId.empty()) {
+            fileIds.push_back(fileId);
+        }
+    }
+    if (fileIds.empty()) {
+        return false;
+    }
+
+    if (HasSharedAlbumAsset(fileIds)) {
+        NAPI_ERR_LOG("CreateDeleteRequest does not support shared album asset");
+        return true;
+    }
+    return false;
+}
+
 static napi_value initRequest(OHOS::AAFwk::Want &request, shared_ptr<DeleteCallback> &callback,
                               napi_env env, napi_value args[], size_t argsLen)
 {
@@ -13644,6 +13901,11 @@ napi_value MediaLibraryNapi::CreateDeleteRequest(napi_env env, napi_callback_inf
     napi_value result = nullptr;
     napi_create_object(env, &result);
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, args, &thisVar, nullptr), JS_ERR_PARAMETER_INVALID);
+    if (HasSharedAssetInDeleteUris(env, args[ARGS_TWO])) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     auto context = OHOS::AbilityRuntime::GetStageModeContext(env, args[ARGS_ZERO]);
     NAPI_ASSERT(env, context != nullptr, "context == nullptr");
 
@@ -14082,6 +14344,42 @@ static bool InitRequestPhotoUrisReadPermissionRequest(OHOS::AAFwk::Want &want,
     return true;
 }
 
+static bool CheckSharedAlbumAsset(napi_env env, napi_value uriArray)
+{
+    uint32_t uriArrayLen = 0;
+    if (napi_get_array_length(env, uriArray, &uriArrayLen) != napi_ok || uriArrayLen == 0) {
+        return true;
+    }
+
+    vector<string> fileIds;
+    for (uint32_t i = 0; i < uriArrayLen; ++i) {
+        napi_value element = nullptr;
+        if (napi_get_element(env, uriArray, i, &element) != napi_ok || element == nullptr) {
+            continue;
+        }
+        string srcFileUri;
+        if (!ParseString(env, element, srcFileUri)) {
+            continue;
+        }
+        string realUriPath = srcFileUri;
+        if (srcFileUri.find("https://") != 0) {
+            AppFileService::ModuleFileUri::FileUri fileUri(srcFileUri);
+            realUriPath = fileUri.ToString();
+        }
+        string fileId = MediaLibraryNapiUtils::GetFileIdFromUriString(realUriPath);
+        if (!fileId.empty()) {
+            fileIds.push_back(fileId);
+        }
+    }
+
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return false;
+    }
+    return true;
+}
+
 napi_value MediaLibraryNapi::RequestPhotoUrisReadPermission(napi_env env, napi_callback_info info)
 {
     NAPI_INFO_LOG("RequestPhotoUrisReadPermission enter");
@@ -14111,6 +14409,10 @@ napi_value MediaLibraryNapi::RequestPhotoUrisReadPermission(napi_env env, napi_c
         uiContent = abilityContext->GetUIContent();
     }
     NAPI_ASSERT(env, uiContent != nullptr, "UiContent is null.");
+
+    if (!CheckSharedAlbumAsset(env, args[PARAM1])) {
+        return nullptr;
+    }
 
     // set want
     OHOS::AAFwk::Want want;
@@ -14167,6 +14469,40 @@ static bool InitRequestPhotoAllUrisReadPermissionRequest(OHOS::AAFwk::Want &want
     return true;
 }
  
+static bool CheckSharedAlbumAssetInUriArray(napi_env env, napi_value uriArray)
+{
+    uint32_t uriArrayLen = 0;
+    if (napi_get_array_length(env, uriArray, &uriArrayLen) != napi_ok || uriArrayLen == 0) {
+        return true;
+    }
+    vector<string> fileIds;
+    for (uint32_t i = 0; i < uriArrayLen; ++i) {
+        napi_value element = nullptr;
+        if (napi_get_element(env, uriArray, i, &element) != napi_ok || element == nullptr) {
+            continue;
+        }
+        string srcFileUri;
+        if (!ParseString(env, element, srcFileUri)) {
+            continue;
+        }
+        string realUriPath = srcFileUri;
+        if (srcFileUri.find("https://") != 0) {
+            AppFileService::ModuleFileUri::FileUri fileUri(srcFileUri);
+            realUriPath = fileUri.ToString();
+        }
+        string fileId = MediaLibraryNapiUtils::GetFileIdFromUriString(realUriPath);
+        if (!fileId.empty()) {
+            fileIds.push_back(fileId);
+        }
+    }
+    if (fileIds.empty() || !HasSharedAlbumAsset(fileIds)) {
+        return true;
+    }
+    NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+        "The current asset belongs to a shared album and does not support this operation");
+    return false;
+}
+
 napi_value MediaLibraryNapi::RequestPhotoUrisReadPermissionEx(napi_env env, napi_callback_info info)
 {
     NAPI_INFO_LOG("RequestPhotoUrisReadPermissionEx enter");
@@ -14196,7 +14532,9 @@ napi_value MediaLibraryNapi::RequestPhotoUrisReadPermissionEx(napi_env env, napi
         uiContent = abilityContext->GetUIContent();
     }
     NAPI_ASSERT(env, uiContent != nullptr, "UiContent is null.");
- 
+    if (!CheckSharedAlbumAssetInUriArray(env, args[PARAM1])) {
+        return nullptr;
+    }
     // set want
     OHOS::AAFwk::Want want;
     shared_ptr<RequestPhotoUrisReadPermissionCallback> callback =

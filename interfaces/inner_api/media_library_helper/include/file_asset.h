@@ -329,6 +329,9 @@ public:
     EXPORT void SetC2paConfigInfo(const std::string &c2paConfigInfo);
     EXPORT const std::string &GetC2paConfigInfo() const;
 
+    EXPORT void SetIsShared(int32_t isShared);
+    EXPORT int32_t GetIsShared() const;
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;

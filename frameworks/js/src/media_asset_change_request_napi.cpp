@@ -1305,6 +1305,11 @@ napi_value MediaAssetChangeRequestNapi::JSSetFavorite(napi_env env, napi_callbac
 
     auto changeRequest = asyncContext->objectInfo;
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    if (changeRequest->GetFileAssetInstance()->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     changeRequest->GetFileAssetInstance()->SetFavorite(isFavorite);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_FAVORITE);
     RETURN_NAPI_UNDEFINED(env);
@@ -3523,6 +3528,12 @@ napi_value MediaAssetChangeRequestNapi::ApplyChanges(napi_env env, napi_callback
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, asyncContext, minArgs, maxArgs) == napi_ok,
         "Failed to get args");
     asyncContext->objectInfo = this;
+    if (fileAsset_ != nullptr &&
+        fileAsset_->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,
         &asyncContext->objectInfoRef) == napi_ok, "Failed to create objectInfo reference");
     CHECK_COND_WITH_MESSAGE(env, CheckChangeOperations(env, asyncContext),

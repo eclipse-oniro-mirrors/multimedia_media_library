@@ -2322,6 +2322,34 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_api10_test_004, TestSi
     MEDIA_INFO_LOG("end tdd photo_oprn_open_api10_test_004");
 }
 
+HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_shared_asset_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start tdd photo_oprn_open_shared_asset_test_001");
+
+    int fileId = SetDefaultPhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "shared_open.jpg");
+    EXPECT_GE(fileId, 0);
+
+    // 标记为共享资产
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, static_cast<int32_t>(PhotoSharedType::SHARED));
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    int32_t updatedRows = 0;
+    int32_t ret = g_rdbStore->Update(updatedRows, values, predicates);
+    EXPECT_EQ(ret, NativeRdb::E_OK);
+
+    // 共享资产只读 -> 成功返回 fd
+    TestPhotoOpenParamsApi10(fileId, MEDIA_FILEMODE_READONLY,
+        [] (int32_t fd) { EXPECT_GE(fd, E_OK); });
+    // 共享资产写模式 -> E_INVALID_VALUES
+    TestPhotoOpenParamsApi10(fileId, MEDIA_FILEMODE_WRITEONLY,
+        [] (int32_t fd) { EXPECT_EQ(fd, E_INVALID_VALUES); });
+    TestPhotoOpenParamsApi10(fileId, MEDIA_FILEMODE_READWRITE,
+        [] (int32_t fd) { EXPECT_EQ(fd, E_INVALID_VALUES); });
+
+    MEDIA_INFO_LOG("end tdd photo_oprn_open_shared_asset_test_001");
+}
+
 HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_close_api10_test_001, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start tdd photo_oprn_close_api10_test_001");

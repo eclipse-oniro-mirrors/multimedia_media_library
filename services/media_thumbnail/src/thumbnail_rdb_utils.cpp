@@ -71,6 +71,7 @@ const std::unordered_map<std::string, HandleFunc> ThumbnailRdbUtils::RESULT_SET_
     {CONST_MEDIA_DATA_DB_THUMBNAIL_READY, HandleReady},
     {PhotoColumn::PHOTO_LCD_VISIT_TIME, HandleLcdVisitTime},
     {PhotoColumn::PHOTO_THUMB_STATUS, HandleThumbStatus},
+    {PhotoColumn::PHOTO_IS_SHARED, HandleIsShared},
 };
 
 void ThumbnailRdbUtils::HandleId(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, int idx, ThumbnailData &data)
@@ -171,6 +172,12 @@ void ThumbnailRdbUtils::HandleThumbStatus(const std::shared_ptr<NativeRdb::Resul
     int idx, ThumbnailData &data)
 {
     ParseInt32Result(resultSet, idx, data.thumbnailStatus);
+}
+
+void ThumbnailRdbUtils::HandleIsShared(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+    int idx, ThumbnailData &data)
+{
+    ParseInt32Result(resultSet, idx, data.isShared);
 }
 
 bool ThumbnailRdbUtils::QueryThumbnailDataInfos(shared_ptr<MediaLibraryRdbStore> store,

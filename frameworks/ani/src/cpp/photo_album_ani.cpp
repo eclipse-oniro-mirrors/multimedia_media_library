@@ -1240,6 +1240,11 @@ static ani_status ParseArgsSetCoverUri(ani_env *env, ani_object object, ani_stri
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return ANI_INVALID_ARGS;
     }
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current album is a shared album and does not support setting cover uri");
+        return ANI_INVALID_ARGS;
+    }
     context->businessCode = static_cast<int32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI);
     context->predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
     context->valuesBucket.Put(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri);

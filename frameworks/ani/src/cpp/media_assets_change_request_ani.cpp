@@ -57,6 +57,10 @@ void MediaAssetsChangeRequestAni::SetFavorite([[maybe_unused]] ani_env *env, [[m
     changeRequest->isFavorite_ = isFavorite;
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         CHECK_NULL_PTR_RETURN_VOID(fileAsset, "fileAsset is null");
+        if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            ANI_ERR_LOG("SetFavorite skip shared album asset, fileId=%{public}d", fileAsset->GetId());
+            continue;
+        }
         fileAsset->SetFavorite(isFavorite);
     }
     changeRequest->assetsChangeOperations_.push_back(AssetsChangeOperation::BATCH_SET_FAVORITE);

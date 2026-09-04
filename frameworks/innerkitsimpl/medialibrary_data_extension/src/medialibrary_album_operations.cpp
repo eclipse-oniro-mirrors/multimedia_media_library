@@ -77,6 +77,7 @@
 #include "medialibrary_rdb_helper.h"
 #include "share_member_column.h"
 #include "userfile_manager_types.h"
+#include "cloud_sync_helper.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -4681,10 +4682,13 @@ static int32_t MarkShareCloudPhotosDirty(const std::shared_ptr<MediaLibraryRdbSt
         ->And()->NotEqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     NativeRdb::ValuesBucket cloudPhotoValues;
     cloudPhotoValues.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_DELETED));
+    cloudPhotoValues.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
+    cloudPhotoValues.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     int32_t markedCloudPhotoRows = 0;
     int32_t cloudRet = rdbStore->Update(markedCloudPhotoRows, cloudPhotoValues, cloudPhotoPredicates);
     CHECK_AND_RETURN_RET_LOG(cloudRet == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "mark cloud photo assets dirty failed, ret=%{public}d", cloudRet);
+    CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud photo assets dirty for %{public}zu albums",
         markedCloudPhotoRows, albumIds.size());
     return E_OK;
@@ -4708,6 +4712,7 @@ static int32_t MarkShareCloudAlbumsDirty(const std::vector<int32_t> &albumIds,
     int32_t cloudAlbumRet = albumRefresh->Update(cloudAlbumRows, cloudAlbumValues, cloudAlbumPred);
     CHECK_AND_RETURN_RET_LOG(cloudAlbumRet == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "mark cloud album dirty failed, ret=%{public}d", cloudAlbumRet);
+    CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud album records dirty",
         cloudAlbumRows);
     return E_OK;
