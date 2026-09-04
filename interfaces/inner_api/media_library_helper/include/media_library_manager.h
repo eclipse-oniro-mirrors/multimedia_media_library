@@ -135,6 +135,18 @@ public:
     EXPORT std::unordered_map<std::string, std::string> GetUrisByOldUris(std::vector<std::string> uris);
 
     /**
+     * @brief Query new uri by old uri from tab_cloned_old_photos table
+     *
+     * @param oldUris old uris
+     * @param clonedUris map of old uris to new uris
+     * @return errorcode
+     * @since 1.0
+     * @version 1.0
+     */
+    EXPORT int32_t GetClonedAssetUris(const std::vector<std::string> &oldUris,
+        std::map<std::string, std::string> &clonedUris);
+
+    /**
      * @brief Make a query from database
      *
      * @param columnName a column name in datebase

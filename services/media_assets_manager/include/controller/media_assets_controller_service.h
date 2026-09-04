@@ -127,6 +127,7 @@ public:
     EXPORT int32_t CloseAsset(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CheckUriPermissionInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetUrisByOldUrisInner(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetClonedAssetUrisInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t Restore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AsyncRestore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StopRestore(MessageParcel &data, MessageParcel &reply);

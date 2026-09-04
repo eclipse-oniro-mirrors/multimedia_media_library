@@ -181,6 +181,7 @@ public:
     int32_t CheckPhotoUriPermissionInner(CheckUriPermissionInnerDto& checkUriPermissionInnerDto);
     int32_t CloseAsset(const CloseAssetReqBody &req);
     int32_t GetUrisByOldUrisInner(GetUrisByOldUrisInnerDto& getUrisByOldUrisInnerDto);
+    int32_t GetClonedAssetUrisInner(GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto);
     int32_t Restore(const RestoreDto &dto);
     int32_t AsyncRestore(const RestoreDto &dto);
     int32_t StopRestore(const std::string &keyPath);
@@ -248,6 +249,7 @@ int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
 
  private:
     int32_t SubmitMetadataChanged(const int32_t fileId);
+    int32_t ValidateClonedUris(const GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto);
     MediaAssetsRdbOperations rdbOperation_;
     std::mutex progressMutex_;
 };
