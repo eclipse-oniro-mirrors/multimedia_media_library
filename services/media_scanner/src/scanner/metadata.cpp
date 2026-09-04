@@ -52,8 +52,8 @@ Metadata::Metadata()
     videoMode_(FILE_VIDEO_MODE_DEFAULT),
     aspectRatio_(FILE_ASPECT_RATIO_DEFAULT),
     dateTaken_(FILE_DATE_TAKEN_DEFAULT),
-    longitude_(FILE_LONGITUDE_DEFAULT),
-    latitude_(FILE_LATITUDE_DEFAULT),
+    longitude_(std::nullopt),
+    latitude_(std::nullopt),
     userComment_(FILE_USER_COMMENT_DEFAULT),
     allExif_(FILE_All_EXIF_DEFAULT),
     albumId_(FILE_ALBUM_ID_DEFAULT),
@@ -552,7 +552,12 @@ void Metadata::SetLongitude(const VariantData &longitude)
 
 double Metadata::GetLongitude() const
 {
-    return longitude_;
+    return longitude_.value_or(FILE_LONGITUDE_DEFAULT);
+}
+
+bool Metadata::HasLongitude() const
+{
+    return longitude_.has_value();
 }
 
 void Metadata::SetLatitude(const VariantData &latitude)
@@ -562,7 +567,12 @@ void Metadata::SetLatitude(const VariantData &latitude)
 
 double Metadata::GetLatitude() const
 {
-    return latitude_;
+    return latitude_.value_or(FILE_LATITUDE_DEFAULT);
+}
+
+bool Metadata::HasLatitude() const
+{
+    return latitude_.has_value();
 }
 
 void Metadata::SetTimePending(const VariantData &timePending)
