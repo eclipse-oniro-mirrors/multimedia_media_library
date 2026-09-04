@@ -32,7 +32,7 @@ class ThumbnailDoubleUpgradeConfigManager {
 public:
     EXPORT static void OnDoubleUpgradeParameterChanged(const char *key, const char *value, void *context);
     EXPORT void Init();
-    EXPORT int32_t GetCurrentSpaceThreshold(bool isCloudSyscOn);
+    EXPORT int32_t GetCurrentSpaceThreshold(bool isCloudSyncOn);
     EXPORT static ThumbnailDoubleUpgradeConfigManager& GetInstance();
 
 private:
@@ -66,17 +66,17 @@ private:
     EXPORT void OnTimerTimeout();
     EXPORT void DataReport();
     EXPORT void HandleProcess(int64_t currentTime, bool isNewFlag, const std::string& doubleUpgradeFlag = "");
-    EXPORT void IsTimeout(int64_t currentTime);    
+    EXPORT bool IsTimeout(int64_t currentTime);    
 
     enum class DoubleUpgradeStatus : int32_t {
         NOT_STARTED = 0,
         IN_PROGRESS = 1,
         COMPLETED = 2,
-    }
+    };
 
     bool isDataReport_{false};
     DoubleUpgradeStatus status_{DoubleUpgradeStatus::NOT_STARTED};
-    AccountSA::OsAccountType accountType_ {AccountSA::OsAccountType::END}
+    AccountSA::OsAccountType accountType_ {AccountSA::OsAccountType::END};
     int32_t updateStorageSizeThreshold_{THUMBNAIL_FREE_SIZE_LIMIT_10};
     int64_t startTimeMs_{0};
     int64_t endTimeMs_{0};

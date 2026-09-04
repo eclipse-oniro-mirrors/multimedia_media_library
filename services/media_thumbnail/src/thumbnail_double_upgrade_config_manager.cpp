@@ -43,9 +43,9 @@ namespace {
     const char* DOUBLE_UPGRADE_SP_FILE = "/data/storage/el2/base/preferences/double_upgrade_config_sp.xml";
 
     const char* KEY_DOUBLE_UPGRADE_STATUS = "double_update_single_flag";
-    const char* KEY_DOUBLE_UPGRADE_START_TIME = "double_update_start_time";
-    const char* KEY_DOUBLE_UPGRADE_END_TIME = "double_update_end_time";
-    const char* KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG = "double_update_data_report_flag";
+    const char* KEY_DOUBLE_UPGRADE_START_TIME = "double_upgrade_start_time";
+    const char* KEY_DOUBLE_UPGRADE_END_TIME = "double_upgrade_end_time";
+    const char* KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG = "double_upgrade_data_report_flag";
 
     const std::string DOUBLE_UPGRADE_IN_PROGRESS = "1";
     const std::string DOUBLE_UPGRADE_COMPLETED = "0";
@@ -138,36 +138,36 @@ void ThumbnailDoubleUpgradeConfigManager::DataReport()
     count.cloudAstcCount = DfxDatabaseUtils::QueryASTCThumb(false);
     count.localLcdCount = DfxDatabaseUtils::QueryLCDThumb(true);
     count.cloudLcdCount = DfxDatabaseUtils::QueryLCDThumb(false);
-    DfxReporter().ReportAdtcInfo(count);
+    DfxReporter().ReportAstcInfo(count);
 
     MEDIA_INFO_LOG("DataReport, startTime: %{public}" PRId64 ", endTime: %{public}" PRId64
         ", updateDuration: %{public}" PRId64 ", uidType: %{public}s",
-        startTimeMs_, endTimeMs_, updateDuration, uidType);
+        startTimeMs_, endTimeMs_, updateDuration, uidType.c_str());
 
     SaveDataReportFlagToSp();
 }
 
-int32_t ThumbnailDoubleUpgradeConfigManager::GetCurrentSpaceThreshold(bool isCloudSyscOn)
+int32_t ThumbnailDoubleUpgradeConfigManager::GetCurrentSpaceThreshold(bool isCloudSyncOn)
 {
     int32_t threshold = 0;
     if (IsInProgress()) {
         threshold = updateStorageSizeThreshold_;
     } else {
-        threshold = isCloudSyscOn ? THUMBNAIL_FREE_SIZE_LIMIT_5 : THUMBNAIL_FREE_SIZE_LIMIT_10;
+        threshold = isCloudSyncOn ? THUMBNAIL_FREE_SIZE_LIMIT_5 : THUMBNAIL_FREE_SIZE_LIMIT_10;
     }
-    MEDIA_DEBUG_LOG("GetCurrentSpaceThreshold, threshold:%{public}d, isCloudSyscOn:%{public}d", 
-        threshold, isCloudSyscOn);
+    MEDIA_DEBUG_LOG("GetCurrentSpaceThreshold, threshold:%{public}d, isCloudSyncOn:%{public}d", 
+        threshold, isCloudSyncOn);
     return threshold;
 }
 
 bool ThumbnailDoubleUpgradeConfigManager::IsCompleted() const
 {
-    return status_ = DoubleUpgradeStatus::COMPLETED;
+    return status_ == DoubleUpgradeStatus::COMPLETED;
 }
 
 bool ThumbnailDoubleUpgradeConfigManager::IsInProgress() const
 {
-    return status_ = DoubleUpgradeStatus::IN_PROGRESS;
+    return status_ == DoubleUpgradeStatus::IN_PROGRESS;
 }
 
 int64_t ThumbnailDoubleUpgradeConfigManager::GetUpdateDuration() const
@@ -238,7 +238,7 @@ void ThumbnailDoubleUpgradeConfigManager::RegisterParameterWatcher()
         int32_t ret = WatchParameter(MAIN_SPACE_DOUBLE_UPGRADE_FLAG, OnDoubleUpgradeParameterChanged, nullptr);
         CHECK_AND_RETURN_LOG(ret == 0, "RegisterParameterWatcher, failed to register watch for "
             "MAIN_SPACE_DOUBLE_UPGRADE_FLAG, ret:%{public}d", ret);
-        MEDIA_INFO_LOG("RegisterParameterWatcher, successfully registerd watch for MAIN_SPACE_DOUBLE_UPGRADE_FLAG");
+        MEDIA_INFO_LOG("RegisterParameterWatcher, successfully registered watch for MAIN_SPACE_DOUBLE_UPGRADE_FLAG");
         return;
     }
 
@@ -246,7 +246,7 @@ void ThumbnailDoubleUpgradeConfigManager::RegisterParameterWatcher()
         int32_t ret = WatchParameter(PRIVATE_SPACE_DOUBLE_UPGRADE_FLAG, OnDoubleUpgradeParameterChanged, nullptr);
         CHECK_AND_RETURN_LOG(ret == 0, "RegisterParameterWatcher, failed to register watch for "
             "PRIVATE_SPACE_DOUBLE_UPGRADE_FLAG, ret:%{public}d", ret);
-        MEDIA_INFO_LOG("RegisterParameterWatcher, successfully registerd watch for PRIVATE_SPACE_DOUBLE_UPGRADE_FLAG");
+        MEDIA_INFO_LOG("RegisterParameterWatcher, successfully registered watch for PRIVATE_SPACE_DOUBLE_UPGRADE_FLAG");
     }
 }
 
@@ -284,19 +284,19 @@ void ThumbnailDoubleUpgradeConfigManager::AsyncUnregisterParameterWatcher()
 void ThumbnailDoubleUpgradeConfigManager::SaveDataReportFlagToSp()
 {
     int32_t errCode = 0;
-    auto preference = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
-    if (preference == nullptr || errCode != 0) {
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
+    if (preferences == nullptr || errCode != 0) {
         MEDIA_ERR_LOG("SaveDataReportFlagToSp, failed to get preferences, errCode:%{public}d", errCode);
         return;
     }
   
-    int32_t ret = preference->PutBool(KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG, true);
-    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveDataReportFlagToSp, failed to put data report flag, "
-        "ret:%{public}d", ret);
+    int32_t ret = preferences->PutBool(KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG, true);
+    CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveDataReportFlagToSp, failed to put data report flag, "
+        "ret=%{public}d", ret);
     
-    ret = preference->FlushSync();
-    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveDataReportFlagToSp, failed to flush preferences, "
-        "ret:%{public}d", ret);
+    ret = preferences->FlushSync();
+    CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveDataReportFlagToSp, failed to flush preferences, "
+        "ret=%{public}d", ret);
 
     isDataReport_ = true;
     MEDIA_INFO_LOG("SaveDataReportFlagToSp, KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG:true");
@@ -305,17 +305,17 @@ void ThumbnailDoubleUpgradeConfigManager::SaveDataReportFlagToSp()
 void ThumbnailDoubleUpgradeConfigManager::LoadInfoFromSp()
 {
     int32_t errCode = 0;
-    auto preference = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
-    if (preference == nullptr || errCode != 0) {
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
+    if (preferences == nullptr || errCode != 0) {
         MEDIA_ERR_LOG("LoadInfoFromSp, failed to get preferences, errCode:%{public}d", errCode);
         return;
     }
 
-    status_ = static_cast<DoubleUpgradeStatus>(preference->GetInt(KEY_DOUBLE_UPGRADE_STATUS,
+    status_ = static_cast<DoubleUpgradeStatus>(preferences->GetInt(KEY_DOUBLE_UPGRADE_STATUS,
         static_cast<int32_t>(DoubleUpgradeStatus::NOT_STARTED)));
-    startTimeMs_ = preference->GetLong(KEY_DOUBLE_UPGRADE_START_TIME, 0);
-    endTimeMs_ = preference->GetLong(KEY_DOUBLE_UPGRADE_END_TIME, 0);
-    isDataReport_ = preference->GetBool(KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG, false);
+    startTimeMs_ = preferences->GetLong(KEY_DOUBLE_UPGRADE_START_TIME, 0);
+    endTimeMs_ = preferences->GetLong(KEY_DOUBLE_UPGRADE_END_TIME, 0);
+    isDataReport_ = preferences->GetBool(KEY_DOUBLE_UPGRADE_DATA_REPORT_FLAG, false);
     MEDIA_INFO_LOG("LoadInfoFromSp, status:%{public}d, startTime:%{public}" PRId64 ", endTime:%{public}" PRId64
         ", isDataReport:%{public}d", static_cast<int32_t>(status_), startTimeMs_, endTimeMs_, isDataReport_);
 }
@@ -327,7 +327,7 @@ AccountSA::OsAccountType ThumbnailDoubleUpgradeConfigManager::GetOsAccountType()
     if (ret != ERR_OK) {
         MEDIA_ERR_LOG("GetOsAccountType, get osAccountType failed, ret: %{public}d", ret);
     }
-     MEDIA_ERR_LOG("GetOsAccountType, accountType:%{public}d", static_cast<int32_t>(accountType));
+     MEDIA_INFO_LOG("GetOsAccountType, accountType:%{public}d", static_cast<int32_t>(accountType));
      return accountType;
 }
 
@@ -360,8 +360,8 @@ void ThumbnailDoubleUpgradeConfigManager::StartCallbackTimer(int64_t currentTime
         callbackTimerId_ = 0;
     }
     uint32_t ret = callbackTimer_.Setup();
-    CHECK_AND_RETURN_LOG(ret == Utils::TIMER_ERR_OK, "StartCallbackTimer, Callback timer setup failed,
-        ret: %{public}u", ret);
+    CHECK_AND_RETURN_LOG(ret == Utils::TIMER_ERR_OK, "StartCallbackTimer, Callback timer setup failed,"
+        "ret: %{public}u", ret);
 
     Utils::Timer::TimerCallback callback = [this]() {
         this->OnTimerTimeout();
@@ -375,7 +375,7 @@ void ThumbnailDoubleUpgradeConfigManager::StartCallbackTimer(int64_t currentTime
         MEDIA_ERR_LOG("StartCallbackTimer, Callback timer register failed");
         callbackTimer_.Shutdown();
     }
-    MEDIA_INFO_LOG("StartCallbackTimer, success callbackTimerId:%{public}d", callbackTimerId_);
+    MEDIA_INFO_LOG("StartCallbackTimer, success callbackTimerId:%{public}u", callbackTimerId_);
 }
 
 void ThumbnailDoubleUpgradeConfigManager::StopCallbackTimer()
@@ -395,16 +395,16 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
     if (isNewFlag) {
         updateFlag = doubleUpgradeFlag;
     } else {
-        GetDoubleUpgradeFlag(doubleUpgradeFlag);
+        GetDoubleUpgradeFlag(updateFlag);
     }
     MEDIA_INFO_LOG("HandleProcess, updateFlag:%{public}s, isNewFlag:%{public}d", updateFlag.c_str(), isNewFlag);
 
-    if (updateFlag = DOUBLE_UPGRADE_IN_PROGRESS) {
+    if (updateFlag == DOUBLE_UPGRADE_IN_PROGRESS) {
         SaveInProcessInfoToSp(currentTime);
         StartCallbackTimer(currentTime);
         MEDIA_INFO_LOG("HandleProcess, double upgrade started, startTime:%{public}" PRId64
             ", currentTime:%{public}" PRId64, startTimeMs_, currentTime);
-    } else if (updateFlag = DOUBLE_UPGRADE_COMPLETED) {
+    } else if (updateFlag == DOUBLE_UPGRADE_COMPLETED) {
         SaveCompleteInfoToSp(currentTime);
         DataReport();
         AsyncUnregisterParameterWatcher();
@@ -418,26 +418,26 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
  void ThumbnailDoubleUpgradeConfigManager::SaveInProcessInfoToSp(int64_t currentTime)
  {
     int32_t errCode = 0;
-    auto preference = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
-    if (preference == nullptr || errCode != 0) {
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
+    if (preferences == nullptr || errCode != 0) {
         MEDIA_ERR_LOG("SaveInProcessInfoToSp, failed to get preferences, errCode:%{public}d", errCode);
         return;
     }
   
-    int32_t ret = preference->PutInt(KEY_DOUBLE_UPGRADE_STATUS, 
+    int32_t ret = preferences->PutInt(KEY_DOUBLE_UPGRADE_STATUS, 
         static_cast<int32_t>(DoubleUpgradeStatus::IN_PROGRESS));
-    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to put status, "
-        "ret:%{public}d", ret);
+    CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to put status, "
+        "ret=%{public}d", ret);
 
     if (startTimeMs_ <= 0) {
-        ret = preference->PutLong(KEY_DOUBLE_UPGRADE_START_TIME, currentTime);
-        CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to put start time, "
-            "ret:%{public}d", ret);
+        ret = preferences->PutLong(KEY_DOUBLE_UPGRADE_START_TIME, currentTime);
+        CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to put start time, "
+            "ret=%{public}d", ret);
     }
     
-    ret = preference->FlushSync();
-    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to flush preferences, "
-        "ret:%{public}d", ret);
+    ret = preferences->FlushSync();
+    CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveInProcessInfoToSp, failed to flush preferences, "
+        "ret=%{public}d", ret);
 
     status_ = DoubleUpgradeStatus::IN_PROGRESS;
     if (startTimeMs_ <= 0) {
@@ -450,41 +450,41 @@ void ThumbnailDoubleUpgradeConfigManager::HandleProcess(int64_t currentTime, boo
  void ThumbnailDoubleUpgradeConfigManager::SaveCompleteInfoToSp(int64_t currentTime)
  {
     int32_t errCode = 0;
-    auto preference = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
-    if (preference == nullptr || errCode != 0) {
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(DOUBLE_UPGRADE_SP_FILE, errCode);
+    if (preferences == nullptr || errCode != 0) {
         MEDIA_ERR_LOG("SaveCompleteInfoToSp, failed to get preferences, errCode:%{public}d", errCode);
         return;
     }
   
-    int32_t ret = preference->PutInt(KEY_DOUBLE_UPGRADE_STATUS, static_cast<int32_t>(DoubleUpgradeStatus::COMPLETED));
-    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to put status, "
-        "ret:%{public}d", ret);
+    int32_t ret = preferences->PutInt(KEY_DOUBLE_UPGRADE_STATUS, static_cast<int32_t>(DoubleUpgradeStatus::COMPLETED));
+    CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to put status, "
+        "ret=%{public}d", ret);
 
     if (endTimeMs_ <= 0) {
-        ret = preference->PutLong(KEY_DOUBLE_UPGRADE_END_TIME, currentTime);
-        CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to put end time, "
-            "ret:%{public}d", ret);
+        ret = preferences->PutLong(KEY_DOUBLE_UPGRADE_END_TIME, currentTime);
+        CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to put end time, "
+            "ret=%{public}d", ret);
     }
     
-    ret = preference->FlushSync();
-    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to flush preferences, "
-        "ret:%{public}d", ret);
+    ret = preferences->FlushSync();
+    CHECK_AND_RETURN_LOG(ret == NativePreferences::E_OK, "SaveCompleteInfoToSp, failed to flush preferences, "
+        "ret=%{public}d", ret);
 
     status_ = DoubleUpgradeStatus::COMPLETED;
     if (endTimeMs_ <= 0) {
-        staendTimeMs_rtTimeMs_ = currentTime;
+        endTimeMs_ = currentTime;
     }
     MEDIA_INFO_LOG("SaveCompleteInfoToSp, status:%{public}d, endTime:%{public}" PRId64
         ", currentTime:%{public}" PRId64, static_cast<int32_t>(status_), endTimeMs_, currentTime);
  }  
 
-void ThumbnailDoubleUpgradeConfigManager::IsTimeout(int64_t currentTime)
+bool ThumbnailDoubleUpgradeConfigManager::IsTimeout(int64_t currentTime)
 {
     if (startTimeMs_ <= 0) {
         return false;
     }
     const bool isTimeout = std::abs(currentTime - startTimeMs_) >= DOUBLE_UPGRADE_TIMEOUT_MS;
-    MEDIA_INFO_LOG("IsTimeout, isTimeout:%{public}d, tartTime:%{public}" PRId64
+    MEDIA_INFO_LOG("IsTimeout, isTimeout:%{public}d, startTime:%{public}" PRId64
         ", currentTime:%{public}" PRId64, isTimeout, startTimeMs_, currentTime);
     return isTimeout;
 }   

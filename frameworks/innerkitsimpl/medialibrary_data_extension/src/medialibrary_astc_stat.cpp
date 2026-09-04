@@ -417,7 +417,7 @@ void MediaLibraryAstcStat::SetDoubleUpgradeInfo(int64_t updateDuration, const st
     std::lock_guard<std::mutex> lock(mutex_);
     updateDuration_ = updateDuration;
     uidType_ = uidType;
-    MEDIA_INFO_LOG("SetDoubleUpgradeInfo: updateDuration=%{public}" PRID64 ", uidType=%{public}s",
+    MEDIA_INFO_LOG("SetDoubleUpgradeInfo: updateDuration=%{public}" PRId64 ", uidType=%{public}s",
         updateDuration, uidType.c_str());
 }
 } // namespace Media

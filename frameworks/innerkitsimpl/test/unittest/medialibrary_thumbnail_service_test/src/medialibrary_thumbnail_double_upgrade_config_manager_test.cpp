@@ -41,7 +41,7 @@ void MedialibraryThumbnailDoubleUpgradeConfigManagerTest::TearDownTestCase(void)
 
 void MedialibraryThumbnailDoubleUpgradeConfigManagerTest::SetUp() {}
 
-void MedialibraryThumbnailDoubleUpgradeConfigManagerTest::TearDown(void) {}
+void MedialibraryThumbnailDoubleUpgradeConfigManagerTest::TearDown() {}
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetInstance_test_001, TestSize.Level1)
 {
@@ -216,7 +216,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFl
     manager.GetDoubleUpgradeFlag(flag);
 }
 
-HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OGetDoubleUpgradeFlag_test_003, TestSize.Level1)
+HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFlag_test_003, TestSize.Level1)
 {
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.accountType_ = AccountSA::OsAccountType::END;
@@ -286,7 +286,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED;
     manager.HandleProcess(TEST_TIME_1S_MS, true, "1");
-    EXPECT_EQ(status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::IN_PROGRESS);
+    EXPECT_EQ(manager.status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::IN_PROGRESS);
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test_002, TestSize.Level1)
@@ -295,7 +295,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::IN_PROGRESS;
     manager.startTimeMs_ = TEST_TIME_1S_MS;
     manager.HandleProcess(TEST_TIME_2S_MS, true, "0");
-    EXPECT_EQ(status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::COMPLETED);
+    EXPECT_EQ(manager.status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::COMPLETED);
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test_003, TestSize.Level1)
@@ -303,7 +303,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED;
     manager.HandleProcess(TEST_TIME_1S_MS, true, "invalid");
-    EXPECT_EQ(status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED);
+    EXPECT_EQ(manager.status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED);
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test_004, TestSize.Level1)
@@ -312,7 +312,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test
     manager.accountType_ = AccountSA::OsAccountType::END;
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED;
     manager.HandleProcess(TEST_TIME_1S_MS, false, "");
-    EXPECT_EQ(status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED);
+    EXPECT_EQ(manager.status_, ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::NOT_STARTED);
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, SaveInProcessInfoToSp_test_001, TestSize.Level1)
@@ -338,7 +338,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, SaveCompleteInfoTo
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.endTimeMs_ = TEST_TIME_3S_MS;
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::IN_PROGRESS;
-    manager.SaveInProcessInfoToSp(TEST_TIME_4S_MS);
+    manager.SaveCompleteInfoToSpp(TEST_TIME_4S_MS);
     EXPECT_EQ(manager.endTimeMs_, TEST_TIME_3S_MS);
 }
 
@@ -347,7 +347,7 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, SaveCompleteInfoTo
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.endTimeMs_ = 0;
     manager.status_ = ThumbnailDoubleUpgradeConfigManager::DoubleUpgradeStatus::IN_PROGRESS;
-    manager.SaveInProcessInfoToSp(TEST_TIME_4S_MS);
+    manager.SaveCompleteInfoToSp(TEST_TIME_4S_MS);
     EXPECT_EQ(manager.endTimeMs_, TEST_TIME_4S_MS);
 }
 
@@ -395,4 +395,3 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, AsyncUnregisterPar
 }
 } // namespace Media
 } // namespace OHOS
-#endif // MEDIALIBRARY_ITHUMBNAIL_SERVICE_TEST_THUMBNAIL_DOUBLE_UPGRADE_CONFIG_MANAGER_TEST_H
