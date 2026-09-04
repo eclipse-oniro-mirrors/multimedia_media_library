@@ -15,6 +15,7 @@
  
 #define MLOG_TAG "LakeFileMonitorTest"
 
+#include "check_scene_helper.h"
 #include "lake_file_monitor_test.h"
 
 #include "media_log.h"
@@ -174,6 +175,88 @@ HWTEST_F(LakeFileMonitorTest, media_lake_clone_event_manager_test_003, TestSize.
     EXPECT_EQ(MediaLakeCloneEventManager::GetInstance().currentRestoreStatusBitMap_, 0);
  
     MEDIA_INFO_LOG("media_lake_clone_event_manager_test_003 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_001 start");
+
+    // empty rootPath should return false
+    EXPECT_FALSE(FileScanUtils::IsPathUnderRoot("/var/log/file", ""));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_001 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_002 start");
+
+    // rootPath ends with '/', path under root should return true
+    EXPECT_TRUE(FileScanUtils::IsPathUnderRoot("/var/log/file", "/var/log/"));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_002 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_003 start");
+
+    // rootPath without trailing '/', path under root should return true
+    EXPECT_TRUE(FileScanUtils::IsPathUnderRoot("/var/log/file", "/var/log"));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_003 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_004 start");
+
+    // path equals rootPath should return true
+    EXPECT_TRUE(FileScanUtils::IsPathUnderRoot("/var/log", "/var/log"));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_004 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_005 start");
+
+    // path not under root should return false
+    EXPECT_FALSE(FileScanUtils::IsPathUnderRoot("/var/tmp/file", "/var/log"));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_005 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_006 start");
+
+    // case insensitive matching should return true
+    EXPECT_TRUE(FileScanUtils::IsPathUnderRoot("/VAR/LOG/file", "/var/log"));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_006 end");
+}
+
+HWTEST_F(LakeFileMonitorTest, file_scan_utils_is_path_under_root_test_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_007 start");
+
+    // rootPath ends with '/' but path not under root should return false
+    EXPECT_FALSE(FileScanUtils::IsPathUnderRoot("/var/tmp/file", "/var/log/"));
+
+    MEDIA_INFO_LOG("file_scan_utils_is_path_under_root_test_007 end");
+}
+
+void TestResolveSceneByPath(const std::string &path, CheckScene expectedScene)
+{
+    EXPECT_EQ(CheckSceneHelper::ResolveSceneByPath(path), expectedScene);
+}
+
+HWTEST_F(LakeFileMonitorTest, ResolveSceneByPath_test_001, TestSize.Level1)
+{
+    TestResolveSceneByPath("/storage/media/local/files/Docs/HO_DATA_EXT_MISC/test/photo.jpg", CheckScene::LAKE);
+    TestResolveSceneByPath("/storage/media/local/files/Docs/document.pdf", CheckScene::FILE_MANAGER);
+    TestResolveSceneByPath("/data/local/tmp/other_file.txt", CheckScene::UNKNOWN);
 }
 } // namespace Media
 } // namespace OHOS

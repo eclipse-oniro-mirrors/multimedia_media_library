@@ -184,12 +184,12 @@ static void HandleSetLivePhoto4dStatus(const Metadata &metadata, ValuesBucket &o
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdbStore.");
     int32_t fileId = metadata.GetFileId();
-    string sql = " SELECT " + PhotoColumn::UNIQUE_ID + "," + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
+    string sql = " SELECT " + PhotoColumn::PHOTO_EDIT_TIME + "," + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
         " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " +
         PhotoColumn::MEDIA_TYPE + " = " + to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) + " AND " +
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS + " < " +
         to_string(static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) + " AND " +
-        PhotoColumn::PHOTO_EDIT_TIME + " != 0 AND " + PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
+        PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
     shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "livephoto4d:failed to query photo.");
     if (resultSet->GoToNextRow() != NativeRdb::E_OK) {
@@ -202,6 +202,10 @@ static void HandleSetLivePhoto4dStatus(const Metadata &metadata, ValuesBucket &o
             static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
         return;
     }
+
+    int64_t editTime = GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet);
+    CHECK_AND_RETURN_INFO_LOG(editTime != 0,
+        "livephoto4d:non-v8 non-edited asset, return, fileId:%{public}d", fileId);
 
     MEDIA_INFO_LOG("livephoto4d:reset status to 0, fileId:%{public}d", fileId);
     outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,

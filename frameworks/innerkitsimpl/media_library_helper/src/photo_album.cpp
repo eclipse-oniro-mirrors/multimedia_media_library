@@ -461,5 +461,42 @@ bool PhotoAlbum::IsUserPhotoAlbumByType(const PhotoAlbumType albumType)
 {
     return albumType == PhotoAlbumType::USER;
 }
+
+std::vector<std::string> PhotoAlbum::GetUserAlbumSubtypes()
+{
+    return {std::to_string(PhotoAlbumSubType::USER_GENERIC)};
+}
+
+std::vector<std::string> PhotoAlbum::GetSourceAlbumSubtypes()
+{
+    return {std::to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+        std::to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)};
+}
+
+std::vector<std::string> PhotoAlbum::GetUserAndSourceAlbumSubtypes()
+{
+    std::vector<std::string> userAlbumSubtypes = GetUserAlbumSubtypes();
+    std::vector<std::string> sourceAlbumSubtypes = GetSourceAlbumSubtypes();
+    std::vector<std::string> mergedAlbumSubtypes;
+    mergedAlbumSubtypes.reserve(userAlbumSubtypes.size() + sourceAlbumSubtypes.size());
+    mergedAlbumSubtypes.insert(mergedAlbumSubtypes.end(), userAlbumSubtypes.begin(), userAlbumSubtypes.end());
+    mergedAlbumSubtypes.insert(mergedAlbumSubtypes.end(), sourceAlbumSubtypes.begin(), sourceAlbumSubtypes.end());
+    return mergedAlbumSubtypes;
+}
+
+bool PhotoAlbum::IsUserAlbumSubtype(const PhotoAlbumSubType subtype)
+{
+    return subtype == PhotoAlbumSubType::USER_GENERIC;
+}
+
+bool PhotoAlbum::IsSourceAlbumSubtype(const PhotoAlbumSubType subtype)
+{
+    return subtype >= PhotoAlbumSubType::SOURCE_START && subtype <= PhotoAlbumSubType::SOURCE_END;
+}
+
+bool PhotoAlbum::IsUserOrSourceAlbumSubtype(const PhotoAlbumSubType subtype)
+{
+    return IsUserAlbumSubtype(subtype) || IsSourceAlbumSubtype(subtype);
+}
 }  // namespace Media
 }  // namespace OHOS

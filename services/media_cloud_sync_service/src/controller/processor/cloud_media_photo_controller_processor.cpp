@@ -457,9 +457,12 @@ bool CloudMediaPhotoControllerProcessor::HandleUserComment(const PhotosPo &recor
 bool CloudMediaPhotoControllerProcessor::GetInt64FieldsHashMap(
     const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo)
 {
+    PhotosPo photosInfo = record;
+    PhotosPoWriter writer = PhotosPoWriter(photosInfo);
+    std::unordered_map<std::string, std::string> stringfieldsMap = writer.ToMap(false);
     for (const auto &fieldName : PHOTOS_SYNC_COLUMN_INT64) {
-        auto it = record.attributes.find(fieldName);
-        CHECK_AND_CONTINUE(it != record.attributes.end());
+        auto it = stringfieldsMap.find(fieldName);
+        CHECK_AND_CONTINUE(it != stringfieldsMap.end());
         int64_t value = 0;
         auto [ptr, ec] = std::from_chars(it->second.data(), it->second.data() + it->second.size(), value);
         CHECK_AND_CONTINUE(ec == std::errc() && ptr == it->second.data() + it->second.size());

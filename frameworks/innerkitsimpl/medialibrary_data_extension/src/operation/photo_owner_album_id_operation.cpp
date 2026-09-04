@@ -455,6 +455,7 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(
     albumInfo.albumType = albumTypeTmp;
     albumInfo.albumSubType = albumSubTypeTmp;
     albumInfo.priority = 1;
+    albumInfo.uniqueId = MediaFileUtils::GenerateUUID();
     return albumInfo;
 }
 
@@ -493,7 +494,8 @@ int32_t PhotoOwnerAlbumIdOperation::CreateAlbum(const MediaData &albumInfo)
         albumInfo.bundleName,
         albumInfo.lPath,
         albumInfo.priority,
-        albumInfo.hidden};
+        albumInfo.hidden,
+        albumInfo.uniqueId};
     int32_t err = albumRefresh.ExecuteSql(sql, params, AccurateRefresh::RdbOperation::RDB_OPERATION_ADD);
     bool conn = err != AccurateRefresh::ACCURATE_REFRESH_RET_OK;
     CHECK_AND_RETURN_RET_LOG(!conn,

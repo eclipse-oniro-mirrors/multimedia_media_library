@@ -474,10 +474,18 @@ static bool IsDeveloperMediaTool()
     return true;
 }
 
-int32_t MediaPrivacyManager::Open()
+int32_t MediaPrivacyManager::Open(bool isCloseMovingPhotoStatusSharing)
 {
+string tempImagePath;
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
-    path_ = MediaFileAccessUtils::GetAssetRealPath(path_);
+    if (isCloseMovingPhotoStatusSharing) {
+        string realPath = MediaFileAccessUtils::GetAssetRealPath(path_);
+        tempImagePath = MediaFileAccessUtils::GetLivePhotoTempImage(realPath, path_, true);
+        CHECK_AND_RETURN_RET_LOG(!tempImagePath.empty(), -1, "get live photo temp Image failed");
+        path_ = tempImagePath;
+    } else {
+        path_ = MediaFileAccessUtils::GetAssetRealPath(path_);
+    }
 #endif
     if (!MediaFileUtils::IsFileExists(path_) && !fileId_.empty()) {
         OHOS::Media::CloudDentryHelper::CreateDentryForOrigin(fileId_, path_);
@@ -492,11 +500,16 @@ int32_t MediaPrivacyManager::Open()
         MEDIA_ERR_LOG("file is not real path, file path: %{private}s", path_.c_str());
         return -1;
     }
+    int32_t ret = -1;
     if (ranges_.size() > 0 && !IsDeveloperMediaTool()) {
-        return OpenFilterProxyFd(absFilePath, mode_, ranges_, clientBundle_, fuseFlag_);
+        ret = OpenFilterProxyFd(absFilePath, mode_, ranges_, clientBundle_, fuseFlag_);
     } else {
-        return OpenOriginFd(absFilePath, mode_, clientBundle_, fuseFlag_);
+        ret = OpenOriginFd(absFilePath, mode_, clientBundle_, fuseFlag_);
     }
+    if (!tempImagePath.empty()) {
+        MediaFileUtils::DeleteFile(tempImagePath);
+    }
+    return ret;
 }
 } // namespace Media
 } // namespace OHOS

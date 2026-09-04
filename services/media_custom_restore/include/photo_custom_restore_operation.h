@@ -26,6 +26,7 @@
 #include "medialibrary_rdb_utils.h"
 #include "metadata.h"
 #include "tlv_util.h"
+#include "media_custom_restore_dao.h"
 #include "custom_restore_types.h"
 // LCOV_EXCL_START
 namespace OHOS::Media {
@@ -166,6 +167,7 @@ private:
     bool HasTlvFiles(const vector<string> &files);
     int32_t ProcessExtractTlvFile(const std::string &tlvFilePath, std::string &destDir,
         std::unordered_map<TlvTag, std::string> &extractedFiles);
+    int32_t HandleExtraDataVersion(const std::string &filePath, const uint32_t version);
 
 private:
     std::atomic<bool> isRunning_{false};
@@ -179,6 +181,7 @@ private:
     std::atomic<int32_t> failNum_{0};
     std::atomic<int32_t> sameNum_{0};
     std::unordered_set<std::string> photoCache_;
+    Restore::MediaCustomRestoreDao customRestoreDao_;
 
     //AsyncWorker thread members
     std::mutex queueMutex_;

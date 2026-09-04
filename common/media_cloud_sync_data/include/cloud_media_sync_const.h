@@ -244,11 +244,13 @@ const std::vector<std::string> PHOTOS_SYNC_COLUMN_STRING = {
     PhotoColumn::PHOTO_DATE_ADDED_MONTH,
     PhotoColumn::PHOTO_DATE_ADDED_DAY,
     PhotoColumn::LCD_ASPECT_RATIO,
+    PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR
     // Add Photos fields here. such as PhotoColumn::PHOTO_MEDIA_SUFFIX,
 };
 
 const std::vector<std::string> PHOTOS_SYNC_COLUMN_INT64 = {
     // Add Photos int64 fields here.
+    PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
 };
 
 enum CheckFlag : int32_t {

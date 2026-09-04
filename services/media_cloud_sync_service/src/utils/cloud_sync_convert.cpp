@@ -745,6 +745,7 @@ int32_t CloudSyncConvert::CompensateAttributesHashMap(
     // compensate attributes HashMap here.
     CompensateDateAddedYearMonthDay(data, values);
     CompensatePhotoLcdSize(data, values);
+    CompensateLivePhoto4DPair(data, values);
     return E_OK;
 }
 
@@ -797,6 +798,33 @@ int32_t CloudSyncConvert::CompensateInt64FieldsHashMap(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     // compensate attributes HashMap here.
+    HandleLivePhoto4dStatus(data, values);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::HandleLivePhoto4dStatus(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    auto it = pullData.int64fields.find(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS);
+    bool isValid = it != pullData.int64fields.end();
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    int64_t livePhoto4dStatus = it->second;
+    int64_t maxStatus = static_cast<int64_t>(LivePhoto4dStatusType::TYPE_MAX_VALUE);
+    int64_t minStatus = static_cast<int64_t>(LivePhoto4dStatusType::TYPE_MIN_VALUE);
+    isValid = (livePhoto4dStatus <= maxStatus) && (livePhoto4dStatus >= minStatus);
+    CHECK_AND_EXECUTE(isValid, livePhoto4dStatus = minStatus);
+    // If local already has a 4D effect status (4-9) and cloud value is 0-4, skip cloud update
+    // to protect the correct local value from being overwritten by inferior cloud value
+    if (pullData.localPhotosPoOp.has_value()) {
+        int32_t localStatus = pullData.localPhotosPoOp.value().livePhoto4dStatus.value_or(0);
+        if (MediaFileUtils::IsLivePhoto4dEffect(localStatus) &&
+            livePhoto4dStatus <= static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+            MEDIA_INFO_LOG("HandleLivePhoto4dStatus: local status %{public}d is 4d effect and cloud status "
+                "%{public}lld is 0-4, skip cloud update", localStatus, static_cast<long long>(livePhoto4dStatus));
+            return E_OK;
+        }
+    }
+    values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, livePhoto4dStatus);
     return E_OK;
 }
 
@@ -809,6 +837,27 @@ int32_t CloudSyncConvert::CompensatePhotoLcdSize(const CloudMediaPullDataDto &da
     }
     CHECK_AND_RETURN_RET(!lcdSize.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.Put(PhotoColumn::PHOTO_LCD_SIZE, lcdSize);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateLivePhoto4DPair(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    auto it = pullData.stringfields.find(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR);
+    bool isValid = it != pullData.stringfields.end();
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    const std::string livePhoto4dPair = it->second;
+
+    isValid = pullData.localPhotosPoOp.has_value();
+    if (!isValid) { // 新增下行
+        values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, livePhoto4dPair);
+    } else { // 更新下行
+        const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
+        const std::string &localLivePhoto4dPair = photoInfo.livePhoto4DPair.value_or("");
+        if (localLivePhoto4dPair.empty()) {
+            values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, livePhoto4dPair);
+        }
+    }
     return E_OK;
 }
 

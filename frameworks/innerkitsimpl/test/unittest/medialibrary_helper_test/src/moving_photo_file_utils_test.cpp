@@ -687,6 +687,26 @@ HWTEST_F(MediaLibraryHelperUnitTest, ConvertToMovingPhoto_005, TestSize.Level1)
     EXPECT_EQ(MediaFileUtils::DeleteDir(dirPath), true);
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, MovingPhotoFileUtils_GetExtraDataVersion_Test_001, TestSize.Level1)
+{
+    // 用例说明：测试<获取额外数据版本功能>；覆盖<文件不存在场景>（触发条件：额外数据文件不存在）；验证<返回默认版本值>
+    std::string filePath = "/storage/cloud/files/Photo/2/IMG_20260309_1830.jpg";
+    uint32_t version = static_cast<uint32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED);
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersionByFilePath(filePath, version);
+    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(version, static_cast<uint32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MovingPhotoFileUtils_GetExtraDataVersion_Test_003, TestSize.Level1)
+{
+    // 用例说明：测试<获取额外数据版本功能>；覆盖<路径为空场景>（触发条件：传入空路径）；验证<返回默认版本值>
+    std::string filePath = "";
+    uint32_t version = static_cast<uint32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED);
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersionByFilePath(filePath, version);
+    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(version, static_cast<uint32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, MovingPhotoFileUtils_GetLocalAssetSize_01, TestSize.Level1)
 {
     MEDIA_INFO_LOG("MovingPhotoFileUtils_GetLocalAssetSize_01 begin");

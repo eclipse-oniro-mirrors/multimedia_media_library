@@ -447,6 +447,46 @@ int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
     return E_OK;
 }
 
+int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
+{
+    string path = GetFilePath(fileId);
+    if (path.empty()) {
+        MEDIA_ERR_LOG("Get path failed for fileId: %{private}d", fileId);
+        return E_INVALID_VALUES;
+    }
+    string extraDataDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(path);
+    if (extraDataDir.empty()) {
+        MEDIA_ERR_LOG("GetMovingPhotoExtraDataDir returned empty for path: %{private}s", path.c_str());
+        return E_INVALID_PATH;
+    }
+    if (!MediaFileUtils::CreateDirectory(extraDataDir)) {
+        MEDIA_ERR_LOG("Failed to create extraData directory: %{private}s", extraDataDir.c_str());
+        return E_HAS_FS_ERROR;
+    }
+    string extraDataPath = extraDataDir + "/extraData";
+    // Write valid extraData content: VERSION_TAG(20) + PLAY_INFO(20) + LIVE_TAG(20) = 60 bytes (MIN_STANDARD_SIZE)
+    // GetVersionAndFrameNum seeks to -MIN_STANDARD_SIZE from end, reads first VERSION_TAG_LEN bytes as version tag
+    // Version tag format: "v8_f0" padded with spaces to VERSION_TAG_LEN(20)
+    string versionTag = "v8_f0";
+    size_t left = VERSION_TAG_LEN - versionTag.length();
+    for (size_t i = 0; i < left; ++i) {
+        versionTag += ' ';
+    }
+    string playInfo(PLAY_INFO_LEN, '0');
+    string liveTag(LIVE_TAG_LEN, '0');
+    string extraDataContent = versionTag + playInfo + liveTag;
+    ofstream ofs(extraDataPath, ios::binary | ios::trunc);
+    if (!ofs.is_open()) {
+        MEDIA_ERR_LOG("Failed to open extraData file: %{private}s", extraDataPath.c_str());
+        return E_HAS_FS_ERROR;
+    }
+    ofs.write(extraDataContent.c_str(), extraDataContent.length());
+    ofs.close();
+    MEDIA_INFO_LOG("Created extraData file: %{private}s, size: %{public}zu", extraDataPath.c_str(),
+        extraDataContent.length());
+    return E_OK;
+}
+
 int32_t SetPendingOnly(int32_t pendingTime, int64_t fileId)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);

@@ -118,6 +118,7 @@ private:
     bool checkInLakeStatus_{false};
     bool timerStatus_{false};
     bool isBackgroundTaskAllowed_{true};
+    bool checkInFileManagerStatus_{false};
     static bool isCellularNetConnected_;
     std::mutex mutex_;
     int32_t agingCount_ {0};
@@ -189,6 +190,9 @@ private:
     void InitFaCardAfterDataShareReady(const std::string &action);
 #endif
     int32_t RegisterDefaultNetObserver();
+#ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
+    void UpdateFileManagerCheckInStatus();
+#endif
     std::mutex registerDefaultNetObsLock_;
 };
 }  // namespace Media

@@ -260,7 +260,7 @@ static void EnhancementServiceCallbackTest()
     cmd.GetAbsRdbPredicates()->EqualTo(Media::PhotoColumn::PHOTO_ID, photoId);
     auto resultSet = g_rdbStore->Query(cmd, columns);
     if (resultSet != nullptr && resultSet->GoToFirstRow() == E_OK) {
-        Media::EnhancementServiceCallback::SaveCloudEnhancementPhoto(fileInfo, task, assetRefresh);
+        Media::EnhancementServiceCallback::SaveCloudEnhancementPhoto(fileInfo, task, assetRefresh, resultSet);
     }
     Media::EnhancementServiceCallback::DealWithSuccessedTask(task);
     Media::EnhancementServiceCallback::DealWithFailedTask(task);

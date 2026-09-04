@@ -521,6 +521,7 @@ const static vector<string> PHOTO_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_WIDTH,
     PhotoColumn::PHOTO_HEIGHT,
     MediaColumn::MEDIA_MIME_TYPE,
+    PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
 };
 
 bool CheckOpenMovingPhoto(int32_t photoSubType, int32_t effectMode, const string& request)
@@ -835,7 +836,11 @@ int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string
         errCode = ProcessCinematicVideoOprnKey(cmd, fileAsset, id);
         CHECK_AND_RETURN_RET(errCode == E_OK, errCode);
     }
-
+    int32_t effectMode = fileAsset->GetMovingPhotoEffectMode();
+    int32_t fileSourceType = fileAsset->GetFileSourceType();
+    bool isCloseMovingPhotoStatusSharing =  (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) &&
+        (cmd.GetQuerySetParam(CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD) == CONST_SHARE_MOVING_PHOTO) &&
+        (fileSourceType == FileSourceType::FILE_MANAGER || fileSourceType == FileSourceType::MEDIA_HO_LAKE);
     bool isMovingPhotoVideo = false;
     errCode = ProcessMovingPhotoOprnKey(cmd, fileAsset, id, isMovingPhotoVideo);
     CHECK_AND_RETURN_RET(errCode == E_OK, errCode);

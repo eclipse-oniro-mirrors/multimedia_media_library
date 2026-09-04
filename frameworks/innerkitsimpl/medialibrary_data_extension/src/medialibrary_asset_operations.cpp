@@ -1665,6 +1665,12 @@ int32_t MediaLibraryAssetOperations::OpenFileWithPrivacy(const string &filePath,
     return MediaPrivacyManager(filePath, mode, fileId, type).Open();
 }
 
+int32_t MediaLibraryAssetOperations::OpenFileMagerFileWithPrivacy(const string &filePath, const string &mode,
+    const string &fileId, int32_t type, bool isCloseMovingPhotoStatusSharing)
+{
+    return MediaPrivacyManager(filePath, mode, fileId, type).Open(isCloseMovingPhotoStatusSharing);
+}
+
 static int32_t SetPendingTime(const shared_ptr<FileAsset> &fileAsset, int64_t pendingTime)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -1789,7 +1795,8 @@ static bool IsNotMusicFile(const std::string &path)
 }
 
 int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &fileAsset, const string &mode,
-    MediaLibraryApi api, bool isMovingPhotoVideo, int32_t type, bool noNeedWatchNotify)
+    MediaLibraryApi api, bool isMovingPhotoVideo, int32_t type, bool noNeedWatchNotify,
+    bool isCloseMovingPhotoStatusSharing)
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryAssetOperations::OpenAsset");
@@ -1825,7 +1832,12 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
 
     string fileId = MediaFileUtils::GetIdFromUri(fileAsset->GetUri());
 
-    int32_t fd = OpenFileWithPrivacy(path, lowerMode, fileId, type);
+    int32_t fd = -1;
+    if (isCloseMovingPhotoStatusSharing) {
+        fd = OpenFileMagerFileWithPrivacy(path, lowerMode, fileId, type, isCloseMovingPhotoStatusSharing);
+    } else {
+        fd = OpenFileWithPrivacy(path, lowerMode, fileId, type);
+    }
     CHECK_AND_RETURN_RET_LOG(fd >= 0, E_HAS_FS_ERROR,
         "open file, userId: %{public}d, uri: %{public}s, path: %{public}s, fd %{public}d, errno %{public}d",
         fileAsset->GetUserId(), fileAsset->GetUri().c_str(), fileAsset->GetPath().c_str(), fd, errno);

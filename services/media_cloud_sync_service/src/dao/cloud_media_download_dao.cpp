@@ -352,6 +352,7 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAsset(const OnDownloadAssetData &as
     }
     
     this->FillScanedHeightWidth(values, scanResult);
+    this->HandleExtraDataVersion(scanResult, values, assetData.localPhotosPoOp);
     this->HandleAdditionalFileInfo(assetData, values);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
@@ -492,6 +493,25 @@ int32_t CloudMediaDownloadDao::UpdateLcdFileSizeAndLcdSize(const std::vector<std
         ret = rdbStore->Update(changedRows, values, updatePredicates);
         CHECK_AND_PRINT_LOG(ret == E_OK, "failed to update fileId: %{public}d, ret: %{public}d", data.fileId, ret);
     }
+    return E_OK;
+}
+
+int32_t CloudMediaDownloadDao::HandleExtraDataVersion(
+    const CloudMediaScanService::ScanResult &scanResult, NativeRdb::ValuesBucket &values,
+    const std::optional<PhotosPo> &localPhotosPoOp)
+{
+    bool isValid = scanResult.scanSuccess && scanResult.extraDataVersion == LIVE_PHOTO_4D_VERSION;
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    // If local already has a 4D effect status (4-9), skip update to protect the correct local value
+    if (localPhotosPoOp.has_value()) {
+        int32_t localStatus = localPhotosPoOp.value().livePhoto4dStatus.value_or(0);
+        if (MediaFileUtils::IsLivePhoto4dEffect(localStatus)) {
+            MEDIA_INFO_LOG("HandleExtraDataVersion: local status %{public}d is 4d effect, skip update", localStatus);
+            return E_OK;
+        }
+    }
+    values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+               static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
     return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

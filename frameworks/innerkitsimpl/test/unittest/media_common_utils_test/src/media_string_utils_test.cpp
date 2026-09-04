@@ -1307,5 +1307,61 @@ HWTEST_F(MediaStringUtilsUnitTest, StartsWithStoragePath_Test_001, TestSize.Leve
     std::string prefix = "/storage/";
     EXPECT_EQ(MediaStringUtils::StartsWith(str, prefix), true);
 }
+
+HWTEST_F(MediaStringUtilsUnitTest, ToLower_EmptyString_Test_001, TestSize.Level1)
+{
+    std::string str = "";
+    std::string result = MediaStringUtils::ToLower(str);
+    EXPECT_EQ(result, "");
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, ToLower_AllUppercase_Test_001, TestSize.Level1)
+{
+    std::string str = "HELLO 你好ABC123";
+    std::string result = MediaStringUtils::ToLower(str);
+    EXPECT_EQ(result, "hello 你好abc123");
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, ToLower_MixedCase_Test_001, TestSize.Level1)
+{
+    std::string str = "HeLLoWoRLd测试@example.com";
+    std::string result = MediaStringUtils::ToLower(str);
+    EXPECT_EQ(result, "helloworld测试@example.com");
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, StartsWithIgnoreCase_Match_Test_001, TestSize.Level1)
+{
+    std::string str = "Hello你好World";
+    std::string prefix = "HELLO你好";
+    EXPECT_EQ(MediaStringUtils::StartsWithIgnoreCase(str, prefix), true);
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, StartsWithIgnoreCase_EmptyString_Test_001, TestSize.Level1)
+{
+    std::string str = "";
+    std::string prefix = "hello你好";
+    EXPECT_EQ(MediaStringUtils::StartsWithIgnoreCase(str, prefix), false);
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, StartsWithIgnoreCase_LongerPrefix_Test_001, TestSize.Level1)
+{
+    std::string str = "hello你好";
+    std::string prefix = "hello你好world";
+    EXPECT_EQ(MediaStringUtils::StartsWithIgnoreCase(str, prefix), false);
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, EqualToIgnoreCase_Match_Test_001, TestSize.Level1)
+{
+    std::string strA = "hello你好世界123";
+    std::string strB = "HELLO你好世界123";
+    EXPECT_EQ(MediaStringUtils::EqualToIgnoreCase(strA, strB), true);
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, EqualToIgnoreCase_DifferentLength_Test_001, TestSize.Level1)
+{
+    std::string strA = "hello你好";
+    std::string strB = "hello你好o";
+    EXPECT_EQ(MediaStringUtils::EqualToIgnoreCase(strA, strB), false);
+}
 } // namespace Media
 } // namespace OHOS

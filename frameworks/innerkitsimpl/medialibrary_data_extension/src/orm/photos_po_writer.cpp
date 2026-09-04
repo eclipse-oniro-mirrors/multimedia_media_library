@@ -495,6 +495,20 @@ bool PhotosPoWriter::GetDynamicRangType(std::string &val)
     val = std::to_string(this->photosPo_.dynamicRangeType.value());
     return true;
 }
+
+void PhotosPoWriter::SetVideoMode(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.videoMode = std::get<int32_t>(val);
+}
+bool PhotosPoWriter::GetVideoMode(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.videoMode.has_value(), false);
+    val = std::to_string(this->photosPo_.videoMode.value());
+    return true;
+}
+
 void PhotosPoWriter::SetFrontCamera(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<std::string>(val);
@@ -966,5 +980,33 @@ bool PhotosPoWriter::GetShareAlbumOwner(std::string &val)
     CHECK_AND_RETURN_RET(photosPo_.shareAlbumOwner.has_value(), false);
     val = this->photosPo_.shareAlbumOwner.value();
     return true;
+}
+
+bool PhotosPoWriter::GetLivePhoto4dStatus(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.livePhoto4dStatus.has_value(), false);
+    val = std::to_string(this->photosPo_.livePhoto4dStatus.value());
+    return true;
+}
+
+void PhotosPoWriter::SetLivePhoto4dStatus(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.livePhoto4dStatus = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetLivePhoto4DPair(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.livePhoto4DPair.has_value(), false);
+    val = this->photosPo_.livePhoto4DPair.value();
+    return true;
+}
+
+void PhotosPoWriter::SetLivePhoto4DPair(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.livePhoto4DPair = std::get<std::string>(val);
 }
 }  // namespace OHOS::Media::ORM

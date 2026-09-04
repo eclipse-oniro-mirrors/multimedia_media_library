@@ -29,6 +29,7 @@
 #include "photo_album_column.h"
 #include "scanner_utils.h"
 #include "shooting_mode_column.h"
+#include "moving_photo_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 
@@ -169,7 +170,8 @@ std::string CloudMediaScanService::ScanResult::ToString() const
        << "shootingMode: " << shootingMode << ", "
        << "shootingModeTag" << shootingModeTag << ", "
        << "frontCamera" << frontCamera << ", "
-       << "subType" << subType;
+       << "subType: " << subType << ", "
+       << "extraDataVersion: " << extraDataVersion;
     return ss.str();
 }
 
