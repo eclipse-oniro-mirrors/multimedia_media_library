@@ -21,6 +21,7 @@
 #include <climits>
 #include <filesystem>
 #include <thread>
+#include <unordered_set>
 
 #include "album_plugin_config.h"
 #include "analysis_album_attribute_const.h"
@@ -4730,6 +4731,366 @@ int32_t MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(const std::string &ow
     albumRefresh->Notify();
 
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum success, owner=%{public}s, albumCount=%{public}zu",
+        MediaFileUtils::DesensitizeName(owner).c_str(), albumIds.size());
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::ValidateAddShareMember(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    int32_t albumId, const std::string &owner, const std::string &member)
+{
+    // Verify that albumId is a share album
+    NativeRdb::RdbPredicates checkPredicates(PhotoAlbumColumns::TABLE);
+    checkPredicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
+    MEDIA_INFO_LOG("AddShareMemberExecute: albumId=%{public}d, owner=%{public}s", albumId,
+        MediaFileUtils::DesensitizeName(owner).c_str());
+    auto checkResult = rdbStore->Query(checkPredicates, {PhotoAlbumColumns::ALBUM_ID,
+        PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE,
+        PhotoAlbumColumns::ALBUM_SHARE_TYPE});
+    CHECK_AND_RETURN_RET_LOG(checkResult != nullptr, E_RDB, "query check failed");
+    if (checkResult->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("AddShareMember: album not found, albumId=%{public}d", albumId);
+        checkResult->Close();
+        return -EINVAL;
+    }
+    int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, checkResult);
+    int32_t albumSubType = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, checkResult);
+    int32_t albumShareType = GetInt32Val(PhotoAlbumColumns::ALBUM_SHARE_TYPE, checkResult);
+    checkResult->Close();
+    if (albumType != static_cast<int32_t>(PhotoAlbumType::SHARE) ||
+        albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC) ||
+        albumShareType != static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM)) {
+        MEDIA_ERR_LOG("AddShareMember: album is not a share album, albumId=%{public}d", albumId);
+        return -EINVAL;
+    }
+
+    // Check if member already exists
+    NativeRdb::RdbPredicates existPredicates(ShareMemberColumn::TABLE_NAME);
+    existPredicates.EqualTo(ShareMemberColumn::COLUMN_ALBUM_ID, albumId)
+        ->And()->EqualTo(ShareMemberColumn::COLUMN_SHARE_MEMBER, member);
+    auto existResult = rdbStore->Query(existPredicates, {ShareMemberColumn::COLUMN_ID});
+    CHECK_AND_RETURN_RET_LOG(existResult != nullptr, E_RDB, "query exist failed");
+    if (existResult->GoToFirstRow() == NativeRdb::E_OK) {
+        MEDIA_WARN_LOG("AddShareMember: member already exists, albumId=%{public}d, member=%{public}s", albumId,
+            MediaFileUtils::DesensitizeName(member).c_str());
+        existResult->Close();
+        return -EEXIST;
+    }
+    existResult->Close();
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::AddShareMember(int32_t albumId, const std::string &owner,
+    const std::string &member, int32_t status)
+{
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "AddShareMember: albumId is invalid");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "rdbStore is null");
+
+    int32_t validateRet = ValidateAddShareMember(rdbStore, albumId, owner, member);
+    CHECK_AND_RETURN_RET_LOG(validateRet == E_OK, validateRet, "ValidateAddShareMember failed, ret=%{public}d",
+        validateRet);
+
+    std::vector<int32_t> albumIds = {albumId};
+    int32_t ownerRet = CheckShareAlbumAndOwner(rdbStore, owner, albumIds);
+    CHECK_AND_RETURN_RET_LOG(ownerRet == E_OK, ownerRet, "AddShareMember owner check failed, ret=%{public}d",
+        ownerRet);
+
+    NativeRdb::ValuesBucket values;
+    values.PutInt(ShareMemberColumn::COLUMN_ALBUM_ID, albumId);
+    values.PutString(ShareMemberColumn::COLUMN_SHARE_MEMBER, member);
+    values.PutInt(ShareMemberColumn::COLUMN_SHARE_MEMBER_STATUS, status);
+    int64_t rowId = 0;
+    int32_t ret = rdbStore->Insert(rowId, ShareMemberColumn::TABLE_NAME, values);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "insert failed, ret=%{public}d", ret);
+    MEDIA_INFO_LOG("AddShareMember success, albumId=%{public}d, member=%{public}s, status=%{public}d", albumId,
+        MediaFileUtils::DesensitizeName(member).c_str(), status);
+    return E_OK;
+}
+
+static int32_t ValidateShareAlbumForMemberUpdate(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    const int32_t albumId)
+{
+    // Verify that the album is a share album by albumId
+    NativeRdb::RdbPredicates checkPredicates(PhotoAlbumColumns::TABLE);
+    checkPredicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
+    auto checkResult = rdbStore->Query(checkPredicates, {PhotoAlbumColumns::ALBUM_ID,
+        PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE,
+        PhotoAlbumColumns::ALBUM_SHARE_TYPE});
+    CHECK_AND_RETURN_RET_LOG(checkResult != nullptr, E_RDB, "query check failed");
+    if (checkResult->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("UpdateShareMemberStatus: album not found, albumId=%{public}d", albumId);
+        checkResult->Close();
+        return -EINVAL;
+    }
+    int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, checkResult);
+    int32_t albumSubType = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, checkResult);
+    int32_t albumShareType = GetInt32Val(PhotoAlbumColumns::ALBUM_SHARE_TYPE, checkResult);
+    checkResult->Close();
+    if (albumType != static_cast<int32_t>(PhotoAlbumType::SHARE) ||
+        albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC) ||
+        albumShareType != static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM)) {
+        MEDIA_ERR_LOG("UpdateShareMemberStatus: album is not a share album, albumId=%{public}d", albumId);
+        return -EINVAL;
+    }
+    return E_OK;
+}
+
+static int32_t ValidateShareMemberStatusRange(int32_t status, int32_t albumId)
+{
+    if (status < static_cast<int32_t>(ShareMemberStatus::INVITING) ||
+        status > static_cast<int32_t>(ShareMemberStatus::REQUESTING)) {
+        MEDIA_ERR_LOG("UpdateShareMemberStatus: invalid status=%{public}d, albumId=%{public}d", status, albumId);
+        return -EINVAL;
+    }
+    return E_OK;
+}
+
+static int32_t QueryShareMemberOldStatus(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    const int32_t albumId, const std::string &member, int32_t &oldStatus)
+{
+    // 查询成员当前的旧状态
+    NativeRdb::RdbPredicates memberPredicates(ShareMemberColumn::TABLE_NAME);
+    memberPredicates.EqualTo(ShareMemberColumn::COLUMN_ALBUM_ID, albumId)
+        ->And()->EqualTo(ShareMemberColumn::COLUMN_SHARE_MEMBER, member);
+    auto memberResult = rdbStore->Query(
+        memberPredicates, {ShareMemberColumn::COLUMN_SHARE_MEMBER_STATUS});
+    CHECK_AND_RETURN_RET_LOG(memberResult != nullptr, E_RDB, "query member status failed");
+    if (memberResult->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("UpdateShareMemberStatus: member not found, albumId=%{public}d, member=%{public}s",
+            albumId, MediaFileUtils::DesensitizeName(member).c_str());
+        memberResult->Close();
+        return -EINVAL;
+    }
+    int32_t statusIdx = 0;
+    CHECK_AND_RETURN_RET_LOG(
+        memberResult->GetColumnIndex(ShareMemberColumn::COLUMN_SHARE_MEMBER_STATUS, statusIdx) == NativeRdb::E_OK,
+        E_RDB, "get share_member_status index failed");
+    CHECK_AND_RETURN_RET_LOG(
+        memberResult->GetInt(statusIdx, oldStatus) == NativeRdb::E_OK, E_RDB, "get share_member_status failed");
+    memberResult->Close();
+    return E_OK;
+}
+
+static int32_t ValidateShareMemberStatusTransition(int32_t oldStatus, int32_t status)
+{
+    // 校验状态更新：仅允许0->1、0->2、3->1、3->2
+    bool isTargetFinal = (status == static_cast<int32_t>(ShareMemberStatus::ACCEPTED) ||
+                          status == static_cast<int32_t>(ShareMemberStatus::DECLINED));
+    bool isSourcePending = (oldStatus == static_cast<int32_t>(ShareMemberStatus::INVITING) ||
+                            oldStatus == static_cast<int32_t>(ShareMemberStatus::REQUESTING));
+    if (!isTargetFinal || !isSourcePending) {
+        MEDIA_ERR_LOG("UpdateShareMemberStatus: invalid status transition, oldStatus=%{public}d, newStatus=%{public}d",
+            oldStatus, status);
+        return -EINVAL;
+    }
+    return E_OK;
+}
+
+static int32_t DoUpdateShareMemberStatus(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    const int32_t albumId, const std::string &member, int32_t status)
+{
+    NativeRdb::ValuesBucket values;
+    values.PutInt(ShareMemberColumn::COLUMN_SHARE_MEMBER_STATUS, status);
+
+    NativeRdb::RdbPredicates predicates(ShareMemberColumn::TABLE_NAME);
+    predicates.EqualTo(ShareMemberColumn::COLUMN_ALBUM_ID, albumId)
+        ->And()->EqualTo(ShareMemberColumn::COLUMN_SHARE_MEMBER, member);
+
+    int32_t changedRows = 0;
+    int32_t ret = rdbStore->Update(changedRows, values, predicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && changedRows > 0, E_RDB,
+        "update failed, ret=%{public}d, changedRows=%{public}d", ret, changedRows);
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::UpdateShareMemberStatus(int32_t albumId, const std::string &owner,
+    const std::string &member, int32_t status)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "rdbStore is null");
+
+    int32_t ret = ValidateShareAlbumForMemberUpdate(rdbStore, albumId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "album check failed, ret=%{public}d", ret);
+
+    ret = ValidateShareMemberStatusRange(status, albumId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "status range check failed, ret=%{public}d", ret);
+
+    std::vector<int32_t> albumIds = {albumId};
+    ret = CheckShareAlbumAndOwner(rdbStore, owner, albumIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdateShareMemberStatus owner check failed, ret=%{public}d", ret);
+
+    int32_t oldStatus = 0;
+    ret = QueryShareMemberOldStatus(rdbStore, albumId, member, oldStatus);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "query old status failed, ret=%{public}d", ret);
+
+    ret = ValidateShareMemberStatusTransition(oldStatus, status);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "status transition check failed, ret=%{public}d", ret);
+
+    ret = DoUpdateShareMemberStatus(rdbStore, albumId, member, status);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "update status failed, ret=%{public}d", ret);
+
+    MEDIA_INFO_LOG("UpdateShareMemberStatus success, albumId=%{public}d, member=%{public}s, status=%{public}d",
+        albumId, MediaFileUtils::DesensitizeName(member).c_str(), status);
+    return E_OK;
+}
+
+static int32_t VerifyShareAlbumMetaAndOwner(std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+    int32_t albumId, const std::string &owner)
+{
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("share album not found, albumId=%{public}d", albumId);
+        return -EINVAL;
+    }
+    do {
+        int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, resultSet);
+        int32_t albumSubType = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
+        int32_t albumShareType = GetInt32Val(PhotoAlbumColumns::ALBUM_SHARE_TYPE, resultSet);
+        if (albumType != static_cast<int32_t>(PhotoAlbumType::SHARE) ||
+            albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC) ||
+            albumShareType != static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM)) {
+            MEDIA_ERR_LOG("album is not a share album, albumId=%{public}d", albumId);
+            return -EINVAL;
+        }
+        std::string albumOwner = GetStringVal(PhotoAlbumColumns::SHARE_ALBUM_OWNER, resultSet);
+        if (albumOwner != owner) {
+            MEDIA_ERR_LOG("share album owner mismatch, albumId=%{public}d, owner=%{public}s", albumId,
+                MediaFileUtils::DesensitizeName(owner).c_str());
+            return E_SHARE_ALBUM_INVALID_ID_ARG;
+        }
+    } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::DeleteShareMember(int32_t albumId, const std::string &owner,
+    const std::string &member)
+{
+    if (albumId <= 0) {
+        MEDIA_ERR_LOG("DeleteShareMember: albumId is invalid");
+        return -EINVAL;
+    }
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "rdbStore is null");
+
+    NativeRdb::RdbPredicates checkPredicates(PhotoAlbumColumns::TABLE);
+    checkPredicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
+    auto checkResult = rdbStore->Query(checkPredicates, {PhotoAlbumColumns::ALBUM_ID,
+        PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE,
+        PhotoAlbumColumns::ALBUM_SHARE_TYPE, PhotoAlbumColumns::SHARE_ALBUM_OWNER});
+    CHECK_AND_RETURN_RET_LOG(checkResult != nullptr, E_RDB, "query check failed");
+    int32_t checkRet = VerifyShareAlbumMetaAndOwner(checkResult, albumId, owner);
+    checkResult->Close();
+    CHECK_AND_RETURN_RET_LOG(checkRet == E_OK, checkRet,
+        "DeleteShareMember album check failed, ret=%{public}d", checkRet);
+
+    NativeRdb::RdbPredicates predicates(ShareMemberColumn::TABLE_NAME);
+    predicates.EqualTo(ShareMemberColumn::COLUMN_ALBUM_ID, albumId)
+        ->And()->EqualTo(ShareMemberColumn::COLUMN_SHARE_MEMBER, member);
+
+    int32_t deletedRows = 0;
+    int32_t ret = rdbStore->Delete(deletedRows, predicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && deletedRows > 0, E_RDB,
+        "delete member failed, ret=%{public}d, deletedRows=%{public}d", ret, deletedRows);
+
+    MEDIA_INFO_LOG("DeleteShareMember success, albumId=%{public}d, member=%{public}s", albumId,
+        MediaFileUtils::DesensitizeName(member).c_str());
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::ValidateDeleteMemberShareAlbum(
+    const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, const std::vector<int32_t> &albumIds,
+    const std::string &owner)
+{
+    CHECK_AND_RETURN_RET_LOG(!albumIds.empty(), E_SHARE_ALBUM_INVALID_ID_ARG, "albumIds is empty");
+    // 前置校验 1：确认所有 albumIds 为共享相册
+    auto shareCheckResult = QueryShareAlbumOwnerResultSet(rdbStore, albumIds);
+    CHECK_AND_RETURN_RET_LOG(shareCheckResult != nullptr, E_RDB, "share album type check query failed");
+    if (shareCheckResult->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("DeleteMemberShareAlbum: no valid album found for given albumIds");
+        shareCheckResult->Close();
+        return E_SHARE_ALBUM_INVALID_ID_ARG;
+    }
+    do {
+        int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, shareCheckResult);
+        int32_t albumSubType = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, shareCheckResult);
+        bool isShareAlbum =
+            albumType == static_cast<int32_t>(PhotoAlbumType::SHARE) &&
+            albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC);
+        if (!isShareAlbum) {
+            MEDIA_ERR_LOG("DeleteMemberShareAlbum: album is not a share album, albumId=%{public}d",
+                GetInt32Val(PhotoAlbumColumns::ALBUM_ID, shareCheckResult));
+            shareCheckResult->Close();
+            return E_SHARE_ALBUM_INVALID_ID_ARG;
+        }
+    } while (shareCheckResult->GoToNextRow() == NativeRdb::E_OK);
+    shareCheckResult->Close();
+
+    // 前置校验 2：确认所有的albumIds 该成员都有加入
+    std::vector<NativeRdb::ValueObject> memberObjs;
+    for (int32_t albumId : albumIds) {
+        memberObjs.emplace_back(albumId);
+    }
+    NativeRdb::RdbPredicates memberPredicates(ShareMemberColumn::TABLE_NAME);
+    memberPredicates.In(ShareMemberColumn::COLUMN_ALBUM_ID, memberObjs)
+        ->And()->EqualTo(ShareMemberColumn::COLUMN_SHARE_MEMBER, owner);
+    auto memberResult = rdbStore->Query(memberPredicates, {ShareMemberColumn::COLUMN_ALBUM_ID});
+    CHECK_AND_RETURN_RET_LOG(memberResult != nullptr, E_RDB, "query member failed");
+    std::unordered_set<int32_t> joinedAlbumIds;
+    while (memberResult->GoToNextRow() == NativeRdb::E_OK) {
+        joinedAlbumIds.insert(GetInt32Val(ShareMemberColumn::COLUMN_ALBUM_ID, memberResult));
+    }
+    memberResult->Close();
+    for (int32_t albumId : albumIds) {
+        if (joinedAlbumIds.count(albumId) == 0) {
+            MEDIA_ERR_LOG("DeleteMemberShareAlbum: member=%{public}s is not in album, albumId=%{public}d",
+                MediaFileUtils::DesensitizeName(owner).c_str(), albumId);
+            return E_SHARE_ALBUM_INVALID_ID_ARG;
+        }
+    }
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::DeleteMemberShareAlbum(const std::string &owner,
+    const std::vector<int32_t> &albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "rdbStore is null");
+
+    std::vector<NativeRdb::ValueObject> valueObjs;
+    for (int32_t id : albumIds) {
+        valueObjs.emplace_back(id);
+    }
+
+    int32_t validateRet = ValidateDeleteMemberShareAlbum(rdbStore, albumIds, owner);
+    CHECK_AND_RETURN_RET_LOG(validateRet == E_OK, validateRet,
+        "ValidateDeleteMemberShareAlbum failed, ret=%{public}d", validateRet);
+
+    // 1. 清理 tab_share_album_member 中所有相关相册的成员信息（批量 IN 删除）
+    NativeRdb::RdbPredicates memberPredicates(ShareMemberColumn::TABLE_NAME);
+    memberPredicates.In(ShareMemberColumn::COLUMN_ALBUM_ID, valueObjs);
+    int32_t memberDeletedRows = 0;
+    int32_t ret = rdbStore->Delete(memberDeletedRows, memberPredicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "delete member info failed, ret=%{public}d", ret);
+    MEDIA_INFO_LOG("DeleteMemberShareAlbum: cleared %{public}d member records for %{public}zu albums",
+        memberDeletedRows, albumIds.size());
+
+    // 2. 清理 photo 表内所有相关相册的资产（批量 IN，直接永久删除，不进回收站）
+    NativeRdb::RdbPredicates photoPredicates(PhotoColumn::PHOTOS_TABLE);
+    photoPredicates.In(PhotoColumn::PHOTO_OWNER_ALBUM_ID, valueObjs);
+    int32_t deletedPhotoRows = MediaLibraryAssetOperations::DeleteFromDisk(photoPredicates, false, true);
+    MEDIA_INFO_LOG("DeleteMemberShareAlbum: deleted %{public}d photo assets for %{public}zu albums",
+        deletedPhotoRows, albumIds.size());
+
+    // 3. 清理 photoalbum 表中所有相关相册记录（批量 IN，直接物理删除，不进回收站）
+    NativeRdb::RdbPredicates albumPredicates(PhotoAlbumColumns::TABLE);
+    albumPredicates.In(PhotoAlbumColumns::ALBUM_ID, valueObjs);
+    int32_t albumDeletedRows = 0;
+    ret = rdbStore->Delete(albumDeletedRows, albumPredicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "delete album records failed, ret=%{public}d", ret);
+    MEDIA_INFO_LOG("DeleteMemberShareAlbum: deleted %{public}d album records for %{public}zu albums",
+        albumDeletedRows, albumIds.size());
+
+    MEDIA_INFO_LOG("DeleteMemberShareAlbum success, owner=%{public}s, albumCount=%{public}zu",
         MediaFileUtils::DesensitizeName(owner).c_str(), albumIds.size());
     return E_OK;
 }

@@ -85,14 +85,6 @@
         }                                                                                     \
     } while (0)
 
-#define CHECK_COND_WITH_INT_ERR_MESSAGE(env, cond, err, msg)                                       \
-    do {                                                                                      \
-        if (!(cond)) {                                                                        \
-            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
-            return nullptr;                                                                   \
-        }                                                                                     \
-    } while (0)
-
 #define CHECK_WITH_INT_ERR_MESSAGE(env, cond, err, msg)                                           \
     do {                                                                                      \
         if (!(cond)) {                                                                        \
@@ -203,23 +195,7 @@
         }                                                           \
     } while (0)
 
-#define CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, retVal)                     \
-    do {                                                            \
-        if ((cond) != napi_ok) {                                    \
-            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
-            return retVal;                                          \
-        }                                                           \
-    } while (0)
-
 #define CHECK_ARGS_WITH_CODE(env, cond, err)                     \
-    do {                                                            \
-        if ((cond) != napi_ok) {                                    \
-            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
-            return nullptr;                                          \
-        }                                                           \
-    } while (0)
-
-#define CHECK_ARGS_WITH_INT_CODE(env, cond, err)                 \
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
             NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
@@ -261,14 +237,6 @@
         }                                                           \
     } while (0)
 
-#define CHECK_COND_WITH_INT_MSG(env, cond, err, msg)                                  \
-    do {                                                            \
-        if (!(cond)) {                                              \
-            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
-            return nullptr;                                         \
-        }                                                           \
-    } while (0)
-
 #define RETURN_NAPI_TRUE(env)                                                 \
     do {                                                                      \
         napi_value result = nullptr;                                          \
@@ -303,14 +271,6 @@
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
-            return nullptr;                                          \
-        }                                                           \
-    } while (0)
-
-#define CHECK_ARGS_WITH_INT_MSG(env, cond, err, msg)                 \
-    do {                                                            \
-        if ((cond) != napi_ok) {                                    \
-            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                          \
         }                                                           \
     } while (0)

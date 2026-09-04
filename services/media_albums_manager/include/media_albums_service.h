@@ -62,6 +62,9 @@
 #include "default_cover_order_info.h"
 #include "set_share_album_name_vo.h"
 #include "delete_share_album_vo.h"
+#include "add_share_member_vo.h"
+#include "delete_share_member_vo.h"
+#include "delete_member_share_album_vo.h"
 
 namespace OHOS::Media {
 class MediaAlbumsService {
@@ -110,6 +113,10 @@ public:
     void ReportCloneDbStatus(int32_t reverseCloneStatus);
     int32_t SetShareAlbumName(const SetShareAlbumNameReqBody &reqBody);
     int32_t DeleteSharePhotoAlbums(const std::string &owner, const std::vector<int32_t> &albumIds);
+    int32_t AddShareMember(const AddShareMemberReqBody &reqBody);
+    int32_t UpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody);
+    int32_t DeleteShareMember(const DeleteShareMemberReqBody &reqBody);
+    int32_t DeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

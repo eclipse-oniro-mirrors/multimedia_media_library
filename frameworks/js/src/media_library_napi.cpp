@@ -9489,7 +9489,7 @@ napi_value MediaLibraryNapi::CreateShareMemberStatusEnum(napi_env env)
         { "INVITING", ShareMemberStatus::INVITING },
         { "ACCEPTED", ShareMemberStatus::ACCEPTED },
         { "DECLINED", ShareMemberStatus::DECLINED },
-        { "REQUESTIING", ShareMemberStatus::REQUESTIING },
+        { "REQUESTING", ShareMemberStatus::REQUESTING },
     };
 
     napi_value result = nullptr;

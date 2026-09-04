@@ -426,5 +426,38 @@ int32_t ParameterUtils::CheckCreateFileMgrAsset(const CreateFileMgrAssetReqBody 
     CHECK_AND_RETURN_RET_LOG(!reqBody.ownerAlbumId.empty(), -EINVAL, "Invalid ownerAlbumId");
     return E_OK;
 }
+
+static int32_t CheckShareMemberBase(int32_t albumId, const std::string &owner, const std::string &member)
+{
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "albumId is invalid");
+    CHECK_AND_RETURN_RET_LOG(!owner.empty(), -EINVAL, "owner is empty");
+    CHECK_AND_RETURN_RET_LOG(!member.empty(), -EINVAL, "member is empty");
+    return E_OK;
+}
+
+int32_t ParameterUtils::CheckAddShareMember(const AddShareMemberReqBody &reqBody)
+{
+    return CheckShareMemberBase(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t ParameterUtils::CheckUpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody)
+{
+    return CheckShareMemberBase(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t ParameterUtils::CheckDeleteShareMember(const DeleteShareMemberReqBody &reqBody)
+{
+    return CheckShareMemberBase(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t ParameterUtils::CheckDeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody)
+{
+    CHECK_AND_RETURN_RET_LOG(!reqBody.owner.empty(), -EINVAL, "owner is empty");
+    CHECK_AND_RETURN_RET_LOG(!reqBody.albumIds.empty(), -EINVAL, "albumIds is empty");
+    for (const auto &albumId : reqBody.albumIds) {
+        CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "invalid albumId: %{public}d", albumId);
+    }
+    return E_OK;
+}
 }  // namespace Media
 }  // namespace OHOS
