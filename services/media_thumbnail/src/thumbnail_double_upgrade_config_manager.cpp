@@ -155,7 +155,7 @@ int32_t ThumbnailDoubleUpgradeConfigManager::GetCurrentSpaceThreshold(bool isClo
     } else {
         threshold = isCloudSyncOn ? THUMBNAIL_FREE_SIZE_LIMIT_5 : THUMBNAIL_FREE_SIZE_LIMIT_10;
     }
-    MEDIA_DEBUG_LOG("GetCurrentSpaceThreshold, threshold:%{public}d, isCloudSyncOn: %{public}d", 
+    MEDIA_DEBUG_LOG("GetCurrentSpaceThreshold, threshold: %{public}d, isCloudSyncOn: %{public}d",
         threshold, isCloudSyncOn);
     return threshold;
 }
