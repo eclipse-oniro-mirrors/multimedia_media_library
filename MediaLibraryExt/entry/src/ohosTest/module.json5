@@ -9,7 +9,8 @@
       "phone",
       "tablet",
       "wearable",
-      "2in1"
+      "2in1",
+      "car"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
