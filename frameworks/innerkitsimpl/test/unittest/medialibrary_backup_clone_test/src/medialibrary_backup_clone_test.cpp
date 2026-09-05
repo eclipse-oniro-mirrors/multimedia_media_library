@@ -54,6 +54,7 @@
 #include "values_bucket.h"
 #include "group_photo_album_restore.h"
 #include "media_audio_column.h"
+#include "media_values_bucket_utils.h"
 
 using namespace std;
 using namespace OHOS;
@@ -7054,5 +7055,424 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_total_multi_col_
     MEDIA_INFO_LOG("End medialibrary_backup_clone_total_multi_col_001");
 }
 
+static const std::string LAKE_TEST_DIR = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/LakeTest/";
+static const std::string LAKE_TEST_DATA_DIR = "/storage/media/local/files/Photo/0/";
+static const std::string LAKE_TEST_BACKUP_DIR = "/data/service/el2/100/backup_restore/storage/media/local/files/";
+
+static void LakeCreateTestFile(const std::string &path)
+{
+    std::ofstream file(path);
+    file << "test";
+    file.close();
+}
+
+// Branch: has extension → insert (N) before ext
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_get_numbered_path_with_ext_001, TestSize.Level2)
+{
+    EXPECT_EQ(BackupFileUtils::GetNumberedStoragePath("/dir/IMG_001.jpg", 1), "/dir/IMG_001(1).jpg");
+    EXPECT_EQ(BackupFileUtils::GetNumberedStoragePath("/dir/IMG_001", 1), "/dir/IMG_001(1)");
+    EXPECT_EQ(BackupFileUtils::GetNumberedStoragePath("/dir/v2.0/IMG_001", 1), "/dir/v2.0/IMG_001(1)");
+}
+
+// Branch: no conflict → return original
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_no_conflict_004, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    std::string path = LAKE_TEST_DIR + "noconflict.jpg";
+    EXPECT_EQ(BackupFileUtils::ResolveLakeTargetStoragePath(path), path);
+}
+
+// Branch: conflict found → return numbered path
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_conflict_found_005, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    std::string path = LAKE_TEST_DIR + "conflict.jpg";
+    std::string path1 = LAKE_TEST_DIR + "conflict(1).jpg";
+    LakeCreateTestFile(path);
+    LakeCreateTestFile(path1);
+    EXPECT_EQ(BackupFileUtils::ResolveLakeTargetStoragePath(path), LAKE_TEST_DIR + "conflict(2).jpg");
+    MediaFileUtils::DeleteFile(path);
+    MediaFileUtils::DeleteFile(path1);
+}
+
+// Branch: exhausted → return empty
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_exhausted_006, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    std::string path = LAKE_TEST_DIR + "exhaust.jpg";
+    LakeCreateTestFile(path);
+    for (int32_t i = 1; i <= 1000; i++) {
+        LakeCreateTestFile(LAKE_TEST_DIR + "exhaust(" + to_string(i) + ").jpg");
+    }
+    EXPECT_TRUE(BackupFileUtils::ResolveLakeTargetStoragePath(path).empty());
+    MediaFileUtils::DeleteFile(path);
+    for (int32_t i = 1; i <= 1000; i++) {
+        MediaFileUtils::DeleteFile(LAKE_TEST_DIR + "exhaust(" + to_string(i) + ").jpg");
+    }
+}
+
+// Branch: non-hidden lake → needStoreAtStoragePath=true
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_non_hidden_007, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    rowData.hidden = 0;
+    rowData.dateTrashed = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_TRUE(fileInfo.needStoreAtStoragePath);
+    EXPECT_EQ(fileInfo.dstStoragePath, rowData.storagePath);
+}
+
+// Branch: hidden → needStoreAtStoragePath=false
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_hidden_008, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    rowData.hidden = 1;
+    rowData.dateTrashed = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
+}
+
+// Branch: deleted → needStoreAtStoragePath=false
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_deleted_009, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    rowData.hidden = 0;
+    rowData.dateTrashed = 1234567890;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
+}
+
+// Branch: outside lake (no storagePath) → needStoreAtStoragePath=false
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_outside_010, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "";
+    rowData.hidden = 0;
+    rowData.dateTrashed = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
+}
+
+// Branch: cross-lake (outside moving → inside lake) → skip
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_cross_outside_moving_011, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
+    fileInfo.fileSourceType = 0;
+    fileInfo.storagePath = "";
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    rowData.subtype = 0;
+    rowData.effectMode = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_TRUE(fileInfo.needMergeThumbnail);
+}
+
+// Branch: cross-lake (inside lake → outside moving) → skip
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_cross_inside_to_outside_012, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.subtype = 0;
+    fileInfo.effectMode = 0;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "";
+    rowData.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needMove);
+}
+
+// Branch: same lake, non-cross → needMove stays true
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_handle_dup_same_lake_013, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.subtype = 0;
+    fileInfo.effectMode = 0;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    rowData.subtype = 0;
+    rowData.effectMode = 0;
+    rowData.hidden = 0;
+    rowData.dateTrashed = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_TRUE(fileInfo.needMove);
+    EXPECT_TRUE(fileInfo.needStoreAtStoragePath);
+}
+
+// Branch: needStoreAtStoragePath=false → data path
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_data_path_014, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = false;
+    fileInfo.cloudPath = "/storage/cloud/files/Photo/0/IMG.jpg";
+    EXPECT_EQ(restoreService->ResolveLocalPath(fileInfo), "/storage/media/local/files/Photo/0/IMG.jpg");
+}
+
+// Branch: lake source → return directly (no conflict check)
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_lake_source_015, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    fileInfo.dstStoragePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    std::string result = restoreService->ResolveLocalPath(fileInfo);
+    EXPECT_EQ(result, "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/IMG.jpg");
+}
+
+// Branch: non-lake, no conflict → return original path, no rename
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_no_conflict_016, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.fileSourceType = 0;
+    fileInfo.storagePath = "";
+    fileInfo.dstStoragePath = LAKE_TEST_DIR + "resolve_nconflict.jpg";
+    std::string result = restoreService->ResolveLocalPath(fileInfo);
+    EXPECT_EQ(result, LAKE_TEST_DIR + "resolve_nconflict.jpg");
+    EXPECT_FALSE(fileInfo.needRenameOnConflict);
+}
+
+// Branch: non-lake, conflict found → rename
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_conflict_rename_017, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    std::string path = LAKE_TEST_DIR + "resolve_conf.jpg";
+    std::string path1 = LAKE_TEST_DIR + "resolve_conf(1).jpg";
+    LakeCreateTestFile(path);
+    LakeCreateTestFile(path1);
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.fileSourceType = 0;
+    fileInfo.storagePath = "";
+    fileInfo.dstStoragePath = path;
+    std::string result = restoreService->ResolveLocalPath(fileInfo);
+    EXPECT_EQ(result, LAKE_TEST_DIR + "resolve_conf(2).jpg");
+    EXPECT_TRUE(fileInfo.needRenameOnConflict);
+    EXPECT_EQ(fileInfo.dstStoragePath, LAKE_TEST_DIR + "resolve_conf(2).jpg");
+    MediaFileUtils::DeleteFile(path);
+    MediaFileUtils::DeleteFile(path1);
+}
+
+// Branch: non-lake, exhausted → return empty
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_exhausted_018, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    std::string path = LAKE_TEST_DIR + "resolve_exh.jpg";
+    LakeCreateTestFile(path);
+    for (int32_t i = 1; i <= 1000; i++) {
+        LakeCreateTestFile(LAKE_TEST_DIR + "resolve_exh(" + to_string(i) + ").jpg");
+    }
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.fileSourceType = 0;
+    fileInfo.storagePath = "";
+    fileInfo.dstStoragePath = path;
+    EXPECT_TRUE(restoreService->ResolveLocalPath(fileInfo).empty());
+    MediaFileUtils::DeleteFile(path);
+    for (int32_t i = 1; i <= 1000; i++) {
+        MediaFileUtils::DeleteFile(LAKE_TEST_DIR + "resolve_exh(" + to_string(i) + ").jpg");
+    }
+}
+
+// Branch: new lake file → early return, only update time
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_new_lake_019, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    FileInfo fileInfo;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = LAKE_TEST_DIR + "new_lake.jpg";
+    fileInfo.filePath = LAKE_TEST_DIR + "new_lake.jpg";
+    fileInfo.isNew = true;
+    fileInfo.dateModified = 1000;
+    LakeCreateTestFile(fileInfo.filePath);
+    EXPECT_EQ(restoreService->MovePicture(fileInfo), E_OK);
+    MediaFileUtils::DeleteFile(fileInfo.filePath);
+}
+
+// Branch: lake source already at dest → update time, no move
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_already_at_dest_021, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    FileInfo fileInfo;
+    fileInfo.isNew = false;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = LAKE_TEST_DIR + "atdest.jpg";
+    fileInfo.filePath = LAKE_TEST_DIR + "atdest.jpg";
+    fileInfo.dstStoragePath = LAKE_TEST_DIR + "atdest.jpg";
+    fileInfo.dateModified = 1000;
+    LakeCreateTestFile(fileInfo.filePath);
+    EXPECT_EQ(restoreService->MovePicture(fileInfo), E_OK);
+    MediaFileUtils::DeleteFile(fileInfo.filePath);
+}
+
+// Branch: MoveFile (deleteOriginalFile=true, standalone photo)
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_move_file_022, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DATA_DIR);
+    FileInfo fileInfo;
+    fileInfo.isNew = false;
+    fileInfo.isRelatedToPhotoMap = 0;
+    fileInfo.needStoreAtStoragePath = false;
+    fileInfo.cloudPath = "/storage/cloud/files/Photo/0/movefile.jpg";
+    fileInfo.filePath = LAKE_TEST_BACKUP_DIR + "Photo/0/movefile.jpg";
+    fileInfo.dateModified = 1000;
+    MediaFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
+    LakeCreateTestFile(fileInfo.filePath);
+    EXPECT_EQ(restoreService->MovePicture(fileInfo), E_OK);
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(LAKE_TEST_DATA_DIR + "movefile.jpg"));
+    MediaFileUtils::DeleteFile(fileInfo.filePath);
+    MediaFileUtils::DeleteFile(LAKE_TEST_DATA_DIR + "movefile.jpg");
+}
+
+// Branch: CopyFile (deleteOriginalFile=false, album photo)
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_copy_file_023, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DATA_DIR);
+    FileInfo fileInfo;
+    fileInfo.isNew = false;
+    fileInfo.isRelatedToPhotoMap = 1;
+    fileInfo.needStoreAtStoragePath = false;
+    fileInfo.cloudPath = "/storage/cloud/files/Photo/0/copyfile.jpg";
+    fileInfo.filePath = LAKE_TEST_BACKUP_DIR + "Photo/0/copyfile.jpg";
+    fileInfo.dateModified = 1000;
+    MediaFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
+    LakeCreateTestFile(fileInfo.filePath);
+    EXPECT_EQ(restoreService->MovePicture(fileInfo), E_OK);
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(LAKE_TEST_DATA_DIR + "copyfile.jpg"));
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    MediaFileUtils::DeleteFile(fileInfo.filePath);
+    MediaFileUtils::DeleteFile(LAKE_TEST_DATA_DIR + "copyfile.jpg");
+}
+
+// Branch: no rename → set type=3 + storage_path only
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_lake_no_rename_024, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.needRenameOnConflict = false;
+    fileInfo.dstStoragePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    fileInfo.sourcePath = "/storage/emulated/0/Pictures/IMG.jpg";
+    NativeRdb::ValuesBucket values;
+    restoreService->FillLakeMergedValues(fileInfo, values);
+    int32_t type = 0;
+    std::string sp;
+    MediaValuesBucketUtils::GetInt(values, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, type);
+    MediaValuesBucketUtils::GetString(values, PhotoColumn::PHOTO_STORAGE_PATH, sp);
+    EXPECT_EQ(type, static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE));
+    EXPECT_EQ(sp, "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/IMG.jpg");
+    NativeRdb::ValueObject dummy;
+    EXPECT_FALSE(values.GetObject(MediaColumn::MEDIA_TITLE, dummy));
+    EXPECT_FALSE(values.GetObject(MediaColumn::MEDIA_NAME, dummy));
+    EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_SOURCE_PATH, dummy));
+}
+
+// Branch: with rename → set type=3 + storage_path + title + display_name + source_path
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_lake_with_rename_025, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.needRenameOnConflict = true;
+    fileInfo.dstStoragePath = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/IMG(2).jpg";
+    fileInfo.sourcePath = "/storage/emulated/0/Pictures/IMG.jpg";
+    NativeRdb::ValuesBucket values;
+    restoreService->FillLakeMergedValues(fileInfo, values);
+    int32_t type = 0;
+    std::string sp, dn, title, srcp;
+    MediaValuesBucketUtils::GetInt(values, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, type);
+    MediaValuesBucketUtils::GetString(values, PhotoColumn::PHOTO_STORAGE_PATH, sp);
+    MediaValuesBucketUtils::GetString(values, MediaColumn::MEDIA_NAME, dn);
+    MediaValuesBucketUtils::GetString(values, MediaColumn::MEDIA_TITLE, title);
+    MediaValuesBucketUtils::GetString(values, PhotoColumn::PHOTO_SOURCE_PATH, srcp);
+    EXPECT_EQ(type, static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE));
+    EXPECT_EQ(sp, "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/IMG(2).jpg");
+    EXPECT_EQ(dn, "IMG(2).jpg");
+    EXPECT_EQ(title, "IMG(2)");
+    EXPECT_EQ(srcp, "/storage/emulated/0/Pictures/IMG(2).jpg");
+}
+
+// Branch: rename with empty sourcePath → skip source_path
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_lake_rename_empty_source_026, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.needRenameOnConflict = true;
+    fileInfo.dstStoragePath = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/IMG(2).jpg";
+    fileInfo.sourcePath = "";
+    NativeRdb::ValuesBucket values;
+    restoreService->FillLakeMergedValues(fileInfo, values);
+    NativeRdb::ValueObject dummy;
+    EXPECT_TRUE(values.GetObject(PhotoColumn::PHOTO_STORAGE_PATH, dummy));
+    EXPECT_TRUE(values.GetObject(MediaColumn::MEDIA_NAME, dummy));
+    EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_SOURCE_PATH, dummy));
+}
+
+// Branch: precondition fail (fileIdNew=0) → return false
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_merged_precondition_fail_027, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.fileIdNew = 0;
+    fileInfo.isNew = false;
+    fileInfo.needVisible = true;
+    fileInfo.needUpdatePositionToLocalAndCloud = true;
+    NativeRdb::ValuesBucket values;
+    EXPECT_FALSE(restoreService->FillMergedPhotoValues(fileInfo, values));
+    NativeRdb::ValueObject dummy;
+    EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_POSITION, dummy));
+}
+
+// Branch: needStoreAtStoragePath=true → FillLakeMergedValues called
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_merged_store_true_028, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.fileIdNew = 1;
+    fileInfo.isNew = false;
+    fileInfo.needVisible = true;
+    fileInfo.needUpdatePositionToLocalAndCloud = true;
+    fileInfo.needStoreAtStoragePath = true;
+    fileInfo.needRenameOnConflict = false;
+    fileInfo.dstStoragePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    NativeRdb::ValuesBucket values;
+    EXPECT_TRUE(restoreService->FillMergedPhotoValues(fileInfo, values));
+    NativeRdb::ValueObject dummy;
+    EXPECT_TRUE(values.GetObject(PhotoColumn::PHOTO_POSITION, dummy));
+    EXPECT_TRUE(values.GetObject(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, dummy));
+    EXPECT_TRUE(values.GetObject(PhotoColumn::PHOTO_STORAGE_PATH, dummy));
+}
+
+// Branch: needStoreAtStoragePath=false → no lake fields
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_merged_store_false_029, TestSize.Level2)
+{
+    FileInfo fileInfo;
+    fileInfo.fileIdNew = 1;
+    fileInfo.isNew = false;
+    fileInfo.needVisible = true;
+    fileInfo.needUpdatePositionToLocalAndCloud = true;
+    fileInfo.needStoreAtStoragePath = false;
+    NativeRdb::ValuesBucket values;
+    EXPECT_TRUE(restoreService->FillMergedPhotoValues(fileInfo, values));
+    NativeRdb::ValueObject dummy;
+    EXPECT_TRUE(values.GetObject(PhotoColumn::PHOTO_POSITION, dummy));
+    EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, dummy));
+    EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_STORAGE_PATH, dummy));
+}
 } // namespace Media
 } // namespace OHOS

@@ -35,7 +35,10 @@ public:
         int32_t cleanFlag {0};
         int32_t position {0};
         int32_t subtype {0};
+        int32_t effectMode {0};
         int32_t fileSourceType {0};
+        int32_t hidden {0};
+        int64_t dateTrashed {0};
         std::string lPath;        // From PhotoAlbum.lpath via JOIN; empty when asset has no album.
         std::string storagePath;  // From Photos.storage_path; used to detect FileManager/Lake assets.
         std::string packageName;  // From Photos.package_name; used to skip overwriting an existing value.
@@ -114,9 +117,13 @@ private:
             p.clean_flag, \
             p.position, \
             p.file_source_type, \
+            p.subtype, \
             p.storage_path, \
             p.package_name, \
             p.unique_id, \
+            p.moving_photo_effect_mode, \
+            p.hidden, \
+            p.date_trashed, \
             a.lpath \
         FROM \
         ( \
@@ -134,12 +141,16 @@ private:
                 clean_flag, \
                 position, \
                 file_source_type, \
+                subtype, \
                 size, \
                 orientation, \
                 owner_album_id, \
                 storage_path, \
                 package_name, \
-                unique_id \
+                unique_id, \
+                moving_photo_effect_mode, \
+                hidden, \
+                date_trashed \
             FROM Photos \
             WHERE file_id <= ? AND \
                 display_name = ? AND \
@@ -160,9 +171,13 @@ private:
             P.clean_flag, \
             P.position, \
             P.file_source_type, \
+            P.subtype, \
             P.storage_path, \
             P.package_name, \
             P.unique_id, \
+            P.moving_photo_effect_mode, \
+            P.hidden, \
+            P.date_trashed, \
             '' AS lpath \
         FROM Photos AS P \
         WHERE file_id <= ? AND \
@@ -182,9 +197,13 @@ private:
             P.clean_flag, \
             P.position, \
             P.file_source_type, \
+            P.subtype, \
             P.storage_path, \
             P.package_name, \
             P.unique_id, \
+            P.moving_photo_effect_mode, \
+            P.hidden, \
+            P.date_trashed, \
             COALESCE(A.lpath, '') AS lpath \
         FROM Photos AS P \
             LEFT JOIN PhotoAlbum AS A ON P.owner_album_id = A.album_id \
@@ -201,9 +220,13 @@ private:
             MISS.clean_flag, \
             MISS.position, \
             MISS.file_source_type, \
+            MISS.subtype, \
             MISS.storage_path, \
             MISS.package_name, \
             MISS.unique_id, \
+            MISS.moving_photo_effect_mode, \
+            MISS.hidden, \
+            MISS.date_trashed, \
             '' AS lpath \
         FROM \
         ( \
@@ -212,6 +235,7 @@ private:
                 clean_flag, \
                 position, \
                 file_source_type, \
+                subtype, \
                 display_name, \
                 size, \
                 orientation, \
@@ -219,7 +243,9 @@ private:
                 source_path, \
                 storage_path, \
                 Photos.package_name, \
-                Photos.unique_id \
+                Photos.unique_id, \
+                moving_photo_effect_mode, \
+                Photos.hidden \
             FROM Photos \
                 LEFT JOIN PhotoAlbum \
                 ON Photos.owner_album_id = PhotoAlbum.album_id \

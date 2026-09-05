@@ -627,6 +627,9 @@ struct FileInfo {
     int64_t newMediaSize {0};
     std::string newPackageName;
     std::string newUniqueId;
+    std::string dstStoragePath;
+    bool needStoreAtStoragePath {false};
+    bool needRenameOnConflict {false};
 };
 
 struct AlbumInfo {
