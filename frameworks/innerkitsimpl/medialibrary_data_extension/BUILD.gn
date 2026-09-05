@@ -472,6 +472,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_THUMBNAIL_PATH}/src/ithumbnail_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_aging_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_const.cpp",
+    "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_double_upgrade_config_manager.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_file_utils.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_generate_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_generation_post_process.cpp",

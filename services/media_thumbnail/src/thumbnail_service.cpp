@@ -56,6 +56,7 @@
 #include "battery_srv_client.h"
 #endif
 #include "media_audio_column.h"
+#include "thumbnail_double_upgrade_config_manager.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -127,6 +128,8 @@ void ThumbnailService::Init(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     } else {
         isScreenSizeInit_ = true;
     }
+
+    ThumbnailDoubleUpgradeConfigManager::GetInstance().Init();
 }
 
 void ThumbnailService::ReleaseService()

@@ -100,13 +100,14 @@ public:
     EXPORT std::string GetJson();
     EXPORT void ClearOldData();
     EXPORT static bool ConvertToJson(nlohmann::json& jsonPhasesStat, const PhasesStat& phasesStat,
-        int32_t totalAstcCount);
+        int32_t totalAstcCount, int64_t updateDuration = 0, const std::string& uidType = "");
     EXPORT static bool ConvertToStruct(const nlohmann::json& jsonPhasesStat, PhasesStat& phasesStat,
         int32_t& totalAstcCount);
     EXPORT void TryToReadAstcInfoFromJsonFile();
     EXPORT bool ReadAstcInfoFromJsonFile(PhasesStat& phasesStat, int32_t& totalAstcCount);
     EXPORT bool WriteAstcInfoToJsonFile(const PhasesStat& phasesStat, int32_t totalAstcCount);
     EXPORT bool IsBackupGroundTaskEmpty();
+    EXPORT void SetDoubleUpgradeInfo(int64_t updateDuration, const std::string& uidType);
 private:
     std::string GetJsonStr();
     bool CheckId(const std::string& id);
@@ -115,6 +116,8 @@ private:
     PhasesStat phasesStat_{};
     int32_t totalAstcCount_{0};
     int64_t lastReportTime_{0};
+    int64_t updateDuration_{0};
+    std::string uidType_;
     std::mutex mutex_;
 };
 
