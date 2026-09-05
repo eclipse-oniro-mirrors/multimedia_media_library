@@ -17,9 +17,7 @@
 
 #include <memory>
 
-#define private public
 #include "thumbnail_double_upgrade_config_manager.h"
-#undef private
 
 #include "media_log.h"
 
