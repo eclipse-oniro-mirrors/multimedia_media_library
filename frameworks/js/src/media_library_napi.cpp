@@ -16348,6 +16348,7 @@ static napi_value ParseArgsGetAssetCompatibleUris(napi_env env, napi_callback_in
         info.height = obj->GetHeight();
         info.uri = obj->GetFileUri();
         info.fileId = obj->GetFileId();
+        info.shootingModeTag = obj->GetShootingModeTag();
 
         context->photoAssetInfos.push_back(info);
     }
@@ -16406,7 +16407,8 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
     bool checkHighPixel, bool checkHeif, vector<string> &result)
 {
     for (auto &item : context->photoAssetInfos) {
-        bool isHighPixel = IsHighPixel(item.width, item.height);
+        bool isHighPixel = IsHighPixel(item.width, item.height) ||
+            (item.shootingModeTag == "52" && item.width * item.height < 6 * 1000 * 8 * 1000);
         size_t atDot = item.uri.find('.');
         if (atDot == std::string::npos) {
             continue;
@@ -16458,7 +16460,8 @@ static vector<string> CheckTranscodeUri(MediaLibraryAsyncContext *context)
     if (context->preferredCompatibleMode ==
         static_cast<int32_t>(TranscodeMode::COMPATIBLE)) {
         for (auto &item : context->photoAssetInfos) {
-            bool isHighPixel = item.width * item.height >= HIGH_PIXEL_SIZE;
+            bool isHighPixel = IsHighPixel(item.width, item.height) ||
+                (item.shootingModeTag == "52" && item.width * item.height < 6 * 1000 * 8 * 1000);
             size_t atDot = item.uri.find('.');
             if (atDot == std::string::npos) {
                 continue;

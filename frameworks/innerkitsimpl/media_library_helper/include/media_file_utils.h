@@ -89,6 +89,7 @@ struct TmpCompatibleDupInfo {
     int32_t width{0};
     int32_t height{0};
     int32_t quality{90};
+    int32_t quickCopy{0};
  
     TmpCompatibleDupInfo() = default;
 };

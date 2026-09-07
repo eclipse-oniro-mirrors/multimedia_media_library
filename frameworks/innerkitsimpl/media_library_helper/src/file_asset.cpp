@@ -613,6 +613,17 @@ void FileAsset::SetUserComment(const string &userComment)
     member_[PhotoColumn::PHOTO_USER_COMMENT] = userComment;
 }
 
+const std::string &FileAsset::GetShootingModeTag() const
+{
+    return GetStrMember(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+}
+ 
+void FileAsset::SetShootingModeTag(const string &shootingModeTag)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_SHOOTING_MODE_TAG] = shootingMode;
+}
+
 const std::string &FileAsset::GetFilePath() const
 {
     return GetStrMember(MediaColumn::MEDIA_FILE_PATH);

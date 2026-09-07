@@ -253,7 +253,7 @@ const std::string PhotoColumn::PHOTO_SHARE_GROUP = "share_group";
 
 
 const std::set<std::string> PhotoColumn::DEFAULT_FETCH_COLUMNS = {
-    PHOTO_SUBTYPE, PHOTO_BURST_KEY, PHOTO_TRANS_CODE_FILE_SIZE,
+    PHOTO_SUBTYPE, PHOTO_BURST_KEY, PHOTO_TRANS_CODE_FILE_SIZE, PHOTO_SHOOTING_MODE_TAG,
 };
 
 const std::string PhotoColumn::CLONE_FILE_INFO_PATH = "path";

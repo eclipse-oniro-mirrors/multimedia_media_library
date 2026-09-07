@@ -545,6 +545,11 @@ std::string FileAssetNapi::GetUserComment() const
     return fileAssetPtr->GetUserComment();
 }
 
+std::string FileAssetNapi::GetShootingModeTag() const
+{
+    return fileAssetPtr->GetShootingModeTag();
+}
+
 napi_status GetNapiObject(napi_env env, napi_callback_info info, FileAssetNapi **obj)
 {
     napi_value thisVar = nullptr;

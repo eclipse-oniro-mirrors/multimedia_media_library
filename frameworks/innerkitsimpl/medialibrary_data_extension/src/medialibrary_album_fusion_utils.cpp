@@ -2598,8 +2598,12 @@ static int32_t CheckTmpCompatibleDup(const std::shared_ptr<NativeRdb::ResultSet>
     width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
     height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
     std::string mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
+    std::string shootingModeTag = GetStringVal(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, resultSet);
+    bool is200MFirstStage = shootingModeTag == "52" &&
+        static_cast<int64_t>(width) * static_cast<int64_t>(height) < 6 * 1000 * 8 * 1000;
     CHECK_AND_RETURN_RET_LOG(mimeType == "image/heic" || mimeType == "image/heif" ||
-        PreferredCompatibleModeCheckUtils::IsHighPixelPicture(width, height), E_PARAM_CONVERT_FORMAT,
+        PreferredCompatibleModeCheckUtils::IsHighPixelPicture(width, height) || is200MFirstStage,
+        E_PARAM_CONVERT_FORMAT,
         "mimeType is invalid, mimeType: %{public}s", mimeType.c_str());
 
     PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
@@ -2637,6 +2641,14 @@ static int32_t GetTranscodeFileInfo(const std::shared_ptr<NativeRdb::ResultSet> 
     int32_t quality = GetInt32Val(PhotoColumn::COMPRESSION_QUALITY, resultSet);
     string mime_type = GetStringVal(PhotoColumn::MEDIA_MIME_TYPE, resultSet);
     srcInfo.quality = (mime_type == MIME_TYPE_JPEG && quality != -1) ? quality : DEFAULT_JPG_QUALITY;
+    int32_t width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
+    int32_t height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
+    std::string shootingModeTag = GetStringVal(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, resultSet);
+    bool is200MFirstStage = shootingModeTag == "52" &&
+        static_cast<int64_t>(width) * static_cast<int64_t>(height) < 6 * 1000 * 8 * 1000;
+    if (is200MFirstStage && mime_type == MIME_TYPE_JPEG) {
+        srcInfo.quickCopy = 1;
+    }
     return E_OK;
 }
 
@@ -2671,7 +2683,7 @@ int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, con
 
     const std::string querySql = R"(SELECT exist_compatible_duplicate, position, is_temp, time_pending, hidden,
         data, storage_path, file_source_type, date_trashed, date_deleted, mime_type,
-        height, width, subtype, compression_quality FROM Photos WHERE file_id = ?)";
+        height, width, subtype, compression_quality, shooting_mode_tag FROM Photos WHERE file_id = ?)";
     std::vector<NativeRdb::ValueObject> params = { fileId };
     shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(querySql, params);
     dupExist = 0;

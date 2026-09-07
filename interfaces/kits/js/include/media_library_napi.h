@@ -620,6 +620,7 @@ struct PhotoAssetInfo {
     int32_t height;
     std::string uri;
     int32_t fileId;
+    std::string shootingModeTag;
 };
 
 constexpr int32_t DEFAULT_PRIVATEALBUMTYPE = 3;
