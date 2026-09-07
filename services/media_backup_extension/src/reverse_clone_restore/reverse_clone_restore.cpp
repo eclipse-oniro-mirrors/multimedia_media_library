@@ -4319,9 +4319,21 @@ void ReverseCloneRestore::UpdateDuplicateSourceOrUserAlbum(int32_t sourceAlbumId
                    destAlbumId, sourceAlbumId, ret);
 
     // 构建排除列集合
-    std::unordered_set<std::string> excludeColumns = BuildExcludeColumnsForDuplicateAlbum(destAlbumId);
+    std::string destUniqueId;
+    std::unordered_set<std::string> excludeColumns = BuildExcludeColumnsForDuplicateAlbum(destAlbumId,
+        destUniqueId);
 
     NativeRdb::ValuesBucket values = BuildAlbumValuesBucket(albumInfo, excludeColumns, destAlbumId);
+
+    std::string inheritUniqueId = ResolveDuplicateAlbumUniqueId(destUniqueId, albumInfo.uuid);
+    if (!inheritUniqueId.empty()) {
+        values.PutString(PhotoAlbumColumns::UNIQUE_ID, inheritUniqueId);
+        MEDIA_INFO_LOG("UpdateDuplicateSourceOrUserAlbum: inherit source unique_id for albumId=%{public}d",
+                       destAlbumId);
+    } else {
+        MEDIA_INFO_LOG("UpdateDuplicateSourceOrUserAlbum: preserve dest unique_id for albumId=%{public}d",
+                       destAlbumId);
+    }
 
     unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
         make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
@@ -4345,19 +4357,22 @@ void ReverseCloneRestore::UpdateDuplicateSourceOrUserAlbum(int32_t sourceAlbumId
                    sourceAlbumId);
 }
 
-std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDuplicateAlbum(int32_t destAlbumId)
+std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDuplicateAlbum(int32_t destAlbumId,
+    std::string& outDestUniqueId)
 {
     // 查询 destRdb 中的 cover_uri_source，判断是否有自定义封面
-    string queryCoverSql = "SELECT " + PhotoAlbumColumns::COVER_URI_SOURCE +
-                           " FROM " + PhotoAlbumColumns::TABLE +
-                           " WHERE " + PhotoAlbumColumns::ALBUM_ID + " = ?";
-    auto coverResultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, queryCoverSql, {destAlbumId});
+    string querySql = "SELECT " + PhotoAlbumColumns::COVER_URI_SOURCE +
+                      ", " + PhotoAlbumColumns::UNIQUE_ID +
+                      " FROM " + PhotoAlbumColumns::TABLE +
+                      " WHERE " + PhotoAlbumColumns::ALBUM_ID + " = ?";
+    auto resultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, querySql, {destAlbumId});
     int32_t destCoverUriSource = 0;
-    if (coverResultSet != nullptr && coverResultSet->GoToNextRow() == NativeRdb::E_OK) {
-        destCoverUriSource = GetInt32Val(PhotoAlbumColumns::COVER_URI_SOURCE, coverResultSet);
+    if (resultSet != nullptr && resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        destCoverUriSource = GetInt32Val(PhotoAlbumColumns::COVER_URI_SOURCE, resultSet);
+        outDestUniqueId = GetStringVal(PhotoAlbumColumns::UNIQUE_ID, resultSet);
     }
-    if (coverResultSet != nullptr) {
-        coverResultSet->Close();
+    if (resultSet != nullptr) {
+        resultSet->Close();
     }
 
     // 构建基础 excludeColumns
@@ -4369,7 +4384,8 @@ std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDupli
         PhotoAlbumColumns::STYLE2_ALBUMS_ORDER,
         PhotoAlbumColumns::STYLE2_ORDER_SECTION,
         PhotoAlbumColumns::STYLE2_ORDER_TYPE,
-        PhotoAlbumColumns::STYLE2_ORDER_STATUS
+        PhotoAlbumColumns::STYLE2_ORDER_STATUS,
+        PhotoAlbumColumns::UNIQUE_ID
     };
 
     // 如果 destRdb 有自定义封面（cover_uri_source > 0），则保留 destRdb 的封面字段
@@ -4383,6 +4399,18 @@ std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDupli
     }
 
     return excludeColumns;
+}
+
+std::string ReverseCloneRestore::ResolveDuplicateAlbumUniqueId(const std::string& destUniqueId,
+    const std::string& sourceUniqueId)
+{
+    auto isValid = [](const std::string& u) {
+        return !u.empty() && u != "-1";
+    };
+    if (!isValid(destUniqueId) && isValid(sourceUniqueId)) {
+        return sourceUniqueId;
+    }
+    return {};
 }
 
 int32_t ReverseCloneRestore::CheckDuplicateAlbumInDest(const std::string &lPath)

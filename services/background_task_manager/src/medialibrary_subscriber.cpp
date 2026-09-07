@@ -1372,7 +1372,11 @@ bool MedialibrarySubscriber::UpdateCheckCriticalTypeStatus()
     if (prevState != checkCriticalTypeStatus_) {
         auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
         if (criticalLabelTaskQueue != nullptr) {
-            criticalLabelTaskQueue->NotifyThread();
+            if (!prevState && checkCriticalTypeStatus_) {
+                criticalLabelTaskQueue->StartNewCriticalSession();
+            } else {
+                criticalLabelTaskQueue->NotifyThread();
+            }
         }
     }
     return checkCriticalTypeStatus_;

@@ -58,6 +58,7 @@ class TTLPriorityQueue {
         std::string uri;
         int type {0};
         bool is_sent {false};
+        int retry_count {0};
     };
 
 private:
@@ -79,6 +80,7 @@ private:
     std::vector<AssetParams> pendingAdds;
     std::vector<std::string> pendingRemoves;
     std::vector<std::string> originalPathsInQueue;
+    std::unordered_set<std::string> attemptedThisSession_;
 
     void LoadPreferenceCriticalAssets();
     void UpdatePreferenceCriticalAssets(AssetParams assetParam);
@@ -90,6 +92,7 @@ private:
     bool AddElementInner(const AssetParams& dataParams);
     bool RemoveByNameInner(const std::string& name);
     void UpdateIsSentInXML(const std::string& displayName, bool isSent);
+    void UpdateRetryCountInXML(const std::string& displayName, int retryCount);
     void PopInsertBack(const std::shared_ptr<Element>& element);
     bool SendAsset(const std::shared_ptr<Element>& element);
     std::shared_ptr<Element> GetBack(std::priority_queue<std::shared_ptr<Element>,
@@ -110,6 +113,7 @@ public:
     int32_t GetRemainingQueueSize() const;
     std::vector<std::string> GetElementsTruncatedPaths() const;
     void NotifyThread();
+    void StartNewCriticalSession();
 };
 } // namespace Media
 } // namespace OHOS

@@ -415,7 +415,10 @@ private:
         const std::string& lPath, int32_t albumSubtype);
 
     void UpdateDuplicateSourceOrUserAlbum(int32_t sourceAlbumId, int32_t destAlbumId, const AlbumInfo& albumInfo);
-    std::unordered_set<std::string> BuildExcludeColumnsForDuplicateAlbum(int32_t destAlbumId);
+    std::unordered_set<std::string> BuildExcludeColumnsForDuplicateAlbum(int32_t destAlbumId,
+        std::string& outDestUniqueId);
+    static std::string ResolveDuplicateAlbumUniqueId(const std::string& destUniqueId,
+        const std::string& sourceUniqueId);
     std::string EnsureAlbumLPath(const std::string& lPath, const std::string& sourcePath);
     int32_t CheckDuplicateAlbumInDest(const std::string& lPath);
     int32_t CheckDuplicateAlbumNameInDest(const std::string& albumName);

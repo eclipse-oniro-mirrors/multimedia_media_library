@@ -72,7 +72,8 @@ std::vector<std::string> MediaFixDuplicateUniqueIdTask::FindDuplicateUniqueIds()
     std::string sql = "SELECT " + PhotoColumn::UNIQUE_ID + " FROM " + PhotoColumn::PHOTOS_TABLE +
         " WHERE " + PhotoColumn::UNIQUE_ID + " IS NOT NULL AND " +
         PhotoColumn::UNIQUE_ID + " != '' AND " +
-        PhotoColumn::UNIQUE_ID + " != '-1'" +
+        PhotoColumn::UNIQUE_ID + " != '-1' AND " +
+        MediaColumn::MEDIA_DATE_TRASHED + " = 0" +
         " GROUP BY " + PhotoColumn::UNIQUE_ID +
         " HAVING COUNT(*) > 1";
 
@@ -126,6 +127,7 @@ std::vector<DuplicateRecordInfo> MediaFixDuplicateUniqueIdTask::QueryDuplicateRe
     std::vector<std::string> columns = { PhotoColumn::MEDIA_ID, MediaColumn::MEDIA_DATE_MODIFIED };
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::UNIQUE_ID, uniqueId)
+        ->EqualTo(MediaColumn::MEDIA_DATE_TRASHED, std::to_string(0))
         ->OrderByAsc(MediaColumn::MEDIA_DATE_MODIFIED)
         ->OrderByAsc(PhotoColumn::MEDIA_ID);
 
