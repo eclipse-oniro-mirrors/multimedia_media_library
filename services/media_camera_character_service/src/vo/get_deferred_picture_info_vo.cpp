@@ -54,6 +54,12 @@ bool GetDeferredPictureInfoRespBody::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET(status, status);
     status = parcel.ReadInt32(this->orientation);
     CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadBool(this->enableC2PA);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadString(this->authorId);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadString(this->authorName);
+    CHECK_AND_RETURN_RET(status, status);
     return true;
 }
 
@@ -65,6 +71,12 @@ bool GetDeferredPictureInfoRespBody::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET(status, status);
     status = parcel.WriteInt32(this->orientation);
     CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteBool(this->enableC2PA);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteString(this->authorId);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteString(this->authorName);
+    CHECK_AND_RETURN_RET(status, status);
     return true;
 }
 
@@ -74,7 +86,10 @@ std::string GetDeferredPictureInfoRespBody::ToString() const
     ss << "{"
        << "\"editData\": \"" << this->editData << "\","
        << "\"mimeType\": \"" << this->mimeType << "\","
-       << "\"orientation\": \"" << std::to_string(this->orientation)
+       << "\"orientation\": \"" << std::to_string(this->orientation) << "\","
+       << "\"enableC2PA\": \"" << (this->enableC2PA ? "true" : "false") << "\","
+       << "\"authorId\": \"" << this->authorId << "\","
+       << "\"authorName\": \"" << this->authorName << "\""
        << "}";
     return ss.str();
 }

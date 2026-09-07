@@ -595,6 +595,11 @@ void CameraAssetPipeline::GetDeferredPictureInfo(GetDeferredPictureInfoRespBody&
     CHECK_AND_RETURN_LOG(fileAsset != nullptr, "fileAsset is nullptr.");
     respbody.mimeType = fileAsset->GetMimeType();
     respbody.orientation = fileAsset->GetOrientation();
+    C2PAConfigInfo c2paConfigInfo;
+    assetInfo_.ParseToC2PAConfigInfo(fileAsset->GetC2paConfigInfo(), c2paConfigInfo);
+    respbody.enableC2PA = c2paConfigInfo.enableC2PA;
+    respbody.authorId = c2paConfigInfo.authorId;
+    respbody.authorName = c2paConfigInfo.authorName;
 
     MEDIA_INFO_LOG("GetAllEditDataCamera: %{public}s.", respbody.ToString().c_str());
 }

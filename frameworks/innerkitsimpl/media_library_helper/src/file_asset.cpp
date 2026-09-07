@@ -1108,5 +1108,16 @@ int32_t FileAsset::GetLcdFileSize() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_LCD_FILE_SIZE);
 }
+
+void FileAsset::SetC2paConfigInfo(const std::string &c2paConfigInfo)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::C2PA_CONFIG_INFO] = c2paConfigInfo;
+}
+
+const std::string &FileAsset::GetC2paConfigInfo() const
+{
+    return GetStrMember(PhotoColumn::C2PA_CONFIG_INFO);
+}
 }  // namespace Media
 }  // namespace OHOS

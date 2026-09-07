@@ -160,7 +160,7 @@ const unordered_map<string, unordered_set<string>> EXCLUDED_COLUMNS_MAP = {
             PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
             PhotoColumn::PHOTO_FILE_INODE, PhotoColumn::PHOTO_STORAGE_PATH,
             PhotoColumn::PHOTO_FILE_SOURCE_TYPE, // east lake related
-            PhotoColumn::UNIQUE_ID,
+            PhotoColumn::UNIQUE_ID, PhotoColumn::C2PA_CONFIG_INFO,
         }},
     { PhotoAlbumColumns::TABLE,
         {

@@ -48,6 +48,7 @@ const std::string CALLING_TOKENID = "tokenId";
 const std::string IS_CAPTURE = "is_capture";
 const double TIMER_MULTIPLIER = 60.0;
 const std::string MEDIA_FILEMODE_READWRITE = "rw";
+constexpr int32_t C2PA_ENABLE = 1;
 constexpr int32_t MAX_QUALITY = 100;
 constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
 
@@ -209,6 +210,14 @@ bool PhotoAssetProxy::InitAssetValues(const sptr<PhotoProxy> &photoProxy, DataSh
     // callingUid 特殊处理
     values.Put(CONST_MEDIA_DATA_CALLING_UID, static_cast<int32_t>(callingUid_));
     values.Put(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE, static_cast<int32_t>(photoProxy->GetDeferredProcType()));
+
+    auto info = photoProxy->GetC2PAConfigInfo();
+    nlohmann::json json;
+    json[ENABLE_C2PA] = info.enableC2PA ? C2PA_ENABLE : 0;
+    json[AUTHOR_ID] = info.authorId;
+    json[AUTHOR_NAME] = info.authorName;
+    values.Put(PhotoColumn::C2PA_CONFIG_INFO, json.dump());
+
     std::string photoId;
     GetPhotoIdForAsset(photoProxy, subType_, photoId);
     values.Put(PhotoColumn::PHOTO_ID, photoId);

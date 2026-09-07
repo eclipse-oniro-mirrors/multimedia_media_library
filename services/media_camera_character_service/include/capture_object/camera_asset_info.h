@@ -94,6 +94,11 @@ public:
     EXPORT TakeEffectStatus GetTakeEffectStatus() const;
     void SetTakeEffectStatus(const TakeEffectStatus& takeEffectStatus);
 
+    // c2pa
+    EXPORT const C2PAConfigInfo& GetC2PAConfigInfo() const;
+    void SetC2PAConfigInfo(const C2PAConfigInfo& c2paConfigInfo);
+    EXPORT void ParseToC2PAConfigInfo(const std::string& c2paInfo, C2PAConfigInfo& c2paConfigInfo);
+
     EXPORT bool IsLifeFinished() const;
     void SetFirstStageFinished(bool isFirstStageFinished);
     void SetSecondStageFinished(bool isSecondStageFinished);
@@ -123,6 +128,9 @@ private:
     TakeEffectStatus takeEffectStatus_{TakeEffectStatus::UNDEFINED};        // 水印状态
     bool isFirstStageFinished_{false};
     bool isSecondStageFinished_{false};
+
+    // c2pa
+    C2PAConfigInfo c2paConfigInfo_;
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LIBRARY_CAMERA_ASSET_INFO_H

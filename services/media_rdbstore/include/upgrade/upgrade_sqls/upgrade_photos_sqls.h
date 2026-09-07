@@ -22,6 +22,7 @@
 #define COLUMN_CRITICAL_TYPE "critical_type"
 #define COLUMN_PHOTO_NEED_THUMBNAIL "need_thumbnail"
 #define COLUMN_ATTACHMENT_SIZE "attachment_size"
+#define COLUMN_C2PA_CONFIG_INFO "c2pa_config_info"
 #define COLUMN_COMPRESSION_QUALITY "compression_quality"
 // share photo columns
 #define COLUMN_PHOTO_IS_SHARED "is_shared"

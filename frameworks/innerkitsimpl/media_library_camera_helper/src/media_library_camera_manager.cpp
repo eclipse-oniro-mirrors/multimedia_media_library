@@ -109,10 +109,14 @@ DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std:
 
     pictureInfo.editData = respBody.editData;
     pictureInfo.mimeType = respBody.mimeType;
+    pictureInfo.enableC2PA = respBody.enableC2PA;
+    pictureInfo.authorId = respBody.authorId;
+    pictureInfo.authorName = respBody.authorName;
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} GetEditData done, photoId: %{public}s, "
-        "hasEditData: %{public}d, mimeType: %{public}s.",
+        "hasEditData: %{public}d, mimeType: %{public}s [c2pa][%{public}d][%{public}s][%{public}s].",
         MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), !pictureInfo.editData.empty(),
-        pictureInfo.mimeType.c_str());
+        pictureInfo.mimeType.c_str(), static_cast<int32_t>(pictureInfo.enableC2PA),
+        pictureInfo.authorId.c_str(), pictureInfo.authorName.c_str());
     return pictureInfo;
 }
 

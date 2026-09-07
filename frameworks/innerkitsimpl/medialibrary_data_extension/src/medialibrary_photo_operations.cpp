@@ -19,6 +19,7 @@
 #include <regex>
 #include <unordered_set>
 #include "album_plugin_base.h"
+#include "c2pa_utils.h"
 #include "directory_ex.h"
 #include "duplicate_photo_operation.h"
 #include "file_utils.h"
@@ -929,6 +930,16 @@ static void SetCompressionQualityFromCmd(MediaLibraryCommand &cmd, FileAsset &fi
     fileAsset.SetCompressionQuality(compressionQuality);
 }
 
+static void SetC2paConfigInfoFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
+{
+    string c2paConfigInfo;
+    ValueObject value;
+    if (cmd.GetValueBucket().GetObject(PhotoColumn::C2PA_CONFIG_INFO, value)) {
+        value.GetString(c2paConfigInfo);
+    }
+    fileAsset.SetC2paConfigInfo(c2paConfigInfo);
+}
+
 static inline void SetCameraShotKeyFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
 {
     string cameraShotKey;
@@ -1094,6 +1105,7 @@ void MediaLibraryPhotoOperations::SetFileAssetFromCmd(FileAsset &fileAsset, Medi
     SetCameraShotKeyFromCmd(cmd, fileAsset);
     SetCallingPackageName(cmd, fileAsset);
     SetCompressionQualityFromCmd(cmd, fileAsset);
+    SetC2paConfigInfoFromCmd(cmd, fileAsset);
 }
 
 static void CreateCameraPipeline(MediaLibraryCommand &cmd, const FileAsset& fileAsset,
@@ -6167,6 +6179,24 @@ int32_t MediaLibraryPhotoOperations::EnableYuvAndNotify(
     return assetRefresh->NotifyYuvReady(fileId);
 }
 
+static int32_t AddFiltersToPhotoByTakeEffect(const std::string &inputPath, const std::string &tempOutputPath,
+    std::string &info, const std::string &outputPath, bool isRevert)
+{
+    int32_t ret = E_OK;
+    string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(outputPath));
+    int32_t quality = mimeType == MIME_TYPE_HEIF ? PACKOPTION_QUALITY_HEIF : PACKOPTION_QUALITY;
+    if (isRevert) {
+        ret = MediaChangeEffect::TakeEffectRevert(inputPath, tempOutputPath, info, quality);
+        // c2pa signature
+        if (ret == E_OK) {
+            C2paUtils::SignForRevert(inputPath, tempOutputPath);
+        }
+    } else {
+        ret = MediaChangeEffect::TakeEffect(inputPath, tempOutputPath, info, quality);
+    }
+    return ret;
+}
+
 int32_t MediaLibraryPhotoOperations::AddFiltersToPhoto(const std::string &inputPath,
     const std::string &outputPath, const std::string &editdata, const std::string &photoStatus, bool isRevert)
 {
@@ -6185,13 +6215,7 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToPhoto(const std::string &inputP
     CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS || ret == E_FILE_EXIST, E_HAS_FS_ERROR,
         "Failed to create temp filters file %{private}s", tempOutputPath.c_str());
     tracer.Start("MediaChangeEffect::TakeEffect");
-    string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(outputPath));
-    int32_t quality = mimeType == MIME_TYPE_HEIF ? PACKOPTION_QUALITY_HEIF : PACKOPTION_QUALITY;
-    if (isRevert) {
-        ret = MediaChangeEffect::TakeEffectRevert(inputPath, tempOutputPath, info, quality);
-    } else {
-        ret = MediaChangeEffect::TakeEffect(inputPath, tempOutputPath, info, quality);
-    }
+    ret = AddFiltersToPhotoByTakeEffect(inputPath, tempOutputPath, info, outputPath, isRevert);
     tracer.Finish();
     if (ret != E_OK) {
         HILOG_COMM_ERROR("%{public}s:{%{public}s:%{public}d} MultistagesCapture, TakeEffect error. ret = %{public}d",

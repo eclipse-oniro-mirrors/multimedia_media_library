@@ -121,5 +121,14 @@ static vector<pair<int32_t, int32_t>> AddPhotosShareColumn(NativeRdb::RdbStore &
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_PHOTOS_SHARE, PHOTOS_MODULE_NAME, AddPhotosShareColumn);
 
+static vector<pair<int32_t, int32_t>> AddPhotoC2PAConfigInfoColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_C2PA_CONFIG_INFO, "TEXT").Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_C2PA_CONFIG_INFO, PHOTOS_MODULE_NAME,
+    AddPhotoC2PAConfigInfoColumn);
+
 } // namespace Media
 } // namespace OHOS

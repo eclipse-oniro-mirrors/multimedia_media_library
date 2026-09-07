@@ -37,6 +37,9 @@ public:
     std::string editData;
     std::string mimeType;
     int32_t orientation{0};
+    bool enableC2PA{false};
+    std::string authorId;
+    std::string authorName;
 
 public:  // functions of Parcelable.
     virtual ~GetDeferredPictureInfoRespBody() = default;

@@ -17,6 +17,7 @@
 #include "ithumbnail_helper.h"
 
 #include "color_space.h"
+#include "c2pa_utils.h"
 #include "cloud_sync_helper.h"
 #include "dfx_utils.h"
 #include "medialibrary_kvstore_manager.h"
@@ -681,6 +682,9 @@ bool IThumbnailHelper::SaveLcdPictureSource(ThumbRdbOpt &opts, ThumbnailData &da
             false, "StorePictureLowQuality with limit failed");
         data.thumbnailQuality = ThumbnailQuality::DEFAULT;
     }
+    // c2pa signature
+    std::string lcdPath = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
+    C2paUtils::SignatureToLcd(data.path, lcdPath);
 
     if (!isSourceEx) {
         CacheLcdDbState(opts, data);
@@ -742,6 +746,10 @@ bool IThumbnailHelper::SaveLcdPixelMapSource(ThumbRdbOpt &opts, ThumbnailData &d
     }
 
     data.lcd.clear();
+    // c2pa signature
+    std::string lcdPath = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
+    C2paUtils::SignatureToLcd(data.path, lcdPath);
+
     if (!isSourceEx) {
         CacheLcdDbState(opts, data);
     }

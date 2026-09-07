@@ -107,6 +107,14 @@
     {
       "name": "permission_access_medialib_sandbox",
       "value": "Allow mediaLibrary to mount the media library sandbox within appspawn"
+    },
+    {
+      "name": "permission_create_sign_content_trust",
+      "value": "Allow mediaLibrary to create sign content trust"
+    },
+    {
+      "name": "permission_append_sign_content_trust",
+      "value": "Allow mediaLibrary to append sign content trust"
     }
   ]
 }
