@@ -197,7 +197,7 @@ public:
     int32_t RetainCloudMediaAsset(CloudMediaRetainType retainType = CloudMediaRetainType::RETAIN_FORCE);
     int32_t IsEdited(const IsEditedDto &dto, IsEditedRespBody &respBody);
     int32_t RequestEditData(const RequestEditDataDto &dto, RequestEditDataRespBody &respBody);
-    int32_t QueryCompositeAuxiliaryImage(const QueryCompositeAuxiliaryImageDto &dto,
+    EXPORT int32_t QueryCompositeAuxiliaryImage(const QueryCompositeAuxiliaryImageDto &dto,
         QueryCompositeAuxiliaryImageRespBody &respBody);
     int32_t GetEditData(const GetEditDataDto &dto, GetEditDataRespBody &respBody);
     int32_t GetCloudMediaAssetStatus(std::string &status);
