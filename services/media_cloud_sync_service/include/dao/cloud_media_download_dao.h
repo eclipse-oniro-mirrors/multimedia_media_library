@@ -28,11 +28,12 @@
 #include "media_column.h"
 #include "download_thumbnail_query_dto.h"
 #include "cloud_lake_info.h"
+#include "cloud_media_define.h"
 #include "lcd_file_info_dto.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
-class CloudMediaDownloadDao {
+class EXPORT CloudMediaDownloadDao {
 public:
     int32_t GetDownloadThmNum(const int32_t type, int32_t &totalNum);
     int32_t GetDownloadThms(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosPo> &photos);
@@ -52,6 +53,8 @@ public:
     int32_t CleanAttachmentByCloudId(const std::vector<std::string> &cloudIdList);
     int32_t UpdateLcdFileSize(const std::vector<std::string> &cloudIds);
     int32_t UpdateLcdFileSizeAndLcdSize(const std::vector<std::string> &cloudIds);
+    int32_t HandleExtraDataVersion(const CloudMediaScanService::ScanResult &scanResult,
+        NativeRdb::ValuesBucket &values, const std::optional<PhotosPo> &localPhotosPoOp);
 
 private:
     NativeRdb::RdbPredicates GetDownloadThmsConditions(const int32_t type);

@@ -3122,7 +3122,7 @@ static void PhotoAccessHelperGenerateUniqueIdComplete(napi_env env, napi_status 
         napi_create_string_utf8(env, context->uniqueId.c_str(), NAPI_AUTO_LENGTH, &jsContext->data);
         jsContext->status = true;
     } else {
-        context->HandleError(env, jsContext->error);
+        context->HandleError(env, jsContext->error, true);
     }
 
     if (context->work != nullptr) {
@@ -3144,10 +3144,10 @@ napi_value FileAssetNapi::PhotoAccessHelperGenerateUniqueId(napi_env env, napi_c
     }
 
     auto asyncContext = make_unique<FileAssetAsyncContext>();
-    CHECK_COND(env, asyncContext != nullptr, JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_INT_CODE(env, asyncContext != nullptr, JS_E_PARAM_INVALID);
     asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
-    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::ParseArgsOnlyCallBack(env, info, asyncContext) == napi_ok,
-        "Failed to parse js args");
+    CHECK_COND_WITH_MESSAGE_INT_CODE(env,
+        MediaLibraryNapiUtils::ParseArgsOnlyCallBack(env, info, asyncContext) == napi_ok, "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     napi_value ret = nullptr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");

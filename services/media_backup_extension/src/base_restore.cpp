@@ -802,6 +802,7 @@ void BaseRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::ValuesBuck
     }
     fileInfo.dateAdded = dateAdded;
     SetCoverPosition(fileInfo, value);
+    SetMovingPhotoDuration(fileInfo, value);
     InsertVideoMode(data, value);
     SetShootingModeSubtype(fileInfo, value, data);
 }

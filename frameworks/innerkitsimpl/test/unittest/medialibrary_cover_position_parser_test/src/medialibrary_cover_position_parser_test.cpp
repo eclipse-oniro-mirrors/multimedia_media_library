@@ -15,7 +15,9 @@
 #include "medialibrary_cover_position_parser_test.h"
 
 #define private public
+#define protected public
 #include "parser_task_queue_base.h"
+#undef protected
 #include "cover_position_parser.h"
 #include "picture_data_operations.h"
 #undef private

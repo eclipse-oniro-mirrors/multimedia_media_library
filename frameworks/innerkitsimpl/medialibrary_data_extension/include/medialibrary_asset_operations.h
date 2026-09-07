@@ -182,7 +182,8 @@ protected:
     static void UpdateVirtualPath(MediaLibraryCommand &cmd, const std::shared_ptr<FileAsset> &fileAsset);
     static int32_t UpdateFileInDb(MediaLibraryCommand &cmd);
     EXPORT static int32_t OpenAsset(const std::shared_ptr<FileAsset> &fileAsset, const std::string &mode,
-        MediaLibraryApi api, bool isMovingPhotoVideo = false, int32_t type = -1, bool noNeedWatchNotify = false);
+        MediaLibraryApi api, bool isMovingPhotoVideo = false, int32_t type = -1, bool noNeedWatchNotify = false,
+        bool isCloseMovingPhotoStatusSharing = false);
     static int32_t OpenHighlightCover(MediaLibraryCommand &cmd, const std::string &mode);
     static int32_t OpenHighlightVideo(MediaLibraryCommand &cmd, const std::string &mode);
     EXPORT static int32_t CloseAsset(const std::shared_ptr<FileAsset> &fileAsset, bool isCreateThumbSync = false);
@@ -202,6 +203,8 @@ protected:
     EXPORT static std::string CreateExtUriForV10Asset(FileAsset &fileAsset);
     EXPORT static int32_t OpenFileWithPrivacy(const std::string &filePath, const std::string &mode,
         const std::string &fileId, int32_t type = -1);
+    EXPORT static int32_t OpenFileMagerFileWithPrivacy(const std::string &filePath, const std::string &mode,
+        const std::string &fileId, int32_t type = -1, bool isCloseMovingPhotoStatusSharing = false);
 
     static std::string GetAssetCacheDir();
     static std::string GetAssetCompressJsonPath(const std::string &path);

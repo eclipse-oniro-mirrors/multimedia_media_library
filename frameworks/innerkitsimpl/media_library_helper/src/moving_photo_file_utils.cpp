@@ -1657,6 +1657,24 @@ bool MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(int32_t duration)
     return duration > MIN_DURATION_MS && duration <= MAX_DURATION_MS;
 }
 
+/**
+ * @param filePath, must start with '/storage/cloud/files/'
+ */
+int32_t MovingPhotoFileUtils::GetExtraDataVersionByFilePath(const std::string &filePath, uint32_t &version)
+{
+    // extraDataPath: /storage/cloud/${userId}/files/.editData/Photo/${bucketId}/${name}.${suffix}/extraData
+    std::string extraPath = GetMovingPhotoExtraDataPath(filePath);
+    bool isValid = !extraPath.empty() && MediaFileUtils::IsFileExists(extraPath);
+    CHECK_AND_RETURN_RET(isValid, E_NO_SUCH_FILE);
+
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(extraPath, version);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    isValid = version == LIVE_PHOTO_4D_VERSION;
+    CHECK_AND_PRINT_INFO_LOG(
+        !isValid, "livephoto_4d_status, filePath: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    return E_OK;
+}
+
 void MovingPhotoFileUtils::GetLocalAssetSize(const int32_t movingPhotoEffectMode, const std::string& filePath,
     const int64_t size, int64_t& localAssetSize)
 {

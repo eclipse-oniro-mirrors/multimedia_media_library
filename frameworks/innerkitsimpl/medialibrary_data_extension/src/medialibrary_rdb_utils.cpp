@@ -308,11 +308,7 @@ static shared_ptr<ResultSet> GetCommonAlbum(const shared_ptr<MediaLibraryRdbStor
     if (!albumIds.empty()) {
         predicates.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
     } else {
-        predicates.BeginWrap();
-        predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC));
-        predicates.Or();
-        predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::USER_GENERIC));
-        predicates.EndWrap();
+        predicates.In(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbum::GetUserAndSourceAlbumSubtypes());
     }
     CHECK_AND_RETURN_RET(rdbStore != nullptr, nullptr);
     return rdbStore->Query(predicates, columns);
@@ -558,8 +554,8 @@ static void SetGroupPhotoCover(const shared_ptr<ResultSet> &fileResult, const Up
 static void SetCoverDateTime(const shared_ptr<ResultSet> &fileResult, const UpdateAlbumData &data,
     ValuesBucket &values, const bool hiddenState)
 {
-    bool isUserAlbum = data.albumSubtype == PhotoAlbumSubType::USER_GENERIC;
-    bool isSourceAlbum = data.albumSubtype == PhotoAlbumSubType::SOURCE_GENERIC;
+    bool isUserAlbum = PhotoAlbum::IsUserAlbumSubtype(static_cast<PhotoAlbumSubType>(data.albumSubtype));
+    bool isSourceAlbum = PhotoAlbum::IsSourceAlbumSubtype(static_cast<PhotoAlbumSubType>(data.albumSubtype));
     bool isSystemAlbum = data.albumSubtype >= PhotoAlbumSubType::SYSTEM_START &&
         data.albumSubtype <= PhotoAlbumSubType::SYSTEM_END;
     bool isPhotoAlbum = isUserAlbum || isSourceAlbum || isSystemAlbum;
@@ -817,7 +813,7 @@ static int32_t SetAlbumCoverUri(const shared_ptr<MediaLibraryRdbStore> rdbStore,
         predicates.IndexedBy(PhotoColumn::PHOTO_FAVORITE_INDEX);
     } else if (subtype == PhotoAlbumSubType::CLOUD_ENHANCEMENT) {
         predicates.IndexedBy(PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX);
-    } else if (subtype == PhotoAlbumSubType::USER_GENERIC || subtype == PhotoAlbumSubType::SOURCE_GENERIC) {
+    } else if (PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype)) {
         predicates.IndexedBy(PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX);
     } else {
         predicates.IndexedBy(PhotoColumn::PHOTO_SCHPT_READY_INDEX);
@@ -1511,7 +1507,7 @@ void MediaLibraryRdbUtils::DetermineQueryOrder(RdbPredicates& predicates, const 
         predicates.IndexedBy(PhotoColumn::PHOTO_FAVORITE_INDEX);
     } else if (subtype == PhotoAlbumSubType::CLOUD_ENHANCEMENT) {
         predicates.IndexedBy(PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX);
-    } else if (subtype == PhotoAlbumSubType::USER_GENERIC || subtype == PhotoAlbumSubType::SOURCE_GENERIC) {
+    } else if (PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype)) {
         predicates.IndexedBy(PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX);
     } else if (subtype == PhotoAlbumSubType::SHOOTING_MODE) {
         SetShootingModeAlbumQueryOrder(predicates, data.albumName, columns);
@@ -1818,11 +1814,7 @@ static int32_t UpdateCommonAlbumIfNeeded(const std::shared_ptr<MediaLibraryRdbSt
 
     RdbPredicates predicates(PhotoAlbumColumns::TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(data.albumId));
-    predicates.BeginWrap();
-    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::USER_GENERIC));
-    predicates.Or();
-    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC));
-    predicates.EndWrap();
+    predicates.In(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbum::GetUserAndSourceAlbumSubtypes());
     int32_t changedRows = 0;
     err = albumRefresh.Update(changedRows, values, predicates);
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, err,

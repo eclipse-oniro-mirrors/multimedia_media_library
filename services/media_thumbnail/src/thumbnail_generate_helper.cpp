@@ -54,6 +54,9 @@
 #include "thumbnail_utils.h"
 #include "highlight_column.h"
 #include "medialibrary_related_system_state_manager.h"
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+#include "media_file_access_utils.h"
+#endif
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "analysis_data_vision_dao.h"
 #endif

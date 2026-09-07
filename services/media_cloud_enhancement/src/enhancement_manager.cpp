@@ -1467,8 +1467,8 @@ pair<int32_t, int32_t> EnhancementManager::SyncDealWithCompositeDisplayStatus(in
     CHECK_AND_RETURN_RET_LOG(fileId > 0, defaultRet,
         "Failed to deal with composite_display_status of wrong fileId:%{public}d", fileId);
     auto result = QueryCompositePhotoInfo(fileId);
-    CHECK_AND_RETURN_RET_LOG(result.has_value(), defaultRet, "Failed to get file path and composite display status");
-    auto [filePath, oldCompositeDisplayStatus, fileCeAvailable] = result.value();
+    CHECK_AND_RETURN_RET_LOG(result != nullptr, defaultRet, "Failed to get file path and composite display status");
+    int32_t oldCompositeDisplayStatus = GetInt32Val(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, result);
 
     int32_t compositeDisplayStatus = 0;
     int32_t ceAvailable = static_cast<int32_t>(CloudEnhancementAvailableType::NOT_SUPPORT);
@@ -1525,8 +1525,8 @@ bool EnhancementManager::SyncClearNormalPhoto(int32_t fileId)
     CHECK_AND_RETURN_RET_LOG(fileId > 0, false,
         "Failed to clear normal photo of wrong fileId:%{public}d", fileId);
     auto result = QueryCompositePhotoInfo(fileId);
-    CHECK_AND_RETURN_RET_LOG(result.has_value(), false, "Failed to get file path and composite display status");
-    auto [filePath, oldCompositeDisplayStatus, fileCeAvailable] = result.value();
+    CHECK_AND_RETURN_RET_LOG(result != nullptr, false, "Failed to get file path and composite display status");
+    int32_t oldCompositeDisplayStatus = GetInt32Val(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, result);
 
     int32_t newCompositeDisplayStatus = static_cast<int32_t>(CompositeDisplayStatus::PLAIN_PICTURE);
     if (oldCompositeDisplayStatus != newCompositeDisplayStatus) {

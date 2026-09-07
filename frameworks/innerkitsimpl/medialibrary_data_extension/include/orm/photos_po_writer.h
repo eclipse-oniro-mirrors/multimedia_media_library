@@ -96,6 +96,8 @@ private:
             {&PhotosPoWriter::GetShootingModeTag, &PhotosPoWriter::SetShootingModeTag}},
         {PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE,
             {&PhotosPoWriter::GetDynamicRangType, &PhotosPoWriter::SetDynamicRangType}},
+        {PhotoColumn::PHOTO_VIDEO_MODE,
+            {&PhotosPoWriter::GetVideoMode, &PhotosPoWriter::SetVideoMode}},
         {PhotoColumn::PHOTO_FRONT_CAMERA, {&PhotosPoWriter::GetFrontCamera, &PhotosPoWriter::SetFrontCamera}},
         {PhotoColumn::PHOTO_DETAIL_TIME, {&PhotosPoWriter::GetDetailTime, &PhotosPoWriter::SetDetailTime}},
         {PhotoColumn::PHOTO_EDIT_TIME, {&PhotosPoWriter::GetEditTime, &PhotosPoWriter::SetEditTime}},
@@ -131,6 +133,10 @@ private:
         {PhotoColumn::LOCAL_ASSET_SIZE, {&PhotosPoWriter::GetLocalAssetSize, &PhotosPoWriter::SetLocalAssetSize}},
         {PhotoColumn::COMPRESSION_QUALITY,
             {&PhotosPoWriter::GetCompressionQuality, &PhotosPoWriter::SetCompressionQuality}},
+        {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            {&PhotosPoWriter::GetLivePhoto4dStatus, &PhotosPoWriter::SetLivePhoto4dStatus}},
+        {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+            {&PhotosPoWriter::GetLivePhoto4DPair, &PhotosPoWriter::SetLivePhoto4DPair}},
         {PhotoColumn::PHOTO_IS_SHARED, {&PhotosPoWriter::GetPhotoIsShared, &PhotosPoWriter::SetPhotoIsShared}},
         {PhotoColumn::PHOTO_SHARE_OWNER_INFO,
             {&PhotosPoWriter::GetPhotoShareOwnerInfo, &PhotosPoWriter::SetPhotoShareOwnerInfo}},
@@ -219,6 +225,8 @@ private:
     bool GetShootingModeTag(std::string &val);
     void SetDynamicRangType(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetDynamicRangType(std::string &val);
+    void SetVideoMode(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetVideoMode(std::string &val);
     void SetFrontCamera(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetFrontCamera(std::string &val);
     void SetDetailTime(std::variant<int32_t, int64_t, double, std::string> &val);
@@ -282,6 +290,10 @@ private:
     bool GetLocalAssetSize(std::string &val);
     void SetCompressionQuality(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetCompressionQuality(std::string &val);
+    bool GetLivePhoto4dStatus(std::string &val);
+    void SetLivePhoto4dStatus(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetLivePhoto4DPair(std::string &val);
+    void SetLivePhoto4DPair(std::variant<int32_t, int64_t, double, std::string> &val);
     void SetShareAlbumOwner(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetShareAlbumOwner(std::string &val);
     bool GetPhotoIsShared(std::string &val);

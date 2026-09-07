@@ -61,6 +61,7 @@ constexpr int32_t CLOUD_COPY_DIRTY_FLAG = 7;
 constexpr int32_t TIME_STAMP_OFFSET = 5;
 const std::string ALBUM_FUSION_FLAG = "multimedia.medialibrary.cloneFlag";
 const std::string ALBUM_FUSION_UPGRADE_STATUS_FLAG = "persist.multimedia.medialibrary.albumFusion.status";
+const std::string DOCS_PATH_PREFIX = "/storage/media/local/files/Docs";
 const int32_t ALBUM_FUSION_UPGRADE_SUCCESS = 1;
 const int32_t ALBUM_FUSION_UPGRADE_FAIL = 0;
 const int32_t ALBUM_FUSION_BATCH_COUNT = 200;
@@ -843,6 +844,7 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
     if (!copyInfo.isCopyOwnerPackage) {
         values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, GetOwnerPackage());
     }
+    values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
     HandleBurstPhotoSubtype(resultSet, values);
     HandleLowQualityAssetValuesBucket(resultSet, values);
     HandleTempFileAssetValuesBucket(resultSet, values);
@@ -1423,6 +1425,15 @@ static void SavePackageMetaDate(NativeRdb::ValuesBucket &values)
     values.Put(MediaColumn::MEDIA_OWNER_APPID, appId);
 }
 
+static std::string GetTargetRealPath(const std::string &realPath, const std::string &displayName)
+{
+    size_t pos = realPath.find_last_of('/');
+    if (pos == std::string::npos) {
+        return "";
+    }
+    return realPath.substr(0, pos) + "/" + displayName;
+}
+
 static void SaveDefaultMetaData(NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> resultSet,
     const std::string &path, bool isBurst, const std::string &displayName)
 {
@@ -1505,6 +1516,24 @@ static bool SaveConvertFormatMetaData(std::shared_ptr<AccurateRefresh::AssetAccu
     return true;
 }
 
+static bool MoveConvertFormatFileToDocRealPath(std::shared_ptr<NativeRdb::ResultSet> resultSet, const std::string &path,
+    const std::string &displayName)
+{
+    std::string realPath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    if (!realPath.empty() && realPath.find(DOCS_PATH_PREFIX) != std::string::npos) {
+        FileSourceType fileSourceType = (realPath.find("HO_DATA_EXT_MISC") != std::string::npos) ?
+            FileSourceType::MEDIA_HO_LAKE : FileSourceType::FILE_MANAGER;
+        std::string targetRealPath = GetTargetRealPath(realPath, displayName);
+        AssetOperationInfo srcpath = AssetOperationInfo::CreateFromPath(path);
+        auto result = MediaFileAccessUtils::MoveAsset(srcpath, targetRealPath, fileSourceType, true);
+        if (result.errCode != E_OK) {
+            MEDIA_ERR_LOG("fail to move convert format asset");
+            return false;
+        }
+    }
+    return true;
+}
+
 static int32_t ConvertFormatFileSync(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,
     shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh, std::shared_ptr<NativeRdb::ResultSet> resultSet,
     const std::string &displayName, int64_t &newAssetId, std::string &targetPath)
@@ -1521,6 +1550,11 @@ static int32_t ConvertFormatFileSync(const std::shared_ptr<MediaLibraryRdbStore>
     std::string extension = MediaFileUtils::GetExtensionFromPath(displayName);
     MEDIA_INFO_LOG("ConvertFormatPhoto failed, displayName: %{public}s, targetPath: %{public}s",
         MediaFileUtils::DesensitizeName(displayName).c_str(), MediaFileUtils::DesensitizePath(targetPath).c_str());
+    if (!MoveConvertFormatFileToDocRealPath(resultSet, targetPath, displayName)) {
+        MEDIA_ERR_LOG("MoveConvertFormatFileToDocRealPath failed");
+        DeleteFile(targetPath);
+        return E_ERR;
+    }
     int32_t err = PhotoFileOperation().ConvertFormatPhoto(resultSet, targetPath, extension);
     if (err != E_OK) {
         MEDIA_ERR_LOG("ConvertFormatPhoto failed, err: %{public}d", err);

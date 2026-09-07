@@ -248,6 +248,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(upLoadRecord.shareGroup);
     map[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = MDKRecordField(upLoadRecord.editDataExist);
     HandleAttributesHashMap(map, upLoadRecord);
+    HandleInt64FieldsHashMap(map, upLoadRecord);
     int32_t ret = HandleThumbSize(map, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleThumbSize err: %{public}d", ret);
     ret = HandleLcdSize(map, upLoadRecord);
@@ -1066,6 +1067,7 @@ int32_t CloudFileDataConvert::ConverMDKRecordToOnFetchPhotosVo(
     ConvertAttributes(photosData, onFetchPhotoVo);
     ConvertProperties(photosData, onFetchPhotoVo);
     ConvertAttributesHashMap(photosData, onFetchPhotoVo);
+    ConvertInt64FieldsHashMap(photosData, onFetchPhotoVo);
     return E_OK;
 }
 

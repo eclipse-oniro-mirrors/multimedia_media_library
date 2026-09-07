@@ -41,6 +41,8 @@
 #include "cloud_media_scan_service.h"
 #undef private
 #include "cloud_file_error.h"
+#include "cloud_media_download_dao.h"
+#include "moving_photo_file_utils.h"
 #include "lcd_aging_dao.h"
 #include "lcd_aging_manager.h"
 #include "lcd_aging_utils.h"
@@ -1968,6 +1970,112 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullDelete_Test_001, 
     OnFetchRecordsAlbumRespBody resp;
     int32_t ret = service.PullDelete(record, changeType, resp);
     EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadDao_HandleExtraDataVersion_Test_001, TestSize.Level1)
+{
+    // 用例说明：测试<处理额外数据版本功能>；
+    // 覆盖<扫描成功且版本匹配场景>（触发条件：scanSuccess=true且extraDataVersion=LIVE_PHOTO_4D_VERSION）；验证<设置4D状态为TYPE_LIVEPHOTO_4D>
+    CloudMediaScanService::ScanResult scanResult;
+    scanResult.scanSuccess = true;
+    scanResult.extraDataVersion = LIVE_PHOTO_4D_VERSION;
+
+    NativeRdb::ValuesBucket values;
+    CloudMediaDownloadDao dao;
+    std::optional<PhotosPo> noLocalPhoto;
+    int32_t ret = dao.HandleExtraDataVersion(scanResult, values, noLocalPhoto);
+    EXPECT_EQ(ret, E_OK);
+
+    NativeRdb::ValueObject valueObject;
+    std::string key = PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS;
+    EXPECT_TRUE(values.GetObject(key, valueObject));
+    int32_t status;
+    valueObject.GetInt(status);
+    EXPECT_EQ(status, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadDao_HandleExtraDataVersion_Test_002, TestSize.Level1)
+{
+    // 用例说明：测试<处理额外数据版本功能>；覆盖<扫描失败场景>（触发条件：scanSuccess=false）；验证<不修改values且返回E_OK>
+    CloudMediaScanService::ScanResult scanResult;
+    scanResult.scanSuccess = false;
+    scanResult.extraDataVersion = LIVE_PHOTO_4D_VERSION;
+
+    NativeRdb::ValuesBucket values;
+    CloudMediaDownloadDao dao;
+    std::optional<PhotosPo> noLocalPhoto;
+    int32_t ret = dao.HandleExtraDataVersion(scanResult, values, noLocalPhoto);
+    EXPECT_EQ(ret, E_OK);
+
+    NativeRdb::ValueObject valueObject;
+    std::string key = PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS;
+    EXPECT_FALSE(values.GetObject(key, valueObject));
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadDao_HandleExtraDataVersion_Test_003, TestSize.Level1)
+{
+    // 用例说明：测试<处理额外数据版本功能>；
+    // 覆盖<版本不匹配场景>（触发条件：scanSuccess=true但extraDataVersion!=LIVE_PHOTO_4D_VERSION）；验证<不修改values且返回E_OK>
+    CloudMediaScanService::ScanResult scanResult;
+    scanResult.scanSuccess = true;
+    scanResult.extraDataVersion = 100;
+
+    NativeRdb::ValuesBucket values;
+    CloudMediaDownloadDao dao;
+    std::optional<PhotosPo> noLocalPhoto;
+    int32_t ret = dao.HandleExtraDataVersion(scanResult, values, noLocalPhoto);
+    EXPECT_EQ(ret, E_OK);
+
+    NativeRdb::ValueObject valueObject;
+    std::string key = PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS;
+    EXPECT_FALSE(values.GetObject(key, valueObject));
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadDao_HandleExtraDataVersion_Test_004, TestSize.Level1)
+{
+    // 用例说明：测试<处理额外数据版本功能>；
+    // 覆盖<本地已有4D效果状态(4-9)场景>（触发条件：scanSuccess=true且extraDataVersion=LIVE_PHOTO_4D_VERSION
+    // 且localPhotosPoOp的livePhoto4dStatus为TYPE_LEFT_ROTATE(5)）；验证<不修改status，保护本地值>
+    CloudMediaScanService::ScanResult scanResult;
+    scanResult.scanSuccess = true;
+    scanResult.extraDataVersion = LIVE_PHOTO_4D_VERSION;
+
+    NativeRdb::ValuesBucket values;
+    CloudMediaDownloadDao dao;
+    PhotosPo localPhoto;
+    localPhoto.livePhoto4dStatus = static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE);
+    std::optional<PhotosPo> localPhotoOp = localPhoto;
+    int32_t ret = dao.HandleExtraDataVersion(scanResult, values, localPhotoOp);
+    EXPECT_EQ(ret, E_OK);
+
+    NativeRdb::ValueObject valueObject;
+    std::string key = PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS;
+    EXPECT_FALSE(values.GetObject(key, valueObject));
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadDao_HandleExtraDataVersion_Test_005, TestSize.Level1)
+{
+    // 用例说明：测试<处理额外数据版本功能>；
+    // 覆盖<本地status为0(未识别)场景>（触发条件：scanSuccess=true且extraDataVersion=LIVE_PHOTO_4D_VERSION
+    // 且localPhotosPoOp的livePhoto4dStatus为0）；验证<正常设置4D状态为TYPE_LIVEPHOTO_4D>
+    CloudMediaScanService::ScanResult scanResult;
+    scanResult.scanSuccess = true;
+    scanResult.extraDataVersion = LIVE_PHOTO_4D_VERSION;
+
+    NativeRdb::ValuesBucket values;
+    CloudMediaDownloadDao dao;
+    PhotosPo localPhoto;
+    localPhoto.livePhoto4dStatus = 0;
+    std::optional<PhotosPo> localPhotoOp = localPhoto;
+    int32_t ret = dao.HandleExtraDataVersion(scanResult, values, localPhotoOp);
+    EXPECT_EQ(ret, E_OK);
+
+    NativeRdb::ValueObject valueObject;
+    std::string key = PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS;
+    EXPECT_TRUE(values.GetObject(key, valueObject));
+    int32_t status;
+    valueObject.GetInt(status);
+    EXPECT_EQ(status, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
 }
 
 static int64_t GetExpectedNumberOfLcd()

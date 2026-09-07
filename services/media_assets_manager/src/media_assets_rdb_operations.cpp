@@ -478,6 +478,8 @@ const static vector<string> EDITED_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_STORAGE_PATH,
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
     PhotoColumn::PHOTO_EDIT_DATA_EXIST,
+    PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+    PhotoColumn::UNIQUE_ID,
 };
 
 // 图库编辑还原

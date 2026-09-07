@@ -36,6 +36,7 @@
 #include "dfx_refresh_manager.h"
 #include "dfx_refresh_hander.h"
 #include "media_values_bucket_utils.h"
+#include "photo_album.h"
 #include "result_set_utils.h"
 
 using namespace std;
@@ -308,9 +309,8 @@ int32_t AlbumRefreshExecution::GetUpdateValues(ValuesBucket &values, const Album
 void AlbumRefreshExecution::CheckUpdateValues(const AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo,
     ValuesBucket &values)
 {
-    if ((albumInfo.albumSubType_ == PhotoAlbumSubType::USER_GENERIC ||
-        albumInfo.albumSubType_ == PhotoAlbumSubType::SOURCE_GENERIC) && refreshInfo.assetModifiedCnt_ > 0 &&
-        isRefreshWithDateModified_) {
+    if (PhotoAlbum::IsUserOrSourceAlbumSubtype(static_cast<PhotoAlbumSubType>(albumInfo.albumSubType_)) &&
+        refreshInfo.assetModifiedCnt_ > 0 && isRefreshWithDateModified_) {
         values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
         ACCURATE_DEBUG("album date modified.");
     }
@@ -341,8 +341,7 @@ int32_t AlbumRefreshExecution::SetForceSelectCoverValues(ValuesBucket &values, c
     data.hiddenCoverOrderKey = albumInfo.hiddenCoverOrderKey_;
     data.hiddenCoverOrderSubKey = albumInfo.hiddenCoverOrderSubKey_;
     data.hiddenCoverOrderType = albumInfo.hiddenCoverOrderType_;
-    if (!isHidden && (subtype == PhotoAlbumSubType::USER_GENERIC ||
-        subtype == PhotoAlbumSubType::SOURCE_GENERIC) && isRefreshWithDateModified_) {
+    if (!isHidden && PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype) && isRefreshWithDateModified_) {
         data.shouldUpdateDateModified = true; // 非隐藏全量刷新时，说明相册封面有变化，需要设置
     }
     int32_t ret = MediaLibraryRdbUtils::SetUpdateCoverValues(data, values, isHidden);

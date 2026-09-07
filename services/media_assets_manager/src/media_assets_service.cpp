@@ -2272,9 +2272,9 @@ int32_t MediaAssetsService::CheckSinglePhotoPermission(const std::string &fileId
         MEDIA_ERR_LOG("Invalid fileId");
         return E_INVALID_FILEID;
     }
-    Notification::NotifyRegisterPermission permissionHandle;
+    NotifyRegisterPermission permissionHandle;
     int32_t ret =
-        permissionHandle.SinglePermissionCheck(static_cast<Notification::NotifyUriType>(registerType), fileId);
+        permissionHandle.SinglePermissionCheck(static_cast<NotifyUriType>(registerType), fileId);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
     return E_OK;
 }

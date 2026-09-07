@@ -238,6 +238,7 @@ enum class BatchDownloadAutoPauseReasonType : int32_t {
 };
 
 enum class LivePhoto4dStatusType : int32_t {
+    TYPE_MIN_VALUE = 0,
     TYPE_UNIDENTIFIED = 0,
     TYPE_UNSUPPORTED,
     TYPE_SUPPORTED,
@@ -247,7 +248,8 @@ enum class LivePhoto4dStatusType : int32_t {
     TYPE_UP_ROTATE,
     TYPE_ZOOM_OUT,
     TYPE_HITCHCOCK,
-    TYPE_GRAMMY
+    TYPE_GRAMMY,
+    TYPE_MAX_VALUE = TYPE_GRAMMY,
 };
 
 struct ColumnSchema {

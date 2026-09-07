@@ -24,6 +24,7 @@
 #include <unordered_set>
 
 #include "album_plugin_config.h"
+#include "media_file_utils.h"
 #include "analysis_album_attribute_const.h"
 #include "dfx_utils.h"
 #include "media_analysis_helper.h"
@@ -408,6 +409,7 @@ void MediaLibraryAlbumOperations::PutGeneralPhotoAlbumValues(const string &album
     values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, 1); // local album is 1.
     values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, PhotoAlbumUploadStatusOperation::GetAlbumUploadStatus());
+    values.PutString(PhotoAlbumColumns::UNIQUE_ID, MediaFileUtils::GenerateUUID());
     PutCoverOrderValues(lpath, values);
 }
 

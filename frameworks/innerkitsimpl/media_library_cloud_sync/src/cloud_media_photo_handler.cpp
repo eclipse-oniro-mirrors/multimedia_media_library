@@ -261,6 +261,7 @@ int32_t CloudMediaPhotoHandler::GetCreatedRecordsInternal(
     for (const auto &record : createdRecords) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
+        MEDIA_DEBUG_LOG("ret: %{public}d, record: %{public}s", ret, record.ToString().c_str());
         if (ret == E_OK) {
             records.push_back(dkRecord);
         } else {
@@ -301,8 +302,8 @@ int32_t CloudMediaPhotoHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &r
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_METADATA_MODIFY, userId_};
     for (const auto &record : metaModifiedRecord) {
         MDKRecord dkRecord;
-        MEDIA_DEBUG_LOG("CloudMdkRecordPhotosVo: %{public}s", record.ToString().c_str());
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
+        MEDIA_DEBUG_LOG("ret: %{public}d, record: %{public}s", ret, record.ToString().c_str());
         if (ret == E_OK) {
             records.push_back(dkRecord);
             if (!record.removeAlbumCloudId.empty()) {
@@ -346,6 +347,7 @@ int32_t CloudMediaPhotoHandler::GetFileModifiedRecordsInternal(
     for (const auto &record : fileModifiedRecord) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
+        MEDIA_DEBUG_LOG("ret: %{public}d, record: %{public}s", ret, record.ToString().c_str());
         if (ret == E_OK) {
             records.push_back(dkRecord);
             if (!record.removeAlbumCloudId.empty()) {
