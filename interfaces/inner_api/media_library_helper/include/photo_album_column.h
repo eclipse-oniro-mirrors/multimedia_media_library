@@ -156,6 +156,9 @@ public:
     EXPORT static void GetPortraitAlbumPredicates(const int32_t albumId, NativeRdb::RdbPredicates &predicates);
     EXPORT static void GetSourceAlbumPredicates(const int32_t albumId, NativeRdb::RdbPredicates &predicates,
         const bool hiddenState);
+    // 共享相册全量刷新 predicates
+    EXPORT static void GetShareAlbumPredicates(const int32_t albumId, NativeRdb::RdbPredicates &predicates,
+        const bool hiddenState);
     EXPORT static std::string CheckUploadPhotoAlbumColumns();
 };
 } // namespace OHOS::Media

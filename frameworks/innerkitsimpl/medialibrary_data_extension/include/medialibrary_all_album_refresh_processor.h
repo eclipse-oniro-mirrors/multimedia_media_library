@@ -27,6 +27,7 @@ enum class AlbumRefreshStatus : int32_t {
     USER,
     SOURCE,
     ANALYSIS,
+    SHARE,
 };
 
 class MediaLibraryAllAlbumRefreshProcessor {

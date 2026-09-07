@@ -194,6 +194,16 @@ vector<PhotoAssetChangeInfo> PhotoAssetChangeInfo::GetInfoFromResult(
                 PhotoAlbumColumns::ALBUM_URI_PREFIX,
                 to_string(assetChangeInfo.ownerAlbumId_));
         }
+
+        assetChangeInfo.isShared_ = get<int32_t>(ResultSetUtils::GetValFromColumn(
+            PhotoColumn::PHOTO_IS_SHARED, resultSet,
+            GetDataType(PhotoColumn::PHOTO_IS_SHARED)));
+        assetChangeInfo.shareGroup_ = get<int64_t>(ResultSetUtils::GetValFromColumn(
+            PhotoColumn::PHOTO_SHARE_GROUP, resultSet,
+            GetDataType(PhotoColumn::PHOTO_SHARE_GROUP)));
+        assetChangeInfo.photoVisibility_ = get<int32_t>(ResultSetUtils::GetValFromColumn(
+            PhotoColumn::PHOTO_VISIBILITY, resultSet,
+            GetDataType(PhotoColumn::PHOTO_VISIBILITY)));
         assetChangeInfos.push_back(assetChangeInfo);
     }
     return assetChangeInfos;

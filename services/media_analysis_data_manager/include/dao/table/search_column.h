@@ -85,6 +85,22 @@ const std::string CREATE_SEARCH_INSERT_TRIGGER =
     " WHEN (NEW.media_type = 1 OR NEW.media_type = 2)" +
     " AND NEW." + PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " <> " +
     to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) +
+    " AND NEW." + PhotoColumn::PHOTO_IS_SHARED + " = 0" +
+    " BEGIN " +
+    " INSERT INTO " + SEARCH_TOTAL_TABLE +
+    " (" + TBL_SEARCH_FILE_ID + ", " + TBL_SEARCH_DATA + ", " + TBL_SEARCH_DATE_MODIFIED + ", " +
+    TBL_SEARCH_DISPLAYNAME + ", " + TBL_SEARCH_LATITUDE + ", " + TBL_SEARCH_LONGITUDE + " )" +
+    " VALUES ( NEW.file_id, NEW.data, NEW.date_modified, NEW.display_name, NEW.latitude, NEW.longitude );" +
+    " END;";
+
+// 共享相册资产不触发智慧分析，新增带 is_shared = 0 过滤的 insert_search_trigger
+const std::string CREATE_SEARCH_INSERT_TRIGGER_WITH_SHARED_FILTER =
+    std::string("CREATE TRIGGER IF NOT EXISTS insert_search_trigger AFTER INSERT ON ") +
+    PhotoColumn::PHOTOS_TABLE + " FOR EACH ROW " +
+    " WHEN (NEW.media_type = 1 OR NEW.media_type = 2)" +
+    " AND NEW." + PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " <> " +
+    to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) +
+    " AND NEW." + PhotoColumn::PHOTO_IS_SHARED + " = 0" +
     " BEGIN " +
     " INSERT INTO " + SEARCH_TOTAL_TABLE +
     " (" + TBL_SEARCH_FILE_ID + ", " + TBL_SEARCH_DATA + ", " + TBL_SEARCH_DATE_MODIFIED + ", " +

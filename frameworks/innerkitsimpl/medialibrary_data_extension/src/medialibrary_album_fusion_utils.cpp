@@ -1691,7 +1691,8 @@ int32_t MediaLibraryAlbumFusionUtils::HandleNoOwnerData(const std::shared_ptr<Me
         return E_OK;
     }
     const std::string UPDATE_NO_OWNER_ASSET_INTO_OTHER_ALBUM = "UPDATE PHOTOS SET owner_album_id = "
-        "(SELECT album_id FROM PhotoAlbum where album_name = '其它') WHERE owner_album_id = 0";
+        "(SELECT album_id FROM PhotoAlbum where album_name = '其它') WHERE owner_album_id = 0 "
+        "AND is_shared = 0";
     int32_t ret = upgradeStore->ExecuteSql(UPDATE_NO_OWNER_ASSET_INTO_OTHER_ALBUM);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("UPDATE_NO_OWNER_ASSET_INTO_OTHER_ALBUM failed, ret = %{public}d", ret);

@@ -310,6 +310,7 @@ void PhotoAlbumColumns::GetUserAlbumPredicates(const int32_t albumId, RdbPredica
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
 }
 
@@ -327,6 +328,7 @@ void PhotoAlbumColumns::GetPortraitAlbumPredicates(const int32_t albumId, RdbPre
     clauses = { onClause };
     predicates.InnerJoin(tempTable)->On(clauses);
     SetDefaultPredicatesCondition(predicates, 0, 0, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 智慧分析相册过滤共享资产
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     predicates.Distinct();
@@ -341,6 +343,7 @@ void PhotoAlbumColumns::GetAnalysisPhotoMapPredicates(const int32_t albumId,
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 智慧分析相册过滤共享资产
     predicates.EqualTo(PhotoMap::ALBUM_ID, to_string(albumId));
 }
 
@@ -351,6 +354,7 @@ static void GetFavoritePredicates(RdbPredicates &predicates, const bool hiddenSt
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EqualTo(MediaColumn::MEDIA_IS_FAV, to_string(isFavorite));
     predicates.EndWrap();
 }
@@ -361,6 +365,7 @@ static void GetVideoPredicates(RdbPredicates &predicates, const bool hiddenState
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO));
     predicates.NotEqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
         to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)));
@@ -374,9 +379,13 @@ static void GetHiddenPredicates(RdbPredicates &predicates)
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, isHidden, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EndWrap();
 }
 
+/*
+ * 回收站相册添加 is_shared=0
+ */
 static void GetTrashPredicates(RdbPredicates &predicates)
 {
     predicates.BeginWrap();
@@ -387,6 +396,7 @@ static void GetTrashPredicates(RdbPredicates &predicates)
     predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(0));
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EndWrap();
 }
 
@@ -396,6 +406,7 @@ static void GetScreenshotPredicates(RdbPredicates &predicates, const bool hidden
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, to_string(static_cast<int32_t>(PhotoSubType::SCREENSHOT)));
     predicates.EndWrap();
 }
@@ -406,6 +417,7 @@ static void GetCameraPredicates(RdbPredicates &predicates, const bool hiddenStat
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, to_string(static_cast<int32_t>(PhotoSubType::CAMERA)));
     predicates.EndWrap();
 }
@@ -419,6 +431,7 @@ static void GetAllImagesPredicates(RdbPredicates &predicates, const bool hiddenS
     predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, to_string(hiddenState));
     predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(0));
     predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     // order need adapt PHOTO_SCHPT_MEDIA_TYPE_INDEX
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
@@ -434,6 +447,7 @@ static void GetCloudEnhancementPredicates(RdbPredicates &predicates, const bool 
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.EqualTo(PhotoColumn::PHOTO_STRONG_ASSOCIATION,
         to_string(static_cast<int32_t>(StrongAssociationType::CLOUD_ENHANCEMENT)));
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
@@ -446,8 +460,19 @@ void PhotoAlbumColumns::GetSourceAlbumPredicates(const int32_t albumId, RdbPredi
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");  // 非共享资产
     predicates.NotEqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
         to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)));
+    predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
+}
+
+void PhotoAlbumColumns::GetShareAlbumPredicates(const int32_t albumId, RdbPredicates &predicates,
+    const bool hiddenState)
+{
+    predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
+    predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
+    SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "1");  // 共享资产
     predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
 }
 

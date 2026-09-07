@@ -67,12 +67,12 @@ void OwnerAlbumInfoCalculation::UpdateOwnerRefreshInfo(int32_t albumId, const Ph
 
 bool OwnerAlbumInfoCalculation::IsOwnerAlbumAsset(const PhotoAssetChangeInfo &assetInfo, int32_t albumId)
 {
-    return assetInfo.ownerAlbumId_ == albumId && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false);
+    return assetInfo.ownerAlbumId_ == albumId && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false, 0);
 }
 
 bool OwnerAlbumInfoCalculation::IsOwnerAlbumHiddenAsset(const PhotoAssetChangeInfo &assetInfo, int32_t albumId)
 {
-    return assetInfo.ownerAlbumId_ == albumId && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true);
+    return assetInfo.ownerAlbumId_ == albumId && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true, 0);
 }
 
 bool OwnerAlbumInfoCalculation::IsOwnerAlbumVideoAsset(const PhotoAssetChangeInfo &assetInfo, int32_t albumId)

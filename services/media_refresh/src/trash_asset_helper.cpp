@@ -27,7 +27,8 @@ bool TrashAssetHelper::IsAsset(const PhotoAssetChangeInfo &assetInfo)
         assetInfo.dateTrashedMs_ > 0 &&
         assetInfo.burstCoverLevel_ == static_cast<int32_t> (BurstCoverLevelType::COVER) &&
         assetInfo.timePending_ == 0 &&
-        !assetInfo.isTemp_;
+        !assetInfo.isTemp_ &&
+        assetInfo.isShared_ == 0;
 }
 
 bool TrashAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)
@@ -43,7 +44,8 @@ bool TrashAssetHelper::IsHiddenAsset(const PhotoAssetChangeInfo &assetInfo)
         assetInfo.burstCoverLevel_ == static_cast<int32_t> (BurstCoverLevelType::COVER) &&
         assetInfo.timePending_ == 0 &&
         !assetInfo.isTemp_ &&
-        assetInfo.isHidden_;
+        assetInfo.isHidden_ &&
+        assetInfo.isShared_ == 0;
 }
 
 bool TrashAssetHelper::IsNewerAsset(const PhotoAssetChangeInfo &compareAssetInfo,
