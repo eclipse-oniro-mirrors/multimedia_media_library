@@ -132,6 +132,7 @@ struct ReverseCloneResourcePlan {
     ReverseCloneAssetResource fallbackSource;
     bool hasFallbackSource {false};
     bool inheritOrigin {false};
+    bool blockOriginInheritance {false};
     bool inheritLcdThumbnail {false};
     bool inheritThumbnail {false};
     bool cloudRestoreSatisfied {false};

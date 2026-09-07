@@ -950,6 +950,9 @@ void AddUniqueSourcePath(std::vector<std::string> &sourcePaths, const std::strin
 
 const ReverseCloneAssetResource *GetFailedAssetSourceResource(const ReverseCloneResourcePlan &plan)
 {
+    if (plan.blockOriginInheritance) {
+        return nullptr;
+    }
     if (plan.hasFallbackSource && plan.fallbackSource.HasResourcePath()) {
         return &plan.fallbackSource;
     }

@@ -64,7 +64,7 @@ void ReverseCloneResourceInheritService::MergeDuplicatePlansWithSourceFallback(
     std::unordered_map<int32_t, ReverseCloneResourcePlan> &resourcePlans) const
 {
     for (const auto &plan : duplicatePlans) {
-        CHECK_AND_CONTINUE(plan.decision == ReverseCloneResourceDecision::INHERIT);
+        CHECK_AND_CONTINUE(plan.decision == ReverseCloneResourceDecision::INHERIT || plan.blockOriginInheritance);
         int32_t fileId = plan.absorbed.fileId;
         CHECK_AND_CONTINUE(fileId > 0);
 
@@ -75,10 +75,19 @@ void ReverseCloneResourceInheritService::MergeDuplicatePlansWithSourceFallback(
             sourcePlan->second.donor.HasResourcePath()) {
             mergedPlan.fallbackSource = sourcePlan->second.donor;
             mergedPlan.hasFallbackSource = true;
-            mergedPlan.inheritOrigin = mergedPlan.inheritOrigin || sourcePlan->second.inheritOrigin;
+            mergedPlan.blockOriginInheritance =
+                mergedPlan.blockOriginInheritance || sourcePlan->second.blockOriginInheritance;
+            mergedPlan.inheritOrigin = !mergedPlan.blockOriginInheritance &&
+                (mergedPlan.inheritOrigin || sourcePlan->second.inheritOrigin);
             mergedPlan.inheritLcdThumbnail =
                 mergedPlan.inheritLcdThumbnail || sourcePlan->second.inheritLcdThumbnail;
             mergedPlan.inheritThumbnail = mergedPlan.inheritThumbnail || sourcePlan->second.inheritThumbnail;
+        }
+        if (mergedPlan.blockOriginInheritance) {
+            mergedPlan.inheritOrigin = false;
+        }
+        if (mergedPlan.HasResourceAction()) {
+            mergedPlan.decision = ReverseCloneResourceDecision::INHERIT;
         }
         resourcePlans[fileId] = mergedPlan;
     }
