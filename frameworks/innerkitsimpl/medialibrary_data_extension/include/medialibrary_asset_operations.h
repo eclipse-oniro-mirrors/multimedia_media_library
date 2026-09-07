@@ -28,7 +28,9 @@
 #include "datashare_values_bucket.h"
 #include "file_asset.h"
 #include "imedia_scanner_callback.h"
+#include "media_asset_bucket_type.h"
 #include "media_column.h"
+#include "media_uri_utils.h"
 #include "medialibrary_async_worker.h"
 #include "medialibrary_command.h"
 #include "photo_album.h"
@@ -101,7 +103,7 @@ public:
         std::shared_ptr<TransactionOperations> trans = nullptr);
     EXPORT static int32_t CreateAssetUniqueIds(int32_t type, int32_t num, int32_t &startUniqueNumber);
     EXPORT static int32_t CreateAssetPathById(int32_t fileId, int32_t mediaType, const std::string &extension,
-        std::string &filePath);
+        std::string &filePath, AssetBucketType bucketType = AssetBucketType::NORMAL);
     EXPORT static int32_t DeleteFromDisk(NativeRdb::AbsRdbPredicates &predicates, const bool isAging,
         const bool compatible = false);
     EXPORT static int32_t DeletePermanently(NativeRdb::AbsRdbPredicates &predicates, const bool isAging,

@@ -533,7 +533,8 @@ int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDat
         int32_t mediaType =
             (insertData.basicFileType == FILE_TYPE_VIDEO) ? MediaType::MEDIA_TYPE_VIDEO : MediaType::MEDIA_TYPE_IMAGE;
         std::string extension = ScannerUtils::GetFileExtension(insertData.basicFileName);
-        ret = MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, mediaType, extension, insertData.localPath);
+        ret = MediaLibraryAssetOperations::CreateAssetPathById(
+            uniqueId, mediaType, extension, insertData.localPath, this->GetBucketType());
         uniqueId++;
         if (ret != E_OK) {
             MEDIA_ERR_LOG("CreateEntry Generate File Path err %{public}d", ret);
@@ -1601,6 +1602,12 @@ int32_t CloudMediaPhotosService::PullUpdateEndWithNoFdirty(
     CloudLakeFileHandler::HandleMetaChanged(pullData.localFileId);
 #endif
     return E_OK;
+}
+
+AssetBucketType CloudMediaPhotosService::GetBucketType()
+{
+    const bool isShared = CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE);
+    return isShared ? AssetBucketType::SHARE_ALBUM : AssetBucketType::NORMAL;
 }
 }  // namespace OHOS::Media::CloudSync
 // LCOV_EXCL_STOP

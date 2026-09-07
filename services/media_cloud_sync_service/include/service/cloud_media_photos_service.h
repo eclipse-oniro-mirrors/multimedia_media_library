@@ -38,6 +38,7 @@
 #include "cloud_media_asset_retain_compare_dao.h"
 #include "cloud_media_photos_rename_service.h"
 #include "cloud_media_photos_album_hidden_service.h"
+#include "media_asset_bucket_type.h"
 // LCOV_EXCL_START
 
 namespace OHOS::Media::CloudSync {
@@ -158,6 +159,7 @@ private:
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t ProcessDuplicatePhoto(const CloudMediaPullDataDto &pullData, const DuplicatePhotoInfo &duplicateInfo,
         std::set<std::string> &refreshAlbums, std::vector<NativeRdb::ValuesBucket> &updateFiles);
+    AssetBucketType GetBucketType();
 
 private:
     CloudMediaPhotoServiceProcessor processor_;

@@ -540,7 +540,8 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
     count = offset[1] - offset[0] + 1;
 }
 
-int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
+int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum,
+    AssetBucketType bucketType)
 {
     if (fileId < 0) {
         MEDIA_ERR_LOG("input fileId [%{public}d] is invalid", fileId);
@@ -559,6 +560,10 @@ int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
         bucketNum = start + fileIdRemainder;
     } else {
         bucketNum = (start - divider) + fileIdRemainder;
+    }
+
+    if (bucketType == AssetBucketType::SHARE_ALBUM) {
+        bucketNum += SHARE_ALBUM_BUCKET_OFFSET;
     }
     return E_OK;
 }
