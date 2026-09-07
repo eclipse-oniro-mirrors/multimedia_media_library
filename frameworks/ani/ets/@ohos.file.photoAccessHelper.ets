@@ -5096,8 +5096,8 @@ export class ContextRecoveryInfo {
     native offTrashedPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
     native onPhotoAlbumChange(callback: Callback<AlbumChangeInfos>): void;
     native offPhotoAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
-    native onSharePhotoAlbumChange(callback: Callback<AlbumChangeInfos>): void;
-    native offSharePhotoAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    native onShareAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    native offShareAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
     native onHiddenAlbumChange(callback: Callback<AlbumChangeInfos>): void;
     native offHiddenAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
     native onTrashedAlbumChange(callback: Callback<AlbumChangeInfos>): void;

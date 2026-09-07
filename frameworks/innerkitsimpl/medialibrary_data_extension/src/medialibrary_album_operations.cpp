@@ -4659,8 +4659,7 @@ int32_t MediaLibraryAlbumOperations::SetShareAlbumName(const int32_t &albumId, c
     return E_OK;
 }
 
-static int32_t DeleteShareLocalPhotos(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
-    const std::vector<int32_t> &albumIds)
+static int32_t DeleteShareLocalPhotos(const std::vector<int32_t> &albumIds)
 {
     NativeRdb::RdbPredicates localPhotoPredicates(PhotoColumn::PHOTOS_TABLE);
     std::vector<string> albumIdsString;
@@ -4677,8 +4676,7 @@ static int32_t DeleteShareLocalPhotos(const std::shared_ptr<MediaLibraryRdbStore
     return E_OK;
 }
 
-static int32_t MarkShareCloudPhotosDirty(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
-    const std::vector<int32_t> &albumIds)
+static int32_t MarkShareCloudPhotosDirty(const std::vector<int32_t> &albumIds)
 {
     NativeRdb::RdbPredicates cloudPhotoPredicates(PhotoColumn::PHOTOS_TABLE);
     std::vector<string> albumIdsString;
@@ -4691,10 +4689,15 @@ static int32_t MarkShareCloudPhotosDirty(const std::shared_ptr<MediaLibraryRdbSt
     cloudPhotoValues.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_DELETED));
     cloudPhotoValues.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
     cloudPhotoValues.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+    AccurateRefresh::AssetAccurateRefresh assetRefresh;
     int32_t markedCloudPhotoRows = 0;
-    int32_t cloudRet = rdbStore->Update(markedCloudPhotoRows, cloudPhotoValues, cloudPhotoPredicates);
+    int32_t cloudRet = assetRefresh.Update(markedCloudPhotoRows, cloudPhotoValues, cloudPhotoPredicates);
     CHECK_AND_RETURN_RET_LOG(cloudRet == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "mark cloud photo assets dirty failed, ret=%{public}d", cloudRet);
+    if (markedCloudPhotoRows > 0) {
+        assetRefresh.RefreshAlbum();
+        assetRefresh.Notify();
+    }
     CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud photo assets dirty for %{public}zu albums",
         markedCloudPhotoRows, albumIds.size());
@@ -4733,9 +4736,9 @@ int32_t MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(const std::string &ow
 
     int32_t ret = CheckShareAlbumAndOwner(rdbStore, owner, albumIds);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "check share album and owner failed");
-    ret = DeleteShareLocalPhotos(rdbStore, albumIds);
+    ret = DeleteShareLocalPhotos(albumIds);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "delete share local photos failed");
-    ret = MarkShareCloudPhotosDirty(rdbStore, albumIds);
+    ret = MarkShareCloudPhotosDirty(albumIds);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "mark share cloud photos dirty failed");
     shared_ptr<AlbumAccurateRefresh> albumRefresh =
         make_shared<AlbumAccurateRefresh>(AccurateRefresh::DELETE_PHOTO_ALBUMS_BUSSINESS_NAME);
@@ -4793,6 +4796,13 @@ int32_t MediaLibraryAlbumOperations::ValidateAddShareMember(const std::shared_pt
     return E_OK;
 }
 
+static void NotifyShareMemberChange(const std::vector<int32_t> &albumIds)
+{
+    CHECK_AND_RETURN_LOG(!albumIds.empty(), "albumIds is empty");
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
+    albumRefresh.NotifyShareAlbumUpdateForMemberChange(albumIds);
+}
+
 int32_t MediaLibraryAlbumOperations::AddShareMember(int32_t albumId, const std::string &owner,
     const std::string &member, int32_t status)
 {
@@ -4816,6 +4826,7 @@ int32_t MediaLibraryAlbumOperations::AddShareMember(int32_t albumId, const std::
     int64_t rowId = 0;
     int32_t ret = rdbStore->Insert(rowId, ShareMemberColumn::TABLE_NAME, values);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "insert failed, ret=%{public}d", ret);
+    NotifyShareMemberChange({ albumId });
     MEDIA_INFO_LOG("AddShareMember success, albumId=%{public}d, member=%{public}s, status=%{public}d", albumId,
         MediaFileUtils::DesensitizeName(member).c_str(), status);
     return E_OK;
@@ -4914,6 +4925,8 @@ static int32_t DoUpdateShareMemberStatus(const std::shared_ptr<MediaLibraryRdbSt
     int32_t ret = rdbStore->Update(changedRows, values, predicates);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && changedRows > 0, E_RDB,
         "update failed, ret=%{public}d, changedRows=%{public}d", ret, changedRows);
+
+    NotifyShareMemberChange({ albumId });
     return E_OK;
 }
 
@@ -5006,6 +5019,7 @@ int32_t MediaLibraryAlbumOperations::DeleteShareMember(int32_t albumId, const st
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && deletedRows > 0, E_RDB,
         "delete member failed, ret=%{public}d, deletedRows=%{public}d", ret, deletedRows);
 
+    NotifyShareMemberChange({ albumId });
     MEDIA_INFO_LOG("DeleteShareMember success, albumId=%{public}d, member=%{public}s", albumId,
         MediaFileUtils::DesensitizeName(member).c_str());
     return E_OK;
@@ -5087,6 +5101,7 @@ int32_t MediaLibraryAlbumOperations::DeleteMemberShareAlbum(const std::string &o
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "delete member info failed, ret=%{public}d", ret);
     MEDIA_INFO_LOG("DeleteMemberShareAlbum: cleared %{public}d member records for %{public}zu albums",
         memberDeletedRows, albumIds.size());
+    CHECK_AND_EXECUTE(memberDeletedRows <= 0, NotifyShareMemberChange(albumIds));
 
     // 2. 清理 photo 表内所有相关相册的资产（批量 IN，直接永久删除，不进回收站）
     NativeRdb::RdbPredicates photoPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -5096,11 +5111,15 @@ int32_t MediaLibraryAlbumOperations::DeleteMemberShareAlbum(const std::string &o
         deletedPhotoRows, albumIds.size());
 
     // 3. 清理 photoalbum 表中所有相关相册记录（批量 IN，直接物理删除，不进回收站）
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
     NativeRdb::RdbPredicates albumPredicates(PhotoAlbumColumns::TABLE);
     albumPredicates.In(PhotoAlbumColumns::ALBUM_ID, valueObjs);
     int32_t albumDeletedRows = 0;
-    ret = rdbStore->Delete(albumDeletedRows, albumPredicates);
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "delete album records failed, ret=%{public}d", ret);
+    ret = albumRefresh.Delete(albumDeletedRows, albumPredicates);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_RDB, "delete album records failed, ret=%{public}d", ret);
+    if (albumDeletedRows > 0) {
+        albumRefresh.Notify();
+    }
     MEDIA_INFO_LOG("DeleteMemberShareAlbum: deleted %{public}d album records for %{public}zu albums",
         albumDeletedRows, albumIds.size());
 
