@@ -23,7 +23,6 @@
 #include "medialibrary_errno.h"
 #include "media_assets_delete_service.h"
 #include "clone_to_album_service.h"
-#include "media_share_assets_service.h"
 
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -190,7 +189,6 @@ public:
 private:
     Common::MediaAssetsDeleteService mediaAssetsDeleteService_;
     CloneToAlbumService cloneToAlbumService_;
-    MediaShareAssetsService mediaShareAssetsService_;
 };
 } // namespace OHOS::Media
 #endif  // OHOS_MEDIA_ASSETS_CONTROLLER_SERVICE_H

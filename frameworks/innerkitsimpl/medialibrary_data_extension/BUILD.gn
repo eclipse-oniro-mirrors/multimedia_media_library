@@ -666,6 +666,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/clone_to_album_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/clone_to_album_callback_proxy.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/utils/media_assets_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/utils/media_share_assets_utils.cpp",
   ]
 
   media_assets_manager_vo_source = [

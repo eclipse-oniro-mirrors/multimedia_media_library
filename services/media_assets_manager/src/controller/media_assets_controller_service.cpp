@@ -2284,7 +2284,7 @@ int32_t MediaAssetsControllerService::RetainCloudMediaAsset(MessageParcel &data,
         cloudMediaRetainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
         ret = MediaAssetsService::GetInstance().RetainCloudMediaAsset(cloudMediaRetainType);
     } else if (cloudMediaRetainType == CloudMediaRetainType::SHARE_RETAIN_FORCE) {
-        ret = this->mediaShareAssetsService_.RemoveShareAlbumAndAsset();
+        ret = MediaShareAssetsService::GetInstance().RemoveShareAlbumAndAsset();
     }  else {
         ret = E_INVALID_VALUES;
         MEDIA_ERR_LOG("RetainCloudMediaAsset error, err type: %{public}d", reqBody.cloudMediaRetainType);
