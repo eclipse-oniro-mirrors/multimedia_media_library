@@ -1048,8 +1048,9 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_QueryPercentOnTa
     int taskCount = QueryBatchDownloadTasksCount();
     EXPECT_EQ(taskCount, 10);
     std::string fileId = "4";
+    int32_t isShared = 0;
     int32_t percent = 0;
-    int32_t ret = BackgroundCloudBatchSelectedFileProcessor::QueryPercentOnTaskStart(fileId, percent);
+    int32_t ret = BackgroundCloudBatchSelectedFileProcessor::QueryPercentOnTaskStart(fileId, percent, isShared);
     EXPECT_EQ(ret, 0);
     MEDIA_INFO_LOG("Bcbsfpt_TriggerPauseTask_Test_001 End");
 }

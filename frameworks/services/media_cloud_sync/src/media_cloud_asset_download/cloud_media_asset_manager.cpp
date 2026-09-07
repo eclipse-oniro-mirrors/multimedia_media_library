@@ -1055,6 +1055,7 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
         values.PutInt(DownloadResourcesColumn::MEDIA_COVER_LEVEL, po.coverLevel.value_or(1));
         values.PutInt(DownloadResourcesColumn::MEDIA_TASK_SEQ, taskSeq);
         values.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, po.networkPolicy.value_or(0));
+        values.PutInt(DownloadResourcesColumn::MEDIA_IS_SHARED, po.isShared.value_or(0));
         batchValues.push_back(values);
     }
     MEDIA_INFO_LOG("BatchSelectFileDownload Insert Bucket Size:%{public}zu", batchValues.size());
@@ -1160,7 +1161,7 @@ int32_t CloudMediaAssetManager::PauseBatchDownloadCloudResources(PauseBatchDownl
 void CloudMediaAssetManager::CleanDownloadTasksTable()
 {
     BackgroundCloudBatchSelectedFileProcessor::TriggerStopBatchDownloadProcessor(true);
-    this->batchDownloadResourcesTaskDao_.DeleteAllDownloadResourcesInfo();
+    this->batchDownloadResourcesTaskDao_.DeleteAllDownloadResourcesInfo(CloudSync::SceneType::NORMAL);
     BackgroundCloudBatchSelectedFileProcessor::NotifyRefreshProgressInfo();
 }
 #endif

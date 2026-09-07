@@ -100,6 +100,7 @@ int32_t BatchDownloadResourcesTaskDao::QueryValidBatchDownloadPoFromPhotos(std::
         taskPo.autoPauseReason = 0; // default
         taskPo.coverLevel = GetInt32Val(PhotoColumn::PHOTO_BURST_COVER_LEVEL, resultSet); // default
         taskPo.networkPolicy = 0; // default
+        taskPo.isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
         downloadResourcesTasks.emplace_back(taskPo);
     }
     resultSet->Close();
@@ -471,11 +472,12 @@ int32_t BatchDownloadResourcesTaskDao::DeleteCancelStateDownloadResources(const 
     return NativeRdb::E_OK;
 }
 
-int32_t BatchDownloadResourcesTaskDao::DeleteAllDownloadResourcesInfo()
+int32_t BatchDownloadResourcesTaskDao::DeleteAllDownloadResourcesInfo(CloudSync::SceneType sceneType)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "DeleteDownloadResources Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(DownloadResourcesColumn::TABLE);
+    predicates.EqualTo(DownloadResourcesColumn::MEDIA_IS_SHARED, static_cast<int32_t>(sceneType));
     int32_t deletedRows = -1;
     int32_t ret = rdbStore->Delete(deletedRows, predicates);
     MEDIA_INFO_LOG("BatchSelectFileDownload Cancel All ret: %{public}d, changedRows %{public}d",
@@ -691,6 +693,7 @@ void BatchDownloadResourcesTaskDao::CloudMediaBatchDownloadResourcesStatusToTask
         taskPo.coverLevel = GetInt32Val(DownloadResourcesColumn::MEDIA_COVER_LEVEL, resultSet);
         taskPo.taskSeq = GetInt32Val(DownloadResourcesColumn::MEDIA_TASK_SEQ, resultSet);
         taskPo.networkPolicy = GetInt32Val(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, resultSet);
+        taskPo.isShared = GetInt32Val(DownloadResourcesColumn::MEDIA_IS_SHARED, resultSet);
         downloadResourcesTasks.emplace_back(taskPo);
     }
     resultSet->Close();

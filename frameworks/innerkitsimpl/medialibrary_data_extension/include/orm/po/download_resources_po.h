@@ -35,6 +35,7 @@ public:
     std::optional<int32_t> coverLevel;
     std::optional<int32_t> taskSeq;
     std::optional<int32_t> networkPolicy;
+    std::optional<int32_t> isShared;
 
 public:
     std::string ToString()
@@ -51,7 +52,8 @@ public:
            << "\"coverLevel\": " << coverLevel.value_or(1) << ","
            << "\"percent\": " << percent.value_or(0) << ","
            << "\"taskSeq\": " << taskSeq.value_or(0) << ","
-           << "\"networkPolicy\": " << networkPolicy.value_or(0) << "}";
+           << "\"networkPolicy\": " << networkPolicy.value_or(0) << ", "
+           << "\"isShared\": " << isShared.value_or(0) << "}";
         return ss.str();
     }
 };

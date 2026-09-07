@@ -17,10 +17,12 @@
 #define UPGRADE_OTHER_TABLE_SQLS_H
 // table name need to be added here
 #define TABLE_ANALYSIS_ALBUM "AnalysisAlbum"
+#define TABLE_DOWNLOAD_RESOURCES_TASK_RECORDS "download_resources_task_records"
 // column name should be added here
 #define COLUMN_EXTRA_INFO "extra_info"
 #define COLUMN_FRIEND_ID "friend_id"
 #define COLUMN_CONTACT_INFO "contact_info"
+#define COLUMN_IS_SHARED "is_shared"
 
 // sqls only execute in upgrade progress should be added here
 
