@@ -23,6 +23,7 @@
 #include "photo_album_dto.h"
 #include "cloud_media_album_dao.h"
 #include "cloud_media_common_dao.h"
+#include "cloud_media_share_album_member_service.h"
 #include "media_operate_result.h"
 #include "media_share_assets_service.h"
 
@@ -44,10 +45,12 @@ private:
         std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
     int32_t PullDelete(const PhotoAlbumDto &record, ChangeType &changeType,
         std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
+    int32_t PullHandleShareAlbumMembers(PhotoAlbumDto &record);
 
 private:
     CloudMediaCommonDao commonDao_;
     CloudMediaAlbumDao albumDao_;
+    CloudMediaShareAlbumMemberService shareAlbumMemberService_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_SHARE_ALBUM_SERVICE_H

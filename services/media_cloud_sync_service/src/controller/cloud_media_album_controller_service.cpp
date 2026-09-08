@@ -66,6 +66,7 @@ int32_t CloudMediaAlbumControllerService::OnFetchRecords(MessageParcel &data, Me
         albumDto.sceneId = album.sceneId;
         albumDto.shareType = album.shareType;
         albumDto.shareAlbumOwner = album.shareAlbumOwner;
+        this->processor_.ConvertShareAlbumDetailFromVoToDto(album.shareAlbumDetailVoOp, albumDto.shareAlbumDetailDtoOp);
         albumDtoList.emplace_back(albumDto);
         MEDIA_DEBUG_LOG("OnFetchRecords albumDto: %{public}s", albumDto.ToString().c_str());
         MEDIA_DEBUG_LOG("OnFetchRecords album: %{public}s", album.ToString().c_str());

@@ -55,7 +55,37 @@ std::string PhotoAlbumDto::ToString() const
             ss << ",";
         }
     }
-    ss << "]}";
+    ss << "],";
+    if (this->shareAlbumDetailDtoOp.has_value()) {
+        ss << "\"shareAlbumDetail\": " << this->shareAlbumDetailDtoOp.value().ToString() << ",";
+    }
+    ss << "}";
+    return ss.str();
+}
+
+std::string ShareMemberDataDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"userId\": \"" << userId << "\", "
+       << "\"status\": \"" << status << "\", "
+       << "}";
+    return ss.str();
+}
+
+std::string ShareAlbumDetailDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"shareMemberDataList\": [";
+    for (size_t i = 0; i < shareMemberDataList.size(); i++) {
+        ss << shareMemberDataList[i].ToString();
+        if (i != shareMemberDataList.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "]"
+       << "}";
     return ss.str();
 }
 }  // namespace OHOS::Media::CloudSync

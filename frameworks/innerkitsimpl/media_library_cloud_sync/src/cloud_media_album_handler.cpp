@@ -68,6 +68,14 @@ std::unordered_map<std::string, std::string> &CloudMediaAlbumHandler::GetHeader(
     return header_;
 }
 
+static void InitUniqueIdData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+{
+    auto albumsUniqueId = albumData.GetUniqueId();
+    if (albumsUniqueId.has_value()) {
+        data.uniqueId = albumsUniqueId.value();
+    }
+}
+
 static void InitSceneAndShareData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
 {
     auto sceneIdOpt = albumData.GetSceneId();
@@ -87,6 +95,14 @@ static void InitShareAlbumOwnerAndType(MDKRecordAlbumData &albumData, OnFetchRec
     bool isShareType = albumTypeOp.value_or(0) == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM);
     CHECK_AND_RETURN(isShareType);
     data.shareType = static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM);
+}
+
+static void InitShareAlbumDetailVo(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+{
+    data.InitShareAlbumDetailVo(albumData.GetType().value_or(0));
+    CHECK_AND_RETURN(data.shareAlbumDetailVoOp.has_value());
+    std::vector<ShareMemberDataVo> &shareMemberDatalList = data.shareAlbumDetailVoOp.value().shareMemberData;
+    albumData.GetShareMembers(shareMemberDatalList);
 }
 
 static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
@@ -133,12 +149,10 @@ static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumR
     if (albumsCoverCloudId.has_value()) {
         data.coverCloudId = albumsCoverCloudId.value();
     }
-    auto albumsUniqueId = albumData.GetUniqueId();
-    if (albumsUniqueId.has_value()) {
-        data.uniqueId = albumsUniqueId.value();
-    }
+    InitUniqueIdData(albumData, data);
     InitSceneAndShareData(albumData, data);
     InitShareAlbumOwnerAndType(albumData, data);
+    InitShareAlbumDetailVo(albumData, data);
 }
 
 /**
