@@ -439,6 +439,7 @@ struct PhotoAssetInfoAni {
     int32_t height;
     std::string uri;
     int32_t fileId;
+    std::string shootingModeTag;
 };
 
 struct MediaLibraryAsyncContext : public AniError {

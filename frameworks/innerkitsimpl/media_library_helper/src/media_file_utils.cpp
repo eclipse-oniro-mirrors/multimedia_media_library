@@ -955,6 +955,11 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
         MEDIA_ERR_LOG("Failed to obtain the canonical path for destination path:%{public}s", srcFile.c_str());
         return false;
     }
+    if (info.quickCopy) {
+        bool ret = CopyFileSafe(absFilePath, normalizedDstPath);
+        CHECK_AND_EXECUTE(ret, DeleteFile(normalizedDstPath));
+        return ret;
+    }
     UniqueFd srcFd(open(absFilePath.c_str(), O_RDONLY));
     if (srcFd.Get() == E_ERR) {
         MEDIA_ERR_LOG("Open failed for source file, errno: %{public}d", errno);
