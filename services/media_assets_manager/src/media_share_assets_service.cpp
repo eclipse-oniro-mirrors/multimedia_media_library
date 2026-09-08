@@ -185,6 +185,7 @@ void MediaShareAssetsService::CleanShareAssetsDownloadTasksTable()
     this->batchDownloadResourcesTaskDao_.DeleteAllDownloadResourcesInfo(CloudSync::SceneType::SHARE);
     BackgroundCloudBatchSelectedFileProcessor::NotifyRefreshProgressInfo();
 #endif
+}
 
 int32_t MediaShareAssetsService::RemoveShareAssetsByAlbumIds(const std::vector<int32_t> &albumIds)
 {
