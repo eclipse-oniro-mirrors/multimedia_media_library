@@ -97,7 +97,8 @@ void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
        << "\"shareOwnerInfo\": " << shareOwnerInfo.value_or("") << ", "
        << "\"shareAlbumOwner\": " << shareAlbumOwner.value_or("") << ", "
        << "\"shareDateDay\": " << shareDateDay.value_or(0) << ", "
-       << "\"shareGroup\": " << shareGroup.value_or(0) << ", ";
+       << "\"shareGroup\": " << shareGroup.value_or(0) << ", "
+       << "\"musicMasterMode\": " << musicMasterMode.value_or(0) << ", ";
 }
 
 void PhotosPo::GetCloudInfo(std::stringstream &ss) const

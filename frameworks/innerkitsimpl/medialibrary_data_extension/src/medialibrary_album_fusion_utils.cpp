@@ -783,6 +783,9 @@ static void HandleManageFile(const MediaAssetCopyInfo &copyInfo,
         int64_t attachmentSize = 0;
         GetLongValueFromResultSet(resultSet, PhotoColumn::ATTACHMENT_SIZE, attachmentSize);
         values.PutLong(PhotoColumn::ATTACHMENT_SIZE, attachmentSize);
+        int32_t musicMasterMode = 0;
+        GetIntValueFromResultSet(resultSet, PhotoColumn::MUSIC_MASTER_MODE, musicMasterMode);
+        values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, musicMasterMode);
     }
 }
 

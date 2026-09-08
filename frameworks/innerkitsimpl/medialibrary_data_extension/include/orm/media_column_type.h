@@ -107,6 +107,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, DataType::INT},
     {PhotoColumn::PHOTO_SOURCE_PATH, DataType::STRING},
     {PhotoColumn::SUPPORTED_WATERMARK_TYPE, DataType::INT},
+    {PhotoColumn::MUSIC_MASTER_MODE, DataType::INT},
     {PhotoColumn::PHOTO_METADATA_FLAGS, DataType::INT},
     {PhotoColumn::PHOTO_CHECK_FLAG, DataType::INT},
     {PhotoColumn::STAGE_VIDEO_TASK_STATUS, DataType::INT},

@@ -224,6 +224,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_IS_RECTIFICATION_COVER] = MDKRecordField(upLoadRecord.isRectificationCover);
     map[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = MDKRecordField(upLoadRecord.movingPhotoEffectMode);
     map[PhotoColumn::SUPPORTED_WATERMARK_TYPE] = MDKRecordField(upLoadRecord.supportedWatermarkType);
+    map[PhotoColumn::MUSIC_MASTER_MODE] = MDKRecordField(upLoadRecord.musicMasterMode);
     map[PhotoColumn::IS_STYLE_PHOTO] = MDKRecordField(upLoadRecord.isStylePhoto);
     map[PhotoColumn::PHOTO_STRONG_ASSOCIATION] = MDKRecordField(upLoadRecord.strongAssociation);
     map[MediaColumn::MEDIA_ID] = MDKRecordField(upLoadRecord.fileId);
@@ -1004,6 +1005,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.isRectificationCover = data.GetIsRectificationCover().value_or(0);
     onFetchPhotoVo.exifRotate = data.GetExifRotate().value_or(0);
     onFetchPhotoVo.supportedWatermarkType = data.GetSupportedWatermarkType().value_or(0);
+    onFetchPhotoVo.musicMasterMode = data.GetMusicMasterMode().value_or(0);
     onFetchPhotoVo.strongAssociation = data.GetStrongAssociation().value_or(0);
     // no need to fetch file_source_type and storage_path from cloud.
     onFetchPhotoVo.uniqueId = data.GetUniqueId().value_or("");

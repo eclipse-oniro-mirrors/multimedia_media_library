@@ -74,6 +74,7 @@ public:
     std::optional<std::string> originalAssetCloudId;  // PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID;
     std::optional<std::string> sourcePath;            // PhotoColumn::PHOTO_SOURCE_PATH;
     std::optional<int32_t> supportedWatermarkType;    // PhotoColumn::SUPPORTED_WATERMARK_TYPE;
+    std::optional<int32_t> musicMasterMode;           // PhotoColumn::MUSIC_MASTER_MODE;
     std::optional<int32_t> isStylePhoto;              // PhotoColumn::IS_STYLE_PHOTO;
     std::optional<int32_t> strongAssociation;         // PhotoColumn::PHOTO_STRONG_ASSOCIATION;
     std::optional<int32_t> dirty;                     // PhotoColumn::PHOTO_DIRTY

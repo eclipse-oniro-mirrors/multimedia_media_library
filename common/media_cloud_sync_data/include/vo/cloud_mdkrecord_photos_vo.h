@@ -93,6 +93,7 @@ public:
     int64_t shareDateDay;
     int64_t shareGroup;
     std::string shareAlbumOwner;
+    int32_t musicMasterMode;
 
     // Photo Album
     std::string albumCloudId;

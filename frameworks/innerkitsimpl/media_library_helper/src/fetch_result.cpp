@@ -125,6 +125,7 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, TYPE_INT64},
         {PhotoColumn::PHOTO_TRANSCODE_TIME, TYPE_INT64},
         { PhotoColumn::ATTACHMENT_SIZE, TYPE_INT64 },
+        { PhotoColumn::MUSIC_MASTER_MODE, TYPE_INT32 },
         { PhotoColumn::PHOTO_THUMB_STATUS, TYPE_INT32},
         { PhotoColumn::PHOTO_LCD_FILE_SIZE, TYPE_INT32},
         { PhotoColumn::COMPRESSION_QUALITY, TYPE_INT32},

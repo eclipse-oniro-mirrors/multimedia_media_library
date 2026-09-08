@@ -1098,6 +1098,17 @@ void FileAsset::SetAttachmentSize(int64_t attachmentSize)
     member_[PhotoColumn::ATTACHMENT_SIZE] = attachmentSize;
 }
 
+int32_t FileAsset::GetMusicMasterMode() const
+{
+    return GetInt32Member(PhotoColumn::MUSIC_MASTER_MODE);
+}
+
+void FileAsset::SetMusicMasterMode(int32_t mode)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::MUSIC_MASTER_MODE] = mode;
+}
+
 void FileAsset::SetThumbStatus(int32_t thumbStatus)
 {
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);

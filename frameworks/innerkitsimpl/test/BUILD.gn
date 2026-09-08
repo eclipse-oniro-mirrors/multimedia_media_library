@@ -58,6 +58,7 @@ group("test") {
     "unittest/medialibrary_smartalbum_operations_test:unittest",
     "unittest/medialibrary_story_test:unittest",
     "unittest/medialibrary_update_edit_data_size_test:unittest",
+    "unittest/medialibrary_music_master_mode_test:unittest",
     "unittest/medialibrary_uri_sensitive_operations_test:unittest",
     "unittest/medialibrary_uri_test:unittest",
     "unittest/medialibrary_vision_test:unittest",

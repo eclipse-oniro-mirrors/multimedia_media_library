@@ -845,6 +845,16 @@ int32_t Metadata::GetFileSourceType() const
     return fileSourceType_;
 }
 
+void Metadata::SetMusicMasterMode(const VariantData &musicMasterMode)
+{
+    musicMasterMode_ = std::get<int32_t>(musicMasterMode);
+}
+
+int32_t Metadata::GetMusicMasterMode() const
+{
+    return musicMasterMode_;
+}
+
 void Metadata::SetLocalAssetSize(const VariantData &localAssetSize)
 {
     localAssetSize_ = std::get<int64_t>(localAssetSize);

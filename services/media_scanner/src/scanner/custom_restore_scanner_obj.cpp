@@ -218,6 +218,7 @@ int32_t CustomRestoreScannerObj::ConvertToValues()
         for (const auto &field : directFields) {
             item.values.Put(field, item.metadata->GetValue(field));
         }
+        item.values.Put(PhotoColumn::MUSIC_MASTER_MODE, item.metadata->GetMusicMasterMode());
     }
     MEDIA_INFO_LOG("ConvertToValues done");
     return E_OK;

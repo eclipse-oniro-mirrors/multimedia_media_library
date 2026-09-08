@@ -106,6 +106,8 @@ public:
     static int32_t HandleLivePhoto4dStatus(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
     static int32_t CompensateLivePhoto4DPair(const CloudMediaPullDataDto &data,
         NativeRdb::ValuesBucket &values);
+    static int32_t HandleMusicMasterModeStatus(
+        const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
 
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);

@@ -469,6 +469,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::PHOTO_RISK_STATUS,
         PhotoColumn::ATTACHMENT_SIZE,
+        PhotoColumn::MUSIC_MASTER_MODE,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
     };

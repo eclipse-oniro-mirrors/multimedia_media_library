@@ -173,6 +173,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.exifRotate = record.exifRotate.value_or(0);
     photosVo.movingPhotoEffectMode = record.movingPhotoEffectMode.value_or(0);
     photosVo.supportedWatermarkType = record.supportedWatermarkType.value_or(0);
+    photosVo.musicMasterMode = record.musicMasterMode.value_or(0);
     photosVo.isStylePhoto = record.isStylePhoto.value_or(0);
     photosVo.strongAssociation = record.strongAssociation.value_or(0);
     photosVo.fileId = record.fileId.value_or(0);
@@ -287,6 +288,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.exifRotate = photosVo.exifRotate;
     data.attributesEditDataCamera = photosVo.editDataCamera;
     data.attributesSupportedWatermarkType = photosVo.supportedWatermarkType;
+    data.attributesMusicMasterMode = photosVo.musicMasterMode;
     data.attributesIsStylePhoto = photosVo.isStylePhoto;
     data.attributesStrongAssociation = photosVo.strongAssociation;
     data.attributesUniqueId = photosVo.uniqueId;

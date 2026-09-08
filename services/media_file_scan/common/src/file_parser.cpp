@@ -264,6 +264,7 @@ void FileParser::ParseFileInfo()
     fileInfo_.hdrMode = data->GetHdrMode();
     fileInfo_.videoMode = data->GetVideoMode();
     fileInfo_.coverPosition = data->GetCoverPosition();
+    fileInfo_.musicMasterMode = data->GetMusicMasterMode();
 }
 
 bool FileParser::HasChangePart(const FileParser::PhotosRowData &rowData)
@@ -604,6 +605,7 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
 
     values.Put(PhotoColumn::LOCAL_ASSET_SIZE, fileInfo_.localAssetSize);
     values.Put(PhotoColumn::PHOTO_COVER_POSITION, fileInfo_.coverPosition);
+    values.Put(PhotoColumn::MUSIC_MASTER_MODE, fileInfo_.musicMasterMode);
 
     SetAssetAlbumValues(values);
     SetAssetLocationValues(values);

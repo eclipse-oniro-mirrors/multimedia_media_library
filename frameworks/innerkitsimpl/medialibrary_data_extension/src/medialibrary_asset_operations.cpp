@@ -218,6 +218,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::COMPRESSION_QUALITY, MEMBER_TYPE_INT32 },
     { PhotoColumn::C2PA_CONFIG_INFO, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_IS_SHARED, MEMBER_TYPE_INT32 },
+    { PhotoColumn::MUSIC_MASTER_MODE, MEMBER_TYPE_INT32 },
 };
 
 const std::unordered_map<std::string, int>& GetFileAssetMemberMap()

@@ -253,6 +253,7 @@ public:
             {PhotoColumn::PHOTO_THUMB_SIZE, {TYPE_STRING, "thmSize"}},
             {PhotoColumn::PHOTO_OWNER_ALBUM_ID, {TYPE_INT32, "ownerAlbumId"}},
             {PhotoColumn::ATTACHMENT_SIZE, {TYPE_INT64, "attachmentSize"}},
+            {PhotoColumn::MUSIC_MASTER_MODE, {TYPE_INT32, "musicMasterMode"}},
             {CONST_MEDIA_DATA_DB_COUNT, {TYPE_INT32, "count"}},
             {PhotoAlbumColumns::ALBUM_ID, {TYPE_INT32, "albumId"}},
             {PhotoAlbumColumns::ALBUM_TYPE, {TYPE_INT32, "albumType"}},

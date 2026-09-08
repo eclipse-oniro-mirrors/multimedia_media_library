@@ -194,6 +194,7 @@ public:
     static const std::string MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR EXPORT;
     static const std::string LOCAL_ASSET_SIZE EXPORT;
     static const std::string ATTACHMENT_SIZE EXPORT;
+    static const std::string MUSIC_MASTER_MODE EXPORT;
     static const std::string PHOTO_FILE_HIDDEN EXPORT;
     static const std::string PHOTO_NEED_THUMBNAIL EXPORT;
     static const std::string PHOTO_LCD_FILE_SIZE EXPORT;
