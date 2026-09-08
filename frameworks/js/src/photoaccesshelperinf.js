@@ -1204,7 +1204,8 @@ function checkCarDeviceUnsupportedOptions(args) {
   if (deviceinfo.deviceType !== 'car') {
     return;
   } 
-  console.log(`checkCarDeviceUnsupportedOptions: ${option.isSearchSupported}, ${option.isEditSupported}, ${option.recommendationOptions}`)
+  console.log(`checkCarDeviceUnsupportedOptions: ${
+    option.isSearchSupported}, ${option.isEditSupported}, ${option.recommendationOptions}`);
   if (option.isSearchSupported !== undefined) {
     console.error('[picker] config: isSearchSupported not supported on car device');
     throw new BusinessError(FEATURE_NOT_SUPPORTED_MESSAGE, FEATURE_NOT_SUPPORTED_CODE);
@@ -1335,7 +1336,7 @@ async function photoPickerSelect(...args) {
     throw checkArgsResult;
   }
   // car 不支持搜索、编辑、推荐功能
-  checkCarDeviceUnsupportedOptions(args)
+  checkCarDeviceUnsupportedOptions(args);
   const config = parsePhotoPickerSelectOption(args);
   console.log('[picker] config: ' + encrypt(JSON.stringify(config)));
   if (config.parameters.userId && config.parameters.userId > 0) {
