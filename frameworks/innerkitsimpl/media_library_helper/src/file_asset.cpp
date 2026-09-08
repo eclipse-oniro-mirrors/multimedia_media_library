@@ -621,7 +621,7 @@ const std::string &FileAsset::GetShootingModeTag() const
 void FileAsset::SetShootingModeTag(const string &shootingModeTag)
 {
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
-    member_[PhotoColumn::PHOTO_SHOOTING_MODE_TAG] = shootingMode;
+    member_[PhotoColumn::PHOTO_SHOOTING_MODE_TAG] = shootingModeTag;
 }
 
 const std::string &FileAsset::GetFilePath() const
