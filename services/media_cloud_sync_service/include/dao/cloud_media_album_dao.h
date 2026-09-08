@@ -85,6 +85,7 @@ public:
     void FillAlbumBaseValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
     int32_t GetPhotoAlbum(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfoOp);
     int32_t GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count);
+    int32_t GetShareAlbumsIsSdirty(std::vector<int32_t> &albumIds);
 
 private:
     int32_t InsertAlbums(const PhotoAlbumDto &record,

@@ -34,8 +34,13 @@ public:
 
     // 删除共享场景下的空相册
     int32_t DeleteShareAlbums();
+    // 删除指定的共享相册
+    int32_t DeleteShareAlbumsByAlbumId(int32_t albumId);
     // 查询待更新标记的共享资产, 结果通过 updateFileIds 返回
     bool HasShareAssetToMarkDeleted(std::vector<std::string> &updateFileIds, const std::string &lastFileId);
+    // 查询指定共享相册下待更新标记的共享资产, 结果通过 updateFileIds 返回
+    bool HasShareAssetToMarkDeletedByAlbumId(int32_t albumId, std::vector<std::string> &updateFileIds,
+        const std::string &lastFileId);
     // 批量标记共享资产为待删除
     int32_t MarkDeletedAndClearCloudInfo(const std::vector<std::string> &updateFileIds);
     // 批量删除已清理的共享资产数据库记录
@@ -45,6 +50,10 @@ public:
 private:
     const std::string SQL_SHARE_ALBUM_QUERY_ALL = "SELECT * FROM PhotoAlbum WHERE album_type = 8192;";
     const std::string SQL_SHARE_ALBUM_DELETE_ALL = "DELETE FROM PhotoAlbum WHERE album_type = 8192;";
+    const std::string SQL_SHARE_ALBUM_QUERY_BY_ALBUM_ID =
+        "SELECT * FROM PhotoAlbum WHERE album_type = 8192 AND album_id = ?;";
+    const std::string SQL_SHARE_ALBUM_DELETE_BY_ALBUM_ID =
+        "DELETE FROM PhotoAlbum WHERE album_type = 8192 AND album_id = ?;";
 };
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP
