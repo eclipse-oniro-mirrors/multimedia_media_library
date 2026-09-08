@@ -50,6 +50,9 @@ const GET_APP_NAME_FAIL = 'Failed to get BundleInfo. The \'abilities\' configura
 ' is missing required field \'icon\' or \'label\'.';
 
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
+const FEATURE_NOT_SUPPORTED_CODE = 801;
+const FEATURE_NOT_SUPPORTED_MESSAGE =
+  'This device does not supported these APIs: isSearchSupported, isEditSupported and recommendationOptions';
 
 const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
 const RECENT_PHOTO_INFO_DELAY_TIME = 70;
@@ -1193,6 +1196,33 @@ function parsePhotoPickerSelectOption(args) {
   return config;
 }
 
+function checkCarDeviceUnsupportedOptions(args) {
+  let option = args.length > ARGS_ZERO && typeof args[ARGS_ZERO] === 'object' ? args[ARGS_ZERO] : null;
+  if (!option) {
+    return;
+  }
+  if (deviceinfo.deviceType !== 'car') {
+    return;
+  } 
+  console.log(`checkCarDeviceUnsupportedOptions: ${
+    option.isSearchSupported}, ${option.isEditSupported}, ${option.recommendationOptions}`);
+  if (option.isSearchSupported !== undefined) {
+    console.error('[picker] config: isSearchSupported not supported on car device');
+    throw new BusinessError(FEATURE_NOT_SUPPORTED_MESSAGE, FEATURE_NOT_SUPPORTED_CODE);
+  }
+  if (option.isEditSupported !== undefined) {
+    console.error('[picker] config: isEditSupported not supported on car device');
+    throw new BusinessError(FEATURE_NOT_SUPPORTED_MESSAGE, FEATURE_NOT_SUPPORTED_CODE);
+  }
+  if (option.recommendationOptions !== undefined) {
+    console.error('[picker] config: recommendationOptions not supported on car device');
+    throw new BusinessError(FEATURE_NOT_SUPPORTED_MESSAGE, FEATURE_NOT_SUPPORTED_CODE);
+  }
+  // 车机强制默认关闭搜索和编辑
+  option.isSearchSupported = false;
+  option.isEditSupported = false;
+}
+
 function parseAutoPlayScenes(autoPlayScenes) {
   if (!autoPlayScenes) {
     return undefined;
@@ -1305,7 +1335,8 @@ async function photoPickerSelect(...args) {
     console.log('[picker] Invalid argument');
     throw checkArgsResult;
   }
-
+  // car 不支持搜索、编辑、推荐功能
+  checkCarDeviceUnsupportedOptions(args);
   const config = parsePhotoPickerSelectOption(args);
   console.log('[picker] config: ' + encrypt(JSON.stringify(config)));
   if (config.parameters.userId && config.parameters.userId > 0) {

@@ -1302,7 +1302,7 @@ void MedialibrarySubscriber::StopBackgroundOperation()
 void MedialibrarySubscriber::UpdateThumbnailBgGenerationStatus()
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    bool isPowerSufficientForThumbnail = batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL;
+    bool isPowerSufficientForThumbnail = batteryCapacity_ > PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL;
     bool newStatus = false;
     if (!isBackgroundTaskAllowed_) {
         newStatus = false;
@@ -1310,7 +1310,7 @@ void MedialibrarySubscriber::UpdateThumbnailBgGenerationStatus()
         newStatus = isScreenOff_ && isPowerSufficientForThumbnail &&
             newTemperatureLevel_ <= PROPER_DEVICE_TEMPERATURE_LEVEL_43;
     } else if (isScreenOff_ && newTemperatureLevel_ <= PROPER_DEVICE_TEMPERATURE_LEVEL_40 &&
-        batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY) {
+        batteryCapacity_ > PROPER_DEVICE_BATTERY_CAPACITY) {
         int32_t thumbAstcCount = 0;
         int32_t thumbTotalCount = 0;
         MedialibrarySubscriberDatabaseUtils::QueryThumbAstc(thumbAstcCount);

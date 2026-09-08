@@ -613,6 +613,17 @@ void FileAsset::SetUserComment(const string &userComment)
     member_[PhotoColumn::PHOTO_USER_COMMENT] = userComment;
 }
 
+const std::string &FileAsset::GetShootingModeTag() const
+{
+    return GetStrMember(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+}
+ 
+void FileAsset::SetShootingModeTag(const string &shootingModeTag)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_SHOOTING_MODE_TAG] = shootingModeTag;
+}
+
 const std::string &FileAsset::GetFilePath() const
 {
     return GetStrMember(MediaColumn::MEDIA_FILE_PATH);
@@ -1118,6 +1129,17 @@ void FileAsset::SetC2paConfigInfo(const std::string &c2paConfigInfo)
 const std::string &FileAsset::GetC2paConfigInfo() const
 {
     return GetStrMember(PhotoColumn::C2PA_CONFIG_INFO);
+}
+
+void FileAsset::SetIsShared(int32_t isShared)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_IS_SHARED] = isShared;
+}
+
+int32_t FileAsset::GetIsShared() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_IS_SHARED);
 }
 }  // namespace Media
 }  // namespace OHOS

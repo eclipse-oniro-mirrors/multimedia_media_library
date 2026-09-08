@@ -48,6 +48,7 @@
 #include "media_file_access_utils.h"
 #endif
 #include "dfx_manager.h"
+#include "media_manage_share_permission_check.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -852,6 +853,11 @@ static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeTyp
     }
 }
 
+static bool CheckOpenFilePermission(const shared_ptr<FileAsset> &fileAsset, const string &mode)
+{
+    return ManageSharePermissionCheck::CheckOpenPermission(fileAsset, mode);
+}
+
 int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string &mode)
 {
     MediaLibraryTracer tracer;
@@ -876,6 +882,7 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
     }
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromUri(uriString);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_URI, "Failed to obtain path from Database");
+    CHECK_AND_RETURN_RET_LOG(CheckOpenFilePermission(fileAsset, mode), E_INVALID_VALUES, "invalid values");
     if (fileAsset->GetTimePending() != 0 && !CheckIsOwner(fileAsset->GetOwnerPackage().c_str())) {
         MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
         return E_IS_PENDING_ERROR;

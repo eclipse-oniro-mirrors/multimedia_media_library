@@ -21,9 +21,13 @@ ohos_fuzztest("MediaLibraryCloudMediaServiceFuzzTest") {
   include_dirs = [
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/service",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
   ]
 
   sources = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scanner_db.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/metadata.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_retain_smart_data.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_sync_mutex.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dao/cloud_media_asset_retain_compare_dao.cpp",
@@ -38,6 +42,8 @@ ohos_fuzztest("MediaLibraryCloudMediaServiceFuzzTest") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/src/medialibrary_rdbstore_utils_fuzzer.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/duration_parser.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/parser_task_queue_base.cpp",
     "./medialibrarycloudmediaservice_fuzzer.cpp",
   ]
 

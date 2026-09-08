@@ -340,6 +340,8 @@ static void QueryAlbumCountByUpload(PhotoStatistics &stats)
         stats.userAlbumCount = GetInt32Val("USER_ALBUM_COUNT", resultSet);
         stats.uploadSourceAlbumCount = GetInt32Val("UPLOAD_SOURCE_ALBUM_COUNT", resultSet);
         stats.uploadUserAlbumCount = GetInt32Val("UPLOAD_USER_ALBUM_COUNT", resultSet);
+        stats.fileManagerAlbumCount = GetInt32Val("FILEMANAGER_ALBUM_COUNT", resultSet);
+        stats.uploadFileManagerAlbumCount = GetInt32Val("UPLOAD_FILEMANAGER_ALBUM_COUNT", resultSet);
     }
     resultSet->Close();
 }

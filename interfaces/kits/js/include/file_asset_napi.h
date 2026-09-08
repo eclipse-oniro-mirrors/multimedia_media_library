@@ -78,6 +78,7 @@ public:
     std::string GetAllExif() const;
     std::string GetFrontCamera() const;
     std::string GetUserComment() const;
+    std::string GetShootingModeTag() const;
     EXPORT std::shared_ptr<FileAsset> GetFileAssetInstance() const;
     friend class MediaLibraryNapi;
 

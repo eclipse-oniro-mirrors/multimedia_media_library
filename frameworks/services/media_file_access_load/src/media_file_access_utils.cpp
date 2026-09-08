@@ -476,6 +476,35 @@ MoveResult MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(const std::string
     return result;
 }
 
+string MediaFileAccessUtils::GetLivePhotoTempImage(const std::string &srcPath,
+    const std::string &dataPath, bool isDeleteTempVideo)
+{
+    std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(dataPath);
+    std::string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(dataPath);
+    std::string extraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(dataPath);
+    std::string cacheDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(dataPath);
+    std::string tempImage = cacheDir + "/share_livephoto_temp_image." + MediaPathUtils::GetExtension(dataPath);
+    if (!MediaFileUtils::CreateDirectory(cacheDir)) {
+        MEDIA_ERR_LOG("Cannot create dir %{private}s, errno %{public}d", cacheDir.c_str(), errno);
+        return "";
+    }
+    if (!MediaFileUtils::IsFileExists(extraPathDir) && !MediaFileUtils::CreateDirectory(extraPathDir)) {
+        MEDIA_ERR_LOG("Failed to create local extra data dir");
+        return "";
+    }
+    int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcPath, tempImage, videoPath, extraDataPath);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to convert live photo, ret:%{public}d", ret);
+        (void)MediaFileUtils::DeleteFile(tempImage);
+        (void)MediaFileUtils::DeleteFile(videoPath);
+        (void)MediaFileUtils::DeleteDir(extraPathDir);
+        return "";
+    }
+    if (isDeleteTempVideo) {
+        (void)MediaFileUtils::DeleteFile(videoPath);
+    }
+    return tempImage;
+}
 
 static std::string GetCloudPath(const std::string &path)
 {

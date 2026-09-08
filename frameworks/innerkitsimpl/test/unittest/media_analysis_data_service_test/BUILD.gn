@@ -79,6 +79,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
     "./src/active_analysis_manager_test.cpp",
     "./src/analysis_tool_manager_test.cpp",
     "./src/media_analysis_data_service_test.cpp",

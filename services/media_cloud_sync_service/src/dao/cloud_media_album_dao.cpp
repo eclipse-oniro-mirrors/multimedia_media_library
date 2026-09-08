@@ -1400,5 +1400,26 @@ void CloudMediaAlbumDao::UpdateAlbumUploadStatusValues(const PhotoAlbumDto &reco
     }
     values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, static_cast<int32_t>(AlbumUploadSwitchStatus::OPEN));
 }
+
+int32_t CloudMediaAlbumDao::GetShareAlbumsIsSdirty(std::vector<int32_t> &albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "GetShareAlbumsIsSdirty Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_SDIRTY));
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(Media::PhotoAlbumType::SHARE));
+    vector<string> columns = { PhotoAlbumColumns::ALBUM_ID };
+
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetShareAlbumsIsSdirty Failed to query.");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        MEDIA_DEBUG_LOG("GetShareAlbumsIsSdirty find SDIRTY share albumId: %{public}d", albumId);
+        albumIds.push_back(albumId);
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("GetShareAlbumsIsSdirty albumIds size: %{public}zu", albumIds.size());
+    return E_OK;
+}
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync

@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cctype>
 #include "album_accurate_refresh.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "photo_album_column.h"
 #include "result_set_utils.h"
@@ -329,6 +330,7 @@ int32_t FolderParser::InsertAlbum(CommonAlbumInfo &commonAlbumInfo)
     value.PutString(PhotoAlbumColumns::ALBUM_LPATH, commonAlbumInfo.lpath);
     value.PutString(PhotoAlbumColumns::ALBUM_BUNDLE_NAME, commonAlbumInfo.bundleName);
     value.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, PhotoAlbumUploadStatusOperation::GetAlbumUploadStatus());
+    value.PutString(PhotoAlbumColumns::UNIQUE_ID, MediaFileUtils::GenerateUUID());
 
     int64_t albumId = 0;
     AccurateRefresh::AlbumAccurateRefresh albumRefresh;

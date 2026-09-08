@@ -55,7 +55,8 @@ int32_t AnalysisLcdAgingDao::QueryDownloadLcdInfo(const std::vector<int64_t> &fi
                            PhotoColumn::MEDIA_FILE_PATH + ", P." + PhotoColumn::MEDIA_NAME +
                            ", P." + PhotoColumn::PHOTO_POSITION + ", P." + PhotoColumn::PHOTO_THUMB_STATUS +
                            " FROM Photos P" +
-                           " WHERE P.file_id IN (" + fileIdStr + ")";
+                           " WHERE P.file_id IN (" + fileIdStr + ")" +
+                           " AND P." + PhotoColumn::PHOTO_IS_SHARED + " = 0";
     auto resultSet = rdbStore->QuerySql(querySql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_DB_FAIL, "QueryDownloadLcdInfo Failed to query.");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {

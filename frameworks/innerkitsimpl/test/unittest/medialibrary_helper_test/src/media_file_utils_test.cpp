@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <iterator>
+#include <set>
 
 #include "media_file_uri.h"
 #include "media_file_utils.h"
@@ -3129,6 +3130,35 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_006, TestSi
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_007, TestSize.Level1)
 {
     EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GenerateUUID_Test_001, TestSize.Level1)
+{
+    std::string uuid = MediaFileUtils::GenerateUUID();
+    EXPECT_FALSE(uuid.empty());
+    EXPECT_EQ(uuid.length(), 36u);
+    EXPECT_EQ(uuid[8], '-');
+    EXPECT_EQ(uuid[13], '-');
+    EXPECT_EQ(uuid[18], '-');
+    EXPECT_EQ(uuid[23], '-');
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GenerateUUID_Test_002, TestSize.Level1)
+{
+    std::string uuid1 = MediaFileUtils::GenerateUUID();
+    std::string uuid2 = MediaFileUtils::GenerateUUID();
+    EXPECT_NE(uuid1, uuid2);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GenerateUUID_Test_003, TestSize.Level1)
+{
+    const int32_t uuidCount = 100;
+    std::set<std::string> uuidSet;
+    for (int32_t i = 0; i < uuidCount; i++) {
+        std::string uuid = MediaFileUtils::GenerateUUID();
+        uuidSet.insert(uuid);
+    }
+    EXPECT_EQ(uuidSet.size(), static_cast<size_t>(uuidCount));
 }
 } // namespace Media
 } // namespace OHOS

@@ -357,6 +357,12 @@ enum ShareMemberStatus : int32_t {
     DECLINED = 2,
     REQUESTING = 3
 };
+
+// 资产is_shared状态
+enum class PhotoSharedType : int32_t {
+    NOT_SHARED = 0,
+    SHARED = 1
+};
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H

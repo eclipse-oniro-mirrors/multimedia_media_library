@@ -37,6 +37,7 @@ int32_t MediaAssetsDao::QueryAssets(const std::vector<std::string> &fileIds, std
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(PhotoColumn::MEDIA_ID, fileIds);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(static_cast<int32_t>(PhotoSharedType::NOT_SHARED)));
     /* query */
     auto resultSet = rdbStore->Query(predicates, {});
     /* results to records */

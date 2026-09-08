@@ -47,7 +47,7 @@ int CountStrategyBase::ComputeDelta(const PhotoAssetChangeData &data, const Upda
 
 bool CountStrategyBase::IsVisibleSystemAsset(const PhotoAssetChangeInfo &assetInfo) const
 {
-    return AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false);
+    return AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false, 0);
 }
 
 int CountStrategyBase::HandleAddOperation(const PhotoAssetChangeData &data,

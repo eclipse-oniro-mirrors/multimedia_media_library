@@ -51,6 +51,7 @@ const std::string CONST_LOGSYSTEM_VERSIONTYPE = "const.logsystem.versiontype";
 const std::string PERM_ACCESS_MEDIALIB_THUMB_DB = "ohos.permission.ACCESS_MEDIALIB_THUMB_DB";
 const std::string MANAGE_RISK_PHOTOS = "ohos.permission.MANAGE_RISK_PHOTOS";
 const std::string CONTROL_IMAGEVIDEO_ANALYSIS = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
+const std::string PERM_MANAGE_SHARE_PHOTO = "ohos.permission.MANAGE_SHARE_PHOTO";
 const std::string E_POLICY = "E";
 constexpr int SHORT_TERM_PERMISSION_DURATION_300S = 300;
 

@@ -201,6 +201,7 @@ int32_t MediaAssetsService::DeletePhotos(const std::vector<std::string> &uris)
 {
     DataShare::DataSharePredicates predicates;
     predicates.In(MediaColumn::MEDIA_ID, uris);
+    predicates.NotEqualTo(PhotoColumn::PHOTO_IS_SHARED, std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
     return MediaLibraryAlbumOperations::DeletePhotoAssets(predicates, false, false);
 }
 
@@ -209,6 +210,7 @@ int32_t MediaAssetsService::DeletePhotosCompleted(const std::vector<std::string>
     DataShare::DataSharePredicates predicates;
     MEDIA_INFO_LOG("The count of delete fileIds is %{public}zu", fileIds.size());
     predicates.In(PhotoColumn::MEDIA_ID, fileIds);
+    predicates.NotEqualTo(PhotoColumn::PHOTO_IS_SHARED, std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
     return MediaLibraryAlbumOperations::DeletePhotoAssetsCompleted(predicates, false);
 }
 
@@ -233,8 +235,38 @@ static std::string GetClientBundleName()
     return bundleName;
 }
 
+int32_t CheckNoSharedAssetInAssetChange(const int32_t fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
+
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileId));
+    vector<string> columns = {PhotoColumn::PHOTO_IS_SHARED};
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "query resultSet is nullptr");
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        resultSet->Close();
+        if (isShared == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            MEDIA_ERR_LOG("AssetChangeSetFavorite target asset belongs to shared album, fileId=%{public}d", fileId);
+            return E_INVALID_VALUES;
+        }
+        return E_OK;
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 int32_t MediaAssetsService::AssetChangeSetFavorite(const int32_t fileId, const bool favorite)
 {
+    int32_t ret = CheckNoSharedAssetInAssetChange(fileId);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("AssetChangeSetFavorite reject shared album asset, fileId=%{public}d, ret=%{public}d",
+            fileId, ret);
+        return ret;
+    }
     DataShare::DataSharePredicates predicate;
     predicate.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileId));
 
@@ -747,6 +779,74 @@ int32_t MediaAssetsService::SetCompositeDisplayMode(const int32_t fileId, const 
     return E_ERR;
 }
 
+static std::set<std::string> QuerySharedAssetIds(const std::vector<std::string> &photoFileIds)
+{
+    std::set<std::string> sharedAssetIds;
+    if (photoFileIds.empty()) {
+        return sharedAssetIds;
+    }
+    
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, sharedAssetIds, "Failed to get rdbStore");
+    
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(MediaColumn::MEDIA_ID, photoFileIds);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
+    
+    std::vector<std::string> columns { MediaColumn::MEDIA_ID };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, sharedAssetIds, "Failed to query shared assets");
+    std::string mediaId;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        mediaId = std::to_string(GetInt32Val(MediaColumn::MEDIA_ID, resultSet));
+        sharedAssetIds.insert(mediaId);
+    }
+    resultSet->Close();
+    
+    if (!sharedAssetIds.empty()) {
+        MEDIA_INFO_LOG("Found %{public}zu shared assets, will skip them", sharedAssetIds.size());
+    }
+    
+    return sharedAssetIds;
+}
+
+template<typename PermissionElementType>
+static int32_t g_filterSharedAssets(std::vector<std::string> &fileIds,
+    std::vector<PermissionElementType> &permissionTypes, std::vector<int32_t> &uriTypes)
+{
+    std::vector<std::string> photoFileIds;
+    for (size_t i = 0; i < fileIds.size(); i++) {
+        if (uriTypes[i] == static_cast<int32_t>(AppUriPermissionColumn::URI_PHOTO)) {
+            photoFileIds.push_back(fileIds[i]);
+        }
+    }
+    
+    std::set<std::string> sharedAssetIds = QuerySharedAssetIds(photoFileIds);
+    
+    std::vector<std::string> filteredFileIds;
+    std::vector<PermissionElementType> filteredPermissionTypes;
+    std::vector<int32_t> filteredUriTypes;
+    
+    for (size_t i = 0; i < fileIds.size(); i++) {
+        if (uriTypes[i] == static_cast<int32_t>(AppUriPermissionColumn::URI_PHOTO)) {
+            if (sharedAssetIds.count(fileIds[i]) > 0) {
+                MEDIA_INFO_LOG("Skip granting permission for shared asset, fileId: %{public}s", fileIds[i].c_str());
+                continue;
+            }
+        }
+        
+        filteredFileIds.push_back(fileIds[i]);
+        filteredPermissionTypes.push_back(permissionTypes[i]);
+        filteredUriTypes.push_back(uriTypes[i]);
+    }
+    
+    fileIds = std::move(filteredFileIds);
+    permissionTypes = std::move(filteredPermissionTypes);
+    uriTypes = std::move(filteredUriTypes);
+    
+    return E_OK;
+}
+
 int32_t MediaAssetsService::GrantPhotoUriPermissionInner(const GrantUriPermissionInnerDto& grantUrisPermissionInnerDto)
 {
     MEDIA_INFO_LOG("enter MediaAssetsService::GrantPhotoUriPermissionInner");
@@ -755,22 +855,29 @@ int32_t MediaAssetsService::GrantPhotoUriPermissionInner(const GrantUriPermissio
     auto permissionTypes_size = grantUrisPermissionInnerDto.permissionTypes.size();
     bool isValid = ((fileIds_size == uriTypes_size) && (uriTypes_size == permissionTypes_size));
     CHECK_AND_RETURN_RET_LOG(isValid, E_ERR, "GrantPhotoUriPermissionInner Failed");
+
+    GrantUriPermissionInnerDto filteredDto = grantUrisPermissionInnerDto;
+    int32_t ret = g_filterSharedAssets(filteredDto.fileIds, filteredDto.permissionTypes, filteredDto.uriTypes);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "FilterSharedAssets failed");
+    isValid = ((filteredDto.fileIds.size() == filteredDto.uriTypes.size()) &&
+        (filteredDto.uriTypes.size() == filteredDto.permissionTypes.size()));
+    CHECK_AND_EXECUTE(isValid, filteredDto = grantUrisPermissionInnerDto);
     std::vector<DataShare::DataShareValuesBucket> values;
-    for (size_t i = 0; i < grantUrisPermissionInnerDto.fileIds.size(); i++) {
+    for (size_t i = 0; i < filteredDto.fileIds.size(); i++) {
         DataShare::DataShareValuesBucket value;
-        if (!grantUrisPermissionInnerDto.appId.empty()) {
-            value.Put(AppUriPermissionColumn::APP_ID, grantUrisPermissionInnerDto.appId);
+        if (!filteredDto.appId.empty()) {
+            value.Put(AppUriPermissionColumn::APP_ID, filteredDto.appId);
         }
-        if (grantUrisPermissionInnerDto.tokenId != -1) {
-            value.Put(AppUriPermissionColumn::TARGET_TOKENID, grantUrisPermissionInnerDto.tokenId);
+        if (filteredDto.tokenId != -1) {
+            value.Put(AppUriPermissionColumn::TARGET_TOKENID, filteredDto.tokenId);
         }
-        if (grantUrisPermissionInnerDto.srcTokenId != -1) {
-            value.Put(AppUriPermissionColumn::SOURCE_TOKENID, grantUrisPermissionInnerDto.srcTokenId);
+        if (filteredDto.srcTokenId != -1) {
+            value.Put(AppUriPermissionColumn::SOURCE_TOKENID, filteredDto.srcTokenId);
         }
-        value.Put(AppUriPermissionColumn::FILE_ID, grantUrisPermissionInnerDto.fileIds[i]);
-        value.Put(AppUriPermissionColumn::PERMISSION_TYPE, grantUrisPermissionInnerDto.permissionTypes[i]);
-        value.Put(AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE, grantUrisPermissionInnerDto.hideSensitiveType);
-        value.Put(AppUriPermissionColumn::URI_TYPE, grantUrisPermissionInnerDto.uriTypes[i]);
+        value.Put(AppUriPermissionColumn::FILE_ID, filteredDto.fileIds[i]);
+        value.Put(AppUriPermissionColumn::PERMISSION_TYPE, filteredDto.permissionTypes[i]);
+        value.Put(AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE, filteredDto.hideSensitiveType);
+        value.Put(AppUriPermissionColumn::URI_TYPE, filteredDto.uriTypes[i]);
         values.push_back(value);
     }
     string uri = "datashare:///media/phaccess_granturipermission";
@@ -819,21 +926,29 @@ int32_t MediaAssetsService::CancelPhotoUriPermissionInner(
     auto permissionTypes_size = cancelUriPermissionInnerDto.permissionTypes.size();
     bool isValid = ((fileIds_size == uriTypes_size) && (uriTypes_size == permissionTypes_size));
     CHECK_AND_RETURN_RET_LOG(isValid, E_ERR, "CancelPhotoUriPermissionInner Failed");
+
+    CancelUriPermissionInnerDto filteredDto = cancelUriPermissionInnerDto;
+    int32_t ret = g_filterSharedAssets(filteredDto.fileIds, filteredDto.permissionTypes, filteredDto.uriTypes);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "FilterSharedAssets failed");
+    isValid = ((filteredDto.fileIds.size() == filteredDto.uriTypes.size()) &&
+        (filteredDto.uriTypes.size() == filteredDto.permissionTypes.size()));
+    CHECK_AND_EXECUTE(isValid, filteredDto = cancelUriPermissionInnerDto);
+    
     DataShare::DataSharePredicates predicates;
-    for (size_t i = 0; i < cancelUriPermissionInnerDto.fileIds.size(); i++) {
+    for (size_t i = 0; i < filteredDto.fileIds.size(); i++) {
         if (i > 0) {
             predicates.Or();
         }
         predicates.BeginWrap();
         predicates.BeginWrap();
-        predicates.EqualTo(AppUriPermissionColumn::SOURCE_TOKENID, cancelUriPermissionInnerDto.srcTokenId);
+        predicates.EqualTo(AppUriPermissionColumn::SOURCE_TOKENID, filteredDto.srcTokenId);
         predicates.Or();
-        predicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, cancelUriPermissionInnerDto.srcTokenId);
+        predicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, filteredDto.srcTokenId);
         predicates.EndWrap();
-        predicates.EqualTo(AppUriPermissionColumn::FILE_ID, cancelUriPermissionInnerDto.fileIds[i]);
-        predicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, cancelUriPermissionInnerDto.targetTokenId);
-        predicates.EqualTo(AppUriPermissionColumn::URI_TYPE, cancelUriPermissionInnerDto.uriTypes[i]);
-        vector<string> permissionTypes = cancelUriPermissionInnerDto.permissionTypes[i];
+        predicates.EqualTo(AppUriPermissionColumn::FILE_ID, filteredDto.fileIds[i]);
+        predicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, filteredDto.targetTokenId);
+        predicates.EqualTo(AppUriPermissionColumn::URI_TYPE, filteredDto.uriTypes[i]);
+        vector<string> permissionTypes = filteredDto.permissionTypes[i];
         predicates.In(AppUriPermissionColumn::PERMISSION_TYPE, permissionTypes);
         predicates.EndWrap();
     }
@@ -1067,10 +1182,46 @@ int32_t MediaAssetsService::SetAssetPending(int32_t fileId, int32_t pending)
     return MediaLibraryPhotoOperations::Update(cmd);
 }
 
-int32_t MediaAssetsService::SetAssetsFavorite(const std::vector<int32_t> &fileIds, int32_t favorite)
+static void CollectNonSharedFileIds(const std::vector<int32_t>& fileIds, std::vector<int32_t>& validFileIds,
+    const std::string& logPrefix)
 {
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore == nullptr) {
+        return;
+    }
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     std::vector<std::string> strIds;
     ConvertToString(fileIds, strIds);
+    predicates.In(PhotoColumn::MEDIA_ID, strIds);
+    vector<string> columns = {PhotoColumn::MEDIA_ID, PhotoColumn::PHOTO_IS_SHARED};
+    auto resultSet = rdbStore->Query(predicates, columns);
+    if (resultSet == nullptr) {
+        return;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t id = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_ID,
+            resultSet, TYPE_INT32));
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            MEDIA_ERR_LOG("%{public}s skip shared album asset, fileId=%{public}d", logPrefix.c_str(), id);
+            continue;
+        }
+        validFileIds.push_back(id);
+    }
+    resultSet->Close();
+}
+
+int32_t MediaAssetsService::SetAssetsFavorite(const std::vector<int32_t> &fileIds, int32_t favorite)
+{
+    std::vector<int32_t> validFileIds;
+    CollectNonSharedFileIds(fileIds, validFileIds, "SetAssetsFavorite");
+    if (validFileIds.empty()) {
+        return E_OK;
+    }
+
+    std::vector<std::string> strIds;
+    ConvertToString(validFileIds, strIds);
     std::vector<std::string> uris;
     this->rdbOperation_.QueryAssetsUri(strIds, uris);
 
@@ -1093,8 +1244,14 @@ int32_t MediaAssetsService::SetAssetsFavorite(const std::vector<int32_t> &fileId
 
 int32_t MediaAssetsService::SetAssetsHiddenStatus(const std::vector<int32_t> &fileIds, int32_t hiddenStatus)
 {
+    std::vector<int32_t> validFileIds;
+    CollectNonSharedFileIds(fileIds, validFileIds, "SetAssetsHiddenStatus");
+    if (validFileIds.empty()) {
+        return E_OK;
+    }
+
     std::vector<std::string> strIds;
-    ConvertToString(fileIds, strIds);
+    ConvertToString(validFileIds, strIds);
     std::vector<std::string> uris;
     this->rdbOperation_.QueryAssetsUri(strIds, uris);
 
@@ -1140,8 +1297,14 @@ int32_t MediaAssetsService::SetAssetsRecentShowStatus(const std::vector<int32_t>
 
 int32_t MediaAssetsService::SetAssetsUserComment(const std::vector<int32_t> &fileIds, const std::string &userComment)
 {
+    std::vector<int32_t> validFileIds;
+    CollectNonSharedFileIds(fileIds, validFileIds, "SetAssetsUserComment");
+    if (validFileIds.empty()) {
+        return E_OK;
+    }
+
     std::vector<std::string> strIds;
-    ConvertToString(fileIds, strIds);
+    ConvertToString(validFileIds, strIds);
     std::vector<std::string> uris;
     this->rdbOperation_.QueryAssetsUri(strIds, uris);
 
@@ -1175,6 +1338,10 @@ int32_t MediaAssetsService::CloneAsset(const CloneAssetDto& cloneAssetDto)
     MEDIA_INFO_LOG("MediaAssetsService::CloneAsset, fileId:%{public}d, title:%{public}s",
         cloneAssetDto.fileId, cloneAssetDto.title.c_str());
 
+    int32_t sharedCheckRet = CheckNoSharedAssetInAssetChange(cloneAssetDto.fileId);
+    CHECK_AND_RETURN_RET_LOG(sharedCheckRet == E_OK, sharedCheckRet,
+        "CloneAsset does not support shared album asset, fileId=%{public}d", cloneAssetDto.fileId);
+
     int32_t fileId = cloneAssetDto.fileId;
     string title = cloneAssetDto.title;
     return MediaLibraryAlbumFusionUtils::CloneSingleAsset(fileId, title);
@@ -1183,6 +1350,13 @@ int32_t MediaAssetsService::CloneAsset(const CloneAssetDto& cloneAssetDto)
 shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::ConvertFormat(const ConvertFormatDto& convertFormatDto)
 {
     MEDIA_INFO_LOG("ConvertFormat: %{public}s", convertFormatDto.ToString().c_str());
+    int32_t sharedCheckRet = CheckNoSharedAssetInAssetChange(convertFormatDto.fileId);
+    if (sharedCheckRet != E_OK) {
+        MEDIA_ERR_LOG("ConvertFormat does not support shared album asset, fileId=%{public}d",
+            convertFormatDto.fileId);
+        return nullptr;
+    }
+
     int32_t fileId = convertFormatDto.fileId;
     std::string title = convertFormatDto.title;
     std::string extension = convertFormatDto.extension;
@@ -1216,6 +1390,11 @@ bool MediaAssetsService::CheckMimeType(const int32_t fileId)
 int32_t MediaAssetsService::CreateTmpCompatibleDup(const CreateTmpCompatibleDupDto &createTmpCompatibleDupDto)
 {
     MEDIA_DEBUG_LOG("CreateTmpCompatibleDup: %{public}s", createTmpCompatibleDupDto.ToString().c_str());
+    int32_t sharedCheckRet = CheckNoSharedAssetInAssetChange(createTmpCompatibleDupDto.fileId);
+    CHECK_AND_RETURN_RET_LOG(sharedCheckRet == E_OK, sharedCheckRet,
+        "CreateTmpCompatibleDup does not support shared album asset, fileId=%{public}d",
+        createTmpCompatibleDupDto.fileId);
+
     int32_t fileId = createTmpCompatibleDupDto.fileId;
     std::string path = std::move(createTmpCompatibleDupDto.path);
     CHECK_AND_RETURN_RET_LOG(fileId > 0 && !path.empty(), E_INNER_FAIL,
@@ -1298,8 +1477,33 @@ int32_t MediaAssetsService::SubmitCloudEnhancementTasks(const CloudEnhancementDt
 #endif
 }
 
+static bool CheckFileIdsHasSharedAlbumAsset(const std::vector<std::string>& fileIds)
+{
+    if (fileIds.empty()) {
+        return false;
+    }
+    NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicate.In(MediaColumn::MEDIA_ID, fileIds);
+    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "resultSet is nullptr");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
+        if (isShared == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            resultSet->Close();
+            return true;
+        }
+    }
+    resultSet->Close();
+    return false;
+}
+
 int32_t MediaAssetsService::PrioritizeCloudEnhancementTask(const CloudEnhancementDto& cloudEnhancementDto)
 {
+    if (!cloudEnhancementDto.fileUris.empty() && CheckFileIdsHasSharedAlbumAsset(cloudEnhancementDto.fileUris)) {
+        MEDIA_ERR_LOG("PrioritizeCloudEnhancementTask does not support shared album asset");
+        return E_OPERATION_NOT_SUPPORT;
+    }
     MediaLibraryCommand cmd(PhotoColumn::PHOTOS_TABLE);
     DataShare::DataSharePredicates predicate;
     predicate.EqualTo(MediaColumn::MEDIA_ID, cloudEnhancementDto.fileUris.front());
@@ -1336,6 +1540,11 @@ int32_t MediaAssetsService::CancelAllCloudEnhancementTasks()
 int32_t MediaAssetsService::GrantPhotoUriPermission(const GrantUriPermissionDto &grantUriPermissionDto)
 {
     MEDIA_INFO_LOG("enter MediaAssetsService::GrantPhotoUriPermission");
+    std::vector<std::string> fileIds = { std::to_string(grantUriPermissionDto.fileId) };
+    if (CheckFileIdsHasSharedAlbumAsset(fileIds)) {
+        MEDIA_ERR_LOG("GrantPhotoUriPermission does not support shared album asset");
+        return E_OPERATION_NOT_SUPPORT;
+    }
     NativeRdb::ValuesBucket values;
     values.PutLong(AppUriPermissionColumn::TARGET_TOKENID, grantUriPermissionDto.tokenId);
     values.PutLong(AppUriPermissionColumn::SOURCE_TOKENID, grantUriPermissionDto.srcTokenId);
@@ -1352,6 +1561,16 @@ int32_t MediaAssetsService::GrantPhotoUriPermission(const GrantUriPermissionDto 
 int32_t MediaAssetsService::GrantPhotoUrisPermission(const GrantUrisPermissionDto &grantUrisPermissionDto)
 {
     MEDIA_INFO_LOG("enter MediaAssetsService::GrantPhotoUrisPermission");
+    if (!grantUrisPermissionDto.fileIds.empty()) {
+        std::vector<std::string> fileIds;
+        for (int32_t fileId : grantUrisPermissionDto.fileIds) {
+            fileIds.push_back(std::to_string(fileId));
+        }
+        if (CheckFileIdsHasSharedAlbumAsset(fileIds)) {
+            MEDIA_ERR_LOG("GrantPhotoUrisPermission does not support shared album asset");
+            return E_OPERATION_NOT_SUPPORT;
+        }
+    }
     std::vector<DataShare::DataShareValuesBucket> values;
     for (int32_t fileId : grantUrisPermissionDto.fileIds) {
         DataShare::DataShareValuesBucket value;
@@ -1507,6 +1726,13 @@ int32_t MediaAssetsService::CheckPhotoUrisReadPermission(const CheckPhotoUrisRea
 int32_t MediaAssetsService::CancelPhotoUriPermission(const CancelUriPermissionDto &cancelUriPermissionDto)
 {
     MEDIA_INFO_LOG("enter MediaAssetsService::CancelPhotoUriPermission");
+
+    std::vector<std::string> fileIds = { std::to_string(cancelUriPermissionDto.fileId) };
+    if (CheckFileIdsHasSharedAlbumAsset(fileIds)) {
+        MEDIA_ERR_LOG("CancelPhotoUriPermission does not support shared album asset");
+        return E_OPERATION_NOT_SUPPORT;
+    }
+
     std::string uriPermissionTabel = "UriPermission";
     NativeRdb::RdbPredicates rdbPredicate(uriPermissionTabel);
     rdbPredicate.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, cancelUriPermissionDto.tokenId);
@@ -1580,6 +1806,17 @@ shared_ptr<NativeRdb::ResultSet> MediaAssetsService::GetCloudEnhancementPair(con
 int32_t MediaAssetsService::QueryCloudEnhancementTaskState(const string& photoUri,
     QueryCloudEnhancementTaskStateDto& dto)
 {
+    std::string fileIdStr = MediaLibraryDataManagerUtils::GetFileIdFromPhotoUri(photoUri);
+    if (fileIdStr.empty()) {
+        fileIdStr = photoUri;
+    }
+    if (!fileIdStr.empty()) {
+        std::vector<std::string> fileIds = { fileIdStr };
+        if (CheckFileIdsHasSharedAlbumAsset(fileIds)) {
+            MEDIA_ERR_LOG("QueryCloudEnhancementTaskState does not support shared album asset");
+            return E_OPERATION_NOT_SUPPORT;
+        }
+    }
     return this->rdbOperation_.QueryEnhancementTaskState(photoUri, dto);
 }
 
@@ -1604,6 +1841,7 @@ int32_t MediaAssetsService::QueryPhotoStatus(const QueryPhotoReqBody &req, Query
     }
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, req.fileId);
+    predicates.NotEqualTo(PhotoColumn::PHOTO_IS_SHARED, std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
     using namespace RdbDataShareAdapter;
     NativeRdb::RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
     std::vector<std::string> columns { PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_ID };
@@ -2075,6 +2313,17 @@ int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesCount(
 int32_t MediaAssetsService::GetCloudEnhancementPair(
     const GetCloudEnhancementPairDto &dto, GetCloudEnhancementPairRespBody &respBody)
 {
+    std::string fileIdStr = MediaLibraryDataManagerUtils::GetFileIdFromPhotoUri(dto.photoUri);
+    if (fileIdStr.empty()) {
+        fileIdStr = dto.photoUri;
+    }
+    if (!fileIdStr.empty()) {
+        std::vector<std::string> fileIds = { fileIdStr };
+        if (CheckFileIdsHasSharedAlbumAsset(fileIds)) {
+            MEDIA_ERR_LOG("GetCloudEnhancementPair does not support shared album asset");
+            return E_OPERATION_NOT_SUPPORT;
+        }
+    }
     shared_ptr<NativeRdb::ResultSet> result = MediaAssetsService::GetInstance().GetCloudEnhancementPair(dto.photoUri);
     auto resultSetBridge = RdbUtils::ToResultSetBridge(result);
     respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
@@ -2272,9 +2521,9 @@ int32_t MediaAssetsService::CheckSinglePhotoPermission(const std::string &fileId
         MEDIA_ERR_LOG("Invalid fileId");
         return E_INVALID_FILEID;
     }
-    Notification::NotifyRegisterPermission permissionHandle;
+    NotifyRegisterPermission permissionHandle;
     int32_t ret =
-        permissionHandle.SinglePermissionCheck(static_cast<Notification::NotifyUriType>(registerType), fileId);
+        permissionHandle.SinglePermissionCheck(static_cast<NotifyUriType>(registerType), fileId);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
     return E_OK;
 }

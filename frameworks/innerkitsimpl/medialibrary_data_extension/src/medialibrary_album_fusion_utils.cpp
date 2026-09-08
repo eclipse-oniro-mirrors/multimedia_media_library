@@ -61,6 +61,7 @@ constexpr int32_t CLOUD_COPY_DIRTY_FLAG = 7;
 constexpr int32_t TIME_STAMP_OFFSET = 5;
 const std::string ALBUM_FUSION_FLAG = "multimedia.medialibrary.cloneFlag";
 const std::string ALBUM_FUSION_UPGRADE_STATUS_FLAG = "persist.multimedia.medialibrary.albumFusion.status";
+const std::string DOCS_PATH_PREFIX = "/storage/media/local/files/Docs";
 const int32_t ALBUM_FUSION_UPGRADE_SUCCESS = 1;
 const int32_t ALBUM_FUSION_UPGRADE_FAIL = 0;
 const int32_t ALBUM_FUSION_BATCH_COUNT = 200;
@@ -843,6 +844,7 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
     if (!copyInfo.isCopyOwnerPackage) {
         values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, GetOwnerPackage());
     }
+    values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
     HandleBurstPhotoSubtype(resultSet, values);
     HandleLowQualityAssetValuesBucket(resultSet, values);
     HandleTempFileAssetValuesBucket(resultSet, values);
@@ -1423,6 +1425,15 @@ static void SavePackageMetaDate(NativeRdb::ValuesBucket &values)
     values.Put(MediaColumn::MEDIA_OWNER_APPID, appId);
 }
 
+static std::string GetTargetRealPath(const std::string &realPath, const std::string &displayName)
+{
+    size_t pos = realPath.find_last_of('/');
+    if (pos == std::string::npos) {
+        return "";
+    }
+    return realPath.substr(0, pos) + "/" + displayName;
+}
+
 static void SaveDefaultMetaData(NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> resultSet,
     const std::string &path, bool isBurst, const std::string &displayName)
 {
@@ -1505,6 +1516,24 @@ static bool SaveConvertFormatMetaData(std::shared_ptr<AccurateRefresh::AssetAccu
     return true;
 }
 
+static bool MoveConvertFormatFileToDocRealPath(std::shared_ptr<NativeRdb::ResultSet> resultSet, const std::string &path,
+    const std::string &displayName)
+{
+    std::string realPath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    if (!realPath.empty() && realPath.find(DOCS_PATH_PREFIX) != std::string::npos) {
+        FileSourceType fileSourceType = (realPath.find("HO_DATA_EXT_MISC") != std::string::npos) ?
+            FileSourceType::MEDIA_HO_LAKE : FileSourceType::FILE_MANAGER;
+        std::string targetRealPath = GetTargetRealPath(realPath, displayName);
+        AssetOperationInfo srcpath = AssetOperationInfo::CreateFromPath(path);
+        auto result = MediaFileAccessUtils::MoveAsset(srcpath, targetRealPath, fileSourceType, true);
+        if (result.errCode != E_OK) {
+            MEDIA_ERR_LOG("fail to move convert format asset");
+            return false;
+        }
+    }
+    return true;
+}
+
 static int32_t ConvertFormatFileSync(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,
     shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh, std::shared_ptr<NativeRdb::ResultSet> resultSet,
     const std::string &displayName, int64_t &newAssetId, std::string &targetPath)
@@ -1521,6 +1550,11 @@ static int32_t ConvertFormatFileSync(const std::shared_ptr<MediaLibraryRdbStore>
     std::string extension = MediaFileUtils::GetExtensionFromPath(displayName);
     MEDIA_INFO_LOG("ConvertFormatPhoto failed, displayName: %{public}s, targetPath: %{public}s",
         MediaFileUtils::DesensitizeName(displayName).c_str(), MediaFileUtils::DesensitizePath(targetPath).c_str());
+    if (!MoveConvertFormatFileToDocRealPath(resultSet, targetPath, displayName)) {
+        MEDIA_ERR_LOG("MoveConvertFormatFileToDocRealPath failed");
+        DeleteFile(targetPath);
+        return E_ERR;
+    }
     int32_t err = PhotoFileOperation().ConvertFormatPhoto(resultSet, targetPath, extension);
     if (err != E_OK) {
         MEDIA_ERR_LOG("ConvertFormatPhoto failed, err: %{public}d", err);
@@ -1657,7 +1691,8 @@ int32_t MediaLibraryAlbumFusionUtils::HandleNoOwnerData(const std::shared_ptr<Me
         return E_OK;
     }
     const std::string UPDATE_NO_OWNER_ASSET_INTO_OTHER_ALBUM = "UPDATE PHOTOS SET owner_album_id = "
-        "(SELECT album_id FROM PhotoAlbum where album_name = '其它') WHERE owner_album_id = 0";
+        "(SELECT album_id FROM PhotoAlbum where album_name = '其它') WHERE owner_album_id = 0 "
+        "AND is_shared = 0";
     int32_t ret = upgradeStore->ExecuteSql(UPDATE_NO_OWNER_ASSET_INTO_OTHER_ALBUM);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("UPDATE_NO_OWNER_ASSET_INTO_OTHER_ALBUM failed, ret = %{public}d", ret);
@@ -2598,8 +2633,12 @@ static int32_t CheckTmpCompatibleDup(const std::shared_ptr<NativeRdb::ResultSet>
     width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
     height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
     std::string mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
+    std::string shootingModeTag = GetStringVal(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, resultSet);
+    bool is200MFirstStage = shootingModeTag == "52" &&
+        static_cast<int64_t>(width) * static_cast<int64_t>(height) < 6 * 1000 * 8 * 1000;
     CHECK_AND_RETURN_RET_LOG(mimeType == "image/heic" || mimeType == "image/heif" ||
-        PreferredCompatibleModeCheckUtils::IsHighPixelPicture(width, height), E_PARAM_CONVERT_FORMAT,
+        PreferredCompatibleModeCheckUtils::IsHighPixelPicture(width, height) || is200MFirstStage,
+        E_PARAM_CONVERT_FORMAT,
         "mimeType is invalid, mimeType: %{public}s", mimeType.c_str());
 
     PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
@@ -2637,6 +2676,14 @@ static int32_t GetTranscodeFileInfo(const std::shared_ptr<NativeRdb::ResultSet> 
     int32_t quality = GetInt32Val(PhotoColumn::COMPRESSION_QUALITY, resultSet);
     string mime_type = GetStringVal(PhotoColumn::MEDIA_MIME_TYPE, resultSet);
     srcInfo.quality = (mime_type == MIME_TYPE_JPEG && quality != -1) ? quality : DEFAULT_JPG_QUALITY;
+    int32_t width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
+    int32_t height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
+    std::string shootingModeTag = GetStringVal(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, resultSet);
+    bool is200MFirstStage = shootingModeTag == "52" &&
+        static_cast<int64_t>(width) * static_cast<int64_t>(height) < 6 * 1000 * 8 * 1000;
+    if (is200MFirstStage && mime_type == MIME_TYPE_JPEG) {
+        srcInfo.quickCopy = 1;
+    }
     return E_OK;
 }
 
@@ -2671,7 +2718,7 @@ int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, con
 
     const std::string querySql = R"(SELECT exist_compatible_duplicate, position, is_temp, time_pending, hidden,
         data, storage_path, file_source_type, date_trashed, date_deleted, mime_type,
-        height, width, subtype, compression_quality FROM Photos WHERE file_id = ?)";
+        height, width, subtype, compression_quality, shooting_mode_tag FROM Photos WHERE file_id = ?)";
     std::vector<NativeRdb::ValueObject> params = { fileId };
     shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(querySql, params);
     dupExist = 0;

@@ -1516,5 +1516,16 @@ bool PhotoCustomRestoreOperation::HasTlvFiles(const vector<string> &files)
     }
     return false;
 }
+
+/**
+ * @param filePath must start with '/storage/cloud/files/'
+ */
+int32_t PhotoCustomRestoreOperation::HandleExtraDataVersion(const std::string &filePath, const uint32_t version)
+{
+    const bool isValid = version == LIVE_PHOTO_4D_VERSION;
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    int32_t livePhoto4dStatus = static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
+    return this->customRestoreDao_.UpdatePhotos(filePath, livePhoto4dStatus);
+}
 }  // namespace OHOS::Media
 // LCOV_EXCL_STOP

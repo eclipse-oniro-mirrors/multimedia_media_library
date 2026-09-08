@@ -238,6 +238,7 @@ static void SetDefaultPredicatesCondition(DataShare::DataSharePredicates &predic
     predicates.IsNotNull(CONST_MEDIA_DATA_DB_ALBUM_NAME);
     predicates.NotEqualTo(CONST_MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
     predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
+    predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
     predicates.BeginWrap();
     predicates.NotEqualTo(CONST_MEDIA_DATA_DB_IS_LOCAL, IS_LOCAL);
     predicates.Or();
@@ -1445,6 +1446,8 @@ int32_t MtpMedialibraryManager::SetAlbumObjectPropValue(const std::shared_ptr<Mt
 
     CHECK_AND_RETURN_RET_LOG(albumType != static_cast<int32_t>(PhotoAlbumType::SOURCE), MTP_ERROR_ACCESS_DENIED,
         "only user album can be renamed");
+    CHECK_AND_RETURN_RET_LOG(albumType != static_cast<int32_t>(PhotoAlbumType::SHARE), MTP_ERROR_ACCESS_DENIED,
+        "share album can not be renamed");
     // change album name through ipc
     auto errCode = MtpIpcUtils::ChangeAlbumName(dataShareHelper_,
         std::to_string(HandleConvertToAdded(context->handle)), colValueStr, albumType, albumSubType);
@@ -1634,6 +1637,10 @@ int32_t MtpMedialibraryManager::DeleteAlbum(const std::shared_ptr<MtpOperationCo
     resultSet->Close();
     if (albumType == static_cast<int32_t>(PhotoAlbumType::SOURCE)) {
         MEDIA_DEBUG_LOG("can not delete source photo album");
+        return MtpErrorUtils::SolveDeleteObjectError(E_ERR);
+    }
+    if (albumType == static_cast<int32_t>(PhotoAlbumType::SHARE)) {
+        MEDIA_DEBUG_LOG("can not delete share photo album");
         return MtpErrorUtils::SolveDeleteObjectError(E_ERR);
     }
     errCode = dataShareHelper_->Delete(uri, predicates);

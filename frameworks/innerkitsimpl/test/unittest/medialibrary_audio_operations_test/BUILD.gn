@@ -35,6 +35,7 @@ ohos_unittest("medialibrary_audio_operations_test") {
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_audio_operations_test.cpp",
+    "./src/medialibrary_audio_operations_delete_asset_test.cpp",
   ]
 
   deps = [

@@ -69,6 +69,14 @@
         }                                                           \
     } while (0)
 
+#define CHECK_COND_WITH_MESSAGE_INT_CODE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, OHOS_INVALID_PARAM_CODE, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_PARAMETER_WITH_MESSAGE(env, cond, msg)                 \
     do {                                                            \
         if (!(cond)) {                                    \
@@ -222,6 +230,14 @@
     } while (0)
 
 #define CHECK_COND_WITH_INT(env, cond, err)                                  \
+    do {                                                            \
+        if (!(cond)) {                                              \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                         \
+        }                                                           \
+    } while (0)
+
+#define CHECK_COND_WITH_INT_CODE(env, cond, err)                                  \
     do {                                                            \
         if (!(cond)) {                                              \
             NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \

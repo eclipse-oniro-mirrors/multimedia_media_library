@@ -419,6 +419,11 @@ int32_t MediaAlbumsControllerService::ChangeRequestOperateAlbumAttribute(Message
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
         "ChangeRequestOperateAlbumAttribute Read Request Error");
+    if (PhotoAlbum::IsShareAlbum(GetPhotoAlbumType(reqBody.albumType), GetPhotoAlbumSubType(reqBody.albumSubType))) {
+        MEDIA_ERR_LOG("ChangeRequestOperateAlbumAttribute does not support share album, albumType=%{public}d, "
+            "albumSubType=%{public}d", reqBody.albumType, reqBody.albumSubType);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
     ret = CheckAlbumAttributeRequest(reqBody);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
         "ChangeRequestOperateAlbumAttribute params is invalid");
@@ -645,10 +650,16 @@ int32_t MediaAlbumsControllerService::AlbumCommitModify(MessageParcel &data, Mes
         }
     }
 
-    if (reqBody.businessCode == static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI) &&
-        reqBody.coverUri.empty()) {
-        MEDIA_ERR_LOG("params is invalid");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    if (reqBody.businessCode == static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI)) {
+        if (PhotoAlbum::IsShareAlbum(GetPhotoAlbumType(reqBody.albumType),
+            GetPhotoAlbumSubType(reqBody.albumSubType))) {
+            MEDIA_ERR_LOG("SetCoverUri does not support shared album, albumId=%{public}d", reqBody.albumId);
+            return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+        }
+        if (reqBody.coverUri.empty()) {
+            MEDIA_ERR_LOG("params is invalid");
+            return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+        }
     }
 
     AlbumCommitModifyDto commitModifyDto;

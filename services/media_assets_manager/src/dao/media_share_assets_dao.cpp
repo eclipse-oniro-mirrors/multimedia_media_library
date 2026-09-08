@@ -66,6 +66,34 @@ bool MediaShareAssetsDao::HasShareAssetToMarkDeleted(std::vector<std::string> &u
     return true;
 }
 
+bool MediaShareAssetsDao::HasShareAssetToMarkDeletedByAlbumId(int32_t albumId, std::vector<std::string> &updateFileIds,
+    const std::string &lastFileId)
+{
+    updateFileIds.clear();
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false,
+        "HasShareAssetToMarkDeletedByAlbumId failed. rdbStore is null.");
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.GreaterThan(MediaColumn::MEDIA_ID, lastFileId);
+    predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumId);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, SHARED_ASSET_FLAG);
+    predicates.NotEqualTo(MediaColumn::MEDIA_NAME, DELETE_DISPLAY_NAME);
+    predicates.OrderByAsc(MediaColumn::MEDIA_ID);
+    predicates.Limit(BATCH_UPDATE_LIMIT_COUNT);
+    std::vector<std::string> columns = { MediaColumn::MEDIA_ID };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false,
+        "HasShareAssetToMarkDeletedByAlbumId failed. resultSet is null.");
+
+    updateFileIds.reserve(BATCH_UPDATE_LIMIT_COUNT);
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        updateFileIds.emplace_back(GetStringVal(MediaColumn::MEDIA_ID, resultSet));
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(updateFileIds.size() > 0, false, "the size of updateFileIds 0.");
+    return true;
+}
+
 int32_t MediaShareAssetsDao::MarkDeletedAndClearCloudInfo(const std::vector<std::string> &updateFileIds)
 {
     CHECK_AND_RETURN_RET_LOG(!updateFileIds.empty(), E_ERR, "updateFileIds is null.");
@@ -124,6 +152,28 @@ int32_t MediaShareAssetsDao::DeleteShareAlbums()
         "Failed to delete. ret %{public}d.", ret);
     albumRefresh->Notify();
     MEDIA_INFO_LOG("DeleteShareAlbums. ret %{public}d.", ret);
+    return E_OK;
+}
+
+int32_t MediaShareAssetsDao::DeleteShareAlbumsByAlbumId(int32_t albumId)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteShareAlbumsByAlbumId");
+
+    std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> albumRefresh =
+        std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_ERR,
+        "DeleteShareAlbumsByAlbumId failed. albumRefresh is null");
+    std::vector<NativeRdb::ValueObject> bindArgs = { NativeRdb::ValueObject(albumId) };
+    int32_t ret = albumRefresh->Init(this->SQL_SHARE_ALBUM_QUERY_BY_ALBUM_ID, bindArgs);
+    CHECK_AND_PRINT_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK, "Failed to init albumRefresh");
+
+    ret = albumRefresh->ExecuteSql(this->SQL_SHARE_ALBUM_DELETE_BY_ALBUM_ID, bindArgs,
+        AccurateRefresh::RdbOperation::RDB_OPERATION_REMOVE);
+    CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK, E_ERR,
+        "Failed to delete album. ret %{public}d.", ret);
+    albumRefresh->Notify();
+    MEDIA_INFO_LOG("DeleteShareAlbumsByAlbumId albumId: %{public}d. ret %{public}d.", albumId, ret);
     return E_OK;
 }
 

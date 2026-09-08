@@ -38,6 +38,7 @@ public:
         std::string bundleName;
         int32_t priority = 1;
         int32_t hidden = 0;
+        std::string uniqueId;
         // Photos fields
         std::string fileId;
     };
@@ -160,7 +161,8 @@ private:  // sqls
             date_modified, \
             date_added, \
             upload_status, \
-            hidden \
+            hidden, \
+            unique_id \
         ) \
         SELECT \
             INPUT.album_type, \
@@ -194,7 +196,8 @@ private:  // sqls
                 (SELECT 1 FROM PhotoAlbum WHERE album_type IN (0, 2048) AND dirty <> 4 AND upload_status = 0) THEN 0 \
                 ELSE 1 \
             END AS upload_status, \
-            INPUT.hidden AS hidden \
+            INPUT.hidden AS hidden, \
+            INPUT.unique_id AS unique_id \
         FROM \
         ( \
             SELECT \
@@ -204,7 +207,8 @@ private:  // sqls
                 ? AS bundle_name, \
                 ? AS lpath, \
                 ? AS priority, \
-                ? AS hidden \
+                ? AS hidden, \
+                ? AS unique_id \
         ) AS INPUT \
         LEFT JOIN album_plugin \
             ON LOWER(INPUT.lpath)=LOWER(album_plugin.lpath) \

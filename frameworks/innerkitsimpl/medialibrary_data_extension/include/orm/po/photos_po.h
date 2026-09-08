@@ -98,6 +98,8 @@ public:
     std::optional<int32_t> lcdFileSize;
     std::optional<int64_t> localAssetSize;            // PhotoColumn::LOCAL_ASSET_SIZE;
     std::optional<int32_t> compressionQuality;        // PhotoColumn::COMPRESSION_QUALITY;
+    std::optional<int32_t> livePhoto4dStatus;            // PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS
+    std::optional<std::string> livePhoto4DPair;           // PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR
     std::optional<int32_t> isShared;             // PhotoColumn::PHOTO_IS_SHARED
     std::optional<std::string> shareOwnerInfo;   // PhotoColumn::PHOTO_SHARE_OWNER_INFO
     std::optional<std::string> shareAlbumOwner;        // PhotoColumn::PHOTO_SHARE_ALBUM_OWNER;

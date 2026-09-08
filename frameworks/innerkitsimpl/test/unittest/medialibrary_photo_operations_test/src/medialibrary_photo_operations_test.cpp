@@ -447,6 +447,46 @@ int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
     return E_OK;
 }
 
+int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
+{
+    string path = GetFilePath(fileId);
+    if (path.empty()) {
+        MEDIA_ERR_LOG("Get path failed for fileId: %{private}d", fileId);
+        return E_INVALID_VALUES;
+    }
+    string extraDataDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(path);
+    if (extraDataDir.empty()) {
+        MEDIA_ERR_LOG("GetMovingPhotoExtraDataDir returned empty for path: %{private}s", path.c_str());
+        return E_INVALID_PATH;
+    }
+    if (!MediaFileUtils::CreateDirectory(extraDataDir)) {
+        MEDIA_ERR_LOG("Failed to create extraData directory: %{private}s", extraDataDir.c_str());
+        return E_HAS_FS_ERROR;
+    }
+    string extraDataPath = extraDataDir + "/extraData";
+    // Write valid extraData content: VERSION_TAG(20) + PLAY_INFO(20) + LIVE_TAG(20) = 60 bytes (MIN_STANDARD_SIZE)
+    // GetVersionAndFrameNum seeks to -MIN_STANDARD_SIZE from end, reads first VERSION_TAG_LEN bytes as version tag
+    // Version tag format: "v8_f0" padded with spaces to VERSION_TAG_LEN(20)
+    string versionTag = "v8_f0";
+    size_t left = VERSION_TAG_LEN - versionTag.length();
+    for (size_t i = 0; i < left; ++i) {
+        versionTag += ' ';
+    }
+    string playInfo(PLAY_INFO_LEN, '0');
+    string liveTag(LIVE_TAG_LEN, '0');
+    string extraDataContent = versionTag + playInfo + liveTag;
+    ofstream ofs(extraDataPath, ios::binary | ios::trunc);
+    if (!ofs.is_open()) {
+        MEDIA_ERR_LOG("Failed to open extraData file: %{private}s", extraDataPath.c_str());
+        return E_HAS_FS_ERROR;
+    }
+    ofs.write(extraDataContent.c_str(), extraDataContent.length());
+    ofs.close();
+    MEDIA_INFO_LOG("Created extraData file: %{private}s, size: %{public}zu", extraDataPath.c_str(),
+        extraDataContent.length());
+    return E_OK;
+}
+
 int32_t SetPendingOnly(int32_t pendingTime, int64_t fileId)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
@@ -2280,6 +2320,34 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_api10_test_004, TestSi
         [] (int32_t result) { EXPECT_EQ(result, E_IS_PENDING_ERROR); });
 
     MEDIA_INFO_LOG("end tdd photo_oprn_open_api10_test_004");
+}
+
+HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_shared_asset_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start tdd photo_oprn_open_shared_asset_test_001");
+
+    int fileId = SetDefaultPhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "shared_open.jpg");
+    EXPECT_GE(fileId, 0);
+
+    // 标记为共享资产
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, static_cast<int32_t>(PhotoSharedType::SHARED));
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    int32_t updatedRows = 0;
+    int32_t ret = g_rdbStore->Update(updatedRows, values, predicates);
+    EXPECT_EQ(ret, NativeRdb::E_OK);
+
+    // 共享资产只读 -> 成功返回 fd
+    TestPhotoOpenParamsApi10(fileId, MEDIA_FILEMODE_READONLY,
+        [] (int32_t fd) { EXPECT_GE(fd, E_OK); });
+    // 共享资产写模式 -> E_INVALID_VALUES
+    TestPhotoOpenParamsApi10(fileId, MEDIA_FILEMODE_WRITEONLY,
+        [] (int32_t fd) { EXPECT_EQ(fd, E_INVALID_VALUES); });
+    TestPhotoOpenParamsApi10(fileId, MEDIA_FILEMODE_READWRITE,
+        [] (int32_t fd) { EXPECT_EQ(fd, E_INVALID_VALUES); });
+
+    MEDIA_INFO_LOG("end tdd photo_oprn_open_shared_asset_test_001");
 }
 
 HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_close_api10_test_001, TestSize.Level2)

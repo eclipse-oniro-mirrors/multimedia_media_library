@@ -206,6 +206,9 @@ public:
     EXPORT const std::string &GetUserComment() const;
     EXPORT void SetUserComment(const std::string &userComment);
 
+    EXPORT const std::string &GetShootingModeTag() const;
+    EXPORT void SetShootingModeTag(const std::string &shootingModeTag);
+
     EXPORT const std::string &GetFilePath() const;
     EXPORT void SetFilePath(const std::string &filePath);
 
@@ -328,6 +331,9 @@ public:
 
     EXPORT void SetC2paConfigInfo(const std::string &c2paConfigInfo);
     EXPORT const std::string &GetC2paConfigInfo() const;
+
+    EXPORT void SetIsShared(int32_t isShared);
+    EXPORT int32_t GetIsShared() const;
 
 private:
     int32_t userId_ = -1;

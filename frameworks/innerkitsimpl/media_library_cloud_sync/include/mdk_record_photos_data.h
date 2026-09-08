@@ -237,6 +237,7 @@ private:
     const std::string FILE_EDIT_DATA = "editData";
     const std::string FILE_MIME_TYPE = "mimeType";
     const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
+    const std::string VIDEO_MODE = "video_mode";
     const std::string KEY_EDITED_TIME_MS = "editedTime_ms";
     const std::string KEY_LCD_SIZE = "lcd_size";
     const std::string KEY_THUMB_SIZE = "thumb_size";

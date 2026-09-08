@@ -42,6 +42,18 @@ struct CloudEnhancementFileInfo {
         displayName(displayName), subtype(subtype), hidden(hidden) {}
 };
 
+struct LivePhotoPaths {
+    std::string filePath;
+    std::string tempVideoPath;
+    std::string tempImagePath;
+    std::string extraDataPath;
+    std::string extraPathDir;
+    std::string storagePath;
+    std::string editDataSourcePath;
+    std::string editDataSourceBackPath;
+    std::string editDataCameraPath;
+};
+
 class EnhancementServiceCallback {
 public:
     EXPORT EnhancementServiceCallback();
@@ -60,13 +72,33 @@ public:
 private:
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
     EXPORT static int32_t SaveCloudEnhancementPhoto(std::shared_ptr<CloudEnhancementFileInfo> info,
-        CloudEnhancementThreadTask& task, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh);
+        CloudEnhancementThreadTask &task, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+        std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     EXPORT static int32_t UpdateCloudEnhancementPhotoInfo(int32_t fileId,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh);
     EXPORT static int32_t SaveCloudEnhancementMovingPhotoVideo(shared_ptr<CloudEnhancementFileInfo> info,
         CloudEnhancementThreadTask& task, shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh);
     EXPORT static int32_t UpdateCloudEnhancementMovingPhotoInfo(int32_t fileId,
         shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh);
+    EXPORT static int32_t HandleMediaPhotoEnhancement(CloudEnhancementThreadTask &task,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+        std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    EXPORT static int32_t HandleFileManagerOrHoLakeEnhancement(CloudEnhancementThreadTask &task,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+        std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    EXPORT static int32_t SaveFileManagerOrHoLakeLivePhotoEnhancement(CloudEnhancementThreadTask &task,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+        std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    EXPORT static  int32_t PreparePathsAndConvert(
+        std::shared_ptr<NativeRdb::ResultSet>& resultSet, LivePhotoPaths& paths, int64_t& coverPosition);
+    EXPORT static int32_t ProcessImageEnhancement(
+        CloudEnhancementThreadTask& task, const LivePhotoPaths& paths, int32_t fileId);
+
+    EXPORT static int32_t AssembleAndSaveFinalLivePhoto(
+        const LivePhotoPaths& paths, int32_t fileId, int64_t coverPosition);
+    EXPORT static void ProcessCloudEnhancementPhotoUpdate(int32_t fileId,
+        shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+        int32_t sourceType, const std::string& effectPhotoPath);
 #endif
 };
 } // namespace Media

@@ -364,8 +364,10 @@ config("media_data_extension_public_config") {
   }
 
   if (media_library_feature_custom_restore) {
-    include_custom_restore =
-        [ "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include" ]
+    include_custom_restore = [
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include/dao",
+    ]
     include_dirs += include_custom_restore
   }
 
@@ -892,6 +894,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_cloud_permission_check.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_access_medialib_thumb_db_permission_check.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_analysis_permission_check.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_manage_share_permission_check.cpp",
   ]
 
   sources_background_task = [
@@ -1113,6 +1116,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/hiddem_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/image_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/owner_album_info_calculation.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/share_album_info_calculation.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/share_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/trash_asset_helper.cpp",
@@ -1422,6 +1426,7 @@ ohos_shared_library("medialibrary_data_extension") {
       "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/medialibrary_custom_restore_notify.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/photo_custom_restore_operation.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/media_share_dirty_data_cleaner.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/dao/media_custom_restore_dao.cpp",
     ]
     sources += media_custom_restore_source
   }

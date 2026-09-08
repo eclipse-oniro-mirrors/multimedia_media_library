@@ -24,6 +24,7 @@
 #include <unordered_set>
 
 #include "album_plugin_config.h"
+#include "media_file_utils.h"
 #include "analysis_album_attribute_const.h"
 #include "dfx_utils.h"
 #include "media_analysis_helper.h"
@@ -76,6 +77,7 @@
 #include "medialibrary_rdb_helper.h"
 #include "share_member_column.h"
 #include "userfile_manager_types.h"
+#include "cloud_sync_helper.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -408,6 +410,7 @@ void MediaLibraryAlbumOperations::PutGeneralPhotoAlbumValues(const string &album
     values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, 1); // local album is 1.
     values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, PhotoAlbumUploadStatusOperation::GetAlbumUploadStatus());
+    values.PutString(PhotoAlbumColumns::UNIQUE_ID, MediaFileUtils::GenerateUUID());
     PutCoverOrderValues(lpath, values);
 }
 
@@ -524,9 +527,12 @@ static int32_t QueryExistingAlbumByLpath(const string& albumName, bool& isDelete
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_FAIL, "fail to get rdbstore, lpath is: %{public}s", lpath.c_str());
 
+    // 需求十一：普通相册新建时，不与共享相册校验重名
     const string sql = "SELECT album_id, album_name, dirty FROM " + PhotoAlbumColumns::TABLE +
-        " WHERE LOWER(lpath) = LOWER(?)";
-    const vector<ValueObject> bindArgs { lpath };
+        " WHERE LOWER(lpath) = LOWER(?) AND (" + PhotoAlbumColumns::ALBUM_TYPE + " <> ? OR " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + " <> ?)";
+    const vector<ValueObject> bindArgs { lpath,
+        static_cast<int32_t>(PhotoAlbumType::SHARE), static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC) };
     auto resultSet = rdbStore->QueryByStep(sql, bindArgs);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_FAIL, "Query failed, lpath is: %{public}s", lpath.c_str());
 
@@ -1424,9 +1430,11 @@ static int32_t CheckConflictsWithExistingAlbum(const NativeRdb::ValuesBucket& ne
         }
     }
     // Check if non-deleted album with same name exists
-    std::string sql = "SELECT * FROM PhotoAlbum WHERE album_name = ? AND dirty <> ?";
-    shared_ptr<NativeRdb::ResultSet> resultSetAlbum =
-        rdbStore->QueryByStep(sql, { newAlbumName, static_cast<int32_t>(DirtyTypes::TYPE_DELETED) });
+    std::string sql = "SELECT * FROM PhotoAlbum WHERE album_name = ? AND dirty <> ? AND (" +
+        PhotoAlbumColumns::ALBUM_TYPE + " <> ? OR " + PhotoAlbumColumns::ALBUM_SUBTYPE + " <> ?)";
+    shared_ptr<NativeRdb::ResultSet> resultSetAlbum = rdbStore->QueryByStep(sql,
+        { newAlbumName, static_cast<int32_t>(DirtyTypes::TYPE_DELETED),
+        PhotoAlbumType::SHARE, PhotoAlbumSubType::SHARE_GENERIC });
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum != nullptr, E_ERR, "Query non-deleted album with same name failed");
     int32_t rowCount = 0;
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum->GetRowCount(rowCount) == NativeRdb::E_OK, E_ERR,
@@ -1437,8 +1445,10 @@ static int32_t CheckConflictsWithExistingAlbum(const NativeRdb::ValuesBucket& ne
     CHECK_AND_RETURN_RET_LOG(MediaDuplicateCheckerUtils::checkDirectoryNameConflict(newAlbumValues) == E_OK,
         E_ERR, "the album name already exists in the file management system");
     // Check albums with same lpath
-    sql = "SELECT * FROM PhotoAlbum WHERE lpath = ?";
-    resultSetAlbum = rdbStore->QueryByStep(sql, { newLPath });
+    // 普通相册新建和重命名时，不与共享相册校验重名
+    sql = "SELECT * FROM PhotoAlbum WHERE lpath = ? AND (" + PhotoAlbumColumns::ALBUM_TYPE + " <> ? OR " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + " <> ?)";
+    resultSetAlbum = rdbStore->QueryByStep(sql, { newLPath, PhotoAlbumType::SHARE, PhotoAlbumSubType::SHARE_GENERIC });
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum != nullptr, E_ERR, "Query albums with same lpath failed");
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum->GetRowCount(rowCount) == NativeRdb::E_OK, E_ERR,
         "Get albums with same lpath row count failed");
@@ -4679,10 +4689,13 @@ static int32_t MarkShareCloudPhotosDirty(const std::shared_ptr<MediaLibraryRdbSt
         ->And()->NotEqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     NativeRdb::ValuesBucket cloudPhotoValues;
     cloudPhotoValues.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_DELETED));
+    cloudPhotoValues.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
+    cloudPhotoValues.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     int32_t markedCloudPhotoRows = 0;
     int32_t cloudRet = rdbStore->Update(markedCloudPhotoRows, cloudPhotoValues, cloudPhotoPredicates);
     CHECK_AND_RETURN_RET_LOG(cloudRet == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "mark cloud photo assets dirty failed, ret=%{public}d", cloudRet);
+    CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud photo assets dirty for %{public}zu albums",
         markedCloudPhotoRows, albumIds.size());
     return E_OK;
@@ -4706,6 +4719,7 @@ static int32_t MarkShareCloudAlbumsDirty(const std::vector<int32_t> &albumIds,
     int32_t cloudAlbumRet = albumRefresh->Update(cloudAlbumRows, cloudAlbumValues, cloudAlbumPred);
     CHECK_AND_RETURN_RET_LOG(cloudAlbumRet == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "mark cloud album dirty failed, ret=%{public}d", cloudAlbumRet);
+    CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud album records dirty",
         cloudAlbumRows);
     return E_OK;

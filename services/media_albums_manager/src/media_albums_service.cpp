@@ -98,8 +98,42 @@ MediaAlbumsService &MediaAlbumsService::GetInstance()
     return service;
 }
 
+int32_t CheckNoShareAlbumInDeleteList(const std::vector<std::string> &albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
+
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
+    vector<string> columns = {PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_TYPE,
+        PhotoAlbumColumns::ALBUM_SUBTYPE};
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "query resultSet is nullptr");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_TYPE,
+            resultSet, TYPE_INT32));
+        int32_t albumSubType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_SUBTYPE,
+            resultSet, TYPE_INT32));
+        if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumType),
+            static_cast<PhotoAlbumSubType>(albumSubType))) {
+            MEDIA_ERR_LOG("DeletePhotoAlbums contains share album, albumType=%{public}d, "
+                "albumSubType=%{public}d", albumType, albumSubType);
+            resultSet->Close();
+            return E_INVALID_VALUES;
+        }
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 int32_t MediaAlbumsService::DeletePhotoAlbums(const std::vector<std::string> &albumIds)
 {
+    int32_t ret = CheckNoShareAlbumInDeleteList(albumIds);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("DeletePhotoAlbums reject share album, ret=%{public}d", ret);
+        return ret;
+    }
     NativeRdb::RdbPredicates rdbPredicate(PhotoAlbumColumns::TABLE);
     rdbPredicate.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
     return MediaLibraryAlbumOperations::DeletePhotoAlbum(rdbPredicate);

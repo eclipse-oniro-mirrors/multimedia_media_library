@@ -799,7 +799,8 @@ int32_t PhotoFileOperation::CreateTmpCompatibleDup(const TranscodeFileInfo &srcI
     TmpCompatibleDupInfo info{
         .width = width,
         .height = height,
-        .quality = srcInfo.quality
+        .quality = srcInfo.quality,
+        .quickCopy = srcInfo.quickCopy
     };
     CHECK_AND_RETURN_RET(MediaFileUtils::ConvertFormatCopy(srcInfo.filePath, targetPath,
         extension, info),

@@ -37,6 +37,8 @@ public:
     int32_t RemoveShareAlbumAndAsset();
     // 重启后续跑上次未完成的共享资产删除任务
     void RestartRemoveShareAlbumAndAsset();
+    // 删除指定的共享相册及其资产, 全部处理完后启动一次异步清理任务
+    int32_t RemoveShareAssetsByAlbumIds(const std::vector<int32_t> &albumIds);
 
 private:
     MediaShareAssetsService() {}
@@ -46,6 +48,8 @@ private:
 
     // 标记待删除的共享资产
     int32_t MarkShareAssetsToRemove();
+    // 标记指定共享相册中待删除的共享资产
+    int32_t MarkShareAssetsToRemoveByAlbumId(int32_t albumId);
     // 异步删除已标记的共享资产
     void StartRemoveShareAssetsTask();
     // 删除已标记共享资产的循环操作

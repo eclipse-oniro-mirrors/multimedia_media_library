@@ -63,13 +63,38 @@ int32_t MediaShareAssetsService::MarkShareAssetsToRemove()
     bool hasRecords = this->shareAssetsDao_.HasShareAssetToMarkDeleted(updateFileIds, lastFileId);
     while (hasRecords && cycleNumber++ <= CYCLE_NUMBER) {
         ret = this->shareAssetsDao_.MarkDeletedAndClearCloudInfo(updateFileIds);
-        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "MarkDeletedAndClearCloudInfo failed, ret: %{public}d", ret);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK && !updateFileIds.empty(),
+            "MarkDeletedAndClearCloudInfo failed, ret: %{public}d", ret);
         lastFileId = updateFileIds.back();
         batchAssetNotify.TryNotifyAssetsChange(updateFileIds);
         hasRecords = this->shareAssetsDao_.HasShareAssetToMarkDeleted(updateFileIds, lastFileId);
     }
     batchAssetNotify.FinalNotifyAssetsChange();
     MEDIA_INFO_LOG("end MarkShareAssetsToRemove, ret: %{public}d", ret);
+    return ret;
+}
+
+int32_t MediaShareAssetsService::MarkShareAssetsToRemoveByAlbumId(int32_t albumId)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CLOUD_EXIT: MarkShareAssetsToRemoveByAlbumId");
+    MEDIA_INFO_LOG("MarkShareAssetsToRemoveByAlbumId, albumId: %{public}d", albumId);
+    int32_t cycleNumber = 0;
+    std::string lastFileId = START_QUERY_ZERO;
+    std::vector<std::string> updateFileIds;
+    int32_t ret = E_OK;
+    AssetBatchNotify batchAssetNotify;
+    bool hasRecords = this->shareAssetsDao_.HasShareAssetToMarkDeletedByAlbumId(albumId, updateFileIds, lastFileId);
+    while (hasRecords && cycleNumber++ <= CYCLE_NUMBER) {
+        ret = this->shareAssetsDao_.MarkDeletedAndClearCloudInfo(updateFileIds);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK && !updateFileIds.empty(),
+            "MarkDeletedAndClearCloudInfo failed, albumId: %{public}d, ret: %{public}d", albumId, ret);
+        lastFileId = updateFileIds.back();
+        batchAssetNotify.TryNotifyAssetsChange(updateFileIds);
+        hasRecords = this->shareAssetsDao_.HasShareAssetToMarkDeletedByAlbumId(albumId, updateFileIds, lastFileId);
+    }
+    batchAssetNotify.FinalNotifyAssetsChange();
+    MEDIA_INFO_LOG("MarkShareAssetsToRemoveByAlbumId, albumId: %{public}d, ret: %{public}d", albumId, ret);
     return ret;
 }
 
@@ -160,6 +185,25 @@ void MediaShareAssetsService::CleanShareAssetsDownloadTasksTable()
     this->batchDownloadResourcesTaskDao_.DeleteAllDownloadResourcesInfo(CloudSync::SceneType::SHARE);
     BackgroundCloudBatchSelectedFileProcessor::NotifyRefreshProgressInfo();
 #endif
+
+int32_t MediaShareAssetsService::RemoveShareAssetsByAlbumIds(const std::vector<int32_t> &albumIds)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start(" RemoveShareAssetsByAlbumIds");
+    CHECK_AND_RETURN_RET_LOG(!albumIds.empty(), E_OK, "RemoveShareAssetsByAlbumIds albumIds is empty.");
+    int32_t ret = E_OK;
+    for (int32_t albumId : albumIds) {
+        ret = MarkShareAssetsToRemoveByAlbumId(albumId);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "Failed to mark share assets, albumId: %{public}d, ret: %{public}d",
+            albumId, ret);
+        ret = this->shareAssetsDao_.DeleteShareAlbumsByAlbumId(albumId);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "Failed to delete share album, albumId: %{public}d, ret: %{public}d",
+            albumId, ret);
+        MEDIA_INFO_LOG("Deleted share albumId: %{public}d", albumId);
+    }
+    // 全部相册处理完后统一启动一次异步清理任务, 清扫已打删除标记的资产
+    StartRemoveShareAssetsTask();
+    return ret;
 }
 
 void MediaShareAssetsService::BeforeRemoveShareAlbumAndAsset()

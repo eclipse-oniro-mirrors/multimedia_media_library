@@ -118,6 +118,7 @@ namespace Media {
 #define CONST_MEDIA_FILEOPRN_OPEN_DEBUG_DB "open_debug_db"
 #define CONST_MEDIA_WHETHER_NEED_WATCH_NOTIFY "whether_need_watch_notify"
 #define CONST_NO_NEED_WATCH_NOTIFY "no_need_watch_notify"
+#define CONST_SHARE_MOVING_PHOTO "share_moving_photo"
 
 // API9 compat photo operations constants
 #define CONST_URI_CREATE_PHOTO "datashare:///media/photo_operation/create_asset"
