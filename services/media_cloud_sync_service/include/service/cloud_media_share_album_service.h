@@ -23,6 +23,8 @@
 #include "photo_album_dto.h"
 #include "cloud_media_album_dao.h"
 #include "cloud_media_common_dao.h"
+#include "media_operate_result.h"
+#include "media_share_assets_service.h"
 
 namespace OHOS::Media::CloudSync {
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
@@ -30,6 +32,7 @@ class EXPORT CloudMediaShareAlbumService {
 public:
     int32_t OnFetchRecords(std::vector<PhotoAlbumDto> &albumDtoList,
         std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
+    int32_t OnCompletePull(const MediaOperateResult &optRet);
 
 private:
     int32_t FindAlbumInfo(PhotoAlbumDto &record);

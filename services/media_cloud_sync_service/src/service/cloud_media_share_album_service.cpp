@@ -185,5 +185,19 @@ int32_t CloudMediaShareAlbumService::PullDelete(
     return E_OK;
 }
 
+int32_t CloudMediaShareAlbumService::OnCompletePull(const MediaOperateResult &optRet)
+{
+    CHECK_AND_RETURN_RET_LOG(optRet.errorCode == 0, E_OK,
+        "Share album OnCompletePull optRet errCode: %{public}d", optRet.errorCode);
+    std::vector<int32_t> albumIds;
+    int32_t ret = this->albumDao_.GetShareAlbumsIsSdirty(albumIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetShareAlbumsIsSdirty failed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(!albumIds.empty(), E_OK, "No SDIRTY share album to delete.");
+
+    MEDIA_INFO_LOG("OnCompletePull found SDIRTY share album count: %{public}zu", albumIds.size());
+    ret = MediaShareAssetsService::GetInstance().RemoveShareAssetsByAlbumIds(albumIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveShareAssetsByAlbumIds failed, ret: %{public}d", ret);
+    return ret;
+}
 
 }  // namespace OHOS::Media::CloudSync

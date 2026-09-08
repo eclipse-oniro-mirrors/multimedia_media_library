@@ -49,6 +49,7 @@ int32_t CloudMediaDownloadControllerService::GetDownloadThms(MessageParcel &data
     }
     DownloadThumbnailQueryDto queryDto = this->processor_.GetDownloadThumbnailQueryDto(reqBody);
     std::vector<PhotosDto> photosDtoVec;
+    MEDIA_INFO_LOG("GetDownloadThms: sceneType: %{public}d", CloudMediaContext::GetInstance().GetSceneType());
     if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
         ret = this->service_.GetDownloadThms(queryDto, photosDtoVec);
     } else {
