@@ -577,6 +577,23 @@ const std::string CREATE_VISION_INSERT_TRIGGER_FOR_ONCREATE =
     " WHEN (NEW.MEDIA_TYPE = 1 OR NEW.MEDIA_TYPE = 2)" +
     " AND NEW." + PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " <> " +
     std::to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) +
+    " AND NEW." + PhotoColumn::PHOTO_IS_SHARED + " = 0" +
+    " BEGIN " +
+    " INSERT INTO " + VISION_TOTAL_TABLE +" (" + FILE_ID + ", " + STATUS + ", " + OCR + ", " + AESTHETICS_SCORE + ", " +
+    LABEL + ", " + FACE + ", " + OBJECT + ", " + RECOMMENDATION + ", " + SEGMENTATION + ", " + COMPOSITION + "," +
+    SALIENCY + ", " + HEAD + ", " + POSE + ") " + " VALUES ( NEW.file_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 );" +
+    " INSERT INTO " + VISION_VIDEO_TOTAL_TABLE + " (" + FILE_ID + ", " + STATUS + ", " + LABEL + ", " + FACE +
+    ") SELECT NEW.file_id, 0, 0, 0 WHERE NEW.MEDIA_TYPE = 2;" +
+    " END;";
+
+// 共享相册资产不触发智慧分析，新增带 is_shared = 0 过滤的 insert_vision_trigger
+const std::string CREATE_VISION_INSERT_TRIGGER_WITH_SHARED_FILTER =
+    "CREATE TRIGGER IF NOT EXISTS insert_vision_trigger AFTER INSERT ON " +
+    PhotoColumn::PHOTOS_TABLE + " FOR EACH ROW " +
+    " WHEN (NEW.MEDIA_TYPE = 1 OR NEW.MEDIA_TYPE = 2)" +
+    " AND NEW." + PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " <> " +
+    std::to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) +
+    " AND NEW." + PhotoColumn::PHOTO_IS_SHARED + " = 0" +
     " BEGIN " +
     " INSERT INTO " + VISION_TOTAL_TABLE +" (" + FILE_ID + ", " + STATUS + ", " + OCR + ", " + AESTHETICS_SCORE + ", " +
     LABEL + ", " + FACE + ", " + OBJECT + ", " + RECOMMENDATION + ", " + SEGMENTATION + ", " + COMPOSITION + "," +

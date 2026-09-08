@@ -156,33 +156,35 @@ void ShootingModeAlbum::GetShootingModeAlbumPredicates(const ShootingModeAlbumTy
     switch (type) {
         case ShootingModeAlbumType::MOVING_PICTURE: {
             GetMovingPhotoAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::BURST_MODE_ALBUM: {
             GetBurstModeAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::FRONT_CAMERA_ALBUM: {
             GetFrontCameraAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::RAW_IMAGE_ALBUM: {
             GetRAWImageAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::MP4_3DGS_ALBUM: {
             Get3DGSAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM: {
             GetCinematicVideoAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         default: {
             GetGeneralShootingModeAlbumPredicates(type, predicates, hiddenState);
-            return;
+            break;
         }
     }
+    // 拍摄模式分析相册不统计共享资产，过滤 is_shared = 0
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
 }
 
 bool ShootingModeAlbum::AlbumNameToShootingModeAlbumType(const std::string& albumName,

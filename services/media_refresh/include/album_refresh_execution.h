@@ -68,6 +68,8 @@ private:
     bool CalAlbumHiddenCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo);
     // 相册封面手动设置场景下计算封面处理
     bool CalCoverSetCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo);
+    // 计算共享相册封面（share_group DESC + date_taken DESC）
+    bool CalShareAlbumCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo);
 
     // 更新所有相册
     int32_t UpdateAllAlbums(NotifyAlbumType notifyAlbumType);
@@ -117,6 +119,9 @@ private:
 
     // 用户相册和来源相册
     std::unordered_map<int32_t, AlbumRefreshInfo> ownerAlbumRefreshInfos_;
+
+    // 共享相册（SHARE_SUBTYPE, subType=8193）的增量刷新信息
+    std::unordered_map<int32_t, AlbumRefreshInfo> shareAlbumRefreshInfos_;
 
     // 所有相册refreshInfo
     std::unordered_map<int32_t, AlbumRefreshInfo> albumRefreshInfos_;

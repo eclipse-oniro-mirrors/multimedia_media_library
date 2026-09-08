@@ -110,6 +110,13 @@ void AnalysisAlbumRefreshExecution::PrepareAffectedAssets(const vector<PhotoAsse
 {
     AlbumIdSet fileIdSet;
     for (const auto &assetChangeData : assetChangeDatas) {
+        // 共享资产（is_shared == 1）不参与智慧相册刷新
+        // 删除场景下 infoAfterChange_ 被置为默认空对象（isShared_ = 0），
+        // 需回退看删除前的 infoBeforeChange_.isShared_ 真实值；其余场景看变更后状态
+        bool isSharedAsset = (assetChangeData.operation_ == RDB_OPERATION_REMOVE) ?
+            (assetChangeData.infoBeforeChange_.isShared_ == 1) :
+            (assetChangeData.infoAfterChange_.isShared_ == 1);
+        CHECK_AND_CONTINUE(!isSharedAsset);
         // 轮询读取所有资产对应fileId，准备查询数据库
         int32_t fileId = assetChangeData.GetFileId();
         CHECK_AND_CONTINUE(fileId != INVALID_INT32_VALUE);
@@ -457,8 +464,8 @@ void AnalysisAlbumRefreshExecution::PreparePhotoChangeForNotify(vector<PhotoAsse
 
         bool hasValidAnalysisAlbumChange = !data.infoBeforeChange_.albumChangeInfos_.empty() ||
             !data.infoAfterChange_.albumChangeInfos_.empty();
-        bool hasValidAsset = AlbumAssetHelper::IsCommonSystemAsset(data.infoBeforeChange_, false) ||
-            AlbumAssetHelper::IsCommonSystemAsset(data.infoAfterChange_, false);
+        bool hasValidAsset = AlbumAssetHelper::IsCommonSystemAsset(data.infoBeforeChange_, false, 0) ||
+            AlbumAssetHelper::IsCommonSystemAsset(data.infoAfterChange_, false, 0);
         if (hasValidAnalysisAlbumChange && hasValidAsset) {
             preparedAssetChangeDatas.emplace_back(data);
         }

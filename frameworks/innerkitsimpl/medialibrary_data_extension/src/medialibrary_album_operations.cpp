@@ -527,9 +527,12 @@ static int32_t QueryExistingAlbumByLpath(const string& albumName, bool& isDelete
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_FAIL, "fail to get rdbstore, lpath is: %{public}s", lpath.c_str());
 
+    // 需求十一：普通相册新建时，不与共享相册校验重名
     const string sql = "SELECT album_id, album_name, dirty FROM " + PhotoAlbumColumns::TABLE +
-        " WHERE LOWER(lpath) = LOWER(?)";
-    const vector<ValueObject> bindArgs { lpath };
+        " WHERE LOWER(lpath) = LOWER(?) AND (" + PhotoAlbumColumns::ALBUM_TYPE + " <> ? OR " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + " <> ?)";
+    const vector<ValueObject> bindArgs { lpath,
+        static_cast<int32_t>(PhotoAlbumType::SHARE), static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC) };
     auto resultSet = rdbStore->QueryByStep(sql, bindArgs);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_FAIL, "Query failed, lpath is: %{public}s", lpath.c_str());
 
@@ -1427,9 +1430,11 @@ static int32_t CheckConflictsWithExistingAlbum(const NativeRdb::ValuesBucket& ne
         }
     }
     // Check if non-deleted album with same name exists
-    std::string sql = "SELECT * FROM PhotoAlbum WHERE album_name = ? AND dirty <> ?";
-    shared_ptr<NativeRdb::ResultSet> resultSetAlbum =
-        rdbStore->QueryByStep(sql, { newAlbumName, static_cast<int32_t>(DirtyTypes::TYPE_DELETED) });
+    std::string sql = "SELECT * FROM PhotoAlbum WHERE album_name = ? AND dirty <> ? AND (" +
+        PhotoAlbumColumns::ALBUM_TYPE + " <> ? OR " + PhotoAlbumColumns::ALBUM_SUBTYPE + " <> ?)";
+    shared_ptr<NativeRdb::ResultSet> resultSetAlbum = rdbStore->QueryByStep(sql,
+        { newAlbumName, static_cast<int32_t>(DirtyTypes::TYPE_DELETED),
+        PhotoAlbumType::SHARE, PhotoAlbumSubType::SHARE_GENERIC });
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum != nullptr, E_ERR, "Query non-deleted album with same name failed");
     int32_t rowCount = 0;
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum->GetRowCount(rowCount) == NativeRdb::E_OK, E_ERR,
@@ -1440,8 +1445,10 @@ static int32_t CheckConflictsWithExistingAlbum(const NativeRdb::ValuesBucket& ne
     CHECK_AND_RETURN_RET_LOG(MediaDuplicateCheckerUtils::checkDirectoryNameConflict(newAlbumValues) == E_OK,
         E_ERR, "the album name already exists in the file management system");
     // Check albums with same lpath
-    sql = "SELECT * FROM PhotoAlbum WHERE lpath = ?";
-    resultSetAlbum = rdbStore->QueryByStep(sql, { newLPath });
+    // 普通相册新建和重命名时，不与共享相册校验重名
+    sql = "SELECT * FROM PhotoAlbum WHERE lpath = ? AND (" + PhotoAlbumColumns::ALBUM_TYPE + " <> ? OR " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + " <> ?)";
+    resultSetAlbum = rdbStore->QueryByStep(sql, { newLPath, PhotoAlbumType::SHARE, PhotoAlbumSubType::SHARE_GENERIC });
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum != nullptr, E_ERR, "Query albums with same lpath failed");
     CHECK_AND_RETURN_RET_LOG(resultSetAlbum->GetRowCount(rowCount) == NativeRdb::E_OK, E_ERR,
         "Get albums with same lpath row count failed");

@@ -20,7 +20,7 @@ namespace Media::AccurateRefresh {
 
 bool ImageAssetHelper::IsAsset(const PhotoAssetChangeInfo &assetInfo)
 {
-    return AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false);
+    return AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false, 0);
 }
 
 bool ImageAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)
@@ -30,7 +30,7 @@ bool ImageAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)
 
 bool ImageAssetHelper::IsHiddenAsset(const PhotoAssetChangeInfo &assetInfo)
 {
-    return AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true);
+    return AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true, 0);
 }
 bool ImageAssetHelper::IsNewerAsset(const PhotoAssetChangeInfo &compareAssetInfo,
     const PhotoAssetChangeInfo &currentAssetInfo)
