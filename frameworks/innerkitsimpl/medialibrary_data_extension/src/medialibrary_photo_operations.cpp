@@ -3687,7 +3687,6 @@ static int32_t UpdateEditTime(int32_t fileId, int64_t time)
     MediaLibraryCommand updatePendingCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
     updatePendingCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
-    updateValues.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, 1);
     updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, time);
     updatePendingCmd.SetValueBucket(updateValues);
     int32_t rowId = 0;
@@ -3705,7 +3704,6 @@ static int32_t RevertMetadata(int32_t fileId, int64_t time, int32_t effectMode, 
     cmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
     updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, time);
-    updateValues.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, 0);
     if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
             static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
@@ -5529,7 +5527,7 @@ static int32_t UpdateEditData(const int32_t &fileId, const int32_t existEditData
     MediaLibraryCommand updatePendingCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
     updatePendingCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
-    updateValues.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, existEditData);
+    updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, 0);
     updatePendingCmd.SetValueBucket(updateValues);
     int32_t rowId = 0;
     int32_t result = rdbStore->Update(updatePendingCmd, rowId);
