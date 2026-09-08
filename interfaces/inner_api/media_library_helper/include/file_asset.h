@@ -207,7 +207,7 @@ public:
     EXPORT void SetUserComment(const std::string &userComment);
 
     EXPORT const std::string &GetShootingModeTag() const;
-    EXPORT void SetShootingModeTag(const std::string &shootingMode);
+    EXPORT void SetShootingModeTag(const std::string &shootingModeTag);
 
     EXPORT const std::string &GetFilePath() const;
     EXPORT void SetFilePath(const std::string &filePath);
