@@ -115,6 +115,8 @@ private:
         {PhotoColumn::PHOTO_SOURCE_PATH, {&PhotosPoWriter::GetSourcePath, &PhotosPoWriter::SetSourcePath}},
         {PhotoColumn::SUPPORTED_WATERMARK_TYPE,
             {&PhotosPoWriter::GetSupportedWatermarkType, &PhotosPoWriter::SetSupportedWatermarkType}},
+        {PhotoColumn::MUSIC_MASTER_MODE,
+            {&PhotosPoWriter::GetMusicMasterMode, &PhotosPoWriter::SetMusicMasterMode}},
         {PhotoColumn::IS_STYLE_PHOTO, {&PhotosPoWriter::GetIsStylePhoto, &PhotosPoWriter::SetIsStylePhoto}},
         {PhotoColumn::PHOTO_STRONG_ASSOCIATION,
             {&PhotosPoWriter::GetStrongAssociation, &PhotosPoWriter::SetStrongAssociation}},
@@ -248,6 +250,8 @@ private:
     void SetOriginalAssetCloudId(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetOriginalAssetCloudId(std::string &val);
     void SetSourcePath(std::variant<int32_t, int64_t, double, std::string> &val);
+    void SetMusicMasterMode(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetMusicMasterMode(std::string &val);
     bool GetSourcePath(std::string &val);
     void SetSupportedWatermarkType(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetSupportedWatermarkType(std::string &val);

@@ -1836,6 +1836,7 @@ export class ContextRecoveryInfo {
     HIDDEN_TIME = "hidden_time",
     FILE_HIDDEN = 'file_hidden',
     ATTACHMENT_SIZE = 'attachment_size',
+    MUSIC_MASTER_MODE = 'music_master_mode',
   }
 
   export enum AlbumKeys {

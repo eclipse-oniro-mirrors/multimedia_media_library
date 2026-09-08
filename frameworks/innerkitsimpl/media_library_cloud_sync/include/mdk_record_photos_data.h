@@ -145,6 +145,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetMovingPhotoEffectMode(const int32_t movingPhotoEffectMode);
     std::optional<int32_t> GetSupportedWatermarkType() const;
     MDKRecordPhotosData &SetSupportedWatermarkType(const int32_t supportedWatermarkType);
+    std::optional<int32_t> GetMusicMasterMode() const;
+    MDKRecordPhotosData &SetMusicMasterMode(const int32_t musicMasterMode);
     std::optional<int32_t> GetIsStylePhoto() const;
     MDKRecordPhotosData &SetIsStylePhoto(const int32_t isStylePhoto);
     std::optional<int32_t> GetStrongAssociation() const;

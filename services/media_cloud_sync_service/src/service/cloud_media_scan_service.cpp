@@ -121,6 +121,7 @@ int32_t CloudMediaScanService::ScanDownloadedFile(const string& path, CloudMedia
     result.orientation = data->GetOrientation();
     result.aspectRatio = data->GetFileAspectRatio();
     result.exifRotate = data->GetExifRotate();
+    result.musicMasterMode = data->GetMusicMasterMode();
     result.scanSuccess = true;
     MEDIA_INFO_LOG("ScanDownloadedFile, result: %{public}s", result.ToString().c_str());
     return E_OK;

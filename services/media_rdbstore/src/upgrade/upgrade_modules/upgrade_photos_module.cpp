@@ -39,6 +39,15 @@ static vector<pair<int32_t, int32_t>> AddPhotoRiskStatusColumnsAndDeleteCritical
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_RISK_STATUS,
     "Photos", AddPhotoRiskStatusColumnsAndDeleteCritical);
 
+static vector<pair<int32_t, int32_t>> AddPhotoMusicMasterModeColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_MUSIC_MASTER_MODE, "INT DEFAULT 0 NOT NULL")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_MUSIC_MASTER_MODE_COLUMN,
+    PHOTOS_MODULE_NAME, AddPhotoMusicMasterModeColumn);
 static vector<pair<int32_t, int32_t>> AddPhotoNeedThumbnailColumn(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;

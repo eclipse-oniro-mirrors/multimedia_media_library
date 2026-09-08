@@ -349,6 +349,7 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAsset(const OnDownloadAssetData &as
         values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, scanResult.shootingMode);
         values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, scanResult.shootingModeTag);
         values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, scanResult.frontCamera);
+        values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, scanResult.musicMasterMode);
     }
     
     this->FillScanedHeightWidth(values, scanResult);

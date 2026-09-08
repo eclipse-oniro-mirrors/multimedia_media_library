@@ -3223,6 +3223,7 @@ namespace {
             PhotoColumn::PHOTO_THUMB_STATUS,
             PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
             PhotoColumn::PHOTO_TRANSCODE_TIME,
+            PhotoColumn::MUSIC_MASTER_MODE,
         };
         return SYSTEM_API_KEYS;
     }

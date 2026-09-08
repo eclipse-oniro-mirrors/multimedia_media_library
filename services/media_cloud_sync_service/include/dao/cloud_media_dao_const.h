@@ -71,6 +71,7 @@ const std::vector<std::string> PULL_QUERY_COLUMNS = {
     PhotoColumn::PHOTO_EXIF_ROTATE,
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
     PhotoColumn::PHOTO_STORAGE_PATH,
+    PhotoColumn::MUSIC_MASTER_MODE,
 };
 
 struct KeyData {

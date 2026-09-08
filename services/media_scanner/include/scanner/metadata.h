@@ -35,6 +35,9 @@ public:
     EXPORT void SetVideoMode(const VariantData &logType);
     EXPORT int32_t GetVideoMode() const;
 
+    EXPORT void SetMusicMasterMode(const VariantData &musicMasterMode);
+    EXPORT int32_t GetMusicMasterMode() const;
+
     EXPORT void SetFileId(const VariantData &id);
     EXPORT int32_t GetFileId() const;
 
@@ -255,6 +258,7 @@ private:
     int32_t dynamicRangeType_;
     int32_t hdrMode_;
     int32_t videoMode_ {-1};
+    int32_t musicMasterMode_ {0};
     double aspectRatio_;
 
     // video, audio, image

@@ -224,6 +224,7 @@ const std::vector<std::string> MEDIA_CLOUD_SYNC_COLUMNS = {
     PhotoColumn::PHOTO_SOURCE_PATH,
     PhotoColumn::SUPPORTED_WATERMARK_TYPE,
     PhotoColumn::PHOTO_STRONG_ASSOCIATION,
+    PhotoColumn::MUSIC_MASTER_MODE,
     /* keep cloud_id at the last, so RecordToValueBucket can skip it*/
     MediaColumn::MEDIA_ID,
     PhotoColumn::PHOTO_CLOUD_ID,

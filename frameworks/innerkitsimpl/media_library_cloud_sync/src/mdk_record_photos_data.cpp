@@ -479,6 +479,15 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetSupportedWatermarkType(const int32_
     this->attributes_[PhotoColumn::SUPPORTED_WATERMARK_TYPE] = MDKRecordField(supportedWatermarkType);
     return *this;
 }
+std::optional<int32_t> MDKRecordPhotosData::GetMusicMasterMode() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::MUSIC_MASTER_MODE);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetMusicMasterMode(const int32_t musicMasterMode)
+{
+    this->attributes_[PhotoColumn::MUSIC_MASTER_MODE] = MDKRecordField(musicMasterMode);
+    return *this;
+}
 std::optional<int32_t> MDKRecordPhotosData::GetStrongAssociation() const
 {
     return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_STRONG_ASSOCIATION);

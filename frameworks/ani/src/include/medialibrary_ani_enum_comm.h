@@ -256,6 +256,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("CHANGE_TIME",               PhotoColumn::PHOTO_CHANGE_TIME),
     std::make_pair("EXIST_COMPATIBLE_DUPLICATE", PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE),
     std::make_pair("HDR_MODE",                  PhotoColumn::PHOTO_HDR_MODE),
+    std::make_pair("MUSIC_MASTER_MODE",         PhotoColumn::MUSIC_MASTER_MODE),
     std::make_pair("CLOUD_ID",                  PhotoColumn::PHOTO_CLOUD_ID),
     std::make_pair("VIDEO_MODE",                PhotoColumn::PHOTO_VIDEO_MODE),
     std::make_pair("FUSION_ASSET_STORAGE_PATH", PhotoColumn::PHOTO_STORAGE_PATH),

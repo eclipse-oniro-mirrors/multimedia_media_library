@@ -323,6 +323,9 @@ public:
     EXPORT int64_t GetAttachmentSize() const;
     EXPORT void SetAttachmentSize(int64_t attachmentSize);
 
+    EXPORT int32_t GetMusicMasterMode() const;
+    EXPORT void SetMusicMasterMode(int32_t mode);
+
     EXPORT void SetThumbStatus(int32_t thumbstatus);
     EXPORT int32_t GetThumbStatus() const;
  

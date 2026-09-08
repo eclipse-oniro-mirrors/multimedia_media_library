@@ -790,6 +790,37 @@ int32_t MetadataExtractor::ExtractAVLogMetadata(std::shared_ptr<Meta> &meta)
     return videoMode;
 }
 
+int32_t MetadataExtractor::ExtractMusicMasterMetadata(std::shared_ptr<Meta> &meta)
+{
+    constexpr int32_t MUSIC_MASTER_MODE_DEFAULT = 0;
+    constexpr int32_t MUSIC_MASTER_MODE_EDIT = 2;
+    int32_t musicMasterMode = MUSIC_MASTER_MODE_DEFAULT;
+    CHECK_AND_RETURN_RET_LOG(meta != nullptr, musicMasterMode, "meta is nullptr");
+    Meta musicMasterMeta = *meta;
+    shared_ptr<Meta> customInfoMeta;
+    if (!musicMasterMeta.GetData("customInfo", customInfoMeta) || customInfoMeta == nullptr) {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata customInfo not found, return default 0");
+        return musicMasterMode;
+    }
+    Meta customInfo = *customInfoMeta;
+    string flagStr;
+    int32_t flagValue = MUSIC_MASTER_MODE_DEFAULT;
+    if (customInfo.GetData("com.openharmony.musicMaster.Flag", flagStr)) {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata find Flag as string: %{public}s", flagStr.c_str());
+        if (CanConvertToInt32(flagStr)) {
+            flagValue = static_cast<int32_t>(std::stoi(flagStr));
+        }
+    } else if (customInfo.GetData("com.openharmony.musicMaster.Flag", flagValue)) {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata find Flag as int: %{public}d", flagValue);
+    } else {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata key com.openharmony.musicMaster.Flag not found in customInfo");
+    }
+    if (flagValue >= MUSIC_MASTER_MODE_DEFAULT && flagValue <= MUSIC_MASTER_MODE_EDIT) {
+        musicMasterMode = flagValue;
+    }
+    return musicMasterMode;
+}
+
 int32_t MetadataExtractor::BuildMetaData(
     std::shared_ptr<AVMetadataHelper> &avMetadataHelper, std::unique_ptr<Metadata> &data)
 {
@@ -834,6 +865,8 @@ int32_t MetadataExtractor::BuildMetaData(
     }
     int32_t extVideoMode = ExtractAVLogMetadata(meta);
     data->SetVideoMode(extVideoMode);
+    int32_t musicMasterMode = ExtractMusicMasterMetadata(meta);
+    data->SetMusicMasterMode(musicMasterMode);
     (void)close(fd);
     return E_OK;
 }

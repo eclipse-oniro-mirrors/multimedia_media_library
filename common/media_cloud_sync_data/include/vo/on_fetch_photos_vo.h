@@ -66,6 +66,7 @@ public:
     int32_t videoMode;
     int32_t movingPhotoEffectMode;
     int32_t supportedWatermarkType;
+    int32_t musicMasterMode;
     int32_t isStylePhoto;
     int32_t strongAssociation;
     int64_t fixVersion;

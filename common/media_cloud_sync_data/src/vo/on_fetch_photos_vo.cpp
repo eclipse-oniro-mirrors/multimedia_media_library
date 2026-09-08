@@ -69,6 +69,7 @@ bool OnFetchPhotosVo::MarshallingAttributesInfo(Parcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->videoMode), false, "videoMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->strongAssociation), false, "strongAssociation");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->fixVersion), false, "fixVersion");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->version), false, "version");
@@ -142,6 +143,7 @@ bool OnFetchPhotosVo::ReadAttributesInfo(Parcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->videoMode), false, "videoMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->strongAssociation), false, "strongAssociation");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->fixVersion), false, "fixVersion");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->version), false, "version");

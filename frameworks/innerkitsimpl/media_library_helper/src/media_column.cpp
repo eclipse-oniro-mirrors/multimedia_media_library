@@ -237,6 +237,7 @@ const std::string PhotoColumn::LOCAL_ASSET_SIZE = "local_asset_size";
 const std::string PhotoColumn::PHOTO_NEED_THUMBNAIL = "need_thumbnail";
 const std::string PhotoColumn::ATTACHMENT_SIZE = "attachment_size";
 const std::string PhotoColumn::COMPRESSION_QUALITY = "compression_quality";
+const std::string PhotoColumn::MUSIC_MASTER_MODE = "music_master_mode";
 
 const std::string PhotoColumn::C2PA_CONFIG_INFO = "c2pa_config_info";
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
@@ -286,7 +287,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_TRANSCODE_TIME, PhotoColumn::PHOTO_IS_SHARED, PhotoColumn::PHOTO_SHARE_OWNER_INFO,
     PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, PhotoColumn::PHOTO_VISIBILITY, PhotoColumn::PHOTO_SHARE_RISK_STATUS,
     PhotoColumn::PHOTO_SHARE_RISK_TYPE, PhotoColumn::PHOTO_SHARE_DATE_DAY, PhotoColumn::PHOTO_SHARE_GROUP,
-    PhotoColumn::C2PA_CONFIG_INFO,
+    PhotoColumn::C2PA_CONFIG_INFO, PhotoColumn::MUSIC_MASTER_MODE,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)
