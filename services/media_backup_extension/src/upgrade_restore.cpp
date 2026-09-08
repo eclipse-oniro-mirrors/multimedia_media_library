@@ -160,6 +160,7 @@ int32_t UpgradeRestore::InitDbAndXml(std::string xmlPath, bool isUpgrade)
     geoKnowledgeRestore_.Init(this->sceneCode_, this->taskId_, this->mediaLibraryRdb_, this->galleryRdb_);
     highlightRestore_.Init(this->sceneCode_, this->taskId_, this->mediaLibraryRdb_, this->galleryRdb_);
     classifyRestore_.Init(this->sceneCode_, this->taskId_, this->mediaLibraryRdb_, this->galleryRdb_);
+    ocrRestore_.Init(this->sceneCode_, this->taskId_, this->mediaLibraryRdb_, this->galleryRdb_);
     MEDIA_INFO_LOG("Init db succ.");
     return E_OK;
 }
@@ -371,6 +372,7 @@ void UpgradeRestore::RestoreSmartAlbums()
     int64_t endRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
     classifyRestore_.RestoreClassify(photoInfoMap_);
     int64_t endRestoreClassify = MediaFileUtils::UTCTimeMilliSeconds();
+    ocrRestore_.RestoreOCR(photoInfoMap_, IsCloudRestoreSatisfied());
     int64_t startGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t endGroupPhoto = startGroupPhoto;
     if (isNeedCloneGroupAlbum_) {
@@ -379,9 +381,11 @@ void UpgradeRestore::RestoreSmartAlbums()
         endGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     }
     MEDIA_INFO_LOG("TimeCost: RestoreGeo cost: %{public}" PRId64 ", RestoreHighlight cost: %{public}" PRId64
-        " RestoreClassify cost: %{public}" PRId64 ", GroupPhoto cost: %{public}" PRId64,
+        " RestoreClassify cost: %{public}" PRId64 ", RestoreOCR cost: %{public}" PRId64
+        ", GroupPhoto cost: %{public}" PRId64,
         startRestoreHighlight - startRestoreGeo, endRestoreHighlight - startRestoreHighlight,
-        endRestoreClassify - endRestoreHighlight, endGroupPhoto - startGroupPhoto);
+        endRestoreClassify - endRestoreHighlight, startGroupPhoto - endRestoreClassify,
+        endGroupPhoto - startGroupPhoto);
     MEDIA_INFO_LOG("RestoreSmartAlbums end");
 }
 

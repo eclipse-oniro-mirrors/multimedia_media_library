@@ -139,6 +139,7 @@ ohos_unittest("medialibrary_backup_test") {
     "./src/restore/photos_data_handler_test.cpp",
     "./src/restore/photos_restore_test.cpp",
     "./src/restore/tab_old_photos_restore_test.cpp",
+    "./src/restore/ocr_restore_test.cpp",
     "./src/video_ringtone_processor_test.cpp",
     "./src/utils/database_utils.cpp",
   ]

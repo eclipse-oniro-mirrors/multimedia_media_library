@@ -176,6 +176,7 @@ protected:
     TabOldPhotosRestore tabOldPhotosRestore_;
     BackupDatabaseHelper backupDatabaseHelper_;
     ClassifyRestore classifyRestore_;
+    OCRRestore ocrRestore_;
     std::vector<int> galleryFailedOffsets_;
     std::vector<int> externalFailedOffsets_;
     ffrt::mutex galleryFailedMutex_;

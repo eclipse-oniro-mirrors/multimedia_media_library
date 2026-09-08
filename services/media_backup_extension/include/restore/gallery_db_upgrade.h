@@ -43,6 +43,8 @@ private:
     int32_t AddUserDisplayLevelIntoMergeTag(NativeRdb::RdbStore &store);
     int32_t AddHdcUniqueIdIntoGalleryMedia(NativeRdb::RdbStore &store);
     int32_t AddColumnsOfTOcrResult(NativeRdb::RdbStore &store);
+    int32_t AddIndexOfTOcrResult(NativeRdb::RdbStore &store);
+    int32_t AddIndexOfGalleryMedia(NativeRdb::RdbStore &store);
     int32_t AddDirtyIntoGalleryAlbum(NativeRdb::RdbStore &store);
 
 private:
@@ -134,6 +136,16 @@ private:
         width = (SELECT width FROM gallery_media WHERE gallery_media.hash = t_ocr_result.hash), \
         height = (SELECT height FROM gallery_media WHERE gallery_media.hash = t_ocr_result.hash) \
         WHERE EXISTS (SELECT 1 FROM gallery_media WHERE gallery_media.hash = t_ocr_result.hash);";
+    const std::string SQL_T_OCR_RESULT_INDEX_HASH = "\
+        CREATE INDEX IF NOT EXISTS idx_ocr_result_hash ON t_ocr_result \
+        ( \
+            hash \
+        );";
+    const std::string SQL_GALLERY_MEDIA_INDEX_HASH = "\
+        CREATE INDEX IF NOT EXISTS idx_gallery_media_hash ON gallery_media \
+        ( \
+            hash \
+        );";
 
 private:
     DbUpgradeUtils dbUpgradeUtils_;
