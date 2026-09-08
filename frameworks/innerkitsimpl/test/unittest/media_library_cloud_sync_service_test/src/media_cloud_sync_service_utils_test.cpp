@@ -1507,6 +1507,34 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, FillPhotosDto_Test_003, TestSize.Level1
     EXPECT_EQ(photosDto.isCritical, 1);
 }
 
+HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLpathWithoutDocPrefix_NormalPath_Test, TestSize.Level1)
+{
+    string lPath = "/FromDocs/Documents";
+    string result = CloudMediaSyncUtils::GetLpathWithoutDocPrefix(lPath);
+    EXPECT_EQ(result, "Documents");
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLpathWithoutDocPrefix_RootPath_Test, TestSize.Level1)
+{
+    string lPath = "/FromDocs/";
+    string result = CloudMediaSyncUtils::GetLpathWithoutDocPrefix(lPath);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLpathWithoutDocPrefix_NonFileManager_Test, TestSize.Level1)
+{
+    string lPath = "/Pictures/Camera";
+    string result = CloudMediaSyncUtils::GetLpathWithoutDocPrefix(lPath);
+    EXPECT_EQ(result, "/Pictures/Camera");
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLpathWithoutDocPrefix_LowerCase_Test, TestSize.Level1)
+{
+    string lPath = "/fromdocs/documents";
+    string result = CloudMediaSyncUtils::GetLpathWithoutDocPrefix(lPath);
+    EXPECT_EQ(result, "documents");
+}
+
 // FindStoragePath 函数测试
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, FindStoragePath_MediaAsset_ReturnsDataPath, TestSize.Level1)

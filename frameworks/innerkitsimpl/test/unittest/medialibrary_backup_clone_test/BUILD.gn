@@ -121,7 +121,6 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/rom_low_space_guard.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/asset_map_clone.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/backup_adapters.cpp",
-    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/dao_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/db_upgrade_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/gallery_db_upgrade.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/gallery_media_dao.cpp",

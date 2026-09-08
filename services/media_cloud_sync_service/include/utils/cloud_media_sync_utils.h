@@ -56,6 +56,7 @@ public:
         const NativeRdb::ValuesBucket &values);
     static std::string GetLpathFromSourcePath(const std::string &sourcePath);
     static std::string GetLpath(const CloudMediaPullDataDto &pullData);
+    static std::string GetLpathWithoutDocPrefix(const std::string &lPath);
     static std::string GetMovingPhotoExtraDataDir(const std::string &localPath);
     static std::string GetMovingPhotoExtraDataPath(const std::string &localPath);
     static std::string GetMovingPhotoVideoPath(const std::string &localPath);
@@ -70,7 +71,13 @@ public:
     static bool IsCloudEnhancementSupported();
     static void SyncDealWithCompositePhoto(const std::string &assetDataPath, int32_t photoId);
     static std::string FindFileStoragePath(const PhotosPo &photoInfo);
+    static std::string FindFileStoragePathWithPullData(const CloudMediaPullDataDto &pullData);
+    static int32_t FindUniqueFilePath(const std::string &destPath, std::string &targetFilePath);
+    static int32_t MoveFileWithConflictResolution(
+        const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
+    static bool IsLivePhotoWithMetaData(const PhotosPo &photosPo);
     static bool IsMediaFile(const std::string &filePath);
+    static int32_t MoveLivePhoto(const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
 
     template <typename T>
     static T GetMapValue(const std::unordered_map<std::string, T> &map, const std::string &key)

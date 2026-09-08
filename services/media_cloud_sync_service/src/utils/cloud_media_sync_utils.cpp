@@ -39,12 +39,18 @@
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
 #include "enhancement_manager.h"
 #endif
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+#include "media_file_access_utils.h"
+#endif
 
 using namespace std;
 
 namespace OHOS::Media::CloudSync {
 static const string HMDFS_PATH_PREFIX = "/mnt/hmdfs/100";
 static const string PHOTOS_PATH = "com.huawei.hmos.photos";
+const int32_t FILE_SOURCE_TYPE_MEDIA = 0;
+constexpr uint32_t RENAME_MAX_RETRY_COUNT = 10000;
+constexpr int32_t CROSS_POLICY_ERR = 18;
 
 int32_t CloudMediaSyncUtils::FillPhotosDto(
     CloudSync::PhotosDto &photosDto, const std::string &path, const int32_t &orientation,
@@ -560,9 +566,139 @@ bool CloudMediaSyncUtils::IsFileManagerAlbumPath(const std::string &lpath)
     return MediaStringUtils::StartsWith(lPathLower, fromDocsTarget);
 }
 
+std::string CloudMediaSyncUtils::GetLpathWithoutDocPrefix(const std::string &lPath)
+{
+    std::string lPathWithoutPrefix = lPath;
+    const std::string fromDocsKeyWord = FROM_DOCS_KEYWORD;
+    if (CloudMediaSyncUtils::IsFileManagerAlbumPath(lPath)) {
+        lPathWithoutPrefix = lPath.substr(fromDocsKeyWord.length());
+    }
+    return lPathWithoutPrefix;
+}
+
+std::string CloudMediaSyncUtils::FindFileStoragePathWithPullData(const CloudMediaPullDataDto &pullData)
+{
+    CHECK_AND_RETURN_RET_LOG(pullData.localPhotosPoOp.has_value(), "", "localPhotosPoOp has no value");
+    const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
+    const int32_t fileSourceType = pullData.attributesFileSourceType;
+    const bool isHidden = pullData.IsHiddenAsset();
+    const bool isTrashed = pullData.basicRecycledTime != 0;
+    const std::string cloudData = photoInfo.data.value_or("");
+    const std::string cloudStoragePath = pullData.attributesStoragePath;
+    if (fileSourceType == FILE_SOURCE_TYPE_MEDIA || isHidden || isTrashed) {
+        return CloudMediaSyncUtils::GetLocalPath(cloudData);
+    }
+    return cloudStoragePath;
+}
+
+int32_t CloudMediaSyncUtils::FindUniqueFilePath(const std::string &destPath, std::string &targetFilePath)
+{
+    targetFilePath = destPath;
+
+    const std::string parentDir = MediaFileUtils::GetParentPath(destPath);
+    CHECK_AND_RETURN_RET_LOG(!parentDir.empty(),
+        E_INVALID_ARGUMENTS,
+        "can not get parent dir, dest: %{public}s",
+        MediaFileUtils::DesensitizePath(destPath).c_str());
+    if (!MediaFileUtils::IsDirExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+        MEDIA_ERR_LOG("create dir %{public}s error, the file path is %{public}s",
+            MediaFileUtils::DesensitizePath(parentDir).c_str(),
+            MediaFileUtils::DesensitizePath(destPath).c_str());
+        return E_INVALID_ARGUMENTS;
+    }
+
+    std::string fileName = MediaFileUtils::GetFileName(targetFilePath);
+    const size_t dotPos = fileName.rfind('.');
+    const std::string fileExtension = (dotPos != std::string::npos) ? fileName.substr(dotPos) : "";
+    const std::string title = (dotPos != std::string::npos) ? fileName.substr(0, dotPos) : fileName;
+    uint32_t retryCount = 0;
+    while (MediaFileUtils::IsFileExists(targetFilePath) && retryCount < RENAME_MAX_RETRY_COUNT) {
+        retryCount++;
+        fileName = title + "(" + std::to_string(retryCount) + ")" + fileExtension;
+        targetFilePath = parentDir + "/" + fileName;
+    }
+
+    const bool isValid = !MediaFileUtils::IsFileExists(targetFilePath);
+    return isValid ? E_OK : E_ERR;
+}
+
+int32_t CloudMediaSyncUtils::MoveFileWithConflictResolution(
+    const std::string &srcPath, const std::string &destPath, std::string &finalDestPath)
+{
+    finalDestPath = destPath;
+    const bool srcFileExists = MediaFileUtils::IsFileExists(srcPath);
+    bool isValid = !srcPath.empty() && !destPath.empty() && srcFileExists;
+    CHECK_AND_RETURN_RET_LOG(isValid,
+        E_INVALID_ARGUMENTS,
+        "invalid args, src: %{public}s, dest: %{public}s, fileExists: %{public}d",
+        MediaFileUtils::DesensitizePath(srcPath).c_str(),
+        MediaFileUtils::DesensitizePath(destPath).c_str(),
+        srcFileExists);
+
+    const int32_t uniquePathRet = CloudMediaSyncUtils::FindUniqueFilePath(destPath, finalDestPath);
+    CHECK_AND_RETURN_RET_LOG(
+        uniquePathRet == E_OK, uniquePathRet, "FindUniqueFilePath failed, destPath: %{public}s", destPath.c_str());
+
+    int64_t srcFileDateModified = 0;
+    const bool isDateModifiedValid = MediaFileUtils::GetDateModified(srcPath, srcFileDateModified);
+
+    const int32_t renameRet = rename(srcPath.c_str(), finalDestPath.c_str());
+    bool cpRet = false;
+    if (renameRet != E_OK && errno == CROSS_POLICY_ERR) {
+        cpRet = MediaFileUtils::CopyFileAndDelSrc(srcPath, finalDestPath);
+    }
+    const bool resetModifiedRet =
+        isDateModifiedValid && MediaFileUtils::UpdateModifyTimeInMsec(finalDestPath, srcFileDateModified) == E_OK;
+
+    MEDIA_INFO_LOG("completed, renameRet: %{public}d, cpRet: %{public}d, resetModifiedRet: %{public}d, "
+                   "src: %{public}s, dest: %{public}s, srcFileDateModified: %{public}s",
+        renameRet,
+        cpRet,
+        resetModifiedRet,
+        MediaFileUtils::DesensitizePath(srcPath).c_str(),
+        MediaFileUtils::DesensitizePath(destPath).c_str(),
+        std::to_string(srcFileDateModified).c_str());
+    return (renameRet == E_OK || cpRet) ? E_OK : E_ERR;
+}
+
+/**
+ * 根据元数据，判断是否是LivePhoto。满足以下条件即认为是LivePhoto：
+ * 1、是动图；
+ * 2、不是涂鸦；
+ * @return true: 是LivePhoto， false: 不是LivePhoto
+ */
+bool CloudMediaSyncUtils::IsLivePhotoWithMetaData(const PhotosPo &photosPo)
+{
+    const bool isMovingPhoto = CloudMediaSyncUtils::IsMovingPhoto(photosPo);
+    const bool isGraffiti = CloudMediaSyncUtils::IsGraffiti(photosPo);
+    return isMovingPhoto && !isGraffiti;
+}
+
 bool CloudMediaSyncUtils::IsMediaFile(const std::string &filePath)
 {
     return MediaStringUtils::StartsWith(filePath, CLOUD_STORAGE_PATH_PREFIX);
+}
+
+int32_t CloudMediaSyncUtils::MoveLivePhoto(
+    const std::string &srcPath, const std::string &destPath, std::string &finalDestPath)
+{
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+    MoveResult moveResult;
+    if (CloudMediaSyncUtils::IsMediaFile(srcPath)) {
+        const FileSourceType needCheckSameName = FileSourceType::FILE_MANAGER;
+        moveResult = MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(srcPath, destPath, needCheckSameName, true);
+        // not trust moveResult.newPath, keep equal directly.
+        finalDestPath = destPath;
+        return moveResult.errCode;
+    }
+    if (CloudMediaSyncUtils::IsMediaFile(destPath)) {
+        moveResult = MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(srcPath, destPath, true);
+        // not trust moveResult.newPath, keep equal directly.
+        finalDestPath = destPath;
+        return moveResult.errCode;
+    }
+#endif
+    return E_INVALID_ARGUMENTS;
 }
 
 int32_t CloudMediaSyncUtils::FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, const CloudMediaPullDataDto &pullData)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Copyright (C) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,15 +12,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OHOS_MEDIA_DAO_UTILS
-#define OHOS_MEDIA_DAO_UTILS
+
+#ifndef OHOS_MEDIA_CLOUD_MEDIA_FILE_INFO_SERVICE_TEST_H
+#define OHOS_MEDIA_CLOUD_MEDIA_FILE_INFO_SERVICE_TEST_H
+
+#include "gtest/gtest.h"
 
 #include <string>
+#include <optional>
 
-namespace OHOS::Media {
-class DaoUtils {
+namespace OHOS::Media::CloudSync {
+class CloudMediaFileInfoServiceTest : public testing::Test {
 public:
-    static std::string FillParams(const std::string &sql, const std::vector<std::string> &bindArgs);
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp();
+    void TearDown();
 };
-}  // namespace OHOS::Media
-#endif  // OHOS_MEDIA_DAO_UTILS
+}  // namespace OHOS::Media::CloudSync
+#endif  // OHOS_MEDIA_CLOUD_MEDIA_FILE_INFO_SERVICE_TEST_H
