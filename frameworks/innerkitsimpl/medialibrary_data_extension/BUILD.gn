@@ -894,6 +894,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_cloud_permission_check.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_access_medialib_thumb_db_permission_check.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_analysis_permission_check.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_manage_share_permission_check.cpp",
   ]
 
   sources_background_task = [

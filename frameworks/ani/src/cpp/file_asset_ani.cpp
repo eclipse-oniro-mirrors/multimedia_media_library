@@ -407,6 +407,11 @@ void FileAssetAni::Set(ani_env *env, ani_object object, ani_string member, ani_s
 
     std::shared_ptr<FileAsset> fileAssetPtr = fileAssetAni->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_VOID(fileAssetPtr, "fileAssetPtr is null");
+    if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     ResultNapiType resultNapiType = fileAssetPtr->GetResultNapiType();
     ANI_INFO_LOG("fileAsset set key: %{public}s, value: %{public}s, type: %{public}d",
         memberStr.c_str(), valueStr.c_str(), resultNapiType);
@@ -897,6 +902,11 @@ void FileAssetAni::PhotoAccessHelperCommitModify(ani_env *env, ani_object object
         return;
     }
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
+    if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->objectPtr = fileAssetPtr;
@@ -1077,6 +1087,11 @@ void FileAssetAni::PhotoAccessHelperClose(ani_env *env, ani_object object, ani_d
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->objectPtr = fileAssetPtr;
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "context->objectPtr is null");
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectPtr->GetUri());
 
     double fdValue;
@@ -1249,6 +1264,11 @@ void FileAssetAni::PhotoAccessHelperSetUserComment(ani_env *env, ani_object obje
     MediaLibraryAniUtils::GetString(env, userComment, userCommentStr);
 
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
+    if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_SET_USER_COMMENT);
@@ -1780,6 +1800,12 @@ ani_object FileAssetAni::PhotoAccessHelperCloneAsset(ani_env * env, ani_object o
     context->objectPtr = fileAssetAni->fileAssetPtr;
     context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
 
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
+
     if (context->objectPtr == nullptr) {
         ANI_ERR_LOG("PhotoAsset is nullptr");
         return nullptr;
@@ -1918,6 +1944,11 @@ ani_object FileAssetAni::PhotoAccessHelperConvertFormat(ani_env *env, ani_object
     context->title = titleStr;
     context->extension = extension;
     context->objectPtr = fileAssetAni->fileAssetPtr;
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return nullptr;
+    }
     PhotoAccessHelperConvertFormatExecute(env, context);
     ConvertAssetObj = CreateClonePhotoAsset(env, context);
     CHECK_COND_RET(ConvertAssetObj != nullptr, nullptr, "ConvertAssetObj is nullptr");
@@ -2142,6 +2173,11 @@ void FileAssetAni::PhotoAccessHelperCommitEditedAsset(ani_env *env, ani_object o
         ANI_ERR_LOG("PhotoAsset is nullptr");
         return;
     }
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     auto fileUri = fileAssetAni->GetFileUri();
     MediaLibraryAniUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
@@ -2216,6 +2252,11 @@ void FileAssetAni::PhotoAccessHelperRevertToOriginal(ani_env *env, ani_object ob
     context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
     if (context->objectPtr == nullptr) {
         ANI_ERR_LOG("PhotoAsset is nullptr");
+        return;
+    }
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
         return;
     }
     context->valuesBucket.Put(MediaColumn::MEDIA_ID, context->objectPtr->GetId());
@@ -2321,6 +2362,12 @@ void FileAssetAni::PhotoAccessHelperCancelPhotoRequest(ani_env *env, ani_object 
     auto fileAssetAni = Unwrap(env, object);
     if (fileAssetAni == nullptr || fileAssetAni->fileAssetPtr == nullptr) {
         ANI_ERR_LOG("fileAssetAni is nullptr");
+        return;
+    }
+
+    if (fileAssetAni->fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
         return;
     }
 
@@ -2479,6 +2526,11 @@ void FileAssetAni::PhotoAccessHelperSetHidden(ani_env *env, ani_object object, a
     MediaLibraryAniUtils::GetBool(env, hiddenState, isHidden);
 
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
+    if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_BATCH_SET_HIDDEN);
@@ -2576,6 +2628,11 @@ void FileAssetAni::PhotoAccessHelperSetFavorite(ani_env *env, ani_object object,
     MediaLibraryAniUtils::GetBool(env, favoriteState, isFavorite);
 
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
+    if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->objectPtr = fileAssetPtr;
@@ -2939,6 +2996,11 @@ ani_status FileAssetAni::PhotoAccessHelperSetPending(ani_env *env, ani_object ob
     MediaLibraryAniUtils::GetBool(env, pendingState, context->isPending);
     context->objectPtr = fileAssetAni->fileAssetPtr;
     CHECK_COND_WITH_RET_MESSAGE(env, context->objectPtr != nullptr, ANI_INVALID_ARGS, "context->objectPtr is nullptr");
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return ANI_ERROR;
+    }
 
     PhotoAccessHelperSetPendingExecute(env, context);
     return PhotoAccessHelperSetPendingComplete(env, context);

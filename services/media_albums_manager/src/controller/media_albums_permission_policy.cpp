@@ -98,13 +98,17 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER),
         { {SYSTEMAPI_PERM, WRITE_PERM, PRIVATE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME),
-        {{SYSTEMAPI_PERM, WRITE_PERM}}},
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS),
-        {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM), {{SYSTEMAPI_PERM, WRITE_PERM}}},
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
 };
 
 static std::unordered_set<uint32_t> mediaAlbumsPermissionDbBypass = {

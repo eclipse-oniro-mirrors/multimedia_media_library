@@ -24,6 +24,7 @@
 #include "userfilemgr_uri.h"
 #include "oh_media_asset.h"
 #include "result_set_utils.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS {
 namespace Media {
@@ -49,6 +50,23 @@ static bool CheckUri(const std::string &uri)
     return uri.substr(0, uriprex.size()) == uriprex;
 }
 
+static void SetFileAssetInfo(std::shared_ptr<FileAsset> fileAsset,
+    const std::shared_ptr<DataShare::DataShareResultSet> &resultSet)
+{
+    fileAsset->SetSize(GetInt64Val(PhotoColumn::MEDIA_SIZE, resultSet));
+    fileAsset->SetDateModified(GetInt64Val(PhotoColumn::MEDIA_DATE_MODIFIED, resultSet));
+    fileAsset->SetWidth(GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet));
+    fileAsset->SetHeight(GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet));
+    fileAsset->SetOrientation(GetInt32Val(PhotoColumn::PHOTO_ORIENTATION, resultSet));
+    fileAsset->SetDateAdded(GetInt64Val(PhotoColumn::MEDIA_DATE_ADDED, resultSet));
+    fileAsset->SetDateTaken(GetInt64Val(PhotoColumn::MEDIA_DATE_TAKEN, resultSet));
+    fileAsset->SetDuration(GetInt32Val(PhotoColumn::MEDIA_DURATION, resultSet));
+    fileAsset->SetFavorite(GetInt32Val(PhotoColumn::MEDIA_IS_FAV, resultSet));
+    fileAsset->SetTitle(GetStringVal(PhotoColumn::MEDIA_TITLE, resultSet));
+    fileAsset->SetMediaType(static_cast<MediaType>(GetInt32Val(PhotoColumn::MEDIA_TYPE, resultSet)));
+    fileAsset->SetIsShared(GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet));
+}
+
 OH_MediaAsset *MediaAssetHelperImpl::GetOhMediaAsset(const std::string &uri)
 {
     CHECK_AND_RETURN_RET_LOG(CheckUri(uri), nullptr, "invalid uri");
@@ -71,7 +89,9 @@ OH_MediaAsset *MediaAssetHelperImpl::GetOhMediaAsset(const std::string &uri)
         PhotoColumn::MEDIA_DATE_TAKEN,
         PhotoColumn::MEDIA_DURATION,
         PhotoColumn::MEDIA_IS_FAV,
-        PhotoColumn::MEDIA_TYPE};
+        PhotoColumn::MEDIA_TYPE,
+        PhotoColumn::PHOTO_IS_SHARED,
+    };
 
     Uri queryUri(CONST_PAH_QUERY_PHOTO);
     int errCode;
@@ -83,17 +103,9 @@ OH_MediaAsset *MediaAssetHelperImpl::GetOhMediaAsset(const std::string &uri)
     fileAsset->SetUri(uri);
     fileAsset->SetId(stoi(fileId));
     fileAsset->SetDisplayName(MediaFileUtils::GetFileName(uri));
-    fileAsset->SetSize(GetInt64Val(PhotoColumn::MEDIA_SIZE, resultSet));
-    fileAsset->SetDateModified(GetInt64Val(PhotoColumn::MEDIA_DATE_MODIFIED, resultSet));
-    fileAsset->SetWidth(GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet));
-    fileAsset->SetHeight(GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet));
-    fileAsset->SetOrientation(GetInt32Val(PhotoColumn::PHOTO_ORIENTATION, resultSet));
-    fileAsset->SetDateAdded(GetInt64Val(PhotoColumn::MEDIA_DATE_ADDED, resultSet));
-    fileAsset->SetDateTaken(GetInt64Val(PhotoColumn::MEDIA_DATE_TAKEN, resultSet));
-    fileAsset->SetDuration(GetInt32Val(PhotoColumn::MEDIA_DURATION, resultSet));
-    fileAsset->SetFavorite(GetInt32Val(PhotoColumn::MEDIA_IS_FAV, resultSet));
-    fileAsset->SetTitle(GetStringVal(PhotoColumn::MEDIA_TITLE, resultSet));
-    fileAsset->SetMediaType(static_cast<MediaType>(GetInt32Val(PhotoColumn::MEDIA_TYPE, resultSet)));
+    SetFileAssetInfo(fileAsset, resultSet);
+    CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED), nullptr,
+        "asset belong to shared album, not support the operation");
     fileAsset->SetResultNapiType(ResultNapiType::TYPE_MEDIALIBRARY);
     auto mediaAsset = MediaAssetFactory::CreateMediaAsset(fileAsset);
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr, nullptr, "create media asset failed");
@@ -132,6 +144,8 @@ OH_MediaAsset* MediaAssetHelperImpl::GetMediaAsset(std::string uri, int32_t came
     }
 
     InitFileAsset(fileAsset);
+    CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED), nullptr,
+        "asset belong to shared album, not support the operation");
     auto mediaAssetObj = MediaAssetFactory::CreateMediaAsset(fileAsset);
     auto mediaAsset = new OH_MediaAsset(mediaAssetObj);
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr, nullptr, "create media asset failed");
@@ -193,7 +207,8 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetHelperImpl::QueryFileAs
         PhotoColumn::MEDIA_DATE_TAKEN,
         PhotoColumn::MEDIA_DURATION,
         PhotoColumn::MEDIA_IS_FAV,
-        PhotoColumn::MEDIA_TITLE
+        PhotoColumn::MEDIA_TITLE,
+        PhotoColumn::PHOTO_IS_SHARED
     };
     Uri uri(CONST_PAH_QUERY_PHOTO);
     int errCode;
@@ -249,6 +264,13 @@ void MediaAssetHelperImpl::UpdateFileAsset(std::shared_ptr<DataShare::DataShareR
     resultSet->GetString(indexPos, title);
     fileAsset->SetTitle(title);
     MEDIA_INFO_LOG("init file asset, query title: %{public}s", MediaFileUtils::DesensitizeName(title).c_str());
+
+    indexPos = -1;
+    resultSet->GetColumnIndex(PhotoColumn::PHOTO_IS_SHARED, indexPos);
+    int32_t isShared = 0;
+    resultSet->GetInt(indexPos, isShared);
+    fileAsset->SetIsShared(isShared);
+    MEDIA_INFO_LOG("init file asset, query isShared: %{public}d", isShared);
 
     return;
 }

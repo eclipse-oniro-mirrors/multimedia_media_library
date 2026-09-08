@@ -150,6 +150,7 @@ std::shared_ptr<NativeRdb::ResultSet> CloudMediaAssetDownloadOperation::QueryDow
     predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, "0");
     predicates.IsNotNull(MediaColumn::MEDIA_FILE_PATH);
     predicates.EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(static_cast<int32_t>(PhotoSharedType::NOT_SHARED)));
     predicates.BeginWrap();
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(static_cast<int32_t>(MEDIA_TYPE_IMAGE)));
     predicates.Or();

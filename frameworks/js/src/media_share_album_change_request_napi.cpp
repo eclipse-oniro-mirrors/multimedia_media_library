@@ -97,6 +97,17 @@ static bool ParseSharePhotoAlbum(napi_env env, napi_value value, shared_ptr<Phot
     return true;
 }
 
+static bool CheckShareAlbumCallerPermission(const std::string &permission)
+{
+    AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
+    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, permission);
+    if (result != PermissionState::PERMISSION_GRANTED) {
+        NAPI_ERR_LOG("Have no media permission: %{public}s", permission.c_str());
+        return false;
+    }
+    return true;
+}
+
 napi_value MediaShareAlbumChangeRequestNapi::Constructor(napi_env env, napi_callback_info info)
 {
     napi_value newTarget = nullptr;
@@ -111,6 +122,7 @@ napi_value MediaShareAlbumChangeRequestNapi::Constructor(napi_env env, napi_call
     CHECK_WITH_INT_ERR_MESSAGE(env, argc == ARGS_ONE, OHOS_INVALID_PARAM_CODE, "Number of args is invalid");
     CHECK_WITH_INT_ERR_MESSAGE(env, ParsePhotoAlbum(env, argv[PARAM0], photoAlbum),
         OHOS_INVALID_PARAM_CODE, "Failed to parse album");
+    CHECK_COND(env, CheckShareAlbumCallerPermission(PERM_MANAGE_SHARE_PHOTO), OHOS_PERMISSION_DENIED_CODE);
 
     unique_ptr<MediaShareAlbumChangeRequestNapi> obj = make_unique<MediaShareAlbumChangeRequestNapi>();
     CHECK_COND(env, obj != nullptr, JS_INNER_FAIL);
@@ -135,17 +147,6 @@ void MediaShareAlbumChangeRequestNapi::Destructor(napi_env env, void* nativeObje
 shared_ptr<PhotoAlbum> MediaShareAlbumChangeRequestNapi::GetPhotoAlbumInstance() const
 {
     return photoAlbum_;
-}
-
-static bool CheckShareAlbumCallerPermission(const std::string &permission)
-{
-    AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
-    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, permission);
-    if (result != PermissionState::PERMISSION_GRANTED) {
-        NAPI_ERR_LOG("Have no media permission: %{public}s", permission.c_str());
-        return false;
-    }
-    return true;
 }
 
 static bool SetShareAlbumNameExecute(MediaShareAlbumChangeRequestAsyncContext &context)

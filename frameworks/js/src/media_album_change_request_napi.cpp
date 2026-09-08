@@ -583,6 +583,11 @@ static napi_value DealWithDeletedAlbumsDefault(napi_env env, vector<napi_value>&
         PhotoAlbumNapi* obj = nullptr;
         CHECK_ARGS(env, napi_unwrap(env, napiValue, reinterpret_cast<void**>(&obj)), JS_INNER_FAIL);
         CHECK_COND_WITH_MESSAGE(env, obj != nullptr, "Failed to get album napi object");
+        if (PhotoAlbum::IsShareAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType())) {
+            NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+                "The current album type does not support this operation");
+            return nullptr;
+        }
         CHECK_COND_WITH_MESSAGE(env,
             PhotoAlbum::IsUserPhotoAlbumByType(obj->GetPhotoAlbumType()) ||
             PhotoAlbum::IsHighlightAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType()) ||
@@ -1433,6 +1438,11 @@ napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_ca
 
     auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current album type does not support this operation");
+        return nullptr;
+    }
     CHECK_COND_WITH_ERR_MESSAGE(env, IsPortraitAlbumAttributeTarget(photoAlbum), JS_E_OPR_TYPE_NOT_SUPPORT,
         "Only portrait album can operate attribute");
 
@@ -1575,6 +1585,20 @@ napi_value MediaAlbumChangeRequestNapi::JSPlaceBefore(napi_env env, napi_callbac
             reinterpret_cast<void**>(&photoAlbumNapi)), JS_INNER_FAIL);
         CHECK_COND_WITH_MESSAGE(env, photoAlbumNapi != nullptr, "Failed to get PhotoAlbumNapi object");
         asyncContext->objectInfo->referencePhotoAlbum_ = photoAlbumNapi->GetPhotoAlbumInstance();
+    }
+    auto sourceAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    if (sourceAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(sourceAlbum->GetPhotoAlbumType(), sourceAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current album type does not support this operation");
+        return nullptr;
+    }
+    auto referenceAlbum = asyncContext->objectInfo->referencePhotoAlbum_;
+    if (referenceAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(referenceAlbum->GetPhotoAlbumType(), referenceAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current album type does not support this operation");
+        return nullptr;
     }
     asyncContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ORDER_ALBUM);
     RETURN_NAPI_UNDEFINED(env);
@@ -2822,6 +2846,13 @@ napi_value MediaAlbumChangeRequestNapi::ApplyChanges(napi_env env, napi_callback
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, asyncContext, minArgs, maxArgs) == napi_ok,
         "Failed to get args");
     asyncContext->objectInfo = this;
+    auto photoAlbum = GetPhotoAlbumInstance();
+    if (photoAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+            "The current album is a shared album and does not support this operation");
+        return nullptr;
+    }
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,
         &asyncContext->objectInfoRef) == napi_ok, "Failed to create objectInfo reference");
     CHECK_COND_WITH_MESSAGE(env, CheckChangeOperations(env), "Failed to check album change request operations");

@@ -23,6 +23,8 @@
 #include "media_assets_controller_service.h"
 
 #include "modify_assets_vo.h"
+#include "batch_update_metadata_modified_vo.h"
+#include "set_photo_critical_vo.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
@@ -31,6 +33,8 @@
 #include "media_file_utils.h"
 #include "mimetype_utils.h"
 #include "parameter_utils.h"
+#include "test_data_builder.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -291,6 +295,52 @@ int32_t SetAssetsUserComment(int32_t fileId, const std::string &userComment)
     return ServiceModifyAsset(reqBody, call);
 }
 
+int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds)
+{
+    BatchUpdateMetaDataModifiedReqBody reqBody;
+    reqBody.fileIds = fileIds;
+
+    MessageParcel data;
+    if (reqBody.Marshalling(data) != true) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+        return -1;
+    }
+    MessageParcel reply;
+    auto service = make_shared<MediaAssetsControllerService>();
+    service->BatchUpdateMetaDataModified(data, reply);
+
+    IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
+    if (respVo.Unmarshalling(reply) != true) {
+        MEDIA_ERR_LOG("respVo.Unmarshalling failed");
+        return -1;
+    }
+    return respVo.GetErrCode();
+}
+
+int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical)
+{
+    SetPhotoCriticalReqBody reqBody;
+    reqBody.fileId = fileId;
+    reqBody.photoRiskStatus = photoRiskStatus;
+    reqBody.isCritical = isCritical;
+
+    MessageParcel data;
+    if (reqBody.Marshalling(data) != true) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+        return -1;
+    }
+    MessageParcel reply;
+    auto service = make_shared<MediaAssetsControllerService>();
+    service->SetPhotoCritical(data, reply);
+
+    IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
+    if (respVo.Unmarshalling(reply) != true) {
+        MEDIA_ERR_LOG("respVo.Unmarshalling failed");
+        return -1;
+    }
+    return respVo.GetErrCode();
+}
+
 HWTEST_F(ModifyAssetsTest, SetAssetTitle_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start SetAssetTitle_Test_001");
@@ -415,5 +465,40 @@ HWTEST_F(ModifyAssetsTest, SetAssetsUserComment_Test_001, TestSize.Level0)
     ASSERT_GT(errCode, 0);
     data = GetAssetColumn(assetId, PhotoColumn::PHOTO_USER_COMMENT);
     ASSERT_EQ(data, "");
+}
+
+HWTEST_F(ModifyAssetsTest, BatchUpdateMetaDataModified_SharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start BatchUpdateMetaDataModified_SharedAsset_Test_001");
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t assetId = builder.CreateSharedAsset(0, "SharedBatchModified001");
+    ASSERT_GT(assetId, 0);
+    ASSERT_EQ(GetAssetColumn(assetId, PhotoColumn::PHOTO_IS_SHARED), "1");
+
+    std::vector<std::string> fileIds = { to_string(assetId) };
+    int32_t errCode = BatchUpdateMetaDataModified(fileIds);
+    ASSERT_EQ(errCode, E_OK);
+
+    EXPECT_EQ(GetAssetColumn(assetId, PhotoColumn::PHOTO_META_DATE_MODIFIED), "0");
+    MEDIA_INFO_LOG("end BatchUpdateMetaDataModified_SharedAsset_Test_001");
+}
+
+HWTEST_F(ModifyAssetsTest, SetPhotoCritical_SharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start SetPhotoCritical_SharedAsset_Test_001");
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t assetId = builder.CreateSharedAsset(0, "SharedCritical001");
+    ASSERT_GT(assetId, 0);
+    ASSERT_EQ(GetAssetColumn(assetId, PhotoColumn::PHOTO_IS_SHARED), "1");
+
+    int32_t errCode = SetPhotoCritical(assetId,
+        static_cast<int32_t>(PhotoRiskStatus::REJECTED), 1);
+    EXPECT_EQ(errCode, E_HAS_DB_ERROR);
+
+    EXPECT_EQ(GetAssetColumn(assetId, PhotoColumn::PHOTO_IS_CRITICAL), "0");
+    EXPECT_EQ(GetAssetColumn(assetId, PhotoColumn::PHOTO_RISK_STATUS), "0");
+    MEDIA_INFO_LOG("end SetPhotoCritical_SharedAsset_Test_001");
 }
 }  // namespace OHOS::Media

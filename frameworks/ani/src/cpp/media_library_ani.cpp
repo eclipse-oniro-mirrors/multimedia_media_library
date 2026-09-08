@@ -63,6 +63,7 @@
 #include "trash_photos_vo.h"
 #include "grant_photo_uri_permission_vo.h"
 #include "grant_photo_uris_permission_vo.h"
+#include "file_uri.h"
 #include "cancel_photo_uri_permission_vo.h"
 #include "start_thumbnail_creation_task_vo.h"
 #include "stop_thumbnail_creation_task_vo.h"
@@ -161,6 +162,7 @@ constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_END = 14;
 const int32_t UUID_STR_LENGTH = 37;
 const std::string CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
 constexpr size_t MAX_ANALYSIS_TOOL_PARAM_LENGTH = 16 * 1024;
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 
 mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
@@ -1055,7 +1057,43 @@ static ani_status ParseArgsRemoveGalleryFormInfo(ani_env *env, ani_object info,
     }
     CHECK_STATUS_RET(ret, "GetProperty formId fail");
     context->formId = propertyValue;
+
+    const std::string assetUrisKey = "assetUris";
+    std::vector<std::string> urisValue {};
+    ani_status uriRet = MediaLibraryAniUtils::GetArrayProperty(env, info, assetUrisKey, urisValue);
+    if (uriRet == ANI_OK) {
+        for (const auto& uriValue : urisValue) {
+            if (uriValue.empty()) {
+                continue;
+            }
+            OHOS::DataShare::DataShareValuesBucket bucket;
+            bucket.Put(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, uriValue);
+            context->valuesBucketArray.push_back(move(bucket));
+        }
+    }
     return ANI_OK;
+}
+
+static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds)
+{
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    DataShare::DataSharePredicates predicates;
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    int32_t errCode = 0;
+    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+    if (resultSet == nullptr) {
+        return false;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            return true;
+        }
+    }
+    resultSet->Close();
+    return false;
 }
 
 void MediaLibraryAni::PhotoAccessRemoveGalleryFormInfo(ani_env *env, ani_object object, ani_object info)
@@ -1074,6 +1112,26 @@ void MediaLibraryAni::PhotoAccessRemoveGalleryFormInfo(ani_env *env, ani_object 
 
     CHECK_IF_EQUAL(ParseArgsRemoveGalleryFormInfo(env, info, context) == ANI_OK,
         "ParseArgsRemoveGalleryFormInfo fail");
+
+    vector<string> fileIds;
+    for (const auto& bucket : context->valuesBucketArray) {
+        bool isValid = false;
+        string assetUri = bucket.Get(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, isValid);
+        if (!isValid || assetUri.empty()) {
+            continue;
+        }
+        string fileId = MediaFileUtils::GetIdFromUri(assetUri);
+        if (!fileId.empty()) {
+            fileIds.push_back(fileId);
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        ANI_ERR_LOG("RemoveGalleryFormInfo does not support shared album asset");
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
+
     SetUserIdFromObjectInfo(context);
     PhotoAccessRemoveGalleryFormInfoExec(env, context);
     RemoveFormInfoAsyncCallbackComplete(env, context);
@@ -1146,6 +1204,12 @@ static ani_status ParseArgsRemoveFormInfo(ani_env *env, ani_object info, unique_
     CHECK_STATUS_RET(ret, "GetProperty formId fail");
     context->formId = propertyValue;
     CHECK_STATUS_RET(CheckFormId(context->formId), "CheckFormId fail");
+
+    std::string uriValue = "";
+    if (MediaLibraryAniUtils::GetProperty(env, info, "uri", uriValue) == ANI_OK && !uriValue.empty()) {
+        context->valuesBucket.Put(FormMap::FORMMAP_URI, uriValue);
+    }
+
     return ANI_OK;
 }
 
@@ -1166,6 +1230,33 @@ void MediaLibraryAni::PhotoAccessRemoveFormInfo(ani_env *env, ani_object object,
     }
 
     CHECK_IF_EQUAL(ParseArgsRemoveFormInfo(env, info, context) == ANI_OK, "ParseArgsRemoveFormInfo fail");
+
+    bool isValid = false;
+    string formUri = context->valuesBucket.Get(FormMap::FORMMAP_URI, isValid);
+    do {
+        CHECK_AND_BREAK(isValid && !formUri.empty());
+        string fileId = MediaFileUtils::GetIdFromUri(formUri);
+        CHECK_AND_BREAK(!fileId.empty());
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, vector<string> { fileId });
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                ANI_ERR_LOG("RemoveFormInfo does not support shared album asset");
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return;
+            }
+        }
+        resultSet->Close();
+    } while (false);
+
     SetUserIdFromObjectInfo(context);
     PhotoAccessRemoveFormInfoExec(env, context);
     RemoveFormInfoAsyncCallbackComplete(env, context);
@@ -1557,6 +1648,24 @@ ani_int MediaLibraryAni::PhotoAccessStartCreateThumbnailTask([[maybe_unused]] an
         ParseArgsStartCreateThumbnailTask(env, object, predicate, callback, asyncContext) == ANI_OK,
         ANI_INVALID_ARGS, "ParseArgsStartCreateThumbnailTask error");
 
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    DataShare::DataSharePredicates predicates = asyncContext->predicates;
+    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    int32_t errCode = 0;
+    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+    if (resultSet != nullptr) {
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                ANI_ERR_LOG("StartCreateThumbnailTask does not support shared album asset");
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return E_OPERATION_NOT_SUPPORT;
+            }
+        }
+        resultSet->Close();
+    }
     ReleaseThumbnailTask(GetRequestId());
     int32_t requestId = AssignRequestId();
     RegisterThumbnailGenerateObserver(env, asyncContext, requestId);
@@ -4735,6 +4844,33 @@ void MediaLibraryAni::PhotoAccessSaveFormInfo(ani_env *env, ani_object object, a
     }
 
     CHECK_ARGS_RET_VOID(env, ParseArgsSaveFormInfo(env, info, context), JS_ERR_PARAMETER_INVALID);
+
+    bool isValid = false;
+    string formUri = context->valuesBucket.Get(FormMap::FORMMAP_URI, isValid);
+    do {
+        CHECK_AND_BREAK(isValid && !formUri.empty());
+        string fileId = MediaFileUtils::GetIdFromUri(formUri);
+        CHECK_AND_BREAK(!fileId.empty());
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, vector<string> { fileId });
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                ANI_ERR_LOG("SaveFormInfo does not support shared album asset");
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return;
+            }
+        }
+        resultSet->Close();
+    } while (false);
+
     SetUserIdFromObjectInfo(context);
     PhotoAccessSaveFormInfoExec(env, context);
     PhotoAccessSaveFormInfoComplete(env, context);
@@ -4855,6 +4991,25 @@ void MediaLibraryAni::PhotoAccessUpdateGalleryFormInfo(ani_env *env, ani_object 
 
     CHECK_IF_EQUAL(ParseArgsUpdateGalleryFormInfo(env, info, context) == ANI_OK,
         "ParseArgsUpdateGalleryFormInfo fail");
+
+    vector<string> fileIds;
+    for (const auto& bucket : context->valuesBucketArray) {
+        bool isValid = false;
+        string assetUri = bucket.Get(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, isValid);
+        if (isValid && !assetUri.empty()) {
+            string fileId = MediaFileUtils::GetIdFromUri(assetUri);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        ANI_ERR_LOG("UpdateGalleryFormInfo does not support shared album asset");
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return;
+    }
+
     PhotoAccessUpdateGalleryFormInfoExec(env, context);
     RemoveFormInfoAsyncCallbackComplete(env, context);
 }
@@ -4870,6 +5025,39 @@ void MediaLibraryAni::PhotoAccessSaveGalleryFormInfo(ani_env *env, ani_object ob
         return;
     }
     CHECK_IF_EQUAL(ParseArgsSaveGalleryFormInfo(env, info, context) == ANI_OK, "PhotoAccessSaveGalleryFormInfo fail");
+
+    vector<string> fileIds;
+    for (const auto& bucket : context->valuesBucketArray) {
+        bool isValid = false;
+        string assetUri = bucket.Get(TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI, isValid);
+        if (isValid && !assetUri.empty()) {
+            string fileId = MediaFileUtils::GetIdFromUri(assetUri);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+    }
+    do {
+        CHECK_AND_BREAK(!fileIds.empty());
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, fileIds);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                ANI_ERR_LOG("SaveGalleryFormInfo does not support shared album asset");
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return;
+            }
+        }
+        resultSet->Close();
+    } while (false);
 
     PhotoAccessSaveGalleryFormInfoExec(env, context);
     SaveFormInfoAsyncCallbackComplete(env, context);
@@ -5433,6 +5621,29 @@ static ani_int PhotoUriPermissionComplete(ani_env *env, unique_ptr<MediaLibraryA
     return result;
 }
 
+static bool HasSharedAlbumAsset(int32_t fileId)
+{
+    vector<string> fileIds = { to_string(fileId) };
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
+    DataShare::DataSharePredicates predicates;
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+    int32_t errCode = 0;
+    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+    if (resultSet == nullptr) {
+        return false;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            return true;
+        }
+    }
+    resultSet->Close();
+    return false;
+}
+
 ani_int MediaLibraryAni::PhotoAccessGrantPhotoUriPermission(ani_env *env, ani_object object, ani_object param,
     ani_enum_item photoPermissionType, ani_enum_item hideSensitiveType)
 {
@@ -5450,6 +5661,14 @@ ani_int MediaLibraryAni::PhotoAccessGrantPhotoUriPermission(ani_env *env, ani_ob
     }
     if (ParseArgsGrantPhotoUriPermission(env, context, param, photoPermissionType, hideSensitiveType) != ANI_OK) {
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return DEFAULT_ERR_ANI_DOUBLE;
+    }
+    bool isValid = false;
+    int32_t fileId = context->valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
+    if (isValid && fileId >= 0 && HasSharedAlbumAsset(fileId)) {
+        ANI_ERR_LOG("PhotoAccessGrantPhotoUriPermission does not support shared album asset");
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
         return DEFAULT_ERR_ANI_DOUBLE;
     }
     PhotoAccessGrantPhotoUriPermissionExecute(env, context);
@@ -5548,6 +5767,21 @@ ani_int MediaLibraryAni::PhotoAccessGrantPhotoUrisPermission(ani_env *env, ani_o
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return DEFAULT_ERR_ANI_DOUBLE;
     }
+    vector<string> fileIds;
+    for (const auto &valuesBucket : context->valuesBucketArray) {
+        bool isValid = false;
+        int32_t fileId = valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
+        if (isValid && fileId >= 0) {
+            fileIds.push_back(to_string(fileId));
+        }
+    }
+    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
+        ANI_ERR_LOG("PhotoAccessGrantPhotoUrisPermission does not support shared album asset");
+        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+            "The current asset belongs to a shared album and does not support this operation");
+        return DEFAULT_ERR_ANI_DOUBLE;
+    }
+
     PhotoAccessGrantPhotoUrisPermissionExecute(env, context);
     return PhotoUriPermissionComplete(env, context);
 }
@@ -5638,6 +5872,30 @@ ani_int MediaLibraryAni::PhotoAccessCancelPhotoUriPermission(ani_env *env, ani_o
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return DEFAULT_ERR_ANI_DOUBLE;
     }
+    bool isValid = false;
+    int32_t fileId = context->valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
+    do {
+        CHECK_AND_BREAK(isValid && fileId >= 0);
+        vector<string> fileIds = { to_string(fileId) };
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, fileIds);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                ANI_ERR_LOG("PhotoAccessCancelPhotoUriPermission does not support shared album asset");
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return DEFAULT_ERR_ANI_DOUBLE;
+            }
+        }
+        resultSet->Close();
+    } while (false);
     PhotoAccessCancelPhotoUriPermissionExecute(env, context);
     return PhotoUriPermissionComplete(env, context);
 }
@@ -6158,6 +6416,34 @@ ani_int MediaLibraryAni::StartAssetAnalysis(ani_env *env, ani_object object, ani
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return retVal;
     }
+    do {
+        CHECK_AND_BREAK(!asyncContext->uris.empty());
+        vector<string> fileIds;
+        for (const auto &uri : asyncContext->uris) {
+            string fileId = MediaLibraryAniUtils::GetFileIdFromUriString(uri);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+        CHECK_AND_BREAK(!fileIds.empty());
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, fileIds);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return retVal;
+            }
+        }
+        resultSet->Close();
+    } while (false);
     PhotoAccessStartAssetAnalysisExecute(env, asyncContext);
     return PhotoAccessStartAssetAnalysisComplete(env, asyncContext);
 }
@@ -8773,14 +9059,10 @@ static bool InitRequestPhotoUrisReadPermissionRequest(OHOS::AAFwk::Want &want,
     return true;
 }
 
-ani_object MediaLibraryAni::RequestPhotoUrisReadPermission(ani_env *env, ani_object object,
-    ani_object context, ani_object arrayUris, ani_object appName, ani_fn_object resultcb)
+static Ace::UIContent *GetUiContentFromContext(ani_env *env, ani_object context)
 {
-    ANI_INFO_LOG("RequestPhotoUrisReadPermission enter");
-    Ace::UIContent *uiContent = nullptr;
     auto stageModeContext = OHOS::AbilityRuntime::GetStageModeContext(env, context);
     CHECK_COND_WITH_MESSAGE(env, stageModeContext != nullptr, "stageModeContext is null.");
-
     shared_ptr<OHOS::AbilityRuntime::AbilityContext> abilityContext =
         OHOS::AbilityRuntime::Context::ConvertTo<OHOS::AbilityRuntime::AbilityContext>(stageModeContext);
     if (abilityContext == nullptr) {
@@ -8788,12 +9070,62 @@ ani_object MediaLibraryAni::RequestPhotoUrisReadPermission(ani_env *env, ani_obj
             AbilityRuntime::Context::ConvertTo<AbilityRuntime::UIExtensionContext>(stageModeContext);
         CHECK_COND_WITH_MESSAGE(env, uiExtensionContext != nullptr,
             "Fail to convert to abilityContext or uiExtensionContext.");
-        uiContent = uiExtensionContext->GetUIContent();
-    } else {
-        // get uiContent from abilityContext
-        uiContent = abilityContext->GetUIContent();
+        return uiExtensionContext->GetUIContent();
     }
+    return abilityContext->GetUIContent();
+}
+
+static bool HasSharedAlbumAssetInUris(ani_env *env, ani_object arrayUris)
+{
+    vector<string> srcFileUris;
+    do {
+        CHECK_AND_BREAK(
+            MediaLibraryAniUtils::GetStringArray(env, arrayUris, srcFileUris) == ANI_OK && !srcFileUris.empty());
+        vector<string> fileIds;
+        for (const auto &uri : srcFileUris) {
+            string realUriPath = uri;
+            if (uri.find("https://") != 0) {
+                AppFileService::ModuleFileUri::FileUri fileUri(uri);
+                realUriPath = fileUri.ToString();
+            }
+            string fileId = MediaLibraryAniUtils::GetFileIdFromUriString(realUriPath);
+            if (!fileId.empty()) {
+                fileIds.push_back(fileId);
+            }
+        }
+        CHECK_AND_BREAK(!fileIds.empty());
+        Uri queryUri(CONST_PAH_QUERY_PHOTO);
+        DataShare::DataSharePredicates predicates;
+        predicates.In(MediaColumn::MEDIA_ID, fileIds);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        int32_t errCode = 0;
+        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+                resultSet, TYPE_INT32));
+            if (isShared == SHARED_ASSET_FLAG) {
+                ANI_ERR_LOG("RequestPhotoUrisReadPermission does not support shared album asset");
+                AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
+                    "The current asset belongs to a shared album and does not support this operation");
+                return true;
+            }
+        }
+        resultSet->Close();
+    } while (false);
+    return false;
+}
+
+ani_object MediaLibraryAni::RequestPhotoUrisReadPermission(ani_env *env, ani_object object,
+    ani_object context, ani_object arrayUris, ani_object appName, ani_fn_object resultcb)
+{
+    ANI_INFO_LOG("RequestPhotoUrisReadPermission enter");
+    Ace::UIContent *uiContent = GetUiContentFromContext(env, context);
     CHECK_COND_WITH_MESSAGE(env, uiContent != nullptr, "uiContent is null.");
+
+    if (HasSharedAlbumAssetInUris(env, arrayUris)) {
+        return nullptr;
+    }
 
     // set want
     OHOS::AAFwk::Want want;

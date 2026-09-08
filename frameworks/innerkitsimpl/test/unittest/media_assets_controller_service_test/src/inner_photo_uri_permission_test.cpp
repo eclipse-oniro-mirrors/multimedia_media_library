@@ -51,6 +51,7 @@
 #include "media_old_photos_column.h"
 #include "media_column.h"
 #include "media_audio_column.h"
+#include "test_data_builder.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -480,5 +481,94 @@ HWTEST_F(InnerPhotoUriPermissionTest, GetUrisByOldUris_001, TestSize.Level0)
     uris.emplace_back("");
     ret = GetUrisByOldUrisInner(uris, tabOldPhotosClient);
     EXPECT_EQ(ret.empty(), false);
+}
+
+static int32_t QueryUriPermissionCountByFileId(const std::string &fileId)
+{
+    RdbPredicates rdbPredicates(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
+    rdbPredicates.EqualTo(AppUriPermissionColumn::FILE_ID, fileId);
+    vector<string> columns = { AppUriPermissionColumn::FILE_ID };
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicates, columns);
+    if (resultSet == nullptr) {
+        return 0;
+    }
+    int32_t count = 0;
+    int32_t ret = resultSet->GetRowCount(count);
+    resultSet->Close();
+    if (ret != NativeRdb::E_OK) {
+        return 0;
+    }
+    return count;
+}
+
+HWTEST_F(InnerPhotoUriPermissionTest, GrantUrisPermissionInner_SharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("GrantUrisPermissionInner_SharedAsset_Test_001 Begin");
+
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t sharedId = builder.CreateSharedAsset(0, "SharedUriPermGrant001");
+    int32_t normalId = builder.CreateAsset(0, "NormalUriPermGrant001");
+    ASSERT_GT(sharedId, 0);
+    ASSERT_GT(normalId, 0);
+
+    std::vector<std::string> fileIds = { to_string(sharedId), to_string(normalId) };
+    std::vector<int32_t> uriTypes = {
+        static_cast<int32_t>(TableType::TYPE_PHOTOS),
+        static_cast<int32_t>(TableType::TYPE_PHOTOS),
+    };
+    std::vector<int32_t> permissionTypes = {
+        static_cast<int32_t>(PhotoPermissionType::PERSIST_READ_IMAGEVIDEO),
+        static_cast<int32_t>(PhotoPermissionType::PERSIST_READ_IMAGEVIDEO),
+    };
+    auto SensitiveType = HideSensitiveType::GEOGRAPHIC_LOCATION_DESENSITIZE;
+
+    int32_t ret = GrantUrisPermissionInner(fileIds, permissionTypes, uriTypes, static_cast<int32_t>(SensitiveType));
+    ASSERT_EQ(ret, 0);
+
+    EXPECT_EQ(QueryUriPermissionCountByFileId(to_string(sharedId)), 0);
+    EXPECT_EQ(QueryUriPermissionCountByFileId(to_string(normalId)), 1);
+    MEDIA_INFO_LOG("GrantUrisPermissionInner_SharedAsset_Test_001 End");
+}
+
+HWTEST_F(InnerPhotoUriPermissionTest, CancelUrisPermissionInner_SharedAsset_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CancelUrisPermissionInner_SharedAsset_Test_001 Begin");
+
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t sharedId = builder.CreateSharedAsset(0, "SharedUriPermCancel001");
+    int32_t normalId = builder.CreateAsset(0, "NormalUriPermCancel001");
+    ASSERT_GT(sharedId, 0);
+    ASSERT_GT(normalId, 0);
+
+    auto SensitiveType = HideSensitiveType::GEOGRAPHIC_LOCATION_DESENSITIZE;
+
+    // Grant normal asset permission first so that cancel has a record to delete.
+    std::vector<std::string> grantFileIds = { to_string(normalId) };
+    std::vector<int32_t> grantUriTypes = { static_cast<int32_t>(TableType::TYPE_PHOTOS) };
+    std::vector<int32_t> grantPermissionTypes = {
+        static_cast<int32_t>(PhotoPermissionType::PERSIST_READ_IMAGEVIDEO)
+    };
+    int32_t ret = GrantUrisPermissionInner(grantFileIds, grantPermissionTypes, grantUriTypes,
+        static_cast<int32_t>(SensitiveType));
+    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(QueryUriPermissionCountByFileId(to_string(normalId)), 1);
+
+    // Cancel with mixed shared + normal: shared must be filtered, normal record deleted.
+    std::vector<std::string> fileIds = { to_string(sharedId), to_string(normalId) };
+    std::vector<int32_t> uriTypes = {
+        static_cast<int32_t>(TableType::TYPE_PHOTOS),
+        static_cast<int32_t>(TableType::TYPE_PHOTOS),
+    };
+    std::vector<std::vector<std::string>> permissionTypes = {
+        { to_string(static_cast<uint32_t>(PhotoPermissionType::PERSIST_READ_IMAGEVIDEO)) },
+        { to_string(static_cast<uint32_t>(PhotoPermissionType::PERSIST_READ_IMAGEVIDEO)) },
+    };
+    ret = CancelUrisPermissionInner(fileIds, uriTypes, permissionTypes);
+    ASSERT_EQ(ret, 0);
+
+    EXPECT_EQ(QueryUriPermissionCountByFileId(to_string(normalId)), 0);
+    MEDIA_INFO_LOG("CancelUrisPermissionInner_SharedAsset_Test_001 End");
 }
 }  // namespace OHOS::Media

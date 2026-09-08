@@ -190,8 +190,15 @@ napi_value MediaAssetsChangeRequestNapi::JSSetFavorite(napi_env env, napi_callba
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isFavorite_ = isFavorite;
-    for (const auto& fileAsset : changeRequest->fileAssets_) {
-        fileAsset->SetFavorite(isFavorite);
+    auto& fileAssets = changeRequest->fileAssets_;
+    for (auto it = fileAssets.begin(); it != fileAssets.end();) {
+        if ((*it)->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            NAPI_INFO_LOG("Skip shared album asset in batch setFavorite, fileId=%{public}d", (*it)->GetId());
+            it = fileAssets.erase(it);
+            continue;
+        }
+        (*it)->SetFavorite(isFavorite);
+        ++it;
     }
     changeRequest->assetsChangeOperations_.push_back(AssetsChangeOperation::BATCH_SET_FAVORITE);
     RETURN_NAPI_UNDEFINED(env);
@@ -321,13 +328,15 @@ static bool SetAssetsPropertyExecute(MediaAssetsChangeRequestAsyncContext& conte
     DataShare::DataSharePredicates predicates;
     DataShare::DataShareValuesBucket valuesBucket;
     auto changeRequest = context.objectInfo;
-    predicates.In(PhotoColumn::MEDIA_ID, changeRequest->GetFileAssetUriArray());
     switch (changeOperation) {
-        case AssetsChangeOperation::BATCH_SET_FAVORITE:
+        case AssetsChangeOperation::BATCH_SET_FAVORITE: {
             uri = CONST_PAH_BATCH_UPDATE_FAVORITE;
             valuesBucket.Put(PhotoColumn::MEDIA_IS_FAV, changeRequest->GetFavoriteStatus() ? YES : NO);
+            vector<string> uris = changeRequest->GetFileAssetUriArray();
+            predicates.In(PhotoColumn::MEDIA_ID, uris);
             NAPI_INFO_LOG("Batch set favorite: %{public}d", changeRequest->GetFavoriteStatus() ? YES : NO);
             break;
+        }
         case AssetsChangeOperation::BATCH_SET_HIDDEN:
             uri = CONST_PAH_HIDE_PHOTOS;
             valuesBucket.Put(PhotoColumn::MEDIA_HIDDEN, changeRequest->GetHiddenStatus() ? YES : NO);
@@ -415,6 +424,13 @@ napi_value MediaAssetsChangeRequestNapi::ApplyChanges(napi_env env, napi_callbac
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, asyncContext, minArgs, maxArgs) == napi_ok,
         "Failed to get args");
     asyncContext->objectInfo = this;
+    for (const auto& fileAsset : fileAssets_) {
+        if (fileAsset != nullptr && fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+                "The current asset belongs to a shared album and does not support this operation");
+            return nullptr;
+        }
+    }
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,
         &asyncContext->objectInfoRef) == napi_ok, "Failed to create objectInfo reference");
     CHECK_COND_WITH_MESSAGE(env, CheckChangeOperations(env), "Failed to check assets change request operations");

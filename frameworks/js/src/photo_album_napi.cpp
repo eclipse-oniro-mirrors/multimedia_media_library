@@ -1804,6 +1804,11 @@ static napi_value ParseArgsSetCoverUri(napi_env env, napi_callback_info info,
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Only system apps can update album cover");
         return nullptr;
     }
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The current album type does not support this operation");
+        return nullptr;
+    }
 
     context->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI);
     context->predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(photoAlbum->GetAlbumId()));

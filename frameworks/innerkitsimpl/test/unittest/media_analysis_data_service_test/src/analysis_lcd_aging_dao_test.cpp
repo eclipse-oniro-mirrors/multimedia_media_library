@@ -28,6 +28,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "result_set_utils.h"
 #include "photo_album_column.h"
+#include "test_data_builder.h"
 
 using namespace std;
 using namespace OHOS::Media::AnalysisData;
@@ -390,6 +391,38 @@ HWTEST_F(AnalysisLcdAgingDaoTest, InsertFailedPhotosExt_Test_005, TestSize.Level
     EXPECT_EQ(ret, E_OK);
     int32_t count = QueryPhotosExtCount({5001});
     EXPECT_EQ(count, 1);
+}
+
+// 用例说明：共享资产被 QueryDownloadLcdInfo 过滤
+// 覆盖场景：fileIds 混合共享与非共享资产
+// 业务验证：共享 fileId 不出现在 downloadInfos，非共享正常返回
+HWTEST_F(AnalysisLcdAgingDaoTest, QueryDownloadLcdInfo_SharedAsset_Test_001, TestSize.Level1)
+{
+    auto& builder = TestDataBuilder::GetInstance();
+    builder.Init(g_rdbStore);
+    int32_t sharedId = builder.CreateSharedAsset(0, "SharedLcdQuery001");
+    int32_t normalId = builder.CreateAsset(0, "NormalLcdQuery001");
+    ASSERT_GT(sharedId, 0);
+    ASSERT_GT(normalId, 0);
+
+    AnalysisLcdAgingDao dao;
+    vector<int64_t> fileIds = { sharedId, normalId };
+    vector<DownloadLcdFileInfo> downloadInfos;
+    int32_t ret = dao.QueryDownloadLcdInfo(fileIds, downloadInfos);
+    EXPECT_EQ(ret, E_OK);
+
+    bool hasShared = false;
+    bool hasNormal = false;
+    for (const auto& info : downloadInfos) {
+        if (info.fileId == sharedId) {
+            hasShared = true;
+        }
+        if (info.fileId == normalId) {
+            hasNormal = true;
+        }
+    }
+    EXPECT_FALSE(hasShared);
+    EXPECT_TRUE(hasNormal);
 }
 
 } // namespace Media

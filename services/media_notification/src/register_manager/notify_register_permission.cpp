@@ -75,7 +75,7 @@ int32_t NotifyRegisterPermission::SharePermissionCheck()
         return -E_CHECK_SYSTEMAPP_FAIL;
     }
     std::vector<std::string> perms;
-    perms.push_back(PERM_READ_IMAGEVIDEO);
+    perms.push_back(PERM_MANAGE_SHARE_PHOTO);
     int32_t err = PermissionUtils::CheckCallerPermission(perms) ? E_SUCCESS : E_PERMISSION_DENIED;
     if (err < 0) {
         MEDIA_ERR_LOG("the caller does not have read permission or share permission");

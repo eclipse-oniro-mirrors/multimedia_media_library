@@ -582,6 +582,13 @@ int32_t MediaAnalysisDataControllerService::PlaceBefore(MessageParcel &data, Mes
         MEDIA_ERR_LOG("PlaceBefore Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+    PhotoAlbumType albumType = GetPhotoAlbumType(reqBody.albumType);
+    PhotoAlbumSubType albumSubtype = GetPhotoAlbumSubType(reqBody.albumSubType);
+    if (PhotoAlbum::IsShareAlbum(albumType, albumSubtype)) {
+        MEDIA_ERR_LOG("PlaceBefore does not support share album, albumType=%{public}d, albumSubType=%{public}d",
+            reqBody.albumType, reqBody.albumSubType);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
 
     ChangeRequestPlaceBeforeDto dto;
     dto.FromVo(reqBody);

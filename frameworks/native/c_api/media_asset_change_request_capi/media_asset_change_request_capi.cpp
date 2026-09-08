@@ -61,6 +61,8 @@ OH_MediaAssetChangeRequest* OH_MediaAssetChangeRequest_Create(OH_MediaAsset* med
     CHECK_AND_RETURN_RET_LOG(fileAssetPtr != nullptr, nullptr, "fileAssetPtr is nullptr!");
 
     OH_MediaAssetChangeRequest* changeRequest = nullptr;
+    CHECK_AND_RETURN_RET_LOG(fileAssetPtr->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED), nullptr,
+        "asset belong to shared album, not support the operation");
     if (fileAssetPtr->GetMediaType() == OHOS::Media::MEDIA_TYPE_IMAGE ||
         fileAssetPtr->GetMediaType() == OHOS::Media::MEDIA_TYPE_VIDEO) {
         auto mediaAssetChangeRequest =
