@@ -19,6 +19,7 @@
 
 #include <thread>
 
+#include "background_cloud_batch_selected_file_processor.h"
 #include "cloud_media_asset_manager.h"
 #include "hi_audit.h"
 #include "media_assets_utils.h"
@@ -165,11 +166,6 @@ void MediaShareAssetsService::StartRemoveShareAssetsTask()
     deleteThread.detach();
 }
 
-void MediaShareAssetsService::CleanShareAssetsDownloadTasksTable()
-{
-    MEDIA_ERR_LOG("refer to CleanDownloadTasksTable() and CancelDownloadCloudAsset()");
-}
-
 int32_t MediaShareAssetsService::RemoveShareAssetsInner()
 {
     int32_t ret = MarkShareAssetsToRemove();
@@ -180,6 +176,15 @@ int32_t MediaShareAssetsService::RemoveShareAssetsInner()
 
     StartRemoveShareAssetsTask();
     return E_OK;
+}
+
+void MediaShareAssetsService::CleanShareAssetsDownloadTasksTable()
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    BackgroundCloudBatchSelectedFileProcessor::TriggerStopBatchDownloadProcessor(true, CloudSync::SceneType::SHARE);
+    this->batchDownloadResourcesTaskDao_.DeleteAllDownloadResourcesInfo(CloudSync::SceneType::SHARE);
+    BackgroundCloudBatchSelectedFileProcessor::NotifyRefreshProgressInfo();
+#endif
 }
 
 int32_t MediaShareAssetsService::RemoveShareAssetsByAlbumIds(const std::vector<int32_t> &albumIds)
@@ -214,7 +219,11 @@ void MediaShareAssetsService::BeforeRemoveShareAlbumAndAsset()
     CloudMediaAssetManager::WaitIfBackUpingOrRestoring();
 
     // 清除批量下载任务列表
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    // 检查点 批量下载 关闭端云开关和退账号适配 清理下载任务表 通知应用 notify type 6
+    MEDIA_INFO_LOG("BatchSelectFileDownload ForceRetainDownloadCloudMedia CleanShareAssetsDownloadTasksTable");
     CleanShareAssetsDownloadTasksTable();
+#endif
     MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus::CLOUD_CLEANING);
 }
 

@@ -59,6 +59,17 @@ static vector<pair<int32_t, int32_t>> AddContactInfoColumn(NativeRdb::RdbStore &
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_CONTACT_INFO,
     OTHER_TABLE_MODULE_NAME, AddContactInfoColumn);
 
+static vector<pair<int32_t, int32_t>> AddIsSharedColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_DOWNLOAD_RESOURCES_TASK_RECORDS, COLUMN_IS_SHARED,
+        "INT DEFAULT 0 NOT NULL")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_IS_SHARED_IN_DRTR,
+    OTHER_TABLE_MODULE_NAME, AddIsSharedColumn);
+
 static vector<pair<int32_t, int32_t>> AddShareMemberTable(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;

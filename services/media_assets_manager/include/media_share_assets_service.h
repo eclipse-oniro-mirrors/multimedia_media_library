@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "cloud_share_sync_foundation_service.h"
+#include "batch_download_resources_task_dao.h"
 #include "dao/media_share_assets_dao.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -69,6 +70,7 @@ private:
     std::mutex updateMutex_;
     // 防止 RestartRemoveShareAlbumAndAsset 重复触发删除流程
     std::mutex restartMutex_;
+    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao_;
 };
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP

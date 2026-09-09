@@ -45,7 +45,8 @@ private:
             download_status INT NOT NULL DEFAULT -1, \
             percent         INT NOT NULL DEFAULT -1, \
             auto_pause_reason INT NOT NULL DEFAULT 0, \
-            cover_level INT NOT NULL DEFAULT 1 \
+            cover_level INT NOT NULL DEFAULT 1, \
+            is_shared INT NOT NULL DEFAULT 0 \
         );";
 };
 }  // namespace OHOS::Media

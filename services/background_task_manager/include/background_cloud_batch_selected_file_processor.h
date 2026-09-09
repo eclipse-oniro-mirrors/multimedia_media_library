@@ -18,6 +18,7 @@
 
 #include "background_cloud_file_processor_common.h"
 #include "background_cloud_batch_selected_file_download_callback.h"
+#include "cloud_share_album_define.h"
 #include "medialibrary_related_system_state_manager.h"
 
 namespace OHOS {
@@ -39,7 +40,8 @@ public:
     EXPORT static void SetBatchDownloadAddedFlag(bool status);
     EXPORT static bool GetBatchDownloadAddedFlag();
 
-    EXPORT static void TriggerStopBatchDownloadProcessor(bool needClean = false);
+    EXPORT static void TriggerStopBatchDownloadProcessor(bool needClean = false,
+        CloudSync::SceneType sceneType = CloudSync::SceneType::NORMAL);
     EXPORT static void TriggerPauseBatchDownloadProcessor(std::vector<std::string> &fileIdsDownloading);
     EXPORT static void TriggerCancelBatchDownloadProcessor(std::vector<std::string> &fileIds, bool sendNotify = false);
     EXPORT static void LaunchBatchDownloadProcessor();
@@ -50,7 +52,8 @@ public:
     EXPORT static bool HaveBatchDownloadInAutoPauseTask();
     EXPORT static bool HaveBatchDownloadInAutoPauseTaskWithException();
     EXPORT static void StartBatchDownloadResourcesTimer();
-    EXPORT static void StopBatchDownloadResourcesTimer(bool needClean = false);
+    EXPORT static void StopBatchDownloadResourcesTimer(bool needClean = false,
+        CloudSync::SceneType sceneType = CloudSync::SceneType::NORMAL);
     EXPORT static bool IsStartTimerRunning();
 
     EXPORT static bool CanAutoStopCondition(BatchDownloadAutoPauseReasonType &autoPauseReason);
@@ -82,6 +85,7 @@ public:
         std::string fileId;
         int32_t percent;
         BatchDownloadStatus status;
+        int32_t is_shared;
     } InDownloadingFileInfo;
 
 private:
@@ -105,6 +109,7 @@ private:
         std::vector<int64_t> &needStopDownloadIds);
     EXPORT static int64_t GetDownloadIdByFileIdInCurrentRound(const std::string &fileId);
     EXPORT static void ClearRoundMapInfos();
+    EXPORT static void ClearRoundMapInfos(const std::vector<int64_t> &cleanDownloadIds);
     EXPORT static int32_t GetDownloadQueueSizeWithLock();
 
     EXPORT static void ExitDownloadSelectedBatchResources();
@@ -120,7 +125,8 @@ private:
     EXPORT static void DownloadSelectedBatchFilesExecutor(AsyncTaskData *data);
     EXPORT static void StopDownloadFiles(int64_t downloadId, bool needClean = false);
     EXPORT static int32_t AddTasksAndStarted(vector<std::string> &pendingURIs);
-    EXPORT static void StopAllDownloadingTask(bool needClean = false);
+    EXPORT static void StopAllDownloadingTask(bool needClean = false,
+        CloudSync::SceneType sceneType = CloudSync::SceneType::NORMAL);
     EXPORT static void RefreshNotRestoreReason(vector<int32_t> &currentNotRestoreReasons);
     // DB
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryBatchSelectedResourceFiles();
@@ -134,7 +140,7 @@ private:
     EXPORT static int32_t ClassifyFileIdsInDownloadResourcesTable(const std::vector<std::string> &fileIds,
         std::vector<std::string> &existedIds);
     EXPORT static int32_t DeleteCancelStateDownloadResources(const std::vector<std::string> &fileIds);
-    EXPORT static int32_t QueryPercentOnTaskStart(std::string &fileId, int32_t &percent);
+    EXPORT static int32_t QueryPercentOnTaskStart(std::string &fileId, int32_t &percent, int32_t &isShared);
     EXPORT static int32_t QueryAutoPauseReason(int32_t &autoStopReason);
     EXPORT static int32_t UpdateAllAutoPauseReason(int32_t reason);
     EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPause();
