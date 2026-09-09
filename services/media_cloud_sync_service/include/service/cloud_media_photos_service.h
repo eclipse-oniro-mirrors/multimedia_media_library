@@ -172,5 +172,4 @@ private:
     CloudMediaPhotosAlbumHiddenService photosAlbumHiddenService_;
 };
 }  // namespace OHOS::Media::CloudSync
-#endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_SERVICE_H
-// LCOV_EXCL_STOP
+#endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_SERVICE_H// LCOV_EXCL_STOP
