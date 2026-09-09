@@ -2552,7 +2552,7 @@ static inline int32_t PrepareAssetDir(const string &dirPath)
 }
 
 int32_t MediaLibraryAssetOperations::CreateAssetPathById(int32_t fileId, int32_t mediaType,
-    const string &extension, string &filePath)
+    const string &extension, string &filePath, AssetBucketType bucketType)
 {
     string mediaDirPath;
     GetAssetRootDir(mediaType, mediaDirPath);
@@ -2561,7 +2561,7 @@ int32_t MediaLibraryAssetOperations::CreateAssetPathById(int32_t fileId, int32_t
     }
 
     int32_t bucketNum = 0;
-    int32_t errCode = MediaFileUri::CreateAssetBucket(fileId, bucketNum);
+    int32_t errCode = MediaFileUri::CreateAssetBucket(fileId, bucketNum, bucketType);
     if (errCode != E_OK) {
         return errCode;
     }
