@@ -19,6 +19,7 @@
 
 #include <fcntl.h>
 #include <sys/xattr.h>
+#include <map>
 
 #include "accesstoken_kit.h"
 #include "directory_ex.h"
@@ -1267,6 +1268,13 @@ std::unordered_map<std::string, std::string> MediaLibraryManager::GetUrisByOldUr
 {
     MEDIA_INFO_LOG("Start request uris by old uris, size: %{public}zu", uris.size());
     return TabOldPhotosClient(*this).GetUrisByOldUris(uris);
+}
+
+int32_t MediaLibraryManager::GetClonedAssetUris(const std::vector<std::string> &oldUris,
+    std::map<std::string, std::string> &clonedUris)
+{
+    MEDIA_INFO_LOG("Start GetClonedAssetUris, size: %{public}zu", oldUris.size());
+    return TabOldPhotosClient(*this).GetClonedAssetUrisInner(oldUris, clonedUris);
 }
 
 int32_t MediaLibraryManager::GetAlbumLpath(uint32_t ownerAlbumId, std::string &lpath)

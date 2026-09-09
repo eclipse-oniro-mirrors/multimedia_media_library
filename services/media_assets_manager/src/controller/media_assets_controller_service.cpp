@@ -390,6 +390,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::GetUrisByOldUrisInner
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_CLONED_ASSET_URIS),
+        &MediaAssetsControllerService::GetClonedAssetUrisInner
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_ASSET),
         &MediaAssetsControllerService::CloneAsset
     },
@@ -2990,6 +2994,27 @@ int32_t MediaAssetsControllerService::GetUrisByOldUrisInner(MessageParcel &data,
     GetUrisByOldUrisInnerDto dto;
     reqBody.Convert2Dto(dto);
     ret = MediaAssetsService::GetInstance().GetUrisByOldUrisInner(dto);
+    if (ret == E_OK) {
+        respBody.InitByDto(dto);
+    }
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAssetsControllerService::GetClonedAssetUrisInner(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_CLONED_ASSET_URIS);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    GetUrisByOldUrisInnerReqBody reqBody;
+    GetUrisByOldUrisInnerRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetClonedAssetUrisInner Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+    GetUrisByOldUrisInnerDto dto;
+    reqBody.Convert2Dto(dto);
+    ret = MediaAssetsService::GetInstance().GetClonedAssetUrisInner(dto);
     if (ret == E_OK) {
         respBody.InitByDto(dto);
     }

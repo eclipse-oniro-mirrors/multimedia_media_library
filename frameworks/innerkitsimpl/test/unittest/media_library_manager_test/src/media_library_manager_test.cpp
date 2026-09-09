@@ -2228,5 +2228,32 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_BatchUpdateMetaDataModifie
     EXPECT_NE(beforeModified, afterModified);
     MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_001 exit");
 }
+
+/**
+ * @tc.number    : MediaLibraryManager_GetClonedAssetUris_test_001
+ * @tc.name      : GetClonedAssetUris
+ * @tc.desc      : empty uri list and invalid uri format return E_INVALID_URI
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetClonedAssetUris_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaLibraryManager_GetClonedAssetUris_test_001 enter");
+    ASSERT_NE(mediaLibraryManager, nullptr);
+
+    std::map<std::string, std::string> uriMap;
+    int32_t ret = mediaLibraryManager->GetClonedAssetUris({}, uriMap);
+    EXPECT_EQ(ret, E_INVALID_URI);
+    EXPECT_TRUE(uriMap.empty());
+    
+    std::vector<std::string> badUris = {
+        "",
+        "not_a_uri",
+        "/storage/emulated/0/DCIM/invalid.jpg",
+        "file:///storage/emulated/0/DCIM/invalid.jpg"
+    };
+    ret = mediaLibraryManager->GetClonedAssetUris(badUris, uriMap);
+    EXPECT_EQ(ret, E_INVALID_URI);
+    EXPECT_TRUE(uriMap.empty());
+    MEDIA_INFO_LOG("MediaLibraryManager_GetClonedAssetUris_test_001 exit");
+}
 } // namespace Media
 } // namespace OHOS

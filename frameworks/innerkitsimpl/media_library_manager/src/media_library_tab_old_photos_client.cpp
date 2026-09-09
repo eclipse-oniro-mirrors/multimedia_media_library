@@ -14,6 +14,7 @@
  */
 #include "media_library_tab_old_photos_client.h"
 
+#include <charconv>
 #include <limits>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@
 
 #include "userfilemgr_uri.h"
 #include "media_column.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "media_old_photos_column.h"
 #include "medialibrary_errno.h"
@@ -74,6 +76,57 @@ std::unordered_map<std::string, std::string> TabOldPhotosClient::GetUrisByOldUri
     column.push_back(TabOldPhotosColumn::OLD_PHOTOS_TABLE + "." + "old_data");
     column.push_back(PhotoColumn::PHOTOS_TABLE + "." + "display_name");
     return this->GetResultSetFromTabOldPhotos(uris, column);
+}
+
+int32_t TabOldPhotosClient::GetClonedAssetUrisInner(const std::vector<std::string> &uris,
+    std::map<std::string, std::string> &clonedUris)
+{
+    clonedUris.clear();
+    std::vector<TabOldPhotosClient::TabOldPhotosClientObj> dataMapping;
+    int32_t ret = this->QueryClonedDataMapping(uris, dataMapping);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "QueryClonedDataMapping failed");
+    clonedUris = this->BuildClonedResultMap(dataMapping, uris);
+    return E_SUCCESS;
+}
+
+int32_t TabOldPhotosClient::QueryClonedDataMapping(const std::vector<std::string> &uris,
+    std::vector<TabOldPhotosClient::TabOldPhotosClientObj> &dataMapping)
+{
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_CLONED_ASSET_URIS);
+
+    sptr<IRemoteObject> token = this->mediaLibraryManager_.InitToken();
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_HAS_DB_ERROR, "dataShareHelper is nullptr");
+    GetUrisByOldUrisInnerReqBody reqBody;
+    GetUrisByOldUrisInnerRespBody respBody;
+    reqBody.uris = uris;
+    int32_t result =
+        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+    CHECK_AND_RETURN_RET_LOG(result == E_OK, result, "QueryClonedDataMapping IPC Call Failed");
+
+    auto fileIds_size = respBody.fileIds.size();
+    auto datas_size = respBody.datas.size();
+    auto displayNames_size = respBody.displayNames.size();
+    auto oldFileIds_size = respBody.oldFileIds.size();
+    auto oldDatas_size = respBody.oldDatas.size();
+    bool isValid = true;
+    isValid &= fileIds_size == datas_size;
+    isValid &= datas_size == displayNames_size;
+    isValid &= displayNames_size == oldFileIds_size;
+    isValid &= oldFileIds_size == oldDatas_size;
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "QueryClonedDataMapping Failed");
+
+    for (size_t i = 0; i < respBody.fileIds.size(); i++) {
+        TabOldPhotosClient::TabOldPhotosClientObj obj;
+        obj.fileId = respBody.fileIds[i];
+        obj.data = respBody.datas[i];
+        obj.displayName = respBody.displayNames[i];
+        obj.oldFileId = respBody.oldFileIds[i];
+        obj.oldData = respBody.oldDatas[i];
+        dataMapping.emplace_back(obj);
+    }
+    return E_OK;
 }
 
 std::unordered_map<std::string, std::string> TabOldPhotosClient::GetResultSetFromTabOldPhotos(
@@ -172,6 +225,38 @@ static bool StoiBoundCheck(std::string toCheck)
     const std::string intMax = std::to_string(std::numeric_limits<int>::max());
 
     return toCheck.length() < intMax.length();
+}
+
+std::map<std::string, std::string> TabOldPhotosClient::BuildClonedResultMap(
+    const std::vector<TabOldPhotosClient::TabOldPhotosClientObj> &dataMapping,
+    const std::vector<std::string> &uris)
+{
+    std::map<std::string, std::string> resultMap;
+    for (const auto &uri : uris) {
+        resultMap[uri] = "";
+        std::string oldId = MediaFileUtils::GetIdFromUri(uri);
+        int32_t oldFileId = 0;
+        const char *end = oldId.data() + oldId.size();
+        auto [parseEnd, parseErr] = std::from_chars(oldId.data(), end, oldFileId);
+        if (oldId.empty() || parseErr != std::errc() || parseEnd != end) {
+            MEDIA_WARN_LOG("BuildClonedResultMap: Failed to extract fileId from URI: %{private}s", uri.c_str());
+            continue;
+        }
+        auto it = std::find_if(dataMapping.begin(), dataMapping.end(),
+            [oldFileId](const TabOldPhotosClient::TabOldPhotosClientObj &obj) {
+                return obj.oldFileId == oldFileId;
+            });
+        if (it == dataMapping.end()) {
+            MEDIA_WARN_LOG("BuildClonedResultMap: No matching record found for oldFileId: %{public}d", oldFileId);
+            continue;
+        }
+        resultMap[uri] = MediaFileUtils::GetUriByExtrConditions(
+            PhotoColumn::PHOTO_URI_PREFIX,
+            std::to_string(it->fileId),
+            MediaFileUtils::GetExtraUri(it->displayName, it->data)
+        );
+    }
+    return resultMap;
 }
 
 std::vector<TabOldPhotosClient::RequestUriObj> TabOldPhotosClient::Parse(

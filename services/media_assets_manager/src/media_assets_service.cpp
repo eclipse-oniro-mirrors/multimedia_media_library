@@ -18,8 +18,11 @@
 #include "media_assets_service.h"
 
 #include <unordered_set>
+#include <algorithm>
 #include <charconv>
 #include <unistd.h>
+#include <map>
+#include <set>
 
 #include "medialibrary_bundle_manager.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
@@ -2048,6 +2051,101 @@ int32_t MediaAssetsService::GetUrisByOldUrisInner(GetUrisByOldUrisInnerDto& getU
         getUrisByOldUrisInnerDto.displayNames.emplace_back(GetStringVal(COLUMN_DISPLAY_NAME, resultSet));
         getUrisByOldUrisInnerDto.oldFileIds.emplace_back(GetInt32Val(COLUMN_OLD_FILE_ID, resultSet));
         getUrisByOldUrisInnerDto.oldDatas.emplace_back(GetStringVal(COLUMN_OLD_DATA, resultSet));
+    }
+    return E_OK;
+}
+
+static bool ExtractOldFileIds(const std::vector<std::string> &uris, std::vector<std::string> &fileIdsOld)
+{
+    fileIdsOld.reserve(uris.size());
+    for (const auto &oldUri : uris) {
+        std::string fileIdOld = MediaFileUtils::GetIdFromUri(oldUri);
+        if (!fileIdOld.empty() && std::all_of(fileIdOld.begin(), fileIdOld.end(), ::isdigit)) {
+            fileIdsOld.push_back(std::move(fileIdOld));
+        } else {
+            MEDIA_WARN_LOG("ExtractOldFileIds: Failed to extract valid fileId from URI: %{private}s",
+                oldUri.c_str());
+        }
+    }
+    if (!fileIdsOld.empty()) {
+        return true;
+    }
+    MEDIA_WARN_LOG("ExtractOldFileIds: No valid fileIds extracted from any URI");
+    return false;
+}
+
+static int32_t QueryLatestClonedMappings(const std::vector<std::string> &fileIdsOld,
+    GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+
+    std::string inClause;
+    for (size_t i = 0; i < fileIdsOld.size(); ++i) {
+        if (i != 0) {
+            inClause += ", ";
+        }
+        inClause += fileIdsOld[i];
+    }
+    const std::string querySql =
+        "SELECT t.file_id, t.data, p.display_name, t.old_file_id, t.old_data "
+        "FROM tab_cloned_old_photos t "
+        "LEFT JOIN Photos p ON p.file_id = t.file_id "
+        "WHERE t.old_file_id IN (" + inClause + ") ORDER BY t.clone_sequence DESC";
+    auto resultSet = rdbStore->QueryByStep(querySql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR,
+        "query tab_cloned_old_photos failed, resultSet is null");
+
+    std::set<std::string> processedOldIds;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        std::string oldFileId = GetStringVal(COLUMN_OLD_FILE_ID, resultSet);
+        if (!processedOldIds.emplace(oldFileId).second) {
+            continue;
+        }
+        if (GetStringVal(COLUMN_DISPLAY_NAME, resultSet).empty()) {
+            MEDIA_WARN_LOG("QueryLatestClonedMappings: latest cloned record's Photos deleted, oldFileId=%{public}s",
+                oldFileId.c_str());
+            continue;
+        }
+        getClonedAssetUrisInnerDto.fileIds.emplace_back(GetInt32Val(COLUMN_FILE_ID, resultSet));
+        getClonedAssetUrisInnerDto.datas.emplace_back(GetStringVal(COLUMN_DATA, resultSet));
+        getClonedAssetUrisInnerDto.displayNames.emplace_back(GetStringVal(COLUMN_DISPLAY_NAME, resultSet));
+        getClonedAssetUrisInnerDto.oldFileIds.emplace_back(GetInt32Val(COLUMN_OLD_FILE_ID, resultSet));
+        getClonedAssetUrisInnerDto.oldDatas.emplace_back(GetStringVal(COLUMN_OLD_DATA, resultSet));
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
+int32_t MediaAssetsService::GetClonedAssetUrisInner(GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto)
+{
+    MEDIA_INFO_LOG("enter MediaAssetsService::GetClonedAssetUrisInner");
+    int32_t validateRet = this->ValidateClonedUris(getClonedAssetUrisInnerDto);
+    CHECK_AND_RETURN_RET_LOG(validateRet == E_OK, validateRet, "validate cloned uris failed");
+
+    // 1. 从旧 uri 中提取 old_file_id
+    std::vector<std::string> fileIdsOld;
+    if (!ExtractOldFileIds(getClonedAssetUrisInnerDto.uris, fileIdsOld)) {
+        return E_OK;
+    }
+
+    // 2. 查询每个 old_file_id 最新一次克隆的映射
+    return QueryLatestClonedMappings(fileIdsOld, getClonedAssetUrisInnerDto);
+}
+
+int32_t MediaAssetsService::ValidateClonedUris(const GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto)
+{
+    constexpr int32_t URI_MAX_SIZE = 100;
+    bool cond = (getClonedAssetUrisInnerDto.uris.empty() ||
+        static_cast<int32_t>(getClonedAssetUrisInnerDto.uris.size()) > URI_MAX_SIZE);
+    CHECK_AND_RETURN_RET_LOG(!cond, E_INVALID_URI, "the size is invalid, size = %{public}d",
+        static_cast<int32_t>(getClonedAssetUrisInnerDto.uris.size()));
+
+    for (const auto &uri : getClonedAssetUrisInnerDto.uris) {
+        if (!MediaFileUri(uri).IsValid()) {
+            MEDIA_ERR_LOG("Failed to check uri format, not a valid photo uri!");
+            return E_INVALID_URI;
+        }
     }
     return E_OK;
 }
