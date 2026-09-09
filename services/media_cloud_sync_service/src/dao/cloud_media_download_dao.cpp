@@ -347,7 +347,12 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAsset(const OnDownloadAssetData &as
     }
     if (scanResult.scanSuccess) {
         values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, scanResult.shootingMode);
-        values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, scanResult.shootingModeTag);
+        bool isCinematicVideoV2 = assetData.localPhotosPoOp.has_value() &&
+            assetData.localPhotosPoOp.value().subtype.value_or(0) ==
+            static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
+        if (!isCinematicVideoV2) {
+            values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, scanResult.shootingModeTag);
+        }
         values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, scanResult.frontCamera);
         values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, scanResult.musicMasterMode);
     }
