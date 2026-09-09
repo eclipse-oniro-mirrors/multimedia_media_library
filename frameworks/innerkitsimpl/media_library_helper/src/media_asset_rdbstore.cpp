@@ -46,6 +46,7 @@ namespace Media {
 const std::string MEDIA_LIBRARY_STARTUP_PARAM_PREFIX = "multimedia.medialibrary.startup.";
 constexpr uint32_t BASE_USER_RANGE = 200000;
 const int32_t ARG_COUNT = 2;
+const int32_t MAP_CODE_PARAM = 3;
 constexpr int STORAGE_MANAGER_MANAGER_ID = 5003;
 constexpr int32_t MILLIS_PER_SEC = 1000;
 constexpr int32_t MILLIS_FIVE_SECONDS = 5 * 1000;
@@ -142,6 +143,11 @@ const std::string MediaAssetRdbStore::IsCallerSelfFunc(const std::vector<std::st
 }
 
 const std::string MediaAssetRdbStore::PhotoAlbumNotifyFunc(const std::vector<std::string> &args)
+{
+    return "";
+}
+
+const std::string MediaAssetRdbStore::PhotoMapCodeFunc(const std::vector<std::string> &args)
 {
     return "";
 }

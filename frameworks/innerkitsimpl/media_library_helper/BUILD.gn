@@ -102,6 +102,7 @@ ohos_shared_library("media_library") {
     "src/photo_file_utils.cpp",
     "src/media_edit_utils.cpp",
     "src/photo_map_column.cpp",
+    "src/photo_map_code_column.cpp",
     "src/photo_query_filter.cpp",
     "src/share_member_column.cpp",
     "src/shooting_mode_column.cpp",

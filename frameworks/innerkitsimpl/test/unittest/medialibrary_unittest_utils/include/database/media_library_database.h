@@ -40,6 +40,7 @@ private:
         "/data/app/el2/100/database/com.ohos.medialibrary.medialibrarydata/rdb/media_library.db";
     const std::string BUNDLE_NAME = "com.ohos.medialibrary.medialibrarydata";
     const int32_t ARG_COUNT = 2;
+    const int32_t MAP_CODE_PARAM = 3;
 
 public:
     std::shared_ptr<NativeRdb::RdbStore> GetRdbStore(int32_t &errCode)
@@ -51,6 +52,7 @@ public:
         config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
         config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
         config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+        config.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
         RdbCallback cb;
         std::shared_ptr<NativeRdb::RdbStore> store = NativeRdb::RdbHelper::GetRdbStore(config, 1, cb, errCode);
         return store;
@@ -74,6 +76,11 @@ private:
     }
 
     static const std::string PhotoAlbumNotifyFunc(const std::vector<std::string> &args)
+    {
+        return "";
+    }
+
+    static const std::string PhotoMapCodeFunc(const std::vector<std::string> &args)
     {
         return "";
     }

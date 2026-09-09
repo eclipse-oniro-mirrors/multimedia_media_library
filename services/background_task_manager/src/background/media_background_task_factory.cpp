@@ -37,6 +37,7 @@
 #include "media_burst_key_duplicate_task.h"
 #include "media_lcd_size_task.h"
 #include "media_share_dirty_data_task.h"
+#include "media_map_code_upgrade_task.h"
 #include "media_camera_cache_clean_task.h"
 #include "media_fix_lcd_file_size_task.h"
 #include "dirty_file_report_task.h"
@@ -69,6 +70,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaClonePendingTask>(),
         std::make_shared<MediaShareDirtyDataTask>(),
         std::make_shared<MediaCameraCacheCleanTask>(),
+        std::make_shared<MediaMapCodeUpgradeTask>(),
         std::make_shared<MediaReverseCloneMarkerAgingTask>(),
         std::make_shared<MediaFixLcdFileSizeTask>(),
         std::make_shared<DirtyFileReportTask>(),
