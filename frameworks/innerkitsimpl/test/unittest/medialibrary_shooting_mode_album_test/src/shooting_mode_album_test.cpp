@@ -452,6 +452,47 @@ HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumPredicates_Test_004, TestSiz
     MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_004 exit");
 }
 
+HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumPredicates_Test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_005 enter");
+    // V1与V2电影模式统一归入同一相册: where参数需同时包含两种subtype
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    ShootingModeAlbum::GetShootingModeAlbumPredicates(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM, predicates, false);
+    MEDIA_INFO_LOG("Get whereClause: %{public}s", predicates.GetWhereClause().c_str());
+    const vector<string> &whereArgs = predicates.GetWhereArgs();
+    bool hasV1 = false;
+    bool hasV2 = false;
+    for (const auto &arg : whereArgs) {
+        if (arg == to_string(static_cast<int>(PhotoSubType::CINEMATIC_VIDEO))) {
+            hasV1 = true;
+        }
+        if (arg == to_string(static_cast<int>(PhotoSubType::CINEMATIC_VIDEO_V2))) {
+            hasV2 = true;
+        }
+    }
+    EXPECT_TRUE(hasV1);
+    EXPECT_TRUE(hasV2);
+
+    // DataShare谓词也应同时包含两次subtype的EQUAL_TO条件
+    DataShare::DataSharePredicates dataSharePredicates;
+    ShootingModeAlbum::GetShootingModeAlbumPredicates(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM,
+        dataSharePredicates, false);
+    const vector<OperationItem> &operationList = dataSharePredicates.GetOperationList();
+    int32_t subtypeConditionCount = 0;
+    for (const auto &operationItem : operationList) {
+        if (operationItem.operation != DataShare::OperationType::EQUAL_TO ||
+            operationItem.singleParams.size() < 1) {
+            continue;
+        }
+        string field = static_cast<string>(operationItem.GetSingle(0));
+        if (field == PhotoColumn::PHOTO_SUBTYPE) {
+            subtypeConditionCount++;
+        }
+    }
+    EXPECT_EQ(subtypeConditionCount, 2);
+    MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_005 exit");
+}
+
 HWTEST_F(ShootingModeAlbumTest, AlbumNameToShootingModeAlbumType_Test_001, TestSize.Level1)
 {
     ShootingModeAlbumType result;
@@ -486,6 +527,22 @@ HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumOfAsset_Test_002, TestSize.L
     EXPECT_EQ(result.size(), 1); // only CINEMATIC_VIDEO
     EXPECT_NE(find(result.begin(), result.end(), ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM), result.end());
     MEDIA_INFO_LOG("GetShootingModeAlbumOfAsset_Test_002 exit");
+}
+
+HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumOfAsset_Test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetShootingModeAlbumOfAsset_Test_003 enter");
+    // V2电影模式(CINEMATIC_VIDEO_V2)资产也应归入CINEMATIC_VIDEO_ALBUM
+    vector<ShootingModeAlbumType> result = ShootingModeAlbum::GetShootingModeAlbumOfAsset(
+        static_cast<int>(PhotoSubType::CINEMATIC_VIDEO_V2), "video/avi", 0, "", "");
+    EXPECT_EQ(result.size(), 1); // only CINEMATIC_VIDEO_ALBUM
+    EXPECT_NE(find(result.begin(), result.end(), ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM), result.end());
+
+    // V2电影模式叠加DNG/前置摄像头/拍摄模式时, 电影相册仍应命中
+    result = ShootingModeAlbum::GetShootingModeAlbumOfAsset(
+        static_cast<int>(PhotoSubType::CINEMATIC_VIDEO_V2), "image/x-adobe-dng", 0, "1", "1");
+    EXPECT_NE(find(result.begin(), result.end(), ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM), result.end());
+    MEDIA_INFO_LOG("GetShootingModeAlbumOfAsset_Test_003 exit");
 }
 
 HWTEST_F(ShootingModeAlbumTest, MapShootingModeTagToShootingMode_Test_001, TestSize.Level1)
@@ -546,5 +603,33 @@ HWTEST_F(ShootingModeAlbumTest, UpdateAnalysisAlbumInternal_Test_001, TestSize.L
     GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfo, rowCount);
     EXPECT_TRUE(albumInfo.coverUri.find(fileInfoWithLargeDateTaken.displayName) != string::npos);
     EXPECT_EQ(albumInfo.count, expectedCount);
+}
+
+HWTEST_F(ShootingModeAlbumTest, UpdateAnalysisAlbumInternal_Test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("UpdateAnalysisAlbumInternal_Test_002 enter");
+    ASSERT_NE(g_rdbStore, nullptr);
+    // 清空Photos/分析相册映射表, 保证本用例自包含
+    ASSERT_EQ(ClearTable(ANALYSIS_PHOTO_MAP_TABLE), E_OK);
+    ASSERT_EQ(ClearTable(PhotoColumn::PHOTOS_TABLE), E_OK);
+    int32_t ret = MediaLibraryRdbHelper::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    ASSERT_EQ(ret, E_OK);
+    TestFileInfo fileInfoWithLargeDateTaken = { .dateTaken = 1744362716123, .displayName = "v2_large_datetaken.jpg" };
+    TestFileInfo fileInfoWithSmallDateTaken = { .dateTaken = 1744362716000, .displayName = "v2_small_datetaken.jpg" };
+    // V2电影模式(CINEMATIC_VIDEO_V2)资产应计入CINEMATIC_VIDEO_ALBUM
+    ret = InsertPhotoBySubtype(PhotoSubType::CINEMATIC_VIDEO_V2, fileInfoWithLargeDateTaken);
+    ASSERT_EQ(ret, E_OK);
+    ret = InsertPhotoBySubtype(PhotoSubType::CINEMATIC_VIDEO_V2, fileInfoWithSmallDateTaken);
+    ASSERT_EQ(ret, E_OK);
+
+    TestAlbumInfo albumInfo;
+    int32_t rowCount = -1;
+    GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfo, rowCount);
+    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(g_rdbStore, { to_string(albumInfo.albumId) });
+
+    GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfo, rowCount);
+    EXPECT_TRUE(albumInfo.coverUri.find(fileInfoWithLargeDateTaken.displayName) != string::npos);
+    EXPECT_EQ(albumInfo.count, 2);
+    MEDIA_INFO_LOG("UpdateAnalysisAlbumInternal_Test_002 exit");
 }
 } // namespace OHOS::Media

@@ -20,6 +20,12 @@
 #include "medialibrary_scanner_db_test.h"
 #include "medialibrary_unittest_utils.h"
 #include "thumbnail_utils.h"
+#include "media_column.h"
+#include "medialibrary_rdbstore.h"
+#include "medialibrary_unistore_manager.h"
+#include "rdb_predicates.h"
+#include "result_set_utils.h"
+#include "userfile_manager_types.h"
 #define private public
 #include "media_scanner_db.h"
 #undef private
@@ -338,6 +344,113 @@ HWTEST_F(MediaLibraryScannerDbTest, medialib_GetIdFromPath_test_001, TestSize.Le
     string path = "/storage/cloud/files/";
     id = mediaScannerDb.GetIdFromPath(path);
     EXPECT_EQ(id, -1);
+}
+
+static string QueryPhotoStringColumn(const shared_ptr<MediaLibraryRdbStore> &rdbStore, int32_t fileId,
+    const string &column)
+{
+    string sql = "SELECT " + column + " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " +
+        MediaColumn::MEDIA_ID + " = " + to_string(fileId);
+    auto resultSet = rdbStore->QuerySql(sql);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        return "";
+    }
+    return GetStringVal(column, resultSet);
+}
+
+/**
+ * @tc.name: medialib_UpdateMetadata_cinematic_v2_skip_shooting_mode_test_001
+ * @tc.desc: 电影模式V2视频由相机侧写入shooting_mode字段, 扫描器更新元数据时应跳过这两个字段
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryScannerDbTest, medialib_UpdateMetadata_cinematic_v2_skip_shooting_mode_test_001,
+    TestSize.Level1)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    ASSERT_NE(rdbStore, nullptr);
+
+    // 1. 预置一条subtype=CINEMATIC_VIDEO_V2的视频记录, 并写入shooting_mode/shooting_mode_tag
+    NativeRdb::ValuesBucket values;
+    values.PutString(MediaColumn::MEDIA_FILE_PATH, "/storage/cloud/files/Photo/1/cinematic_v2_scan.mp4");
+    values.PutString(MediaColumn::MEDIA_NAME, "cinematic_v2_scan.mp4");
+    values.PutString(MediaColumn::MEDIA_TITLE, "cinematic_v2_scan");
+    values.PutInt(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO));
+    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+    values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, "24");
+    values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, "2.0");
+    int64_t rowId = -1;
+    int32_t ret = rdbStore->Insert(rowId, PhotoColumn::PHOTOS_TABLE, values);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    int32_t fileId = static_cast<int32_t>(rowId);
+
+    // 2. 扫描器以空shooting_mode更新该视频元数据
+    MediaScannerDb mediaScannerDb;
+    Metadata metadata;
+    string tableName;
+    metadata.SetFilePath("/storage/cloud/files/Photo/1/cinematic_v2_scan.mp4");
+    metadata.SetFileName("cinematic_v2_scan.mp4");
+    metadata.SetFileTitle("cinematic_v2_scan");
+    metadata.SetFileMediaType(MediaType::MEDIA_TYPE_VIDEO);
+    metadata.SetFileMimeType("video/mp4");
+    metadata.SetFileId(fileId);
+    string retUri = mediaScannerDb.UpdateMetadata(metadata, tableName, MediaLibraryApi::API_10);
+    MEDIA_INFO_LOG("UpdateMetadata retUri: %{public}s, tableName: %{public}s", retUri.c_str(), tableName.c_str());
+
+    // 3. 相机侧写入的shooting_mode/shooting_mode_tag不应被扫描覆盖
+    EXPECT_EQ(QueryPhotoStringColumn(rdbStore, fileId, PhotoColumn::PHOTO_SHOOTING_MODE), "24");
+    EXPECT_EQ(QueryPhotoStringColumn(rdbStore, fileId, PhotoColumn::PHOTO_SHOOTING_MODE_TAG), "2.0");
+
+    // 4. 清理用例数据
+    NativeRdb::RdbPredicates deletePredicates(PhotoColumn::PHOTOS_TABLE);
+    deletePredicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    int32_t deletedRows = -1;
+    rdbStore->Delete(deletedRows, deletePredicates);
+}
+
+/**
+ * @tc.name: medialib_UpdateMetadata_cinematic_v2_skip_shooting_mode_test_002
+ * @tc.desc: 非V2视频(DEFAULT)扫描更新时会覆盖shooting_mode字段(对照)
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryScannerDbTest, medialib_UpdateMetadata_cinematic_v2_skip_shooting_mode_test_002,
+    TestSize.Level1)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    ASSERT_NE(rdbStore, nullptr);
+
+    NativeRdb::ValuesBucket values;
+    values.PutString(MediaColumn::MEDIA_FILE_PATH, "/storage/cloud/files/Photo/1/normal_video_scan.mp4");
+    values.PutString(MediaColumn::MEDIA_NAME, "normal_video_scan.mp4");
+    values.PutString(MediaColumn::MEDIA_TITLE, "normal_video_scan");
+    values.PutInt(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO));
+    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
+    values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, "24");
+    values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, "2.0");
+    int64_t rowId = -1;
+    int32_t ret = rdbStore->Insert(rowId, PhotoColumn::PHOTOS_TABLE, values);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    int32_t fileId = static_cast<int32_t>(rowId);
+
+    MediaScannerDb mediaScannerDb;
+    Metadata metadata;
+    string tableName;
+    metadata.SetFilePath("/storage/cloud/files/Photo/1/normal_video_scan.mp4");
+    metadata.SetFileName("normal_video_scan.mp4");
+    metadata.SetFileTitle("normal_video_scan");
+    metadata.SetFileMediaType(MediaType::MEDIA_TYPE_VIDEO);
+    metadata.SetFileMimeType("video/mp4");
+    metadata.SetFileId(fileId);
+    string retUri = mediaScannerDb.UpdateMetadata(metadata, tableName, MediaLibraryApi::API_10);
+    MEDIA_INFO_LOG("UpdateMetadata retUri: %{public}s, tableName: %{public}s", retUri.c_str(), tableName.c_str());
+
+    // 非V2视频: 扫描解析为空时会把shooting_mode覆盖为空
+    EXPECT_EQ(QueryPhotoStringColumn(rdbStore, fileId, PhotoColumn::PHOTO_SHOOTING_MODE), "");
+
+    // 清理用例数据
+    NativeRdb::RdbPredicates deletePredicates(PhotoColumn::PHOTOS_TABLE);
+    deletePredicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    int32_t deletedRows = -1;
+    rdbStore->Delete(deletedRows, deletePredicates);
 }
 } // namespace Media
 } // namespace OHOS

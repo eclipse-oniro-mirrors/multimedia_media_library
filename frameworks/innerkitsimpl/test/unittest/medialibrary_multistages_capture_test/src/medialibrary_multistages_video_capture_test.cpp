@@ -20,6 +20,7 @@
 #include <fcntl.h>
 
 #include "directory_ex.h"
+#include "file_asset.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "media_column.h"
@@ -166,6 +167,41 @@ int32_t GetDirty(int fileId)
 
     int32_t dirty = GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet);
     return dirty;
+}
+
+int32_t GetDirtyByFileId(int fileId)
+{
+    if (fileId < 0) {
+        MEDIA_ERR_LOG("this file id %{private}d is invalid", fileId);
+        return -1;
+    }
+
+    vector<string> columns = { PhotoColumn::PHOTO_DIRTY };
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY,
+        MediaLibraryApi::API_10);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    if (g_rdbStore == nullptr) {
+        MEDIA_ERR_LOG("can not get rdbstore");
+        return -1;
+    }
+    auto resultSet = g_rdbStore->Query(cmd, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Can not get dirty of file");
+        return -1;
+    }
+
+    int32_t dirty = GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet);
+    return dirty;
+}
+
+int32_t SetDirtyByFileId(int fileId, int32_t dirty)
+{
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_DIRTY, dirty);
+    cmd.SetValueBucket(values);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    return MediaLibraryPhotoOperations::Update(cmd);
 }
 
 string GetMovingPhotoVideoPath(const string &imagePath)
@@ -1001,6 +1037,82 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     // Verify temp directory is created
     EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
     MEDIA_INFO_LOG("manager_add_video_dir_not_exist_004 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, cinematic_v2_update_quality_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cinematic_v2_update_quality_001 Start");
+    int32_t fileId = PrepareVideoData();
+    ASSERT_GT(fileId, 0);
+    // 先固定dirty基线, 确保后续断言不依赖新建视频的初始dirty
+    EXPECT_GT(SetDirtyByFileId(fileId, static_cast<int32_t>(DirtyType::TYPE_SYNCED)), E_OK);
+
+    // 电影模式V2(CINEMATIC_VIDEO_V2)资产: dirty应置为TYPE_NEW, quality应置为FULL
+    auto fileAsset = make_shared<FileAsset>();
+    ASSERT_NE(fileAsset, nullptr);
+    fileAsset->SetId(fileId);
+    fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+
+    MultiStagesCaptureDeferredVideoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredVideoProcSessionCallback();
+    int32_t ret = callback->UpdateVideoQuality(fileId, fileAsset, true);
+    delete callback;
+    MEDIA_INFO_LOG("cinematic_v2_update_quality_001 UpdateVideoQuality ret: %{public}d", ret);
+
+    EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
+    EXPECT_EQ(GetDirtyByFileId(fileId), static_cast<int32_t>(DirtyType::TYPE_NEW));
+    MEDIA_INFO_LOG("cinematic_v2_update_quality_001 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, cinematic_v2_update_quality_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cinematic_v2_update_quality_002 Start");
+    int32_t fileId = PrepareVideoData();
+    ASSERT_GT(fileId, 0);
+    // 先固定dirty基线
+    EXPECT_GT(SetDirtyByFileId(fileId, static_cast<int32_t>(DirtyType::TYPE_SYNCED)), E_OK);
+
+    // 电影模式V2(CINEMATIC_VIDEO_V2)资产, 处理失败场景(isSuccess=false)
+    auto fileAsset = make_shared<FileAsset>();
+    ASSERT_NE(fileAsset, nullptr);
+    fileAsset->SetId(fileId);
+    fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+
+    MultiStagesCaptureDeferredVideoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredVideoProcSessionCallback();
+    int32_t ret = callback->UpdateVideoQuality(fileId, fileAsset, false);
+    delete callback;
+    MEDIA_INFO_LOG("cinematic_v2_update_quality_002 UpdateVideoQuality ret: %{public}d", ret);
+
+    EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
+    EXPECT_EQ(GetDirtyByFileId(fileId), static_cast<int32_t>(DirtyType::TYPE_NEW));
+    MEDIA_INFO_LOG("cinematic_v2_update_quality_002 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, cinematic_update_quality_non_cinematic_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cinematic_update_quality_non_cinematic_001 Start");
+    int32_t fileId = PrepareVideoData();
+    ASSERT_GT(fileId, 0);
+    // 先固定dirty基线
+    EXPECT_GT(SetDirtyByFileId(fileId, static_cast<int32_t>(DirtyType::TYPE_SYNCED)), E_OK);
+
+    // 非电影模式(普通DEFAULT本地视频): 不应置dirty=TYPE_NEW, quality应置为FULL
+    auto fileAsset = make_shared<FileAsset>();
+    ASSERT_NE(fileAsset, nullptr);
+    fileAsset->SetId(fileId);
+    fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::DEFAULT));
+    fileAsset->SetPosition(static_cast<int32_t>(PhotoPositionType::LOCAL));
+
+    MultiStagesCaptureDeferredVideoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredVideoProcSessionCallback();
+    int32_t ret = callback->UpdateVideoQuality(fileId, fileAsset, true);
+    delete callback;
+    MEDIA_INFO_LOG("cinematic_update_quality_non_cinematic_001 UpdateVideoQuality ret: %{public}d", ret);
+
+    EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
+    EXPECT_EQ(GetDirtyByFileId(fileId), static_cast<int32_t>(DirtyType::TYPE_SYNCED));
+    MEDIA_INFO_LOG("cinematic_update_quality_non_cinematic_001 End");
 }
 } // Media
 } // OHOS

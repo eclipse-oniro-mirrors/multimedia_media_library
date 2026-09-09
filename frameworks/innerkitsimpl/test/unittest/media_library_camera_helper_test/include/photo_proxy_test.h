@@ -153,22 +153,28 @@ public:
     // 16、shooting_mode
     int32_t GetShootingMode() override
     {
-        return 0;
+        return shootingMode_;
     }
 
-    // 17、cloud_image_enhance_flag
+    // 17、shooting_version(电影模式版本号, 写入shooting_mode_tag)
+    std::string GetShootingVersion() override
+    {
+        return shootingVersion_;
+    }
+
+    // 18、cloud_image_enhance_flag
     uint32_t GetCloudImageEnhanceFlag() override
     {
         return cloudImageEnhanceFlag_;
     }
 
-    // 18、stage_video_task_status
+    // 19、stage_video_task_status
     int32_t GetStageVideoTaskStatus() override
     {
         return stageVideoTaskStatus_;
     }
 
-    // 19、video_enhancement_type
+    // 20、video_enhancement_type
     int32_t GetVideoEnhancementType() override
     {
         return videoEnhancementType_;
@@ -187,6 +193,9 @@ public:
     PhotoQuality photoQuality_ = PhotoQuality::LOW;
     std::string burstKey_;
     bool isCoverPhoto_ = true;
+
+    int32_t shootingMode_ = 0;
+    std::string shootingVersion_;
 
     uint32_t cloudImageEnhanceFlag_ = 0;
     int32_t stageVideoTaskStatus_ = 0;
