@@ -96,9 +96,13 @@ ohos_shared_library("media_library_client") {
     "-fdata-sections",
     "-ffunction-sections",
     "-Os",
+    "-fvisibility=hidden",
   ]
 
-  cflags_cc = [ "-Os" ]
+  cflags_cc = [
+    "-Os",
+    "-fvisibility=hidden",
+  ]
 
   if (!media_library_link_opt) {
     sanitize = {
