@@ -22,7 +22,7 @@
 #include <iremote_object.h>
 #include <mutex>
 #include <string>
- 
+
 #include "message_parcel.h"
 #include "message_option.h"
 
@@ -40,23 +40,18 @@ public:
     EXPORT int32_t GetUserId();
     EXPORT void SetUserId(const int32_t userId);
 
-    // Resolve effective userId: if userId == -1, use member userId_; if also -1, get from GetCurrentAccountId
-    EXPORT int32_t ResolveUserId(int32_t userId);
- 
     // Init from SystemAbility (for CAPI/Tool layers without app context)
     EXPORT void InitFromSa(const int32_t userId = -1);
- 
+
     // Init for active user (auto-get userId via OsAccountManager)
     EXPORT void InitForActiveUser();
- 
-protected:
-    std::shared_ptr<DataShare::DataShareHelper> sDataShareHelper_ = nullptr;
 
+protected:
     SafeMap<int32_t, std::shared_ptr<DataShare::DataShareHelper>> dataShareHelperMap_;
     std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelper(const sptr<IRemoteObject> &token,
         const int32_t userId = -1);
     EXPORT std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelperByUser(const int32_t userId);
-     
+
     // Force reconnect helper for a specific userId (clears and re-creates)
     EXPORT bool ForceReconnect(const int32_t userId = -1);
 };
