@@ -86,7 +86,7 @@ void MediaDataShareHelper::Init(const sptr<IRemoteObject> &token, const int32_t 
 
 void MediaDataShareHelper::InitFromSa(const int32_t userId)
 {
-    sptr<IRemoteObject> token = MediaAccountUtils::GetSaToken();
+    sptr<IRemoteObject> token = MediaClientUtils::GetSaToken();
     if (token == nullptr) {
         NAPI_ERR_LOG("InitFromSa: failed to get SA token");
         return;
@@ -96,14 +96,14 @@ void MediaDataShareHelper::InitFromSa(const int32_t userId)
 
 void MediaDataShareHelper::InitForActiveUser()
 {
-    int32_t activeUserId = MediaAccountUtils::GetCurrentAccountId();
+    int32_t activeUserId = MediaClientUtils::GetCurrentAccountId();
     NAPI_INFO_LOG("InitForActiveUser: activeUserId is %{public}d", activeUserId);
     if (activeUserId == GetUserId() && IsValid(activeUserId)) {
         NAPI_INFO_LOG("InitForActiveUser: already initialized for userId %{public}d", activeUserId);
         return;
     }
     SetUserId(activeUserId);
-    sptr<IRemoteObject> token = MediaAccountUtils::GetSaToken();
+    sptr<IRemoteObject> token = MediaClientUtils::GetSaToken();
     if (token == nullptr) {
         NAPI_ERR_LOG("InitForActiveUser: failed to get SA token, userId: %{public}d", activeUserId);
         return;
@@ -120,7 +120,7 @@ bool MediaDataShareHelper::ForceReconnect(const int32_t userId)
         dataShareHelperMap_.Erase(userId);
     }
     // Re-initialize from SA token
-    sptr<IRemoteObject> token = MediaAccountUtils::GetSaToken();
+    sptr<IRemoteObject> token = MediaClientUtils::GetSaToken();
     if (token == nullptr) {
         NAPI_ERR_LOG("ForceReconnect: failed to get SA token");
         return false;
