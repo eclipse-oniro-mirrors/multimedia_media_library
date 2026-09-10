@@ -135,6 +135,8 @@ int32_t CloudMediaCommonDao::QueryPhotoAlbumByCloudId(const std::string cloudId,
     std::optional<PhotoAlbumPo> &photoAlbumInfoOp) const
 {
     CHECK_AND_RETURN_RET_LOG(!cloudId.empty(), E_ERR, "cloudId is invalid");
+    CHECK_AND_RETURN_RET_INFO_LOG(!photoAlbumInfoOp.has_value(), E_OK,
+        "photoAlbumInfoOp has value, skip. cloudId: %{public}s", cloudId.c_str());
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");

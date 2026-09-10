@@ -90,6 +90,7 @@ int32_t CloudMediaShareAlbumService::HandleRecord(
     CHECK_AND_EXECUTE(!insertFlag, ret = this->PullInsert(record, changeType, stats, failedRecords));
     CHECK_AND_EXECUTE(!updateFlag, ret = this->PullUpdate(record, changeType, stats, failedRecords));
     CHECK_AND_EXECUTE(!deleteFlag, ret = this->PullDelete(record, changeType, stats, failedRecords));
+    this->PullHandleShareAlbumMembers(record);
     return ret;
 }
 
@@ -182,6 +183,19 @@ int32_t CloudMediaShareAlbumService::PullDelete(
     }
     stats[StatsIndex::DELETE_RECORDS_COUNT]++;
     MEDIA_INFO_LOG("PullDelete completed, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    return E_OK;
+}
+
+int32_t CloudMediaShareAlbumService::PullHandleShareAlbumMembers(PhotoAlbumDto &record)
+{
+    const bool insertFlag = !record.localAlbumInfo.has_value() && !record.isDelete;
+    const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
+    const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
+    if (insertFlag || updateFlag) {
+        return this->shareAlbumMemberService_.HandleShareAlbumMembers(record);
+    } else if (deleteFlag) {
+        return this->shareAlbumMemberService_.HandleDeleteMembers(record);
+    }
     return E_OK;
 }
 

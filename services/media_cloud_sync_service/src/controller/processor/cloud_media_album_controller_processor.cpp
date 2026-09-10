@@ -74,4 +74,30 @@ PhotoAlbumDto CloudMediaAlbumControllerProcessor::ConvertToPhotoAlbumDto(
     record.errorDetails = recordVo.errorDetails;
     return record;
 }
+
+void CloudMediaAlbumControllerProcessor::ConvertShareMemberDataFromVoToDto (
+    const std::vector<ShareMemberDataVo> &shareMemberDataVoList,
+    std::vector<ShareMemberDataDto> &shareMemberDataDtoList)
+{
+    for (const auto &shareMemberDatavo : shareMemberDataVoList) {
+        ShareMemberDataDto shareMemberDataDto;
+        shareMemberDataDto.userId = shareMemberDatavo.userId;
+        shareMemberDataDto.status = shareMemberDatavo.status;
+        shareMemberDataDtoList.push_back(shareMemberDataDto);
+    }
+}
+
+void CloudMediaAlbumControllerProcessor::ConvertShareAlbumDetailFromVoToDto(
+    const std::optional<ShareAlbumDetailVo> &shareAlbumDetailVoOp,
+    std::optional<ShareAlbumDetailDto> &shareAlbumDetailDtoOp)
+{
+    CHECK_AND_RETURN(shareAlbumDetailVoOp.has_value());
+    const ShareAlbumDetailVo &shareAlbumDetailVo = shareAlbumDetailVoOp.value();
+
+    shareAlbumDetailDtoOp = ShareAlbumDetailDto();
+    ShareAlbumDetailDto &shareAlbumDetailDto = shareAlbumDetailDtoOp.value();
+
+    this->ConvertShareMemberDataFromVoToDto(
+        shareAlbumDetailVo.shareMemberData, shareAlbumDetailDto.shareMemberDataList);
+}
 }  // namespace OHOS::Media::CloudSync

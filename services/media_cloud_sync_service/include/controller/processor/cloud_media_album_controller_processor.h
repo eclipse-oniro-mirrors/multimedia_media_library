@@ -34,6 +34,10 @@ public:
     CloudMdkRecordPhotoAlbumVo ConvertRecordPoToVo(PhotoAlbumPo record);
     PhotoAlbumDto ConvertToPhotoAlbumDto(const OnCreateRecordsAlbumReqBodyAlbumData &recordVo);
     PhotoAlbumDto ConvertToPhotoAlbumDto(const OnMdirtyAlbumRecord &recordVo);
+    void ConvertShareMemberDataFromVoToDto(const std::vector<ShareMemberDataVo> &shareMemberDataVoList,
+        std::vector<ShareMemberDataDto> &shareMemberDataDtoList);
+    void ConvertShareAlbumDetailFromVoToDto(const std::optional<ShareAlbumDetailVo> &shareAlbumDetailVoOp,
+        std::optional<ShareAlbumDetailDto> &shareAlbumDetailDtoOp);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_ALBUM_CONTROLLER_PROCESSOR_H

@@ -22,6 +22,7 @@
 
 #include "i_media_parcelable.h"
 #include "cloud_media_define.h"
+#include "share_album_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT OnFetchRecordsAlbumReqBody : public IPC::IMediaParcelable {
@@ -45,13 +46,20 @@ public:
         std::string coverCloudId;
         std::string uniqueId;
         int32_t sceneId;
-        int32_t shareType;
+        int32_t shareType;  // 0 普通相册， 1 儿童相册， 2 共享相册
         std::string shareAlbumOwner;
+        std::optional<ShareAlbumDetailVo> shareAlbumDetailVoOp;
 
     public:  // functions of Parcelable.
         virtual ~AlbumReqData() = default;
         bool Unmarshalling(MessageParcel &parcel) override;
         bool Marshalling(MessageParcel &parcel) const override;
+
+    public:
+        void InitShareAlbumDetailVo(int32_t shareType);
+        bool MarshallingShareAlbumDetailVo(MessageParcel &parcel) const;
+        bool UnmarshallingShareAlbumDetailVo(MessageParcel &parcel);
+        std::string ShareAlbumDetailVoToString() const;
 
     public:  // basic functions
         std::string ToString() const;
