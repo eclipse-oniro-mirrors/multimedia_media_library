@@ -36,7 +36,12 @@ ohos_unittest("white_list_check_utils_test") {
 
   cflags_cc = cflags
 
-  sources = [ "./src/white_list_check_utils_test.cpp" ]
+  sources = [
+    "./src/white_list_check_utils_test.cpp",
+    "./src/predicates_verify_test.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/datashare_predicates_verify.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/verify_strategy.cpp",
+  ]
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",

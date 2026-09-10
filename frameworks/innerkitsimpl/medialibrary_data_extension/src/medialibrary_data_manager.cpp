@@ -142,6 +142,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "parameter_utils.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -1587,6 +1588,8 @@ int32_t MediaLibraryDataManager::Delete(MediaLibraryCommand &cmd, const DataShar
     auto whereClause = predicates.GetWhereClause();
     CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause), E_SQL_CHECK_FAIL,
         "illegal query whereClause input %{private}s", whereClause.c_str());
+    CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_SQL_CHECK_FAIL,
+        "illegal query key");
     tracer.Finish();
 
     // CONST_MEDIALIBRARY_TABLE just for RdbPredicates
@@ -1746,6 +1749,9 @@ int32_t MediaLibraryDataManager::Update(MediaLibraryCommand &cmd, const DataShar
         MEDIA_ERR_LOG("MediaLibraryDataManager Update:Input parameter is invalid ");
         return E_INVALID_VALUES;
     }
+
+    CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_INVALID_VALUES,
+        "illegal query key");
 
 #ifdef MEDIALIBRARY_COMPATIBILITY
     ChangeUriFromValuesBucket(value);
@@ -2471,6 +2477,8 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QuerySet(MediaLibraryC
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_OPT_ERR, map);
         return nullptr;
     }
+    CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, nullptr,
+        "illegal query key");
     MEDIA_DEBUG_LOG("CheckWhereClause end");
     tracer.Finish();
 

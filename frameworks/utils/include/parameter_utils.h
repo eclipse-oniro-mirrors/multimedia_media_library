@@ -18,6 +18,7 @@
 
 #include <string>
 
+#include "datashare_predicates.h"
 #include "create_asset_vo.h"
 #include "create_album_vo.h"
 #include "modify_assets_vo.h"
@@ -77,6 +78,7 @@ public:
     static int32_t CheckUpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody);
     static int32_t CheckDeleteShareMember(const DeleteShareMemberReqBody &reqBody);
     static int32_t CheckDeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody);
+    static int32_t HandleIllegalKey(const DataShare::DataSharePredicates &predicates);
 };
 }  // namespace Media
 }  // namespace OHOS

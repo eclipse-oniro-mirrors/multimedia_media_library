@@ -772,6 +772,12 @@ int32_t MediaAlbumsControllerService::QueryAlbums(MessageParcel &data, MessagePa
         MEDIA_ERR_LOG("CreateAssetForApp Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
     }
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
 
     QueryAlbumsDto dto;
     dto.albumType = reqBody.albumType;
@@ -799,6 +805,12 @@ int32_t MediaAlbumsControllerService::QueryHiddenAlbums(MessageParcel &data, Mes
     if (ret != E_OK) {
         MEDIA_ERR_LOG("CreateAssetForApp Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
 
     QueryAlbumsDto dto;
@@ -844,10 +856,11 @@ int32_t MediaAlbumsControllerService::GetClonedAlbumUris(MessageParcel &data, Me
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
 
     GetClonedAlbumUrisDto dto = GetClonedAlbumUrisDto::Create(reqBody);
@@ -888,10 +901,11 @@ int32_t MediaAlbumsControllerService::AlbumGetAssets(
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
         MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
     AlbumGetAssetsDto dto = AlbumGetAssetsDto::Create(reqBody);
     int32_t passCode = E_SUCCESS;
@@ -930,10 +944,11 @@ int32_t MediaAlbumsControllerService::GetPhotoAlbumObject(MessageParcel &data, M
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
         MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
 
     GetPhotoAlbumObjectDto dto;
@@ -979,6 +994,12 @@ int32_t MediaAlbumsControllerService::QueryAlbumsLpaths(MessageParcel &data, Mes
     if (ret != E_OK) {
         MEDIA_ERR_LOG("QueryAlbumsLpaths Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
 
     QueryAlbumsDto dto;
@@ -1075,10 +1096,11 @@ int32_t MediaAlbumsControllerService::AlbumGetSelectAssets(MessageParcel &data, 
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
 
     AlbumGetSelectedAssetsDto dto = AlbumGetSelectedAssetsDto::Create(reqBody);
@@ -1124,10 +1146,11 @@ int32_t MediaAlbumsControllerService::GetAlbumIdByLpathOrBundleName(MessageParce
         MEDIA_ERR_LOG("GetAlbumIdByLpathOrBundleName Read Request Error: %{public}d", ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
-    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CheckWhereClause fialed");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckPredicate failed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
     GetAlbumIdByLpathDto dto;
     dto.FromVo(reqBody);
