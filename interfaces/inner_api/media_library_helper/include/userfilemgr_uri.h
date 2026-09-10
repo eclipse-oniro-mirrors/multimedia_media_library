@@ -93,6 +93,8 @@ namespace Media {
 #define CONST_OPRN_ADD_LOWQUALITY_IMAGE "add_lowquality_image"
 #define CONST_OPRN_SET_VIDEO_ENHANCEMENT_ATTR "set_video_enhancement_attr"
 #define CONST_VIDEO_TYPE_KEYWORD "type_for_cinematic_video"  // 不建议使用 type 结尾
+#define CONST_CALLER "caller"
+#define CONST_MEDIA_LIBRARY "1"
 
 #define CONST_OPRN_FIND_ALL_DUPLICATE_ASSETS "all_duplicate_assets"
 #define CONST_URI_FIND_ALL_DUPLICATE_ASSETS "/all_duplicate_assets"

@@ -24,6 +24,9 @@
 #include <unistd.h>
 
 namespace OHOS::Media::IPC {
+const std::string CONST_CALLER = "caller";
+const std::string CONST_MEDIA_LIBRARY = "1";
+
 MediaDataShareClient::MediaDataShareClient() {}
 MediaDataShareClient::~MediaDataShareClient() {}
 
@@ -133,8 +136,10 @@ int MediaDataShareClient::OpenFile(Uri &uri, const std::string &mode, const int3
         return E_FAIL;
     }
     uri = MediaUriUtils::GetMultiUri(uri, userId);
-
-    return helper->OpenFile(uri, mode);
+    std::string uriString = uri.ToString();
+    MediaUriUtils::AppendKeyValue(uriString, CONST_CALLER, CONST_MEDIA_LIBRARY);
+    Uri openUri(uriString);
+    return helper->OpenFile(openUri, mode);
 }
 
 int MediaDataShareClient::Update(Uri &uri, const DataShare::DataSharePredicates &predicates,

@@ -150,6 +150,7 @@ public:
                 const DataShare::DataSharePredicates &predicates);
     EXPORT int32_t InitReverseMediaLibraryRdbStore();
     EXPORT void InitDatabaseACLPermission();
+    EXPORT void HandleSpecialOpen(Uri &uri);
 
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
     using GetInstanceNewFunc = WatchSystemService::CloudAuditImpl *(*)(void);

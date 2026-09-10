@@ -21,6 +21,9 @@
 #include "medialibrary_napi_log.h"
 
 namespace OHOS::Media::IPC {
+const std::string CONST_CALLER = "caller";
+const std::string CONST_MEDIA_LIBRARY = "1";
+
 MediaCommonClient::MediaCommonClient() {}
 MediaCommonClient::~MediaCommonClient() {}
 // LCOV_EXCL_START
@@ -80,8 +83,10 @@ int MediaCommonClient::OpenFileWithErrCode(Uri &uri, const std::string &mode, in
         return E_FAIL;
     }
     uri = MediaUriUtils::GetMultiUri(uri, userId);
-
-    return helper->OpenFileWithErrCode(uri, mode, realErr);
+    std::string uriString = uri.ToString();
+    MediaUriUtils::AppendKeyValue(uriString, CONST_CALLER, CONST_MEDIA_LIBRARY);
+    Uri openUri(uriString);
+    return helper->OpenFileWithErrCode(openUri, mode, realErr);
 }
 
 bool MediaCommonClient::ForceReconnect(const int32_t userId)

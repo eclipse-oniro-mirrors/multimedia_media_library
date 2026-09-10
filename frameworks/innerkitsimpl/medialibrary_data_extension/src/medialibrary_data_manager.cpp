@@ -197,6 +197,7 @@ static const int MAX_LOOP_CNT = 10;
 static const std::string MEDIA_LIBRARY_PREF_XML = "/data/storage/el2/base/preferences/media_library_preferences.xml";
 static const std::string MEDIA_LIBRARY_RECOVERY_FLAG_KEY = "media_library_preferences_recovery_flag";
 static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
+static const int32_t SPECIAL_OPEN_SUFFIX_LENGHT = 9;
 
 #ifdef DEVICE_STANDBY_ENABLE
 static const std::string SUBSCRIBER_NAME = "POWER_USAGE";
@@ -4097,6 +4098,30 @@ WatchSystemService::CloudAuditImpl* MediaLibraryDataManager::GetCloudAuditInstan
     return cloudAuditInstance_;
 }
 #endif
+
+void MediaLibraryDataManager::HandleSpecialOpen(Uri &uri)
+{
+    std::string uriString = uri.ToString();
+    MEDIA_INFO_LOG("Special Open, uri: %{public}s", uriString.c_str());
+    if (MediaStringUtils::EndsWith(uriString, "caller=1")) {
+        uriString = uriString.substr(0, uriString.size() - SPECIAL_OPEN_SUFFIX_LENGHT);
+        uri = Uri(uriString);
+        return;
+    }
+    size_t cutPoint = uriString.find('#');
+    if (cutPoint != string::npos) {
+        uriString = uriString.substr(0, cutPoint);
+    }
+    MediaFileUri mediaUri(uriString);
+    std::string operation = mediaUri.GetQuery();
+    if (operation.empty()) {
+        return;
+    }
+    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    MEDIA_INFO_LOG("Special Open, Bundlename: %{public}s, Operation: %{public}s",
+        bundleName.c_str(), operation.c_str());
+    DfxManager::GetInstance()->HandleSpecialOpen(bundleName, operation);
+}
 // LCOV_EXCL_STOP
 }  // namespace Media
 }  // namespace OHOS
