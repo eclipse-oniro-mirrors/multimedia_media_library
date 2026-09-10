@@ -70,278 +70,278 @@ enum class PhotoRiskStatus : int32_t {
 class MediaColumn {
 public:
     // Asset Base Parameter
-    static const std::string MEDIA_ID EXPORT;
-    static const std::string MEDIA_FILE_PATH EXPORT;
-    static const std::string MEDIA_SIZE EXPORT;
-    static const std::string MEDIA_TITLE EXPORT;
-    static const std::string MEDIA_NAME EXPORT;
-    static const std::string MEDIA_TYPE EXPORT;
-    static const std::string MEDIA_MIME_TYPE EXPORT;
-    static const std::string MEDIA_OWNER_PACKAGE EXPORT;
-    static const std::string MEDIA_OWNER_APPID EXPORT;
-    static const std::string MEDIA_PACKAGE_NAME EXPORT;
-    static const std::string MEDIA_DEVICE_NAME EXPORT;
+    static const std::string MEDIA_ID;
+    static const std::string MEDIA_FILE_PATH;
+    static const std::string MEDIA_SIZE;
+    static const std::string MEDIA_TITLE;
+    static const std::string MEDIA_NAME;
+    static const std::string MEDIA_TYPE;
+    static const std::string MEDIA_MIME_TYPE;
+    static const std::string MEDIA_OWNER_PACKAGE;
+    static const std::string MEDIA_OWNER_APPID;
+    static const std::string MEDIA_PACKAGE_NAME;
+    static const std::string MEDIA_DEVICE_NAME;
 
     // As set Parameter about time
-    static const std::string MEDIA_DATE_MODIFIED EXPORT;
-    static const std::string MEDIA_DATE_ADDED EXPORT;
-    static const std::string MEDIA_DATE_TAKEN EXPORT;
-    static const std::string MEDIA_DURATION EXPORT;
-    static const std::string MEDIA_TIME_PENDING EXPORT;
-    static const std::string MEDIA_IS_FAV EXPORT;
-    static const std::string MEDIA_DATE_TRASHED EXPORT;
-    static const std::string MEDIA_DATE_DELETED EXPORT;
-    static const std::string MEDIA_HIDDEN EXPORT;
+    static const std::string MEDIA_DATE_MODIFIED;
+    static const std::string MEDIA_DATE_ADDED;
+    static const std::string MEDIA_DATE_TAKEN;
+    static const std::string MEDIA_DURATION;
+    static const std::string MEDIA_TIME_PENDING;
+    static const std::string MEDIA_IS_FAV;
+    static const std::string MEDIA_DATE_TRASHED;
+    static const std::string MEDIA_DATE_DELETED;
+    static const std::string MEDIA_HIDDEN;
 
     // Asset Parameter deperated
-    static const std::string MEDIA_PARENT_ID EXPORT;
-    static const std::string MEDIA_RELATIVE_PATH EXPORT;
-    static const std::string MEDIA_VIRTUAL_PATH EXPORT;
+    static const std::string MEDIA_PARENT_ID;
+    static const std::string MEDIA_RELATIVE_PATH;
+    static const std::string MEDIA_VIRTUAL_PATH;
     // deprecated since 6.1-release
-    static const std::string MEDIA_VIRTURL_PATH EXPORT;
+    static const std::string MEDIA_VIRTURL_PATH;
 
     // All Columns
-    static const std::set<std::string> MEDIA_COLUMNS EXPORT;
+    static const std::set<std::string> MEDIA_COLUMNS;
     // Default fetch columns
-    static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;
+    static const std::set<std::string> DEFAULT_FETCH_COLUMNS;
 };
 
 class PhotoColumn : public MediaColumn {
 public:
     // column only in PhotoTable
-    static const std::string PHOTO_ORIENTATION EXPORT;
-    static const std::string PHOTO_EXIF_ROTATE EXPORT;
-    static const std::string PHOTO_LATITUDE EXPORT;
-    static const std::string PHOTO_LONGITUDE EXPORT;
-    static const std::string PHOTO_HEIGHT EXPORT;
-    static const std::string PHOTO_WIDTH EXPORT;
-    static const std::string PHOTO_LCD_VISIT_TIME EXPORT;
-    static const std::string PHOTO_EDIT_TIME EXPORT;
-    static const std::string PHOTO_POSITION EXPORT;
-    static const std::string PHOTO_DIRTY EXPORT;
-    static const std::string PHOTO_CLOUD_ID EXPORT;
-    static const std::string PHOTO_SUBTYPE EXPORT;
-    static const std::string PHOTO_META_DATE_MODIFIED EXPORT;
-    static const std::string PHOTO_SYNC_STATUS EXPORT;
-    static const std::string PHOTO_CLOUD_VERSION EXPORT;
-    static const std::string CAMERA_SHOT_KEY EXPORT;
-    static const std::string PHOTO_USER_COMMENT EXPORT;
-    static const std::string PHOTO_ALL_EXIF EXPORT;
-    static const std::string PHOTO_CLEAN_FLAG EXPORT;
-    static const std::string PHOTO_DYNAMIC_RANGE_TYPE EXPORT;
-    static const std::string PHOTO_HDR_MODE EXPORT;
-    static const std::string PHOTO_EDIT_DATA_EXIST EXPORT;
-    static const std::string MOVING_PHOTO_EFFECT_MODE EXPORT;
-    static const std::string PHOTO_HAS_ASTC EXPORT; // This attribute has been replaced by "thumbnail_ready"
-    static const std::string PHOTO_THUMBNAIL_READY EXPORT;
-    static const std::string PHOTO_THUMBNAIL_VISIBLE EXPORT;
+    static const std::string PHOTO_ORIENTATION;
+    static const std::string PHOTO_EXIF_ROTATE;
+    static const std::string PHOTO_LATITUDE;
+    static const std::string PHOTO_LONGITUDE;
+    static const std::string PHOTO_HEIGHT;
+    static const std::string PHOTO_WIDTH;
+    static const std::string PHOTO_LCD_VISIT_TIME;
+    static const std::string PHOTO_EDIT_TIME;
+    static const std::string PHOTO_POSITION;
+    static const std::string PHOTO_DIRTY;
+    static const std::string PHOTO_CLOUD_ID;
+    static const std::string PHOTO_SUBTYPE;
+    static const std::string PHOTO_META_DATE_MODIFIED;
+    static const std::string PHOTO_SYNC_STATUS;
+    static const std::string PHOTO_CLOUD_VERSION;
+    static const std::string CAMERA_SHOT_KEY;
+    static const std::string PHOTO_USER_COMMENT;
+    static const std::string PHOTO_ALL_EXIF;
+    static const std::string PHOTO_CLEAN_FLAG;
+    static const std::string PHOTO_DYNAMIC_RANGE_TYPE;
+    static const std::string PHOTO_HDR_MODE;
+    static const std::string PHOTO_EDIT_DATA_EXIST;
+    static const std::string MOVING_PHOTO_EFFECT_MODE;
+    static const std::string PHOTO_HAS_ASTC; // This attribute has been replaced by "thumbnail_ready"
+    static const std::string PHOTO_THUMBNAIL_READY;
+    static const std::string PHOTO_THUMBNAIL_VISIBLE;
 
-    static const std::string IS_STYLE_PHOTO EXPORT;
-    static const std::string PHOTO_SYNCING EXPORT;
-    static const std::string PHOTO_DATE_YEAR EXPORT;
-    static const std::string PHOTO_DATE_MONTH EXPORT;
-    static const std::string PHOTO_DATE_DAY EXPORT;
-    static const std::string PHOTO_SHOOTING_MODE EXPORT;
-    static const std::string PHOTO_SHOOTING_MODE_TAG EXPORT;
-    static const std::string PHOTO_LAST_VISIT_TIME EXPORT;
-    static const std::string PHOTO_HIDDEN_TIME EXPORT;
-    static const std::string PHOTO_THUMB_STATUS EXPORT;
-    static const std::string PHOTO_ID EXPORT;
-    static const std::string PHOTO_QUALITY EXPORT;
-    static const std::string PHOTO_FIRST_VISIT_TIME EXPORT;
-    static const std::string PHOTO_DEFERRED_PROC_TYPE EXPORT;
-    static const std::string PHOTO_LCD_SIZE EXPORT;
-    static const std::string PHOTO_THUMB_SIZE EXPORT;
-    static const std::string PHOTO_IS_TEMP EXPORT;
-    static const std::string PHOTO_BURST_COVER_LEVEL EXPORT;
-    static const std::string PHOTO_BURST_KEY EXPORT;
-    static const std::string PHOTO_COVER_POSITION EXPORT;
-    static const std::string PHOTO_IS_RECTIFICATION_COVER EXPORT;
-    static const std::string PHOTO_OWNER_ALBUM_ID EXPORT;
-    static const std::string PHOTO_ORIGINAL_ASSET_CLOUD_ID EXPORT;
-    static const std::string PHOTO_SOURCE_PATH EXPORT;
-    static const std::string PHOTO_ORIGINAL_SUBTYPE EXPORT;
-    static const std::string PHOTO_DETAIL_TIME EXPORT;
-    static const std::string SUPPORTED_WATERMARK_TYPE EXPORT;
-    static const std::string PHOTO_METADATA_FLAGS EXPORT;
-    static const std::string PHOTO_CHECK_FLAG EXPORT;
-    static const std::string STAGE_VIDEO_TASK_STATUS EXPORT;
-    static const std::string PHOTO_IS_AUTO EXPORT;
-    static const std::string PHOTO_MEDIA_SUFFIX EXPORT;
-    static const std::string PHOTO_REAL_LCD_VISIT_TIME EXPORT;
-    static const std::string PHOTO_VISIT_COUNT EXPORT;
-    static const std::string PHOTO_LCD_VISIT_COUNT EXPORT;
-    static const std::string PHOTO_TRANSCODE_TIME EXPORT;
-    static const std::string PHOTO_TRANS_CODE_FILE_SIZE EXPORT;
-    static const std::string PHOTO_EXIST_COMPATIBLE_DUPLICATE EXPORT;
-    static const std::string PHOTO_FILE_SOURCE_TYPE EXPORT;
-    static const std::string PHOTO_IS_RECENT_SHOW EXPORT;
-    static const std::string PHOTO_HAS_APPLINK EXPORT;
-    static const std::string PHOTO_APPLINK EXPORT;
-    static const std::string PHOTO_SOUTH_DEVICE_TYPE EXPORT;
-    static const std::string PHOTO_VIDEO_MODE EXPORT;
-    static const std::string PHOTO_FILE_INODE EXPORT;
-    static const std::string PHOTO_STORAGE_PATH EXPORT;
-    static const std::string PHOTO_ASPECT_RATIO EXPORT;
-    static const std::string PHOTO_IS_CRITICAL EXPORT;
-    static const std::string PHOTO_CRITICAL_TYPE EXPORT;
-    static const std::string PHOTO_RISK_STATUS EXPORT;
-    static const std::string PHOTO_CHANGE_TIME EXPORT;
-    static const std::string PHOTO_DATE_ADDED_YEAR EXPORT;
-    static const std::string PHOTO_DATE_ADDED_MONTH EXPORT;
-    static const std::string PHOTO_DATE_ADDED_DAY EXPORT;
-    static const std::string UNIQUE_ID EXPORT;
-    static const std::string MOVING_PHOTO_LIVEPHOTO_4D_STATUS EXPORT;
-    static const std::string MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR EXPORT;
-    static const std::string LOCAL_ASSET_SIZE EXPORT;
-    static const std::string ATTACHMENT_SIZE EXPORT;
-    static const std::string MUSIC_MASTER_MODE EXPORT;
-    static const std::string PHOTO_FILE_HIDDEN EXPORT;
-    static const std::string PHOTO_NEED_THUMBNAIL EXPORT;
-    static const std::string PHOTO_LCD_FILE_SIZE EXPORT;
-    static const std::string COMPRESSION_QUALITY EXPORT;
-    static const std::string C2PA_CONFIG_INFO EXPORT;
+    static const std::string IS_STYLE_PHOTO;
+    static const std::string PHOTO_SYNCING;
+    static const std::string PHOTO_DATE_YEAR;
+    static const std::string PHOTO_DATE_MONTH;
+    static const std::string PHOTO_DATE_DAY;
+    static const std::string PHOTO_SHOOTING_MODE;
+    static const std::string PHOTO_SHOOTING_MODE_TAG;
+    static const std::string PHOTO_LAST_VISIT_TIME;
+    static const std::string PHOTO_HIDDEN_TIME;
+    static const std::string PHOTO_THUMB_STATUS;
+    static const std::string PHOTO_ID;
+    static const std::string PHOTO_QUALITY;
+    static const std::string PHOTO_FIRST_VISIT_TIME;
+    static const std::string PHOTO_DEFERRED_PROC_TYPE;
+    static const std::string PHOTO_LCD_SIZE;
+    static const std::string PHOTO_THUMB_SIZE;
+    static const std::string PHOTO_IS_TEMP;
+    static const std::string PHOTO_BURST_COVER_LEVEL;
+    static const std::string PHOTO_BURST_KEY;
+    static const std::string PHOTO_COVER_POSITION;
+    static const std::string PHOTO_IS_RECTIFICATION_COVER;
+    static const std::string PHOTO_OWNER_ALBUM_ID;
+    static const std::string PHOTO_ORIGINAL_ASSET_CLOUD_ID;
+    static const std::string PHOTO_SOURCE_PATH;
+    static const std::string PHOTO_ORIGINAL_SUBTYPE;
+    static const std::string PHOTO_DETAIL_TIME;
+    static const std::string SUPPORTED_WATERMARK_TYPE;
+    static const std::string PHOTO_METADATA_FLAGS;
+    static const std::string PHOTO_CHECK_FLAG;
+    static const std::string STAGE_VIDEO_TASK_STATUS;
+    static const std::string PHOTO_IS_AUTO;
+    static const std::string PHOTO_MEDIA_SUFFIX;
+    static const std::string PHOTO_REAL_LCD_VISIT_TIME;
+    static const std::string PHOTO_VISIT_COUNT;
+    static const std::string PHOTO_LCD_VISIT_COUNT;
+    static const std::string PHOTO_TRANSCODE_TIME;
+    static const std::string PHOTO_TRANS_CODE_FILE_SIZE;
+    static const std::string PHOTO_EXIST_COMPATIBLE_DUPLICATE;
+    static const std::string PHOTO_FILE_SOURCE_TYPE;
+    static const std::string PHOTO_IS_RECENT_SHOW;
+    static const std::string PHOTO_HAS_APPLINK;
+    static const std::string PHOTO_APPLINK;
+    static const std::string PHOTO_SOUTH_DEVICE_TYPE;
+    static const std::string PHOTO_VIDEO_MODE;
+    static const std::string PHOTO_FILE_INODE;
+    static const std::string PHOTO_STORAGE_PATH;
+    static const std::string PHOTO_ASPECT_RATIO;
+    static const std::string PHOTO_IS_CRITICAL;
+    static const std::string PHOTO_CRITICAL_TYPE;
+    static const std::string PHOTO_RISK_STATUS;
+    static const std::string PHOTO_CHANGE_TIME;
+    static const std::string PHOTO_DATE_ADDED_YEAR;
+    static const std::string PHOTO_DATE_ADDED_MONTH;
+    static const std::string PHOTO_DATE_ADDED_DAY;
+    static const std::string UNIQUE_ID;
+    static const std::string MOVING_PHOTO_LIVEPHOTO_4D_STATUS;
+    static const std::string MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR;
+    static const std::string LOCAL_ASSET_SIZE;
+    static const std::string ATTACHMENT_SIZE;
+    static const std::string MUSIC_MASTER_MODE;
+    static const std::string PHOTO_FILE_HIDDEN;
+    static const std::string PHOTO_NEED_THUMBNAIL;
+    static const std::string PHOTO_LCD_FILE_SIZE;
+    static const std::string COMPRESSION_QUALITY;
+    static const std::string C2PA_CONFIG_INFO;
 
     // Photo-only default fetch columns
-    static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;
+    static const std::set<std::string> DEFAULT_FETCH_COLUMNS;
 
     // index in PhotoTable
-    static const std::string PHOTO_CLOUD_ID_INDEX EXPORT;
-    static const std::string PHOTO_DATE_YEAR_INDEX EXPORT;
-    static const std::string PHOTO_DATE_MONTH_INDEX EXPORT;
-    static const std::string PHOTO_DATE_DAY_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_ADDED_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_ALBUM_GENERAL_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_ALBUM_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_PHOTO_DATEADDED_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_ADDED_ALBUM_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_MEDIA_TYPE_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_DAY_INDEX EXPORT;
-    static const std::string PHOTO_HIDDEN_TIME_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_HIDDEN_TIME_INDEX EXPORT;
-    static const std::string PHOTO_FAVORITE_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_READY_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_CLOUD_ENHANCEMENT_ALBUM_INDEX EXPORT;
-    static const std::string LATITUDE_INDEX EXPORT;
-    static const std::string LONGITUDE_INDEX EXPORT;
-    static const std::string PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX EXPORT;
-    static const std::string PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX EXPORT;
-    static const std::string PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX EXPORT;
-    static const std::string PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX EXPORT;
-    static const std::string PHOTO_SORT_IN_ALBUM_SIZE_INDEX EXPORT;
-    static const std::string PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX EXPORT;
-    static const std::string PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX EXPORT;
-    static const std::string PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX EXPORT;
-    static const std::string PHOTO_QUERY_THUMBNAIL_WHITE_BLOCKS_INDEX EXPORT;
-    static const std::string PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX EXPORT;
-    static const std::string PHOTO_BURST_MODE_ALBUM_INDEX EXPORT;
-    static const std::string PHOTO_FRONT_CAMERA_ALBUM_INDEX EXPORT;
-    static const std::string PHOTO_RAW_IMAGE_ALBUM_INDEX EXPORT;
-    static const std::string PHOTO_MOVING_PHOTO_ALBUM_INDEX EXPORT;
+    static const std::string PHOTO_CLOUD_ID_INDEX;
+    static const std::string PHOTO_DATE_YEAR_INDEX;
+    static const std::string PHOTO_DATE_MONTH_INDEX;
+    static const std::string PHOTO_DATE_DAY_INDEX;
+    static const std::string PHOTO_SCHPT_ADDED_INDEX;
+    static const std::string PHOTO_SCHPT_ALBUM_GENERAL_INDEX;
+    static const std::string PHOTO_SCHPT_ALBUM_INDEX;
+    static const std::string PHOTO_SCHPT_PHOTO_DATEADDED_INDEX;
+    static const std::string PHOTO_SCHPT_ADDED_ALBUM_INDEX;
+    static const std::string PHOTO_SCHPT_MEDIA_TYPE_INDEX;
+    static const std::string PHOTO_SCHPT_DAY_INDEX;
+    static const std::string PHOTO_HIDDEN_TIME_INDEX;
+    static const std::string PHOTO_SCHPT_HIDDEN_TIME_INDEX;
+    static const std::string PHOTO_FAVORITE_INDEX;
+    static const std::string PHOTO_SCHPT_READY_INDEX;
+    static const std::string PHOTO_SCHPT_CLOUD_ENHANCEMENT_ALBUM_INDEX;
+    static const std::string LATITUDE_INDEX;
+    static const std::string LONGITUDE_INDEX;
+    static const std::string PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX;
+    static const std::string PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX;
+    static const std::string PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX;
+    static const std::string PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX;
+    static const std::string PHOTO_SORT_IN_ALBUM_SIZE_INDEX;
+    static const std::string PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX;
+    static const std::string PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX;
+    static const std::string PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX;
+    static const std::string PHOTO_QUERY_THUMBNAIL_WHITE_BLOCKS_INDEX;
+    static const std::string PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX;
+    static const std::string PHOTO_BURST_MODE_ALBUM_INDEX;
+    static const std::string PHOTO_FRONT_CAMERA_ALBUM_INDEX;
+    static const std::string PHOTO_RAW_IMAGE_ALBUM_INDEX;
+    static const std::string PHOTO_MOVING_PHOTO_ALBUM_INDEX;
     // for clone query
-    static const std::string PHOTO_DISPLAYNAME_INDEX EXPORT;
+    static const std::string PHOTO_DISPLAYNAME_INDEX;
     // for burst query
-    static const std::string PHOTO_BURSTKEY_INDEX EXPORT;
+    static const std::string PHOTO_BURSTKEY_INDEX;
     // for count query
-    static const std::string PHOTO_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_DATE_YEAR_COUNT_READY_INDEX EXPORT;
-    static const std::string PHOTO_SCHPT_DATE_MONTH_COUNT_READY_INDEX EXPORT;
+    static const std::string PHOTO_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX;
+    static const std::string PHOTO_SCHPT_DATE_YEAR_COUNT_READY_INDEX;
+    static const std::string PHOTO_SCHPT_DATE_MONTH_COUNT_READY_INDEX;
     // format in PhotoTable year month day
-    static const std::string PHOTO_DATE_YEAR_FORMAT EXPORT;
-    static const std::string PHOTO_DATE_MONTH_FORMAT EXPORT;
-    static const std::string PHOTO_DATE_DAY_FORMAT EXPORT;
-    static const std::string PHOTO_FRONT_CAMERA EXPORT;
+    static const std::string PHOTO_DATE_YEAR_FORMAT;
+    static const std::string PHOTO_DATE_MONTH_FORMAT;
+    static const std::string PHOTO_DATE_DAY_FORMAT;
+    static const std::string PHOTO_FRONT_CAMERA;
     // cloud enhancement
-    static const std::string PHOTO_CE_AVAILABLE EXPORT;
-    static const std::string PHOTO_CE_STATUS_CODE EXPORT;
-    static const std::string PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE EXPORT;
-    static const std::string PHOTO_STRONG_ASSOCIATION EXPORT;
-    static const std::string PHOTO_ASSOCIATE_FILE_ID EXPORT;
-    static const std::string PHOTO_HAS_CLOUD_WATERMARK EXPORT;
-    static const std::string PHOTO_COMPOSITE_DISPLAY_STATUS EXPORT;
+    static const std::string PHOTO_CE_AVAILABLE;
+    static const std::string PHOTO_CE_STATUS_CODE;
+    static const std::string PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE;
+    static const std::string PHOTO_STRONG_ASSOCIATION;
+    static const std::string PHOTO_ASSOCIATE_FILE_ID;
+    static const std::string PHOTO_HAS_CLOUD_WATERMARK;
+    static const std::string PHOTO_COMPOSITE_DISPLAY_STATUS;
     // format in PhotoTable detail time
-    static const std::string PHOTO_DETAIL_TIME_FORMAT EXPORT;
+    static const std::string PHOTO_DETAIL_TIME_FORMAT;
 
     // table name
-    static const std::string PHOTOS_TABLE EXPORT;
-    static const std::string HIGHLIGHT_TABLE EXPORT;
+    static const std::string PHOTOS_TABLE;
+    static const std::string HIGHLIGHT_TABLE;
 
-    static const std::string TAB_OLD_PHOTOS_TABLE EXPORT;
-    static const std::string TAB_ASSET_AND_ALBUM_OPERATION_TABLE EXPORT;
+    static const std::string TAB_OLD_PHOTOS_TABLE;
+    static const std::string TAB_ASSET_AND_ALBUM_OPERATION_TABLE;
 
     // path
-    static const std::string FILES_CLOUD_DIR EXPORT;
-    static const std::string FILES_LOCAL_DIR EXPORT;
+    static const std::string FILES_CLOUD_DIR;
+    static const std::string FILES_LOCAL_DIR;
     
-    static const std::string MEDIA_DATA_DB_HIGHLIGHT_TRIGGER EXPORT;
+    static const std::string MEDIA_DATA_DB_HIGHLIGHT_TRIGGER;
     // photo uri
-    static const std::string PHOTO_URI_PREFIX EXPORT;
-    static const std::string PHOTO_TYPE_URI EXPORT;
-    static const std::string DEFAULT_PHOTO_URI EXPORT;
-    static const std::string PHOTO_CACHE_URI_PREFIX EXPORT;
+    static const std::string PHOTO_URI_PREFIX;
+    static const std::string PHOTO_TYPE_URI;
+    static const std::string DEFAULT_PHOTO_URI;
+    static const std::string PHOTO_CACHE_URI_PREFIX;
 
     // cloud sync type
-    static const std::string CLOUD_TYPE EXPORT;
+    static const std::string CLOUD_TYPE;
 
     // cloud sync uri
-    static const std::string PHOTO_CLOUD_URI_PREFIX EXPORT;
-    static const std::string PHOTO_CLOUD_TRIGGER_PREFIX EXPORT;
-    static const std::string PHOTO_GALLERY_CLOUD_URI_PREFIX EXPORT;
-    static const std::string PHOTO_THM_DOWNLOAD_URI_PREFIX EXPORT;
+    static const std::string PHOTO_CLOUD_URI_PREFIX;
+    static const std::string PHOTO_CLOUD_TRIGGER_PREFIX;
+    static const std::string PHOTO_GALLERY_CLOUD_URI_PREFIX;
+    static const std::string PHOTO_THM_DOWNLOAD_URI_PREFIX;
 
     // cloud notify uri
-    static const std::string PHOTO_HEIGHT_ERROR_URI_PREFIX EXPORT;
-    static const std::string PHOTO_DOWNLOAD_SUCCEED_URI_PREFIX EXPORT;
-    static const std::string PHOTO_CLOUD_GALLERY_REBUILD_URI_PREFIX EXPORT;
+    static const std::string PHOTO_HEIGHT_ERROR_URI_PREFIX;
+    static const std::string PHOTO_DOWNLOAD_SUCCEED_URI_PREFIX;
+    static const std::string PHOTO_CLOUD_GALLERY_REBUILD_URI_PREFIX;
     // yuv uri
-    static const std::string PHOTO_REQUEST_PICTURE EXPORT;
-    static const std::string PHOTO_REQUEST_PICTURE_BUFFER EXPORT;
+    static const std::string PHOTO_REQUEST_PICTURE;
+    static const std::string PHOTO_REQUEST_PICTURE_BUFFER;
     // all columns
-    static const std::set<std::string> PHOTO_COLUMNS EXPORT;
+    static const std::set<std::string> PHOTO_COLUMNS;
 
-    static const std::string HIGHTLIGHT_COVER_URI EXPORT;
-    static const std::string HIGHTLIGHT_URI EXPORT;
-    static const std::string HIDDEN_PHOTO_URI_PREFIX EXPORT;
-    static const std::string TRASHED_PHOTO_URI_PREFIX EXPORT;
+    static const std::string HIGHTLIGHT_COVER_URI;
+    static const std::string HIGHTLIGHT_URI;
+    static const std::string HIDDEN_PHOTO_URI_PREFIX;
+    static const std::string TRASHED_PHOTO_URI_PREFIX;
 
-    EXPORT static bool IsPhotoColumn(const std::string &columnName);
-    EXPORT static std::string CheckUploadPhotoColumns();
-    EXPORT static std::string CheckMetaRecoveryPhotoColumns();
+    static bool IsPhotoColumn(const std::string &columnName);
+    static std::string CheckUploadPhotoColumns();
+    static std::string CheckMetaRecoveryPhotoColumns();
 
-    static const std::string SUPPORTED_DEFERRED_EFFECTS EXPORT;
-    static const std::string DEFERRED_EFFECT_STATUS EXPORT;
+    static const std::string SUPPORTED_DEFERRED_EFFECTS;
+    static const std::string DEFERRED_EFFECT_STATUS;
 
     // for cloud sync
-    static const std::string LCD_ASPECT_RATIO EXPORT;
+    static const std::string LCD_ASPECT_RATIO;
 
     // clone file info db
-    static const std::string CLONE_FILE_INFO_PATH EXPORT;
-    static const std::string CLONE_FILE_INFO_NEW_PATH EXPORT;
+    static const std::string CLONE_FILE_INFO_PATH;
+    static const std::string CLONE_FILE_INFO_NEW_PATH;
 
     // for share
-    static const std::string PHOTO_IS_SHARED EXPORT;
-    static const std::string PHOTO_SHARE_OWNER_INFO EXPORT;
-    static const std::string PHOTO_SHARE_ALBUM_OWNER EXPORT;
-    static const std::string PHOTO_VISIBILITY EXPORT;
-    static const std::string PHOTO_SHARE_RISK_STATUS EXPORT;
-    static const std::string PHOTO_SHARE_RISK_TYPE EXPORT;
-    static const std::string PHOTO_SHARE_DATE_DAY EXPORT;
-    static const std::string PHOTO_SHARE_GROUP EXPORT;
+    static const std::string PHOTO_IS_SHARED;
+    static const std::string PHOTO_SHARE_OWNER_INFO;
+    static const std::string PHOTO_SHARE_ALBUM_OWNER;
+    static const std::string PHOTO_VISIBILITY;
+    static const std::string PHOTO_SHARE_RISK_STATUS;
+    static const std::string PHOTO_SHARE_RISK_TYPE;
+    static const std::string PHOTO_SHARE_DATE_DAY;
+    static const std::string PHOTO_SHARE_GROUP;
 };
 
 class PhotoExtColumn {
 public:
     // table name
-    static const std::string PHOTOS_EXT_TABLE EXPORT;
+    static const std::string PHOTOS_EXT_TABLE;
 
     // column name
-    static const std::string PHOTO_ID EXPORT;
-    static const std::string THUMBNAIL_SIZE EXPORT;
-    static const std::string EDITDATA_SIZE EXPORT;
-    static const std::string LCD_FILE_MODIFY_TIME EXPORT;
-    static const std::string LCD_USING_STATUS EXPORT;
-    static const std::string LCD_DOWNLOAD_RETRY_COUNTS EXPORT;
-    static const std::string LCD_DOWNLOAD_RETRY_TIME EXPORT;
+    static const std::string PHOTO_ID;
+    static const std::string THUMBNAIL_SIZE;
+    static const std::string EDITDATA_SIZE;
+    static const std::string LCD_FILE_MODIFY_TIME;
+    static const std::string LCD_USING_STATUS;
+    static const std::string LCD_DOWNLOAD_RETRY_COUNTS;
+    static const std::string LCD_DOWNLOAD_RETRY_TIME;
 };
 
 } // namespace OHOS::Media

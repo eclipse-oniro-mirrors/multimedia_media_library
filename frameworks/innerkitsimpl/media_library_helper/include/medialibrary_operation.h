@@ -22,7 +22,7 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
-enum class EXPORT OperationObject : uint32_t {
+enum class OperationObject : uint32_t {
     UNKNOWN_OBJECT = 0,
     FILESYSTEM_ASSET,
     FILESYSTEM_PHOTO,
@@ -133,7 +133,7 @@ enum class EXPORT OperationObject : uint32_t {
     TAB_COVER_RECORD,
 };
 
-enum class EXPORT OperationType : uint32_t {
+enum class OperationType : uint32_t {
     UNKNOWN_TYPE = 0,
     OPEN,
     CLOSE,

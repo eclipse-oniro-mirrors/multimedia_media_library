@@ -27,11 +27,11 @@ namespace Media {
 class TabFaCardPhotosColumn {
 public:
     // table name
-    static const std::string FACARD_PHOTOS_TABLE EXPORT;
+    static const std::string FACARD_PHOTOS_TABLE;
  
     // Table columns: form_id and uri
-    static const std::string FACARD_PHOTOS_FORM_ID EXPORT;
-    static const std::string FACARD_PHOTOS_ASSET_URI EXPORT;
+    static const std::string FACARD_PHOTOS_FORM_ID;
+    static const std::string FACARD_PHOTOS_ASSET_URI;
 };
 } // namespace Media
 } // namespace OHOS

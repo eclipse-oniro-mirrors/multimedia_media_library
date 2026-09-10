@@ -22,14 +22,14 @@ namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 class BaseColumn {
 public:
-    EXPORT static const std::string &CreateTable();
-    EXPORT static const std::string &CreateIndex();
-    EXPORT static const std::string &CreateTrigger();
-    EXPORT static const std::string &DropTrigger();
-    EXPORT static const std::string &DropIndex();
-    EXPORT static std::string AlterTableAddIntColumn(const std::string &table, const std::string &column);
-    EXPORT static std::string AlterTableAddTextColumn(const std::string &table, const std::string &column);
-    EXPORT static std::string AlterTableAddBlobColumn(const std::string &table, const std::string &column);
+    static const std::string &CreateTable();
+    static const std::string &CreateIndex();
+    static const std::string &CreateTrigger();
+    static const std::string &DropTrigger();
+    static const std::string &DropIndex();
+    static std::string AlterTableAddIntColumn(const std::string &table, const std::string &column);
+    static std::string AlterTableAddTextColumn(const std::string &table, const std::string &column);
+    static std::string AlterTableAddBlobColumn(const std::string &table, const std::string &column);
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_BASE_COLUMN_H
