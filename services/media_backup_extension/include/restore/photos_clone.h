@@ -181,6 +181,7 @@ private:
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
             Photos.file_source_type IN (0, 3) AND \
+            COALESCE(PhotoAlbum.album_type, 0) != 8192 AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum');";
     const std::string SQL_CLOUD_PHOTOS_TABLE_COUNT_IN_PHOTO_MAP = "\
         SELECT COUNT(1) AS count \
@@ -195,6 +196,7 @@ private:
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
             Photos.file_source_type IN (0, 3) AND \
+            COALESCE(PhotoAlbum.album_type, 0) != 8192 AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum');";
     const std::string SQL_PHOTOS_TABLE_QUERY_IN_PHOTO_MAP = "\
         SELECT PhotoAlbum.lpath, \
@@ -210,6 +212,7 @@ private:
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
             Photos.file_source_type IN (0, 3) AND \
+            COALESCE(PhotoAlbum.album_type, 0) != 8192 AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum') \
         ORDER BY Photos.file_id \
         LIMIT ?, ? ;";
@@ -227,6 +230,7 @@ private:
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
             Photos.file_source_type IN (0, 3) AND \
+            COALESCE(PhotoAlbum.album_type, 0) != 8192 AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum') \
         ORDER BY Photos.file_id \
         LIMIT ?, ? ;";
@@ -234,7 +238,7 @@ private:
         SELECT COUNT(1) AS count \
         FROM Photos \
             LEFT JOIN PhotoAlbum \
-            ON Photos.owner_album_id = PhotoAlbum.album_id \
+            ON Photos.owner_album_id = PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
         WHERE position IN (1, 3) AND \
             COALESCE(Photos.sync_status, 0) = 0 AND \
             COALESCE(Photos.clean_flag, 0) = 0 AND \
@@ -246,7 +250,7 @@ private:
         SELECT COUNT(1) AS count \
         FROM Photos \
             LEFT JOIN PhotoAlbum \
-            ON Photos.owner_album_id = PhotoAlbum.album_id \
+            ON Photos.owner_album_id = PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
         WHERE position = 2 AND \
             COALESCE(Photos.sync_status, 0) = 0 AND \
             COALESCE(Photos.clean_flag, 0) = 0 AND \
@@ -260,7 +264,7 @@ private:
             Photos.* \
         FROM Photos \
             LEFT JOIN PhotoAlbum \
-            ON Photos.owner_album_id=PhotoAlbum.album_id \
+            ON Photos.owner_album_id=PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
         WHERE position IN (1, 3) AND \
             COALESCE(Photos.sync_status, 0) = 0 AND \
             COALESCE(Photos.clean_flag, 0) = 0 AND \
@@ -276,7 +280,7 @@ private:
             Photos.* \
         FROM Photos \
             LEFT JOIN PhotoAlbum \
-            ON Photos.owner_album_id=PhotoAlbum.album_id \
+            ON Photos.owner_album_id=PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
         WHERE position = 2 AND \
             COALESCE(Photos.sync_status, 0) = 0 AND \
             COALESCE(Photos.clean_flag, 0) = 0 AND \

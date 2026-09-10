@@ -516,6 +516,7 @@ private:
     // 更新插入的照片的 sync_status 为 -1
     void UpdateSyncStatusForInsertedPhotos(const ReverseClonePhotoBatchContext& batch,
                                            int64_t photoRowNum);
+    void CleanSharedAlbumDataFromMainDb();
 };
 
 } // namespace Media

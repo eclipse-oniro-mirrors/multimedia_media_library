@@ -292,12 +292,12 @@ const std::string ReverseCloneRestore::SQL_PHOTOS_TABLE_QUERY_ALL = "\
         COALESCE(PhotoExt.lcd_using_status, 0) AS lcd_using_status \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
-        ON Photos.owner_album_id=PhotoAlbum.album_id \
+        ON Photos.owner_album_id=PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
         LEFT JOIN tab_photos_ext AS PhotoExt \
         ON PhotoExt.photo_id=Photos.file_id \
     WHERE position IN (1, 3) AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
-        COALESCE(Photos.sync_status, 0) = 0 \
+        COALESCE(Photos.sync_status, 0) = 0 AND COALESCE(Photos.file_source_type, 0) != 5 \
     ORDER BY Photos.file_id \
     LIMIT ?, ? ;";
 
@@ -308,12 +308,12 @@ const std::string ReverseCloneRestore::SQL_CLOUD_PHOTOS_TABLE_QUERY_ALL = "\
         COALESCE(PhotoExt.lcd_using_status, 0) AS lcd_using_status \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
-        ON Photos.owner_album_id=PhotoAlbum.album_id \
+        ON Photos.owner_album_id=PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
         LEFT JOIN tab_photos_ext AS PhotoExt \
         ON PhotoExt.photo_id=Photos.file_id \
     WHERE position = 2 AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
-        COALESCE(Photos.sync_status, 0) = 0 \
+        COALESCE(Photos.sync_status, 0) = 0 AND COALESCE(Photos.file_source_type, 0) != 5 \
     ORDER BY Photos.file_id \
     LIMIT ?, ? ;";
 
@@ -321,19 +321,19 @@ const std::string ReverseCloneRestore::SQL_PHOTOS_TABLE_COUNT_ALL = "\
     SELECT COUNT(1) AS count \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
-        ON Photos.owner_album_id = PhotoAlbum.album_id \
+        ON Photos.owner_album_id = PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
     WHERE position IN (1, 3) AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
-        COALESCE(Photos.sync_status, 0) = 0;";
+        COALESCE(Photos.sync_status, 0) = 0 AND COALESCE(Photos.file_source_type, 0) != 5;";
 
 const std::string ReverseCloneRestore::SQL_CLOUD_PHOTOS_TABLE_COUNT_ALL = "\
     SELECT COUNT(1) AS count \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
-        ON Photos.owner_album_id = PhotoAlbum.album_id \
+        ON Photos.owner_album_id = PhotoAlbum.album_id AND COALESCE(PhotoAlbum.album_type, 0) != 8192 \
     WHERE position = 2 AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
-        COALESCE(Photos.sync_status, 0) = 0;";
+        COALESCE(Photos.sync_status, 0) = 0 AND COALESCE(Photos.file_source_type, 0) != 5;";
 
 namespace {
 const std::string REVERSE_RESTORE_RESOURCE_ROOT = "/storage/media/local/files/reverse_restore";
@@ -2890,6 +2890,7 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
     UpdateChangeTime();
     // 旧机数据库智慧表字段特殊处理
     UpdateAnalysisAlbum();
+    CleanSharedAlbumDataFromMainDb();
 
     CheckTableColumnStatus(mediaLibraryRdb_, CLONE_TABLE_LISTS_PHOTO);
     retainedOldPhotoKvStoreTasks = resourceInheritHelper_.BuildRetainedOldPhotoKvStoreTasks(mediaLibraryRdb_);
@@ -2897,6 +2898,33 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" Absorb Anticipation: ")
         .append(std::to_string(endTime - startTime) + ";");
     return true;
+}
+
+void ReverseCloneRestore::CleanSharedAlbumDataFromMainDb()
+{
+    const std::string shareAlbumType = std::to_string(static_cast<int32_t>(PhotoAlbumType::SHARE));
+    const std::string sqlDeletePhotos =
+        "DELETE FROM Photos WHERE " + PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " = 5;";
+    const std::string sqlDeleteMaps = "DELETE FROM PhotoMap WHERE map_album IN (SELECT album_id FROM PhotoAlbum "
+        "WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " = " + shareAlbumType + ");";
+    const std::string sqlDeleteAlbums =
+        "DELETE FROM PhotoAlbum WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " = " + shareAlbumType + ";";
+    int ret = BackupDatabaseUtils::ExecuteSQL(destRdb_, sqlDeletePhotos);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("CleanSharedAlbumDataFromMainDb: delete Photos failed: %{public}d", ret);
+        return;
+    }
+    ret = BackupDatabaseUtils::ExecuteSQL(destRdb_, sqlDeleteMaps);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("CleanSharedAlbumDataFromMainDb: delete PhotoMap failed: %{public}d", ret);
+        return;
+    }
+    ret = BackupDatabaseUtils::ExecuteSQL(destRdb_, sqlDeleteAlbums);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("CleanSharedAlbumDataFromMainDb: delete PhotoAlbum failed: %{public}d", ret);
+        return;
+    }
+    MEDIA_INFO_LOG("CleanSharedAlbumDataFromMainDb done");
 }
 
 void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,

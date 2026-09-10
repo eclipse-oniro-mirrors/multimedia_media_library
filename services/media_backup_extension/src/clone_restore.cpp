@@ -16,6 +16,7 @@
 #define MLOG_TAG "MediaLibraryCloneRestore"
 
 #include "clone_restore.h"
+#include <sys/stat.h>
 #include "backup_const_column.h"
 
 #include "application_context.h"
@@ -424,6 +425,7 @@ void CloneRestore::ParseDstDeviceBackupInfo()
 {
     MEDIA_INFO_LOG("ParseDstDeviceBackupInfo, restoreInfo_:%{public}s", restoreInfo_.c_str());
     dstDeviceBackupInfo_.hdcEnabled = false;
+    dstDeviceBackupInfo_.shareEnabled = false;
     
     CHECK_AND_RETURN_WARN_LOG(!restoreInfo_.empty(), "restoreInfo_ is empty");
 
@@ -452,7 +454,14 @@ void CloneRestore::ParseDstDeviceBackupInfo()
         "invalid value for BackupDeviceInfo %{public}s", compatibilityInfoStr.c_str());
     dstDeviceBackupInfo_.hdcEnabled = jsonObject[BACKUP_DST_DEVICE_HDC_ENABLE_KEY].get<bool>();
 
-    MEDIA_INFO_LOG("dstDeviceBackupInfo_.hdcEnabled: %{public}d", dstDeviceBackupInfo_.hdcEnabled);
+    if (jsonObject.contains(BACKUP_DST_DEVICE_SHARE_KEY)) {
+        dstDeviceBackupInfo_.shareEnabled = true;
+    } else {
+        dstDeviceBackupInfo_.shareEnabled = false;
+    }
+
+    MEDIA_INFO_LOG("dstDeviceBackupInfo_.hdcEnabled: %{public}d, shareEnabled: %{public}d",
+        dstDeviceBackupInfo_.hdcEnabled, dstDeviceBackupInfo_.shareEnabled);
 }
 
 void CloneRestore::ParseSrcDevFileListCloneConfig()
@@ -526,65 +535,60 @@ void CloneRestore::ParseDstDevFileTransferConfig()
         .ReportFileTransferConfig(dstDevFileTransferConfig_.ancoFileTransfer);
 }
 
-bool CloneRestore::IsEnoughFreeSpaceForBackup(int64_t freeSize, int64_t dbSize, int64_t walSize)
+bool CloneRestore::IsEnoughFreeSpaceForBackup(int64_t freeSize, int64_t sourceDbSize, int64_t sourceWalSize)
 {
-    if (freeSize <= BACKUP_MIN_FREE_SPACE || dbSize < 0 || walSize < 0 || dbSize > INT64_MAX - walSize) {
+    if (freeSize <= BACKUP_MIN_FREE_SPACE || sourceDbSize < 0 || sourceWalSize < 0 ||
+        sourceDbSize > INT64_MAX - sourceWalSize) {
         return false;
     }
-    return freeSize - BACKUP_MIN_FREE_SPACE > dbSize + walSize;
+    return freeSize - BACKUP_MIN_FREE_SPACE > sourceDbSize + sourceWalSize;
 }
 
-void CloneRestore::CleanupTempBackupDir()
+bool CloneRestore::CleanupTempBackupDir()
 {
     if (backupRestoreDir_.empty()) {
         MEDIA_WARN_LOG("backup restore dir is empty, skip temp db cleanup");
-        return;
+        return false;
     }
     std::string tmpDir = backupRestoreDir_ + "/storage/media/local/files/.backup/backup/" + TEMP_BACKUP_DIR;
     if (!MediaFileUtils::IsDirExists(tmpDir)) {
-        return;
+        return true;
     }
-    CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteDir(tmpDir), "delete temp backup dir failed");
+    bool ret = MediaFileUtils::DeleteDir(tmpDir);
+    CHECK_AND_PRINT_LOG(ret, "delete temp backup dir failed");
+    return ret;
 }
 
-void CloneRestore::ReportBackupDbPerf(int64_t dbSize, int64_t elapsedMs, bool success)
+bool CloneRestore::ReportBackupDbPerf(int64_t backupDbSize, int64_t elapsedMs, bool success)
 {
+    CHECK_AND_RETURN_RET(backupDbSize >= 0 && elapsedMs >= 0, false);
     if (success) {
         MEDIA_INFO_LOG("Backup DB: size=%{public}" PRId64 " bytes, time=%{public}" PRId64 " ms, success=1",
-            dbSize, elapsedMs);
-        return;
+            backupDbSize, elapsedMs);
+        return true;
     }
     MEDIA_WARN_LOG("Backup DB: size=%{public}" PRId64 " bytes, time=%{public}" PRId64 " ms, success=0",
-        dbSize, elapsedMs);
+        backupDbSize, elapsedMs);
+    return true;
 }
 
-bool CloneRestore::CreateTempDbBackup()
+bool CloneRestore::CreateTempDbBackup(const TempDbBackupOptions &options)
 {
-    return BackupToTempDb(false);
-}
-
-bool CloneRestore::OriginalBackupPreprocess()
-{
-    // Keep the original compatibility behavior: create the temp DB without the enhanced space check,
-    // and invalidate HDC data in the backup DB.
-    return BackupToTempDb(true);
-}
-
-bool CloneRestore::BackupToTempDb(bool shouldInvalidateHdcData)
-{
-    MEDIA_INFO_LOG("Start BackupDb, shouldInvalidateHdcData:%{public}d", shouldInvalidateHdcData);
+    MEDIA_INFO_LOG("Start BackupDb, needInvalidateHdcData:%{public}d, needInvalidateShareData:%{public}d",
+        options.needInvalidateHdcData, options.needInvalidateShareData);
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, false, "mediaLibraryRdb_ is nullptr!");
 
     // 空间预检，不足则回退到既有兼容备份流程。
-    size_t dbSize = 0;
-    size_t walSize = 0;
-    (void)MediaFileUtils::GetFileSize(MEDIA_DB_PATH, dbSize);
-    (void)MediaFileUtils::GetFileSize(MEDIA_DB_WAL_PATH, walSize);
+    size_t sourceDbSize = 0;
+    size_t sourceWalSize = 0;
+    (void)MediaFileUtils::GetFileSize(MEDIA_DB_PATH, sourceDbSize);
+    (void)MediaFileUtils::GetFileSize(MEDIA_DB_WAL_PATH, sourceWalSize);
     int64_t freeSize = MediaFileUtils::GetFreeSize();
-    if (!IsEnoughFreeSpaceForBackup(freeSize, static_cast<int64_t>(dbSize), static_cast<int64_t>(walSize))) {
+    if (!IsEnoughFreeSpaceForBackup(freeSize, static_cast<int64_t>(sourceDbSize),
+        static_cast<int64_t>(sourceWalSize))) {
         MEDIA_INFO_LOG("free size is not enough for temp db backup, freeSize:%{public}lld, "
-            "dbSize:%{public}zu, walSize:%{public}zu, use compatibility backup flow",
-            (long long)freeSize, dbSize, walSize);
+            "sourceDbSize:%{public}zu, sourceWalSize:%{public}zu, use compatibility backup flow",
+            (long long)freeSize, sourceDbSize, sourceWalSize);
         return false;
     }
     // create temp DB path
@@ -592,80 +596,90 @@ bool CloneRestore::BackupToTempDb(bool shouldInvalidateHdcData)
     tmpDbPath_ = tmpDir + "/media_library.db";
     if (BackupFileUtils::PreparePath(tmpDbPath_) != E_OK) {
         MEDIA_WARN_LOG("Prepare backup dir failed");
-        CleanupTempBackupDir();
         return false;
     }
 
     // execute database backup operation
-    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t errCode = mediaLibraryRdb_->Backup(tmpDbPath_);
-    int64_t elapsedMs = MediaFileUtils::UTCTimeMilliSeconds() - startTime;
-    if (errCode != 0) {
-        ReportBackupDbPerf(static_cast<int64_t>(dbSize), elapsedMs, false);
-        CleanupTempBackupDir();
-        return false;
+    bool success = errCode == 0;
+    if (success) {
+        MEDIA_INFO_LOG("End BackupDb");
+        success = PrepareTempDbBackupForRestore(options);
+    } else {
+        MEDIA_ERR_LOG("rdb backup failed, errCode:%{public}d", errCode);
     }
-    MEDIA_INFO_LOG("End BackupDb");
-
-    return RegisterTempDbBackup(static_cast<int64_t>(dbSize), elapsedMs, shouldInvalidateHdcData);
+    return success;
 }
 
-bool CloneRestore::RegisterTempDbBackup(int64_t dbSize, int64_t elapsedMs, bool shouldInvalidateHdcData)
+bool CloneRestore::PrepareTempDbBackupForRestore(const TempDbBackupOptions &options)
 {
     // initialize backup database connection
     auto context = AbilityRuntime::Context::GetApplicationContext();
     if (context == nullptr) {
-        ReportBackupDbPerf(dbSize, elapsedMs, false);
-        MEDIA_WARN_LOG("Failed to get context, clean temp dir and degrade");
-        CleanupTempBackupDir();
+        MEDIA_WARN_LOG("Failed to get context");
         return false;
     }
     std::shared_ptr<NativeRdb::RdbStore> backupRdb;
     int32_t err = BackupDatabaseUtils::InitDb(backupRdb, CONST_MEDIA_DATA_ABILITY_DB_NAME, tmpDbPath_,
         CONST_BUNDLE_NAME, true, context->GetArea());
     if (backupRdb == nullptr) {
-        ReportBackupDbPerf(dbSize, elapsedMs, false);
-        MEDIA_WARN_LOG("Init remote medialibrary rdb fail, err = %{public}d, clean temp dir and degrade", err);
-        CleanupTempBackupDir();
+        MEDIA_WARN_LOG("Init remote medialibrary rdb fail, err = %{public}d", err);
         return false;
     }
     // mark hdc data in temp database as invalid when the destination does not support HDC
-    if (shouldInvalidateHdcData && !InvalidateHdcCloudData(backupRdb)) {
+    if (options.needInvalidateHdcData && !InvalidateHdcCloudData(backupRdb)) {
         MEDIA_ERR_LOG("fail to delete hdc data");
         SetErrorCode(RestoreError::BACKUP_INVALIDATE_HDC_CLOUD_DATA_FAILED);
         ErrorInfo errorInfo(RestoreError::BACKUP_INVALIDATE_HDC_CLOUD_DATA_FAILED, 0, "",
             "CloneBackup clear hdc data failed");
+        // ReportError writes both DFX data and the error audit log.
         UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportError(errorInfo);
-        ReportBackupDbPerf(dbSize, elapsedMs, false);
-        backupRdb.reset();
-        CleanupTempBackupDir();
         return false;
     }
 
-    ReportBackupDbPerf(dbSize, elapsedMs, true);
+    if ((options.needInvalidateShareData || options.needInvalidateHdcData)
+        && !MarkShareAssetsInvalid(backupRdb)) {
+        MEDIA_ERR_LOG("fail to mark shared album assets invalid");
+        SetErrorCode(RestoreError::BACKUP_INVALIDATE_SHARE_DATA_FAILED);
+        ErrorInfo errorInfo(RestoreError::BACKUP_INVALIDATE_SHARE_DATA_FAILED, 0, "",
+            "CloneBackup invalidate shared album data failed");
+        // ReportError writes both DFX data and the error audit log.
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportError(errorInfo);
+        return false;
+    }
+
     MEDIA_INFO_LOG("add restore dir");
     dirMappingList_.push_back("/data/storage/el2/database/rdb/");
     return true;
 }
+
 
 bool CloneRestore::BackupPreprocess()
 {
     CleanupTempBackupDir();
     dirMappingList_.clear();
     ParseDstDeviceBackupInfo();
-    // 单到单克隆场景:新单克旧单(不支持家庭存储)、云备份、手机助手备份场景
-    if (!dstDeviceBackupInfo_.hdcEnabled && (!srcCloneRestoreConfigInfo_.isValid ||
-            srcCloneRestoreConfigInfo_.switchStatus == SwitchStatus::HDC)) {
-        MEDIA_INFO_LOG("dst device does not support hdc while current hdc sync is on");
-        return OriginalBackupPreprocess();
-    }
-    // 其他单到单克隆
-    if (CreateTempDbBackup()) {
+    TempDbBackupOptions options;
+    // 判断单到单克隆场景:新单克旧单(不支持家庭存储)、云备份、手机助手备份场景
+    options.needInvalidateHdcData = !dstDeviceBackupInfo_.hdcEnabled &&
+        (!srcCloneRestoreConfigInfo_.isValid ||
+        srcCloneRestoreConfigInfo_.switchStatus == SwitchStatus::HDC);
+    // 判断单到单克隆场景:新单克旧单(不支持共享相册)
+    options.needInvalidateShareData = !dstDeviceBackupInfo_.shareEnabled;
+    CHECK_AND_PRINT_LOG(CleanupTempBackupDir(), "cleanup old temp backup dir failed");
+    bool success = CreateTempDbBackup(options);
+    if (success) {
         MEDIA_INFO_LOG("Create temp db backup success");
-        return true;
+    } else {
+        CHECK_AND_PRINT_LOG(CleanupTempBackupDir(), "cleanup temp backup dir failed after creating temp db failure");
+        MEDIA_WARN_LOG("Create temp db backup failed");
     }
-    MEDIA_WARN_LOG("Create temp db backup failed, degrade to compatibility backup flow");
-    return false;
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    size_t backupDbSize = 0;
+    (void)MediaFileUtils::GetFileSize(tmpDbPath_, backupDbSize);
+    CHECK_AND_PRINT_LOG(ReportBackupDbPerf(static_cast<int64_t>(backupDbSize), endTime - startTime, success),
+        "report backup db perf failed");
+    return success;
 }
 
 bool CloneRestore::InvalidateHdcCloudData(std::shared_ptr<NativeRdb::RdbStore> &rdbStore)

@@ -50,6 +50,7 @@ enum class FileSourceTypes : int32_t {
     PERIPHERAL,
     MEDIA_HO_LAKE,
     TEMP_FILE_MANAGER,
+    MEDIA_SHARE_ALBUM,
 };
 
 enum class SouthDeviceType : int32_t {
