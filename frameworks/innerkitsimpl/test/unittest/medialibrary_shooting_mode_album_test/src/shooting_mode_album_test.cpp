@@ -585,6 +585,8 @@ HWTEST_F(ShootingModeAlbumTest, UpdateAnalysisAlbumInternal_Test_001, TestSize.L
 {
     MEDIA_INFO_LOG("UpdateAnalysisAlbumInternal_Test_001 enter");
     ASSERT_NE(g_rdbStore, nullptr);
+    ASSERT_EQ(ClearTable(ANALYSIS_PHOTO_MAP_TABLE), E_OK);
+    ASSERT_EQ(ClearTable(PhotoColumn::PHOTOS_TABLE), E_OK);
     int32_t ret = MediaLibraryRdbHelper::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
     ASSERT_EQ(ret, E_OK);
     TestFileInfo fileInfoWithLargeDateTaken = { .dateTaken = 1744362716123, .displayName = "large_datetaken.jpg" };
