@@ -379,19 +379,23 @@ static void ExtractLocationMetadata(unique_ptr<ImageSource>& imageSource, unique
 {
     string propertyStr;
     string refStr;
-    double tempLocation = -1;
+    optional<double> longValue;
     uint32_t err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LONGITUDE, propertyStr);
     uint32_t refErr = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LONGITUDE_REF, refStr);
     if (err == 0 && refErr == 0) {
-        tempLocation = GetLongitudeLatitude(propertyStr, refStr);
-        data->SetLongitude(tempLocation);
+        longValue = GetLongitudeLatitude(propertyStr, refStr);
     }
 
+    optional<double> latValue;
     err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LATITUDE, propertyStr);
     refErr = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LATITUDE_REF, refStr);
     if (err == 0 && refErr == 0) {
-        tempLocation = GetLongitudeLatitude(propertyStr, refStr);
-        data->SetLatitude(tempLocation);
+        latValue = GetLongitudeLatitude(propertyStr, refStr);
+    }
+
+    if (longValue.has_value() && latValue.has_value()) {
+        data->SetLongitude(longValue.value());
+        data->SetLatitude(latValue.value());
     }
 }
 
