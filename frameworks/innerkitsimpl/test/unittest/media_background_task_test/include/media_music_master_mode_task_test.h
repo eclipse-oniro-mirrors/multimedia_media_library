@@ -13,16 +13,19 @@
  * limitations under the License.
  */
 
-#define MLOG_TAG "MockMedialibrarySubscriber"
+#ifndef MEDIA_MUSIC_MASTER_MODE_TASK_TEST_H
+#define MEDIA_MUSIC_MASTER_MODE_TASK_TEST_H
 
-#include "medialibrary_subscriber.h"
+#include <gtest/gtest.h>
 
-#include "media_log.h"
+namespace OHOS::Media::Background {
+class MediaMusicMasterModeTaskTest : public testing::Test {
+public:
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp(void) override;
+    void TearDown(void) override;
+};
+} // namespace OHOS::Media::Background
 
-namespace OHOS::Media {
-bool MedialibrarySubscriber::IsCurrentStatusOn()
-{
-    MEDIA_INFO_LOG("Use mocked MedialibrarySubscriber::IsCurrentStatusOn");
-    return true;
-}
-} // namespace OHOS::Media
+#endif // MEDIA_MUSIC_MASTER_MODE_TASK_TEST_H
