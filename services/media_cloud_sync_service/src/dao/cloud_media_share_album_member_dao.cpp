@@ -21,6 +21,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "result_set_utils.h"
 #include "medialibrary_rdb_transaction.h"
+#include "album_accurate_refresh.h"
 
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaShareAlbumMemberDao::HandleAlbumMembers(
@@ -55,7 +56,9 @@ int32_t CloudMediaShareAlbumMemberDao::HandleAlbumMembers(
             std::to_string(insertRows).c_str());
         return ret;
     };
-    return trans->RetryTrans(func);
+    int32_t ret = trans->RetryTrans(func);
+    NotifyShareMemberChange(albumId);
+    return ret;
 }
 
 int32_t CloudMediaShareAlbumMemberDao::DeleteAlbumMembers(int32_t albumId)
@@ -67,7 +70,14 @@ int32_t CloudMediaShareAlbumMemberDao::DeleteAlbumMembers(int32_t albumId)
     int32_t deletedRows = -1;
     int32_t ret = rdbStore->Delete(deletedRows, ShareMemberColumn::TABLE_NAME,
         ShareMemberColumn::COLUMN_ALBUM_ID + " = ?", {std::to_string(albumId)});
+    NotifyShareMemberChange(albumId);
     MEDIA_INFO_LOG("DeleteAlbumMembers completed, ret: %{public}d, deletedRows: %{public}d", ret, deletedRows);
     return ret;
+}
+
+void CloudMediaShareAlbumMemberDao::NotifyShareMemberChange(int32_t albumId)
+{
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
+    albumRefresh.NotifyShareAlbumUpdateForMemberChange({albumId});
 }
 }  // namespace OHOS::Media::CloudSync

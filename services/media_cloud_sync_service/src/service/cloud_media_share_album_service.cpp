@@ -89,8 +89,8 @@ int32_t CloudMediaShareAlbumService::HandleRecord(
     const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
     CHECK_AND_EXECUTE(!insertFlag, ret = this->PullInsert(record, changeType, stats, failedRecords));
     CHECK_AND_EXECUTE(!updateFlag, ret = this->PullUpdate(record, changeType, stats, failedRecords));
-    CHECK_AND_EXECUTE(!deleteFlag, ret = this->PullDelete(record, changeType, stats, failedRecords));
     this->PullHandleShareAlbumMembers(record);
+    CHECK_AND_EXECUTE(!deleteFlag, ret = this->PullDelete(record, changeType, stats, failedRecords));
     return ret;
 }
 
