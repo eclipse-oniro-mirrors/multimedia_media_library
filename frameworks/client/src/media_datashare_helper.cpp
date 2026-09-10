@@ -29,14 +29,6 @@ namespace OHOS::Media::IPC {
 MediaDataShareHelper::MediaDataShareHelper() {}
 MediaDataShareHelper::~MediaDataShareHelper() {}
 
-int32_t MediaDataShareHelper::ResolveUserId(int32_t userId)
-{
-    if (userId != -1) {
-        return userId;
-    }
-    return MediaClientUtils::GetCurrentAccountId();
-}
-
 // LCOV_EXCL_START
 std::shared_ptr<DataShare::DataShareHelper> MediaDataShareHelper::GetDataShareHelper(const sptr<IRemoteObject> &token,
     const int32_t userId)
@@ -54,9 +46,8 @@ std::shared_ptr<DataShare::DataShareHelper> MediaDataShareHelper::GetDataShareHe
 
 bool MediaDataShareHelper::IsValid(const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
     std::shared_ptr<DataShare::DataShareHelper> helper;
-    if (dataShareHelperMap_.Find(uid, helper)) {
+    if (dataShareHelperMap_.Find(userId, helper)) {
         return helper != nullptr;
     }
     return false;
@@ -79,12 +70,11 @@ std::shared_ptr<DataShare::DataShareHelper> MediaDataShareHelper::GetDataShareHe
 
 void MediaDataShareHelper::Init(const sptr<IRemoteObject> &token, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    if (GetDataShareHelperByUser(uid) == nullptr) {
+    if (GetDataShareHelperByUser(userId) == nullptr) {
         std::shared_ptr<DataShare::DataShareHelper> dataShareHelper = GetDataShareHelper(token, userId);
         if (dataShareHelper != nullptr) {
-            if (!IsValid(uid)) {
-                dataShareHelperMap_.EnsureInsert(uid, dataShareHelper);
+            if (!IsValid(userId)) {
+                dataShareHelperMap_.EnsureInsert(userId, dataShareHelper);
             } else {
                 NAPI_ERR_LOG("dataShareHelperMap has userId and value");
             }
@@ -123,12 +113,11 @@ void MediaDataShareHelper::InitForActiveUser()
 
 bool MediaDataShareHelper::ForceReconnect(const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    NAPI_INFO_LOG("ForceReconnect: userId %{public}d", uid);
+    NAPI_INFO_LOG("ForceReconnect: userId %{public}d", userId);
     // Remove old helper if exists using a local variable (not instance member)
     std::shared_ptr<DataShare::DataShareHelper> oldHelper;
-    if (dataShareHelperMap_.Find(uid, oldHelper)) {
-        dataShareHelperMap_.Erase(uid);
+    if (dataShareHelperMap_.Find(userId, oldHelper)) {
+        dataShareHelperMap_.Erase(userId);
     }
     // Re-initialize from SA token
     sptr<IRemoteObject> token = MediaClientUtils::GetSaToken();
@@ -136,8 +125,8 @@ bool MediaDataShareHelper::ForceReconnect(const int32_t userId)
         NAPI_ERR_LOG("ForceReconnect: failed to get SA token");
         return false;
     }
-    Init(token, uid);
-    return IsValid(uid);
+    Init(token, userId);
+    return IsValid(userId);
 }
 // LCOV_EXCL_STOP
 }

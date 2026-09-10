@@ -30,7 +30,7 @@
 #include "media_resp_vo.h"
 #include "media_empty_obj_vo.h"
 #include "media_uri_utils.h"
-
+#define EXPORT __attribute__ ((visibility ("default")))
 namespace OHOS::Media::IPC {
 class UnifiedIPCClient {
 private:
@@ -40,18 +40,18 @@ private:
     std::shared_ptr<DataShare::DataShareHelper> dataShareHelper_;
 
 private:
-    int32_t HeaderMarshalling(MessageParcel &data);
-    int32_t InitClient(const int32_t &userId);
-    int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    EXPORT int32_t HeaderMarshalling(MessageParcel &data);
+    EXPORT int32_t InitClient(const int32_t &userId);
+    EXPORT int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
 
 public:
-    UnifiedIPCClient &SetTraceId(const std::string &traceId);
-    std::string GetTraceId() const;
-    UnifiedIPCClient &SetUserId(const int32_t &userId);
-    int32_t GetUserId() const;
-    std::unordered_map<std::string, std::string> GetHeader() const;
-    UnifiedIPCClient &SetHeader(const std::unordered_map<std::string, std::string> &header);
-    UnifiedIPCClient &SetDataShareHelper(std::shared_ptr<DataShare::DataShareHelper> dataShareHelper);
+    EXPORT UnifiedIPCClient &SetTraceId(const std::string &traceId);
+    EXPORT std::string GetTraceId() const;
+    EXPORT UnifiedIPCClient &SetUserId(const int32_t &userId);
+    EXPORT int32_t GetUserId() const;
+    EXPORT std::unordered_map<std::string, std::string> GetHeader() const;
+    EXPORT UnifiedIPCClient &SetHeader(const std::unordered_map<std::string, std::string> &header);
+    EXPORT UnifiedIPCClient &SetDataShareHelper(std::shared_ptr<DataShare::DataShareHelper> dataShareHelper);
 
 private:
     template <class REQ>

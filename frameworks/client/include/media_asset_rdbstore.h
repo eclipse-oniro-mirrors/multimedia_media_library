@@ -51,8 +51,8 @@ public:
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const std::string &sql);
  
 private:
-    MediaAssetRdbStore();
-    int32_t TryGetRdbStore(bool isIngnoreSELinux = false);
+    EXPORT MediaAssetRdbStore();
+    EXPORT int32_t TryGetRdbStore(bool isIngnoreSELinux = false);
     EXPORT static const std::string CloudSyncTriggerFunc(const std::vector<std::string>& args);
     EXPORT static const std::string IsCallerSelfFunc(const std::vector<std::string>& args);
     EXPORT static const std::string PhotoAlbumNotifyFunc(const std::vector<std::string>& args);

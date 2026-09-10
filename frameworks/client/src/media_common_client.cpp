@@ -63,41 +63,38 @@ bool MediaCommonClient::IsNoIpc(Uri &uri, OperationObject &object, const DataSha
 {
     return MediaAssetRdbStore::GetInstance()->IsQueryAccessibleViaSandBox(uri, object, predicates);
 }
- 
+
 std::shared_ptr<DataShare::DataShareResultSet> MediaCommonClient::QueryWithoutIpc(
     const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns, OperationObject &object,
     int &errCode)
 {
     return MediaAssetRdbStore::GetInstance()->Query(predicates, columns, object, errCode);
 }
- 
+
 int MediaCommonClient::OpenFileWithErrCode(Uri &uri, const std::string &mode, int32_t &realErr,
     const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("Open file with errCode fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("Open file with errCode fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     uri = MediaUriUtils::GetMultiUri(uri, userId);
- 
+
     return helper->OpenFileWithErrCode(uri, mode, realErr);
 }
- 
+
 bool MediaCommonClient::ForceReconnect(const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    return MediaDataShareHelper::ForceReconnect(uid);
+    return MediaDataShareHelper::ForceReconnect(userId);
 }
- 
+
 std::shared_ptr<DataShare::DataShareHelper> MediaCommonClient::GetOrCreateDataShareHelper(const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        InitFromSa(uid);
-        helper = GetDataShareHelperByUser(uid);
+        InitFromSa(userId);
+        helper = GetDataShareHelperByUser(userId);
     }
     return helper;
 }

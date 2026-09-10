@@ -8474,7 +8474,9 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
 {
     for (auto &item : context->photoAssetInfos) {
         bool isHighPixel = IsHighPixel(item.width, item.height) ||
-            (item.shootingModeTag == "52" && item.width * item.height < 6 * 1000 * 8 * 1000);
+            (item.shootingModeTag == "52" &&
+            static_cast<int64_t>(item.width) * static_cast<int64_t>(item.height) < 6 * 1000 * 8 * 1000 &&
+            static_cast<int64_t>(item.width) * static_cast<int64_t>(item.height) > 0);
         size_t atDot = item.uri.find('.');
         if (atDot == std::string::npos) {
             continue;
@@ -8527,7 +8529,9 @@ static vector<string> CheckTranscodeUriAni(MediaLibraryAsyncContext *context)
         static_cast<int32_t>(TranscodeMode::COMPATIBLE)) {
         for (auto &item : context->photoAssetInfos) {
             bool isHighPixel = IsHighPixel(item.width, item.height) ||
-                (item.shootingModeTag == "52" && item.width * item.height < 6 * 1000 * 8 * 1000);
+                (item.shootingModeTag == "52" &&
+                static_cast<int64_t>(item.width) * static_cast<int64_t>(item.height) < 6 * 1000 * 8 * 1000 &&
+                static_cast<int64_t>(item.width) * static_cast<int64_t>(item.height) > 0);
             size_t atDot = item.uri.find('.');
             if (atDot == std::string::npos) {
                 continue;

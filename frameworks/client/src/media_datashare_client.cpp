@@ -30,11 +30,6 @@ MediaDataShareClient::~MediaDataShareClient() {}
 sptr<AppExecFwk::IBundleMgr> MediaDataShareClient::bundleMgr_ = nullptr;
 std::mutex MediaDataShareClient::bundleMgrMutex_;
 // LCOV_EXCL_START
-MediaDataShareClient& MediaDataShareClient::GetInstance()
-{
-    static MediaDataShareClient instance;
-    return instance;
-}
 
 std::shared_ptr<DataShare::DataShareResultSet> MediaDataShareClient::Query(Uri &uri,
     const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns, int &errCode,
@@ -45,11 +40,9 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaDataShareClient::Query(Uri &
         return QueryWithoutIpc(predicates, columns, object, errCode);
     }
     uri = MediaUriUtils::GetMultiUri(uri, userId);
-    // userid != 0 ? userid == uid : currentid
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("Query fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("Query fail, helper null, userId is %{public}d", userId);
         return nullptr;
     }
     DataShare::DatashareBusinessError businessError;
@@ -60,10 +53,9 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaDataShareClient::Query(Uri &
 
 int MediaDataShareClient::Insert(Uri &uri, const DataShare::DataShareValuesBucket &value, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("insert fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("insert fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->Insert(uri, value);
@@ -72,10 +64,9 @@ int MediaDataShareClient::Insert(Uri &uri, const DataShare::DataShareValuesBucke
 int MediaDataShareClient::InsertExt(Uri &uri, const DataShare::DataShareValuesBucket &value, std::string &result,
     const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("insert ext fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("insert ext fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->InsertExt(uri, value, result);
@@ -84,10 +75,9 @@ int MediaDataShareClient::InsertExt(Uri &uri, const DataShare::DataShareValuesBu
 int MediaDataShareClient::BatchInsert(Uri &uri, const std::vector<DataShare::DataShareValuesBucket> &values,
     const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("Batch insert fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("Batch insert fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->BatchInsert(uri, values);
@@ -95,10 +85,9 @@ int MediaDataShareClient::BatchInsert(Uri &uri, const std::vector<DataShare::Dat
 
 int MediaDataShareClient::Delete(Uri &uri, const DataShare::DataSharePredicates &predicates, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("delete fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("delete fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->Delete(uri, predicates);
@@ -106,10 +95,9 @@ int MediaDataShareClient::Delete(Uri &uri, const DataShare::DataSharePredicates 
 
 void MediaDataShareClient::NotifyChange(const Uri &uri, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("notify change fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("notify change fail, helper null, userId is %{public}d", userId);
         return;
     }
     helper->NotifyChange(uri);
@@ -118,10 +106,9 @@ void MediaDataShareClient::NotifyChange(const Uri &uri, const int32_t userId)
 void MediaDataShareClient::RegisterObserver(const Uri &uri,
     const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("register observer fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("register observer fail, helper null, userId is %{public}d", userId);
         return;
     }
     helper->RegisterObserver(uri, dataObserver);
@@ -130,10 +117,9 @@ void MediaDataShareClient::RegisterObserver(const Uri &uri,
 void MediaDataShareClient::UnregisterObserver(const Uri &uri,
     const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("unregister observer fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("unregister observer fail, helper null, userId is %{public}d", userId);
         return;
     }
     helper->UnregisterObserver(uri, dataObserver);
@@ -141,11 +127,9 @@ void MediaDataShareClient::UnregisterObserver(const Uri &uri,
 
 int MediaDataShareClient::OpenFile(Uri &uri, const std::string &mode, const int32_t userId)
 {
-    // userid != 0 : userid == uid
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("Open file fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("Open file fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     uri = MediaUriUtils::GetMultiUri(uri, userId);
@@ -156,10 +140,9 @@ int MediaDataShareClient::OpenFile(Uri &uri, const std::string &mode, const int3
 int MediaDataShareClient::Update(Uri &uri, const DataShare::DataSharePredicates &predicates,
     const DataShare::DataShareValuesBucket &value, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("update fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("update fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->Update(uri, predicates, value);
@@ -168,10 +151,9 @@ int MediaDataShareClient::Update(Uri &uri, const DataShare::DataSharePredicates 
 void MediaDataShareClient::RegisterObserverExt(const Uri &uri,
     std::shared_ptr<DataShare::DataShareObserver> dataObserver, bool isDescendants, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("register observer fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("register observer fail, helper null, userId is %{public}d", userId);
         return;
     }
     helper->RegisterObserverExt(uri, std::move(dataObserver), isDescendants);
@@ -180,10 +162,9 @@ void MediaDataShareClient::RegisterObserverExt(const Uri &uri,
 void MediaDataShareClient::UnregisterObserverExt(const Uri &uri,
     std::shared_ptr<DataShare::DataShareObserver> dataObserver, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("unregister observer fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("unregister observer fail, helper null, userId is %{public}d", userId);
         return;
     }
     helper->UnregisterObserverExt(uri, std::move(dataObserver));
@@ -191,10 +172,9 @@ void MediaDataShareClient::UnregisterObserverExt(const Uri &uri,
 
 std::string MediaDataShareClient::GetType(Uri &uri, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("get type fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("get type fail, helper null, userId is %{public}d", userId);
         return "";
     }
     return helper->GetType(uri);
@@ -203,10 +183,9 @@ std::string MediaDataShareClient::GetType(Uri &uri, const int32_t userId)
 int32_t MediaDataShareClient::RegisterObserverExtProvider(const Uri &uri,
     std::shared_ptr<DataShare::DataShareObserver> dataObserver, bool isDescendants, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("register observer fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("register observer fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->RegisterObserverExtProvider(uri, std::move(dataObserver), isDescendants);
@@ -215,10 +194,9 @@ int32_t MediaDataShareClient::RegisterObserverExtProvider(const Uri &uri,
 int32_t MediaDataShareClient::UnregisterObserverExtProvider(const Uri &uri,
     std::shared_ptr<DataShare::DataShareObserver> dataObserver, const int32_t userId)
 {
-    int32_t uid = ResolveUserId(userId);
-    auto helper = GetDataShareHelperByUser(uid);
+    auto helper = GetDataShareHelperByUser(userId);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("unregister observer fail, helper null, userId is %{public}d", uid);
+        NAPI_ERR_LOG("unregister observer fail, helper null, userId is %{public}d", userId);
         return E_FAIL;
     }
     return helper->UnregisterObserverExtProvider(uri, std::move(dataObserver));

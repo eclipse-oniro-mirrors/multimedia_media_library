@@ -21,7 +21,7 @@
 #include <map>
 
 #include "message_parcel.h"
-
+#define EXPORT __attribute__ ((visibility ("default")))
 namespace OHOS::Media::IPC::ITypeMediaUtil {
 template <class T>
 struct is_container : std::false_type {};
@@ -263,12 +263,12 @@ bool Unmarshalling(std::unordered_map<K, V> &val, MessageParcel &parcel)
  * serializing objects to shared memory and deserializing objects from shared memory. The upper limit of shared memory
  * is 128M. Note: For large amounts of data, this function can only be called once per IPC.
  */
-bool MarshalStrVec(const std::vector<std::string> &strVec, MessageParcel &parcel);
+EXPORT bool MarshalStrVec(const std::vector<std::string> &strVec, MessageParcel &parcel);
 
-bool UnmarshalStrVec(std::vector<std::string> &strVec, MessageParcel &parcel);
+EXPORT bool UnmarshalStrVec(std::vector<std::string> &strVec, MessageParcel &parcel);
 
-bool MarshalMapVec(const std::vector<std::unordered_map<std::string, std::string>> &val, MessageParcel &parcel);
+EXPORT bool MarshalMapVec(const std::vector<std::unordered_map<std::string, std::string>> &val, MessageParcel &parcel);
 
-bool UnmarshalMapVec(std::vector<std::unordered_map<std::string, std::string>> &val, MessageParcel &parcel);
+EXPORT bool UnmarshalMapVec(std::vector<std::unordered_map<std::string, std::string>> &val, MessageParcel &parcel);
 }  // namespace OHOS::Media::IPC::ITypeMediaUtil
 #endif  // OHOS_MEDIA_IPC_ITYPES_MEDIA_UTIL_H
