@@ -135,6 +135,7 @@ int32_t MediaLibraryExtendManager::OpenAsset(string &uri, const string openMode,
     string assetUri = uri;
     MediaUriUtils::AppendKeyValue(assetUri, "type", to_string(static_cast<int32_t>(type)));
     MediaUriUtils::AppendKeyValue(assetUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, SHARE_MOVING_PHOTO);
+    MediaUriUtils::AppendKeyValue(assetUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     MEDIA_DEBUG_LOG("merged uri = %{public}s", assetUri.c_str());
     Uri openUri(assetUri);
     int ret = dataShareHelper_->OpenFile(openUri, openMode);
@@ -154,6 +155,7 @@ int32_t MediaLibraryExtendManager::ReadPrivateMovingPhoto(string &uri, const Hid
     string movingPhotoUri = uri;
     MediaUriUtils::AppendKeyValue(movingPhotoUri, "type", to_string(static_cast<int32_t>(type)));
     MediaUriUtils::AppendKeyValue(movingPhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_LIVE_PHOTO);
+    MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openMovingPhotoUri(movingPhotoUri);
     int ret = dataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
     if (ret == DATASHARE_ERR && ForceReconnect()) {

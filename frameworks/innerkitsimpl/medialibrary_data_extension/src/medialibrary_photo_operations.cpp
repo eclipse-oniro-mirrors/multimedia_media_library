@@ -3528,6 +3528,7 @@ int32_t MediaLibraryPhotoOperations::RequestEditData(MediaLibraryCommand &cmd)
 
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, id,
         OperationObject::FILESYSTEM_PHOTO, EDITED_COLUMN_VECTOR);
+    MediaLibraryObjectUtils::HandlePrivateAsset(fileAsset, CONST_EDIT_DATA_REQUEST);
     int32_t err = CheckFileAssetStatus(fileAsset);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to check status of fileAsset: %{private}s", uriString.c_str());
 
@@ -3607,6 +3608,7 @@ int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
         E_IS_IN_COMMIT, "File %{public}s is in revert, can not request source", id.c_str());
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, id,
         OperationObject::FILESYSTEM_PHOTO, EDITED_COLUMN_VECTOR);
+    MediaLibraryObjectUtils::HandlePrivateAsset(fileAsset, CONST_SOURCE_REQUEST);
     int32_t err = CheckFileAssetStatus(fileAsset);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to check status of fileAsset: %{private}s", uriString.c_str());
     string path = fileAsset->GetFilePath();
@@ -3692,6 +3694,7 @@ static int32_t HandleMoveFileManagerToSource(const std::string& realPath, const 
 
 int32_t MediaLibraryPhotoOperations::CommitEditOpenExecute(const shared_ptr<FileAsset> &fileAsset)
 {
+    MediaLibraryObjectUtils::HandlePrivateAsset(fileAsset, CONST_COMMIT_REQUEST);
     int32_t err = CheckFileAssetStatus(fileAsset);
     CHECK_AND_RETURN_RET(err == E_OK, err);
     string path = fileAsset->GetFilePath();
@@ -7932,11 +7935,22 @@ void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<stri
         "Failed to execute batch sql, total size: %{public}zu, error code: %{public}d", photoIdPathList.size(), ret);
 }
 
-static bool IsLegalKey(const std::string &key)
+void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
 {
-    return std::all_of(key.begin(), key.end(), [](unsigned char c) {
-        return std::islower(c) || c == '_' || std::isdigit(c);
-    });
+    auto &items = predicates.GetOperationList();
+    static const std::regex KEY_PATTERN("^[a-z_0-9]+$");
+    for (auto &item : items) {
+        CHECK_AND_CONTINUE_ERR_LOG(!item.singleParams.empty(), "SingeParams is empty");
+        std::string key = static_cast<string>(item.GetSingle(0));
+        if (key.empty()) {
+            continue;
+        }
+        if (!std::regex_match(key, KEY_PATTERN)) {
+            string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+            MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
+            DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
+        }
+    }
 }
 
 int32_t MediaLibraryPhotoOperations::FilterSharedAssets(std::vector<std::string> &fileIds, bool excludeShared)

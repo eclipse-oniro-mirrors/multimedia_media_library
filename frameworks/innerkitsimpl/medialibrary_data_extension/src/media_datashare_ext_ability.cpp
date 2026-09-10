@@ -913,13 +913,15 @@ void MediaDataShareExtAbility::HandleHmdfsCachePersist(int32_t fd, Media::MediaL
 
 int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
 {
-    MediaLibraryCommand command = CreateOpenFileCommand(uri);
+    Uri trueUri = uri;
+    MediaLibraryDataManager::GetInstance()->HandleSpecialOpen(trueUri);
+    MediaLibraryCommand command = CreateOpenFileCommand(trueUri);
 
     string unifyMode = mode;
     transform(unifyMode.begin(), unifyMode.end(), unifyMode.begin(), ::tolower);
     MediaLibraryTracer tracer;
     tracer.Start("ExtAbility::CheckPermissionForOpenFile");
-    int err = CheckPermissionForOpenFile(uri, command, unifyMode);
+    int err = CheckPermissionForOpenFile(trueUri, command, unifyMode);
     tracer.Finish();
     if (err < 0) {
         MEDIA_ERR_LOG("permission deny: %{public}d", err);

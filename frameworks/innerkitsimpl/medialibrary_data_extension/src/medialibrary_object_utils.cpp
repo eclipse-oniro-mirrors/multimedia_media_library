@@ -887,6 +887,7 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
         MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
         return E_IS_PENDING_ERROR;
     }
+    HandlePrivateAsset(fileAsset, "common");
     bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
     int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(
         fileAsset, mode, isHeif, uriString);
@@ -1849,6 +1850,30 @@ shared_ptr<ResultSet> MediaLibraryObjectUtils::QuerySmartAlbum(MediaLibraryComma
     }
     vector<string> columns;
     return uniStore->Query(cmd, columns);
+}
+
+void MediaLibraryObjectUtils::HandlePrivateAsset(const shared_ptr<FileAsset>& fileAsset, const std::string &type)
+{
+    if (fileAsset == nullptr) {
+        return;
+    }
+    bool isContains = false;
+    std::string operation = "unknow";
+    if (fileAsset->GetDateTrashed() > 0) {
+        isContains = true;
+        operation = "trash";
+    }
+    if (fileAsset->IsHidden() && fileAsset->GetDateTrashed() == 0) {
+        isContains = true;
+        operation = "hidden";
+    }
+    operation = type + "_" + operation;
+    if (isContains) {
+        string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+        MEDIA_INFO_LOG("Invalid private open, bundlename: %{public}s, operation: %{public}s", bundleName.c_str(),
+            operation.c_str());
+        DfxManager::GetInstance()->HandleInvalidPrivateOpen(bundleName, operation);
+    }
 }
 } // namespace Media
 } // namespace OHOS
