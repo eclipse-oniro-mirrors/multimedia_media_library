@@ -22,6 +22,7 @@
 #include "media_log.h"
 #include "rdb_store.h"
 #include "medialibrary_db_const.h"
+#include "photo_map_code_operation.h"
 
 namespace OHOS {
 namespace Media {
@@ -80,5 +81,30 @@ static vector<pair<int32_t, int32_t>> AddShareMemberTable(NativeRdb::RdbStore &s
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_MEMBER_SHARE,
     OTHER_TABLE_MODULE_NAME, AddShareMemberTable);
+
+static vector<pair<int32_t, int32_t>> AddPhotoMapCodeTable(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddRawSql(SQL_CREATE_MAP_CODE_TABLE)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_INSERT_TRIGGER)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_UPDATE_TRIGGER)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_CLEAR_TRIGGER)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_DELETE_TRIGGER)
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_MAP_CODE_TABLE, OTHER_TABLE_MODULE_NAME, AddPhotoMapCodeTable);
+
+static vector<pair<int32_t, int32_t>> AddPhotoMapCodeIndex(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    PhotoMapCodeOperation::SetMapCodeReadyStatus(MAP_CODE_IS_NOT_READY);
+    auto commands = builder.AddRawSql(SQL_CREATE_MAPCODE_LEVEL_5_INDEX)
+                           .AddRawSql(SQL_CREATE_MAPCODE_LEVEL_20_INDEX)
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_ADD_MAP_CODE_TABLE, OTHER_TABLE_MODULE_NAME, AddPhotoMapCodeIndex);
+
 }
 }

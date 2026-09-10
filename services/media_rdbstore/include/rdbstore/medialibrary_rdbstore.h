@@ -48,6 +48,7 @@ public:
     EXPORT int32_t Close(int32_t timeoutMs);
     EXPORT static bool CheckRdbStore();
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
+    EXPORT static bool AddPhotoMapTable(NativeRdb::RdbStore &store);
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRawChecked();
     EXPORT const NativeRdb::RdbStoreConfig &GetConfig() const;
 
@@ -179,6 +180,7 @@ private:
     static std::shared_ptr<NativeRdb::RdbStore> rdbStore_;
     EXPORT static const std::string BeginGenerateHighlightThumbnail(const std::vector<std::string>& args);
     EXPORT static const std::string PhotoAlbumNotifyFunc(const std::vector<std::string>& args);
+    EXPORT static const std::string PhotoMapCodeFunc(const std::vector<std::string>& args);
     static std::mutex reconstructLock_;
     NativeRdb::RdbStoreConfig config_ {""};
 };

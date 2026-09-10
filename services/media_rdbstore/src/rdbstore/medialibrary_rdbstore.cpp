@@ -79,6 +79,8 @@
 #include "photo_day_month_year_operation.h"
 #include "medialibrary_rdb_utils.h"
 #include "media_fileinterwork_column.h"
+#include "upgrade_other_table_sqls.h"
+#include "photo_map_code_operation.h"
 #include "medialibrary_album_compatibility_fusion_sql.h"
 #include "cover_record_columns.h"
 #include "medialibrary_rdb_helper.h"
@@ -173,6 +175,8 @@ const int TRASH_ALBUM_TYPE_VALUES = 2;
 const int32_t ARG_COUNT = 2;
 const std::string TRASH_ALBUM_NAME_VALUES = "TrashAlbum";
 
+const int32_t DEFAULT_LEVEL = 20;
+
 struct UniqueMemberValuesBucket {
     std::string assetMediaType;
     int32_t startNumber;
@@ -257,6 +261,31 @@ const std::string MediaLibraryRdbStore::PhotoAlbumNotifyFunc(const std::vector<s
     return "";
 }
 
+const int32_t MAP_CODE_PARAM = 3;
+const std::string MediaLibraryRdbStore::PhotoMapCodeFunc(const std::vector<std::string> &args)
+{
+    if (args.size() < MAP_CODE_PARAM) {
+        MEDIA_ERR_LOG("Invalid arg count %{public}zu: args must contain 3 strings", args.size());
+        return "";
+    }
+    double latitude;
+    std::stringstream latStr(args[0].c_str());
+    latStr >> latitude;
+    if (latStr.fail()) {
+        return "";
+    }
+    double longitude;
+    std::stringstream lonStr(args[1].c_str());
+    lonStr >> longitude;
+    if (lonStr.fail()) {
+        return "";
+    }
+    std::string type = args[2].c_str();
+    MEDIA_DEBUG_LOG("PhotoMapCodeFunc type = %{public}s", type.c_str());
+    int64_t mapCode = PhotoMapCodeOperation::GetMapHilbertCode(latitude, longitude, DEFAULT_LEVEL);
+    return std::to_string(mapCode);
+}
+
 MediaLibraryRdbStore::MediaLibraryRdbStore(const shared_ptr<OHOS::AbilityRuntime::Context> &context)
 {
     if (context == nullptr) {
@@ -280,6 +309,7 @@ MediaLibraryRdbStore::MediaLibraryRdbStore(const shared_ptr<OHOS::AbilityRuntime
     config_.SetScalarFunction("begin_generate_highlight_thumbnail", STAMP_PARAM, BeginGenerateHighlightThumbnail);
     config_.SetWalLimitSize(RDB_WAL_LIMIT_SIZE);
     config_.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+    config_.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
 }
 
 bool g_upgradeErr = false;
@@ -2141,6 +2171,15 @@ static const vector<string> onCreateSqlStrs = {
     TabCompatibleInfoColumn::CREATE_TABLE,
     SQL_CREATE_TAB_SHARE_ALBUM_MEMBER,
     SQL_CREATE_TAB_SHARE_ALBUM_MEMBER_INDEX,
+
+    // tab_map_photo_map
+    SQL_CREATE_MAP_CODE_TABLE,
+    SQL_CREATE_MAP_CODE_INSERT_TRIGGER,
+    SQL_CREATE_MAP_CODE_UPDATE_TRIGGER,
+    SQL_CREATE_MAP_CODE_CLEAR_TRIGGER,
+    SQL_CREATE_MAP_CODE_DELETE_TRIGGER,
+    SQL_CREATE_MAPCODE_LEVEL_5_INDEX,
+    SQL_CREATE_MAPCODE_LEVEL_20_INDEX,
 };
 
 static int32_t ExecuteSql(RdbStore &store)
