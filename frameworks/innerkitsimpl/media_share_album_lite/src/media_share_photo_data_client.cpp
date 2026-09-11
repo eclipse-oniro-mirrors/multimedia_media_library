@@ -60,13 +60,13 @@ void MediaSharePhotoDataClient::SetTraceId(const std::string &traceId)
     this->dataHandler_->SetTraceId(traceId);
 }
 
-int32_t MediaSharePhotoDataClient::GetShareAlbumOwnerId(std::string data, std::string &ownerId)
+int32_t MediaSharePhotoDataClient::GetShareAlbumOwnerId(std::string cloudId, std::string &ownerId)
 {
     if (this->dataHandler_ == nullptr) {
         MEDIA_ERR_LOG("No data handler found!");
         return E_IPC_ERR;
     }
-    return this->dataHandler_->GetShareAlbumOwnerId(data, ownerId);
+    return this->dataHandler_->GetShareAlbumOwnerId(cloudId, ownerId);
 }
 
 } // namespace OHOS::Media::ShareAlbum

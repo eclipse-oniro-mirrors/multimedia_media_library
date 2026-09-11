@@ -29,13 +29,13 @@
 
 namespace OHOS::Media::ShareAlbum {
 
-int32_t MediaSharePhotoDataDao::GetShareAlbumOwnerId(const std::string &data, std::vector<PhotosPo> &photosPos)
+int32_t MediaSharePhotoDataDao::GetShareAlbumOwnerId(const std::string &cloudId, std::vector<PhotosPo> &photosPos)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "GetShareAlbumOwnerId Failed to get rdbStore.");
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(MediaColumn::MEDIA_FILE_PATH, data);
+    predicates.EqualTo(PhotoColumn::PHOTO_CLOUD_ID, cloudId);
     std::vector<std::string> columns = { PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
         MediaColumn::MEDIA_HIDDEN, MediaColumn::MEDIA_DATE_TRASHED, PhotoColumn::PHOTO_IS_SHARED };
 
@@ -45,8 +45,8 @@ int32_t MediaSharePhotoDataDao::GetShareAlbumOwnerId(const std::string &data, st
     int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photosPos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetShareAlbumOwnerId ReadRecords failed, ret = %{public}d", ret);
 
-    MEDIA_INFO_LOG("GetShareAlbumOwnerId data:%{public}s, count:%{public}zu",
-        MediaFileUtils::DesensitizePath(data).c_str(), photosPos.size());
+    MEDIA_INFO_LOG("GetShareAlbumOwnerId cloudId:%{public}s, count:%{public}zu",
+        cloudId.c_str(), photosPos.size());
     return E_OK;
 }
 

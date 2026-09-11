@@ -34,7 +34,7 @@ int32_t MediaSharePhotoDataControllerService::GetShareAlbumOwnerId(MessageParcel
         IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret),
         "GetShareAlbumOwnerId Read Req Error");
     std::string shareAlbumOwner;
-    ret = this->dataService_.GetShareAlbumOwnerId(req.data, shareAlbumOwner);
+    ret = this->dataService_.GetShareAlbumOwnerId(req.cloudId, shareAlbumOwner);
     resp.shareAlbumOwner = shareAlbumOwner;
     MEDIA_INFO_LOG("GetShareAlbumOwnerId Resp, shareAlbumOwner:%{public}s", shareAlbumOwner.c_str());
     return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);

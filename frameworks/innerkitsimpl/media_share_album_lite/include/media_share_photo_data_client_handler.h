@@ -36,7 +36,7 @@ public:  // getter & setter
     std::unordered_map<std::string, std::string> &GetHeader();
 
 public:
-    int32_t GetShareAlbumOwnerId(std::string data, std::string &ownerId) override;
+    int32_t GetShareAlbumOwnerId(std::string cloudId, std::string &ownerId) override;
 
 private:
     std::string traceId_;

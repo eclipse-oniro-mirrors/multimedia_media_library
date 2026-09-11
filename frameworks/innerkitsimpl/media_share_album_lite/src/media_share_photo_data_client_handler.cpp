@@ -48,17 +48,17 @@ std::unordered_map<std::string, std::string> &MediaSharePhotoDataClientHandler::
     return header_;
 }
 
-int32_t MediaSharePhotoDataClientHandler::GetShareAlbumOwnerId(std::string data, std::string &ownerId)
+int32_t MediaSharePhotoDataClientHandler::GetShareAlbumOwnerId(std::string cloudId, std::string &ownerId)
 {
     GetShareAlbumOwnerReqBody reqBody;
     GetShareAlbumOwnerRespBody respBody;
-    reqBody.data = data;
+    reqBody.cloudId = cloudId;
     uint32_t operationCode =
         static_cast<uint32_t>(CloudMediaSharePhotoOperationCode::CMD_GET_SHARE_ALBUM_OWNER_ID);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(traceId_)
             .SetHeader(GetHeader()).Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("Failed to GetShareAlbumOwnerId, ret:%{public}d, data:%{public}s", ret, data.c_str());
+        MEDIA_ERR_LOG("Failed to GetShareAlbumOwnerId, ret:%{public}d, cloudId:%{public}s", ret, cloudId.c_str());
         return ret;
     }
     ownerId = respBody.shareAlbumOwner;
