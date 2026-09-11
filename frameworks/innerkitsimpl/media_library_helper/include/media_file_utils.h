@@ -235,6 +235,7 @@ public:
     EXPORT static bool IsCalledBySelf();
     EXPORT static std::vector<std::string> GetAllTypes(const int32_t extension);
     EXPORT static bool IsValidInteger(const std::string &value);
+    EXPORT static bool IsParamNullish(void *env, void *arg);
     EXPORT static int32_t CreateAssetRealName(
         int32_t fileId, int32_t mediaType, const std::string &extension, std::string &name);
     EXPORT static int64_t GetTotalSize();

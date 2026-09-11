@@ -1633,7 +1633,7 @@ static bool ValidateCompositeAssetAniParam(ani_env *env, ani_object asset,
     FileAssetAni *obj = FileAssetAni::Unwrap(env, asset);
     if (obj == nullptr || obj->GetFileAssetInstance() == nullptr) {
         ANI_ERR_LOG("requestCompositeAuxiliaryImageData asset is invalid");
-        AniError::ThrowError(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "invalid asset");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "invalid asset");
         return false;
     }
     aniContext->fileId = obj->GetFileId();
@@ -1653,7 +1653,7 @@ static bool ValidateCompositeDataHandlerAniParam(ani_env *env, ani_object dataHa
         std::string(ON_DATA_PREPARED_FUNC), &onDataPrepared);
     if (status != ANI_OK || onDataPrepared == nullptr) {
         ANI_ERR_LOG("requestCompositeAuxiliaryImageData onDataPrepared is invalid");
-        AniError::ThrowError(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "invalid onDataPrepared");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "invalid onDataPrepared");
         return false;
     }
     aniContext->needsExtraInfo = true;
