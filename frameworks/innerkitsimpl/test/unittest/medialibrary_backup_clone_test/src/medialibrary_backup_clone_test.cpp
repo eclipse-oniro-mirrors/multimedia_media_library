@@ -5663,8 +5663,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPa
 
 /*
  * Test interface: CloneRestore::UpdatePreStatusForSamePhotos
- * Test content: Test updating package names for photos that are the same across restore
- * Covered branches: isNew flag, fileIdNew, originalPackageName updates
+ * Test content: Verify package_name is NOT modified for same photos across restore.
+ * Covered behavior: after FillPackageNameValues was removed, UpdatePreStatusForSamePhotos no
+ * longer touches package_name; every row keeps the value already present in the target table.
  */
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_update_package_name_for_same_photos_test_001,
     TestSize.Level2)
@@ -5696,23 +5697,25 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_update_package_n
 
     cloneRestore.UpdatePreStatusForSamePhotos(oldFiles);
 
-    auto verifyPackageName = [&](int32_t fileId, const FileInfo& fileInfo, bool expect) {
+    // UpdatePreStatusForSamePhotos no longer updates package_name, so every row must keep the
+    // package_name that was already stored in the target table before the call.
+    auto verifyPackageNameUnchanged = [&](int32_t fileId, const std::string &expected) {
         auto resultSet = newRdbStore->QuerySql("SELECT package_name FROM Photos WHERE file_id = ?", {fileId});
         ASSERT_NE(resultSet, nullptr);
         ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
 
         string packageName;
         resultSet->GetString(0, packageName);
-        EXPECT_EQ(packageName == fileInfo.originalPackageName, expect);
+        EXPECT_EQ(packageName, expected);
         resultSet->Close();
     };
 
-    verifyPackageName(1337, oldFiles[0], false);
-    verifyPackageName(1338, oldFiles[1], false);
-    verifyPackageName(1339, oldFiles[2], false);
-    verifyPackageName(1340, oldFiles[3], false);
-    verifyPackageName(1341, oldFiles[4], true);
-    verifyPackageName(1342, oldFiles[5], true);
+    verifyPackageNameUnchanged(1337, "package_name_1"); // isNew == true, skipped, value untouched
+    verifyPackageNameUnchanged(1338, "package_name_2"); // fileIdNew <= 0, skipped, value untouched
+    verifyPackageNameUnchanged(1339, "package_name_3"); // originalPackageName empty, value untouched
+    verifyPackageNameUnchanged(1340, "package_name_4"); // newPackageName set, value untouched
+    verifyPackageNameUnchanged(1341, ""); // inserted without package_name, untouched
+    verifyPackageNameUnchanged(1342, ""); // inserted with empty package_name, untouched
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
@@ -5791,8 +5794,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_skip_
 
 /*
  * Pre-refactor: UpdateRiskStatusForSamePhotos
- * Branch: source db has no risk column (canUpdateRisk == false) -> risk fields skipped, but the
- * consolidated UPDATE still applies package_name / unique_id for the same row.
+ * Branch: source db has no risk column (canUpdateRisk == false) -> risk fields skipped, and the
+ * consolidated UPDATE no longer applies package_name; only unique_id is still updated for the same row.
  */
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_src_no_risk_test_001, TestSize.Level2)
 {
@@ -5820,7 +5823,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_src_n
 
     EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2002"), 0);
     EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2002"), 0);
-    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2002"), "pkg.no.risk");
+    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2002"), "");
     EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2002"), "uuid.no.risk");
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
@@ -5943,8 +5946,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_risk_
 
 /*
  * Pre-refactor: PrevailUUIDForSamePhotos
- * Branch: media_type is neither IMAGE nor VIDEO -> unique_id not written. package_name still applies
- * (proves the consolidated UPDATE runs but skips the unique_id column).
+ * Branch: media_type is neither IMAGE nor VIDEO (and src has no risk column) -> unique_id not
+ * written and package_name is no longer updated either, so no UPDATE is issued; both columns
+ * keep the values already present in the target table.
  */
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_uuid_skip_audio_test_001, TestSize.Level2)
 {
@@ -5968,7 +5972,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_uuid_
     std::vector<FileInfo> infos = {info};
     cloneRestore.UpdatePreStatusForSamePhotos(infos);
 
-    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2007"), "pkg.audio");
+    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2007"), "");
     EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2007"), "");
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
@@ -6034,9 +6038,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_uuid_
 }
 
 /*
- * Pre-refactor: UpdateRiskStatusForSamePhotos + UpdatePackageNameForSamePhotos + PrevailUUIDForSamePhotos
- * Branch: all three fillers return true -> they are accumulated into a single ValuesBucket and applied
- * by one UPDATE statement (the core benefit of the refactor).
+ * Pre-refactor: UpdateRiskStatusForSamePhotos + PrevailUUIDForSamePhotos
+ * Branch: risk and unique_id fillers return true -> they are accumulated into a single
+ * ValuesBucket and applied by one UPDATE statement (package_name is no longer part of this path).
  */
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_combined_test_001, TestSize.Level2)
 {
@@ -6065,7 +6069,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_combi
     EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2011"),
         static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS));
     EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2011"), 1);
-    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2011"), "pkg.combined");
+    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2011"), "");
     EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2011"), "uuid.combined");
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }

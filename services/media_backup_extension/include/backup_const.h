@@ -529,6 +529,8 @@ struct FileInfo {
     std::string localBigThumbPath;
     std::string resolution;
     std::string originalPackageName;
+    std::string originalOwnerPackage;
+    std::string originalOwnerAppId;
 
     int32_t thumbType {-1};
     int32_t fileIdOld {-1};
