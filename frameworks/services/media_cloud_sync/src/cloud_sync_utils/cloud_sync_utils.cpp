@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#define MLOG_TAG "MediaLibraryCloudSyncUtils"
+#define MLOG_TAG "Media_CloudDrive"
 
 #include "cloud_sync_utils.h"
 
@@ -110,6 +110,34 @@ bool CloudSyncUtils::IsCloudDataAgingPolicyOn()
         resultSet->GetString(0, switchOn);
     }
     return switchOn == MOBILE_NETWORK_STATUS_ON;
+}
+
+bool CloudSyncUtils::IsSwitchOn(const std::string &bundleName)
+{
+    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
+    CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, false, "cloudHelper is null");
+
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo("bundleName", bundleName);
+    Uri uri(CLOUD_SYNC_SWITCH_URI);
+    std::vector<std::string> columns = {"isSwitchOn"};
+    std::shared_ptr<DataShare::DataShareResultSet> resultSet = cloudHelper->Query(uri, predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "resultSet is null");
+
+    std::string switchOn = "0";
+    if (resultSet->GoToNextRow() == E_OK) {
+        resultSet->GetString(0, switchOn);
+    }
+    resultSet->Close();
+    return switchOn == MOBILE_NETWORK_STATUS_ON;
+}
+
+bool CloudSyncUtils::IsSharedAlbumCloudSyncSwitchOn()
+{
+    const static std::string shareAlbumBundleName = "com.ohos.photos.shared";
+    const bool isSwitchOn = IsSwitchOn(shareAlbumBundleName);
+    MEDIA_DEBUG_LOG("IsSharedAlbumCloudSyncSwitchOn, isSwitchOn: %{public}d", isSwitchOn);
+    return isSwitchOn;
 }
 } // namespace Media
 } // namespace OHOS
