@@ -17,11 +17,15 @@
 
 #include "cloud_media_album_controller_processor.h"
 
+#include <charconv>
+
 #include "media_log.h"
 #include "cloud_file_data_vo.h"
 #include "cloud_file_data_dto.h"
 #include "photos_vo.h"
 #include "photos_dto.h"
+#include "photo_album_po_writer.h"
+#include "cloud_media_sync_const.h"
 
 namespace OHOS::Media::CloudSync {
 CloudMdkRecordPhotoAlbumVo CloudMediaAlbumControllerProcessor::ConvertRecordPoToVo(PhotoAlbumPo record)
@@ -47,6 +51,10 @@ CloudMdkRecordPhotoAlbumVo CloudMediaAlbumControllerProcessor::ConvertRecordPoTo
     recordVo.dualAlbumName = record.dualAlbumName.value_or("");
     recordVo.priority = record.priority.value_or(0);
     recordVo.isInWhiteList = record.isInWhiteList.value_or(false);
+    
+    GetAttributesHashMap(record, recordVo);
+    GetInt64FieldsHashMap(record, recordVo);
+    
     return recordVo;
 }
 
@@ -99,5 +107,36 @@ void CloudMediaAlbumControllerProcessor::ConvertShareAlbumDetailFromVoToDto(
 
     this->ConvertShareMemberDataFromVoToDto(
         shareAlbumDetailVo.shareMemberData, shareAlbumDetailDto.shareMemberDataList);
+}
+
+bool CloudMediaAlbumControllerProcessor::GetAttributesHashMap(
+    const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo)
+{
+    PhotoAlbumPo albumInfo = record;
+    PhotoAlbumPoWriter writer = PhotoAlbumPoWriter(albumInfo);
+    std::unordered_map<std::string, std::string> stringfieldsMap = writer.ToMap(false);
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_STRING_TO_CLOUD) {
+        auto it = stringfieldsMap.find(fieldName);
+        CHECK_AND_CONTINUE(it != stringfieldsMap.end());
+        albumVo.stringfields[fieldName] = it->second;
+    }
+    return true;
+}
+
+bool CloudMediaAlbumControllerProcessor::GetInt64FieldsHashMap(
+    const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo)
+{
+    PhotoAlbumPo albumInfo = record;
+    PhotoAlbumPoWriter writer = PhotoAlbumPoWriter(albumInfo);
+    std::unordered_map<std::string, std::string> stringfieldsMap = writer.ToMap(false);
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_INT64_TO_CLOUD) {
+        auto it = stringfieldsMap.find(fieldName);
+        CHECK_AND_CONTINUE(it != stringfieldsMap.end());
+        int64_t value = 0;
+        auto [ptr, ec] = std::from_chars(it->second.data(), it->second.data() + it->second.size(), value);
+        CHECK_AND_CONTINUE(ec == std::errc() && ptr == it->second.data() + it->second.size());
+        albumVo.int64fields[fieldName] = value;
+    }
+    return true;
 }
 }  // namespace OHOS::Media::CloudSync

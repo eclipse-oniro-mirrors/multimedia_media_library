@@ -70,6 +70,7 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "./src/cloud_media_download_dao_test.cpp",
     "./src/clone_to_album_service_test.cpp",
     "./src/media_assets_recover_service_test.cpp",
+    "./src/photo_album_po_writer_test.cpp",
   ]
 
   deps = [
@@ -324,6 +325,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
 
   sources = [
     "src/cloud_media_controller_processor_test.cpp",
+    "src/cloud_media_album_controller_processor_extension_test.cpp",
   ]
 
   include_media_cloud_sync_data = [

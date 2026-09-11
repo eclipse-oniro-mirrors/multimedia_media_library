@@ -183,62 +183,6 @@ const std::vector<std::string> QUERY_ALBUM_COLUMNS = {
     PhotoAlbumColumns::SHARE_ALBUM_OWNER,
 };
 
-const std::vector<std::string> MEDIA_CLOUD_SYNC_COLUMNS = {
-    PhotoColumn::MEDIA_FILE_PATH,
-    PhotoColumn::MEDIA_TITLE,
-    PhotoColumn::MEDIA_SIZE,
-    PhotoColumn::MEDIA_NAME,
-    PhotoColumn::MEDIA_TYPE,
-    PhotoColumn::MEDIA_MIME_TYPE,
-    PhotoColumn::MEDIA_DEVICE_NAME,
-    PhotoColumn::MEDIA_DATE_ADDED,
-    PhotoColumn::MEDIA_DATE_MODIFIED,
-    PhotoColumn::MEDIA_DATE_TAKEN,
-    PhotoColumn::MEDIA_DURATION,
-    PhotoColumn::MEDIA_IS_FAV,
-    PhotoColumn::MEDIA_DATE_TRASHED,
-    PhotoColumn::MEDIA_HIDDEN,
-    PhotoColumn::PHOTO_HIDDEN_TIME,
-    PhotoColumn::MEDIA_RELATIVE_PATH,
-    PhotoColumn::MEDIA_VIRTUAL_PATH,
-    PhotoColumn::PHOTO_META_DATE_MODIFIED,
-    PhotoColumn::PHOTO_ORIENTATION,
-    PhotoColumn::PHOTO_LATITUDE,
-    PhotoColumn::PHOTO_LONGITUDE,
-    PhotoColumn::PHOTO_HEIGHT,
-    PhotoColumn::PHOTO_WIDTH,
-    PhotoColumn::PHOTO_SUBTYPE,
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL,
-    PhotoColumn::PHOTO_BURST_KEY,
-    PhotoColumn::PHOTO_DATE_YEAR,
-    PhotoColumn::PHOTO_DATE_MONTH,
-    PhotoColumn::PHOTO_DATE_DAY,
-    PhotoColumn::PHOTO_USER_COMMENT,
-    PhotoColumn::PHOTO_THUMB_STATUS,
-    PhotoColumn::PHOTO_SYNC_STATUS,
-    PhotoColumn::PHOTO_SHOOTING_MODE,
-    PhotoColumn::PHOTO_SHOOTING_MODE_TAG,
-    PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE,
-    PhotoColumn::PHOTO_HDR_MODE,
-    PhotoColumn::PHOTO_VIDEO_MODE,
-    PhotoColumn::PHOTO_FRONT_CAMERA,
-    PhotoColumn::PHOTO_DETAIL_TIME,
-    PhotoColumn::PHOTO_EDIT_TIME,
-    PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
-    PhotoColumn::PHOTO_COVER_POSITION,
-    PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
-    PhotoColumn::PHOTO_OWNER_ALBUM_ID,
-    PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID,
-    PhotoColumn::PHOTO_SOURCE_PATH,
-    PhotoColumn::SUPPORTED_WATERMARK_TYPE,
-    PhotoColumn::PHOTO_STRONG_ASSOCIATION,
-    PhotoColumn::MUSIC_MASTER_MODE,
-    /* keep cloud_id at the last, so RecordToValueBucket can skip it*/
-    MediaColumn::MEDIA_ID,
-    PhotoColumn::PHOTO_CLOUD_ID,
-    PhotoColumn::COMPRESSION_QUALITY,
-};
-
 const std::vector<std::string> ALBUM_LOCAL_QUERY_COLUMNS = {
     Media::PhotoAlbumColumns::ALBUM_ID,
     Media::PhotoAlbumColumns::ALBUM_NAME,
@@ -260,6 +204,22 @@ const std::vector<std::string> PHOTOS_SYNC_COLUMN_STRING = {
 const std::vector<std::string> PHOTOS_SYNC_COLUMN_INT64 = {
     // Add Photos int64 fields here.
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+};
+
+const std::vector<std::string> ALBUM_SYNC_COLUMN_STRING_TO_CLOUD = {
+    // Add PhotoAlbum string fields here.
+};
+
+const std::vector<std::string> ALBUM_SYNC_COLUMN_STRING_FROM_CLOUD = {
+    // Add PhotoAlbum string fields here.
+};
+
+const std::vector<std::string> ALBUM_SYNC_COLUMN_INT64_TO_CLOUD = {
+    // Add PhotoAlbum int64 fields here.
+};
+
+const std::vector<std::string> ALBUM_SYNC_COLUMN_INT64_FROM_CLOUD = {
+    // Add PhotoAlbum int64 fields here.
 };
 
 enum CheckFlag : int32_t {

@@ -38,6 +38,9 @@ public:
         std::vector<ShareMemberDataDto> &shareMemberDataDtoList);
     void ConvertShareAlbumDetailFromVoToDto(const std::optional<ShareAlbumDetailVo> &shareAlbumDetailVoOp,
         std::optional<ShareAlbumDetailDto> &shareAlbumDetailDtoOp);
+
+    bool GetAttributesHashMap(const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo);
+    bool GetInt64FieldsHashMap(const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_ALBUM_CONTROLLER_PROCESSOR_H

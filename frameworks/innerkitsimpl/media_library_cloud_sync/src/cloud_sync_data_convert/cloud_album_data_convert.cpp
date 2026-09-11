@@ -353,4 +353,28 @@ int32_t CloudAlbumDataConvert::ValidateLocalPath(
         MediaFileUtils::DesensitizePath(lPath).c_str(), recordId.c_str());
     return E_OK;
 }
+
+void CloudAlbumDataConvert::ConvertAttributesHashMap(MDKRecordAlbumData &data,
+    OnFetchRecordsAlbumReqBody::AlbumReqData &albumData)
+{
+    std::optional<std::string> valueStrOp;
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_STRING_FROM_CLOUD) {
+        valueStrOp = data.GetAttributeFieldValue(fieldName);
+        CHECK_AND_CONTINUE(valueStrOp.has_value());
+        albumData.stringfields[fieldName] = valueStrOp.value();
+    }
+    return;
+}
+
+void CloudAlbumDataConvert::ConvertInt64FieldsHashMap(MDKRecordAlbumData &data,
+    OnFetchRecordsAlbumReqBody::AlbumReqData &albumData)
+{
+    std::optional<int64_t> valueLongOp;
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_INT64_FROM_CLOUD) {
+        valueLongOp = data.GetAttributeFieldLongValue(fieldName);
+        CHECK_AND_CONTINUE(valueLongOp.has_value());
+        albumData.int64fields[fieldName] = valueLongOp.value();
+    }
+    return;
+}
 }  // namespace OHOS::Media::CloudSync

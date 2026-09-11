@@ -275,6 +275,17 @@ void MDKRecordAlbumData::SetUniqueId(const std::string &uniqueId)
 {
     this->attributes_[PhotoAlbumColumns::UNIQUE_ID] = MDKRecordField(uniqueId);
 }
+
+std::optional<std::string> MDKRecordAlbumData::GetAttributeFieldValue(const std::string &fieldName) const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, fieldName);
+}
+
+std::optional<int64_t> MDKRecordAlbumData::GetAttributeFieldLongValue(const std::string &fieldName) const
+{
+    return this->recordReader_.GetLongValue(this->attributes_, fieldName);
+}
+
 std::string MDKRecordAlbumData::GetOwnerId() const
 {
     return this->record_.GetOwnerId();

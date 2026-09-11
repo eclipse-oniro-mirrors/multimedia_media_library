@@ -68,27 +68,8 @@ std::unordered_map<std::string, std::string> &CloudMediaAlbumHandler::GetHeader(
     return header_;
 }
 
-static void InitUniqueIdData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
-{
-    auto albumsUniqueId = albumData.GetUniqueId();
-    if (albumsUniqueId.has_value()) {
-        data.uniqueId = albumsUniqueId.value();
-    }
-}
-
-static void InitSceneAndShareData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
-{
-    auto sceneIdOpt = albumData.GetSceneId();
-    if (sceneIdOpt.has_value()) {
-        data.sceneId = sceneIdOpt.value();
-    }
-    auto shareTypeOpt = albumData.GetShareType();
-    if (shareTypeOpt.has_value()) {
-        data.shareType = shareTypeOpt.value();
-    }
-}
-
-static void InitShareAlbumOwnerAndType(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+void CloudMediaAlbumHandler::InitShareAlbumOwnerAndType(
+    MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
 {
     data.shareAlbumOwner = albumData.GetOwnerId();
     std::optional<int32_t> albumTypeOp = albumData.GetType();
@@ -97,7 +78,8 @@ static void InitShareAlbumOwnerAndType(MDKRecordAlbumData &albumData, OnFetchRec
     data.shareType = static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM);
 }
 
-static void InitShareAlbumDetailVo(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+void CloudMediaAlbumHandler::InitShareAlbumDetailVo(
+    MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
 {
     data.InitShareAlbumDetailVo(albumData.GetType().value_or(0));
     CHECK_AND_RETURN(data.shareAlbumDetailVoOp.has_value());
@@ -105,54 +87,26 @@ static void InitShareAlbumDetailVo(MDKRecordAlbumData &albumData, OnFetchRecords
     albumData.GetShareMembers(shareMemberDatalList);
 }
 
-static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+void CloudMediaAlbumHandler::InitAlbumReqData(
+    MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
 {
-    auto lpathOpt = albumData.GetlPath();
-    if (lpathOpt.has_value()) {
-        data.localPath = lpathOpt.value();
-    }
-    auto albumTypeOpt = albumData.GetAlbumType();
-    if (albumTypeOpt.has_value()) {
-        data.albumType = albumTypeOpt.value();
-    } else {
-        data.albumType = PhotoAlbumType::INVALID;
-    }
-    auto albumSubTypeOpt = albumData.GetAlbumSubType();
-    if (albumSubTypeOpt.has_value()) {
-        data.albumSubType = albumSubTypeOpt.value();
-    }
-    auto albumDateAddedOpt = albumData.GetDateAdded();
-    if (albumDateAddedOpt.has_value()) {
-        data.albumDateAdded = albumDateAddedOpt.value();
-    }
-    auto albumDateModifiedOpt = albumData.GetDateModified();
-    if (albumDateModifiedOpt.has_value()) {
-        data.albumDateModified = albumDateModifiedOpt.value();
-    }
-    auto albumNameOpt = albumData.GetAlbumName();
-    if (albumNameOpt.has_value()) {
-        data.albumName = albumNameOpt.value();
-    }
-    auto albumBundleNameOpt = albumData.GetBundleName();
-    if (albumBundleNameOpt.has_value()) {
-        data.albumBundleName = albumBundleNameOpt.value();
-    }
-    std::optional<std::string> cloudIdOpt = albumData.GetCloudId();
-    if (cloudIdOpt.has_value()) {
-        data.cloudId = cloudIdOpt.value();
-    }
-    auto albumsCoverUriSource = albumData.GetCoverUriSource();
-    if (albumsCoverUriSource.has_value()) {
-        data.coverUriSource = albumsCoverUriSource.value();
-    }
-    auto albumsCoverCloudId = albumData.GetCoverCloudId();
-    if (albumsCoverCloudId.has_value()) {
-        data.coverCloudId = albumsCoverCloudId.value();
-    }
-    InitUniqueIdData(albumData, data);
-    InitSceneAndShareData(albumData, data);
+    data.localPath = albumData.GetlPath().value_or("");
+    data.albumType = albumData.GetAlbumType().value_or(PhotoAlbumType::INVALID);
+    data.albumSubType = albumData.GetAlbumSubType().value_or(0);
+    data.albumDateAdded = albumData.GetDateAdded().value_or(0);
+    data.albumDateModified = albumData.GetDateModified().value_or(0);
+    data.albumName = albumData.GetAlbumName().value_or("");
+    data.albumBundleName = albumData.GetBundleName().value_or("");
+    data.cloudId = albumData.GetCloudId().value_or("");
+    data.coverUriSource = albumData.GetCoverUriSource().value_or(0);
+    data.coverCloudId = albumData.GetCoverCloudId().value_or("");
+    data.uniqueId = albumData.GetUniqueId().value_or("");
+    data.sceneId = albumData.GetSceneId().value_or(0);
+    data.shareType = albumData.GetShareType().value_or(0);
     InitShareAlbumOwnerAndType(albumData, data);
     InitShareAlbumDetailVo(albumData, data);
+    this->albumConvertor_.ConvertAttributesHashMap(albumData, data);
+    this->albumConvertor_.ConvertInt64FieldsHashMap(albumData, data);
 }
 
 /**
