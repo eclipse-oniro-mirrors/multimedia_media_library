@@ -911,6 +911,66 @@ napi_value MediaAssetManagerNapi::JSRequestImageData(napi_env env, napi_callback
         JSRequestComplete);
 }
 
+static bool IsParamNullish(napi_env env, napi_value arg)
+{
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, arg, &type);
+    return type == napi_null || type == napi_undefined;
+}
+
+static bool ValidateCompositeAssetParam(napi_env env, napi_value asset,
+    unique_ptr<MediaAssetManagerAsyncContext> &asyncContext)
+{
+    FileAssetNapi *obj = nullptr;
+    napi_unwrap(env, asset, reinterpret_cast<void**>(&obj));
+    if (obj == nullptr || obj->GetFileAssetInstance() == nullptr) {
+        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData asset is invalid");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "invalid asset");
+        return false;
+    }
+    asyncContext->fileId = obj->GetFileId();
+    asyncContext->photoUri = obj->GetFileUri();
+    asyncContext->displayName = obj->GetFileDisplayName();
+    asyncContext->userId = obj->GetFileAssetInstance()->GetUserId();
+    return true;
+}
+
+static bool ValidateCompositeDataHandlerParam(napi_env env, napi_value dataHandler,
+    unique_ptr<MediaAssetManagerAsyncContext> &asyncContext)
+{
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, dataHandler, &valueType) != napi_ok || valueType != napi_object) {
+        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData dataHandler is not an object");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "invalid dataHandler");
+        return false;
+    }
+    asyncContext->dataHandler = dataHandler;
+
+    napi_value onDataPrepared = nullptr;
+    if (napi_get_named_property(env, dataHandler, ON_DATA_PREPARED_FUNC, &onDataPrepared) != napi_ok ||
+        napi_typeof(env, onDataPrepared, &valueType) != napi_ok || valueType != napi_function) {
+        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData onDataPrepared is not a function");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "invalid onDataPrepared");
+        return false;
+    }
+
+    napi_value paramCountNapi = nullptr;
+    int32_t paramCount = -1;
+    constexpr int paramCountMin = 1;
+    constexpr int paramCountMax = 2;
+    if (napi_get_named_property(env, onDataPrepared, "length", &paramCountNapi) != napi_ok ||
+        napi_get_value_int32(env, paramCountNapi, &paramCount) != napi_ok ||
+        paramCount < paramCountMin || paramCount > paramCountMax) {
+        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData onDataPrepared param count is invalid");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "invalid onDataPrepared");
+        return false;
+    }
+    if (paramCount == ARGS_TWO) {
+        asyncContext->needsExtraInfo = true;
+    }
+    return true;
+}
+
 bool MediaAssetManagerNapi::ParseAndValidateCompositeAuxiliaryArgs(napi_env env, napi_callback_info info,
     unique_ptr<MediaAssetManagerAsyncContext> &asyncContext)
 {
@@ -918,14 +978,17 @@ bool MediaAssetManagerNapi::ParseAndValidateCompositeAuxiliaryArgs(napi_env env,
     GET_JS_ARGS(env, info, asyncContext->argc, asyncContext->argv, thisVar);
     if (asyncContext->argc != ARGS_THREE) {
         NAPI_ERR_LOG("requestCompositeAuxiliaryImageData argc error");
-        NapiError::ThrowErrorWithIntCode(env, JS_E_INNER_FAIL,
-            "requestCompositeAuxiliaryImageData argc invalid");
+        NapiError::ThrowErrorWithIntCode(env, OHOS_INVALID_PARAM_CODE, "argc invalid");
         return false;
     }
-    if (ParseArgGetPhotoAsset(env, asyncContext->argv[PARAM1], asyncContext) != napi_ok) {
-        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData ParseArgGetPhotoAsset error");
-        NapiError::ThrowErrorWithIntCode(env, JS_E_INNER_FAIL,
-            "requestCompositeAuxiliaryImageData ParseArgGetPhotoAsset error");
+    if (IsParamNullish(env, asyncContext->argv[PARAM0]) ||
+        IsParamNullish(env, asyncContext->argv[PARAM1]) ||
+        IsParamNullish(env, asyncContext->argv[PARAM2])) {
+        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData param is null or undefined");
+        NapiError::ThrowErrorWithIntCode(env, OHOS_INVALID_PARAM_CODE, "param is null or undefined");
+        return false;
+    }
+    if (!ValidateCompositeAssetParam(env, asyncContext->argv[PARAM1], asyncContext)) {
         return false;
     }
     if (MediaFileUtils::GetMediaType(asyncContext->displayName) == MEDIA_TYPE_VIDEO) {
@@ -934,11 +997,7 @@ bool MediaAssetManagerNapi::ParseAndValidateCompositeAuxiliaryArgs(napi_env env,
             "The asset has no composite auxiliary image");
         return false;
     }
-    if (ParseArgGetDataHandler(env, asyncContext->argv[PARAM2], asyncContext->dataHandler,
-        asyncContext->needsExtraInfo) != napi_ok) {
-        NAPI_ERR_LOG("requestCompositeAuxiliaryImageData ParseArgGetDataHandler error");
-        NapiError::ThrowErrorWithIntCode(env, JS_E_INNER_FAIL,
-            "requestCompositeAuxiliaryImageData ParseArgGetDataHandler error");
+    if (!ValidateCompositeDataHandlerParam(env, asyncContext->argv[PARAM2], asyncContext)) {
         return false;
     }
     if (!HasReadPermission()) {
@@ -950,7 +1009,7 @@ bool MediaAssetManagerNapi::ParseAndValidateCompositeAuxiliaryArgs(napi_env env,
     asyncContext->hasReadPermission = true;
     if (!InitUserFileClient(env, info, asyncContext->userId)) {
         NAPI_ERR_LOG("JSRequestCompositeAuxiliaryImageData init user file client failed");
-        NapiError::ThrowErrorWithIntCode(env, JS_E_INNER_FAIL, "handler is invalid");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE, "handler is invalid");
         return false;
     }
     if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef) != napi_ok
