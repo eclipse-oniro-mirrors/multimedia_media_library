@@ -23,21 +23,21 @@ namespace OHOS::Media {
 
 class CoverRecordColumns : BaseColumn {
 public:
-    static const std::string ALBUM_TYPE EXPORT;
-    static const std::string ALBUM_SUBTYPE EXPORT;
-    static const std::string ALBUM_LPATH EXPORT;
-    static const std::string COVER_ORDER_KEY EXPORT;
-    static const std::string COVER_ORDER_SUBKEY EXPORT;
-    static const std::string COVER_ORDER_TYPE EXPORT;
-    static const std::string HIDDEN_COVER_ORDER_KEY EXPORT;
-    static const std::string HIDDEN_COVER_ORDER_SUBKEY EXPORT;
-    static const std::string HIDDEN_COVER_ORDER_TYPE EXPORT;
+    static const std::string ALBUM_TYPE;
+    static const std::string ALBUM_SUBTYPE;
+    static const std::string ALBUM_LPATH;
+    static const std::string COVER_ORDER_KEY;
+    static const std::string COVER_ORDER_SUBKEY;
+    static const std::string COVER_ORDER_TYPE;
+    static const std::string HIDDEN_COVER_ORDER_KEY;
+    static const std::string HIDDEN_COVER_ORDER_SUBKEY;
+    static const std::string HIDDEN_COVER_ORDER_TYPE;
 
-    static const std::string COVER_RECORD_TABLE EXPORT;
-    static const std::string ALBUM_LPATH_INDEX EXPORT;
+    static const std::string COVER_RECORD_TABLE;
+    static const std::string ALBUM_LPATH_INDEX;
 
-    static const std::string CREATE_COVER_RECORD_TABLE EXPORT;
-    static const std::string CREATE_ALBUM_LPATH_INDEX EXPORT;
+    static const std::string CREATE_COVER_RECORD_TABLE;
+    static const std::string CREATE_ALBUM_LPATH_INDEX;
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_COVER_RECORD_COLUMNS_H

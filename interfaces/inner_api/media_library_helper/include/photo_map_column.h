@@ -25,12 +25,12 @@ namespace OHOS::Media {
 class PhotoMap : BaseColumn {
 public:
     // Sql to create the table
-    static const std::string CREATE_TABLE EXPORT;
+    static const std::string CREATE_TABLE;
 
-    static const std::string TABLE EXPORT;
-    static const std::string ALBUM_ID EXPORT;
-    static const std::string ASSET_ID EXPORT;
-    static const std::string DIRTY EXPORT;
+    static const std::string TABLE;
+    static const std::string ALBUM_ID;
+    static const std::string ASSET_ID;
+    static const std::string DIRTY;
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_PHOTO_MAP_COLUMNS_H

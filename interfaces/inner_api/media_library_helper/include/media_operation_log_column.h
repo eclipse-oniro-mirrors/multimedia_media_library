@@ -29,13 +29,13 @@ namespace OHOS::Media {
 class TabOperationLogColumn : BaseColumn {
 public:
     // TabOperationLogColumn name
-    static const std::string TABLE EXPORT;
-    static const std::string CREATE_TABLE EXPORT;
+    static const std::string TABLE;
+    static const std::string CREATE_TABLE;
 
-    static const std::string FILE_ID EXPORT;
-    static const std::string TIMESTAMP EXPORT;
-    static const std::string EVENT_TYPE EXPORT;
-    static const std::string FILE_UIID EXPORT;
+    static const std::string FILE_ID;
+    static const std::string TIMESTAMP;
+    static const std::string EVENT_TYPE;
+    static const std::string FILE_UIID;
 };
 } // namespace OHOS::Media
 #endif // FRAMEWORKS_SERVICES_MEDIA_OPERATION_LOG_COLUMNS_H

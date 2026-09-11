@@ -25,8 +25,8 @@ namespace Media {
  
 class MediaAccountUtils {
 public:
-    EXPORT static int32_t GetCurrentAccountId();
-    EXPORT static sptr<IRemoteObject> GetSaToken();
+    static int32_t GetCurrentAccountId();
+    static sptr<IRemoteObject> GetSaToken();
 };
 } // namespace Media
 } // namespace OHOS

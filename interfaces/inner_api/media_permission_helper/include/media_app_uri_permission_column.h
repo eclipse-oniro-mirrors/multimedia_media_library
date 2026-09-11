@@ -25,58 +25,58 @@ namespace OHOS::Media {
 class AppUriPermissionColumn {
 public:
     // columns
-    static const std::string ID EXPORT;
-    static const std::string APP_ID EXPORT;
-    static const std::string FILE_ID EXPORT;
-    static const std::string URI_TYPE EXPORT;
-    static const std::string PERMISSION_TYPE EXPORT;
-    static const std::string DATE_MODIFIED EXPORT;
-    static const std::string SOURCE_TOKENID EXPORT;
-    static const std::string TARGET_TOKENID EXPORT;
+    static const std::string ID;
+    static const std::string APP_ID;
+    static const std::string FILE_ID;
+    static const std::string URI_TYPE;
+    static const std::string PERMISSION_TYPE;
+    static const std::string DATE_MODIFIED;
+    static const std::string SOURCE_TOKENID;
+    static const std::string TARGET_TOKENID;
 
     // uriTypes
-    static const int URI_PHOTO EXPORT;
-    static const int URI_AUDIO EXPORT;
-    static const std::set<int> URI_TYPES_ALL EXPORT;
+    static const int URI_PHOTO;
+    static const int URI_AUDIO;
+    static const std::set<int> URI_TYPES_ALL;
 
     // permissionTypes
-    static const int PERMISSION_TEMPORARY_READ EXPORT;
-    static const int PERMISSION_PERSIST_READ EXPORT;
-    static const int PERMISSION_TEMPORARY_WRITE EXPORT;
-    static const int PERMISSION_TEMPORARY_READ_WRITE EXPORT;
-    static const int PERMISSION_PERSIST_READ_WRITE EXPORT;
-    static const int PERMISSION_PERSIST_WRITE EXPORT;
+    static const int PERMISSION_TEMPORARY_READ;
+    static const int PERMISSION_PERSIST_READ;
+    static const int PERMISSION_TEMPORARY_WRITE;
+    static const int PERMISSION_TEMPORARY_READ_WRITE;
+    static const int PERMISSION_PERSIST_READ_WRITE;
+    static const int PERMISSION_PERSIST_WRITE;
 
-    static const std::set<int> PERMISSION_TYPE_WRITE EXPORT;
-    static const std::set<int> PERMISSION_TYPE_READ EXPORT;
-    static const std::set<int> PERMISSION_TYPES_ALL EXPORT;
-    static const std::set<int> PERMISSION_TYPES_PICKER EXPORT;
-    static const std::set<int> PERMISSION_TYPES_TEMPORARY EXPORT;
-    static const std::set<int> PERMISSION_TYPES_PERSIST EXPORT;
-    static const std::vector<std::string> PERMISSION_TYPES_READ_STR EXPORT;
-    static const std::vector<std::string> PERMISSION_TYPES_WRITE_STR EXPORT;
+    static const std::set<int> PERMISSION_TYPE_WRITE;
+    static const std::set<int> PERMISSION_TYPE_READ;
+    static const std::set<int> PERMISSION_TYPES_ALL;
+    static const std::set<int> PERMISSION_TYPES_PICKER;
+    static const std::set<int> PERMISSION_TYPES_TEMPORARY;
+    static const std::set<int> PERMISSION_TYPES_PERSIST;
+    static const std::vector<std::string> PERMISSION_TYPES_READ_STR;
+    static const std::vector<std::string> PERMISSION_TYPES_WRITE_STR;
 
     // index
-    static const std::string URI_URITYPE_APPID_INDEX EXPORT;
-    static const std::string URI_PERMISSION_FILE_TOKEN_INDEX EXPORT;
+    static const std::string URI_URITYPE_APPID_INDEX;
+    static const std::string URI_PERMISSION_FILE_TOKEN_INDEX;
 
     // table name
-    static const std::string APP_URI_PERMISSION_TABLE EXPORT;
+    static const std::string APP_URI_PERMISSION_TABLE;
 
     // default fetch columns
-    static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;
+    static const std::set<std::string> DEFAULT_FETCH_COLUMNS;
 
     // create sql
-    static const std::string CREATE_APP_URI_PERMISSION_TABLE EXPORT;
-    static const std::string CREATE_URI_URITYPE_APPID_INDEX EXPORT;
-    static const std::string CREATE_URI_URITYPE_TOKENID_INDEX EXPORT;
-    static const std::string CREATE_URI_PERMISSION_FILE_TOKEN_INDEX EXPORT;
+    static const std::string CREATE_APP_URI_PERMISSION_TABLE;
+    static const std::string CREATE_URI_URITYPE_APPID_INDEX;
+    static const std::string CREATE_URI_URITYPE_TOKENID_INDEX;
+    static const std::string CREATE_URI_PERMISSION_FILE_TOKEN_INDEX;
 
     // all columns
-    static const std::set<std::string> ALL_COLUMNS EXPORT;
+    static const std::set<std::string> ALL_COLUMNS;
 
     // delete sql
-    static const std::string DROP_URI_URITYPE_APPID_INDEX EXPORT;
+    static const std::string DROP_URI_URITYPE_APPID_INDEX;
 };
 
 enum class PhotoPermissionType : int32_t {

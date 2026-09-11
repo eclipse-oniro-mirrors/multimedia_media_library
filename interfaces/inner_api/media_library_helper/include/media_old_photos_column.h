@@ -27,17 +27,17 @@ namespace Media {
 class TabOldPhotosColumn {
 public:
     // table name
-    static const std::string OLD_PHOTOS_TABLE EXPORT;
+    static const std::string OLD_PHOTOS_TABLE;
 
     // Table columns: GalleryID and GalleryPath
-    static const std::string MEDIA_ID EXPORT;
-    static const std::string MEDIA_FILE_PATH EXPORT;
-    static const std::string MEDIA_OLD_ID EXPORT;
-    static const std::string MEDIA_OLD_FILE_PATH EXPORT;
-    static const std::string MEDIA_CLONE_SEQUENCE EXPORT;
+    static const std::string MEDIA_ID;
+    static const std::string MEDIA_FILE_PATH;
+    static const std::string MEDIA_OLD_ID;
+    static const std::string MEDIA_OLD_FILE_PATH;
+    static const std::string MEDIA_CLONE_SEQUENCE;
 
     // columns only in tab_old_photos
-    static const std::set<std::string> DEFAULT_TAB_OLD_PHOTOS_COLUMNS EXPORT;
+    static const std::set<std::string> DEFAULT_TAB_OLD_PHOTOS_COLUMNS;
 };
 } // namespace Media
 } // namespace OHOS

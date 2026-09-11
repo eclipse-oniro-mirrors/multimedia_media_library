@@ -23,16 +23,16 @@ namespace OHOS::Media {
 
 class CustomRecordsColumns : BaseColumn {
 public:
-    static const std::string FILE_ID EXPORT;
-    static const std::string BUNDLE_NAME EXPORT;
-    static const std::string SHARE_COUNT EXPORT;
-    static const std::string LCD_JUMP_COUNT EXPORT;
+    static const std::string FILE_ID;
+    static const std::string BUNDLE_NAME;
+    static const std::string SHARE_COUNT;
+    static const std::string LCD_JUMP_COUNT;
 
-    static const std::string TABLE EXPORT;
+    static const std::string TABLE;
 
-    static const std::string CREATE_TABLE EXPORT;
+    static const std::string CREATE_TABLE;
 
-    static const std::string CUSTOM_RECORDS_URI_PREFIX EXPORT;
+    static const std::string CUSTOM_RECORDS_URI_PREFIX;
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_CUSTOM_RECORDS_COLUMN_H
