@@ -48,7 +48,8 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "./include/utils",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
-    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/processor/"
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/processor/",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/cloud_sync_data_convert",
   ]
 
   include_media_cloud_sync_data = [
@@ -63,6 +64,7 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "./src/medi_library_cloud_data_client_test.cpp",
     "./src/media_library_cloud_data_client_inner_api_test.cpp",
     "./src/cloud_media_path_utils_test.cpp",
+    "./src/cloud_album_data_convert_test.cpp",
   ]
 
   deps = [

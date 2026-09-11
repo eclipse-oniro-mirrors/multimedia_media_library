@@ -253,4 +253,168 @@ HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC012_ReqBody_Unmarshalling_ReadInt32_F
     EXPECT_FALSE(ret);
 }
 
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC001_Stringfields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo original;
+    original.cloudId = "album_cloud_123";
+    original.albumName = "Test Album";
+    original.albumType = 1;
+    original.stringfields["custom_field_1"] = "value_1";
+    original.stringfields["custom_field_2"] = "value_2";
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    CloudMdkRecordPhotoAlbumVo restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.stringfields["custom_field_1"], "value_1");
+    EXPECT_EQ(restored.stringfields["custom_field_2"], "value_2");
+}
+
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC002_Int64fields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo original;
+    original.cloudId = "album_cloud_456";
+    original.albumName = "Test Album 2";
+    original.int64fields["int_field_1"] = 1234567890123;
+    original.int64fields["int_field_2"] = -9876543210;
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    CloudMdkRecordPhotoAlbumVo restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.int64fields["int_field_1"], 1234567890123);
+    EXPECT_EQ(restored.int64fields["int_field_2"], -9876543210);
+}
+
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC003_MixedFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo original;
+    original.cloudId = "album_cloud_789";
+    original.albumName = "Test Album 3";
+    original.albumType = 2;
+    original.stringfields["field_str_1"] = "string_value";
+    original.stringfields["field_str_2"] = "";
+    original.int64fields["field_int_1"] = 100;
+    original.int64fields["field_int_2"] = 0;
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    CloudMdkRecordPhotoAlbumVo restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.albumType, original.albumType);
+    EXPECT_EQ(restored.stringfields["field_str_1"], "string_value");
+    EXPECT_EQ(restored.stringfields["field_str_2"], "");
+    EXPECT_EQ(restored.int64fields["field_int_1"], 100);
+    EXPECT_EQ(restored.int64fields["field_int_2"], 0);
+}
+
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC004_EmptyFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo original;
+    original.cloudId = "album_cloud_empty";
+    original.albumName = "Empty Fields Album";
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    CloudMdkRecordPhotoAlbumVo restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.stringfields.size(), 0);
+    EXPECT_EQ(restored.int64fields.size(), 0);
+}
+
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC005_MultipleFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo original;
+    original.cloudId = "album_cloud_multi";
+    original.albumName = "Multiple Fields Album";
+    
+    for (int i = 0; i < 10; i++) {
+        original.stringfields["str_field_" + std::to_string(i)] = "value_" + std::to_string(i);
+        original.int64fields["int_field_" + std::to_string(i)] = i * 1000;
+    }
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    CloudMdkRecordPhotoAlbumVo restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.stringfields.size(), 10);
+    EXPECT_EQ(restored.int64fields.size(), 10);
+    for (int i = 0; i < 10; i++) {
+        EXPECT_EQ(restored.stringfields["str_field_" + std::to_string(i)], "value_" + std::to_string(i));
+        EXPECT_EQ(restored.int64fields["int_field_" + std::to_string(i)], i * 1000);
+    }
+}
+
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC006_ToString_WithFields_Success, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo vo;
+    vo.cloudId = "album_cloud_tostring";
+    vo.albumName = "ToString Test Album";
+    vo.albumType = 1;
+    vo.stringfields["field_1"] = "value_1";
+    vo.int64fields["int_field_1"] = 123;
+
+    std::string result = vo.ToString();
+    
+    EXPECT_TRUE(result.find("\"albumName\":") != std::string::npos);
+    EXPECT_TRUE(result.find("\"cloudId\":") != std::string::npos);
+    EXPECT_TRUE(result.find("\"stringfields\":") != std::string::npos);
+    EXPECT_TRUE(result.find("\"int64fields\":") != std::string::npos);
+}
+
+HWTEST_F(CloudMdkRecordPhotoAlbumVoTest, TC007_RespBody_WithFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    std::vector<CloudMdkRecordPhotoAlbumVo> records;
+    CloudMdkRecordPhotoAlbumVo album;
+    album.cloudId = "album_cloud_resp";
+    album.albumName = "Response Album";
+    album.stringfields["resp_field"] = "resp_value";
+    album.int64fields["resp_int"] = 999;
+    records.push_back(album);
+
+    CloudMdkRecordPhotoAlbumRespBody original(records);
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    CloudMdkRecordPhotoAlbumRespBody restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    auto restoredRecords = restored.GetPhotoAlbumRecords();
+    EXPECT_EQ(restoredRecords.size(), 1);
+    EXPECT_EQ(restoredRecords[0].stringfields["resp_field"], "resp_value");
+    EXPECT_EQ(restoredRecords[0].int64fields["resp_int"], 999);
+}
 }  // namespace OHOS::Media::CloudSync

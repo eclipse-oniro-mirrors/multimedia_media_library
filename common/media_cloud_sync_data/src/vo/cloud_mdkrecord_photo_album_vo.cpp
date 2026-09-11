@@ -20,6 +20,8 @@
 #include <sstream>
 
 #include "media_log.h"
+#include "itypes_util.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool CloudMdkRecordPhotoAlbumVo::Marshalling(MessageParcel &parcel) const
@@ -43,6 +45,8 @@ bool CloudMdkRecordPhotoAlbumVo::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(coverCloudId), false, "coverCloudId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(shareAlbumOwner), false, "shareAlbumOwner");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(stringfields, parcel), false, "stringfields");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(int64fields, parcel), false, "int64fields");
     return true;
 }
 
@@ -67,12 +71,40 @@ bool CloudMdkRecordPhotoAlbumVo::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(coverCloudId), false, "coverCloudId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(shareAlbumOwner), false, "shareAlbumOwner");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(stringfields, parcel), false, "stringfields");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(int64fields, parcel), false, "int64fields");
     return true;
 }
 
 std::string CloudMdkRecordPhotoAlbumVo::ToString() const
 {
-    return "";
+    std::stringstream ss;
+    ss << "{"
+       << "\"albumId\": \"" << albumId << "\","
+       << "\"albumType\": \"" << albumType << "\","
+       << "\"albumName\": \"" << MediaFileUtils::DesensitizeName(albumName) << "\","
+       << "\"lpath\": \"" << MediaFileUtils::DesensitizePath(lpath) << "\","
+       << "\"cloudId\": \"" << cloudId << "\","
+       << "\"albumSubtype\": \"" << albumSubtype << "\","
+       << "\"dateAdded\": \"" << dateAdded << "\","
+       << "\"dateModified\": \"" << dateModified << "\","
+       << "\"bundleName\": \"" << bundleName << "\","
+       << "\"localLanguage\": \"" << localLanguage << "\","
+       << "\"coverUriSource\": \"" << coverUriSource << "\","
+       << "\"coverCloudId\": \"" << coverCloudId << "\","
+       << "\"uniqueId\": \"" << uniqueId << "\","
+       << "\"stringfields\": {";
+    for (const auto &node : stringfields) {
+        ss << "\"" << node.first << "\": \"" << node.second << "\", ";
+    }
+    ss << "},"
+       << "\"int64fields\": {";
+    for (const auto &node : int64fields) {
+        ss << "\"" << node.first << "\": " << node.second << ", ";
+    }
+    ss << "}"
+       << "}";
+    return ss.str();
 }
 
 bool CloudMdkRecordPhotoAlbumReqBody::Unmarshalling(MessageParcel &parcel)

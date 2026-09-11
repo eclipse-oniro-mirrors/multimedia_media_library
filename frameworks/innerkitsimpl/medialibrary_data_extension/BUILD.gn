@@ -655,6 +655,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/orm/po/photo_album_po.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/orm/po/photos_po.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/orm/photos_po_writer.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/orm/photo_album_po_writer.cpp",
   ]
 
   media_assets_manager_source = [

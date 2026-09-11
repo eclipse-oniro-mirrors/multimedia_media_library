@@ -23,6 +23,7 @@
 #include "cloud_mdkrecord_photo_album_vo.h"
 #include "on_create_records_album_vo.h"
 #include "on_mdirty_records_album_vo.h"
+#include "on_fetch_records_album_vo.h"
 #include "cloud_error_detail_vo.h"
 #include "mdk_record.h"
 #include "mdk_record_album_data.h"
@@ -64,6 +65,10 @@ public:
         const std::string &cloudId, const MDKRecordOperResult &result, OnCreateRecordsAlbumReqBodyAlbumData &record);
     int32_t BuildModifyRecord(
         const std::string &cloudId, const MDKRecordOperResult &result, OnMdirtyAlbumRecord &record);
+    
+    void ConvertAttributesHashMap(MDKRecordAlbumData &data, OnFetchRecordsAlbumReqBody::AlbumReqData &albumData);
+    void ConvertInt64FieldsHashMap(MDKRecordAlbumData &data, OnFetchRecordsAlbumReqBody::AlbumReqData &albumData);
+    
     bool IsCloudSpaceFull();
     void SetCloudSpaceFull(bool isCloudSpaceFull);
 

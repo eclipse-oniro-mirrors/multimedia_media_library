@@ -29,6 +29,7 @@
 #include "mdk_database.h"
 #include "on_fetch_records_album_vo.h"
 #include "cloud_media_define.h"
+#include "cloud_album_data_convert.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaAlbumHandler : public ICloudMediaDataHandler {
@@ -71,10 +72,16 @@ public:
     int32_t OnCompleteCheck() override;
 
 private:
+    void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data);
+    void InitShareAlbumOwnerAndType(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data);
+    void InitShareAlbumDetailVo(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data);
+
+private:
     std::string traceId_;
     int32_t userId_;
     int32_t cloudType_;
     bool isCloudSpaceFull_;
+    CloudAlbumDataConvert albumConvertor_;
     SceneType sceneType_ = SceneType::NORMAL;
     std::unordered_map<std::string, std::string> header_;
 };

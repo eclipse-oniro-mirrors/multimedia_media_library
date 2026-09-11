@@ -103,6 +103,9 @@ public:  // getter & setter
     void SetShareType(const int32_t &shareType);
     std::string GetOwnerId() const;
     void GetShareMembers(std::vector<ShareMemberDataVo> &shareMemberDataList);
+    
+    std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
+    std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
 
 private:
     const std::string VALUE_RECORD_TYPE = "album";

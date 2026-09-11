@@ -45,6 +45,9 @@ public:
     int32_t priority;
     bool isInWhiteList;
     std::string shareAlbumOwner;
+    
+    std::map<std::string, std::string> stringfields;
+    std::map<std::string, int64_t> int64fields;
 
 public:
     virtual ~CloudMdkRecordPhotoAlbumVo() = default;

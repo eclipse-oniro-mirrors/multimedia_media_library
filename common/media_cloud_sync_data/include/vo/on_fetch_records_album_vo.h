@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <map>
 
 #include "i_media_parcelable.h"
 #include "cloud_media_define.h"
@@ -49,6 +50,9 @@ public:
         int32_t shareType;  // 0 普通相册， 1 儿童相册， 2 共享相册
         std::string shareAlbumOwner;
         std::optional<ShareAlbumDetailVo> shareAlbumDetailVoOp;
+
+        std::map<std::string, std::string> stringfields;
+        std::map<std::string, int64_t> int64fields;
 
     public:  // functions of Parcelable.
         virtual ~AlbumReqData() = default;
