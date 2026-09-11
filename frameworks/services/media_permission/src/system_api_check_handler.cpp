@@ -55,7 +55,7 @@ int32_t SystemApiCheckHandler::ExecuteCheckPermission(MediaLibraryCommand &cmd, 
         return E_SUCCESS;
     }
     if (!PermissionUtils::IsSystemApp()) {
-        MEDIA_ERR_LOG("not system app, uri:%{public}s obj:%{public}d, type:%{public}d", uri.c_str(), obj, type);
+        MEDIA_ERR_LOG(" not system app, uri:%{public}s obj:%{public}d, type:%{public}d", uri.c_str(), obj, type);
         return -E_CHECK_SYSTEMAPP_FAIL;
     }
     return E_SUCCESS;
