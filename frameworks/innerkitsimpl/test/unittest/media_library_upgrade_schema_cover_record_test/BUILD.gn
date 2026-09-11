@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Huawei Device Co., Ltd.
+# Copyright (C) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -16,60 +16,74 @@ import("//foundation/multimedia/media_library/media_library.gni")
 
 group("unittest") {
   testonly = true
-  deps = [ ":media_file_manager_test" ]
+  deps = [ ":media_library_upgrade_schema_cover_record_test" ]
 }
 
-ohos_unittest("media_file_manager_test") {
+ohos_unittest("media_library_upgrade_schema_cover_record_test") {
   module_out_path = "media_library/media_library_asset"
   include_dirs = [
-    "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/include",
-    "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
-    "${MEDIALIB_SERVICES_PATH}/media_file_manager/include",
-    "${MEDIALIB_SERVICES_PATH}/media_refresh/include",
-    "../medialibrary_unittest_utils/include",
     "./include",
+    "${MEDIALIB_BUSINESS_PATH}/media_rdbstore/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_rdbstore/include/upgrade",
+    "${MEDIALIB_BUSINESS_PATH}/media_rdbstore/include/rdbstore",
+    "${MEDIALIB_BUSINESS_PATH}/media_rdbstore/include/event_handler",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_COMMON_PATH}/include",
+    "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
+    "${MEDIALIB_BUSINESS_PATH}/media_rdbstore/include/rdbstore/strategies",
   ]
 
-  cflags = [ "-fno-access-control" ]
+  cflags = [
+    "-fno-access-control",
+  ]
 
   sources = [
-    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_file_manager/src/file_manager_asset_operations.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_file_manager/src/file_manager_album_operations.cpp",
-    "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "./src/file_manager_asset_operations_test.cpp",
-    "./src/file_manager_asset_move_operations_test.cpp",
-    "./src/file_manager_album_operations_test.cpp",
-    "./src/media_duplicate_checker_utils_test.cpp",
+    "./src/cover_record_upgrade_test.cpp",
   ]
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_UTILS_PATH}:permission_utils",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
-    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
+    "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_connect_callback_stub",
     "ability_runtime:ability_context_native",
+    "ability_runtime:ability_connect_callback_stub",
     "ability_runtime:ability_manager",
     "ability_runtime:abilitykit_native",
-    "ability_runtime:app_context",
-    "bundle_framework:appexecfwk_core",
     "access_token:libaccesstoken_sdk",
-    "access_token:libnativetoken",
+    "access_token:libnativetoken_shared",
+    "access_token:libprivacy_sdk",
     "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
     "data_share:datashare_common",
+    "data_share:datashare_consumer",
     "data_share:datashare_provider",
+    "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
+    "e2fsprogs:libext2_uuid",
+    "ffrt:libffrt",
     "hilog:libhilog",
-    "ipc:ipc_single",
+    "hitrace:hitrace_meter",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "ipc:ipc_core",
     "kv_store:distributeddata_inner",
+    "netmanager_base:net_conn_manager_if",
+    "os_account:os_account_innerkits",
+    "preferences:native_preferences",
     "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
   ]
 
   sanitize = {

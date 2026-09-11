@@ -16,45 +16,36 @@ import("//foundation/multimedia/media_library/media_library.gni")
 
 group("unittest") {
   testonly = true
-  deps = [ ":medialibrary_album_cover_order_test" ]
+  deps = [ ":media_refresh_cover_order_test" ]
 }
 
-ohos_unittest("medialibrary_album_cover_order_test") {
-  module_out_path = "media_library/medialibrary-album"
+ohos_unittest("media_refresh_cover_order_test") {
+  module_out_path = "media_library/media_library_asset"
   include_dirs = [
-    "./include",
-    "../get_self_permissions/include",
-    "../medialibrary_unittest_utils/include",
-    "${MEDIALIB_CLOUD_SYNC_PATH}/include",
-    "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/attribute/nickname",
+    "../medialibrary_unittest_utils/include",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/core",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/base",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/strategies",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
-    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   sources = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_album_operations.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/is_removed/portrait_is_removed_service.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_merge_plan.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_relation_resolver.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_repository.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_service.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dao/medialibrary_analysis_album_operations.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_command.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "./src/medialibrary_album_cover_order_query_test.cpp",
-    "./src/medialibrary_album_cover_order_test.cpp",
+    "./src/cover_order_change_test.cpp",
+  ]
+  accurate_refresh_source = [
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_asset_helper.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/owner_album_info_calculation.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/system_album_info_calculation.cpp",
   ]
 
+  sources += accurate_refresh_source
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
-    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -66,33 +57,34 @@ ohos_unittest("medialibrary_album_cover_order_test") {
     "ability_runtime:app_context",
     "ability_runtime:dataobs_manager",
     "ability_runtime:runtime",
+    "app_file_service:fileuri_native",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "data_share:datashare_common",
+    "data_share:datashare_consumer",
     "data_share:datashare_provider",
+    "e2fsprogs:libext2_uuid",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "image_framework:image_native",
     "ipc:ipc_single",
-    "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
-    "samgr:samgr_proxy",
   ]
 
   defines = []
-  if (defined(global_parts_info) &&
-      defined(global_parts_info.filemanagement_dfs_service)) {
-    defines += [ "CLOUD_SYNC_MANAGER" ]
-    external_deps += [ "dfs_service:cloudsync_kit_inner" ]
-  }
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+  defines += [ "MEDIA_REFRESH_TEST" ]
 
   sanitize = {
     cfi = true
     cfi_cross_dso = true
     debug = false
   }
+
+  cflags = [
+    "-fno-access-control",  # Ignore Private Member Access Control
+  ]
 }
