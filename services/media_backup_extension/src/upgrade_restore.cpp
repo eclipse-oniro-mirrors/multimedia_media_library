@@ -953,7 +953,8 @@ bool UpgradeRestore::ParseResultSet(const std::shared_ptr<NativeRdb::ResultSet> 
     info.isFavorite = GetInt32Val(GALLERY_IS_FAVORITE, resultSet);
     info.specialFileType = GetInt32Val(GALLERY_SPECIAL_FILE_TYPE, resultSet);
     // only local data need livePhoto path
-    if (info.localMediaId != -1 && BackupFileUtils::IsLivePhoto(info) &&
+    // The dual clone defers the live photo split to the move stage
+    if (info.localMediaId != -1 && BackupFileUtils::IsLivePhoto(info) && sceneCode_ != DUAL_FRAME_CLONE_RESTORE_ID &&
         !BackupFileUtils::ConvertToMovingPhoto(info)) {
         ErrorInfo errorInfo(RestoreError::MOVING_PHOTO_CONVERT_FAILED, 1, "",
             BackupLogUtils::FileInfoToString(sceneCode_, info));
@@ -1145,7 +1146,31 @@ bool UpgradeRestore::ConvertPathToRealPath(const std::string &srcPath, const std
     fileInfo.isInternal = false;
     return true;
 }
- 
+
+static bool IsSameAssetForCloudIdMove(const FileInfo &fileInfo, const PhotosDao::PhotosRowData &rowData)
+{
+    if (rowData.displayName != fileInfo.displayName || rowData.fileSize != fileInfo.fileSize) {
+        return false;
+    }
+    if (fileInfo.fileType == MEDIA_TYPE_VIDEO) {
+        return true;
+    }
+    return rowData.orientation == fileInfo.orientation;
+}
+
+static void FillFileInfoFromRowData(FileInfo &fileInfo, const PhotosDao::PhotosRowData &rowData)
+{
+    fileInfo.newEffectMode = rowData.effectMode;
+    fileInfo.newMediaSize = rowData.fileSize;
+
+    if (!rowData.storagePath.empty()) {
+        // Carry the target lake state back so the following move stage can place the original file
+        // into the lake storagePath or dataPath, without overwriting the source fields.
+        fileInfo.dstStoragePath = rowData.storagePath;
+        fileInfo.needStoreAtStoragePath = (rowData.hidden == 0 && rowData.dateTrashed == 0);
+    }
+}
+
 /**
  * @brief Update the FileInfo if it has a copy in system.
  */
@@ -1155,8 +1180,27 @@ bool UpgradeRestore::HasSameFileForDualClone(FileInfo &fileInfo)
     if (!rowData.IsValid()) {
         return false;
     }
-    // Meed extra check to determine whether or not to drop the duplicate file.
-    return ExtraCheckForCloneSameFile(fileInfo, rowData);
+    bool shouldDropDuplicate = ExtraCheckForCloneSameFile(fileInfo, rowData);
+    if (!shouldDropDuplicate) {
+        return false;
+    }
+
+    bool isDstPureCloud = (rowData.position == static_cast<int32_t>(PhotoPositionType::CLOUD));
+    if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID && isDstPureCloud) {
+        FillFileInfoFromRowData(fileInfo, rowData);
+        bool isSameAsset = IsSameAssetForCloudIdMove(fileInfo, rowData);
+        if (isSameAsset && fileInfo.localMediaId != -1) {
+            fileInfo.needMove = true;
+            fileInfo.position = static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
+            fileInfo.needUpdatePositionToLocalAndCloud = true;
+        } else {
+            fileInfo.needMove = false;
+            fileInfo.needMergeThumbnail = isSameAsset;
+            UpdateDuplicateNumber(fileInfo.fileType);
+        }
+        return false;
+    }
+    return true;
 }
 
 void UpgradeRestore::RestoreFromGalleryPortraitAlbum()

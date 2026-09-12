@@ -208,6 +208,11 @@ protected:
     int32_t GetThumbStatusByExistFlag(bool isLcdExist, bool isThmExist);
     void CheckThumbnailFileExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
     void InitMigrateNums();
+    bool IsDualCloneThumbnailExist(const FileInfo &fileInfo, int32_t type, int32_t sceneCode);
+    void UpdateInheritedCloudFileInfo(std::vector<FileInfo> &fileInfos, int32_t sceneCode);
+    void RemoveInheritedDentryFiles(const FileInfo &fileInfo);
+    NativeRdb::ValuesBucket GetInheritedCloudUpdateValue(
+        const FileInfo &fileInfo, bool isLcdExist, bool isThmExist);
 
 protected:
     std::atomic<uint64_t> migrateDatabaseNumber_{0};
