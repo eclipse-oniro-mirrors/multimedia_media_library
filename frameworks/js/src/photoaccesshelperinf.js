@@ -923,7 +923,10 @@ const RecommendationType = {
   LANDSCAPE: 16,
 
   // Indicates that GAUSSIAN_SPLAT_3D photos can be recommended
-  GAUSSIAN_SPLAT_3D: 17
+  GAUSSIAN_SPLAT_3D: 17,
+
+  // Indicates that featured single pet photos can be recommended
+  FEATURED_SINGLE_PET: 18
 };
 
 const PhotoViewMIMETypes = {
