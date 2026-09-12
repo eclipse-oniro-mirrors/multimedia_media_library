@@ -20,6 +20,7 @@
 #define private public
 #define protected public
 #include "backup_file_utils.h"
+#include "upgrade_restore.h"
 #include "media_column.h"
 #include "media_log.h"
 #include "media_file_utils.h"
@@ -81,7 +82,7 @@ void MediaLibraryBackupCloneTest::TearDownTestCase(void)
     MEDIA_INFO_LOG("TearDownTestCase");
     MediaLibraryUnitTestUtils::CleanTestTables(g_rdbStore, testTables, true);
     restoreService->mediaLibraryRdb_ = nullptr;
-    MediaFileUtils::DeleteDir(CONFIG_DB_DIRECTOYR);
+    MediaFileUtils::DeleteDir(CONFIG_DB_DIRECTORY);
     MediaLibraryDataManager::GetInstance()->ClearMediaLibraryMgr();
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
 }
@@ -688,8 +689,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_GetCloneD
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -721,8 +722,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_002,
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -739,8 +740,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_003,
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -1227,8 +1228,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HasSameFi
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(OTHERS_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
     FileInfo fileInfo;
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -1249,8 +1250,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HasSameFi
     fileInfo.displayName = "test.jpg";
     fileInfo.fileSize = 100;
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -1384,8 +1385,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HandleSel
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -1406,8 +1407,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HandleSel
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -1436,8 +1437,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HandleSel
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(OTHERS_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTOYR);
-    std::string path = CONFIG_DB_DIRECTOYR + "/photo_MediaInfo.db";
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
     int errCode = 0;
@@ -7473,6 +7474,324 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_merged_store_false_029, Te
     EXPECT_TRUE(values.GetObject(PhotoColumn::PHOTO_POSITION, dummy));
     EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, dummy));
     EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_STORAGE_PATH, dummy));
+}
+
+static shared_ptr<NativeRdb::RdbStore> CreateDualCloneTestStore()
+{
+    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
+    NativeRdb::RdbStoreConfig config(path);
+    CloneOpenCall helper;
+    int errCode = 0;
+    shared_ptr<NativeRdb::RdbStore> store = NativeRdb::RdbHelper::GetRdbStore(config, 1, helper, errCode);
+    if (store == nullptr) {
+        return nullptr;
+    }
+    store->ExecuteSql(PhotoUpgrade::CREATE_PHOTO_TABLE);
+    return store;
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_CloudInheritWithLocal, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_CloudInheritWithLocal");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag) "
+        "VALUES (1, 'test', 'photo1.jpg', 1000, 'cloud_001', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0)");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "cloud_001";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "photo1.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    EXPECT_TRUE(fileInfo.needMove);
+    EXPECT_EQ(fileInfo.position, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    EXPECT_TRUE(fileInfo.needUpdatePositionToLocalAndCloud);
+    EXPECT_FALSE(fileInfo.needUpdate);
+    EXPECT_FALSE(fileInfo.needMergeThumbnail);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_CloudInheritWithLocal");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_CloudInheritBothPureCloud, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_CloudInheritBothPureCloud");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag) "
+        "VALUES (3, 'test', 'photo3.jpg', 1000, 'cloud_003', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0)");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "cloud_003";
+    fileInfo.localMediaId = -1;
+    fileInfo.displayName = "photo3.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    EXPECT_TRUE(fileInfo.needMergeThumbnail);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_FALSE(fileInfo.needUpdatePositionToLocalAndCloud);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_CloudInheritBothPureCloud");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_LocalTargetDrop, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_LocalTargetDrop");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag) "
+        "VALUES (4, 'test', 'photo4.jpg', 1000, 'cloud_004', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)) + ", 0)");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "cloud_004";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "photo4.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_TRUE(hasSame);
+    EXPECT_FALSE(fileInfo.needMove);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_LocalTargetDrop");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_CloudInheritVideo, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_CloudInheritVideo");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag) "
+        "VALUES (5, 'test', 'video1.mp4', 2000, 'cloud_005', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0)");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "cloud_005";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "video1.mp4";
+    fileInfo.fileSize = 2000;
+    fileInfo.orientation = 90;
+    fileInfo.fileType = MediaType::MEDIA_TYPE_VIDEO;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    // Video asset does not compare orientation in IsSameAssetForCloudIdMove
+    EXPECT_TRUE(fileInfo.needMove);
+    EXPECT_EQ(fileInfo.position, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    EXPECT_TRUE(fileInfo.needUpdatePositionToLocalAndCloud);
+    EXPECT_FALSE(fileInfo.needMergeThumbnail);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_CloudInheritVideo");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_LakeNonPureCloudDuplicate, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_LakeNonPureCloudDuplicate");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag, "
+        "file_source_type, storage_path) VALUES (6, 'outer/path/lake1.jpg', 'lake1.jpg', 1000, 'lake_001', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) + ", 0, " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ", 'inner/lake/path/lake1.jpg')");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "lake_001";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "lake1.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_TRUE(hasSame);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_FALSE(fileInfo.needUpdatePositionToLocalAndCloud);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_LakeNonPureCloudDuplicate");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_LakePositionCloudInherit, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_LakePositionCloudInherit");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    // Lake asset with position==CLOUD must still be routed to the lake branch, not the pure-cloud branch.
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag, "
+        "file_source_type, storage_path) VALUES (8, 'outer/path/lake3.jpg', 'lake3.jpg', 1000, 'lake_003', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0, " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ", 'inner/lake/path/lake3.jpg')");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "lake_003";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "lake3.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    EXPECT_TRUE(fileInfo.needMove);
+    EXPECT_EQ(fileInfo.position, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    EXPECT_TRUE(fileInfo.needUpdatePositionToLocalAndCloud);
+    EXPECT_EQ(fileInfo.dstStoragePath, "inner/lake/path/lake3.jpg");
+    EXPECT_TRUE(fileInfo.needStoreAtStoragePath);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_LakePositionCloudInherit");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_LakePositionCloudStoragePathEmpty, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_LakePositionCloudStoragePathEmpty");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    // Lake file without a lake storage path falls back to the pure-cloud branch: no lake fields backfilled.
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag, "
+        "file_source_type, storage_path) VALUES (8, 'outer/path/lake_empty.jpg', 'lake_empty.jpg', 1000, "
+        "'lake_003', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0, " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ", '')");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "lake_003";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "lake_empty.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    EXPECT_TRUE(fileInfo.needMove);
+    EXPECT_EQ(fileInfo.position, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    EXPECT_TRUE(fileInfo.needUpdatePositionToLocalAndCloud);
+    // Without a lake storage path the target is treated as a pure-cloud asset, so no lake fields carried.
+    EXPECT_TRUE(fileInfo.dstStoragePath.empty());
+    EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_LakePositionCloudStoragePathEmpty");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_LakePositionCloudHidden, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_LakePositionCloudHidden");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag, "
+        "file_source_type, storage_path, hidden, date_trashed) VALUES (8, 'outer/path/lake_hidden.jpg', "
+        "'lake_hidden.jpg', 1000, 'lake_003', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0, " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ", 'inner/lake/path/lake_hidden.jpg', 1, 0)");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "lake_003";
+    fileInfo.localMediaId = 100;
+    fileInfo.displayName = "lake_hidden.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    EXPECT_TRUE(fileInfo.needMove);
+    EXPECT_EQ(fileInfo.position, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    EXPECT_TRUE(fileInfo.needUpdatePositionToLocalAndCloud);
+    EXPECT_EQ(fileInfo.dstStoragePath, "inner/lake/path/lake_hidden.jpg");
+    EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_LakePositionCloudHidden");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_LakePureCloudDuplicateCount, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_LakePureCloudDuplicateCount");
+    auto store = CreateDualCloneTestStore();
+    ASSERT_NE(store, nullptr);
+    // Lake pure-cloud target without a local copy on source: inherit thumbnail and count the duplicate.
+    store->ExecuteSql("INSERT INTO Photos (file_id, data, display_name, size, cloud_id, position, clean_flag, "
+        "file_source_type, storage_path) VALUES (9, 'not_exist_path.jpg', 'lake_pure.jpg', 1000, 'lake_009', " +
+        to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)) + ", 0, " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ", 'inner/lake/path/lake_pure.jpg')");
+    FileInfo fileInfo;
+    fileInfo.cloudUniqueId = "lake_009";
+    fileInfo.localMediaId = -1;
+    fileInfo.displayName = "lake_pure.jpg";
+    fileInfo.fileSize = 1000;
+    fileInfo.orientation = 0;
+    fileInfo.fileType = MediaType::MEDIA_TYPE_IMAGE;
+
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    upgradeRestore->photosRestore_.OnStart(store, store);
+    bool hasSame = upgradeRestore->HasSameFileForDualClone(fileInfo);
+    EXPECT_FALSE(hasSame);
+    EXPECT_TRUE(fileInfo.needMergeThumbnail);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_FALSE(fileInfo.needUpdatePositionToLocalAndCloud);
+    EXPECT_EQ(fileInfo.dstStoragePath, "inner/lake/path/lake_pure.jpg");
+    EXPECT_TRUE(fileInfo.needStoreAtStoragePath);
+    EXPECT_EQ(upgradeRestore->migratePhotoDuplicateNumber_, 1);
+    EXPECT_EQ(upgradeRestore->migrateLakePhotoDuplicateNumber_, 0);
+
+    store->ExecuteSql("DROP TABLE IF EXISTS Photos");
+    MEDIA_INFO_LOG("End UpgradeRestore_LakePureCloudDuplicateCount");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_RestoreLcdAndThumbFromCloud_SourceThumbMissing, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_RestoreLcdAndThumbFromCloud_SourceThumbMissing");
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    FileInfo fileInfo;
+    bool retLcd = upgradeRestore->RestoreLcdAndThumbFromCloud(fileInfo, 1, DUAL_FRAME_CLONE_RESTORE_ID);
+    EXPECT_FALSE(retLcd);
+    bool retThm = upgradeRestore->RestoreLcdAndThumbFromCloud(fileInfo, 0, DUAL_FRAME_CLONE_RESTORE_ID);
+    EXPECT_FALSE(retThm);
+    fileInfo.localThumbPath = TEST_DIR_PATH;
+    fileInfo.localBigThumbPath = TEST_DIR_PATH;
+    retLcd = upgradeRestore->RestoreLcdAndThumbFromCloud(fileInfo, 1, DUAL_FRAME_CLONE_RESTORE_ID);
+    EXPECT_FALSE(retLcd);
+    MEDIA_INFO_LOG("End UpgradeRestore_RestoreLcdAndThumbFromCloud_SourceThumbMissing");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_MoveMigrateCloudFile_FailNotInterrupt, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start UpgradeRestore_MoveMigrateCloudFile_FailNotInterrupt");
+    auto upgradeRestore = std::make_unique<UpgradeRestore>("", "", DUAL_FRAME_CLONE_RESTORE_ID, "");
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.needMergeThumbnail = true;
+    fileInfo.cloudPath = TEST_DIR_PATH;
+    fileInfo.cloudUniqueId = "cloud_006";
+    fileInfo.localThumbPath = TEST_DIR_PATH;
+    fileInfo.localBigThumbPath = TEST_DIR_PATH;
+    std::vector<FileInfo> fileInfos = {fileInfo};
+    int32_t fileMoveCount = 0;
+    int32_t videoFileMoveCount = 0;
+    int32_t sceneCode = DUAL_FRAME_CLONE_RESTORE_ID;
+    upgradeRestore->MoveMigrateCloudFile(fileInfos, fileMoveCount, videoFileMoveCount, sceneCode);
+    EXPECT_EQ(upgradeRestore->migrateFileNumber_, 0);
+    MEDIA_INFO_LOG("End UpgradeRestore_MoveMigrateCloudFile_FailNotInterrupt");
 }
 } // namespace Media
 } // namespace OHOS
