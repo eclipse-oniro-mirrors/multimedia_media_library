@@ -24,7 +24,9 @@ public:
     CheckDfxCollector(CheckScene scene);
 
     void OnCheckStart();
+    void OnCheckStart(int64_t timeInMs, ConsistencyCheck::DfxStats dfxStats);
     void OnCheckEnd();
+    void OnCheckEnd(int64_t timeInMs);
 
     void OnPhotoAdd(int32_t delta);
     void OnPhotoUpdate(int32_t delta);
@@ -35,6 +37,7 @@ public:
 
     void Report();
     void Reset();
+    ConsistencyCheck::DfxStats GetDfxStats();
     std::string ToString() const;
 
 private:

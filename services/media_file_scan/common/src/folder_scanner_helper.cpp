@@ -25,7 +25,8 @@
 
 #include "album_scan_info_column.h"
 #include "check_scene_helper.h"
-#include "file_scan_utils.h"
+#include "file_const.h"
+#include "media_log_utils.h"
 #include "media_lake_album.h"
 #include "medialibrary_errno.h"
 #include "media_log.h"
@@ -131,7 +132,7 @@ void FolderScannerHelper::InitFolderInfo()
     const int MICROSECOND_PER_SECOND = 1000000;
     if (stat(storagePath_.c_str(), &dirStat) != 0) {
         MEDIA_ERR_LOG("get folder stat error, storagePath: %{public}s",
-            FileScanUtils::GarbleFilePath(storagePath_).c_str());
+            MediaLogUtils::GarbleFilePath(storagePath_).c_str());
         return;
     }
     struct timespec ctim = dirStat.st_ctim;
@@ -153,7 +154,7 @@ bool FolderScannerHelper::IsLeafFolderByTraversal()
 {
     DIR* dir = opendir(storagePath_.c_str());
     CHECK_AND_RETURN_RET_LOG(dir != nullptr, false, "Failed to open directory, storagePath: %{public}s",
-        FileScanUtils::GarbleFilePath(storagePath_).c_str());
+        MediaLogUtils::GarbleFilePath(storagePath_).c_str());
 
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
@@ -163,8 +164,8 @@ bool FolderScannerHelper::IsLeafFolderByTraversal()
         std::string currentPath = storagePath_ + "/" + entry->d_name;
         if (entry->d_type == DT_DIR) {
             MEDIA_WARN_LOG("Path %{public}s is not a leaf folder, has sub-folder %{public}s",
-                FileScanUtils::GarbleFilePath(storagePath_).c_str(),
-                FileScanUtils::GarbleFile(entry->d_name).c_str());
+                MediaLogUtils::GarbleFilePath(storagePath_).c_str(),
+                MediaLogUtils::GarbleFile(entry->d_name).c_str());
             closedir(dir);
             return false;
         }
@@ -173,14 +174,14 @@ bool FolderScannerHelper::IsLeafFolderByTraversal()
             int32_t ret = lstat(currentPath.c_str(), &statInfo);
             if (ret != 0) {
                 MEDIA_ERR_LOG("Path %{public}s lstat failed, ret: %{public}d",
-                    FileScanUtils::GarbleFilePath(storagePath_).c_str(), ret);
+                    MediaLogUtils::GarbleFilePath(storagePath_).c_str(), ret);
                 closedir(dir);
                 return false;
             }
             if (S_ISDIR(statInfo.st_mode)) {
                 MEDIA_WARN_LOG("Path %{public}s is not a leaf folder, has sub-folder %{public}s",
-                    FileScanUtils::GarbleFilePath(storagePath_).c_str(),
-                    FileScanUtils::GarbleFile(entry->d_name).c_str());
+                    MediaLogUtils::GarbleFilePath(storagePath_).c_str(),
+                    MediaLogUtils::GarbleFile(entry->d_name).c_str());
                 closedir(dir);
                 return false;
             }
@@ -195,7 +196,7 @@ std::string FolderScannerHelper::ToString()
 {
     stringstream ss;
     ss << "album_id: " << albumId_ << ", "
-        << "storagePath: " << FileScanUtils::GarbleFilePath(storagePath_) << ", "
+        << "storagePath: " << MediaLogUtils::GarbleFilePath(storagePath_) << ", "
         << "databaseDateModified: " << databaseDateModified_ << ", "
         << "folderDateModified: " << folderDateModified_;
     return ss.str();

@@ -39,7 +39,7 @@ const std::regex LAKE_PATTERN_INVISIBLE(
     R"((Movies|Music|Pictures)/\.thumbnails)$)",
     std::regex_constants::icase
 );
-const std::regex LAKE_PATTERN_TENCENT_CACHE(
+const std::regex LAKE_PATTERN_APP_CACHE(
     R"(.*Tencent/MicroMsg/[a-zA-Z0-9_]{32})",
     std::regex_constants::icase
 );
@@ -64,12 +64,12 @@ const ScanRuleConfig LAKE_SCAN_RULE_CONFIG = {
     .relativePathPattern = LAKE_PATTERN_RELATIVE_PATH,
     .visiblePattern = LAKE_PATTERN_VISIBLE,
     .invisiblePattern = LAKE_PATTERN_INVISIBLE,
-    .tencentCachePattern = LAKE_PATTERN_TENCENT_CACHE,
+    .appCachePattern = LAKE_PATTERN_APP_CACHE,
     .defaultFolderNames = LAKE_DEFAULT_FOLDER_NAMES,
     .skipHiddenFile = true,
     .skipHiddenDirectory = true,
     .skipBlackList = true,
-    .skipTencentCache = true,
+    .skipAppCache = true,
     .createNomediaForInvisibleDirectory = true,
     .cleanNomediaInDefaultDirs = true,
     .skipDirectoryWithNomedia = true

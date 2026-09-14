@@ -26,6 +26,7 @@ ohos_shared_library("media_library_common") {
   ]
 
   sources = [
+    "${MEDIALIB_COMMON_PATH}/utils/src/media_log_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_map_const_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_string_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_uri_utils.cpp",

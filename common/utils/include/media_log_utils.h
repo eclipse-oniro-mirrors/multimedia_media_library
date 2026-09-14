@@ -12,23 +12,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OHOS_MEDIA_LAKE_CHECK_SCENARIO_H
-#define OHOS_MEDIA_LAKE_CHECK_SCENARIO_H
 
-#include "i_check_scenario.h"
+#ifndef COMMON_UTILS_MEDIA_LOG_UTILS_H_
+#define COMMON_UTILS_MEDIA_LOG_UTILS_H_
+
+#include <cstddef>
+#include <string>
 
 namespace OHOS::Media {
-class LakeCheckScenario final : public ICheckScenario {
+#define EXPORT __attribute__ ((visibility ("default")))
+
+class MediaLogUtils {
 public:
-    bool IsConditionSatisfied(const ConsistencyCheck::DeviceStatus &deviceStatus) override;
-    void Execute(std::atomic<bool> &isInterrupted) override;
+    EXPORT static std::string GarbleFilePath(const std::string &filePath);
+    EXPORT static std::string GarbleFile(const std::string &file);
 
 private:
-    int32_t RunForward(ScenarioContext &context);
-    int32_t RunBackward(ScenarioContext &context);
-
-    void SaveFinishedStatus();
+    static bool HasExtension(const std::string &file);
+    static std::string GarbleFileWithExtension(const std::string &file);
+    static std::string GarbleFileWithoutExtension(const std::string &file);
+    static size_t GetGarbleSize(const std::string &file);
 };
 } // namespace OHOS::Media
 
-#endif // OHOS_MEDIA_LAKE_CHECK_SCENARIO_H
+#endif // COMMON_UTILS_MEDIA_LOG_UTILS_H_

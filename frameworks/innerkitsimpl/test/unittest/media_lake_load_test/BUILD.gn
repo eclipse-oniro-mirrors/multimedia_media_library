@@ -52,6 +52,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/lake_file_handler.cpp",
   ]
   media_file_scan_common_source = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_audit_reporter.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_dfx_collector.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_scene_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_status_helper.cpp",
@@ -65,6 +66,8 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/global_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/album_dao.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/photo_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/lake_scan_rule_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/dir_scan_anomaly_helper.cpp",
@@ -84,6 +87,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scan_policy.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/media_fileinterwork_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/opt_dao.cpp",
   ]
 
   sources = [

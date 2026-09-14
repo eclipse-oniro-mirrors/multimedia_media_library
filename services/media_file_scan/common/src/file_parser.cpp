@@ -33,6 +33,7 @@
 #include "media_string_utils.h"
 #include "medialibrary_photo_operations.h"
 #include "moving_photo_file_utils.h"
+#include "photo_dao.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -40,30 +41,6 @@ std::mutex g_fileManagerScanFlagMutex;
 std::unordered_map<int32_t, bool> g_fileManagerScanFlag;
 const std::string PATH_HIDDEN_PREFIX = ".";
 // LCOV_EXCL_START
-bool FileParser::PhotosRowData::IsExist()
-{
-    return fileId > 0;
-}
-
-std::string FileParser::PhotosRowData::ToString() const
-{
-    std::stringstream ss;
-    ss << "PhotosRowData["
-        << "fileId: " << fileId << ", "
-        << "mediaType: " << mediaType << ", "
-        << "fileSourceType: " << fileSourceType << ", "
-        << "size: " << size << ", "
-        << "dateModified: " << dateModified << ", "
-        << "dateTaken: " << dateTaken << ", "
-        << "inode: " << inode << ", "
-        << "mimeType: " << mimeType << ", "
-        << "storagePath: " << FileScanUtils::GarbleFilePath(storagePath) << ", "
-        << "ownerAlbumId: " << ownerAlbumId << ", "
-        << "ownerPackage: " << FileScanUtils::GarbleFile(ownerPackage) << ", "
-        << "packageName: " << FileScanUtils::GarbleFile(packageName) << ", "
-        << "data: " << FileScanUtils::GarbleFilePath(data) << "]";
-    return ss.str();
-}
 
 bool FileParser::MetaStatus::IsChanged() const
 {
@@ -347,64 +324,15 @@ FileParser::PhotosRowData FileParser::FindSameFileByDefault()
 
 FileParser::PhotosRowData FileParser::FindSameFileByStoragePath(const std::string &storagePath)
 {
-    const int32_t NOT_TRASHED = 0;
-    const int32_t NOT_HIDDEN = 0;
-    FileParser::PhotosRowData rowData;
-    CHECK_AND_RETURN_RET_LOG(!storagePath.empty(), rowData, "storagePath is empty");
-    std::vector<NativeRdb::ValueObject> params = { storagePath, sourceType_, FileSourceType::MEDIA,
-        static_cast<int32_t>(PhotoPositionType::LOCAL), static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD),
-        NOT_TRASHED, NOT_HIDDEN };
-    return FindSameFileInDatabase(SQL_PHOTOS_FIND_SAME_FILE_BY_STORAGE_PATH, params);
-}
-
-FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &querySql,
-    const std::vector<NativeRdb::ValueObject> &params)
-{
-    FileParser::PhotosRowData rowData;
-    CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, rowData, "mediaLibraryRdb_ is null.");
-    auto resultSet = mediaLibraryRdb_->QuerySql(querySql, params);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, rowData);
-    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        resultSet->Close();
-        return rowData;
-    }
-    rowData.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-    rowData.mediaType = GetInt32Val(MediaColumn::MEDIA_TYPE, resultSet);
-    rowData.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-    rowData.syncStatus = GetInt32Val(PhotoColumn::PHOTO_SYNC_STATUS, resultSet);
-    rowData.size = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
-    rowData.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
-    rowData.editTime = GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet);
-    rowData.inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
-    rowData.mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
-    rowData.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
-    rowData.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
-    rowData.ownerPackage = GetStringVal(PhotoColumn::MEDIA_OWNER_PACKAGE, resultSet);
-    rowData.packageName = GetStringVal(PhotoColumn::MEDIA_PACKAGE_NAME, resultSet);
-    rowData.dateTaken = GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet);
-    rowData.data = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
-    rowData.subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-    rowData.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
-    rowData.dateYear = GetInt32Val(PhotoColumn::PHOTO_DATE_YEAR, resultSet);
-    rowData.dateMonth = GetInt32Val(PhotoColumn::PHOTO_DATE_MONTH, resultSet);
-    rowData.detailTime = GetStringVal(PhotoColumn::PHOTO_DETAIL_TIME, resultSet);
-    rowData.dateDay = GetInt32Val(PhotoColumn::PHOTO_DATE_DAY, resultSet);
-    resultSet->Close();
-    MEDIA_INFO_LOG("FileParser: rowData: %{public}s", rowData.ToString().c_str());
-    return rowData;
+    return PhotoDao().FindSameFileByStoragePath(storagePath, sourceType_);
 }
 
 int32_t FileParser::IsExistSameFileForCloneRestore(int32_t ownerAlbumId)
 {
-    CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "mediaLibraryRdb_ is null.");
     int pictureFlag = fileInfo_.fileType == MediaType::MEDIA_TYPE_VIDEO ? 0 : 1;
     std::vector<NativeRdb::ValueObject> params = { ownerAlbumId, fileInfo_.displayName,
         fileInfo_.fileSize, pictureFlag, fileInfo_.orientation};
-    auto resultSet = mediaLibraryRdb_->QuerySql(SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE, params);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
-        E_ERR, "Query failed, not exist same file");
-    resultSet->Close();
-    return E_OK;
+    return PhotoDao().IsExistSameFileForCloneRestore(params);
 }
 
 // 校验当前资产的通知是否合法
@@ -519,27 +447,20 @@ NativeRdb::ValuesBucket FileParser::GetAssetUpdateValues()
 
 int32_t FileParser::SetAssetSubtypeValues(NativeRdb::ValuesBucket &values)
 {
-    int32_t fileId = fileInfo_.fileId;
-    vector<string> columns = {PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE};
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore when query owner_album_id");
-    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "failed to acquire result from visitor query.");
-    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
-        MEDIA_INFO_LOG("set asset subtype values, subtype:%{public}d, effectMode:%{public}d", subtype, effectMode);
-        if (fileInfo_.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
-            effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
-            values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
-            values.Put(MediaColumn::MEDIA_DURATION, 0);
-        } else {
-            values.Put(PhotoColumn::PHOTO_SUBTYPE, fileInfo_.subtype);
-        }
+    int32_t subtype = 0;
+    int32_t effectMode = 0;
+    bool found = false;
+    int32_t ret = PhotoDao().QuerySubtypeAndEffectMode(fileInfo_.fileId, subtype, effectMode, found);
+    CHECK_AND_RETURN_RET(ret == E_OK, E_ERR);
+    CHECK_AND_RETURN_RET(found, E_OK);
+    MEDIA_INFO_LOG("set asset subtype values, subtype:%{public}d, effectMode:%{public}d", subtype, effectMode);
+    if (fileInfo_.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
+        effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
+        values.Put(MediaColumn::MEDIA_DURATION, 0);
+    } else {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, fileInfo_.subtype);
     }
-    resultSet->Close();
     return E_OK;
 }
 
@@ -551,21 +472,10 @@ bool FileParser::IsCinematicVideoV2Asset()
     if (fileInfo_.fileType != MediaType::MEDIA_TYPE_VIDEO) {
         return false;
     }
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "Failed to get rdbStore when query subtype");
-    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(MediaColumn::MEDIA_ID, fileInfo_.fileId);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_SUBTYPE };
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Failed to query subtype of file: %{public}d",
-        fileInfo_.fileId);
-    bool isCinematicVideoV2 = false;
-    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        isCinematicVideoV2 = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet) ==
-            static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
-    }
-    resultSet->Close();
-    return isCinematicVideoV2;
+    int32_t subtype = 0;
+    bool found = false;
+    int32_t ret = PhotoDao().QuerySubtype(fileInfo_.fileId, subtype, found);
+    return ret == E_OK && found && subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
 }
 
 NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
@@ -726,39 +636,6 @@ std::string FileParser::ToString()
     return ss.str();
 }
 
-int32_t FileParser::QueryThumbnailInfos(const std::vector<std::string> &inodes,
-    std::vector<ThumbnailInfo> &infos, std::vector<int32_t> &thumbnailVisibleList)
-{
-    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(PhotoColumn::PHOTO_FILE_INODE, inodes);
-    for (const auto &inode : inodes) {
-        MEDIA_INFO_LOG("generate thumbnail inode: %{public}s", inode.c_str());
-    }
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null.");
-
-    auto resultSet = rdbStore->Query(predicates, {PhotoColumn::PHOTO_FILE_INODE, MediaColumn::MEDIA_ID,
-        MediaColumn::MEDIA_DATE_MODIFIED, MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_DATE_TAKEN,
-        PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_THUMBNAIL_VISIBLE});
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr!");
-
-    while (resultSet->GoToNextRow() == E_OK) {
-        ThumbnailInfo info;
-        string inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
-        info.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-        info.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-        info.path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
-        info.dateTaken = GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet);
-        info.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
-        int32_t thumbnailVisible = GetInt32Val(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, resultSet);
-
-        infos.push_back(info);
-        thumbnailVisibleList.push_back(thumbnailVisible);
-    }
-    resultSet->Close();
-    return E_OK;
-}
-
 std::vector<std::string> FileParser::GenerateThumbnail(ScanMode scanMode, const std::vector<std::string> &inodes)
 {
     MEDIA_INFO_LOG("generate thumbnail");
@@ -771,7 +648,7 @@ std::vector<std::string> FileParser::GenerateThumbnail(ScanMode scanMode, const 
     // 查询数据库
     std::vector<ThumbnailInfo> infos;
     std::vector<int32_t> thumbnailVisibleList;
-    int32_t ret = QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
+    int32_t ret = PhotoDao().QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, uris, "QueryThumbnailInfos failed");
 
     // 生成缩略图（LakeFileScanner 不需要功耗管控）
@@ -789,28 +666,16 @@ std::vector<std::string> FileParser::GenerateThumbnail(ScanMode scanMode, const 
 std::vector<std::string> FileParser::GetFileUris(const std::vector<std::string> &inodes)
 {
     // 查找对应的fileId
-    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(PhotoColumn::PHOTO_FILE_INODE, inodes);
-    for (auto inode : inodes) {
-        MEDIA_INFO_LOG("generate thumbnail inode: %{public}s", inode.c_str());
-    }
+    std::vector<ThumbnailInfo> infos;
+    std::vector<int32_t> thumbnailVisibleList;
+    int32_t ret = PhotoDao().QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
     std::vector<std::string> uris;
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, uris, "rdbStore is null.");
-    auto resultSet = rdbStore->Query(predicates, {PhotoColumn::PHOTO_FILE_INODE, MediaColumn::MEDIA_ID,
-        MediaColumn::MEDIA_NAME, PhotoColumn::MEDIA_FILE_PATH});
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, uris, "resultSet is nullptr!");
-
-    while (resultSet->GoToNextRow() == E_OK) {
-        int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-        std::string inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
-        std::string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-        std::string path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, uris, "QueryThumbnailInfos failed");
+    for (const auto &info : infos) {
         std::string uri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
-            to_string(fileId), MediaFileUtils::GetExtraUri(displayName, path));
+            to_string(info.fileId), MediaFileUtils::GetExtraUri(info.displayName, info.path));
         uris.push_back(uri);
     }
-    resultSet->Close();
     return uris;
 }
 

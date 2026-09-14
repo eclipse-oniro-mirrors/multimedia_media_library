@@ -31,10 +31,11 @@ public:
     int64_t GetInt64ValueByKey(const std::string &key, int64_t defaultValue = 0);
     void SetInt64ValueByKey(const std::string &key, int64_t value);
 
-    int64_t GetLastCheckTimeInMs(int64_t defaultValue = 0);
-    ConsistencyCheck::ScenarioProgress GetScenarioProgress();
-    void SetValuesByCurrentProgress(const ConsistencyCheck::ScenarioProgress &progress);
-    void SetValuesByFinishedProgress(const ConsistencyCheck::ScenarioProgress &progress);
+    int64_t GetLastEndTimeInMs(int64_t defaultValue = 0);
+    void LoadStatus(ConsistencyCheck::ScenarioProgress &progress, ConsistencyCheck::DfxStats &dfxStats);
+    void SaveCurrentStatus(const ConsistencyCheck::ScenarioProgress &progress,
+        const ConsistencyCheck::DfxStats &dfxStats);
+    void SaveFinishedStatus(int64_t timeInMs);
 
 private:
     std::shared_ptr<NativePreferences::Preferences> GetPreferences();

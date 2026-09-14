@@ -41,7 +41,6 @@ const int32_t MIN_TIME_OUT = 4;
 constexpr const char* TASK_PROGRESS_XML = "/data/storage/el2/base/preferences/task_progress.xml";
 constexpr const char* FILE_PROCESS_STATUS_KEY = "file_process_status";
 constexpr const int32_t TASK_STATUS_PHASE_ONE = 1;
-const std::string GLOBAL_SCAN_ROOT_DIR = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 const std::unordered_map<std::string, uint8_t> BUNDLE_NAME_BIT_MAP = {
     { "com.ohos.medialibrary.medialibrarydata", 0 },
     { "com.huawei.hmos.filemanager", 1 },

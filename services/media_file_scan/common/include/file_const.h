@@ -24,13 +24,9 @@ namespace Media {
 static const int64_t FILE_SIZE_1K = 1024;
 const int STRONG_ASSOCIATION_ENABLE = 1;
 const int CLOUD_ENHANCEMENT_PHOTO = 120;
-const int DISPLAY_NAME_PREFIX_LENGTH = 20;
-constexpr int ASSET_MAX_COMPLEMENT_ID = 999;
 const std::string DEFAULT_IMAGE_NAME = "IMG_";
 const std::string DEFAULT_VIDEO_NAME = "VID_";
 const std::string DEFAULT_AUDIO_NAME = "AUD_";
-const std::string RESTORE_CLOUD_DIR = "/storage/cloud/files/Photo";
-const std::string TITLE_KEY_WORDS_OF_BURST = "_BURST";
 const std::string LAKE_SCAN_DIR = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 const std::string FILE_MANAGER_SCAN_DIR = "/storage/media/local/files/Docs";
 const std::string FILE_MANAGER_LPATH_PREFIX = "/FromDocs";

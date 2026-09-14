@@ -19,7 +19,7 @@
 
 #include <sstream>
 
-#include "file_scan_utils.h"
+#include "media_log_utils.h"
 #include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_type_const.h"
@@ -89,7 +89,7 @@ std::string OfflineCleanupPhotoRecord::ToString() const
     std::stringstream ss;
     ss << "Photo["
         << fileId << ", "
-        << FileScanUtils::GarbleFilePath(storagePath) << "]";
+        << MediaLogUtils::GarbleFilePath(storagePath) << "]";
     return ss.str();
 }
 
@@ -99,7 +99,7 @@ std::string OfflineCleanupAlbumRecord::ToString() const
     ss << "Album["
         << albumId << ", "
         << albumSubtype << ", "
-        << "lpath: " << FileScanUtils::GarbleFilePath(lpath) << "]";
+        << "lpath: " << MediaLogUtils::GarbleFilePath(lpath) << "]";
     return ss.str();
 }
 

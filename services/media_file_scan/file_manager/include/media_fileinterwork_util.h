@@ -31,6 +31,7 @@ public:
     EXPORT static int32_t ReportFileManagerFirstLoad();
     EXPORT static int32_t AddImageAndVideoCount(int32_t imageCount, int32_t videoCount);
     EXPORT static int32_t AddAlbumCount(int32_t albumCount);
+    EXPORT static bool IsDownloadTrashDir(const std::string &path);
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_INTERWORKING_UTIL_H

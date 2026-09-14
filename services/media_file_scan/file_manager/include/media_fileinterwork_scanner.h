@@ -59,8 +59,7 @@ private:
     int32_t UpdateUniqueNumber(UniqueNumber &uniqueNumber);
     vector<RestoreFileInfo> SetDestinationPath(vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber);
     vector<RestoreFileInfo> GetFileInfos(const std::vector<std::string> &filePathVector, UniqueNumber &uniqueNumber);
-    std::vector<string> GetPhotosNotExists(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-        const std::vector<std::string> &files);
+    std::vector<string> GetPhotosNotExists(const std::vector<std::string> &files);
     int32_t SetRestoreFileAlbumId(std::vector<RestoreFileInfo> &destRestoreFiles);
     std::shared_ptr<NativeRdb::ResultSet> GetOptFile(const std::shared_ptr<MediaLibraryRdbStore> rdbStore);
     int32_t UpdateOptStatus(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, std::vector<std::string> fileBatch);

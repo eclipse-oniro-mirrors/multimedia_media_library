@@ -45,6 +45,8 @@
 #include "moving_photo_file_utils.h"
 #include "media_fileinterwork_util.h"
 #include "consistency_check_manager.h"
+#include "opt_dao.h"
+#include "photo_dao.h"
 
 using namespace std;
 namespace OHOS::Media {
@@ -98,7 +100,7 @@ int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::v
     }
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (entry->d_name[0] == '.') {
             continue;
         }
         std::string fullPath = path + "/" + entry->d_name;
@@ -108,7 +110,7 @@ int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::v
             continue;
         }
         if (S_ISDIR(statInfo.st_mode)) {
-            if (ShouldSkipDirectory(fullPath)) {
+            if (ShouldSkipDirectory(fullPath) || MediaFileInterworkUtil::IsDownloadTrashDir(fullPath)) {
                 MEDIA_INFO_LOG("invalid dir %{public}s", DfxUtils::GetSafePath(fullPath).c_str());
                 continue;
             }
@@ -119,7 +121,7 @@ int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::v
             }
         } else if (S_ISREG(statInfo.st_mode)) {
             if (IsImageOrVideoFile(fullPath) && statInfo.st_size >= MIN_FILE_SIZE &&
-                IsValidFileName(entry->d_name)) {
+                IsValidFileName(entry->d_name) && !MediaFileInterworkUtil::IsDownloadTrashDir(fullPath)) {
                 files.push_back(fullPath);
             } else {
                 MEDIA_INFO_LOG("invalid file %{public}s", DfxUtils::GetSafePath(fullPath).c_str());
@@ -134,7 +136,8 @@ int32_t MediaFileInterworkScanner::ExecutePhaseOne()
 {
     MEDIA_INFO_LOG("ExecutePhaseOne started");
     std::vector<std::string> allFiles;
-    int32_t ret = ScanDirectory(MediaFileInterworkColumn::FILE_ROOT_DIR, allFiles);
+    int32_t ret = ScanDirectory(
+        MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::DOWNLOAD_DIR, allFiles);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "ScanDirectory failed, ret = %{public}d", ret);
     MEDIA_INFO_LOG("Found %{public}zu files to process", allFiles.size());
     std::vector<std::string> batch;
@@ -201,32 +204,24 @@ int32_t MediaFileInterworkScanner::InsertFileBatch(const std::vector<std::string
     CHECK_AND_RETURN_RET_LOG(!files.empty(), E_OK, "files is empty");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
+    OptDao optDao(rdbStore);
     int32_t successCount = 0;
     int32_t skipCount = 0;
     int32_t failCount = 0;
     for (const auto& filePath : files) {
-        NativeRdb::RdbPredicates predicates(MediaFileInterworkColumn::OPT_TABLE_NAME);
-        predicates.EqualTo(MediaFileInterworkColumn::AFTER_PATH_COLUMN, filePath);
-        predicates.EqualTo(MediaFileInterworkColumn::OPT_STATUS_COLUMN, 0);
-        auto resultSet = rdbStore->Query(predicates, {});
-        if (resultSet == nullptr) {
+        bool exists = false;
+        int32_t queryRet = optDao.QueryOptExisting(filePath, exists);
+        if (queryRet != E_OK) {
             MEDIA_ERR_LOG("Query check failed for: %{public}s", DfxUtils::GetSafePath(filePath).c_str());
             skipCount++;
             continue;
         }
-        if (resultSet->GoToNextRow() == E_OK) {
+        if (exists) {
             MEDIA_WARN_LOG("already exist %{public}s", DfxUtils::GetSafePath(filePath).c_str());
             skipCount++;
-            resultSet->Close();
             continue;
         }
-        resultSet->Close();
-        string insertSql = "INSERT INTO " + std::string(MediaFileInterworkColumn::OPT_TABLE_NAME) +
-            " (" + std::string(MediaFileInterworkColumn::AFTER_PATH_COLUMN) + ", " +
-            std::string(MediaFileInterworkColumn::OPT_COLUMN) + ", " +
-            std::string(MediaFileInterworkColumn::OPT_STATUS_COLUMN) + ") VALUES (?, 0, 0)";
-        int64_t rowId = 0;
-        int32_t ret = rdbStore->ExecuteSql(insertSql, {filePath});
+        int32_t ret = optDao.InsertOpt(filePath);
         if (ret != NativeRdb::E_OK) {
             MEDIA_ERR_LOG("Insert failed for: %{public}s, ret = %{public}d",
                 DfxUtils::GetSafePath(filePath).c_str(), ret);
@@ -244,17 +239,7 @@ int32_t MediaFileInterworkScanner::InsertFileBatch(const std::vector<std::string
 int32_t MediaFileInterworkScanner::CleanTabFileOptTable()
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
-
-    std::string deleteSql = "DELETE FROM " + std::string(MediaFileInterworkColumn::OPT_TABLE_NAME);
-    int32_t ret = rdbStore->ExecuteSql(deleteSql);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("CleanTabFileOptTable failed, ret = %{public}d", ret);
-        return E_HAS_DB_ERROR;
-    }
-
-    MEDIA_INFO_LOG("Cleaned tab_file_opt table successfully");
-    return E_OK;
+    return OptDao(rdbStore).DeleteAllOpt();
 }
 
 int32_t MediaFileInterworkScanner::GetFileMetadata(std::unique_ptr<Metadata> &data)
@@ -488,28 +473,13 @@ vector<RestoreFileInfo> MediaFileInterworkScanner::GetFileInfos(
     return restoreFiles;
 }
 
-std::vector<string> MediaFileInterworkScanner::GetPhotosNotExists(
-    const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const std::vector<string> &files)
+std::vector<string> MediaFileInterworkScanner::GetPhotosNotExists(const std::vector<string> &files)
 {
-    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(PhotoColumn::PHOTO_STORAGE_PATH, files);
-    std::vector<std::string> columns = {
-        PhotoColumn::PHOTO_STORAGE_PATH
-    };
-    
     std::vector<string> filesPath = files;
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, filesPath, "query failed");
-    while (resultSet->GoToNextRow() == E_OK) {
-        string storagePath;
-        int32_t result = resultSet->GetString(0, storagePath);
-        if (result == E_OK) {
-            filesPath.erase(std::remove(filesPath.begin(), filesPath.end(), storagePath), filesPath.end());
-        } else {
-            MEDIA_WARN_LOG("Get storagePath fail: %{public}d", result);
-        }
+    auto existingPaths = PhotoDao().QueryPhotoPathsByStoragePaths(files);
+    for (const auto& path : existingPaths) {
+        filesPath.erase(std::remove(filesPath.begin(), filesPath.end(), path), filesPath.end());
     }
-    resultSet->Close();
     return filesPath;
 }
 
@@ -602,9 +572,7 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
         return E_OK;
     }
     MEDIA_INFO_LOG("HandlePhotosRestore filessize: %{public}zu", files.size());
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
-    std::vector<string> filesToInsert = GetPhotosNotExists(rdbStore, files);
+    std::vector<string> filesToInsert = GetPhotosNotExists(files);
     UniqueNumber uniqueNumber;
     vector<RestoreFileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
     CHECK_AND_RETURN_RET_INFO_LOG(!restoreFiles.empty(), E_OK, "no need to restore");
@@ -659,24 +627,13 @@ int32_t MediaFileInterworkScanner::BatchInsert(std::vector<RestoreFileInfo> &fil
 std::shared_ptr<NativeRdb::ResultSet> MediaFileInterworkScanner::GetOptFile(
     const std::shared_ptr<MediaLibraryRdbStore> rdbStore)
 {
-    NativeRdb::RdbPredicates predicates(MediaFileInterworkColumn::OPT_TABLE_NAME);
-    predicates.EqualTo(MediaFileInterworkColumn::OPT_STATUS_COLUMN, OPT_INIT_STATUS);
-    predicates.Limit(BATCH_INSERT_SIZE);
-    std::vector<std::string> columns = {
-        MediaFileInterworkColumn::AFTER_PATH_COLUMN,
-    };
-    return rdbStore->Query(predicates, columns);
+    return OptDao(rdbStore).QueryOptByStatus(OPT_INIT_STATUS, BATCH_INSERT_SIZE);
 }
 
 int32_t MediaFileInterworkScanner::UpdateOptStatus(
     const std::shared_ptr<MediaLibraryRdbStore> rdbStore, std::vector<string> fileBatch)
 {
-    NativeRdb::RdbPredicates predicates(MediaFileInterworkColumn::OPT_TABLE_NAME);
-    predicates.In(MediaFileInterworkColumn::AFTER_PATH_COLUMN, fileBatch);
-    NativeRdb::ValuesBucket values;
-    values.PutInt(MediaFileInterworkColumn::OPT_STATUS_COLUMN, OPT_FINISH_STATUS);
-    int32_t changeRow = 0;
-    return rdbStore->Update(changeRow, values, predicates);
+    return OptDao(rdbStore).UpdateOptStatusByPaths(fileBatch, OPT_FINISH_STATUS);
 }
 
 int32_t MediaFileInterworkScanner::ProcessPhaseTwoRecords()

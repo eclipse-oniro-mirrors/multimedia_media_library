@@ -69,8 +69,8 @@ bool MediaInLakeNeedCheck()
         } else {
             ret = system::SetParameter(MEDIA_IN_LAKE_CHECK_PRIVACY_TIME, std::to_string(initCheckTime));
         }
-        MEDIA_INFO_LOG("Set init time in lake check, ret:%{public}d, nowTime: %{public}" PRId64 ", checkTime: %{public}" PRId64,
-            ret, nowTime, initCheckTime);
+        MEDIA_INFO_LOG("Set init time in lake check, ret:%{public}d, nowTime: %{public}" PRId64 ", checkTime: "
+            "%{public}" PRId64, ret, nowTime, initCheckTime);
         lastTime = initCheckTime;
     }
     constexpr int64_t timeout = 72 * 60 * 60;
@@ -105,9 +105,9 @@ int32_t GetAllInLakeAssetsByAlbumId(int32_t albumId, std::unordered_set<int32_t>
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetAllInLakeAssetsByAlbumId failed. rdbStorePtr is null");
     auto resultSet = rdbStore->Query(queryPredicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "GetAllInLakeAssetsByAlbumId failed. resultSet is null");
-while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t fileId = 0;
-        if (resultSet->GetInt(COLUMN_INDEX_MEDIA_ID, fileId) == NativeRdb::E_OK) {
+        if (resultSet->GetInt(0, fileId) == NativeRdb::E_OK) {
             fileIds.insert(fileId);
         }
     }
@@ -144,7 +144,7 @@ int32_t GetAllInLakeAssetsByAlbumId(const std::vector<std::string>& fileIdsStr,
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetAllInLakeAssetsByAlbumId failed. rdbStorePtr is null");
     auto resultSet = rdbStore->Query(queryPredicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "GetAllInLakeAssetsByAlbumId failed. resultSet is null");
-while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t fileId = 0;
         std::string path;
         if (resultSet->GetInt(COLUMN_INDEX_MEDIA_ID, fileId) == NativeRdb::E_OK &&
@@ -174,7 +174,7 @@ inline int32_t GetThumbByFileId(int32_t albumId, const std::vector<std::string> 
     fileIds.reserve(fileIdStrs.size());
     dateTakens.reserve(fileIdStrs.size());
     paths.reserve(fileIdStrs.size());
-while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t fileId;
         int64_t dateTaken;
         std::string path;
@@ -369,7 +369,7 @@ void ClearLakeAlbum()
     predicates.SetWhereClause(whereClause);
     int32_t deletedRows = 0;
     int32_t ret = rdbStore->Delete(deletedRows, predicates);
-    if (ret != E_OK || deletedRows < 0) {
+    if (ret != NativeRdb::E_OK || deletedRows < 0) {
         MEDIA_ERR_LOG("ClearLakeAlbum failed, ret: %{public}d, deletedRows: %{public}d", ret, deletedRows);
         return;
     }

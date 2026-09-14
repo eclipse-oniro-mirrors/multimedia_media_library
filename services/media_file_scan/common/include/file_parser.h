@@ -25,6 +25,7 @@
 #include "media_file_notify_info.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata.h"
+#include "photo_dao.h"
 
 namespace OHOS::Media {
 extern std::mutex g_fileManagerScanFlagMutex;
@@ -58,35 +59,7 @@ public:
     virtual FileUpdateType GetFileUpdateType() = 0;
 
 protected:
-    // 公共查询逻辑：查询数据库获取 ThumbnailInfo 列表
-    static int32_t QueryThumbnailInfos(const std::vector<std::string> &inodes,
-        std::vector<ThumbnailInfo> &infos, std::vector<int32_t> &thumbnailVisibleList);
-
-    struct PhotosRowData {
-        int32_t fileId {0};
-        int32_t mediaType {0};
-        int32_t fileSourceType {0};
-        int32_t ownerAlbumId {0};
-        int32_t syncStatus {0};
-        int64_t size {0};
-        int64_t dateModified {0};
-        int64_t dateTaken {0};
-        int64_t editTime {0};
-        std::string data;
-        std::string inode;
-        std::string mimeType;
-        std::string storagePath;
-        std::string ownerPackage;
-        std::string packageName;
-        std::string detailTime;
-        std::string dateYear;
-        std::string dateMonth;
-        std::string dateDay;
-        bool IsExist();
-        std::string ToString() const;
-        int32_t subtype {0};
-        int32_t position {1};
-    };
+    using PhotosRowData = PhotoDao::PhotosRowData;
     struct MetaStatus {
         bool isMediaTypeChanged {false};
         bool isSizeChanged {false};
@@ -113,8 +86,6 @@ private:
     PhotosRowData FindSameFileByOptAdd();
     PhotosRowData FindSameFileByOptMod();
     PhotosRowData FindSameFileByDefault();
-    PhotosRowData FindSameFileInDatabase(const std::string &querySql,
-        const std::vector<NativeRdb::ValueObject> &params);
 
     void SetFileId(int32_t fileId);
     void SetAlbumInfo(int32_t albumId, const std::string &bundleName, const std::string &albumName);
@@ -144,22 +115,6 @@ private:
     std::shared_ptr<MediaLibraryRdbStore> mediaLibraryRdb_;
     std::string path_;
     MetaStatus metaStatus_;
-
-    const std::string SQL_PHOTOS_FIND_SAME_FILE_BY_STORAGE_PATH = "\
-        SELECT file_id, size, date_modified, mime_type, media_type, inode, storage_path, file_source_type, \
-        owner_album_id, owner_package, package_name, date_taken, data, sync_status, edit_time, subtype, position, \
-        date_year, date_month, date_day, detail_time \
-        FROM Photos \
-        WHERE LOWER(storage_path) = LOWER(?) AND \
-        (file_source_type = ? OR (file_source_type = ? AND position IN (?, ?) AND date_trashed = ? AND hidden = ?)) \
-        LIMIT 1;";
-
-    const std::string SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE = "\
-        SELECT file_id \
-        FROM Photos \
-        WHERE owner_album_id = ? AND display_name = ? AND size = ? \
-        AND (1 <> ? OR orientation = ?) \
-        LIMIT 1;";
 
 protected:
     MediaNotifyInfo notifyInfo_;

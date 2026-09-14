@@ -21,7 +21,7 @@
 #include <sstream>
 #include <vector>
 
-#include "file_scan_utils.h"
+#include "media_log_utils.h"
 #include "hi_audit.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_errno.h"
@@ -472,7 +472,7 @@ void MediaFileManagerOfflineCleanupTask::WritePhotoDeleteAuditLog(const OfflineC
     auditLog.id = std::to_string(photo.fileId);
     auditLog.type = photo.mediaType;
     auditLog.size = totalCount;
-    auditLog.path = FileScanUtils::GarbleFilePath(photo.storagePath);
+    auditLog.path = MediaLogUtils::GarbleFilePath(photo.storagePath);
     auditLog.mediaType = MediaMapConstUtils::MediaTypeToString(photo.mediaType);
     HiAudit::GetInstance().Write(auditLog, false);
 }
@@ -485,7 +485,7 @@ void MediaFileManagerOfflineCleanupTask::WriteAlbumDeleteAuditLog(const OfflineC
     auditLog.id = std::to_string(album.albumId);
     auditLog.type = album.albumSubtype;
     auditLog.size = totalCount;
-    auditLog.path = FileScanUtils::GarbleFilePath(album.lpath);
+    auditLog.path = MediaLogUtils::GarbleFilePath(album.lpath);
     HiAudit::GetInstance().Write(auditLog, false);
 }
 
@@ -510,11 +510,11 @@ bool MediaFileManagerOfflineCleanupTask::CorrectSandboxAnomaly(const OfflineClea
     CHECK_AND_RETURN_RET_LOG(MediaFileAccessUtils::MoveFileCrossPolicy(photo.data, photo.storagePath, false) == E_OK,
         false, "Copy failed, %{public}s", photo.ToString().c_str());
     ++statistics_.sandboxAnomalyCorrected.count;
-    MEDIA_INFO_LOG("Moved data from %{public}s to %{public}s", FileScanUtils::GarbleFilePath(photo.data).c_str(),
-        FileScanUtils::GarbleFilePath(photo.storagePath).c_str());
+    MEDIA_INFO_LOG("Moved data from %{public}s to %{public}s", MediaLogUtils::GarbleFilePath(photo.data).c_str(),
+        MediaLogUtils::GarbleFilePath(photo.storagePath).c_str());
     // Note: delete only when the src file exists after move (copy)
     CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(photo.data) || MediaFileUtils::DeleteFile(photo.data), false,
-        "Delete src failed, %{public}s", FileScanUtils::GarbleFilePath(photo.data).c_str());
+        "Delete src failed, %{public}s", MediaLogUtils::GarbleFilePath(photo.data).c_str());
     return true;
 }
 
@@ -607,7 +607,7 @@ int32_t MediaFileManagerOfflineCleanupTask::EnsureTargetAlbum(const OfflineClean
     CHECK_AND_RETURN_RET(albumId > 0, 0);
     targetAlbumIdCache_[targetLpathLower] = albumId;
     MEDIA_INFO_LOG("Album[%{public}d, %{public}s] created", albumId,
-        FileScanUtils::GarbleFilePath(targetLpath).c_str());
+        MediaLogUtils::GarbleFilePath(targetLpath).c_str());
     return albumId;
 }
 

@@ -19,11 +19,11 @@
 #include <algorithm>
 
 #include "album_scan_info_column.h"
+#include "check_audit_reporter.h"
 #include "check_status_helper.h"
 #include "dir_scan_anomaly_helper.h"
 #include "file_manager_scanner.h"
 #include "file_manager_scan_rule_config.h"
-#include "file_scan_utils.h"
 #include "global_scanner.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_rdb_utils.h"
@@ -31,12 +31,15 @@
 #include "media_file_utils.h"
 #include "media_file_monitor_rdb_utils.h"
 #include "media_log.h"
+#include "media_log_utils.h"
 #include "media_string_utils.h"
+#include "media_time_utils.h"
 #include "photo_album_column.h"
 
 namespace OHOS::Media {
-const std::string FILE_MANAGER_ALBUM_PREFIX = "/FromDocs";
-const std::string FILE_MANAGER_PATH_PREFIX = "/storage/media/local/files/Docs";
+const std::string FILE_MANAGER_ALBUM_PREFIX = "/FromDocs/";
+const std::string FILE_MANAGER_PATH_PREFIX = "/storage/media/local/files/Docs/";
+const std::string SLASH = "/";
 
 bool FileManagerCheckScenario::IsConditionSatisfied(const ConsistencyCheck::DeviceStatus &deviceStatus)
 {
@@ -44,7 +47,7 @@ bool FileManagerCheckScenario::IsConditionSatisfied(const ConsistencyCheck::Devi
     const int64_t PROPER_PERIOD_IN_MS = 7 * 24 * 60 * 60 * 1000;
 
     return deviceStatus.isScreenOff && deviceStatus.isCharging && deviceStatus.isBackgroundTaskAllowed &&
-        deviceStatus.batteryCapacity >= PROPER_DEVICE_BATTERY_CAPACITY &&
+        deviceStatus.batteryCapacity > PROPER_DEVICE_BATTERY_CAPACITY &&
         IsTemperatureSatisfied(deviceStatus.temperature) && IsCheckPeriodSatisfied(PROPER_PERIOD_IN_MS);
 }
 
@@ -67,8 +70,8 @@ bool FileManagerCheckScenario::IsTemperatureSatisfied(int32_t temperature)
 bool FileManagerCheckScenario::IsCheckPeriodSatisfied(int64_t requiredPeriodInMs)
 {
     CheckStatusHelper checkStatusHelper(CheckScene::FILE_MANAGER);
-    int64_t lastCheckTimeInMs = checkStatusHelper.GetLastCheckTimeInMs(0);
-    int64_t currentTimeInMs = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t lastCheckTimeInMs = checkStatusHelper.GetLastEndTimeInMs(0);
+    int64_t currentTimeInMs = MediaTimeUtils::UTCTimeMilliSeconds();
     int64_t checkPeriodInMs = currentTimeInMs - lastCheckTimeInMs;
     MEDIA_DEBUG_LOG("lastCheckTimeInMs: %{public}" PRId64 ", currentTimeInMs: %{public}" PRId64 ", checkPeriodInMs: "
         "%{public}" PRId64 ", requiredPeriod: %{public}" PRId64,
@@ -80,11 +83,14 @@ void FileManagerCheckScenario::Execute(std::atomic<bool> &isInterrupted)
 {
     MEDIA_INFO_LOG("Start Execute");
     CHECK_AND_RETURN_LOG(!isInterrupted.load(), "Execute interrupted at entry");
+    int64_t startTimeInMs = MediaTimeUtils::UTCTimeMilliSeconds();
     // 正反向核查启动时，清理扫描异常残留
     DirScanAnomalyHelper::ClearAll();
+    ConsistencyCheck::ScenarioProgress progress;
+    ConsistencyCheck::DfxStats dfxStats;
+    LoadStatus(progress, dfxStats);
     CheckDfxCollector dfxCollector(CheckScene::FILE_MANAGER);
-    dfxCollector.OnCheckStart();
-    ConsistencyCheck::ScenarioProgress progress = LoadProgress();
+    dfxCollector.OnCheckStart(startTimeInMs, dfxStats);
     ScenarioContext context = {isInterrupted, dfxCollector, progress};
 
     int32_t runningStatus = RunForward(context);
@@ -96,20 +102,21 @@ void FileManagerCheckScenario::Execute(std::atomic<bool> &isInterrupted)
     runningStatus = RunBackwardPhoto(context);
     if (runningStatus == RunningStatus::INTERRUPTED) {
         MEDIA_WARN_LOG("RunBackwardPhoto interrupted");
-        SaveCurrentProgress(progress);
+        SaveCurrentStatus(progress, dfxCollector.GetDfxStats());
         return;
     }
 
     runningStatus = RunBackwardAlbum(context);
     if (runningStatus == RunningStatus::INTERRUPTED) {
         MEDIA_INFO_LOG("RunBackwardAlbum interrupted");
-        SaveCurrentProgress(progress);
+        SaveCurrentStatus(progress, dfxCollector.GetDfxStats());
         return;
     }
 
-    SaveFinishedProgress();
-    dfxCollector.OnCheckEnd();
+    int64_t endTimeInMs = MediaTimeUtils::UTCTimeMilliSeconds();
+    dfxCollector.OnCheckEnd(endTimeInMs);
     dfxCollector.Report();
+    SaveFinishedStatus(endTimeInMs);
 }
 
 int32_t FileManagerCheckScenario::RunForward(ScenarioContext &context)
@@ -119,7 +126,8 @@ int32_t FileManagerCheckScenario::RunForward(ScenarioContext &context)
     auto &scanner = GlobalScanner::GetInstance();
     CHECK_AND_RETURN_RET(scanner.GetScannerStatus() == ScannerStatus::IDLE, RunningStatus::NOT_STARTED);
 
-    scanner.RunFileManagerScan(std::string(FILE_MANAGER_ROOT_PATH), context.dfxCollector, false);
+    scanner.RunFileManagerScan(std::string(FILE_MANAGER_SCAN_PATH), context.dfxCollector, false);
+    SaveCurrentStatus(context.progress, context.dfxCollector.GetDfxStats());
 
     return context.isInterrupted.load() ? RunningStatus::INTERRUPTED : RunningStatus::FINISHED;
 }
@@ -135,7 +143,7 @@ int32_t FileManagerCheckScenario::RunBackwardPhoto(ScenarioContext &context)
         FileManagerCheckScenario::PhotoCandidates candidates = SelectPhotoCandidates(context, photoRecords);
         ProcessPhotoCandidates(context, candidates);
         ApplyPhotoChanges(candidates);
-        SaveCurrentProgress(context.progress);
+        SaveCurrentStatus(context.progress, context.dfxCollector.GetDfxStats());
     } while (!context.isInterrupted.load() && photoRecords.size() == BATCH_SIZE);
 
     return context.isInterrupted.load() ? RunningStatus::INTERRUPTED : RunningStatus::FINISHED;
@@ -248,7 +256,6 @@ void FileManagerCheckScenario::DeletePhotos(ScenarioContext &context, PhotoCandi
     MEDIA_INFO_LOG("photosToDelete size: %{public}zu", candidates.photosToDelete.size());
     QueryAffectedAnalysisAlbumIds(candidates);
     DeletePhotoRecords(context, candidates.photosToDelete);
-    DeletePhotoFiles(candidates.photosToDelete);
 }
 
 void FileManagerCheckScenario::QueryAffectedAnalysisAlbumIds(PhotoCandidates &candidates)
@@ -280,6 +287,8 @@ void FileManagerCheckScenario::DeletePhotoRecords(ScenarioContext &context,
     context.dfxCollector.OnPhotoDelete(deletedRows);
     MEDIA_INFO_LOG("DeletePhotoRecords succeeded, deletedRows: %{public}d, dfxCollector: %{public}s", deletedRows,
         context.dfxCollector.ToString().c_str());
+    DeletePhotoFiles(photos);
+    CheckAuditReporter::ReportPhotos(photos, "DELETE", std::to_string(static_cast<int32_t>(CheckScene::FILE_MANAGER)));
 }
 
 void FileManagerCheckScenario::DeletePhotoFiles(const std::vector<ConsistencyCheck::PhotoRecord> &photos)
@@ -323,6 +332,8 @@ void FileManagerCheckScenario::UpdatePhotosPosition(ScenarioContext &context,
     context.dfxCollector.OnPhotoUpdate(updatedRows);
     MEDIA_INFO_LOG("UpdatePhotosPosition succeeded, updatedRows: %{public}d, dfxCollector: %{public}s", updatedRows,
         context.dfxCollector.ToString().c_str());
+    CheckAuditReporter::ReportPhotos(photos, "UPDATE_POSITION",
+        std::to_string(static_cast<int32_t>(CheckScene::FILE_MANAGER)));
 }
 
 void FileManagerCheckScenario::ScanPhotos(ScenarioContext &context,
@@ -376,7 +387,7 @@ int32_t FileManagerCheckScenario::RunBackwardAlbum(ScenarioContext &context)
         ProcessAlbumCandidates(context, albumCandidates);
         ClearAlbumScanInfo(albumRecords);
         ApplyAlbumChanges();
-        SaveCurrentProgress(context.progress);
+        SaveCurrentStatus(context.progress, context.dfxCollector.GetDfxStats());
     } while (!context.isInterrupted.load() && albumRecords.size() == BATCH_SIZE);
 
     return context.isInterrupted.load() ? RunningStatus::INTERRUPTED : RunningStatus::FINISHED;
@@ -388,11 +399,10 @@ std::vector<ConsistencyCheck::AlbumRecord> FileManagerCheckScenario::GetAlbumRec
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, albumRecords, "GetAlbumRecords failed. rdbStore is nullptr");
 
-    std::string querySql = "SELECT album_id, lpath, album_subtype FROM PhotoAlbum WHERE "
-                           "album_id > ? AND album_subtype = ? AND NOT EXISTS (SELECT 1 FROM Photos WHERE "
-                           "owner_album_id = album_id) ORDER BY album_id LIMIT ?";
-    std::vector<NativeRdb::ValueObject> args = {context.progress.lastAlbumId,
-        PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER, BATCH_SIZE};
+    std::string querySql = "SELECT album_id, lpath, album_subtype, EXISTS(SELECT 1 FROM Photos WHERE "
+                           "Photos.owner_album_id = PhotoAlbum.album_id) as has_photo FROM PhotoAlbum WHERE "
+                           "album_id > ? AND LOWER(lpath) like '/fromdocs/%' ORDER BY album_id LIMIT ?";
+    std::vector<NativeRdb::ValueObject> args = {context.progress.lastAlbumId, BATCH_SIZE};
     auto resultSet = rdbStore->QueryByStep(querySql, args);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumRecords, "GetAlbumRecords failed. resultSet is nullptr");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -400,6 +410,7 @@ std::vector<ConsistencyCheck::AlbumRecord> FileManagerCheckScenario::GetAlbumRec
         albumRecord.albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
         albumRecord.lpath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
         albumRecord.albumSubtype = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
+        albumRecord.hasPhoto = GetInt32Val("has_photo", resultSet);
         albumRecords.emplace_back(albumRecord);
     }
     resultSet->Close();
@@ -415,12 +426,15 @@ FileManagerCheckScenario::AlbumCandidates FileManagerCheckScenario::SelectAlbumC
         CHECK_AND_RETURN_RET(!context.isInterrupted.load(), candidates);
 
         context.progress.lastAlbumId = albumRecord.albumId;
+        CHECK_AND_PRINT_LOG(albumRecord.albumSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER,
+            "Not file manager album, %{public}s", albumRecord.ToString().c_str());
+        CHECK_AND_CONTINUE(albumRecord.hasPhoto <= 0);
         CHECK_AND_CONTINUE_ERR_LOG(!albumRecord.lpath.empty(), "Get empty lpath, %{public}s",
             albumRecord.ToString().c_str());
         std::string realPath = ConvertLpathToRealPath(albumRecord.lpath);
         if (realPath.empty()) {
             MEDIA_ERR_LOG("Get empty realPath, lpath: %{public}s",
-                FileScanUtils::GarbleFilePath(albumRecord.lpath).c_str());
+                MediaLogUtils::GarbleFilePath(albumRecord.lpath).c_str());
             continue;
         }
         if (MediaFileUtils::IsFileExists(realPath)) {
@@ -451,6 +465,7 @@ void FileManagerCheckScenario::DeleteAlbums(ScenarioContext &context,
     context.dfxCollector.OnAlbumDelete(photoAlbumDeletedRows);
     MEDIA_INFO_LOG("Delete succeeded, photoAlbumDeletedRows: %{public}d, dfxCollector: %{public}s",
         photoAlbumDeletedRows, context.dfxCollector.ToString().c_str());
+    CheckAuditReporter::ReportAlbums(albums, "DELETE", std::to_string(static_cast<int32_t>(CheckScene::FILE_MANAGER)));
 }
 
 int32_t FileManagerCheckScenario::DeleteInPhotoAlbum(const std::vector<ConsistencyCheck::AlbumRecord> &albums)
@@ -487,18 +502,21 @@ void FileManagerCheckScenario::ClearAlbumScanInfo(const std::vector<ConsistencyC
     NativeRdb::AbsRdbPredicates predicates(AlbumScanInfoColumn::TABLE);
     std::string whereClause =
         "album_id <= ? AND NOT EXISTS (SELECT 1 FROM PhotoAlbum WHERE PhotoAlbum.album_id = AlbumScanInfo.album_id "
-        "AND LOWER(PhotoAlbum.lpath) = LOWER(REPLACE(AlbumScanInfo.storage_path, '/storage/media/local/files/Docs', "
-        "'/FromDocs')))";
+        "AND LOWER(PhotoAlbum.lpath) = CASE "
+        "WHEN LOWER(AlbumScanInfo.storage_path) = '/storage/media/local/files/docs' THEN '/fromdocs/' "
+        "ELSE REPLACE(LOWER(AlbumScanInfo.storage_path), '/storage/media/local/files/docs/', '/fromdocs/') END)";
     std::vector<std::string> whereArgs = { std::to_string(maxAlbumId) };
     predicates.SetWhereClause(whereClause);
     predicates.SetWhereArgs(whereArgs);
     int32_t deletedRows = 0;
     int32_t ret = rdbStore->Delete(deletedRows, predicates);
-    if (ret != E_OK || deletedRows < 0) {
-        MEDIA_ERR_LOG("ClearAlbumScanInfo failed, ret: %{public}d, deletedRows: %{public}d", ret, deletedRows);
+    if (ret != NativeRdb::E_OK || deletedRows < 0) {
+        MEDIA_ERR_LOG("ClearAlbumScanInfo failed, maxAlbumId: %{public}d, ret: %{public}d, deletedRows: %{public}d",
+            maxAlbumId, ret, deletedRows);
         return;
     }
-    MEDIA_INFO_LOG("ClearAlbumScanInfo succeeded, deletedRows: %{public}d", deletedRows);
+    MEDIA_INFO_LOG("ClearAlbumScanInfo succeeded, maxAlbumId: %{public}d, deletedRows: %{public}d",
+        maxAlbumId, deletedRows);
 }
 
 void FileManagerCheckScenario::ApplyAlbumChanges()
@@ -508,36 +526,39 @@ void FileManagerCheckScenario::ApplyAlbumChanges()
 
 std::string FileManagerCheckScenario::ConvertLpathToRealPath(const std::string &lpath)
 {
-    if (!MediaStringUtils::StartsWith(lpath, FILE_MANAGER_ALBUM_PREFIX)) {
+    if (!MediaStringUtils::StartsWithIgnoreCase(lpath, FILE_MANAGER_ALBUM_PREFIX)) {
         MEDIA_ERR_LOG("Convert failed, not start with /FromDocs, lpath: %{public}s",
-            FileScanUtils::GarbleFilePath(lpath).c_str());
+            MediaLogUtils::GarbleFilePath(lpath).c_str());
         return "";
     }
     std::string realPath = lpath;
     realPath.replace(0, FILE_MANAGER_ALBUM_PREFIX.length(), FILE_MANAGER_PATH_PREFIX);
+    if (MediaStringUtils::EndsWith(realPath, SLASH)) {
+        realPath.pop_back();
+    }
     return realPath;
 }
 
-ConsistencyCheck::ScenarioProgress FileManagerCheckScenario::LoadProgress()
+void FileManagerCheckScenario::LoadStatus(ConsistencyCheck::ScenarioProgress &progress,
+    ConsistencyCheck::DfxStats &dfxStats)
 {
-    MEDIA_INFO_LOG("Start LoadProgress");
+    MEDIA_INFO_LOG("Start LoadStatus");
     CheckStatusHelper checkStatusHelper(CheckScene::FILE_MANAGER);
-    return checkStatusHelper.GetScenarioProgress();
+    checkStatusHelper.LoadStatus(progress, dfxStats);
 }
 
-void FileManagerCheckScenario::SaveCurrentProgress(const ConsistencyCheck::ScenarioProgress &progress)
+void FileManagerCheckScenario::SaveCurrentStatus(const ConsistencyCheck::ScenarioProgress &progress,
+    const ConsistencyCheck::DfxStats &dfxStats)
 {
-    MEDIA_INFO_LOG("Start SaveCurrentProgress");
+    MEDIA_INFO_LOG("Start SaveCurrentStatus");
     CheckStatusHelper checkStatusHelper(CheckScene::FILE_MANAGER);
-    checkStatusHelper.SetValuesByCurrentProgress(progress);
+    checkStatusHelper.SaveCurrentStatus(progress, dfxStats);
 }
 
-void FileManagerCheckScenario::SaveFinishedProgress()
+void FileManagerCheckScenario::SaveFinishedStatus(int64_t endTimeInMs)
 {
-    MEDIA_INFO_LOG("Start SaveFinishedProgress");
-    ConsistencyCheck::ScenarioProgress progress;
-    progress.lastCheckTimeInMs = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("Start SaveFinishedStatus");
     CheckStatusHelper checkStatusHelper(CheckScene::FILE_MANAGER);
-    checkStatusHelper.SetValuesByFinishedProgress(progress);
+    checkStatusHelper.SaveFinishedStatus(endTimeInMs);
 }
 } // namespace OHOS::Media

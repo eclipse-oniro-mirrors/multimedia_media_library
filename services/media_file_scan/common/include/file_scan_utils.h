@@ -71,12 +71,6 @@ public:
     static std::vector<std::string> GetFileIdsFromUris(const std::vector<std::string> &uris);
     static void UpdateAndNotifyAnalysisAlbum(const std::vector<std::string>& fileIds);
     static bool IsPathUnderRoot(const std::string &path, const std::string &rootPath);
-
-private:
-    static bool HasExtension(const std::string &file);
-    static std::string GarbleFileWithExtension(const std::string &file);
-    static std::string GarbleFileWithoutExtension(const std::string &file);
-    static size_t GetGarbleSize(const std::string &file);
 };
 } // namespace OHOS::Media
 #endif // FILE_SCAN_UTILS_H

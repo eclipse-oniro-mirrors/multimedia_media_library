@@ -23,8 +23,9 @@
 #include "medialibrary_errno.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
-#include "media_string_utils.h"
 #include "media_log.h"
+#include "media_log_utils.h"
+#include "media_string_utils.h"
 #include "mimetype_utils.h"
 #include "metadata_extractor.h"
 #include "rdb_predicates.h"
@@ -41,16 +42,16 @@ namespace OHOS::Media {
 static SafeMap<std::string, std::string> groupHashMap_;
 static SafeMap<std::string, int32_t> objectHashMap_;
 
-const char EXTENSION_DOT = '.';
-const char GARBLE_MARKER = '*';
-const size_t GARBLE_SIZE_DEFAULT = 3;
-const size_t GARBLE_SIZE_RATIO = 2;
 const std::string MEDIALIBRARY_ZERO_BUCKET_PATH = "/storage/cloud/files/Photo/0";
 constexpr int32_t CROSS_POLICY_ERR = 18;
 constexpr int32_t BASE_USER_RANGE = 200000;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
 static const int UUID_STR_LENGTH = 37;
 const int32_t OH_DEFAULT_USER_ID = 100;
+const int DISPLAY_NAME_PREFIX_LENGTH = 20;
+constexpr int ASSET_MAX_COMPLEMENT_ID = 999;
+const std::string RESTORE_CLOUD_DIR = "/storage/cloud/files/Photo";
+const std::string TITLE_KEY_WORDS_OF_BURST = "_BURST";
 const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {
     { PrefixType::CLOUD, "/storage/cloud/files" },
     { PrefixType::LOCAL, "/storage/media/local/files" },
@@ -460,45 +461,12 @@ int32_t FileScanUtils::RenameFileCrossPolicy(const string &oldPath, const string
 
 std::string FileScanUtils::GarbleFilePath(const std::string &filePath)
 {
-    std::filesystem::path inputPath(filePath);
-    std::filesystem::path outputPath(filePath);
-    for (auto iter = inputPath.begin(); iter != inputPath.end(); iter++) {
-        outputPath /= GarbleFile(iter->string());
-    }
-    return outputPath;
+    return MediaLogUtils::GarbleFilePath(filePath);
 }
 
 std::string FileScanUtils::GarbleFile(const std::string &file)
 {
-    return HasExtension(file) ? GarbleFileWithExtension(file) : GarbleFileWithoutExtension(file);
-}
-
-bool FileScanUtils::HasExtension(const std::string &file)
-{
-    return file.find(EXTENSION_DOT) != std::string::npos;
-}
-
-std::string FileScanUtils::GarbleFileWithExtension(const std::string &file)
-{
-    size_t pos = file.find_last_of(EXTENSION_DOT);
-    CHECK_AND_RETURN_RET_LOG(pos != std::string::npos, "", "file.path not cotain EXTENSION_DOT");
-    std::string name = file.substr(0, pos);
-    std::string extension = file.substr(pos);
-    return GarbleFileWithoutExtension(name) + extension;
-}
-
-std::string FileScanUtils::GarbleFileWithoutExtension(const std::string &file)
-{
-    size_t garbleSize = GetGarbleSize(file);
-    std::string result(file);
-    result.replace(0, garbleSize, garbleSize, GARBLE_MARKER);
-    return result;
-}
-
-size_t FileScanUtils::GetGarbleSize(const std::string &file)
-{
-    return file.size() >= GARBLE_SIZE_DEFAULT * GARBLE_SIZE_RATIO ? GARBLE_SIZE_DEFAULT :
-        file.size() / GARBLE_SIZE_RATIO;
+    return MediaLogUtils::GarbleFile(file);
 }
 
 int32_t FileScanUtils::BuildLakeFilePath(

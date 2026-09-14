@@ -26,6 +26,10 @@ const std::unordered_set<std::string> FILE_MANAGER_BLACK_LIST = {
     "/storage/media/local/files/Docs/.ohpm",
     "/storage/media/local/files/Docs/PCEngine",
     "/storage/media/local/files/Docs/appdata",
+    "/storage/media/local/files/Docs/.fileclone",
+    "/storage/media/local/files/Docs/.cloneBackup",
+    "/storage/media/local/files/Docs/.EventSDK",
+    "/storage/media/local/files/Docs/UpdateBackup",
 };
 const std::regex FILE_MANAGER_PATTERN_RELATIVE_PATH(
     R"(^/storage/media/local/files/Docs)",
@@ -33,7 +37,10 @@ const std::regex FILE_MANAGER_PATTERN_RELATIVE_PATH(
 );
 const std::regex FILE_MANAGER_PATTERN_VISIBLE(R"($^)", std::regex_constants::icase);
 const std::regex FILE_MANAGER_PATTERN_INVISIBLE(R"($^)", std::regex_constants::icase);
-const std::regex FILE_MANAGER_PATTERN_TENCENT_CACHE(R"($^)", std::regex_constants::icase);
+const std::regex FILE_MANAGER_PATTERN_APP_CACHE_DIR(
+    R"(^/storage/media/local/files/Docs/Download/com\.[^/]+(/[^/]+)*/(temp|tmp|cache|log|config)(/[^/]+)*$)",
+    std::regex_constants::icase
+);
 const std::unordered_set<std::string> FILE_MANAGER_DEFAULT_FOLDER_NAMES = {};
 
 const ScanRuleConfig FILE_MANAGER_SCAN_RULE_CONFIG = {
@@ -42,12 +49,12 @@ const ScanRuleConfig FILE_MANAGER_SCAN_RULE_CONFIG = {
     .relativePathPattern = FILE_MANAGER_PATTERN_RELATIVE_PATH,
     .visiblePattern = FILE_MANAGER_PATTERN_VISIBLE,
     .invisiblePattern = FILE_MANAGER_PATTERN_INVISIBLE,
-    .tencentCachePattern = FILE_MANAGER_PATTERN_TENCENT_CACHE,
+    .appCachePattern = FILE_MANAGER_PATTERN_APP_CACHE_DIR,
     .defaultFolderNames = FILE_MANAGER_DEFAULT_FOLDER_NAMES,
-    .skipHiddenFile = false,
-    .skipHiddenDirectory = false,
+    .skipHiddenFile = true,
+    .skipHiddenDirectory = true,
     .skipBlackList = true,
-    .skipTencentCache = false,
+    .skipAppCache = true,
     .createNomediaForInvisibleDirectory = false,
     .cleanNomediaInDefaultDirs = false,
     .skipDirectoryWithNomedia = false
