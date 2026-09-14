@@ -63,6 +63,7 @@ public:
     std::optional<int32_t> hdrMode;                   // PhotoColumn::PHOTO_HDR_MODE;
     std::optional<int32_t> videoMode;                 // PhotoColumn::PHOTO_VIDEO_MODE;
     std::optional<std::string> frontCamera;           // PhotoColumn::PHOTO_FRONT_CAMERA;
+    std::optional<std::string> xtStyleTemplateName;   // PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME;
     std::optional<std::string> detailTime;            // PhotoColumn::PHOTO_DETAIL_TIME;
     std::optional<int64_t> editTime;                  // PhotoColumn::PHOTO_EDIT_TIME;
     std::optional<int32_t> originalSubtype;           // PhotoColumn::PHOTO_ORIGINAL_SUBTYPE;

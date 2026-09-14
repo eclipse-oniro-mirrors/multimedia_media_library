@@ -903,6 +903,19 @@ static int32_t UpdateCinematicVideoAlbum(RdbStore& store)
 }
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, "Album", UpdateCinematicVideoAlbum);
 
+static int32_t UpdateLivePhoto4DAlbum(RdbStore& store)
+{
+    MEDIA_INFO_LOG("Start update live photo 4d album");
+    const std::vector<std::string> subtypes = { to_string(PhotoAlbumSubType::LIVEPHOTO_4D) };
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, NativeRdb::E_ERROR, "Failed to get rdbStore.");
+    MediaLibraryRdbUtils::UpdateSystemAlbumInternal(rdbStore, subtypes, true);
+    MediaLibraryRdbUtils::UpdateSysAlbumHiddenState(rdbStore, subtypes);
+    MEDIA_INFO_LOG("End update live photo 4d album");
+    return NativeRdb::E_OK;
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_LIVEPHOTO_4D_ALBUM, "Album", UpdateLivePhoto4DAlbum);
+
 static int32_t UpdatePhotoChangeTime(RdbStore &rdbStore, int32_t version, int32_t index)
 {
     MEDIA_INFO_LOG("Start updating photo change time");

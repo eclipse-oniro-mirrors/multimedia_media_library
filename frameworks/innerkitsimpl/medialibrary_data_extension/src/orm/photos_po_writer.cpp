@@ -521,6 +521,21 @@ bool PhotosPoWriter::GetFrontCamera(std::string &val)
     val = this->photosPo_.frontCamera.value();
     return true;
 }
+
+void PhotosPoWriter::SetXtStyleTemplateName(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.xtStyleTemplateName = std::get<std::string>(val);
+}
+
+bool PhotosPoWriter::GetXtStyleTemplateName(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.xtStyleTemplateName.has_value(), false);
+    val = this->photosPo_.xtStyleTemplateName.value();
+    return true;
+}
+
 void PhotosPoWriter::SetDetailTime(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<std::string>(val);

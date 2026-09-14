@@ -454,6 +454,17 @@ static void GetCloudEnhancementPredicates(RdbPredicates &predicates, const bool 
     predicates.EndWrap();
 }
 
+static void GetLivePhoto4DPredicates(RdbPredicates &predicates, const bool hiddenState)
+{
+    predicates.BeginWrap();
+    predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
+    predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
+    SetDefaultPredicatesCondition(predicates, 0, hiddenState, 0, false);
+    predicates.EqualTo(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+    predicates.EndWrap();
+}
+
 void PhotoAlbumColumns::GetSourceAlbumPredicates(const int32_t albumId, RdbPredicates &predicates,
     const bool hiddenState)
 {
@@ -510,6 +521,10 @@ bool PhotoAlbumColumns::GetSystemAlbumPredicates(const PhotoAlbumSubType subtype
         }
         case PhotoAlbumSubType::CLOUD_ENHANCEMENT: {
             GetCloudEnhancementPredicates(predicates, hiddenState);
+            return true;
+        }
+        case PhotoAlbumSubType::LIVEPHOTO_4D: {
+            GetLivePhoto4DPredicates(predicates, hiddenState);
             return true;
         }
         default: {

@@ -334,6 +334,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     values.PutInt(PhotoColumn::PHOTO_HDR_MODE, metadata.GetHdrMode());
     values.PutLong(PhotoColumn::PHOTO_COVER_POSITION, metadata.GetCoverPosition());
     values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, metadata.GetFrontCamera());
+    values.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, metadata.GetXtStyleTemplateName());
     values.PutString(PhotoColumn::PHOTO_DETAIL_TIME, metadata.GetDetailTime());
     values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutString(PhotoColumn::MEDIA_MIME_TYPE, metadata.GetFileMimeType());
@@ -1158,6 +1159,7 @@ void MediaScannerDb::UpdateAlbumInfo(const std::vector<std::string> &subtypes,
         to_string(PhotoAlbumSubType::SCREENSHOT),
         to_string(PhotoAlbumSubType::FAVORITE),
         to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+        to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
     });
 }
 

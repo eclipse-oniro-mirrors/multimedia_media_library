@@ -72,6 +72,8 @@
 #include "media_audio_column.h"
 #include "medialibrary_db_const.h"
 #include "media_edit_utils.h"
+#include "medialibrary_event_db_operations.h"
+#include "media_operation_log_column.h"
 #include "file_manager_asset_operations.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "asset_operation_info.h"
@@ -189,6 +191,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::PHOTO_LCD_SIZE, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_THUMB_SIZE, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_FRONT_CAMERA, MEMBER_TYPE_STRING },
+    { PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_IS_TEMP, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_CE_STATUS_CODE, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_STRONG_ASSOCIATION, MEMBER_TYPE_INT32 },

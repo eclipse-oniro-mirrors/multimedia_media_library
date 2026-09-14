@@ -65,6 +65,7 @@ Metadata::Metadata()
     detailTime_(FILE_DETAIL_TIME_DEFAULT),
     burstCoverLevel_(BURST_COVER_LEVEL_DEFAULT),
     stageVideoTaskStatus_(STAGE_VIDEO_TASK_STATUS),
+    xtStyleTemplateName_(FILE_XT_STYLE_TEMPLATE_NAME_DEFAULT),
     fileSourceType_(FILE_FILE_SOURCE_TYPE_DEFAULT)
 {
     Init();
@@ -89,6 +90,8 @@ void Metadata::InitV2()
         &Metadata::SetBurstCoverLevel);
     memberFuncMap_[PhotoColumn::STAGE_VIDEO_TASK_STATUS] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetStageVideoTaskStatus);
+    memberFuncMap_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
+        &Metadata::SetXtStyleTemplateName);
     memberFuncMap_[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetFileSourceType);
     memberFuncMap_[PhotoColumn::PHOTO_VIDEO_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
@@ -803,6 +806,16 @@ void Metadata::SetFrontCamera(const VariantData &frontcamera)
 const std::string &Metadata::GetFrontCamera() const
 {
     return frontcamera_;
+}
+
+void Metadata::SetXtStyleTemplateName(const VariantData &xtStyleTemplateName)
+{
+    xtStyleTemplateName_ = std::get<string>(xtStyleTemplateName);
+}
+
+std::string Metadata::GetXtStyleTemplateName() const
+{
+    return xtStyleTemplateName_;
 }
 
 void Metadata::SetDetailTime(const VariantData &detailTime)

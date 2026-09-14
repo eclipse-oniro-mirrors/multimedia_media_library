@@ -167,6 +167,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.hdrMode = record.hdrMode.value_or(0);
     photosVo.videoMode = record.videoMode.value_or(-1);
     photosVo.frontCamera = record.frontCamera.value_or("");
+    photosVo.xtStyleTemplateName = record.xtStyleTemplateName.value_or("-1");
     photosVo.originalSubtype = record.originalSubtype.value_or(0);
     photosVo.coverPosition = record.coverPosition.value_or(0);
     photosVo.isRectificationCover = record.isRectificationCover.value_or(0);
@@ -282,6 +283,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.attributesHdrMode = photosVo.hdrMode;
     data.attributesVideoMode = photosVo.videoMode;
     data.attributesFrontCamera = photosVo.frontCamera;
+    data.attributesXtStyleTemplateName = photosVo.xtStyleTemplateName;
     data.attributesMovingPhotoEffectMode = photosVo.movingPhotoEffectMode;
     data.attributesCoverPosition = photosVo.coverPosition;
     data.attributesIsRectificationCover = photosVo.isRectificationCover;

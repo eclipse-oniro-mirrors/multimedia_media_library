@@ -218,6 +218,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_HDR_MODE] = MDKRecordField(upLoadRecord.hdrMode);
     map[PhotoColumn::PHOTO_VIDEO_MODE] = MDKRecordField(upLoadRecord.videoMode);
     map[PhotoColumn::PHOTO_FRONT_CAMERA] = MDKRecordField(upLoadRecord.frontCamera);
+    map[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = MDKRecordField(upLoadRecord.xtStyleTemplateName);
     map[PhotoColumn::PHOTO_EDIT_TIME] = MDKRecordField(upLoadRecord.editTime);
     map[PhotoColumn::PHOTO_ORIGINAL_SUBTYPE] = MDKRecordField(upLoadRecord.originalSubtype);
     map[PhotoColumn::PHOTO_COVER_POSITION] = MDKRecordField(upLoadRecord.coverPosition);
@@ -980,6 +981,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.editedTimeMs = data.GetEditedTimeMs().value_or(0L);
     onFetchPhotoVo.fixVersion = data.GetFixVersion().value_or(-1);
     onFetchPhotoVo.frontCamera = data.GetFrontCamera().value_or("");
+    onFetchPhotoVo.xtStyleTemplateName = data.GetXtStyleTemplateName().value_or("-1");
     onFetchPhotoVo.editDataCamera = data.GetEditDataCamera().value_or("");
     onFetchPhotoVo.title = data.GetTitle().value_or("");
     onFetchPhotoVo.mediaType = data.GetMediaType().value_or(-1);

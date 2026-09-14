@@ -41,6 +41,7 @@ const std::vector<std::string> ALL_SYSTEM_PHOTO_ALBUM = {
     std::to_string(PhotoAlbumSubType::CAMERA),
     std::to_string(PhotoAlbumSubType::IMAGE),
     std::to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+    std::to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
 };
 const std::vector<std::string> PULL_QUERY_COLUMNS = {
     PhotoColumn::MEDIA_FILE_PATH,

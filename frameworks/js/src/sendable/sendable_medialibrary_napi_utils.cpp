@@ -951,6 +951,16 @@ static int32_t GetCloudEnhancementPredicates(DataSharePredicates &predicates, co
     return E_SUCCESS;
 }
 
+static int32_t GetLivePhoto4DPredicates(DataSharePredicates &predicates, const bool hiddenOnly)
+{
+    predicates.BeginWrap();
+    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    predicates.EqualTo(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+    predicates.EndWrap();
+    return E_SUCCESS;
+}
+
 int32_t SendableMediaLibraryNapiUtils::GetSourceAlbumPredicates(const int32_t albumId, DataSharePredicates &predicates,
     const bool hiddenOnly)
 {
@@ -987,6 +997,9 @@ int32_t SendableMediaLibraryNapiUtils::GetSystemAlbumPredicates(const PhotoAlbum
         }
         case PhotoAlbumSubType::CLOUD_ENHANCEMENT: {
             return GetCloudEnhancementPredicates(predicates, hiddenOnly);
+        }
+        case PhotoAlbumSubType::LIVEPHOTO_4D: {
+            return GetLivePhoto4DPredicates(predicates, hiddenOnly);
         }
         default: {
             NAPI_ERR_LOG("Unsupported photo album subtype: %{public}d", subType);

@@ -143,6 +143,7 @@ static unordered_map<string, ResultSetDataType> commonColumnTypeMap = {
     {PhotoColumn::PHOTO_HDR_MODE, ResultSetDataType::TYPE_INT32},
     {PhotoColumn::MOVING_PHOTO_EFFECT_MODE, ResultSetDataType::TYPE_INT32},
     {PhotoColumn::PHOTO_FRONT_CAMERA, ResultSetDataType::TYPE_STRING},
+    {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, ResultSetDataType::TYPE_STRING},
     {PhotoColumn::PHOTO_BURST_COVER_LEVEL, ResultSetDataType::TYPE_INT32},
     {PhotoColumn::SUPPORTED_WATERMARK_TYPE, ResultSetDataType::TYPE_INT32},
     {PhotoColumn::PHOTO_MEDIA_SUFFIX, ResultSetDataType::TYPE_STRING},

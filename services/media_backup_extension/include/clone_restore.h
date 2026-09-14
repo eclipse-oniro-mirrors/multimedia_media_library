@@ -260,6 +260,7 @@ protected:
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
     int64_t CorrectTimestamp(int64_t originalTime);
+    void UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos);
     void RestoreAnalysisSelection();
     void UpdatePhotoMapAssetDateTaken();
     void RestoreAnalysisDupSim();

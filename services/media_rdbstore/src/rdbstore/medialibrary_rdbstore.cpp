@@ -32,6 +32,7 @@
 #include "medialibrary_album_fusion_utils.h"
 #include "medialibrary_business_record_column.h"
 #include "medialibrary_db_const_sqls.h"
+#include "medialibrary_event_db_operations.h"
 #include "medialibrary_restore.h"
 #include "medialibrary_tracer.h"
 #include "media_container_types.h"
@@ -4263,6 +4264,15 @@ int32_t AddUniqueIdColumns(RdbStore &store)
 }
 REGISTER_SYNC_UPGRADE_TASK(VERSION_ADD_UNIQUE_ID_COLUMN_ON_PHOTOS, "Photos", AddUniqueIdColumns);
 
+int32_t CreateTabOperationLog(RdbStore &store)
+{
+    MEDIA_INFO_LOG("create tab_operation_log starts");
+    int32_t ret = ExecSqlsWithDfx({TabOperationLogColumn::CREATE_TABLE}, store, VERSION_CREATE_TAB_OPERATION_LOG);
+    MEDIA_INFO_LOG("create tab_operation_log ends");
+    return ret;
+}
+REGISTER_SYNC_UPGRADE_TASK(VERSION_CREATE_TAB_OPERATION_LOG, "OtherTable", CreateTabOperationLog);
+
 static int32_t UpdatePhotoAlbumTigger(RdbStore &store, int32_t version)
 {
     static const vector<string> executeSqlStrs = {
@@ -6254,6 +6264,19 @@ static int32_t AddPreferredCompatibleMode(RdbStore &store)
     return ret;
 }
 REGISTER_SYNC_UPGRADE_TASK(VERSION_ADD_PREFERRED_COMPATIBLE_MODE, "OtherTable", AddPreferredCompatibleMode);
+
+static int32_t AddLivePhoto4DAlbum(RdbStore& store)
+{
+    MEDIA_INFO_LOG("Start add live photo 4d album");
+    const std::string addLivePhoto4DAlbumSql =
+        "INSERT INTO PhotoAlbum (album_type, album_subtype) SELECT 1024, 1033 "
+        "WHERE NOT EXISTS (SELECT 1 FROM PhotoAlbum WHERE album_type = 1024 AND album_subtype = 1033)";
+    const vector<string> sqls = { addLivePhoto4DAlbumSql };
+    int32_t ret = ExecSqlsWithDfx(sqls, store, VERSION_ADD_LIVEPHOTO_4D_ALBUM);
+    MEDIA_INFO_LOG("End add live photo 4d album");
+    return ret;
+}
+REGISTER_SYNC_UPGRADE_TASK(VERSION_ADD_LIVEPHOTO_4D_ALBUM, "Vision", AddLivePhoto4DAlbum);
 
 static int32_t AddUniqueIdColumnsToAlbums(RdbStore &store)
 {

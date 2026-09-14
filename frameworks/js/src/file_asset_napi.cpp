@@ -540,6 +540,11 @@ std::string FileAssetNapi::GetFrontCamera() const
     return fileAssetPtr->GetFrontCamera();
 }
 
+std::string FileAssetNapi::GetXtStyleTemplateName() const
+{
+    return fileAssetPtr->GetXtStyleTemplateName();
+}
+
 std::string FileAssetNapi::GetUserComment() const
 {
     return fileAssetPtr->GetUserComment();

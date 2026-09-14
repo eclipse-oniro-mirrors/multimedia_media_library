@@ -45,6 +45,7 @@ public:
     int32_t hdrMode;
     int32_t videoMode;
     std::string frontCamera;
+    std::string xtStyleTemplateName;  // xt style template name
     int64_t editTime;
     int32_t originalSubtype;
     int64_t coverPosition;

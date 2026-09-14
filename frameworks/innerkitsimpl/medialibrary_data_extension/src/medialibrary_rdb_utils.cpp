@@ -88,6 +88,7 @@ const std::vector<std::string> ALL_SYS_PHOTO_ALBUM = {
     std::to_string(PhotoAlbumSubType::CAMERA),
     std::to_string(PhotoAlbumSubType::IMAGE),
     std::to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+    std::to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
     std::to_string(PhotoAlbumSubType::SOURCE_GENERIC),
 };
 
@@ -131,6 +132,7 @@ const vector<string> SYSTEM_ALBUMS = {
     to_string(PhotoAlbumSubType::TRASH),
     to_string(PhotoAlbumSubType::IMAGE),
     to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+    std::to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
 };
 
 struct BussinessRecordValue {
@@ -1369,7 +1371,7 @@ static bool IsInSystemAlbum(std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
     RdbPredicates &predicates, PhotoAlbumSubType subtype)
 {
     vector<string> columns = {PhotoColumn::MEDIA_IS_FAV, PhotoColumn::MEDIA_TYPE, PhotoColumn::MEDIA_DATE_TRASHED,
-    PhotoColumn::PHOTO_STRONG_ASSOCIATION};
+    PhotoColumn::PHOTO_STRONG_ASSOCIATION, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS};
     auto resultSet = rdbStore->Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "failed to acquire result from visitor query.");
     bool ret = false;
@@ -1390,6 +1392,10 @@ static bool IsInSystemAlbum(std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
             case PhotoAlbumSubType::CLOUD_ENHANCEMENT:
                 ret = GetIntValFromColumn(resultSet, PhotoColumn::PHOTO_STRONG_ASSOCIATION) ==
                     static_cast<int32_t>(StrongAssociationType::CLOUD_ENHANCEMENT);
+                break;
+            case PhotoAlbumSubType::LIVEPHOTO_4D:
+                ret = GetIntValFromColumn(resultSet, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS) ==
+                    static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
                 break;
             default:
                 MEDIA_ERR_LOG("albumSubtype is invalid: %{public}d", subtype);

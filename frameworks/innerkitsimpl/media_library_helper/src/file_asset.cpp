@@ -602,6 +602,16 @@ void FileAsset::SetFrontCamera(const string &frontCamera)
     member_[PhotoColumn::PHOTO_FRONT_CAMERA] = frontCamera;
 }
 
+const std::string &FileAsset::GetXtStyleTemplateName() const
+{
+    return GetStrMember(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME);
+}
+
+void FileAsset::SetXtStyleTemplateName(const string &xtStyleTemplateName)
+{
+    member_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = xtStyleTemplateName;
+}
+
 const std::string &FileAsset::GetUserComment() const
 {
     return GetStrMember(PhotoColumn::PHOTO_USER_COMMENT);

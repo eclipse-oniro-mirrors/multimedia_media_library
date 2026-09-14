@@ -203,6 +203,9 @@ public:
     EXPORT const std::string &GetFrontCamera() const;
     EXPORT void SetFrontCamera(const std::string &frontCamera);
 
+    EXPORT const std::string &GetXtStyleTemplateName() const;
+    EXPORT void SetXtStyleTemplateName(const std::string &xtStyleTemplateName);
+
     EXPORT const std::string &GetUserComment() const;
     EXPORT void SetUserComment(const std::string &userComment);
 

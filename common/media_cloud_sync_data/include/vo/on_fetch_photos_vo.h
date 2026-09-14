@@ -35,6 +35,7 @@ public:
     std::string firstVisitTime;  // MDKRecord first_update_time
     std::string detailTime;
     std::string frontCamera;
+    std::string xtStyleTemplateName;
     std::string editDataCamera;
     std::string title;
     std::string relativePath;
