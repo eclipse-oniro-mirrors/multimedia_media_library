@@ -174,6 +174,9 @@ int32_t MediaShareAssetsService::RemoveShareAssetsInner()
     ret = this->shareAssetsDao_.DeleteShareAlbums();
     CHECK_AND_PRINT_LOG(ret == E_OK, "DeleteEmptyCloudAlbums failed. ret: %{public}d", ret);
 
+    ret = this->shareAssetsDao_.DeleteShareMemberInfo();
+    CHECK_AND_PRINT_LOG(ret == E_OK, "DeleteShareMemberInfo failed. ret: %{public}d", ret);
+
     StartRemoveShareAssetsTask();
     return E_OK;
 }

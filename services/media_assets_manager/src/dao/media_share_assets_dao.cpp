@@ -29,6 +29,7 @@
 #include "photos_po_writer.h"
 #include "result_set_reader.h"
 #include "result_set_utils.h"
+#include "share_member_column.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -201,5 +202,17 @@ int32_t MediaShareAssetsDao::GetShareAssetToRemove(std::vector<PhotosPo> &queryR
 
     ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(queryResult);
     return E_OK;
+}
+
+int32_t MediaShareAssetsDao::DeleteShareMemberInfo()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "DeleteShareMemberInfo Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(ShareMemberColumn::TABLE_NAME);
+    int32_t deletedRows = -1;
+    int32_t ret = rdbStore->Delete(deletedRows, predicates);
+    MEDIA_INFO_LOG("DeleteShareMemberInfo ret: %{public}d, changedRows %{public}d",
+        ret, deletedRows);
+    return ret;
 }
 } // namespace OHOS::Media
