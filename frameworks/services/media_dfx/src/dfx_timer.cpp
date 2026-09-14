@@ -261,10 +261,12 @@ DfxTimer::DfxTimer(int32_t object, int64_t timeOut, bool isReport)
     uid_ = -1;
 }
 
-DfxTimer::DfxTimer(int32_t type, int32_t object, int64_t timeOut, bool isReport)
+DfxTimer::DfxTimer(int32_t type, int32_t object, int64_t timeOut, bool isReport,
+    const std::string &detail)
 {
     type_ = type;
     object_ = object;
+    detail_ = detail;
     start_ = MediaFileUtils::UTCTimeMilliSeconds();
     timeOut_ = timeOut;
     isReport_ = isReport;
@@ -280,9 +282,13 @@ DfxTimer::~DfxTimer()
 
     timeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start_;
     if (!isReport_) {
-        if (timeCost_ > timeOut_)
+        if (timeCost_ > timeOut_) {
             MEDIA_WARN_LOG("timeout! type: %{public}d, object: %{public}d, cost %{public}lld ms",
                 type_, object_, (long long) (timeCost_));
+            if (type_ == RDB_QUERY) {
+                MEDIA_INFO_LOG("detail_ is: %{public}s", detail_.c_str());
+            }
+        }
         return;
     }
 

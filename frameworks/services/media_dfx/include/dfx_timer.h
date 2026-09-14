@@ -26,6 +26,7 @@ class DfxTimer {
 private:
     int32_t type_;
     int32_t object_;
+    std::string detail_;
     int64_t start_;
     int64_t timeCost_ {0};
     int64_t timeOut_;
@@ -36,7 +37,8 @@ private:
 
 public:
     EXPORT DfxTimer(int32_t object, int64_t timeOut, bool isReport);
-    EXPORT DfxTimer(int32_t type, int32_t object, int64_t timeOut, bool isReport);
+    EXPORT DfxTimer(int32_t type, int32_t object, int64_t timeOut, bool isReport,
+        const std::string &detail = "");
     EXPORT ~DfxTimer();
     void End();
     EXPORT void SetCallerUid(int32_t uid);
