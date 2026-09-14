@@ -18,6 +18,7 @@
 
 #ifndef MEDIA_REFRESH_TEST
     #include "cloud_sync_helper.h"
+    #include "hi_audit.h"
 #endif
 
 #include "medialibrary_errno.h"
@@ -182,6 +183,7 @@ int32_t AlbumAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket&)> upda
     #ifndef MEDIA_REFRESH_TEST
         if (!trans_) {
             CloudSyncHelper::GetInstance()->StartSync(); // 事务场景不需要执行
+            HiAudit::GetInstance().WriteForTriggerSync("ALBUM_REFRESH", "success");
             ACCURATE_DEBUG("Delete update done, start sync.");
         }
     #endif

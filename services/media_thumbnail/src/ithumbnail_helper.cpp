@@ -20,6 +20,7 @@
 #include "c2pa_utils.h"
 #include "cloud_sync_helper.h"
 #include "dfx_utils.h"
+#include "media_func_timer.h"
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_notify.h"
 #include "media_file_utils.h"
@@ -55,8 +56,11 @@ void IThumbnailHelper::CreateLcdAndThumbnail(std::shared_ptr<ThumbnailTaskData> 
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "CreateLcdAndThumbnail failed, data is null");
     DoCreateLcdAndThumbnail(data->opts_, data->thumbnailData_);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data->thumbnailData_.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
 
     ThumbnailUtils::RecordCostTimeAndReport(data->thumbnailData_.stats);
 }
@@ -65,16 +69,22 @@ void IThumbnailHelper::CreateLcd(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "CreateLcd failed, data is null");
     DoCreateLcd(data->opts_, data->thumbnailData_);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data->thumbnailData_.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
 }
 
 void IThumbnailHelper::CreateThumbnail(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "CreateThumbnail failed, data is null");
     DoCreateThumbnail(data->opts_, data->thumbnailData_);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data->thumbnailData_.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
     ThumbnailUtils::RecordCostTimeAndReport(data->thumbnailData_.stats);
 }
 
@@ -85,8 +95,11 @@ void IThumbnailHelper::CreateAstc(std::shared_ptr<ThumbnailTaskData> &data)
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     bool isSuccess = DoCreateThumbnail(data->opts_, data->thumbnailData_);
     CacheThumbnailState(data->opts_, data->thumbnailData_, isSuccess);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data->thumbnailData_.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
     MediaLibraryAstcStat::GetInstance().AddAstcInfo(startTime,
         data->thumbnailData_.stats.scene, AstcGenScene::NOCHARGING_SCREENOFF, data->thumbnailData_.id);
     ThumbnailUtils::RecordCostTimeAndReport(data->thumbnailData_.stats);
@@ -96,8 +109,11 @@ void IThumbnailHelper::CreateAstcEx(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "CreateAstcEx failed, data is null");
     DoCreateAstcEx(data->opts_, data->thumbnailData_);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data->thumbnailData_.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
     ThumbnailUtils::RecordCostTimeAndReport(data->thumbnailData_.stats);
 }
 
@@ -1091,12 +1107,16 @@ bool IThumbnailHelper::DoCreateLcdAndThumbnail(ThumbRdbOpt &opts, ThumbnailData 
         data.id.c_str(), DfxUtils::GetSafePath(data.path).c_str(), data.exifRotate, data.position);
     data.isNeedStoreSize = false;
     bool isPrevStepSuccess = true;
-    if (!DoCreateLcd(opts, data)) {
-        MEDIA_ERR_LOG("Fail to create lcd, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
-        isPrevStepSuccess = false;
+    {
+        MediaFuncTimer timer("DoCreateLcd id:%s", data.id.c_str());
+        if (!DoCreateLcd(opts, data)) {
+            MEDIA_ERR_LOG("Fail to create lcd, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
+            isPrevStepSuccess = false;
+        }
     }
 
     if (isPrevStepSuccess && !data.source.IsEmptySource()) {
+        MediaFuncTimer timer("ScaleLcdToThumbnail id:%s", data.id.c_str());
         CHECK_AND_EXECUTE(ScaleLcdToThumbnail(data), {
             MEDIA_ERR_LOG("ScaleLcdToThumbnail failed. id: %{public}s, path: %{public}s",
                 data.id.c_str(), DfxUtils::GetSafePath(data.path).c_str());
@@ -1105,6 +1125,7 @@ bool IThumbnailHelper::DoCreateLcdAndThumbnail(ThumbRdbOpt &opts, ThumbnailData 
     }
 
     if (isPrevStepSuccess) {
+        MediaFuncTimer timer("DoCreateThumbnail id:%s", data.id.c_str());
         if (!DoCreateThumbnail(opts, data)) {
             MEDIA_ERR_LOG("Fail to create thumb, path: %{public}s, prev step: %{public}d",
                 DfxUtils::GetSafePath(data.path).c_str(), isPrevStepSuccess);

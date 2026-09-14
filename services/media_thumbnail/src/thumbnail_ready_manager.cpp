@@ -22,6 +22,7 @@
 
 #include "dfx_utils.h"
 #include "ithumbnail_helper.h"
+#include "media_func_timer.h"
 #include "media_log.h"
 #include "media_file_uri.h"
 #include "medialibrary_errno.h"
@@ -277,8 +278,11 @@ void ThumbnailReadyManager::RecordNotFoundThumbnail(const std::string &path,
     auto data = thumbReadyTaskData->downloadThumbMap[path];
     ThumbRdbOpt& opts = thumbReadyTaskData->opts;
     IThumbnailHelper::CacheThumbnailState(opts, data, false);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
 }
 
 void ThumbnailReadyManager::HandleDownloadBatch(int32_t requestId, pid_t pid)

@@ -27,6 +27,7 @@
 #include "media_file_utils.h"
 #include "analysis_album_attribute_const.h"
 #include "dfx_utils.h"
+#include "hi_audit.h"
 #include "media_analysis_helper.h"
 #include "medialibrary_album_fusion_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
@@ -3893,6 +3894,8 @@ int32_t MediaLibraryAlbumOperations::SetAlbumName(const ValuesBucket &values, co
     NotifyPortraitIfNeeded(targetAlbumId);
 
     UpdateIndexForAlbumAssets(targetAlbumId);
+    HiAudit::GetInstance().WriteForRename("ANALYSIS_SET_NAME", err == E_OK ? "success" : "fail",
+        targetAlbumId, "", albumName);
     return err;
 }
 
@@ -4025,7 +4028,10 @@ int32_t MediaLibraryAlbumOperations::HandleSetAlbumNameRequest(const ValuesBucke
     string newAlbumName {};
     CHECK_AND_RETURN_RET_LOG(GetArgsSetUserAlbumName(values, predicates, oldAlbumId, newAlbumName),
         E_INVALID_ARGS, "Set album name args invalid");
-    return RenameUserAlbum(oldAlbumId, newAlbumName, isGroupPhotoAlbum);
+    int32_t ret = RenameUserAlbum(oldAlbumId, newAlbumName, isGroupPhotoAlbum);
+    HiAudit::GetInstance().WriteForRename("ALBUM_SET_NAME", ret == ALBUM_SETNAME_OK ? "success" : "fail",
+        to_string(oldAlbumId), "", newAlbumName);
+    return ret;
 }
 
 int32_t MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(const OperationType &opType,

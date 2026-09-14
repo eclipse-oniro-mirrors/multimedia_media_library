@@ -38,6 +38,7 @@
 #include "medialibrary_asset_operations.h"
 #include "scanner_utils.h"
 #include "medialibrary_notify.h"
+#include "hi_audit.h"
 #include "cloud_media_dao_const.h"
 #include "media_gallery_sync_notify.h"
 #include "cloud_media_sync_const.h"
@@ -360,6 +361,11 @@ int32_t CloudMediaPhotosService::PullRecordsDataMerge(std::vector<CloudMediaPull
     if (!refreshAlbums.empty()) {
         std::set<std::string>::iterator it = refreshAlbums.begin();
         mergeResult.refreshAlbumId = *it;
+    }
+    if (mergeResult.mergeCount > 0) {
+        std::string status = mergeResult.failCloudId.empty() ? "success" : "fail";
+        HiAudit::GetInstance().WriteForDataFusion(
+            "PULL_MERGE", status, mergeResult.mergeCount, mergeResult.failCloudId);
     }
     return E_OK;
 }

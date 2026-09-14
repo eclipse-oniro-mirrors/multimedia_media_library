@@ -17,6 +17,7 @@
 
 #include "dfx_manager.h"
 #include "dfx_reporter.h"
+#include "hi_audit.h"
 #include "map_operation_flag.h"
 #include "medialibrary_album_operations.h"
 #include "medialibrary_formmap_operations.h"
@@ -355,6 +356,8 @@ int32_t MediaLibraryAlbumFusionUtils::HandleMatchedDataFusion(const std::shared_
     }
     MEDIA_INFO_LOG("ALBUM_FUSE: STEP_1: End handle matched relationship, cost %{public}ld",
         (long)(MediaFileUtils::UTCTimeMilliSeconds() - beginTime));
+    HiAudit::GetInstance().WriteForDataFusion("ALBUM_MATCHED", "success",
+        static_cast<uint32_t>(matchedCount), "");
     return E_OK;
 }
 
@@ -1841,6 +1844,8 @@ int32_t MediaLibraryAlbumFusionUtils::HandleNotMatchedDataFusion(
     }
     MEDIA_INFO_LOG("ALBUM_FUSE: STEP_2: end handle not matched relationship, cost %{public}ld",
         (long)(MediaFileUtils::UTCTimeMilliSeconds() - beginTime));
+    HiAudit::GetInstance().WriteForDataFusion("ALBUM_NOT_MATCHED", "success",
+        static_cast<uint32_t>(totalNumber), "");
     return E_OK;
 }
 

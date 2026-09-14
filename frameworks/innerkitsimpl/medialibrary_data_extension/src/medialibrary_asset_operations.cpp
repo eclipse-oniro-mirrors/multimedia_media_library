@@ -56,6 +56,7 @@
 #include "data_secondary_directory_uri.h"
 #include "medialibrary_restore.h"
 #include "cloud_sync_helper.h"
+#include "hi_audit.h"
 #include "refresh_business_name.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 #include "background_cloud_batch_selected_file_processor.h"
@@ -3305,6 +3306,7 @@ static int32_t DeleteDbByIds(const string &table, vector<string> &ids, const boo
     bool isValid = (table == PhotoColumn::PHOTOS_TABLE) || (table == PhotoAlbumColumns::TABLE);
     isValid = isValid && (deletedRows > 0);
     CHECK_AND_EXECUTE(!isValid, CloudSyncHelper::GetInstance()->StartSync());
+    CHECK_AND_EXECUTE(!isValid, HiAudit::GetInstance().WriteForTriggerSync("ASSET_DELETE", "success"));
     return deletedRows;
 }
 

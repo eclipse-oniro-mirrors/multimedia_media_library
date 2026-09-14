@@ -23,6 +23,7 @@
 #include "parameters.h"
 #include "post_event_utils.h"
 #include "settings_data_manager.h"
+#include "hi_audit.h"
 
 namespace OHOS {
 namespace Media {
@@ -185,6 +186,7 @@ void CloudSyncHelper::OnTimerCallback()
     auto callback = make_shared<MediaCloudSyncCallback>();
     int32_t ret = CloudSyncManager::GetInstance().StartSync(false, callback);
     CHECK_AND_PRINT_LOG(ret == 0, "cloud sync manager start sync err %{public}d", ret);
+    HiAudit::GetInstance().WriteForTriggerSync("SWITCH_ON", ret == 0 ? "success" : "fail");
 }
 
 void MediaCloudSyncCallback::OnSyncStateChanged(SyncType type, SyncPromptState state)

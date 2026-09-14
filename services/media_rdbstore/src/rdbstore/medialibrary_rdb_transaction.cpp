@@ -24,6 +24,7 @@
 #include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdbstore.h"
 #include "cloud_sync_helper.h"
+#include "hi_audit.h"
 #include "rdb_table_strategy_manager.h"
 #include "values_buckets.h"
 
@@ -130,6 +131,7 @@ int32_t TransactionOperations::Finish()
     if (isSkipCloudSync_) {
         MEDIA_INFO_LOG("recover cloud sync for commit");
         CloudSyncHelper::GetInstance()->StartSync();
+        HiAudit::GetInstance().WriteForTriggerSync("TRANS_COMMIT", "success");
         isSkipCloudSync_ = false;
     }
 #endif
@@ -199,6 +201,7 @@ int32_t TransactionOperations::Rollback()
     if (isSkipCloudSync_) {
         MEDIA_INFO_LOG("recover cloud sync for rollback");
         CloudSyncHelper::GetInstance()->StartSync();
+        HiAudit::GetInstance().WriteForTriggerSync("TRANS_ROLLBACK", "success");
         isSkipCloudSync_ = false;
     }
 #endif

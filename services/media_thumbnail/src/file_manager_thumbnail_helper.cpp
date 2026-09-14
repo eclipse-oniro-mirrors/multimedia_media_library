@@ -19,6 +19,7 @@
 
 #include "dfx_utils.h"
 #include "media_log.h"
+#include "media_func_timer.h"
 #include "ithumbnail_helper.h"
 #include "thumbnail_const.h"
 #include "thumbnail_utils.h"
@@ -205,12 +206,15 @@ void FileManagerThumbnailHelper::FileManagerThumbnailTaskExecutor(std::shared_pt
         data->thumbnailData_.stats, GenerateScene::LOCAL, LoadSourceType::LOCAL_PHOTO);
 
     IThumbnailHelper::DoCreateThumbnail(data->opts_, data->thumbnailData_);
-    int32_t ret = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("Failed to create thumbnail for fileId: %{public}s, ret: %{public}d",
-            data->opts_.row.c_str(), ret);
-    } else {
-        MEDIA_DEBUG_LOG("Successfully created thumbnail for fileId: %{public}s", data->opts_.row.c_str());
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data->thumbnailData_.id.c_str());
+        int32_t ret = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("Failed to create thumbnail for fileId: %{public}s, ret: %{public}d",
+                data->opts_.row.c_str(), ret);
+        } else {
+            MEDIA_DEBUG_LOG("Successfully created thumbnail for fileId: %{public}s", data->opts_.row.c_str());
+        }
     }
 
     ThumbnailUtils::RecordCostTimeAndReport(data->thumbnailData_.stats);

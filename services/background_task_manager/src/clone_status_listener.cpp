@@ -25,6 +25,7 @@
 #include "iservice_registry.h"
 
 #include "cloud_sync_helper.h"
+#include "hi_audit.h"
 #include "medialibrary_async_worker.h"
 
 using namespace std;
@@ -123,6 +124,7 @@ void CloneStatusListener::HandleCloneStatusChanged()
     CHECK_AND_RETURN_LOG(cloneFlagStr == "0", "Failed to set parameter cloneFlag, retFlag:%{public}s",
         cloneFlagStr.c_str());
     CloudSyncHelper::GetInstance()->StartSync();
+    HiAudit::GetInstance().WriteForTriggerSync("CLONE_RESTORE", "success");
 }
 
 void CloneStatusListener::HandleDeathRecipient()
