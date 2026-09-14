@@ -71,15 +71,18 @@ public:
     EXPORT static bool QueryDistributeLcdCount(ThumbRdbOpt &opts, int &outLcdCount, int &err);
     EXPORT static bool QueryAgingLcdInfos(ThumbRdbOpt &opts, int LcdLimit,
         std::vector<ThumbnailData> &infos, int &err);
-    EXPORT static bool QueryNoLcdInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
+    EXPORT static bool QueryNoLcdInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
+        uint32_t limit = 0);
     EXPORT static bool QueryLocalNoLcdInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
-    EXPORT static bool QueryNoThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
+    EXPORT static bool QueryNoThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
+        uint32_t limit = 0);
     EXPORT static bool QueryUpgradeThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos,
         bool isWifiConnected, int &err);
     EXPORT static bool QueryNoAstcInfosRestored(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
         const int32_t &restoreAstcCount);
     EXPORT static bool QueryLocalNoThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
-    EXPORT static bool QueryNoAstcInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
+    EXPORT static bool QueryNoAstcInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
+        uint32_t limit = 0);
     EXPORT static bool QueryNewThumbnailCount(ThumbRdbOpt &opts, const int64_t &time, int &count, int &err);
     EXPORT static bool QueryNoHighlightInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
     EXPORT static bool QueryNoHighlightPath(ThumbRdbOpt &opts, ThumbnailData &data, int &err);

@@ -224,12 +224,6 @@ static void ThumbnailGenerateHelperTestPart2()
 {
     Media::ThumbRdbOpt opts = FuzzThumbRdbOpt(true);
     vector<Media::ThumbnailData> outDatas;
-    Media::ThumbnailGenerateHelper::GetNoLcdData(opts, outDatas);
-    outDatas.clear();
-    Media::ThumbnailGenerateHelper::GetNoThumbnailData(opts, outDatas);
-    outDatas.clear();
-    Media::ThumbnailGenerateHelper::GetNoAstcData(opts, outDatas);
-    outDatas.clear();
     Media::ThumbnailGenerateHelper::GetLocalNoLcdData(opts, outDatas);
     outDatas.clear();
     int64_t time = provider->ConsumeIntegral<int64_t>();

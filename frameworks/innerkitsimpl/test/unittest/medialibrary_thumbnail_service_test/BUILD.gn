@@ -27,6 +27,7 @@ ohos_unittest("medialibrary_thumbnail_service_test") {
     "./include",
     "../medialibrary_unittest_utils/include",
     "../medialibrary_utils_test/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_thumbnail/domain/background_generate_manager",
   ]
 
   cflags = [ "-fno-access-control" ]

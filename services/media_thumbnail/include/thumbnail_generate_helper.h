@@ -24,6 +24,7 @@
 
 namespace OHOS {
 namespace Media {
+class ThumbnailTaskData;
 class ThumbnailGenerateHelper {
 public:
     ThumbnailGenerateHelper() = delete;
@@ -31,17 +32,13 @@ public:
     EXPORT static int32_t CreateThumbnailFileScaned(ThumbRdbOpt &opts, bool isSync);
     EXPORT static int32_t CreateThumbnailFileScanedWithPicture(ThumbRdbOpt &opts,
         std::shared_ptr<Picture> originalPhotoPicture, bool isSync);
-    EXPORT static int32_t CreateThumbnailBackground(ThumbRdbOpt &opts);
-    EXPORT static int32_t CreateAstcBackground(ThumbRdbOpt &opts);
     EXPORT static int32_t CreateAstcCloudDownload(ThumbRdbOpt &opts, bool isCloudInsertTaskPriorityHigh = false);
     EXPORT static int32_t CreateAstcMthAndYear(ThumbRdbOpt &opts);
-    EXPORT static int32_t CreateLcdBackground(ThumbRdbOpt &opts);
     EXPORT static int32_t GenerateHighlightThumbnailBackground(ThumbRdbOpt &opts);
     EXPORT static int32_t RegenerateThumbnailFromCloud(ThumbRdbOpt &opts);
     EXPORT static int32_t TriggerHighlightThumbnail(ThumbRdbOpt &opts, std::string &id, std::string &tracks,
         std::string &trigger, std::string &genType);
     EXPORT static int32_t UpgradeThumbnailBackground(ThumbRdbOpt &opts, bool isWifiConnected);
-    EXPORT static int32_t CreateLocalThumbnail(ThumbRdbOpt &opts);
     EXPORT static int32_t GetNewThumbnailCount(ThumbRdbOpt &opts, const int64_t &time, int &count);
     EXPORT static int32_t GetThumbnailPixelMap(ThumbnailData& data, ThumbRdbOpt &opts, ThumbnailType thumbType);
     EXPORT static int32_t GetKeyFrameThumbnailPixelMap(ThumbRdbOpt &opts, int32_t &timeStamp,
@@ -56,13 +53,14 @@ public:
     EXPORT static int32_t SyncRegenerateAstcWithLocal(ThumbRdbOpt &opts);
     EXPORT static int32_t UpdateLcdFileSizeAndThumbStatus(const std::string &id, const std::string &path);
     EXPORT static void HandleLocalThumbnailUnavailable(ThumbnailData& data, ThumbRdbOpt &opts, ThumbnailType thumbType);
+    // Exposed for the background generate manager's windowed loop.
+    EXPORT static void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data);
+    EXPORT static bool NeedGenerateLocalLcd(ThumbnailData &data);
+    EXPORT static void CheckMonthAndYearKvStoreValid(ThumbRdbOpt &opts);
 
 private:
     EXPORT static int32_t GetLcdCount(ThumbRdbOpt &opts, int &outLcdCount);
-    EXPORT static int32_t GetNoLcdData(ThumbRdbOpt &opts, std::vector<ThumbnailData> &outDatas);
     EXPORT static int32_t GetLocalNoLcdData(ThumbRdbOpt &opts, std::vector<ThumbnailData> &outDatas);
-    EXPORT static int32_t GetNoThumbnailData(ThumbRdbOpt &opts, std::vector<ThumbnailData> &outDatas);
-    EXPORT static int32_t GetNoAstcData(ThumbRdbOpt &opts, std::vector<ThumbnailData> &outDatas);
     EXPORT static int32_t GetAvailableFile(ThumbRdbOpt &opts, ThumbnailData &data, ThumbnailType thumbType,
         std::string &fileName);
     EXPORT static std::string GetAvailablePath(const std::string &path, const ThumbnailType &thumbType);
@@ -71,7 +69,6 @@ private:
         std::string &fileName);
     EXPORT static int32_t GetThumbnailDataNeedUpgrade(ThumbRdbOpt &opts, std::vector<ThumbnailData> &outDatas,
         bool isWifiConnected);
-    EXPORT static void CheckMonthAndYearKvStoreValid(ThumbRdbOpt &opts);
     EXPORT static void ReGenerateAstc(ThumbRdbOpt& opts, ThumbnailData& data, ThumbnailType thumbType);
 };
 } // namespace Media

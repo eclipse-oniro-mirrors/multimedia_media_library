@@ -3073,8 +3073,6 @@ int32_t MediaLibraryDataManager::ProcessThumbnailBatchCmd(const MediaLibraryComm
             valueObject.GetInt(restoreAstcCount);
         }
         return thumbnailService_->RestoreThumbnailDualFrame(restoreAstcCount);
-    } else if (cmd.GetOprnType() == OperationType::LOCAL_THUMBNAIL_GENERATION) {
-        return thumbnailService_->LocalThumbnailGeneration();
     } else {
         MEDIA_ERR_LOG("invalid mediaLibrary command");
         return E_INVALID_ARGUMENTS;
