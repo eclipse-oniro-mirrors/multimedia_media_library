@@ -53,6 +53,7 @@ ohos_unittest("medialibrary_dfx_test") {
     "./src/media_library_monitor_test.cpp",
     "./src/medialibrary_dfx_test.cpp",
     "./src/medialibrary_dfx_patch_test.cpp",
+    "./src/medialibrary_dfx_timer_test.cpp",
     "./src/mock_medialibrary_subscriber.cpp",
   ]
   deps = [

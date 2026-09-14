@@ -29,6 +29,7 @@ ohos_unittest("medialibrary_common_utils_test") {
 
   sources = [
     "./src/medialibrary_common_utils_test.cpp",
+    "./src/medialibrary_file_utils_test.cpp",
     "./src/medialibrary_js_interface_helper_test.cpp",
     "./src/medialibrary_permission_utils_test.cpp",
     "./src/medialibrary_privacy_manager_test.cpp",
