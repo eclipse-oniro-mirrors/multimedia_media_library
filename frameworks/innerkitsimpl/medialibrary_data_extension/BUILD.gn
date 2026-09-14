@@ -264,6 +264,7 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_SERVICES_PATH}/media_power_efficiency/include",
     "${MEDIALIB_SERVICES_PATH}/media_visit_count/include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/domain/background_generate_manager",
     "${MEDIALIB_FACARD_PATH}/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/include",
@@ -469,6 +470,7 @@ ohos_shared_library("medialibrary_data_extension") {
   ]
 
   media_thumbnail_source = [
+    "${MEDIALIB_THUMBNAIL_PATH}/domain/background_generate_manager/background_generate_manager.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/cloud_thumbnail_observer.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/file_manager_thumbnail_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/ithumbnail_helper.cpp",

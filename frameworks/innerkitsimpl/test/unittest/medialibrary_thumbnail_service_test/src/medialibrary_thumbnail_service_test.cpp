@@ -22,6 +22,7 @@
 #include "ithumbnail_helper.h"
 #include "thumbnail_generate_helper.h"
 #include "thumbnail_restore_manager.h"
+#include "background_generate_manager.h"
 #undef private
 #include "media_file_utils.h"
 #include "medialibrary_db_const_sqls.h"
@@ -753,12 +754,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, GenerateHighlightThumbnailBackground_
     EXPECT_EQ(res, E_OK);
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, LocalThumbnailGeneration_test_001, TestSize.Level1)
-{
-    auto res = serverTest->LocalThumbnailGeneration();
-    EXPECT_EQ(res, E_OK);
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumnail_utils_test_023, TestSize.Level1)
 {
     ThumbnailData data;
@@ -1480,21 +1475,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_restore_manager_test_007, T
     thumbnailRestoreManager.Reset();
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_CreateAstcBackground_test_001, TestSize.Level1)
-{
-    ThumbRdbOpt opts;
-    auto res = ThumbnailGenerateHelper::CreateAstcBackground(opts);
-    EXPECT_EQ(res, E_ERR);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_CreateAstcBackground_test_002, TestSize.Level1)
-{
-    ThumbRdbOpt opts;
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
-    auto res = ThumbnailGenerateHelper::CreateAstcBackground(opts);
-    EXPECT_EQ(res, E_ERR);
-}
-
 /**
  * 用例说明：验证NeedCreateDentry方法处理空路径时返回false
  * 覆盖场景：传入空字符串作为文件路径
@@ -1691,5 +1671,233 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_003, TestS
     EXPECT_EQ(result, E_OK);
     MEDIA_INFO_LOG("End CreateDentryForOrigin_test_003");
 }
+
+//查询函数 LIMIT 验证
+static constexpr int32_t BG_QUERY_BATCH = 1000;
+
+static void CreatePhotosTableForLimitTest()
+{
+    const string createSql =
+        "CREATE TABLE IF NOT EXISTS Photos ("
+        "file_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "data TEXT,"
+        "media_type INTEGER DEFAULT 1,"
+        "date_modified INTEGER DEFAULT 0,"
+        "data_taken INTEGER DEFAULT 0,"
+        "display_name TEXT DEFAULT '',"
+        "position INTEGER DEFAULT 1,"
+        "orientation INTEGER DEFAULT 0,"
+        "exif_rotate INTEGER DEFAULT 0,"
+        "time_pending INTEGER DEFAULT 0,"
+        "date_trashed INTEGER DEFAULT 0,"
+        "last_visit_time INTEGER DEFAULT 0,"
+        "lcd_visit_time INTEGER DEFAULT 0,"
+        "sync_status INTEGER DEFAULT 0,"
+        "clean_flag INTEGER DEFAULT 0,"
+        "is_temp INTEGER DEFAULT 0,"
+        "thumbnail_ready INTEGER DEFAULT 0,"
+        "thumb_status INTEGER DEFAULT 0);";
+    storePtr->ExecuteSql(createSql);
+}
+
+static void InsertPhotoForLimitTest(int32_t count)
+{
+    storePtr->ExecuteSql("DELETE FROM Photos;");
+    for (int32_t i = 0; i < count; i++) {
+        string path = "/test/path_" + to_string(i) + ".jpg";
+        string sql = "INSERT INTO Photos (data, media_type, data_taken) VALUES ('"
+            + path + "', 1, " + to_string(i) + ");";
+        storePtr->ExecuteSql(sql);
+    }
+}
+
+//2500条数据，LIMIT 1000 应返回1000条
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoThumbnailInfos_limit_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoThumbnailInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), BG_QUERY_BATCH);
+}
+
+//500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoThumbnailInfos_limit_002, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoThumbnailInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 500);
+}
+
+//2500条数据，不传LIMIT
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoThumbnailInfos_limit_003, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoThumbnailInfos(opts, infos, err, 0);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 2500);
+}
+
+//2500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoLcdInfos_limit_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoLcdInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), BG_QUERY_BATCH);
+}
+
+//500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoLcdInfos_limit_002, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoLcdInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 500);
+}
+
+//2500条数据，不传LIMIT
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoLcdInfos_limit_003, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoLcdInfos(opts, infos, err, 0);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 2500);
+}
+
+//2500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoAstcInfos_limit_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoAstcInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), BG_QUERY_BATCH);
+}
+
+//500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoAstcInfos_limit_002, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoAstcInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 500);
+}
+
+//2500条数据，不传LIMIT
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoAstcInfos_limit_003, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoAstcInfos(opts, infos, err, 0);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 2500);
+}
+
+//多次中断验证-中断后重新启动，多次反复不崩溃
+HWTEST_F(MediaLibraryThumbnailServiceTest, MultipleInterrupt_service_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+
+    shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
+    shared_ptr<OHOS::AbilityRuntime::Context> context;
+    serverTest->Init(storePtr, context);
+
+    for (int round = 0; round < 3; round++) {
+        serverTest->GenerateThumbnailBackground();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        serverTest->InterruptBgworker();
+        ASSERT_NE(serverTest->bgGenerateManager_, nullptr);
+        EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+    }
+
+    serverTest->ReleaseService();
+}
+
+//中断后再启动不挂起：快速Start-Interrupt 序列不死锁
+HWTEST_F(MediaLibraryThumbnailServiceTest, BatchQueryInterrupt_no_deadlock_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+
+    shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
+    shared_ptr<OHOS::AbilityRuntime::Context> context;
+    serverTest->Init(storePtr, context);
+
+    serverTest->GenerateThumbnailBackground();
+    serverTest->InterruptBgworker();
+    EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+
+    serverTest->GenerateThumbnailBackground();
+    serverTest->InterruptBgworker();
+    EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+    
+    serverTest->GenerateThumbnailBackground();
+    serverTest->InterruptBgworker();
+    EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+    
+    serverTest->ReleaseService();
+}
+
 } // namespace Media
 } // namespace OHOS

@@ -79,7 +79,6 @@ namespace Media {
 #define CONST_OPRN_STOP_GENERATE_THUMBNAILS "stop_generate_thumbnails"
 #define CONST_OPRN_GENERATE_THUMBNAILS_RESTORE "generate_thumbnails_restore"
 #define CONST_OPRN_RESTORE_INVALID_HDC_CLOUD_DATA_POS "RESTORE_INVALID_HDC_CLOUD_DATA_POS"
-#define CONST_OPRN_LOCAL_THUMBNAIL_GENERATION "local_thumbnail_generation"
 #define CONST_OPRN_ADD_FILTERS "add_filters"
 #define CONST_OPRN_DISCARD_CAMERA_PHOTO "discard_camera_photo"
 #define CONST_OPRN_SAVE_CAMERA_PHOTO "save_camera_photo"

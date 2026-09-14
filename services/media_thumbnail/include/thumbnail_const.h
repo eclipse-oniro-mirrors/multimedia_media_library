@@ -158,7 +158,6 @@ constexpr int32_t READY_TEMPERATURE_LEVEL = 4;
 constexpr int32_t EVEN_BASE_NUMBER = 2;
 constexpr int32_t LOCAL_GENERATION_BATTERY_CAPACITY = 10;
 
-constexpr uint32_t THUMBNAIL_QUERY_MAX = 2000;
 constexpr uint32_t THUMBNAIL_QUERY_MIN = 200;
 constexpr int64_t AV_FRAME_TIME = 0;
 constexpr int64_t MS_TRANSFER_US = 1000;

@@ -15,6 +15,7 @@
 #define MLOG_TAG "Thumbnail"
 
 #include "thumbnail_service.h"
+#include "background_generate_manager.h"
 
 #include "cloud_sync_helper.h"
 #include "file_parser.h"
@@ -67,6 +68,7 @@ namespace Media {
 // LCOV_EXCL_START
 std::shared_ptr<ThumbnailService> ThumbnailService::thumbnailServiceInstance_{nullptr};
 std::mutex ThumbnailService::instanceLock_;
+ThumbnailService::~ThumbnailService() = default;
 ThumbnailService::ThumbnailService(void)
 {
     rdbStorePtr_ = nullptr;
@@ -130,13 +132,19 @@ void ThumbnailService::Init(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     }
 
     ThumbnailDoubleUpgradeConfigManager::GetInstance().Init();
+    bgGenerateManager_ = std::make_unique<BackgroundGenerateManager>();
+    bgGenerateManager_->Init(rdbStorePtr_);
 }
 
 void ThumbnailService::ReleaseService()
 {
-    StopAllWorker();
+    if (bgGenerateManager_ != nullptr) {
+        bgGenerateManager_->Stop();
+        bgGenerateManager_.reset();
+    }
     rdbStorePtr_ = nullptr;
     context_ = nullptr;
+    StopAllWorker();
     thumbnailServiceInstance_ = nullptr;
 }
 
@@ -438,6 +446,9 @@ int32_t ThumbnailService::CreateThumbnailFileScanedWithPicture(const std::string
 
 void ThumbnailService::InterruptBgworker()
 {
+    if (bgGenerateManager_ != nullptr) {
+        bgGenerateManager_->Stop();
+    }
     std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
         ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::BACKGROUND);
     CHECK_AND_RETURN_LOG(thumbnailWorker != nullptr, "thumbnailWorker is null");
@@ -459,40 +470,11 @@ int32_t ThumbnailService::GenerateThumbnailBackground()
     if (!CheckSizeValid()) {
         return E_THUMBNAIL_INVALID_SIZE;
     }
-    int32_t err = 0;
-    vector<string> tableList;
-    tableList.emplace_back(PhotoColumn::PHOTOS_TABLE);
-    tableList.emplace_back(AudioColumn::AUDIOS_TABLE);
-    tableList.emplace_back(CONST_MEDIALIBRARY_TABLE);
-
-    for (const auto &tableName : tableList) {
-        ThumbRdbOpt opts = {
-            .store = rdbStorePtr_,
-            .table = tableName
-        };
-
-        if ((tableName == PhotoColumn::PHOTOS_TABLE) && ThumbnailImageFrameWorkUtils::IsSupportGenAstc()) {
-            // CreateAstcBackground contains thumbnails created.
-            err = ThumbnailGenerateHelper::CreateAstcBackground(opts);
-            if (err != E_OK) {
-                MEDIA_ERR_LOG("CreateAstcBackground failed : %{public}d", err);
-            }
-        } else {
-            err = ThumbnailGenerateHelper::CreateThumbnailBackground(opts);
-            if (err != E_OK) {
-                MEDIA_ERR_LOG("CreateThumbnailBackground failed : %{public}d", err);
-            }
-        }
-
-        if (tableName == PhotoColumn::PHOTOS_TABLE) {
-            err = ThumbnailGenerateHelper::CreateLcdBackground(opts);
-            if (err != E_OK) {
-                MEDIA_ERR_LOG("CreateLcdBackground failed : %{public}d", err);
-            }
-        }
+    if (bgGenerateManager_ == nullptr) {
+        MEDIA_ERR_LOG("bgGenerateManager_ is null");
+        return E_ERR;
     }
-
-    return err;
+    return bgGenerateManager_->Start();
 }
 
 int32_t ThumbnailService::UpgradeThumbnailBackground(bool isWifiConnected)
@@ -668,25 +650,6 @@ int32_t ThumbnailService::QueryNewThumbnailCount(const int64_t &time, int32_t &c
             return err;
         }
         count += tempCount;
-    }
-    return E_OK;
-}
-
-int32_t ThumbnailService::LocalThumbnailGeneration()
-{
-    if (!CloudSyncHelper::GetInstance()->isThumbnailGenerationCompleted_) {
-        MEDIA_INFO_LOG("active local thumb genetaion exists");
-        return E_OK;
-    }
-    CloudSyncHelper::GetInstance()->isThumbnailGenerationCompleted_ = false;
-    ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
-        .table = PhotoColumn::PHOTOS_TABLE,
-    };
-    int err = ThumbnailGenerateHelper::CreateLocalThumbnail(opts);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("LocalThumbnailGeneration failed : %{public}d", err);
-        return err;
     }
     return E_OK;
 }

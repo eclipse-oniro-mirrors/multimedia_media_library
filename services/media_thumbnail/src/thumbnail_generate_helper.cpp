@@ -136,52 +136,6 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailFileScanedWithPicture(ThumbRdbOp
     return E_OK;
 }
 
-int32_t ThumbnailGenerateHelper::CreateThumbnailBackground(ThumbRdbOpt &opts)
-{
-    if (opts.store == nullptr) {
-        MEDIA_ERR_LOG("rdbStore is not init");
-        return E_ERR;
-    }
-    const auto isCloudSyncOn = CloudSyncUtils::IsCloudSyncSwitchOn();
-    int32_t freeSpacePercentLimit =
-        ThumbnailDoubleUpgradeConfigManager::GetInstance().GetCurrentSpaceThreshold(isCloudSyncOn);
-    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
-        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough, limit %{public}d", freeSpacePercentLimit);
-
-    vector<ThumbnailData> infos;
-    int32_t err = GetNoThumbnailData(opts, infos);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Failed to GetNoLThumbnailData %{private}d", err);
-        return err;
-    }
-
-    if (infos.empty()) {
-        MEDIA_DEBUG_LOG("No need generate thumbnail.");
-        return E_OK;
-    }
-    auto createThumbnailBackgroundTask = [isCloudSyncOn](std::shared_ptr<ThumbnailTaskData> &data) {
-        CHECK_AND_RETURN_LOG(data != nullptr, "Data is null");
-        auto &thumbnailData = data->thumbnailData_;
-        const auto freeSpacePercentLimit =
-            ThumbnailDoubleUpgradeConfigManager::GetInstance().GetCurrentSpaceThreshold(isCloudSyncOn);
-        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
-            "CreateThumbnailBackgroundTask free size is not enough, id:%{public}s, path:%{public}s, limit:%{public}d",
-            thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str(), freeSpacePercentLimit);
-        IThumbnailHelper::CreateThumbnail(data);
-    };
-
-    for (uint32_t i = 0; i < infos.size(); i++) {
-        infos[i].genThumbScene = GenThumbScene::NO_THUMB_AND_GEN_IT_BACKGROUND;
-        opts.row = infos[i].id;
-        infos[i].loaderOpts.loadingStates = infos[i].isLocalFile ? SourceLoader::LOCAL_SOURCE_LOADING_STATES :
-            SourceLoader::CLOUD_SOURCE_LOADING_STATES;
-        IThumbnailHelper::AddThumbnailGenerateTask(createThumbnailBackgroundTask,
-            opts, infos[i], ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::LOW);
-    }
-
-    return E_OK;
-}
-
 bool CanCloudPhotoLoadLocalThumbnail(const ThumbnailData &data)
 {
     if (ThumbnailUtils::IsExCloudThumbnail(data)) {
@@ -202,7 +156,7 @@ bool CanCloudPhotoLoadLocalThumbnail(const ThumbnailData &data)
     return true;
 }
 
-void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
+void ThumbnailGenerateHelper::CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "Data is null");
     auto &thumbnailData = data->thumbnailData_;
@@ -229,58 +183,6 @@ void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
     thumbnailData.needGenerateExThumbnail = false;
     thumbnailData.loaderOpts.loadingStates = SourceLoader::CLOUD_THM_SOURCE_LOADING_STATES;
     IThumbnailHelper::CreateAstcOnlyWithThm(data);
-}
-
-int32_t ThumbnailGenerateHelper::CreateAstcBackground(ThumbRdbOpt &opts)
-{
-    if (opts.store == nullptr) {
-        MEDIA_ERR_LOG("rdbStore is not init");
-        return E_ERR;
-    }
-
-    CheckMonthAndYearKvStoreValid(opts);
-    const auto isCloudSyncOn = CloudSyncUtils::IsCloudSyncSwitchOn();
-    int32_t freeSpacePercentLimit =
-        ThumbnailDoubleUpgradeConfigManager::GetInstance().GetCurrentSpaceThreshold(isCloudSyncOn);
-    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
-        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough, size limit %{public}d", freeSpacePercentLimit);
-    vector<ThumbnailData> infos;
-    int32_t err = GetNoAstcData(opts, infos);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Failed to GetNoAstcData %{private}d", err);
-        return err;
-    }
-
-    auto kvStore = MediaLibraryKvStoreManager::GetInstance()
-        .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::MONTH_ASTC);
-    if (kvStore == nullptr) {
-        MEDIA_ERR_LOG("KvStore is nullptr");
-        return E_ERR;
-    }
-
-    if (infos.empty()) {
-        MEDIA_INFO_LOG("No need create Astc.");
-        return E_OK;
-    }
-
-    auto task = [isCloudSyncOn](std::shared_ptr<ThumbnailTaskData> &data) {
-        const auto freeSpacePercentLimit =
-            ThumbnailDoubleUpgradeConfigManager::GetInstance().GetCurrentSpaceThreshold(isCloudSyncOn);
-        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
-            "Free size is not enough, limit %{public}d", freeSpacePercentLimit);
-        CreateAstcBackgroundTask(data);
-    };
-
-    MEDIA_INFO_LOG("no astc data size: %{public}d", static_cast<int>(infos.size()));
-    for (uint32_t i = 0; i < infos.size(); i++) {
-        infos[i].genThumbScene = GenThumbScene::NO_THUMB_AND_GEN_IT_BACKGROUND;
-        opts.row = infos[i].id;
-        ThumbnailUtils::RecordStartGenerateStats(infos[i].stats, GenerateScene::BACKGROUND,
-            LoadSourceType::LOCAL_PHOTO);
-        IThumbnailHelper::AddThumbnailGenerateTask(task, opts, infos[i],
-            ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::LOW);
-    }
-    return E_OK;
 }
 
 int32_t ThumbnailGenerateHelper::CreateAstcCloudDownload(ThumbRdbOpt &opts, bool isCloudInsertTaskPriorityHigh)
@@ -370,50 +272,7 @@ int32_t ThumbnailGenerateHelper::CreateAstcMthAndYear(ThumbRdbOpt &opts)
     return E_OK;
 }
 
-int32_t ThumbnailGenerateHelper::CreateLocalThumbnail(ThumbRdbOpt &opts)
-{
-    if (opts.store == nullptr) {
-        MEDIA_ERR_LOG("rdbStore is not init");
-        return E_ERR;
-    }
-    vector<ThumbnailData> infos;
-    int32_t err = 0;
-    if (!ThumbnailUtils::QueryLocalNoThumbnailInfos(opts, infos, err)) {
-        MEDIA_ERR_LOG("Failed to QueryNoThumbnailInfos %{private}d", err);
-        IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CloudSyncOnGenerationComplete,
-            ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::MID);
-        return err;
-    }
-    if (infos.empty()) {
-        IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CloudSyncOnGenerationComplete,
-            ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::MID);
-        return E_OK;
-    }
-    std::shared_ptr<ExecuteParamBuilder> param = std::make_shared<ExecuteParamBuilder>();
-    param->batteryLimit_ = LOCAL_GENERATION_BATTERY_CAPACITY;
-    param->tempLimit_ = READY_TEMPERATURE_LEVEL;
-    param->affinity_ = CpuAffinityType::CPU_IDX_6;
-    MEDIA_INFO_LOG("CreateLocalThumbnail: %{public}d", static_cast<int>(infos.size()));
-    for (uint32_t i = 0; i < infos.size(); i++) {
-        opts.row = infos[i].id;
-        infos[i].loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
-        if (infos[i].thumbnailReady == 0 && infos[i].lcdVisitTime == 0) {
-            IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CreateLcdAndThumbnail,
-                opts, infos[i], ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::MID, param);
-        } else if (infos[i].thumbnailReady == 0) {
-            IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CreateThumbnail,
-                opts, infos[i], ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::MID, param);
-        } else if (infos[i].lcdVisitTime == 0) {
-            IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CreateLcd,
-                opts, infos[i], ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::MID, param);
-        }
-    }
-    IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CloudSyncOnGenerationComplete,
-        ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::MID);
-    return E_OK;
-}
-
-bool NeedGenerateLocalLcd(ThumbnailData &data)
+bool ThumbnailGenerateHelper::NeedGenerateLocalLcd(ThumbnailData &data)
 {
     std::string lcdLocalPath = GetLocalThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
     size_t lcdSize = -1;
@@ -426,57 +285,6 @@ bool NeedGenerateLocalLcd(ThumbnailData &data)
     MEDIA_INFO_LOG("Local file Lcd need to be generate, size: %{public}d, path: %{public}s",
         static_cast<int>(lcdSize), DfxUtils::GetSafePath(data.path).c_str());
     return true;
-}
-
-int32_t ThumbnailGenerateHelper::CreateLcdBackground(ThumbRdbOpt &opts)
-{
-    if (opts.store == nullptr) {
-        return E_ERR;
-    }
-    const auto isCloudSyncOn = CloudSyncUtils::IsCloudSyncSwitchOn();
-    int32_t freeSpacePercentLimit =
-        ThumbnailDoubleUpgradeConfigManager::GetInstance().GetCurrentSpaceThreshold(isCloudSyncOn);
-    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
-        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough, limit %{public}d", freeSpacePercentLimit);
-
-    vector<ThumbnailData> infos;
-    int32_t err = GetNoLcdData(opts, infos);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Failed to GetNoLcdData %{private}d", err);
-        return err;
-    }
-    if (infos.empty()) {
-        MEDIA_DEBUG_LOG("No need create Lcd.");
-        return E_THUMBNAIL_LCD_ALL_EXIST;
-    }
-    auto createLcdBackgroundTask = [isCloudSyncOn](std::shared_ptr<ThumbnailTaskData> &data) {
-        CHECK_AND_RETURN_LOG(data != nullptr, "CreateLcd failed, data is null");
-        auto &thumbnailData = data->thumbnailData_;
-        const auto freeSpacePercentLimit =
-            ThumbnailDoubleUpgradeConfigManager::GetInstance().GetCurrentSpaceThreshold(isCloudSyncOn);
-        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
-            "CreateLcdBackgroundTask free size is not enough, id:%{public}s, path:%{public}s size: %{public}d",
-            thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str(), freeSpacePercentLimit);
-        thumbnailData.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
-        IThumbnailHelper::CreateLcd(data);
-    };
-
-    MEDIA_INFO_LOG("No lcd data size: %{public}d", static_cast<int>(infos.size()));
-    for (uint32_t i = 0; i < infos.size(); i++) {
-        infos[i].genThumbScene = GenThumbScene::NO_LCD_AND_GEN_IT_BACKGROUND;
-        opts.row = infos[i].id;
-
-        // Check whether LCD exists or is over upload limit, if it does, just update the database
-        if (!NeedGenerateLocalLcd(infos[i])) {
-            MEDIA_INFO_LOG("Skip CreateLcdBackground, lcd exists: %{public}s",
-                DfxUtils::GetSafePath(infos[i].path).c_str());
-            ThumbnailUtils::UpdateLcdReadyStatus(opts, infos[i], err, LcdReady::GENERATE_LCD_COMPLETED);
-            continue;
-        }
-        IThumbnailHelper::AddThumbnailGenerateTask(createLcdBackgroundTask,
-            opts, infos[i], ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::LOW);
-    }
-    return E_OK;
 }
 
 int32_t ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(ThumbRdbOpt &opts)
@@ -498,7 +306,7 @@ int32_t ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(ThumbRdbOpt &opts)
         opts.row = infos[i].id;
 
         // Check whether LCD exists or is over upload limit, if it does, just update the database
-        if (!NeedGenerateLocalLcd(infos[i])) {
+        if (!ThumbnailGenerateHelper::NeedGenerateLocalLcd(infos[i])) {
             MEDIA_INFO_LOG("Check lcd size succeeded, lcd exists: %{public}s",
                 DfxUtils::GetSafePath(infos[i].path).c_str());
             ThumbnailUtils::UpdateLcdReadyStatus(opts, infos[i], err, LcdReady::GENERATE_LCD_COMPLETED);
@@ -515,35 +323,11 @@ int32_t ThumbnailGenerateHelper::GetLcdCount(ThumbRdbOpt &opts, int &outLcdCount
     return E_OK;
 }
 
-int32_t ThumbnailGenerateHelper::GetNoLcdData(ThumbRdbOpt &opts, vector<ThumbnailData> &outDatas)
-{
-    int32_t err = E_ERR;
-    CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoLcdInfos(opts, outDatas, err), err,
-        "Failed to QueryNoLcdInfos %{private}d", err);
-    return E_OK;
-}
-
 int32_t ThumbnailGenerateHelper::GetLocalNoLcdData(ThumbRdbOpt &opts, vector<ThumbnailData> &outDatas)
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryLocalNoLcdInfos(opts, outDatas, err), err,
         "Failed to QueryLocalNoLcdInfos %{private}d", err);
-    return E_OK;
-}
-
-int32_t ThumbnailGenerateHelper::GetNoThumbnailData(ThumbRdbOpt &opts, vector<ThumbnailData> &outDatas)
-{
-    int32_t err = E_ERR;
-    CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoThumbnailInfos(opts, outDatas, err), err,
-        "Failed to QueryNoThumbnailInfos %{private}d", err);
-    return E_OK;
-}
-
-int32_t ThumbnailGenerateHelper::GetNoAstcData(ThumbRdbOpt &opts, vector<ThumbnailData> &outDatas)
-{
-    int32_t err = E_ERR;
-    CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoAstcInfos(opts, outDatas, err), err,
-        "Failed to QueryNoAstcInfos %{public}d", err);
     return E_OK;
 }
 

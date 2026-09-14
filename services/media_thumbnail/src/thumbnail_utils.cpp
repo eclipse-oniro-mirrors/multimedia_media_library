@@ -583,7 +583,8 @@ bool ThumbnailUtils::QueryAgingLcdInfos(ThumbRdbOpt &opts, int LcdLimit,
     return true;
 }
 
-bool ThumbnailUtils::QueryNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err)
+bool ThumbnailUtils::QueryNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err,
+    uint32_t limit)
 {
     vector<string> column = {
         CONST_MEDIA_DATA_DB_ID,
@@ -602,6 +603,9 @@ bool ThumbnailUtils::QueryNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &i
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_LCD_VISIT_TIME, "0");
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_POSITION, "1");
     rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
+    if (limit > 0) {
+        rdbPredicates.Limit(limit);
+    }
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
@@ -778,7 +782,8 @@ bool ThumbnailUtils::QueryLocalNoThumbnailInfos(ThumbRdbOpt &opt, vector<Thumbna
     return true;
 }
 
-bool ThumbnailUtils::QueryNoThumbnailInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err)
+bool ThumbnailUtils::QueryNoThumbnailInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err,
+    uint32_t limit)
 {
     vector<string> column = {
         CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
@@ -803,8 +808,10 @@ bool ThumbnailUtils::QueryNoThumbnailInfos(ThumbRdbOpt &opts, vector<ThumbnailDa
             EqualTo(PhotoColumn::PHOTO_POSITION, "3")->EndWrap();
     }
 
-    rdbPredicates.Limit(THUMBNAIL_QUERY_MAX);
     rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
+    if (limit > 0) {
+        rdbPredicates.Limit(limit);
+    }
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
     return true;
@@ -870,7 +877,8 @@ bool ThumbnailUtils::QueryNoAstcInfosRestored(ThumbRdbOpt &opts, vector<Thumbnai
     return true;
 }
 
-bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err)
+bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err,
+    uint32_t limit)
 {
     vector<string> column = {
         CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_NAME,
@@ -896,6 +904,9 @@ bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &
         ->EndWrap()
         ->EndWrap()->EndWrap();
     rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
+    if (limit > 0) {
+        rdbPredicates.Limit(limit);
+    }
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
