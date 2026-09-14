@@ -37,6 +37,7 @@ ohos_unittest("media_library_file_access_utils_test") {
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_file_access_utils_test.cpp",
+    "./src/file_access_utils_extra_test.cpp",
   ]
 
   deps = [

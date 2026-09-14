@@ -619,5 +619,18 @@ HWTEST_F(MediaLibraryObjectTest, medialib_ProcessHiddenFile_test_001, TestSize.L
     ret = MediaLibraryObjectUtils::ProcessHiddenFile(dstDirName, srcPath);
     EXPECT_EQ(ret, E_SUCCESS);
 }
+
+HWTEST_F(MediaLibraryObjectTest, medialib_DeleteFileObj_FileMgrBranch_test_001, TestSize.Level1)
+{
+    string filePath = "/storage/cloud/files/medialib_DeleteFileObj_FileMgrBranch_test_001.jpg";
+    system(("touch " + filePath).c_str());
+    std::shared_ptr<FileAsset> fileAsset = make_shared<FileAsset>();
+    fileAsset->SetPath(filePath);
+    fileAsset->SetId(0);
+    int32_t ret = MediaLibraryObjectUtils::DeleteFileObj(fileAsset);
+    EXPECT_NE(ret, E_OK);
+    EXPECT_LT(ret, 0);
+    system(("rm -f " + filePath).c_str());
+}
 } // namespace Media
 } // namespace OHOS
