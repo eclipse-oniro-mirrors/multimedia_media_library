@@ -21,6 +21,7 @@
 
 #include <fcntl.h>
 #include <fstream>
+#include <memory>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -30,10 +31,14 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_utils.h"
+#include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
+#include "medialibrary_unittest_utils.h"
 #include "media_column.h"
 #include "photo_album_column.h"
 #include "media_string_utils.h"
+#include "rdb_predicates.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS {
 namespace Media {
@@ -1790,5 +1795,141 @@ HWTEST_F(FileParserTest, GetFileInfo_Verify_Video_File_Test, TestSize.Level1)
     MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
 
+// 电影模式V2(CINEMATIC_VIDEO_V2)资产识别: 依赖数据库可查询
+class FileParserCinematicV2Test : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
+    int32_t insertedFileId_ = -1;
+};
+
+static std::shared_ptr<MediaLibraryRdbStore> g_cinematicV2RdbStore = nullptr;
+
+void FileParserCinematicV2Test::SetUpTestCase()
+{
+    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaLibraryUnitTestUtils::Init();
+    g_cinematicV2RdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    ASSERT_NE(g_cinematicV2RdbStore, nullptr);
+}
+
+void FileParserCinematicV2Test::TearDownTestCase()
+{
+    MediaFileUtils::DeleteDir(TEST_DIR_PATH);
+}
+
+void FileParserCinematicV2Test::SetUp()
+{
+    insertedFileId_ = -1;
+}
+
+void FileParserCinematicV2Test::TearDown()
+{
+    // 清理用例插入的Photos记录, 避免残留影响同进程其他用例
+    if (g_cinematicV2RdbStore != nullptr && insertedFileId_ > 0) {
+        RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(MediaColumn::MEDIA_ID, insertedFileId_);
+        int32_t deletedRows = -1;
+        g_cinematicV2RdbStore->Delete(deletedRows, predicates);
+    }
+    insertedFileId_ = -1;
+}
+
+static int32_t InsertCinematicVideoRow(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, PhotoSubType subtype,
+    const std::string &displayName)
+{
+    ValuesBucket values;
+    values.Put(MediaColumn::MEDIA_FILE_PATH, "/storage/cloud/files/Photo/1/" + displayName);
+    values.Put(MediaColumn::MEDIA_NAME, displayName);
+    values.Put(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO));
+    values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(subtype));
+    int64_t rowId = -1;
+    int32_t ret = rdbStore->Insert(rowId, PhotoColumn::PHOTOS_TABLE, values);
+    if (ret != E_OK) {
+        return -1;
+    }
+    return static_cast<int32_t>(rowId);
+}
+
+/**
+ * @tc.name: IsCinematicVideoV2Asset_VideoV2_001
+ * @tc.desc: 视频且DB subtype=CINEMATIC_VIDEO_V2时返回true
+ * @tc.type: FUNC
+ */
+HWTEST_F(FileParserCinematicV2Test, IsCinematicVideoV2Asset_VideoV2_001, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+
+    insertedFileId_ = InsertCinematicVideoRow(g_cinematicV2RdbStore, PhotoSubType::CINEMATIC_VIDEO_V2,
+        "cinematic_v2_parser.mp4");
+    ASSERT_GT(insertedFileId_, 0);
+
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    parser.SetFileId(insertedFileId_);
+    EXPECT_TRUE(parser.IsCinematicVideoV2Asset());
+
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+}
+
+/**
+ * @tc.name: IsCinematicVideoV2Asset_VideoV1_002
+ * @tc.desc: 视频但DB subtype=CINEMATIC_VIDEO(V1)时返回false
+ * @tc.type: FUNC
+ */
+HWTEST_F(FileParserCinematicV2Test, IsCinematicVideoV2Asset_VideoV1_002, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+
+    insertedFileId_ = InsertCinematicVideoRow(g_cinematicV2RdbStore, PhotoSubType::CINEMATIC_VIDEO,
+        "cinematic_v1_parser.mp4");
+    ASSERT_GT(insertedFileId_, 0);
+
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    parser.SetFileId(insertedFileId_);
+    EXPECT_FALSE(parser.IsCinematicVideoV2Asset());
+
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+}
+
+/**
+ * @tc.name: IsCinematicVideoV2Asset_NonVideo_003
+ * @tc.desc: 非视频文件(fileType!=VIDEO)时直接返回false
+ * @tc.type: FUNC
+ */
+HWTEST_F(FileParserCinematicV2Test, IsCinematicVideoV2Asset_NonVideo_003, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+
+    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    EXPECT_FALSE(parser.IsCinematicVideoV2Asset());
+
+    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+}
+
+/**
+ * @tc.name: IsCinematicVideoV2Asset_NoRow_004
+ * @tc.desc: 视频但DB无对应记录时返回false
+ * @tc.type: FUNC
+ */
+HWTEST_F(FileParserCinematicV2Test, IsCinematicVideoV2Asset_NoRow_004, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    parser.SetFileId(-1); // 不存在的fileId, GoToNextRow失败
+    EXPECT_FALSE(parser.IsCinematicVideoV2Asset());
+
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+}
 } // namespace Media
 } // namespace OHOS

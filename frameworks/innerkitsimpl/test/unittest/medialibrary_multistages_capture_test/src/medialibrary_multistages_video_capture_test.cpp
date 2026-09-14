@@ -168,6 +168,41 @@ int32_t GetDirty(int fileId)
     return dirty;
 }
 
+int32_t GetDirtyByFileId(int fileId)
+{
+    if (fileId < 0) {
+        MEDIA_ERR_LOG("this file id %{private}d is invalid", fileId);
+        return -1;
+    }
+
+    vector<string> columns = { PhotoColumn::PHOTO_DIRTY };
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY,
+        MediaLibraryApi::API_10);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    if (g_rdbStore == nullptr) {
+        MEDIA_ERR_LOG("can not get rdbstore");
+        return -1;
+    }
+    auto resultSet = g_rdbStore->Query(cmd, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Can not get dirty of file");
+        return -1;
+    }
+
+    int32_t dirty = GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet);
+    return dirty;
+}
+
+int32_t SetVideoSubType(int fileId, PhotoSubType subtype)
+{
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(subtype));
+    cmd.SetValueBucket(values);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    return MediaLibraryPhotoOperations::Update(cmd);
+}
+
 string GetMovingPhotoVideoPath(const string &imagePath)
 {
     size_t splitIndex = imagePath.find_last_of('.');
@@ -1001,6 +1036,34 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     // Verify temp directory is created
     EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
     MEDIA_INFO_LOG("manager_add_video_dir_not_exist_004 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done_cinematic_v2_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("callback_on_process_video_done_cinematic_v2_001 Start");
+
+    MultiStagesCaptureDeferredVideoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredVideoProcSessionCallback();
+
+    int32_t fileId = PrepareVideoData();
+    ASSERT_GT(fileId, 0);
+    string filePath = GetFilePath(fileId);
+    ASSERT_FALSE(filePath.empty());
+    string videoId = "202408071801";
+
+    // 将该视频标记为电影模式V2(CINEMATIC_VIDEO_V2), 触发UpdateVideoQuality中V2分支
+    EXPECT_GT(SetVideoSubType(fileId, PhotoSubType::CINEMATIC_VIDEO_V2), E_OK);
+    EXPECT_GT(SetVideoId(fileId, videoId), E_OK);
+    PrepareBaseVideoFile(filePath);
+
+    callback->OnProcessVideoDone(videoId);
+    delete callback;
+
+    // V2电影模式: UpdateVideoQuality走V1/V2分支, quality置FULL, dirty置TYPE_NEW
+    EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
+    EXPECT_EQ(GetDirtyByFileId(fileId), static_cast<int32_t>(DirtyType::TYPE_NEW));
+
+    MEDIA_INFO_LOG("callback_on_process_video_done_cinematic_v2_001 End");
 }
 } // Media
 } // OHOS

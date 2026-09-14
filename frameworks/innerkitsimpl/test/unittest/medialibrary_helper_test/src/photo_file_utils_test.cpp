@@ -110,6 +110,21 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetMetaPathFromOrignalPath_0
     EXPECT_EQ(PhotoFileUtils::GetMetaPathFromOrignalPath(photoPath, metaPath), 0);
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_HasSource_003, TestSize.Level1)
+{
+    // subtype = CINEMATIC_VIDEO_V2(8): 无其它条件也应返回true
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 8), true);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 8, 0), true);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 8, 1), true);
+    // 对照: V1(CINEMATIC_VIDEO=5) 也是true
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 5), true);
+    // 对照: 慢动作视频(6)需editDataExist才能判定有源
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 6, 0), false);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 6, 1), true);
+    // 对照: 普通DEFAULT子类型无源
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 0, 0), false);
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetMetaDataRealPath_001, TestSize.Level1)
 {
     string photoPath = "";
