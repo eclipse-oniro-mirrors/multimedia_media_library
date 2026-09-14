@@ -52,7 +52,7 @@ const GET_APP_NAME_FAIL = 'Failed to get BundleInfo. The \'abilities\' configura
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 const FEATURE_NOT_SUPPORTED_CODE = 801;
 const FEATURE_NOT_SUPPORTED_MESSAGE =
-  'This device does not support these APIs: isSearchSupported, isEditSupported and recommendationOptions';
+  'Capability not supported. The device does not support the following APIs: isSearchSupported, isEditSupported and recommendationOptions';
 
 const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
 const RECENT_PHOTO_INFO_DELAY_TIME = 70;
