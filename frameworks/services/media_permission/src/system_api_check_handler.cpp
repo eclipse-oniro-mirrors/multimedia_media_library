@@ -25,33 +25,39 @@
 #include "data_secondary_directory_uri.h"
 
 namespace OHOS::Media {
-
-static const std::unordered_set<std::string> SYSTEM_API_URIS = {
-    CONST_PAH_DELETE_PHOTO_ALBUM,
-    CONST_PAH_DELETE_PHOTOS,
-    CONST_PAH_RECOVER_PHOTOS,
-    CONST_PAH_SYS_CREATE_PHOTO,
-    CONST_PAH_SYS_TRASH_PHOTO,
-    CONST_UFM_DELETE_PHOTO_ALBUM,
-    CONST_PAH_REMOVE_FORM_MAP,
-    CONST_PAH_CREATE_APP_URI_PERMISSION,
-    CONST_PAH_SET_LOCATION,
-    CONST_URI_DELETE_PHOTOS_COMPLETED,
-    CONST_PAH_DISMISS_ASSET,
-    CONST_PAH_GROUP_ANAALBUM_DISMISS,
-    CONST_UFM_QUERY_HIDDEN_ALBUM,
-    CONST_PAH_QUERY_HIDDEN_ALBUM,
-    CONST_PAH_HIDE_PHOTOS,
-    CONST_PAH_BATCH_UPDATE_OWNER_ALBUM_ID,
-    CONST_QUERY_TAB_OLD_PHOTO,
-};
-
 int32_t SystemApiCheckHandler::ExecuteCheckPermission(MediaLibraryCommand &cmd, PermParam &permParam)
 {
     std::string uri = cmd.GetUriStringWithoutSegment();
     OperationObject obj = cmd.GetOprnObject();
     OperationType type = cmd.GetOprnType();
-    if (SYSTEM_API_URIS.find(uri) == SYSTEM_API_URIS.end()) {
+    static const std::unordered_set<std::string> SYSTEM_API_URIS = {
+        CONST_PAH_DELETE_PHOTO_ALBUM,
+        CONST_PAH_DELETE_PHOTOS,
+        CONST_PAH_RECOVER_PHOTOS,
+        CONST_PAH_SYS_CREATE_PHOTO,
+        CONST_PAH_SYS_TRASH_PHOTO,
+        CONST_UFM_DELETE_PHOTO_ALBUM,
+        CONST_PAH_REMOVE_FORM_MAP,
+        CONST_PAH_CREATE_APP_URI_PERMISSION,
+        CONST_PAH_SET_LOCATION,
+        CONST_URI_DELETE_PHOTOS_COMPLETED,
+        CONST_PAH_DISMISS_ASSET,
+        CONST_PAH_GROUP_ANAALBUM_DISMISS,
+        CONST_UFM_QUERY_HIDDEN_ALBUM,
+        CONST_PAH_QUERY_HIDDEN_ALBUM,
+        CONST_PAH_HIDE_PHOTOS,
+        CONST_PAH_BATCH_UPDATE_OWNER_ALBUM_ID,
+        CONST_QUERY_TAB_OLD_PHOTO,
+    };
+    // Use OperationObject-based check to cover bare URI (without /create suffix)
+    // that maps to the same OperationObject via first path segment parsing.
+    static const std::unordered_set<OperationObject> SYSTEM_API_OBJECTS = {
+        OperationObject::MEDIA_APP_URI_PERMISSION,
+        OperationObject::CUSTOM_RECORDS_OPERATION,
+    };
+    bool isSystemApiUri = (SYSTEM_API_URIS.find(uri) != SYSTEM_API_URIS.end());
+    bool isSystemApiObj = (SYSTEM_API_OBJECTS.find(obj) != SYSTEM_API_OBJECTS.end());
+    if (!isSystemApiUri && !isSystemApiObj) {
         return E_SUCCESS;
     }
     if (!PermissionUtils::IsSystemApp()) {
