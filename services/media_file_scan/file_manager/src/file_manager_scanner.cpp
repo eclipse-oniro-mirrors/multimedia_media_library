@@ -18,8 +18,10 @@
 #include "file_manager_folder_parser.h"
 
 #include "dir_scan_anomaly_helper.h"
+#include "file_manager_scan_rule_config.h"
 #include "file_manager_scanner.h"
 #include "file_scan_utils.h"
+#include "folder_scanner_utils.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_tracer.h"
 
@@ -77,7 +79,7 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
 bool FileManagerScanner::IsSkipCurrentFile(const std::string &filePath)
 {
     std::string fileName = fs::path(filePath).filename().string();
-    if (fileName.empty() || fileName.find("..") != std::string::npos) {
+    if (fileName.empty() || fileName.find("?") != std::string::npos || fileName[0] == '.') {
         MEDIA_INFO_LOG("Error file manager file: %{public}s", FileScanUtils::GarbleFile(fileName).c_str());
         return true;
     }
@@ -91,36 +93,12 @@ bool FileManagerScanner::IsIncrementScanConflict(std::vector<MediaNotifyInfo> fi
 
 bool FileManagerScanner::IsSkipDirectory(const std::string &dir)
 {
-    std::string currentDir = dir;
-    while (currentDir != FILE_MANAGER_SCAN_DIR) {
-        MEDIA_INFO_LOG("check path:%{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
-        if (IsSkipFileManagerDirectory(currentDir)) {
-            return true;
-        }
-        currentDir = fs::path(currentDir).parent_path().string();
-    }
-    return false;
+    return FolderScannerUtils::IsSkipDirectory(dir, GetFileManagerScanRuleConfig());
 }
 
 std::shared_ptr<FolderParser> FileManagerScanner::BuildFolderParser(const std::string &path)
 {
     return make_shared<FileManagerFolderParser>(path, scanMode_);
-}
-
-bool FileManagerScanner::IsSkipFileManagerDirectory(const std::string &currentDir)
-{
-    if (currentDir.empty()) {
-        MEDIA_INFO_LOG("empty path: %{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
-        return true;
-    }
-
-    fs::path currentPath(currentDir);
-    std::string folderName = currentPath.filename().string();
-    if (folderName.empty() || FILE_MANAGER_BLOCKED_DIRS.count(folderName) > 0) {
-        MEDIA_INFO_LOG("need blocked currentDir: %{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
-        return true;
-    }
-    return false;
 }
 
 void FileManagerScanner::RefreshTrashedAssetInfo(FileManagerParser &fileManagerParser)

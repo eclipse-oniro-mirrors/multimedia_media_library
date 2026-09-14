@@ -18,6 +18,7 @@
 #include "check_scene_helper.h"
 #include "lake_file_monitor_test.h"
 
+#include "check_scene_helper.h"
 #include "media_log.h"
 #include "media_file_notify_info.h"
 #include "media_file_change_manager.h"

@@ -23,16 +23,11 @@
 
 namespace OHOS::Media {
 
-const std::unordered_set<std::string> FILE_MANAGER_BLOCKED_DIRS = {
-    "HO_DATA_EXT_MISC", ".Trash", ".thumbs", ".Recent", ".backup", ".VMDocs", ".ohpm", "PCEngine", "appdata",
-};
-
 class FileManagerScanner : public FileScanner {
 public:
     FileManagerScanner(ScanMode scanMode = ScanMode::INCREMENT);
     ~FileManagerScanner() override = default;
 
-    static bool IsSkipFileManagerDirectory(const std::string &currentDir);
 private:
     void HandleFiles(MediaNotifyInfo& fileInfos) override;
     std::shared_ptr<FolderParser> BuildFolderParser(const std::string &path) override;

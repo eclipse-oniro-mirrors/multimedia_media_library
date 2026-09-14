@@ -23,7 +23,6 @@
 
 namespace OHOS {
 namespace Media {
-
 using namespace std;
 
 #define FILE_MANAGER_ROOT_LPATH "/FromDocs/"
@@ -93,7 +92,6 @@ protected:
     CommonAlbumInfo commonAlbumInfo_;
     AlbumPluginInfo albumPluginInfo_;
 
-    bool StartsWithIgnoreCase(const std::string& str, const std::string& prefix);
     virtual int32_t GetAlbumName(CommonAlbumInfo &commonAlbumInfo);
     virtual void GetUniqueAlbumName(std::string &albumName);
 

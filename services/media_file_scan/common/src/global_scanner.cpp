@@ -25,7 +25,7 @@
 #include "check_scene_helper.h"
 #include "i_scan_policy.h"
 #include "file_scanner.h"
-#include "file_scan_utils.h"
+#include "media_log_utils.h"
 #include "media_time_utils.h"
 #include "folder_scanner.h"
 #include "folder_scanner_utils.h"
@@ -112,7 +112,7 @@ int32_t GlobalScanner::WalkFileTree(const std::string &path, IScanPolicy &policy
     std::error_code errorCode;
     bool isDirectory = fs::exists(path, errorCode) && fs::is_directory(path, errorCode);
     CHECK_AND_RETURN_RET_LOG(isDirectory, ERR_INCORRECT_PATH, "invalid directory[%{public}s], error[%{public}s]",
-        FileScanUtils::GarbleFilePath(path).c_str(), errorCode.message().c_str());
+        MediaLogUtils::GarbleFilePath(path).c_str(), errorCode.message().c_str());
 
     const auto &scanRule = CheckSceneHelper::GetScanRuleConfig(policy.GetScene());
     queue<std::string> dirQueue;
@@ -127,29 +127,30 @@ int32_t GlobalScanner::WalkFileTree(const std::string &path, IScanPolicy &policy
         // 长度过长
         size_t len = currentDir.length();
         CHECK_AND_CONTINUE_ERR_LOG(len > 0 && len < FILENAME_MAX - 1, "dir[%{public}s] error.",
-            FileScanUtils::GarbleFilePath(currentDir).c_str());
+            MediaLogUtils::GarbleFilePath(currentDir).c_str());
 
         bool shouldScan = FolderScannerUtils::ShouldScanDirectory(currentDir, scanRule);
         CHECK_AND_CONTINUE_ERR_LOG(shouldScan, "Not scan dir: %{public}s",
-            FileScanUtils::GarbleFilePath(currentDir).c_str());
+            MediaLogUtils::GarbleFilePath(currentDir).c_str());
 
         bool isSkipDirectory = FolderScannerUtils::IsSkipCurrentDirectory(currentDir, scanRule);
         CHECK_AND_CONTINUE_ERR_LOG(!isSkipDirectory, "Skip dir path: %{public}s",
-            FileScanUtils::GarbleFilePath(currentDir).c_str());
+            MediaLogUtils::GarbleFilePath(currentDir).c_str());
 
         FolderScanner folderScanner(currentDir, ScanMode::FULL);
         int32_t ret = folderScanner.ScanCurrentDirectory(dirQueue);
 
         CHECK_AND_RETURN_RET_WARN_LOG(!IsForceScanning(), ERR_SUCCESS,
             "Global scan is due to the Restore process stopping at dir[%{public}s] scanning",
-            FileScanUtils::GarbleFilePath(currentDir).c_str());
+            MediaLogUtils::GarbleFilePath(currentDir).c_str());
 
         CHECK_AND_CONTINUE_ERR_LOG(ret == ERR_SUCCESS, "Scan dir[%{public}s] failed",
-            FileScanUtils::GarbleFilePath(currentDir).c_str());
+            MediaLogUtils::GarbleFilePath(currentDir).c_str());
 
         dfxCollector.OnPhotoAdd(folderScanner.GetAddCount());
         dfxCollector.OnPhotoUpdate(folderScanner.GetUpdateCount());
         dfxCollector.OnPhotoDelete(CheckToDeleteAssets(folderScanner));
+        deleteCountForCloneRestore_ += folderScanner.GetDeleteCountForCloneRestore();
     }
     return ERR_SUCCESS;
 }
@@ -175,13 +176,13 @@ int32_t GlobalScanner::ProcessIncrementScanTask(bool isGlobalScanEnd, IScanPolic
             std::unique_ptr<FileScanner> fileScanner = policy.CreateFileScanner(ScanMode::FULL);
             CHECK_AND_PRINT_LOG(fileScanner != nullptr && fileScanner->Run({currentPathInfo}) == ERR_SUCCESS,
                 "Scan current file failed, current file path is %{public}s",
-                FileScanUtils::GarbleFilePath(currentPathInfo.afterPath).c_str());
+                MediaLogUtils::GarbleFilePath(currentPathInfo.afterPath).c_str());
             continue;
         }
         FolderScanner folderScanner(currentPathInfo, ScanMode::FULL);
         CHECK_AND_PRINT_LOG(folderScanner.Run() == ERR_SUCCESS,
             "Scan current directory failed, current directory path is %{public}s",
-            FileScanUtils::GarbleFilePath(currentPathInfo.afterPath).c_str());
+            MediaLogUtils::GarbleFilePath(currentPathInfo.afterPath).c_str());
     }
     return ERR_SUCCESS;
 }
@@ -192,7 +193,7 @@ bool GlobalScanner::IsGlobalScanning(const std::vector<MediaNotifyInfo> &notifyI
     for (const auto &notifyInfo : notifyInfos) {
         if (IsCloneRestoringFile(notifyInfo.afterPath)) {
             MEDIA_INFO_LOG("LakeClone: skip clone restoring file: %{public}s",
-                FileScanUtils::GarbleFilePath(notifyInfo.afterPath).c_str());
+                MediaLogUtils::GarbleFilePath(notifyInfo.afterPath).c_str());
             continue;
         }
         filteredInfos.push_back(notifyInfo);
@@ -250,7 +251,7 @@ bool GlobalScanner::IsForceScanning()
         std::lock_guard<std::mutex> lock(scanMutex_);
         std::queue<std::pair<MediaNotifyInfo, ScanTaskType>> scanTaskQueue;
         scanTaskQueue.swap(scanTaskQueue_);
-        // 添加清理状态
+        // 添加状态清理
         if (scannerStatus_ != ScannerStatus::IDLE) {
             scannerStatus_ = ScannerStatus::IDLE;
             MEDIA_INFO_LOG("LakeClone: set scannerStatus to IDLE");
@@ -336,7 +337,7 @@ bool GlobalScanner::IsCloneRestoringFile(const std::string &filePath)
     CHECK_AND_RETURN_RET(cloneEndTime != 0, false);
     struct stat fileStat;
     CHECK_AND_RETURN_RET_WARN_LOG(stat(filePath.c_str(), &fileStat) == 0, false, "Failed to stat %{public}s",
-        FileScanUtils::GarbleFilePath(filePath).c_str());
+        MediaLogUtils::GarbleFilePath(filePath).c_str());
 
     return MediaTimeUtils::Timespec2Millisecond(fileStat.st_atim) < cloneEndTime;
 }

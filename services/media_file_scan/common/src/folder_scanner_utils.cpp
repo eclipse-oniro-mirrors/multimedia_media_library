@@ -25,7 +25,7 @@
 #include "directory_ex.h"
 #include "scanner_utils.h"
 #include "file_const.h"
-#include "file_scan_utils.h"
+#include "media_log_utils.h"
 
 namespace OHOS::Media {
 namespace fs = std::filesystem;
@@ -34,9 +34,9 @@ bool FolderScannerUtils::IsSkipCurrentFile(const std::string &filePath, const Sc
 {
     std::string fileName = fs::path(filePath).filename().string();
     CHECK_AND_RETURN_RET_LOG(!fileName.empty(), true, "empty file name: %{public}s",
-        FileScanUtils::GarbleFile(fileName).c_str());
+        MediaLogUtils::GarbleFile(fileName).c_str());
     if (ruleConfig.skipHiddenFile && fileName[0] == '.') {
-        MEDIA_INFO_LOG("hidden file: %{public}s", FileScanUtils::GarbleFile(fileName).c_str());
+        MEDIA_INFO_LOG("hidden file: %{public}s", MediaLogUtils::GarbleFile(fileName).c_str());
         return true;
     }
     return fileName.empty();
@@ -60,7 +60,7 @@ int32_t FolderScannerUtils::BatchInsertAssets(const std::string &tableName,
 bool FolderScannerUtils::ShouldScanDirectory(const std::string &filePath, const ScanRuleConfig &ruleConfig)
 {
     CHECK_AND_RETURN_RET_LOG(!filePath.empty() && filePath.back() != '/', true,
-        "Current directory path is invalid, filePath is %{public}s", FileScanUtils::GarbleFilePath(filePath).c_str());
+        "Current directory path is invalid, filePath is %{public}s", MediaLogUtils::GarbleFilePath(filePath).c_str());
     std::string nomediaPath = filePath + "/.nomedia";
     std::error_code errorCode;
     //CASE 1
@@ -71,17 +71,17 @@ bool FolderScannerUtils::ShouldScanDirectory(const std::string &filePath, const 
         bool ret = fs::exists(nomediaPath, errorCode);
         CHECK_AND_RETURN_RET_LOG(!errorCode, false,
             "failed to access %{public}s, error message is %{public}s",
-            FileScanUtils::GarbleFilePath(nomediaPath).c_str(), errorCode.message().c_str());
+            MediaLogUtils::GarbleFilePath(nomediaPath).c_str(), errorCode.message().c_str());
         CHECK_AND_RETURN_RET_INFO_LOG(ret, true,
-            "Current path not exists .nomedia, path is %{public}s", FileScanUtils::GarbleFilePath(filePath).c_str());
+            "Current path not exists .nomedia, path is %{public}s", MediaLogUtils::GarbleFilePath(filePath).c_str());
         std::remove(nomediaPath.c_str());
         return true;
     }
     // CASE 2
-    CHECK_AND_RETURN_RET_WARN_LOG(!(ruleConfig.skipTencentCache &&
-        std::regex_match(filePath, ruleConfig.tencentCachePattern)), false,
-        "Current directory match /Tencent/MicroMsg, path is %{public}s",
-        FileScanUtils::GarbleFilePath(filePath).c_str());
+    CHECK_AND_RETURN_RET_WARN_LOG(!(ruleConfig.skipAppCache &&
+        std::regex_match(filePath, ruleConfig.appCachePattern)), false,
+        "Current directory match app cache pattern, path is %{public}s",
+        MediaLogUtils::GarbleFilePath(filePath).c_str());
     // CASE 3
     if (ruleConfig.createNomediaForInvisibleDirectory && std::regex_match(filePath, ruleConfig.invisiblePattern)) {
         // Try create .nomedia file if not exists
@@ -90,15 +90,15 @@ bool FolderScannerUtils::ShouldScanDirectory(const std::string &filePath, const 
             "file is not real path, file path: %{private}s", nomediaPath.c_str());
         CHECK_AND_RETURN_RET_LOG(!tmpPath.empty(), false,
             "Failed to obtain the canonical path for source path:%{public}s",
-            FileScanUtils::GarbleFilePath(tmpPath).c_str());
+            MediaLogUtils::GarbleFilePath(tmpPath).c_str());
 
         bool ret = fs::exists(tmpPath, errorCode);
         CHECK_AND_RETURN_RET_LOG(!errorCode, false,
             "failed to detemine nomedia %{public}s exist, error message is %{public}s",
-            FileScanUtils::GarbleFilePath(filePath).c_str(),
+            MediaLogUtils::GarbleFilePath(filePath).c_str(),
             errorCode.message().c_str());
         CHECK_AND_RETURN_RET_LOG(!ret, false,
-            ".nomedia has exists, nomediaPath is %{public}s", FileScanUtils::GarbleFilePath(nomediaPath).c_str());
+            ".nomedia has exists, nomediaPath is %{public}s", MediaLogUtils::GarbleFilePath(nomediaPath).c_str());
         std::ofstream ofs(nomediaPath);  // create if not exists
         return false;
     }
@@ -110,7 +110,7 @@ std::string GetCanonicalPath(const std::string &path)
     std::error_code errorCode;
     fs::path canonicalPath = fs::canonical(path, errorCode);
     CHECK_AND_RETURN_RET_LOG(!errorCode, "", "Failed to canonicalize path : %{public}s, message: %{public}s",
-        FileScanUtils::GarbleFilePath(path).c_str(), errorCode.message().c_str());
+        MediaLogUtils::GarbleFilePath(path).c_str(), errorCode.message().c_str());
     return canonicalPath.string();
 }
 
@@ -118,8 +118,8 @@ std::string ExtractRelativePath(const std::string &path, const ScanRuleConfig &r
 {
     CHECK_AND_RETURN_RET(!path.empty(), "");
     std::string dirPath = GetCanonicalPath(path);
-    MEDIA_DEBUG_LOG("Trans path %{public}s to canonical path %{public}s", FileScanUtils::GarbleFilePath(path).c_str(),
-        FileScanUtils::GarbleFilePath(dirPath).c_str());
+    MEDIA_DEBUG_LOG("Trans path %{public}s to canonical path %{public}s", MediaLogUtils::GarbleFilePath(path).c_str(),
+        MediaLogUtils::GarbleFilePath(dirPath).c_str());
     CHECK_AND_RETURN_RET(!dirPath.empty(), "");
 
     std::smatch matcher;
@@ -163,21 +163,21 @@ void FolderScannerUtils::CleanNomediaInDefaultDirs(const std::string &dirPath, c
     }
     std::error_code errCode;
     CHECK_AND_RETURN_LOG(!dirPath.empty() && dirPath.back() != '/',
-        "Current directory path is invalid, dirPath is %{public}s", FileScanUtils::GarbleFilePath(dirPath).c_str());
+        "Current directory path is invalid, dirPath is %{public}s", MediaLogUtils::GarbleFilePath(dirPath).c_str());
     std::string nomediaPath = dirPath + "/.nomedia";
     CHECK_AND_RETURN(fs::exists(nomediaPath, errCode));
     std::string relativePath = ExtractRelativePath(dirPath, ruleConfig);
     CHECK_AND_RETURN_LOG(!relativePath.empty(),
         "Current directory path not in root path, dirPath is %{public}s",
-        FileScanUtils::GarbleFilePath(dirPath).c_str());
+        MediaLogUtils::GarbleFilePath(dirPath).c_str());
     // 1. 拆分路径组件
     std::vector<std::string> segments = SanitizePath(relativePath);
     CHECK_AND_RETURN_LOG(!segments.empty(),
-        "Segments is invalid, dirPath is %{public}s", FileScanUtils::GarbleFilePath(dirPath).c_str());
+        "Segments is invalid, dirPath is %{public}s", MediaLogUtils::GarbleFilePath(dirPath).c_str());
     // 情况1：当前目录是根目录
     if (relativePath == "/" && segments == std::vector<std::string>{""}) {
         fs::remove(nomediaPath, errCode);
-        MEDIA_INFO_LOG("Root path %{public}s need to delete .nomedia", FileScanUtils::GarbleFilePath(dirPath).c_str());
+        MEDIA_INFO_LOG("Root path %{public}s need to delete .nomedia", MediaLogUtils::GarbleFilePath(dirPath).c_str());
         return;
     }
 
@@ -185,7 +185,7 @@ void FolderScannerUtils::CleanNomediaInDefaultDirs(const std::string &dirPath, c
     if (segments.size() == 1 && ruleConfig.defaultFolderNames.count(segments[0])) {
         fs::remove(nomediaPath, errCode);
         MEDIA_INFO_LOG("Top level path %{public}s need to delete .nomedia",
-            FileScanUtils::GarbleFilePath(dirPath).c_str());
+            MediaLogUtils::GarbleFilePath(dirPath).c_str());
         return;
     }
 
@@ -194,7 +194,7 @@ void FolderScannerUtils::CleanNomediaInDefaultDirs(const std::string &dirPath, c
     if (segments.size() == numberTwo && segments[0] == "DCIM" && segments[1] == "Camera") {
         fs::remove(nomediaPath, errCode);
         MEDIA_INFO_LOG("DCIM/Camera path %{public}s need to delete .nomedia",
-            FileScanUtils::GarbleFilePath(dirPath).c_str());
+            MediaLogUtils::GarbleFilePath(dirPath).c_str());
         return;
     }
 
@@ -205,19 +205,19 @@ void FolderScannerUtils::CleanNomediaInDefaultDirs(const std::string &dirPath, c
     if (isTargetFirstLevelChild || isRootScreenshots) {
         fs::remove(nomediaPath, errCode);
         MEDIA_INFO_LOG("Screenshots path %{public}s need to delete .nomedia",
-            FileScanUtils::GarbleFilePath(dirPath).c_str());
+            MediaLogUtils::GarbleFilePath(dirPath).c_str());
     }
 }
 
 bool FolderScannerUtils::IsSkipCurrentDirectory(const std::string &currentDir, const ScanRuleConfig &ruleConfig)
 {
-    MEDIA_INFO_LOG("check path:%{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
+    MEDIA_INFO_LOG("check path:%{public}s", MediaLogUtils::GarbleFilePath(currentDir).c_str());
     if (currentDir.empty()) {
-        MEDIA_INFO_LOG("empty path: %{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
+        MEDIA_INFO_LOG("empty path: %{public}s", MediaLogUtils::GarbleFilePath(currentDir).c_str());
         return true;
     }
     if (ruleConfig.skipBlackList && ruleConfig.blackList.find(currentDir) != ruleConfig.blackList.end()) {
-        MEDIA_INFO_LOG("black path: %{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
+        MEDIA_INFO_LOG("black path: %{public}s", MediaLogUtils::GarbleFilePath(currentDir).c_str());
         return true;
     }
 
@@ -226,7 +226,7 @@ bool FolderScannerUtils::IsSkipCurrentDirectory(const std::string &currentDir, c
     CHECK_AND_RETURN_RET(!folderName.empty(), true);
     CHECK_AND_RETURN_RET(!IsCurrentOrParentDir(folderName), true);
     if (ruleConfig.skipHiddenDirectory && folderName[0] == '.') {
-        MEDIA_DEBUG_LOG("hidden currentDir: %{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
+        MEDIA_DEBUG_LOG("hidden currentDir: %{public}s", MediaLogUtils::GarbleFilePath(currentDir).c_str());
         return true;
     }
 
@@ -236,7 +236,7 @@ bool FolderScannerUtils::IsSkipCurrentDirectory(const std::string &currentDir, c
     std::error_code errorCode;
     if (ruleConfig.skipDirectoryWithNomedia && fs::exists(nomediaFilePath, errorCode)) {
         MEDIA_INFO_LOG("contain nomedia, nomediaFilePath: %{public}s",
-            FileScanUtils::GarbleFilePath(nomediaFilePath).c_str());
+            MediaLogUtils::GarbleFilePath(nomediaFilePath).c_str());
         return true;
     }
 
@@ -247,7 +247,7 @@ bool FolderScannerUtils::IsSkipDirectory(const std::string &dir, const ScanRuleC
 {
     std::string currentDir = dir;
     while (!currentDir.empty() && currentDir != ruleConfig.rootPath) {
-        MEDIA_INFO_LOG("check path:%{public}s", FileScanUtils::GarbleFilePath(currentDir).c_str());
+        MEDIA_INFO_LOG("check path:%{public}s", MediaLogUtils::GarbleFilePath(currentDir).c_str());
         if (IsSkipCurrentDirectory(currentDir, ruleConfig)) {
             return true;
         }

@@ -25,7 +25,7 @@ bool LakeCheckScenario::IsConditionSatisfied(const ConsistencyCheck::DeviceStatu
     const int32_t PROPER_DEVICE_BATTERY_CAPACITY = 50;
     const int32_t PROPER_DEVICE_TEMPERATURE_LEVEL_37 = 1;
     return deviceStatus.isScreenOff && deviceStatus.isCharging && deviceStatus.isBackgroundTaskAllowed &&
-        deviceStatus.batteryCapacity >= PROPER_DEVICE_BATTERY_CAPACITY &&
+        deviceStatus.batteryCapacity > PROPER_DEVICE_BATTERY_CAPACITY &&
         deviceStatus.temperature <= PROPER_DEVICE_TEMPERATURE_LEVEL_37 && MediaInLakeNeedCheck();
 }
 
@@ -50,9 +50,9 @@ void LakeCheckScenario::Execute(std::atomic<bool> &isInterrupted)
         return;
     }
 
-    SaveFinishedProgress();
     dfxCollector.OnCheckEnd();
     dfxCollector.Report();
+    SaveFinishedStatus();
 }
 
 int32_t LakeCheckScenario::RunForward(ScenarioContext &context)
@@ -76,13 +76,13 @@ int32_t LakeCheckScenario::RunBackward(ScenarioContext &context)
     int32_t deleteNum = 0;
     bool ret = CheckAndIfNeedDeletePhotoAlbum(
         deleteNum, [this, &context]() -> bool { return context.isInterrupted.load(); });
-    context.dfxCollector.OnAlbumDelete(deleteNum);
+    context.dfxCollector.OnPhotoDelete(deleteNum);
     CHECK_AND_RETURN_RET(ret, RunningStatus::INTERRUPTED);
     ClearLakeAlbum();
     return RunningStatus::FINISHED;
 }
 
-void LakeCheckScenario::SaveFinishedProgress()
+void LakeCheckScenario::SaveFinishedStatus()
 {
     MediaInLakeSetCheckFinish();
 }

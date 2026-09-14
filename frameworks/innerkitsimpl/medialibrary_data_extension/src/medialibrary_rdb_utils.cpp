@@ -649,8 +649,8 @@ void MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(const UpdateAlbumData
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) +
         " AND " + PhotoColumn::PHOTO_IS_SHARED + " = 0";
 
-    bool isUserAlbum = subtype == PhotoAlbumSubType::USER_GENERIC;
-    bool isSourceAlbum = (subtype >= PhotoAlbumSubType::SOURCE_START && subtype <= PhotoAlbumSubType::SOURCE_END);
+    bool isUserAlbum = PhotoAlbum::IsUserAlbumSubtype(subtype);
+    bool isSourceAlbum = PhotoAlbum::IsSourceAlbumSubtype(subtype);
     bool isAnalysisAlbum = subtype >= PhotoAlbumSubType::ANALYSIS_START && subtype <= PhotoAlbumSubType::ANALYSIS_END;
     bool isSystemAlbum = subtype >= PhotoAlbumSubType::SYSTEM_START && subtype <= PhotoAlbumSubType::SYSTEM_END;
     bool isShareAlbum = subtype == PhotoAlbumSubType::SHARE_GENERIC;
@@ -1445,8 +1445,7 @@ static bool IsNeedSetCover(UpdateAlbumData &data, PhotoAlbumSubType subtype, con
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) +
         " AND " + PhotoColumn::PHOTO_SYNC_STATUS + " = 0 AND " + PhotoColumn::PHOTO_CLEAN_FLAG + " = 0";
     predicates.SetWhereClause(checkCoverValid);
-    if (subtype == PhotoAlbumSubType::USER_GENERIC ||
-        (subtype >= PhotoAlbumSubType::SOURCE_START && subtype <= PhotoAlbumSubType::SOURCE_END)) {
+    if (PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype)) {
         vector<string> columns = { PhotoColumn::PHOTO_OWNER_ALBUM_ID };
         auto resultSet = rdbStore->Query(predicates, columns);
         CHECK_AND_RETURN_RET_INFO_LOG(resultSet != nullptr, E_HAS_DB_ERROR,

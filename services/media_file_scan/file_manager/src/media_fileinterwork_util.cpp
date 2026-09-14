@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "album_dao.h"
 #include "directory_ex.h"
 #include "media_column.h"
 #include "media_fileinterwork_column.h"
@@ -50,6 +51,14 @@ const std::string FILE_ROOT_ALBUM = "根目录";
 const std::string PHOTOS_ALL_ALBUM_UPLOAD_COMFIRMED = "photos_all_album_upload_comfirmed ";
 
 constexpr int32_t TASK_STATUS_IDLE = 0;
+
+const std::vector<std::string> DOWNLOAD_TRASH_SUFFIX = {
+    "/temp/",
+    "/tmp/",
+    "/cache/",
+    "/log/",
+    "/config/",
+};
 
 int32_t MediaFileInterworkUtil::GetFileAlbumLPath(const string &path, string &lPath)
 {
@@ -92,22 +101,13 @@ int32_t MediaFileInterworkUtil::InsertOrUpdateAlbum(const std::string &albumPath
         albumName = FILE_ROOT_ALBUM;
     }
     std::string lowerLPath = GetLowerString(albumLPath);
-    string querySql = "SELECT ALBUM_ID FROM PhotoAlbum WHERE LOWER(lpath) = ?";
-    vector<string> bindArgs;
-    bindArgs.push_back(lowerLPath);
-    auto resultSet = rdbStore->QuerySql(querySql, bindArgs);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr");
-    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t id = 0;
-        if (resultSet->GetInt(0, id) == NativeRdb::E_OK) {
-            albumId = id;
-        }
-        resultSet->Close();
-        MEDIA_INFO_LOG("query album: %{public}s with id: %{public}d", albumName.c_str(), albumId);
-        return E_OK;
-    } else {
-        resultSet->Close();
-    }
+    AlbumDao albumDao(rdbStore);
+    bool found = false;
+    int32_t queryRet = albumDao.QueryAlbumIdByLPath(lowerLPath, albumId, found);
+    CHECK_AND_RETURN_RET(queryRet == E_OK, E_HAS_DB_ERROR);
+    CHECK_AND_RETURN_RET_INFO_LOG(!found, E_OK,
+        "query album: %{public}s with id: %{public}d", albumName.c_str(), albumId);
+
     NativeRdb::ValuesBucket values;
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
@@ -115,7 +115,7 @@ int32_t MediaFileInterworkUtil::InsertOrUpdateAlbum(const std::string &albumPath
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, albumLPath);
     
     int64_t rowId = 0;
-    int32_t ret = rdbStore->Insert(rowId, PhotoAlbumColumns::TABLE, values);
+    int32_t ret = albumDao.InsertAlbum(values, rowId);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Insert album failed for: %{public}s", albumPath.c_str());
         return E_HAS_DB_ERROR;
@@ -164,22 +164,23 @@ int32_t MediaFileInterworkUtil::SetLoadFirstTime()
 {
     int32_t errCode = 0;
     std::shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
-
+        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
     if (errCode != E_OK || prefs == nullptr) {
-    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
-    return E_ERR;
+        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+        return E_ERR;
     }
+
     int32_t loadType = prefs->GetInt(SCAN_FILEMANAGER_LOAD_TYPE, 0);
     if (loadType != static_cast<int32_t>(LoadType::FILEMANAGER_CLONE_FIRST_LOAD)) {
         prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, LoadType::FILEMANAGER_FIRST_LOAD);
         prefs->PutBool(IS_INVENTORY_LOADING, true);
     }
+
     int64_t startTime = prefs->GetLong(SCAN_FM_START_TIME, 0);
     if (startTime == 0) {
-    int64_t curTime = MediaFileUtils::UTCTimeMilliSeconds();
-    MEDIA_INFO_LOG("fileManager first load, set first load time is:%{public}" PRId64, curTime);
-    prefs->PutLong(SCAN_FM_START_TIME, curTime);
+        int64_t curTime = MediaFileUtils::UTCTimeMilliSeconds();
+        MEDIA_INFO_LOG("fileManager first load, set first load time is:%{public}" PRId64, curTime);
+        prefs->PutLong(SCAN_FM_START_TIME, curTime);
     }
 
     prefs->FlushSync();
@@ -190,11 +191,11 @@ int32_t MediaFileInterworkUtil::ReportFileManagerFirstLoad()
 {
     int32_t errCode = 0;
     std::shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
 
     if (errCode != E_OK || prefs == nullptr) {
-    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
-    return E_ERR;
+        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+        return E_ERR;
     }
 
     prefs->PutLong(SCAN_FM_END_TIME, MediaFileUtils::UTCTimeMilliSeconds());
@@ -207,11 +208,11 @@ int32_t MediaFileInterworkUtil::AddImageAndVideoCount(int32_t imageCount, int32_
 {
     int32_t errCode = 0;
     std::shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
 
     if (errCode != E_OK || prefs == nullptr) {
-    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
-    return E_ERR;
+        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+        return E_ERR;
     }
 
     int32_t curImageCount = prefs->GetInt(SCAN_FM_IMAGE_COUNT, 0);
@@ -226,16 +227,32 @@ int32_t MediaFileInterworkUtil::AddAlbumCount(int32_t albumCount)
 {
     int32_t errCode = 0;
     std::shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
 
     if (errCode != E_OK || prefs == nullptr) {
-    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
-    return E_ERR;
+        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+        return E_ERR;
     }
 
     int32_t curAlbumCount = prefs->GetInt(SCAN_FM_ALBUM_COUNT, 0);
     prefs->PutInt(SCAN_FM_ALBUM_COUNT, curAlbumCount + albumCount);
     prefs->FlushSync();
     return E_OK;
+}
+
+bool MediaFileInterworkUtil::IsDownloadTrashDir(const std::string &dirPath)
+{
+    string lowerPath = GetLowerString(dirPath);
+    const string TRASH_PREFIX =
+        "/storage/media/local/files/docs/download/com.";
+    if (lowerPath.compare(0, TRASH_PREFIX.size(), TRASH_PREFIX) != 0) {
+        return false;
+    }
+    for (string str : DOWNLOAD_TRASH_SUFFIX) {
+        if (lowerPath.find(str) != string::npos) {
+            return true;
+        }
+    }
+    return false;
 }
 }

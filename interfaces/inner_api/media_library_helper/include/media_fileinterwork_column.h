@@ -50,6 +50,7 @@ public:
     static const std::string OHPM_DIR;
     static const std::string PCE_ENGINE_DIR;
     static const std::string APPDATA_DIR;
+    static const std::string DOWNLOAD_DIR;
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_INTERWORK_COLUMN_H

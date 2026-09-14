@@ -66,16 +66,16 @@ HWTEST_F(ScanRuleConfigTest, LakeConfig_DefaultFolderNames_004, TestSize.Level1)
 }
 
 /**
- * @tc.name: LakeConfig_TencentCachePattern_005
+ * @tc.name: LakeConfig_AppCachePattern_005
  * @tc.desc: Test Lake tencent cache regex matches expected pattern
  * @tc.type: FUNC
  */
-HWTEST_F(ScanRuleConfigTest, LakeConfig_TencentCachePattern_005, TestSize.Level1)
+HWTEST_F(ScanRuleConfigTest, LakeConfig_AppCachePattern_005, TestSize.Level1)
 {
     const ScanRuleConfig &config = GetLakeScanRuleConfig();
     std::string testPath =
         "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Tencent/MicroMsg/abcdef0123456789abcdef0123456789";
-    EXPECT_TRUE(std::regex_match(testPath, config.tencentCachePattern));
+    EXPECT_TRUE(std::regex_match(testPath, config.appCachePattern));
 }
 
 /**

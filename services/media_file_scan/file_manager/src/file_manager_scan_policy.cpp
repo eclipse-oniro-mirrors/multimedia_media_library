@@ -17,7 +17,7 @@
 #include "check_status_helper.h"
 #include "consistency_check_data_types.h"
 #include "file_manager_scanner.h"
-#include "media_file_utils.h"
+#include "media_time_utils.h"
 
 namespace OHOS::Media {
 CheckScene FileManagerScanPolicy::GetScene() const
@@ -29,9 +29,7 @@ void FileManagerScanPolicy::OnScanFinished(bool isFirstScanner)
 {
     CHECK_AND_RETURN(isFirstScanner);
     CheckStatusHelper checkStatusHelper(CheckScene::FILE_MANAGER);
-    ConsistencyCheck::ScenarioProgress progress;
-    progress.lastCheckTimeInMs = MediaFileUtils::UTCTimeMilliSeconds();
-    checkStatusHelper.SetValuesByFinishedProgress(progress);
+    checkStatusHelper.SaveFinishedStatus(MediaTimeUtils::UTCTimeMilliSeconds());
 }
 
 std::unique_ptr<FileScanner> FileManagerScanPolicy::CreateFileScanner(ScanMode scanMode)

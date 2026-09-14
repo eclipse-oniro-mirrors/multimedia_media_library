@@ -16,20 +16,22 @@
 
 #include "folder_parser.h"
 
+#include <cctype>
+#include <chrono>
 #include <filesystem>
 #include <sys/stat.h>
-#include <chrono>
-#include <cctype>
+
 #include "album_accurate_refresh.h"
+#include "file_const.h"
+#include "medialibrary_tracer.h"
 #include "media_file_utils.h"
 #include "media_log.h"
-#include "photo_album_column.h"
-#include "result_set_utils.h"
-#include "file_scan_utils.h"
-#include "photo_album_upload_status_operation.h"
+#include "media_log_utils.h"
 #include "media_string_utils.h"
+#include "photo_album_column.h"
+#include "photo_album_upload_status_operation.h"
+#include "result_set_utils.h"
 #include "settings_data_manager.h"
-#include "medialibrary_tracer.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -43,7 +45,7 @@ const int32_t ALBUM_PLUGIN_NOT_EXIST = 2;
 FolderParser::FolderParser(const std::string &storagePath, ScanMode scanMode) : scanMode_(scanMode)
 {
     MEDIA_INFO_LOG("FolderParser init, storagePath is: %{public}s",
-        FileScanUtils::GarbleFilePath(storagePath).c_str());
+        MediaLogUtils::GarbleFilePath(storagePath).c_str());
     storagePath_ = storagePath;
     mediaLibraryRdb_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
 }
@@ -53,7 +55,7 @@ int32_t FolderParser::GetAlbumPhotoInfo(CommonAlbumInfo &photoAlbumInfo)
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "GetAlbumPhotoInfo: rdb is nullptr");
     std::vector<NativeRdb::ValueObject> bindArgs = {commonAlbumInfo_.lpath};
     MEDIA_DEBUG_LOG("lpath is: %{public}s",
-        FileScanUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
+        MediaLogUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
     std::string querySql = SQL_PHOTO_ALBUM_SELECT_BY_LPATH;
     auto resultSet = mediaLibraryRdb_->QuerySql(querySql, bindArgs);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
@@ -71,7 +73,7 @@ int32_t FolderParser::GetAlbumPhotoInfo(CommonAlbumInfo &photoAlbumInfo)
     photoAlbumInfo.albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
     resultSet->Close();
     MEDIA_DEBUG_LOG("album_name is: %{public}s",
-        FileScanUtils::GarbleFile(photoAlbumInfo.albumName).c_str());
+        MediaLogUtils::GarbleFile(photoAlbumInfo.albumName).c_str());
     return E_OK;
 }
 
@@ -80,7 +82,7 @@ int32_t FolderParser::GetAlbumPluginInfo(AlbumPluginInfo &albumPluginInfo)
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "GetAlbumPluginInfo: rdb is nullptr");
     std::vector<NativeRdb::ValueObject> bindArgs = {commonAlbumInfo_.lpath};
     MEDIA_DEBUG_LOG("lpath is: %{public}s",
-        FileScanUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
+        MediaLogUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
     std::string querySql = SQL_QUERY_ALBUM_NAME_FROM_ALBUM_PLUGIN_ONLY;
     auto resultSet = mediaLibraryRdb_->QuerySql(querySql, bindArgs);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
@@ -97,32 +99,9 @@ int32_t FolderParser::GetAlbumPluginInfo(AlbumPluginInfo &albumPluginInfo)
     albumPluginInfo.bundleName = GetStringVal("bundle_name", resultSet);
     albumPluginInfo.albumNameEn = GetStringVal("album_name_en", resultSet);
     MEDIA_DEBUG_LOG("lpath is: %{public}s",
-        FileScanUtils::GarbleFilePath(albumPluginInfo.lpath).c_str());
+        MediaLogUtils::GarbleFilePath(albumPluginInfo.lpath).c_str());
     resultSet->Close();
     return E_OK;
-}
-
-// 不区分大小写的字符比较函数
-bool CaseInsensitiveCharCompare(char a, char b)
-{
-    return std::tolower(static_cast<unsigned char>(a)) ==
-           std::tolower(static_cast<unsigned char>(b));
-}
-
-// 检查 str 是否以 prefix 开头（忽略大小写）
-bool FolderParser::StartsWithIgnoreCase(const std::string& str, const std::string& prefix)
-{
-    if (prefix.length() > str.length()) {
-        return false;
-    }
-    return std::equal(prefix.begin(), prefix.end(), str.begin(), CaseInsensitiveCharCompare);
-}
-
-std::string to_lower(std::string s)
-{
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    return s;
 }
 
 int32_t FolderParser::PreProcessUpdate()
@@ -155,7 +134,7 @@ FolderOperationType FolderParser::PreProcessFolder()
             // 表中有，白名单中没有，不需要处理
             return FolderOperationType::CONTINUE;
         }
-        if (to_lower(commonAlbumInfo_.albumName) == to_lower(albumPluginInfo_.albumName)) {
+        if (MediaStringUtils::EqualToIgnoreCase(commonAlbumInfo_.albumName, albumPluginInfo_.albumName)) {
             // 表中相册名和白名单相册名一致，不需要修改
             return FolderOperationType::CONTINUE;
         }
@@ -189,7 +168,7 @@ int32_t FolderParser::InsertAlbumInfo()
         return E_ERR;
     }
     MEDIA_INFO_LOG("GetAlbumName end2, albumName is : %{public}s",
-        FileScanUtils::GarbleFile(commonAlbumInfo_.albumName).c_str());
+        MediaLogUtils::GarbleFile(commonAlbumInfo_.albumName).c_str());
     // 6. Query the data in the PhotoAlbum table where the album name and lPath are different,
     // and check whether the album name already exists.
     std::string albumName = commonAlbumInfo_.albumName;
@@ -199,7 +178,7 @@ int32_t FolderParser::InsertAlbumInfo()
         GetUniqueAlbumName(albumName);
     }
     MEDIA_INFO_LOG("GetAlbumName end3, albumName is : %{public}s",
-        FileScanUtils::GarbleFile(albumName).c_str());
+        MediaLogUtils::GarbleFile(albumName).c_str());
     commonAlbumInfo_.albumName = albumName;
 
     // 7. insert
@@ -262,7 +241,7 @@ int32_t FolderParser::GetAlbumName(CommonAlbumInfo &commonAlbumInfo)
     }
     commonAlbumInfo.bundleName = albumPluginInfo_.bundleName;
     MEDIA_INFO_LOG("GetAlbumName end, albumName is : %{public}s",
-        FileScanUtils::GarbleFile(commonAlbumInfo.albumName).c_str());
+        MediaLogUtils::GarbleFile(commonAlbumInfo.albumName).c_str());
     return E_OK;
 }
 
@@ -337,7 +316,7 @@ int32_t FolderParser::InsertAlbum(CommonAlbumInfo &commonAlbumInfo)
     int32_t ret = albumRefresh.Insert(albumId, PhotoAlbumColumns::TABLE, value);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && albumId > 0, E_ERR,
         "Insert photo albums failed, failed albumId is %{public}" PRId64 " and lpath is %{public}s",
-        albumId, FileScanUtils::GarbleFilePath(commonAlbumInfo.lpath).c_str());
+        albumId, MediaLogUtils::GarbleFilePath(commonAlbumInfo.lpath).c_str());
     commonAlbumInfo.albumId = static_cast<int32_t>(albumId);
 
     // 文管相册设置云开关
@@ -398,9 +377,9 @@ void FolderParser::GetUniqueAlbumName(std::string &albumName)
     int32_t sequence = 1;
     bool isUnique = CheckAlbumNameUnique(albumName);
     while (!isUnique && sequence < MAX_ALBUM_NAME_SEQUENCE) {
-        uniqueAlbumName = albumName + (" " + std::to_string(sequence));
+        uniqueAlbumName = albumName + " " + std::to_string(sequence);
         MEDIA_INFO_LOG("check album sequence: %{public}d, albumName: %{public}s",
-            sequence, FileScanUtils::GarbleFile(uniqueAlbumName).c_str());
+            sequence, MediaLogUtils::GarbleFile(uniqueAlbumName).c_str());
         sequence++;
         isUnique = CheckAlbumNameUnique(uniqueAlbumName);
     }

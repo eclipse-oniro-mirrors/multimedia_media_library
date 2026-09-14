@@ -17,8 +17,8 @@
 #include <sstream>
 
 #include "hisysevent.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_time_utils.h"
 
 namespace OHOS::Media {
 static constexpr char MEDIA_LIBRARY[] = "MEDIALIBRARY";
@@ -34,14 +34,26 @@ CheckDfxCollector::CheckDfxCollector(CheckScene scene)
 
 void CheckDfxCollector::OnCheckStart()
 {
-    dfxStats_.startTimeInMs = MediaFileUtils::UTCTimeMilliSeconds();
+    dfxStats_.startTimeInMs = static_cast<uint64_t>(MediaTimeUtils::UTCTimeMilliSeconds());
+}
+
+void CheckDfxCollector::OnCheckStart(int64_t timeInMs, ConsistencyCheck::DfxStats dfxStats)
+{
+    if (dfxStats.startTimeInMs <= 0) {
+        dfxStats.startTimeInMs = static_cast<uint64_t>(timeInMs);
+    }
+    dfxStats_ = dfxStats;
 }
 
 void CheckDfxCollector::OnCheckEnd()
 {
-    dfxStats_.endTimeInMs = MediaFileUtils::UTCTimeMilliSeconds();
+    dfxStats_.endTimeInMs = static_cast<uint64_t>(MediaTimeUtils::UTCTimeMilliSeconds());
 }
 
+void CheckDfxCollector::OnCheckEnd(int64_t timeInMs)
+{
+    dfxStats_.endTimeInMs = static_cast<uint64_t>(timeInMs);
+}
 
 void CheckDfxCollector::OnPhotoAdd(int32_t delta)
 {
@@ -104,6 +116,11 @@ void CheckDfxCollector::Reset()
 {
     MEDIA_INFO_LOG("Reset to 0");
     dfxStats_ = {};
+}
+
+ConsistencyCheck::DfxStats CheckDfxCollector::GetDfxStats()
+{
+    return dfxStats_;
 }
 
 std::string CheckDfxCollector::ToString() const

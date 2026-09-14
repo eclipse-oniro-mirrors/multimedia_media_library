@@ -16,7 +16,7 @@
 
 #include <sstream>
 
-#include "file_scan_utils.h"
+#include "media_log_utils.h"
 
 namespace OHOS::Media::ConsistencyCheck {
 std::string ScenarioProgress::ToString() const
@@ -24,8 +24,7 @@ std::string ScenarioProgress::ToString() const
     std::stringstream ss;
     ss << "ScenarioProgress["
         << "photo: " << lastFileId << ", "
-        << "album: " << lastAlbumId << ", "
-        << "timeInMs: " << lastCheckTimeInMs << "]";
+        << "album: " << lastAlbumId << "]";
     return ss.str();
 }
 
@@ -56,7 +55,7 @@ std::string AlbumRecord::ToString() const
     std::stringstream ss;
     ss << "AlbumRecord["
         << "albumId: " << albumId << ", "
-        << "lpath: " << FileScanUtils::GarbleFilePath(lpath) << ", "
+        << "lpath: " << MediaLogUtils::GarbleFilePath(lpath) << ", "
         << "albumSubtype: " << albumSubtype << "]";
     return ss.str();
 }
@@ -66,7 +65,7 @@ std::string PhotoRecord::ToString() const
     std::stringstream ss;
     ss << "PhotoRecord["
         << "fileId: " << fileId << ", "
-        << "storagePath: " << FileScanUtils::GarbleFilePath(storagePath) << ", "
+        << "storagePath: " << MediaLogUtils::GarbleFilePath(storagePath) << ", "
         << "albumRecord: " << albumRecord.ToString() << "]";
     return ss.str();
 }

@@ -12,23 +12,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OHOS_MEDIA_LAKE_CHECK_SCENARIO_H
-#define OHOS_MEDIA_LAKE_CHECK_SCENARIO_H
+#ifndef ALBUM_DAO_H
+#define ALBUM_DAO_H
 
-#include "i_check_scenario.h"
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace OHOS::NativeRdb {
+class ValuesBucket;
+}
 
 namespace OHOS::Media {
-class LakeCheckScenario final : public ICheckScenario {
+class MediaLibraryRdbStore;
+
+class AlbumDao {
 public:
-    bool IsConditionSatisfied(const ConsistencyCheck::DeviceStatus &deviceStatus) override;
-    void Execute(std::atomic<bool> &isInterrupted) override;
+    explicit AlbumDao(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
+    ~AlbumDao();
+
+    int32_t QueryAlbumIdByLPath(const std::string &lowerLPath, int32_t &albumId, bool &found);
+    int32_t InsertAlbum(NativeRdb::ValuesBucket &values, int64_t &rowId);
 
 private:
-    int32_t RunForward(ScenarioContext &context);
-    int32_t RunBackward(ScenarioContext &context);
-
-    void SaveFinishedStatus();
+    std::shared_ptr<MediaLibraryRdbStore> rdbStore_;
 };
 } // namespace OHOS::Media
-
-#endif // OHOS_MEDIA_LAKE_CHECK_SCENARIO_H
+#endif // ALBUM_DAO_H

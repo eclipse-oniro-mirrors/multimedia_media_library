@@ -26,12 +26,12 @@ struct ScanRuleConfig {
     std::regex relativePathPattern;
     std::regex visiblePattern;
     std::regex invisiblePattern;
-    std::regex tencentCachePattern;
+    std::regex appCachePattern;
     std::unordered_set<std::string> defaultFolderNames;
     bool skipHiddenFile {true};
     bool skipHiddenDirectory {true};
     bool skipBlackList {true};
-    bool skipTencentCache {true};
+    bool skipAppCache {true};
     bool createNomediaForInvisibleDirectory {true};
     bool cleanNomediaInDefaultDirs {true};
     bool skipDirectoryWithNomedia {true};

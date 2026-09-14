@@ -24,7 +24,14 @@
 namespace OHOS::Media {
 const std::string KEY_LAST_FILE_ID = "last_file_id";
 const std::string KEY_LAST_ALBUM_ID = "last_album_id";
-const std::string KEY_LAST_CHECK_TIME_IN_MS = "last_check_time_in_ms";
+const std::string KEY_LAST_PHOTO_ADD_COUNT = "last_photo_add_count";
+const std::string KEY_LAST_PHOTO_UPDATE_COUNT = "last_photo_update_count";
+const std::string KEY_LAST_PHOTO_DELETE_COUNT = "last_photo_delete_count";
+const std::string KEY_LAST_ALBUM_ADD_COUNT = "last_album_add_count";
+const std::string KEY_LAST_ALBUM_UPDATE_COUNT = "last_album_update_count";
+const std::string KEY_LAST_ALBUM_DELETE_COUNT = "last_album_delete_count";
+const std::string KEY_LAST_START_TIME_IN_MS = "last_start_time_in_ms";
+const std::string KEY_LAST_END_TIME_IN_MS = "last_end_time_in_ms";
 
 int32_t CheckStatusHelper::GetInt32ValueByKey(const std::string &key, int32_t defaultValue)
 {
@@ -58,41 +65,69 @@ void CheckStatusHelper::SetInt64ValueByKey(const std::string &key, int64_t value
     MEDIA_INFO_LOG("%{public}s: %{public}" PRId64, key.c_str(), value);
 }
 
-int64_t CheckStatusHelper::GetLastCheckTimeInMs(int64_t defaultValue)
+int64_t CheckStatusHelper::GetLastEndTimeInMs(int64_t defaultValue)
 {
-    return GetInt64ValueByKey(KEY_LAST_CHECK_TIME_IN_MS, defaultValue);
+    return GetInt64ValueByKey(KEY_LAST_END_TIME_IN_MS, defaultValue);
 }
 
-ConsistencyCheck::ScenarioProgress CheckStatusHelper::GetScenarioProgress()
+void CheckStatusHelper::LoadStatus(ConsistencyCheck::ScenarioProgress &progress, ConsistencyCheck::DfxStats &dfxStats)
 {
-    ConsistencyCheck::ScenarioProgress progress;
     auto prefs = GetPreferences();
-    CHECK_AND_RETURN_RET_LOG(prefs != nullptr, progress, "GetPreferences failed");
+    CHECK_AND_RETURN_LOG(prefs != nullptr, "GetPreferences failed");
+
     progress.lastFileId = prefs->GetInt(KEY_LAST_FILE_ID, 0);
     progress.lastAlbumId = prefs->GetInt(KEY_LAST_ALBUM_ID, 0);
-    MEDIA_INFO_LOG("Get %{public}s", progress.ToString().c_str());
-    return progress;
+    dfxStats.photoAddCount = prefs->GetInt(KEY_LAST_PHOTO_ADD_COUNT, 0);
+    dfxStats.photoUpdateCount = prefs->GetInt(KEY_LAST_PHOTO_UPDATE_COUNT, 0);
+    dfxStats.photoDeleteCount = prefs->GetInt(KEY_LAST_PHOTO_DELETE_COUNT, 0);
+    dfxStats.albumAddCount = prefs->GetInt(KEY_LAST_ALBUM_ADD_COUNT, 0);
+    dfxStats.albumUpdateCount = prefs->GetInt(KEY_LAST_ALBUM_UPDATE_COUNT, 0);
+    dfxStats.albumDeleteCount = prefs->GetInt(KEY_LAST_ALBUM_DELETE_COUNT, 0);
+    dfxStats.startTimeInMs = static_cast<uint64_t>(prefs->GetLong(KEY_LAST_START_TIME_IN_MS, 0));
+    dfxStats.endTimeInMs = static_cast<uint64_t>(prefs->GetLong(KEY_LAST_END_TIME_IN_MS, 0));
+
+    MEDIA_INFO_LOG("Get %{public}s, %{public}s", progress.ToString().c_str(), dfxStats.ToString().c_str());
 }
 
-void CheckStatusHelper::SetValuesByCurrentProgress(const ConsistencyCheck::ScenarioProgress &progress)
+void CheckStatusHelper::SaveCurrentStatus(const ConsistencyCheck::ScenarioProgress &progress,
+    const ConsistencyCheck::DfxStats &dfxStats)
 {
     auto prefs = GetPreferences();
     CHECK_AND_RETURN_LOG(prefs != nullptr, "GetPreferences failed");
+
     prefs->PutInt(KEY_LAST_FILE_ID, progress.lastFileId);
     prefs->PutInt(KEY_LAST_ALBUM_ID, progress.lastAlbumId);
+    prefs->PutInt(KEY_LAST_PHOTO_ADD_COUNT, dfxStats.photoAddCount);
+    prefs->PutInt(KEY_LAST_PHOTO_UPDATE_COUNT, dfxStats.photoUpdateCount);
+    prefs->PutInt(KEY_LAST_PHOTO_DELETE_COUNT, dfxStats.photoDeleteCount);
+    prefs->PutInt(KEY_LAST_ALBUM_ADD_COUNT, dfxStats.albumAddCount);
+    prefs->PutInt(KEY_LAST_ALBUM_UPDATE_COUNT, dfxStats.albumUpdateCount);
+    prefs->PutInt(KEY_LAST_ALBUM_DELETE_COUNT, dfxStats.albumDeleteCount);
+    prefs->PutLong(KEY_LAST_START_TIME_IN_MS, dfxStats.startTimeInMs);
+    // Note: only set endTimeInMs when it is finished
     prefs->FlushSync();
-    MEDIA_INFO_LOG("Set %{public}s", progress.ToString().c_str());
+
+    MEDIA_INFO_LOG("Set %{public}s, %{public}s", progress.ToString().c_str(), dfxStats.ToString().c_str());
 }
 
-void CheckStatusHelper::SetValuesByFinishedProgress(const ConsistencyCheck::ScenarioProgress &progress)
+void CheckStatusHelper::SaveFinishedStatus(int64_t endTimeInMs)
 {
     auto prefs = GetPreferences();
     CHECK_AND_RETURN_LOG(prefs != nullptr, "GetPreferences failed");
-    prefs->PutInt(KEY_LAST_FILE_ID, progress.lastFileId);
-    prefs->PutInt(KEY_LAST_ALBUM_ID, progress.lastAlbumId);
-    prefs->PutLong(KEY_LAST_CHECK_TIME_IN_MS, progress.lastCheckTimeInMs);
+
+    prefs->PutInt(KEY_LAST_FILE_ID, 0);
+    prefs->PutInt(KEY_LAST_ALBUM_ID, 0);
+    prefs->PutInt(KEY_LAST_PHOTO_ADD_COUNT, 0);
+    prefs->PutInt(KEY_LAST_PHOTO_UPDATE_COUNT, 0);
+    prefs->PutInt(KEY_LAST_PHOTO_DELETE_COUNT, 0);
+    prefs->PutInt(KEY_LAST_ALBUM_ADD_COUNT, 0);
+    prefs->PutInt(KEY_LAST_ALBUM_UPDATE_COUNT, 0);
+    prefs->PutInt(KEY_LAST_ALBUM_DELETE_COUNT, 0);
+    prefs->PutLong(KEY_LAST_START_TIME_IN_MS, 0);
+    prefs->PutLong(KEY_LAST_END_TIME_IN_MS, endTimeInMs);
     prefs->FlushSync();
-    MEDIA_INFO_LOG("Set %{public}s", progress.ToString().c_str());
+
+    MEDIA_INFO_LOG("Set endTimeInMs %{public}" PRId64, endTimeInMs);
 }
 
 std::shared_ptr<NativePreferences::Preferences> CheckStatusHelper::GetPreferences()

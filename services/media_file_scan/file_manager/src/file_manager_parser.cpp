@@ -28,6 +28,7 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "photo_album_column.h"
+#include "photo_dao.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -239,10 +240,10 @@ std::vector<std::string> FileManagerParser::GenerateThumbnailWithPowerControl(Sc
         return FileParser::GetFileUris(inodes);
     }
 
-    // 查询数据库（复用父类的公共查询方法）
+    // 查询数据库（复用 PhotoDao 公共查询方法）
     std::vector<ThumbnailInfo> infos;
     std::vector<int32_t> thumbnailVisibleList;
-    int32_t ret = FileParser::QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
+    int32_t ret = PhotoDao().QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, uris, "QueryThumbnailInfos failed");
 
     // 生成缩略图（支持功耗管控）
