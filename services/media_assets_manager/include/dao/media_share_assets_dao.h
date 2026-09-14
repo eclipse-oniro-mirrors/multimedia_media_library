@@ -46,6 +46,7 @@ public:
     // 批量删除已清理的共享资产数据库记录
     int32_t DeleteShareAssets(const std::vector<std::string> &fileIds);
     int32_t GetShareAssetToRemove(std::vector<PhotosPo> &photoInfoList);
+    int32_t DeleteShareMemberInfo();
 
 private:
     const std::string SQL_SHARE_ALBUM_QUERY_ALL = "SELECT * FROM PhotoAlbum WHERE album_type = 8192;";
