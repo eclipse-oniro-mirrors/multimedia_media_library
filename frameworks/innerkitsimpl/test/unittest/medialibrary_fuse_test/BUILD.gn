@@ -43,6 +43,7 @@ ohos_unittest("medialibrary_fuse_test") {
     "./src/media_fuse_hdc_operations_test.cpp",
     "./src/mock_medialibrary_fuse_test.cpp",
     "./src/medialibrary_fuse_test.cpp",
+    "./src/medialibrary_album_fusion_test.cpp",
     "${MEDIALIB_INTERFACES_PATH}/medialibrary_data_extension/src/transcode_compatible_info_operations.cpp",
   ]
 

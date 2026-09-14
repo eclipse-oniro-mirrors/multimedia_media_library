@@ -32,7 +32,9 @@ ohos_unittest("medialibrary_rdb_utils_test") {
 
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
     "./src/medialibrary_rdb_utils_test.cpp",
+    "./src/medialibrary_rdb_utils_album_cover_test.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
