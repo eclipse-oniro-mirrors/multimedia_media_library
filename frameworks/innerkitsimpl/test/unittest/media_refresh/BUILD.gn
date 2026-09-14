@@ -39,6 +39,7 @@ ohos_unittest("media_refresh_test") {
     "./src/analysis_album_strategy_pipeline_test.cpp",
     "./src/asset_accurate_refresh_test.cpp",
     "./src/accurate_refresh_test_util.cpp",
+    "./src/live_photo_4d_asset_helper_test.cpp",
     "./src/media_refresh_controller_service_test.cpp",
   ]
   accurate_refresh_source = [
@@ -54,6 +55,7 @@ ohos_unittest("media_refresh_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/favorite_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/hiddem_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/image_asset_helper.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/live_photo_4d_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/owner_album_info_calculation.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/share_album_info_calculation.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_asset_helper.cpp",

@@ -72,6 +72,7 @@ const int32_t FILE_HDR_MODE_DEFAULT = 0;
 const int32_t FILE_VIDEO_MODE_DEFAULT = -1;
 const int32_t FILE_IS_TEMP_DEFAULT = 0;
 const std::string FILE_FRONT_CAMERA_DEFAULT = "";
+const std::string FILE_XT_STYLE_TEMPLATE_NAME_DEFAULT = "-1";
 const std::string FILE_DETAIL_TIME_DEFAULT = "";
 const int32_t FILE_FILE_SOURCE_TYPE_DEFAULT = 0;
 const int32_t COVER = 1;

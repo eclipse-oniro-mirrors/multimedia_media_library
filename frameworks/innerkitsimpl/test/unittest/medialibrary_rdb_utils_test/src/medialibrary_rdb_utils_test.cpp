@@ -59,6 +59,7 @@ namespace {
         std::to_string(PhotoAlbumSubType::CAMERA),
         std::to_string(PhotoAlbumSubType::IMAGE),
         std::to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+        std::to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
         std::to_string(PhotoAlbumSubType::SOURCE_GENERIC),
     };
     

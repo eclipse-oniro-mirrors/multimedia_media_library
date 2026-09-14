@@ -51,6 +51,7 @@ public:
     static int32_t CompensateAttHdrMode(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttVideoMode(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttFrontCamera(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttXtStyleTemplateName(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttEditTime(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttOriginalSubtype(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttCoverPosition(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);

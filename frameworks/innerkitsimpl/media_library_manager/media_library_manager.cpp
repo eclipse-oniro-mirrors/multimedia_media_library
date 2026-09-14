@@ -1586,6 +1586,16 @@ static void SetCloudSubTypeDefaultPredicates(DataSharePredicates &predicates, bo
     SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
     predicates.EndWrap();
 }
+
+static void SetLivePhoto4DSubTypeDefaultPredicates(DataSharePredicates &predicates, bool hiddenOnly)
+{
+    predicates.BeginWrap();
+    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    predicates.EqualTo(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+    predicates.EndWrap();
+}
+
 int32_t GetSystemAlbumPredicatesForInner(const PhotoAlbumSubType subType, DataSharePredicates &predicates,
     const bool hiddenOnly)
 {
@@ -1620,6 +1630,10 @@ int32_t GetSystemAlbumPredicatesForInner(const PhotoAlbumSubType subType, DataSh
         }
         case PhotoAlbumSubType::CLOUD_ENHANCEMENT: {
             SetCloudSubTypeDefaultPredicates(predicates, hiddenOnly);
+            break;
+        }
+        case PhotoAlbumSubType::LIVEPHOTO_4D: {
+            SetLivePhoto4DSubTypeDefaultPredicates(predicates, hiddenOnly);
             break;
         }
         default: {

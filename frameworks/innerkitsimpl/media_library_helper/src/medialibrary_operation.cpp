@@ -101,6 +101,7 @@ const std::map<std::string, OperationObject>& GetOprnObjMap()
         { CONST_ASSET_ALBUM_OPERATION, OperationObject::ASSET_ALBUM_OPERATION},
         { CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY, OperationObject::MOVING_PHOTO_VIDEO_READY },
         { CONST_PAH_MULTISTAGES_VIDEO, OperationObject::PAH_MULTISTAGES_VIDEO },
+        { CONST_TAB_OPERATION_LOG, OperationObject::TAB_OPERATION_LOG },
         { CONST_TAB_COVER_RECORD, OperationObject::TAB_COVER_RECORD },
 
         // use in Vision
@@ -257,6 +258,8 @@ const std::map<OperationObject, std::map<OperationType, std::string>>& GetTableN
         { { OperationType::UNKNOWN_TYPE, TabFaCardPhotosColumn::FACARD_PHOTOS_TABLE } }},
         { OperationObject::ASSET_ALBUM_OPERATION,
             { { OperationType::UNKNOWN_TYPE, PhotoColumn::TAB_ASSET_AND_ALBUM_OPERATION_TABLE } } },
+        { OperationObject::TAB_OPERATION_LOG,
+            { { OperationType::UNKNOWN_TYPE, TabOperationLogColumn::TABLE } }},
         { OperationObject::TAB_PHOTOS_EXT_OPERATE,
             { { OperationType::UNKNOWN_TYPE, PhotoExtColumn::PHOTOS_EXT_TABLE } } },
         { OperationObject::TAB_COVER_RECORD,

@@ -83,6 +83,7 @@ void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
        << "\"dynamicRangeType\": " << dynamicRangeType.value_or(0) << ", "
        << "\"videoMode\": " << videoMode.value_or(-1) << ", "
        << "\"frontCamera\": \"" << frontCamera.value_or("") << "\", "
+       << "\"xtStyleTemplateName\": \"" << xtStyleTemplateName.value_or("-1") << "\", "
        << "\"coverPosition\": " << coverPosition.value_or(0) << ", "
        << "\"isRectificationCover\": " << isRectificationCover.value_or(0) << ", "
        << "\"movingPhotoEffectMode\": " << movingPhotoEffectMode.value_or(0) << ", "

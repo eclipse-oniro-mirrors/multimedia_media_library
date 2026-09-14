@@ -174,6 +174,7 @@ public:
     static const std::string PHOTO_TRANSCODE_TIME;
     static const std::string PHOTO_TRANS_CODE_FILE_SIZE;
     static const std::string PHOTO_EXIST_COMPATIBLE_DUPLICATE;
+    static const std::string PHOTO_XT_STYLE_TEMPLATE_NAME;
     static const std::string PHOTO_FILE_SOURCE_TYPE;
     static const std::string PHOTO_IS_RECENT_SHOW;
     static const std::string PHOTO_HAS_APPLINK;

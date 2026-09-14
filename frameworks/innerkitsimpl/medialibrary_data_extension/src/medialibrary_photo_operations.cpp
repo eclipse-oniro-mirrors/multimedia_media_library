@@ -7545,6 +7545,18 @@ int32_t MediaLibraryPhotoOperations::SetExtraDataVersion(const int32_t fileId, c
     return MovingPhotoFileUtils::ModifyExtraDataVersion(extraPath, version);
 }
 
+static int32_t UpdateCmdAndRefreshAlbum(MediaLibraryCommand &cmd)
+{
+    int32_t updateRows = -1;
+    AccurateRefresh::AssetAccurateRefresh assetRefresh;
+    int32_t ret = assetRefresh.Update(cmd, updateRows);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && updateRows > 0, E_HAS_DB_ERROR,
+        "AssetRefresh update failed, ret:%{public}d, updateRows:%{public}d", ret, updateRows);
+    assetRefresh.RefreshAlbum();
+    assetRefresh.Notify();
+    return E_OK;
+}
+
 int32_t MediaLibraryPhotoOperations::SetLivePhoto4dStatus(const int32_t fileId, const int32_t livePhoto4dStatus,
     const std::string &livePhoto4dLatestPair)
 {
@@ -7568,8 +7580,8 @@ int32_t MediaLibraryPhotoOperations::SetLivePhoto4dStatus(const int32_t fileId, 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
     cmd.SetValueBucket(values);
     cmd.GetAbsRdbPredicates()->EqualTo(Media::MediaColumn::MEDIA_ID, to_string(fileId));
-    auto ret = MediaLibraryPhotoOperations::Update(cmd);
-    CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "livePhoto4d:update live photo 4d status failed, ret:%{public}d", ret);
+    int32_t ret = UpdateCmdAndRefreshAlbum(cmd);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "livePhoto4d:update live photo 4d status failed, ret:%{public}d", ret);
     if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus)) {
         ret = SetExtraDataVersion(fileId, static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
     }

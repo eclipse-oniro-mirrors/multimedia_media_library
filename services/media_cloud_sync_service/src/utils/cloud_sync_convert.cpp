@@ -225,6 +225,16 @@ int32_t CloudSyncConvert::CompensateAttFrontCamera(const CloudMediaPullDataDto &
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateAttXtStyleTemplateName(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    std::string xtStyleTemplateName = data.attributesXtStyleTemplateName;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        !xtStyleTemplateName.empty(), E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::xtStyleTemplateName.");
+    values.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, xtStyleTemplateName);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateAttEditTime(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     int64_t editTime = data.attributesEditTime;
@@ -673,6 +683,7 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttHdrMode(data, values);
     CompensateAttVideoMode(data, values);
     CompensateAttFrontCamera(data, values);
+    CompensateAttXtStyleTemplateName(data, values);
     CompensateAttEditTime(data, values);
     CompensateAttOriginalSubtype(data, values);
     CompensateAttCoverPosition(data, values);

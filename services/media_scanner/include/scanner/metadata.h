@@ -197,6 +197,9 @@ public:
     void SetStageVideoTaskStatus(const VariantData &stageVideoTaskStatus);
     int32_t GetStageVideoTaskStatus() const;
 
+    EXPORT void SetXtStyleTemplateName(const VariantData &xtStyleTemplateName);
+    EXPORT std::string GetXtStyleTemplateName() const;
+
     EXPORT void SetFileSourceType(const VariantData &fileSourceType);
     EXPORT int32_t GetFileSourceType() const;
 
@@ -312,6 +315,9 @@ private:
     int32_t burstCoverLevel_;
 
     int32_t stageVideoTaskStatus_;
+
+    // xt style template name
+    std::string xtStyleTemplateName_;
 
     int32_t fileSourceType_;
     int32_t needThumbnail_ = 1;

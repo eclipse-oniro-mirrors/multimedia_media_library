@@ -24,6 +24,7 @@
 #include "favorite_asset_helper.h"
 #include "hidden_asset_helper.h"
 #include "image_asset_helper.h"
+#include "live_photo_4d_asset_helper.h"
 #include "trash_asset_helper.h"
 #include "video_asset_helper.h"
 #include "medialibrary_rdb_utils.h"
@@ -83,7 +84,11 @@ std::unordered_map<PhotoAlbumSubType, SystemAlbumInfoCalculation>
     { PhotoAlbumSubType::CLOUD_ENHANCEMENT, { CloudEnhancementAssetHelper::IsAsset,
         CloudEnhancementAssetHelper::IsVideoAsset, CloudEnhancementAssetHelper::IsHiddenAsset,
         CloudEnhancementAssetHelper::IsNewerAsset, CloudEnhancementAssetHelper::IsNewerHiddenAsset,
-        PhotoAlbumSubType::CLOUD_ENHANCEMENT }}
+        PhotoAlbumSubType::CLOUD_ENHANCEMENT }},
+    { PhotoAlbumSubType::LIVEPHOTO_4D, { LivePhoto4DAssetHelper::IsAsset,
+        LivePhoto4DAssetHelper::IsVideoAsset, LivePhoto4DAssetHelper::IsHiddenAsset,
+        LivePhoto4DAssetHelper::IsNewerAsset, LivePhoto4DAssetHelper::IsNewerHiddenAsset,
+        PhotoAlbumSubType::LIVEPHOTO_4D }},
 };
 
 std::unordered_map<int32_t, SystemAlbumInfoCalculation> AlbumRefreshExecution::systemAlbumCalculations_;
@@ -952,7 +957,8 @@ void AlbumRefreshExecution::CheckNotifyOldNotification(NotifyAlbumType notifyAlb
         (albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::FAVORITE) ||
         albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::VIDEO) ||
         albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::IMAGE) ||
-        albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::CLOUD_ENHANCEMENT));
+        albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::CLOUD_ENHANCEMENT) ||
+        albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::LIVEPHOTO_4D));
 
     bool needUserNotify = notifyAlbumType & NotifyAlbumType::USER_ALBUM;
     bool isUserAlbum = albumInfo.albumType_ == static_cast<int32_t>(PhotoAlbumType::USER) &&
