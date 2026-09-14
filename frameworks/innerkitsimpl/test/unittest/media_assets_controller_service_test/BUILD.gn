@@ -34,6 +34,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/controller",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dto",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager/include",
     "../medialibrary_unittest_utils/include",
     "./include",
@@ -45,6 +46,8 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/callback",
   ]
 
   include_media_ipc = [
@@ -141,6 +144,18 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/cancel_photo_uri_permission_test.cpp",
     "./src/check_photo_uris_read_permission_test.cpp",
     "./src/clone_asset_test.cpp",
+    "./src/convert_to_asset_test.cpp",
+    "./src/cancel_task_test.cpp",
+    "./src/clone_and_move_controller_test.cpp",
+    "./src/create_file_manager_asset_test.cpp",
+    "./src/clone_to_album_and_convert_asset_test.cpp",
+    "./src/media_assets_controller_ipc_test.cpp",
+    "./src/asset_change_query_by_storage_path_test.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/convert_to_asset_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_cancel_task_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_to_album_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/media_assets_rdb_operations.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/clone_to_album_callback_proxy.cpp",
   ]
 
   if (media_library_feature_cloud_enhancement) {
