@@ -102,6 +102,7 @@ ohos_shared_library("media_library_camera_helper") {
   ldflags = [
     "-Wl,--gc-sections",
     "-fPIE",
+    "-Wl,-Bsymbolic",
   ]
 
   cflags_cc = [ "-Os" ]
