@@ -1455,7 +1455,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryByStepWithoutCount(c
 std::shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryInternal(const NativeRdb::AbsRdbPredicates &predicates,
     const std::vector<std::string> &columns, bool preCount, bool isAlbumRefresh)
 {
-    DfxTimer dfxTimer(RDB_QUERY, INVALID_DFX, RDB_TIME_OUT, false);
+    DfxTimer dfxTimer(RDB_QUERY, INVALID_DFX, RDB_TIME_OUT, false, predicates.GetStatement());
     if (!MediaLibraryRdbStore::CheckRdbStore()) {
         MEDIA_ERR_LOG("rdbStore_ is nullptr");
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
