@@ -361,11 +361,12 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
     Media::MedialibrarySubscriber::SubscribeAsync();
     Media::HeifTranscodingCheckUtils::InitCheckList();
     dataManager->SetStartupParameter();
-    DfxReporter::ReportStartResult(DfxType::START_SUCCESS, 0, startTime);
     CloudMediaAssetManager::GetInstance().RestartForceRetainCloudAssets();
     MediaShareAssetsService::GetInstance().RestartRemoveShareAlbumAndAsset();
     dataManager->RestoreInvalidHDCCloudDataPos();
     PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable();
+    // New startup logic should be added BEFORE this line to ensure START_SUCCESS captures the full startup time
+    DfxReporter::ReportStartResult(DfxType::START_SUCCESS, 0, startTime);
 }
 
 void MediaDataShareExtAbility::OnStop()

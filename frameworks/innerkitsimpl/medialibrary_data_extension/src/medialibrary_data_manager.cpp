@@ -397,7 +397,10 @@ __attribute__((no_sanitize("cfi"))) int32_t MediaLibraryDataManager::InitMediaLi
     if (access(KVDB_DIR.c_str(), F_OK) != E_OK) {
         ExecuteInitThumnailWork();
     } else {
-        if (!MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER)) {
+        int64_t kvdbStartTime = MediaFileUtils::UTCTimeMilliSeconds();
+        bool kvdbResult = MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
+        DfxReporter::ReportStartResult(DfxType::START_KVDB_INIT, kvdbResult ? E_OK : E_ERR, kvdbStartTime);
+        if (!kvdbResult) {
             MEDIA_ERR_LOG("failed at InitMonthAndYearKvStore");
         }
     }
@@ -1177,7 +1180,9 @@ int32_t MediaLibraryDataManager::InitMediaLibraryRdbStore()
         return E_OK;
     }
 
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(context_);
+    DfxReporter::ReportStartResult(DfxType::START_RDB_INIT, ret, startTime);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "init MediaLibraryUnistoreManager failed");
 
     rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -3041,6 +3046,7 @@ static void SetParameterForClone()
 void MediaLibraryDataManager::SetStartupParameter()
 {
     MEDIA_INFO_LOG("Start to set parameter.");
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("InitCheckList Excute");
     static constexpr uint32_t BASE_USER_RANGE = 200000; // for get uid
@@ -3061,6 +3067,7 @@ void MediaLibraryDataManager::SetStartupParameter()
     }
 
     SetParameterForClone();
+    DfxReporter::ReportStartResult(DfxType::START_SYS_PARAM, E_OK, startTime);
 }
 
 int32_t MediaLibraryDataManager::ProcessThumbnailBatchCmd(const MediaLibraryCommand &cmd,
