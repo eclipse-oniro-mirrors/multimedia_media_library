@@ -17,6 +17,7 @@
 
 #ifndef MEDIA_REFRESH_TEST
 #include "cloud_sync_helper.h"
+#include "hi_audit.h"
 #endif
 #include <cstdint>
 #include "medialibrary_errno.h"
@@ -270,6 +271,7 @@ int32_t AssetAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket &)> upd
 #ifndef MEDIA_REFRESH_TEST
     if (!trans_) {
         CloudSyncHelper::GetInstance()->StartSync();
+        HiAudit::GetInstance().WriteForTriggerSync("ASSET_REFRESH", "success");
         ACCURATE_DEBUG("Delete update done, start sync.");
     }
 #endif

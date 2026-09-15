@@ -26,6 +26,7 @@
 #include "ithumbnail_helper.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_func_timer.h"
 #include "folder_scanner.h"
 #include "medialibrary_async_worker.h"
 #include "medialibrary_db_const.h"
@@ -234,8 +235,11 @@ int ThumbnailService::GetThumbFd(const string &path, const string &table, const 
     }
     ThumbnailData data;
     int fd = ThumbnailGenerateHelper::GetThumbnailPixelMap(data, opts, thumbType);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+    }
     return fd;
 }
 

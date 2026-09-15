@@ -28,6 +28,7 @@
 #endif
 #include "cloud_media_asset_manager.h"
 #include "cloud_media_asset_types.h"
+#include "hi_audit.h"
 #include "cloud_upload_checker.h"
 #include "common_event_utils.h"
 #include "dfx_cloud_manager.h"
@@ -682,6 +683,7 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudFileProcessor::SetDownloadLatestFinished(false);
 #endif
+        HiAudit::GetInstance().WriteForAccountSwitch("LOGOUT", "success");
     } else if (MediaLakeCloneEventManager::IsRestoreEvent(want)) {
         MediaLakeCloneEventManager::GetInstance().HandleRestoreEvent(want);
     }

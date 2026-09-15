@@ -51,6 +51,7 @@
 #include "photo_map_column.h"
 #include "album_operation_uri.h"
 #include "medialibrary_business_code.h"
+#include "hi_audit.h"
 #include "rdb_utils.h"
 #include "datashare_result_set.h"
 #include "query_result_vo.h"
@@ -303,7 +304,9 @@ int32_t MediaAssetsService::AssetChangeSetHidden(const std::string &uri, const b
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicate, cmd.GetTableName());
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
-    return MediaLibraryPhotoOperations::Update(cmd);
+    int32_t ret = MediaLibraryPhotoOperations::Update(cmd);
+    HiAudit::GetInstance().WriteForHide("SET_HIDDEN", ret == E_OK ? "success" : "fail", 1, uri, "");
+    return ret;
 }
 
 int32_t MediaAssetsService::AssetChangeSetFileHidden(const std::string &uri, const bool fileHidden)
@@ -323,6 +326,7 @@ int32_t MediaAssetsService::AssetChangeSetFileHidden(const std::string &uri, con
     int32_t changeRows = 0;
     auto ret = rdbStore->Update(changeRows, values, rdbPredicate);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "Failed to update file hidden");
+    HiAudit::GetInstance().WriteForHide("SET_FILE_HIDDEN", ret == NativeRdb::E_OK ? "success" : "fail", 1, fileId, "");
     return ret;
 }
 
@@ -3228,8 +3232,12 @@ int32_t MediaAssetsService::MoveAssetsByPath(ChangeRequestMoveAssetsByPathDto &d
     if (ret != E_OK) {
         dto.resultList.push_back("null");
         MEDIA_ERR_LOG("fail to move file");
+        HiAudit::GetInstance().WriteForMove("MOVE_BY_PATH", "fail",
+            static_cast<uint32_t>(dto.assetPaths.size()), "0", dto.targetAlbumId, "");
         return ret;
     }
+    HiAudit::GetInstance().WriteForMove("MOVE_BY_PATH", "success",
+        static_cast<uint32_t>(dto.assetPaths.size()), "0", dto.targetAlbumId, "");
     return E_OK;
 }
 

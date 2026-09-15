@@ -100,6 +100,18 @@ public:
     void WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType, const std::string& status);
     void WriteForCloudSyncAlbum(const std::string& albumName, const std::string& cloudId, const int32_t albumType,
         const int32_t albumSubType, const std::string& bundleName);
+    void WriteForAccountSwitch(const std::string& scenario, const std::string& status);
+    void WriteForSyncSwitch(int32_t switchStatus);
+    void WriteForDataFusion(const std::string& operationScenario, const std::string& status,
+        uint32_t count, const std::string& extend);
+    void WriteForTriggerSync(const std::string& scenario, const std::string& status);
+    void WriteForMove(const std::string& scenario, const std::string& status,
+        uint32_t count, const std::string& srcAlbumId, const std::string& dstAlbumId,
+        const std::string& dstAlbumName);
+    void WriteForHide(const std::string& scenario, const std::string& status,
+        uint32_t count, const std::string& assetId, const std::string& albumName);
+    void WriteForRename(const std::string& scenario, const std::string& status,
+        const std::string& albumId, const std::string& oldAlbumName, const std::string& newAlbumName);
     void WriteForCloudExit(const std::string& bundleName,
         const int32_t retainType, const std::string& operationStatus);
 

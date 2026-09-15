@@ -44,6 +44,7 @@
 #include "media_file_utils.h"
 #include "media_image_framework_utils.h"
 #include "media_log.h"
+#include "media_func_timer.h"
 #include "media_player_framework_utils.h"
 #include "res_sched_client.h"
 #include "thumbnail_const.h"
@@ -101,8 +102,11 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailFileScaned(ThumbRdbOpt &opts, bo
     thumbnailData.genThumbScene = GenThumbScene::ADD_OR_UPDATE_MEDIA;
     if (isSync) {
         IThumbnailHelper::DoCreateLcdAndThumbnail(opts, thumbnailData);
-        int32_t err = ThumbnailGenerationPostProcess::PostProcess(thumbnailData, opts);
-        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+        {
+            MediaFuncTimer timer("PostProcess id:%s", thumbnailData.id.c_str());
+            int32_t err = ThumbnailGenerationPostProcess::PostProcess(thumbnailData, opts);
+            CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+        }
         ThumbnailUtils::RecordCostTimeAndReport(thumbnailData.stats);
     } else {
         IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CreateLcdAndThumbnail,
@@ -126,8 +130,11 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailFileScanedWithPicture(ThumbRdbOp
     thumbnailData.genThumbScene = GenThumbScene::FILM_MEDIA_GEN_THUMB_BY_PICTURE;
     if (isSync) {
         IThumbnailHelper::DoCreateLcdAndThumbnail(opts, thumbnailData);
-        int32_t err = ThumbnailGenerationPostProcess::PostProcess(thumbnailData, opts);
-        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+        {
+            MediaFuncTimer timer("PostProcess id:%s", thumbnailData.id.c_str());
+            int32_t err = ThumbnailGenerationPostProcess::PostProcess(thumbnailData, opts);
+            CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+        }
         ThumbnailUtils::RecordCostTimeAndReport(thumbnailData.stats);
     } else {
         IThumbnailHelper::AddThumbnailGenerateTask(IThumbnailHelper::CreateLcdAndThumbnail,
@@ -455,8 +462,11 @@ int32_t ThumbnailGenerateHelper::GetAvailableKeyFrameFile(ThumbRdbOpt &opts, Thu
         return E_THUMBNAIL_LOCAL_CREATE_FAIL;
     }
 
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+    }
 
     if (!opts.path.empty()) {
         fileName = GetThumbnailPathHighlight(data.path, thumbSuffix, data.timeStamp);

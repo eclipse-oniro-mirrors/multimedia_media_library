@@ -35,6 +35,7 @@
 #include "medialibrary_rdbstore.h"
 #include "photo_album_column.h"
 #include "media_file_utils.h"
+#include "hi_audit.h"
 #include "result_set_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
@@ -796,6 +797,8 @@ int32_t MediaAlbumsService::SmartMoveAssets(ChangeRequestMoveAssetsDto &smartMov
     string albumId = to_string(smartMoveAssetsDto.albumId);
     string targetAlbumId = to_string(smartMoveAssetsDto.targetAlbumId);
     int32_t ret = PhotoMapOperations::SmartMoveAssets(albumId, targetAlbumId, assets);
+    HiAudit::GetInstance().WriteForMove("SMART_MOVE", ret == E_OK ? "success" : "fail",
+        static_cast<uint32_t>(assets.size()), albumId, targetAlbumId, "");
     return ret;
 }
 
@@ -836,6 +839,9 @@ int32_t MediaAlbumsService::MoveAssets(ChangeRequestMoveAssetsDto &moveAssetsDto
         moveAssetsDto.targetAlbumCount = albumCount;
     }
     resultSet->Close();
+    HiAudit::GetInstance().WriteForMove("MOVE", ret == E_OK ? "success" : "fail",
+        static_cast<uint32_t>(moveAssetsDto.assets.size()),
+        to_string(moveAssetsDto.albumId), to_string(moveAssetsDto.targetAlbumId), "");
     return ret;
 }
 
@@ -1149,7 +1155,11 @@ int32_t MediaAlbumsService::AlbumChangeSetHiddenAttribute(const AlbumChangeSetHi
         (dto.albumType == PhotoAlbumType::SOURCE &&
             dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     CHECK_AND_RETURN_RET_LOG(valid, E_INVALID_VALUES, "Invalid albumType or albumSubType");
-    return MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(dto.albumId, dto.fileHidden, dto.inherited);
+    int32_t ret =
+        MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(dto.albumId, dto.fileHidden, dto.inherited);
+    HiAudit::GetInstance().WriteForHide("SET_HIDDEN_ATTR", ret == E_OK ? "success" : "fail",
+        1, to_string(dto.albumId), "");
+    return ret;
 }
 
 int32_t MediaAlbumsService::AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAlbumNameByFileDto &dto)

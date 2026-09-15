@@ -17,11 +17,13 @@
 #include <vector>
 
 #include "cloud_sync_switch_observer.h"
+#include "hi_audit.h"
 #include "media_analysis_helper.h"
 #include "medialibrary_unistore_manager.h"
 #include "parameters.h"
 #include "result_set_utils.h"
 #include "lcd_download_operation.h"
+#include "settings_data_manager.h"
 
 namespace OHOS {
 namespace Media {
@@ -48,6 +50,9 @@ void CloudSyncSwitchObserver::HandleIndex()
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(SYNC_INTERVAL));
     lock_guard<mutex> lock(syncMutex_);
+
+    auto switchStatus = SettingsDataManager::GetPhotosSyncSwitchStatus();
+    HiAudit::GetInstance().WriteForSyncSwitch(static_cast<int32_t>(switchStatus));
 
     if (LcdDownloadOperation::GetInstance()->GetLcdDownloadStatus() == LcdDownloadStatus::DOWNLOADING) {
         MEDIA_INFO_LOG("Cloud sync switch changed, stop LCD download task");

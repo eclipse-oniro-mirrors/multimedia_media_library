@@ -23,6 +23,7 @@
 #include "album_scan_info_column.h"
 #include "album_plugin_table_event_handler.h"
 #include "cloud_sync_helper.h"
+#include "hi_audit.h"
 #include "dfx_timer.h"
 #include "dfx_const.h"
 #include "dfx_reporter.h"
@@ -193,6 +194,7 @@ struct ShootingModeValueBucket {
 const std::string MediaLibraryRdbStore::CloudSyncTriggerFunc(const std::vector<std::string> &args)
 {
     CloudSyncHelper::GetInstance()->StartSync();
+    HiAudit::GetInstance().WriteForTriggerSync("TRIGGER_FUNC", "success");
     return "";
 }
 
@@ -1354,6 +1356,7 @@ int32_t MediaLibraryRdbStore::DeleteInternal(const AbsRdbPredicates &predicates,
     bool isValid = (tableName == PhotoColumn::PHOTOS_TABLE) || (tableName == PhotoAlbumColumns::TABLE);
     isValid = isValid && (deletedRows > 0);
     CHECK_AND_EXECUTE(!isValid, CloudSyncHelper::GetInstance()->StartSync());
+    CHECK_AND_EXECUTE(!isValid, HiAudit::GetInstance().WriteForTriggerSync("RDB_DELETE", "success"));
     return ret;
 }
 

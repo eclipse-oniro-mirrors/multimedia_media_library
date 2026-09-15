@@ -37,6 +37,7 @@ ohos_unittest("PortraitAlbumUpdateTest") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dao/medialibrary_analysis_album_operations.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_command.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/hi_audit.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
