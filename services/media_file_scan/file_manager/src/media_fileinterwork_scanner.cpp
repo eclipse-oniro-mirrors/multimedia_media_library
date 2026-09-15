@@ -55,12 +55,16 @@ constexpr int32_t TASK_STATUS_IDLE = 0;
 constexpr int32_t TASK_STATUS_PHASE_ONE = 1;
 constexpr int32_t TASK_STATUS_PHASE_TWO = 2;
 constexpr int32_t TASK_STATUS_COMPLETED = 3;
+constexpr int32_t REPAIR_STATUS_IDLE = -1;
+constexpr int32_t REPAIR_STATUS_INIT = 0;
 
 constexpr int32_t MIN_FILE_SIZE = 1 * 1024;
 constexpr int32_t BATCH_INSERT_SIZE = 100;
 constexpr int32_t MAX_TEMPERATURE = 37;
 constexpr int32_t OPT_INIT_STATUS = 0;
 constexpr int32_t OPT_FINISH_STATUS = 1;
+
+constexpr int32_t REPAIR_BATCH_SIZE = 100;
 
 // 跳过的文件目录
 const std::vector<std::string> SKIP_SCAN_DIR = {
@@ -84,6 +88,16 @@ MediaFileInterworkScanner* MediaFileInterworkScanner::GetInstance()
 bool MediaFileInterworkScanner::CheckSystemConditions()
 {
     return MedialibrarySubscriber::IsCurrentStatusOn();
+}
+
+void MediaFileInterworkScanner::SetStopFlag(bool flag)
+{
+    stopFlag_.store(flag);
+}
+
+bool MediaFileInterworkScanner::GetStopFlag()
+{
+    return stopFlag_.load();
 }
 
 int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::vector<std::string> &files)
@@ -184,8 +198,7 @@ bool MediaFileInterworkScanner::IsImageOrVideoFile(const std::string &filePath)
 
 bool MediaFileInterworkScanner::IsValidFileName(const std::string& fileName)
 {
-    // 定义正则表达式，匹配包含特殊字符的文件名
-    std::regex pattern(R"(\.\.|\[|\])");
+    std::regex pattern(R"(\?|\[|\]|［|］)");
     return !std::regex_search(fileName, pattern);
 }
 
@@ -328,6 +341,18 @@ static void FillFileInfo(RestoreFileInfo& fileInfo, const std::unique_ptr<Metada
         data->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)) {
         fileInfo.subtype = data->GetPhotoSubType();
     }
+    if (fileInfo.isLivePhoto) {
+        int64_t coverPosition = 0;
+        int32_t duration = 0;
+        int32_t err = MovingPhotoFileUtils::GetLivePhotoCoverPositionAndDuration(fileInfo.originFilePath,
+            coverPosition, duration);
+        if (err == E_OK) {
+            data->SetCoverPosition(coverPosition);
+            data->SetFileDuration(duration);
+        } else {
+            MEDIA_ERR_LOG("failed to get cover position");
+        }
+    }
 }
 
 NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(RestoreFileInfo &fileInfo)
@@ -348,6 +373,7 @@ NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(RestoreFileInf
     FillFileInfo(fileInfo, data);
     value.PutInt(PhotoColumn::PHOTO_SUBTYPE, fileInfo.subtype);
     value.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
+    value.PutInt(PhotoColumn::PHOTO_COVER_POSITION, data->GetCoverPosition());
     value.PutInt(PhotoColumn::PHOTO_ORIENTATION, data->GetOrientation());
     value.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, data->GetExifRotate());
     value.PutString(MediaColumn::MEDIA_MIME_TYPE, data->GetFileMimeType());
@@ -685,6 +711,7 @@ int32_t MediaFileInterworkScanner::ProcessPhaseTwoRecords()
 void MediaFileInterworkScanner::ScanFileManager()
 {
     MEDIA_INFO_LOG("ScanFileManager");
+    InitRepairStatus();
     int32_t status = MediaFileInterworkUtil::GetScannerTaskStatus();
     CHECK_AND_RETURN_LOG(status != TASK_STATUS_COMPLETED, "already storage in");
     CHECK_AND_RETURN_LOG(!isAsyncTaskRunning_.exchange(true), "Scanning, wait");
@@ -693,12 +720,14 @@ void MediaFileInterworkScanner::ScanFileManager()
         MediaFileInterworkUtil::SetScannerTaskStatus(status);
         MediaFileInterworkUtil::SetLoadFirstTime();
     }
+    SetStopFlag(false);
     taskThread_ = std::thread([this, status]() {
         std::lock_guard<std::mutex> lock(asyncTaskMutex_);
         ConsistencyCheckManager::GetInstance().DisableCheck();
         bool goAhead = false;
         if (status == TASK_STATUS_PHASE_ONE) {
             MEDIA_INFO_LOG("Starting Phase One");
+            ConsistencyCheckManager::GetInstance().DisableCheck();
             int32_t ret = ExecutePhaseOne();
             CHECK_AND_PRINT_LOG(ret == E_OK, "Phase One failed, ret = %{public}d", ret);
             goAhead = (ret == E_OK);
@@ -716,5 +745,103 @@ void MediaFileInterworkScanner::ScanFileManager()
         isAsyncTaskRunning_.store(false);
     });
     taskThread_.detach();
+}
+
+void MediaFileInterworkScanner::InitRepairStatus()
+{
+    int32_t lastFileId = 0;
+    int32_t ret = MediaFileInterworkUtil::GetRepairProgress(lastFileId);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetRepairProgress failed, ret = %{public}d", ret);
+        return;
+    }
+    if (lastFileId == REPAIR_STATUS_IDLE) {
+        MediaFileInterworkUtil::SaveRepairProgress(REPAIR_STATUS_INIT);
+        MediaFileInterworkUtil::SetScannerTaskStatus(TASK_STATUS_PHASE_ONE);
+        MEDIA_INFO_LOG("Init repair status, set REPAIR_LAST_FILE_ID_KEY = 0");
+    }
+}
+
+int32_t MediaFileInterworkScanner::RepairDateAdded()
+{
+    MEDIA_INFO_LOG("RepairDateAdded started");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
+    int32_t lastFileId = 0;
+    int32_t ret = MediaFileInterworkUtil::GetRepairProgress(lastFileId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetRepairProgress failed, ret = %{public}d", ret);
+    int32_t processedCount = 0;
+    while (true) {
+        CHECK_AND_RETURN_RET_LOG(!GetStopFlag(), E_ERR, "System conditions not met, pausing task");
+        NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(PhotoColumn::PHOTO_POSITION, 1);
+        predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
+        predicates.GreaterThan(MediaColumn::MEDIA_ID, lastFileId);
+        predicates.Limit(REPAIR_BATCH_SIZE);
+        std::vector<std::string> columns = {
+            MediaColumn::MEDIA_ID,
+            PhotoColumn::PHOTO_STORAGE_PATH
+        };
+        auto resultSet = rdbStore->Query(predicates, columns);
+        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Query for repair failed");
+        std::map<int32_t, std::string> fileIdAndPaths;
+        int32_t maxFileId = lastFileId;
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t fileId = 0;
+            std::string path;
+            if (resultSet->GetInt(0, fileId) != NativeRdb::E_OK ||
+                resultSet->GetString(1, path) != NativeRdb::E_OK) {
+                continue;
+            }
+            maxFileId = std::max(maxFileId, fileId);
+            fileIdAndPaths[fileId] = path;
+        }
+        resultSet->Close();
+        if (fileIdAndPaths.empty()) {
+            MEDIA_INFO_LOG("No more records to repair, processedCount = %{public}d", processedCount);
+            break;
+        }
+        int32_t batchProcessed = 0;
+        ret = RepairDateAddedBatch(fileIdAndPaths, batchProcessed);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RepairDateAddedBatch failed, ret = %{public}d", ret);
+        processedCount += batchProcessed;
+        ret = MediaFileInterworkUtil::SaveRepairProgress(maxFileId);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SaveRepairProgress failed, ret = %{public}d", ret);
+        lastFileId = maxFileId;
+    }
+    MEDIA_INFO_LOG("RepairDateAdded completed, total processedCount = %{public}d", processedCount);
+    return E_OK;
+}
+
+int32_t MediaFileInterworkScanner::RepairDateAddedBatch(const std::map<int32_t, std::string> &fileIdAndPaths,
+    int32_t &processedCount)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
+    processedCount = 0;
+    for (const auto &[fileId, path] : fileIdAndPaths) {
+        int64_t dateAdded = 0;
+        int64_t dateModified = 0;
+        struct stat statInfo {};
+        if (lstat(path.c_str(), &statInfo) == 0) {
+            dateModified = MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim);
+            dateAdded = MediaFileUtils::Timespec2Millisecond(statInfo.st_atim);
+        }
+        dateModified = PhotoFileUtils::NormalizeTimestamp(dateModified, MediaFileUtils::UTCTimeMilliSeconds());
+        dateAdded = PhotoFileUtils::NormalizeTimestamp(dateAdded, dateModified);
+        NativeRdb::ValuesBucket values;
+        values.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+        values.PutLong(MediaColumn::MEDIA_DATE_MODIFIED, dateModified);
+        NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+        int32_t changeRows = 0;
+        int32_t ret = rdbStore->Update(changeRows, values, predicates);
+        if (ret == E_OK && changeRows > 0) {
+            processedCount++;
+        } else {
+            MEDIA_WARN_LOG("Failed to update file_id: %{public}d, ret = %{public}d", fileId, ret);
+        }
+    }
+    return E_OK;
 }
 } // namespace OHOS::Media

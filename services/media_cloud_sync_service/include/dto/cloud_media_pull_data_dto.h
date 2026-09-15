@@ -84,6 +84,7 @@ public:
     int32_t attributesSupportedWatermarkType{-1}; /* supported_watermark_type */
     int32_t attributesMusicMasterMode{0};         /* music_master_mode */
     int32_t attributesIsStylePhoto{-1};           /* is_style_photo */
+    int32_t supportedDeferredEffects{-1};         /* supported_deferred_effects */
     int32_t attributesStrongAssociation{-1};      /* strong_association */
     int32_t attributesFileId{-1};                 /* file_id */
     std::string attributesCloudId;                /* cloud_id */

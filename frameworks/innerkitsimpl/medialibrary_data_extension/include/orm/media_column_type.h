@@ -116,6 +116,8 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, DataType::STRING},
     {"album_cloud_id", DataType::STRING},
     {"lpath", DataType::STRING},
+    {PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, DataType::INT},
+    {PhotoColumn::DEFERRED_EFFECT_STATUS, DataType::INT},
     {PhotoColumn::PHOTO_VIDEO_MODE, DataType::INT},
     {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, DataType::INT},
     {PhotoColumn::PHOTO_STORAGE_PATH, DataType::STRING},

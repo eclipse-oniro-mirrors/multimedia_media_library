@@ -18,6 +18,7 @@
 #include "file_scanner.h"
 
 #include "asset_accurate_refresh.h"
+#include "cloud_sync_manager.h"
 #include "media_file_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_notify.h"
@@ -27,11 +28,15 @@
 #include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_unistore_manager.h"
 #include "photo_album_column.h"
 #include "photo_dao.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
+
+const std::string DENTRY_INFO_FILE_TYPE_CONTENT = "CONTENT";
+
 // LCOV_EXCL_START
 FileManagerParser::FileManagerParser(const std::string &path, ScanMode scanMode)
     : FileParser(path, FileSourceType::FILE_MANAGER, scanMode)
@@ -169,7 +174,8 @@ void FileManagerParser::UpdateTrashedAssetinfo()
     auto watch = MediaLibraryNotify::GetInstance();
 
     if (rowDataBefore.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
-        // 处理端云合一图，置位为CLOUD
+        // 处理端云合一图，创建dentry文件，置位position为CLOUD
+        CreateDentryFileForCloudAsset(rowDataBefore);
         HandleUpdateCloudAsset(predicates, PhotoPositionType::CLOUD);
         CHECK_AND_EXECUTE(watch == nullptr,
             watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataBefore.fileId), NotifyType::NOTIFY_UPDATE));
@@ -219,6 +225,64 @@ void FileManagerParser::HandleUpdateCloudAsset(NativeRdb::AbsRdbPredicates &pred
         "HandleUpdateCloudAsset failed, ret: %{public}d, changeRows: %{public}d", errCode, changedRows);
     assetRefresh.RefreshAlbum();
     assetRefresh.Notify();
+}
+
+void FileManagerParser::BatchCreateDentryFiles(
+    const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryInfoList)
+{
+    CHECK_AND_RETURN_LOG(!dentryInfoList.empty(), "dentryInfoList is empty");
+
+    std::vector<std::string> failCloudIdList;
+    int32_t ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().BatchDentryFileInsert(
+        dentryInfoList, failCloudIdList);
+    MEDIA_INFO_LOG("BatchDentryFileInsert ret: %{public}d, count: %{public}zu, failSize: %{public}zu",
+        ret, dentryInfoList.size(), failCloudIdList.size());
+}
+
+void FileManagerParser::CreateDentryFilesByFileIds(const std::vector<std::string> &fileIds)
+{
+    CHECK_AND_RETURN_LOG(!fileIds.empty(), "fileIds is empty");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    auto resultSet = rdbStore->Query(predicates,
+        { PhotoColumn::PHOTO_CLOUD_ID, MediaColumn::MEDIA_DATE_MODIFIED,
+          MediaColumn::MEDIA_SIZE, MediaColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_NAME });
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is nullptr");
+
+    std::vector<FileManagement::CloudSync::DentryFileInfo> dentryInfoList;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        FileManagement::CloudSync::DentryFileInfo dentryInfo;
+        dentryInfo.cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
+        dentryInfo.modifiedTime = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
+        dentryInfo.size = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
+        dentryInfo.path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        dentryInfo.fileName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+        dentryInfo.fileType = DENTRY_INFO_FILE_TYPE_CONTENT;
+        if (!dentryInfo.cloudId.empty()) {
+            dentryInfoList.push_back(dentryInfo);
+        }
+    }
+    resultSet->Close();
+    BatchCreateDentryFiles(dentryInfoList);
+}
+
+void FileManagerParser::CreateDentryFileForCloudAsset(
+    const FileParser::PhotosRowData &rowData)
+{
+    CHECK_AND_RETURN_LOG(!rowData.cloudId.empty(), "cloudId is empty, fileId: %{public}d", rowData.fileId);
+
+    FileManagement::CloudSync::DentryFileInfo dentryInfo;
+    dentryInfo.cloudId = rowData.cloudId;
+    dentryInfo.modifiedTime = rowData.dateModified;
+    dentryInfo.fileType = DENTRY_INFO_FILE_TYPE_CONTENT;
+    dentryInfo.size = rowData.size;
+    dentryInfo.path = rowData.data;
+    dentryInfo.fileName = rowData.displayName;
+
+    BatchCreateDentryFiles({ dentryInfo });
 }
 
 // FileManager新增缩略图生成接口（调用ThumbnailService）

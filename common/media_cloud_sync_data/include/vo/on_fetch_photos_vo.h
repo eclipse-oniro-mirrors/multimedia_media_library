@@ -69,6 +69,8 @@ public:
     int32_t supportedWatermarkType;
     int32_t musicMasterMode;
     int32_t isStylePhoto;
+    int32_t supportedDeferredEffects;
+    int32_t deferredEffectStatus;
     int32_t strongAssociation;
     int64_t fixVersion;
     int64_t version;

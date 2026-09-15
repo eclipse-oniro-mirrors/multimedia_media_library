@@ -132,6 +132,7 @@
 #include "media_audio_column.h"
 #include "media_library_error_code.h"
 #include "media_upgrade.h"
+#include "media_result_type_map_utils.h"
 #include "media_string_utils.h"
 #include "preferred_compatible_mode_check_utils.h"
 #include "photo_file_utils.h"
@@ -599,6 +600,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("invokeAnalysisTool", PhotoAccessInvokeAnalysisTool),
             DECLARE_NAPI_FUNCTION("cancelAnalysisTool", PhotoAccessCancelAnalysisTool),
             DECLARE_NAPI_FUNCTION("query", PhotoAccessQuery),
+            DECLARE_NAPI_FUNCTION("getPhotoAssets", PhotoAccessGetPhotoAssetsForQuery),
             DECLARE_NAPI_FUNCTION("on", PhotoAccessRegisterCallback),
             DECLARE_NAPI_FUNCTION("off", PhotoAccessUnregisterCallback),
             DECLARE_NAPI_FUNCTION("getPhotoAlbums", PhotoAccessGetPhotoAlbumsWithoutSubtype),
@@ -6840,6 +6842,275 @@ static napi_value ParseArgsGetBurstAssets(napi_env env, napi_callback_info info,
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
     return result;
+}
+
+static bool UnwrapStringFromJS(napi_env env, napi_value param, std::string &outStr)
+{
+    size_t size = 0;
+    if (napi_get_value_string_utf8(env, param, nullptr, 0, &size) != napi_ok) {
+        return false;
+    }
+
+    std::string value("");
+    if (size == 0) {
+        outStr = value;
+        return true;
+    }
+
+    char *buf = new (std::nothrow) char[size + 1];
+    if (buf == nullptr) {
+        return false;
+    }
+    (void)memset_s(buf, size + 1, 0, size + 1);
+
+    bool rev = napi_get_value_string_utf8(env, param, buf, size + 1, &size) == napi_ok;
+    if (rev) {
+        value = buf;
+    } else {
+        value = "";
+    }
+
+    if (buf != nullptr) {
+        delete[] buf;
+        buf = nullptr;
+    }
+    outStr = value;
+    return true;
+}
+
+bool Convert(napi_env env, napi_value value, ResultSetDataType &type,
+    std::variant<int32_t, int64_t, std::string, double> &valueObject)
+{
+    switch (type) {
+        case ResultSetDataType::TYPE_STRING: {
+            std::string stringValue("");
+            bool status = UnwrapStringFromJS(env, value, stringValue);
+            valueObject = stringValue;
+            return status;
+        }
+        case ResultSetDataType::TYPE_INT32: {
+            std::int32_t int32Value = 0;
+            napi_status status = napi_get_value_int32(env, value, &int32Value);
+            valueObject = int32Value;
+            return status == napi_ok;
+        }
+        case ResultSetDataType::TYPE_INT64: {
+            std::int64_t int64Value = 0;
+            napi_status status = napi_get_value_int64(env, value, &int64Value);
+            valueObject = int64Value;
+            return status == napi_ok;
+        }
+        case ResultSetDataType::TYPE_DOUBLE: {
+            double valueNumber = 0;
+            napi_status status = napi_get_value_double(env, value, &valueNumber);
+            valueObject = valueNumber;
+            return status == napi_ok;
+        }
+        default:{
+            return false;
+        }
+    }
+}
+
+bool UnWrapValuesBucket(map<string, std::variant<int32_t, int64_t, std::string, double>> &valuesBucket,
+    const napi_env &env, const napi_value &arg)
+{
+    napi_value keys = nullptr;
+    napi_get_property_names(env, arg, &keys);
+    uint32_t arrLen = 0;
+    napi_status status = napi_get_array_length(env, keys, &arrLen);
+    if (status != napi_ok || arrLen == 0) {
+        NAPI_ERR_LOG("ValuesBucket err");
+        return false;
+    }
+
+    for (size_t i = 0; i < arrLen; ++i) {
+        napi_value key = nullptr;
+        if (napi_get_element(env, keys, i, &key) != napi_ok) {
+            NAPI_ERR_LOG("ValuesBucket err");
+            return false;
+        }
+        std::string keyStr("");
+        if(!UnwrapStringFromJS(env, key, keyStr)){
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The data type of the values array element is incorrect");
+            return false;
+        }
+        napi_value value = nullptr;
+        if (napi_get_property(env, arg, key, &value) != napi_ok) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The data type of the values array element is incorrect");
+            return false;
+        }
+
+        auto it = MediaResultTypeMapUtils::GetResultTypeMap().find(keyStr);
+        if (it == MediaResultTypeMapUtils::GetResultTypeMap().end()) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The data type of the values array element is incorrect");
+            return false;
+        }
+        auto memberType = it->second;
+        std::variant<int32_t, int64_t, std::string, double> valueObject; 
+        if (Convert(env, value, memberType, valueObject)) {
+            valuesBucket.insert(std::make_pair(keyStr, valueObject));
+        } else {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The data type of the values array element is incorrect");
+            return false;
+        }
+    }
+
+    std::vector<string> requiredKeys = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_MEDIA_TYPE, PhotoColumn::PHOTO_SUBTYPE};
+    for (auto& requiredKey : requiredKeys) {
+        if (valuesBucket.find(requiredKey) == valuesBucket.end()) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The values array element lacks mandatory parameters:" +
+                requiredKey);
+            return false;
+        } 
+    }
+    return true;
+}
+
+bool GetValueBucketObject(map<string, std::variant<int32_t, int64_t, std::string, double>> &valuesBucket,
+    const napi_env &env, const napi_value &arg)
+{
+    return UnWrapValuesBucket(valuesBucket, env, arg);
+}
+
+static napi_value ParseArgsArray(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    //取出参数，处理数组
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    bool isArray = false;
+    napi_is_array(env, args[0], &isArray);
+    if (!isArray) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "invalid param");
+    }
+
+    uint32_t length = 0;
+    napi_get_array_length(env, args[0], &length);
+    NAPI_INFO_LOG("array length :%{public}d", length);
+    if (length > 500) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Array size exceeds 500");
+    }
+    
+    napi_value jsArray = nullptr;
+    napi_create_array(env, &jsArray);
+
+    for (int i = 0; i < length; i++) {
+        napi_value result;
+        napi_get_element(env, args[0], i, &result);
+
+        napi_set_element(env, jsArray, i, result);
+    }
+
+    context->length = length;
+    return jsArray;
+}
+
+static bool ParseArgsValueBucket(napi_env env, napi_value vbarray, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    context->valuesBucketvector.resize(context->length);
+    NAPI_INFO_LOG("vector length is %{public}zu", context->valuesBucketvector.size());
+    for (int i = 0; i < context->valuesBucketvector.size(); i++) {
+        napi_value result;
+        napi_get_element(env, vbarray, i, &result);
+
+        bool ret = GetValueBucketObject(context->valuesBucketvector[i], env, result);
+        if (!ret) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static napi_value WrapPhotoAssetArray(napi_env env,
+    vector<map<string, std::variant<int32_t, int64_t, std::string, double>>> &valuesBucket)
+{
+    napi_value jsArray = nullptr;
+    napi_create_array(env, &jsArray);
+   
+    for (int i = 0; i < valuesBucket.size(); i++) {
+        std::variant<int32_t, int64_t, std::string, double> fileId =  valuesBucket[i].at("file_id");
+        std::variant<int32_t, int64_t, std::string, double> displayName = valuesBucket[i].at("display_name");
+        std::variant<int32_t, int64_t, std::string, double> path = valuesBucket[i].at("data");
+        
+        //create fileasset
+        auto emptyFileAsset = std::make_shared<FileAsset>();
+        emptyFileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
+        string extrUri = MediaFileUtils::GetExtraUri(std::get<string>(displayName), std::get<string>(path), false);
+        MediaFileUri fileUri(MediaType::MEDIA_TYPE_IMAGE, to_string(std::get<int32_t>(fileId)), "", MEDIA_API_VERSION_V10, extrUri);
+        emptyFileAsset->SetUri(move(fileUri.ToString()));
+
+        for(auto p : valuesBucket[i]){
+            emptyFileAsset->SetMemberValue(p.first,p.second);
+        }
+        
+        auto fileAsset = std::move(emptyFileAsset);
+        auto photoAsset =  FileAssetNapi::CreatePhotoAsset(env, fileAsset);
+        napi_set_element(env, jsArray, i, photoAsset);
+    }
+    uint32_t length = 0;
+    napi_get_array_length(env, jsArray, &length);
+ 
+    return jsArray;
+}
+
+static void PhotoAccessGetPhotoAssetsForQueryComplete(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessGetPhotoAssetsForQueryComplete");
+
+    MediaLibraryAsyncContext *context = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    napi_get_undefined(env, &jsContext->data);
+
+    if (context->error != ERR_DEFAULT) {
+        context->HandleError(env, jsContext->error);
+    } else {
+        napi_value result = WrapPhotoAssetArray(env, context->valuesBucketvector);
+        jsContext->data = result;
+        jsContext->status = true;
+        napi_get_undefined(env, &jsContext->error);
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+static void PhotoAccessGetPhotoAssetsForQueryExecute(napi_env env, void *data)
+{
+}
+
+napi_value MediaLibraryNapi::PhotoAccessGetPhotoAssetsForQuery(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessGetPhotoAssetsForQuery");
+
+    NAPI_DEBUG_LOG("MediaLibraryNapi::PhotoAccessGetPhotoAssetsForQuery start");
+     if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->assetType = TYPE_PHOTO;
+    napi_value valuesBucketArray = ParseArgsArray(env, info, asyncContext);
+
+    bool ret = ParseArgsValueBucket(env, valuesBucketArray, asyncContext);
+    if (!ret) {
+        return nullptr;
+    }
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetPhotoAssets",
+        PhotoAccessGetPhotoAssetsForQueryExecute, PhotoAccessGetPhotoAssetsForQueryComplete);
 }
 
 static napi_status ParseArgsIndexUri(napi_env env, unique_ptr<MediaLibraryAsyncContext> &context, string &uri,

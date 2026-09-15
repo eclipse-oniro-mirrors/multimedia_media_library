@@ -63,6 +63,9 @@ public:
         const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttStrongAssociation(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateIsStylePhoto(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateSupportedDeferredEffects(const CloudMediaPullDataDto &data,
+        NativeRdb::ValuesBucket &values);
+    static int32_t CompensateDeferredEffectsStatus(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateDateAddedYearMonthDay(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateUniqueId(const CloudMediaPullDataDto &data,
         NativeRdb::ValuesBucket &values);

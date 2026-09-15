@@ -363,6 +363,7 @@ private:
     EXPORT static napi_value PhotoAccessCheckPhotoUrisReadPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperCreatePhotoAsset(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessCreatePhotoAsset(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessGetPhotoAssetsForQuery(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperAgentCreateAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperAgentCreateAssetsWithMode(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGrantPhotoUriPermission(napi_env env, napi_callback_info info);
@@ -720,6 +721,8 @@ struct MediaLibraryAsyncContext : public NapiError {
     int32_t photoIndex = -1;
     std::string strParam;
     bool boolResult = false;
+    uint32_t length = 0;
+    vector<map<string, std::variant<int32_t, int64_t, std::string, double>>> valuesBucketvector;
     bool supportedHighResolution = false;
     bool isRealTimeThumb = true;
     std::string path;

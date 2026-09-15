@@ -1538,8 +1538,8 @@ int32_t MediaLibraryPhotoOperations::TrashPhotos(MediaLibraryCommand &cmd)
     int32_t updatedRows = TrashPhotosDbUpdateAndRefreshAlbum(assetRefresh, rdbPredicate, fileIds, values, sceneInfo);
     CHECK_AND_RETURN_RET_LOG(updatedRows >= 0, E_HAS_DB_ERROR, "Trash photo failed. Result %{public}d.", updatedRows);
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
-    int32_t ret = LakeFileOperations::MoveAssetsFromLake(rdbPredicate.GetWhereArgs());
-    CHECK_AND_PRINT_LOG(ret == E_OK, "trash inner anco file error");
+    int32_t ret = LakeFileOperations::MoveAssetsFromLake(assetRefresh, rdbPredicate.GetWhereArgs());
+    CHECK_AND_PRINT_LOG(ret >= 0, "trash inner anco file error");
     ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, rdbPredicate.GetWhereArgs(), true);
     CHECK_AND_PRINT_LOG(ret == E_OK, "trash file manager asset error");
 #endif
@@ -2157,6 +2157,54 @@ static void SendHideNotify(vector<string> &notifyUris, const int32_t hiddenState
     }
 }
 
+static void HideNonMediaPhotos(int32_t hiddenState, const std::vector<std::string> &fileIds,
+    AccurateRefresh::AssetAccurateRefresh &assetRefresh, int32_t &changedRows)
+{
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+    if (hiddenState == 0) {
+        int32_t lakeRows = LakeFileOperations::MoveAssetsToLake(assetRefresh, fileIds,
+            HiddenStateInfo{HiddenState::NOT_HIDDEN});
+        CHECK_AND_PRINT_LOG(lakeRows >= 0, "recover inner anco file error when cancel hide asset");
+        changedRows += (lakeRows > 0 ? lakeRows : 0);
+        int32_t ret = FileManagerAssetOperations::MoveAssetsToFileManager(assetRefresh, fileIds);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "recover inner file manager error when cancel hide asset");
+    } else {
+        int32_t lakeRows = LakeFileOperations::MoveAssetsFromLake(assetRefresh, fileIds,
+            HiddenStateInfo{HiddenState::HIDDEN});
+        CHECK_AND_PRINT_LOG(lakeRows >= 0, "hide photo inner anco file error");
+        changedRows += (lakeRows > 0 ? lakeRows : 0);
+        int32_t ret =
+            FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, fileIds, true);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "hide photo inner file manager error");
+    }
+#endif
+}
+
+static std::vector<std::string> GetNonMediaFileIdsForHidePhotos(const std::vector<std::string> &fileIds)
+{
+    std::vector<std::string> nonMediafileIds;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nonMediafileIds, "RdbStore is null");
+
+    std::vector<std::string> columns = { MediaColumn::MEDIA_ID, PhotoColumn::PHOTO_POSITION,
+        PhotoColumn::PHOTO_STORAGE_PATH };
+    NativeRdb::RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicates.In(MediaColumn::MEDIA_ID, fileIds);
+    auto resultSet = rdbStore->Query(rdbPredicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nonMediafileIds, "Query failed, resultSet is nullptr");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+        int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
+        std::string storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+        CHECK_AND_CONTINUE(!storagePath.empty() && (position == static_cast<int32_t>(PhotoPositionType::LOCAL) ||
+            position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)));
+        nonMediafileIds.push_back(std::to_string(fileId));
+    }
+    resultSet->Close();
+    return nonMediafileIds;
+}
+
 static bool HasShareAsset(NativeRdb::RdbPredicates predicates, const vector<string> &fileIds)
 {
     if (predicates.GetTableName() != PhotoColumn::PHOTOS_TABLE) {
@@ -2184,6 +2232,7 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::HIDE_PHOTOS_BUSSINESS_NAME);
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryPhotoOperations::HidePhotos");
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
 
     int32_t hiddenState = GetHiddenState(cmd.GetValueBucket());
     CHECK_AND_RETURN_RET(hiddenState >= 0, hiddenState);
@@ -2196,32 +2245,25 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     vector<string> hideFileIds = predicates.GetWhereArgs();
     CHECK_AND_RETURN_RET_LOG(!HasShareAsset(predicates, hideFileIds), E_INVALID_VALUES,
         "HidePhotos does not support shared album asset");
+    const vector<string> fileIds = predicates.GetWhereArgs();
     if (hiddenState != 0) {
-        MediaLibraryPhotoOperations::UpdateSourcePath(predicates.GetWhereArgs());
+        MediaLibraryPhotoOperations::UpdateSourcePath(fileIds);
     } else {
-        MediaLibraryAlbumOperations::DealwithNoAlbumAssets(predicates.GetWhereArgs());
+        MediaLibraryAlbumOperations::DealwithNoAlbumAssets(fileIds);
     }
     ValuesBucket values;
     values.Put(MediaColumn::MEDIA_HIDDEN, hiddenState);
     if (predicates.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        values.PutLong(PhotoColumn::PHOTO_HIDDEN_TIME,
-            hiddenState ? MediaFileUtils::UTCTimeMilliSeconds() : 0);
+        values.PutLong(PhotoColumn::PHOTO_HIDDEN_TIME, hiddenState ? MediaFileUtils::UTCTimeMilliSeconds() : 0);
     }
-    int32_t changedRows = assetRefresh.UpdateWithDateTime(values, predicates);
+    // 仅批量更新媒体资产的隐藏状态，非媒体资产的更新在各自函数内部实现
+    const vector<string> nonMediafileIds = GetNonMediaFileIdsForHidePhotos(fileIds);
+    MEDIA_INFO_LOG("Size: fileIds: %{public}zu, nonMediafileIds: %{public}zu", fileIds.size(), nonMediafileIds.size());
+    RdbPredicates mediaPredicates = predicates;
+    mediaPredicates.And()->NotIn(MediaColumn::MEDIA_ID, nonMediafileIds);
+    int32_t changedRows = assetRefresh.UpdateWithDateTime(values, mediaPredicates);
     CHECK_AND_RETURN_RET(changedRows >= 0, changedRows);
-#ifdef MEDIALIBRARY_LAKE_SUPPORT
-    if (hiddenState == 0) {
-        int32_t ret = LakeFileOperations::MoveAssetsToLake(assetRefresh, predicates.GetWhereArgs());
-        CHECK_AND_PRINT_LOG(ret == E_OK, "recover inner anco file error when cancel hide asset");
-        ret = FileManagerAssetOperations::MoveAssetsToFileManager(assetRefresh, predicates.GetWhereArgs());
-        CHECK_AND_PRINT_LOG(ret == E_OK, "recover inner file manager error when cancel hide asset");
-    } else {
-        int32_t ret = LakeFileOperations::MoveAssetsFromLake(predicates.GetWhereArgs());
-        CHECK_AND_PRINT_LOG(ret == E_OK, "hide photo inner anco file error");
-        ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, predicates.GetWhereArgs(), true);
-        CHECK_AND_PRINT_LOG(ret == E_OK, "hide photo inner file manager error");
-    }
-#endif
+    HideNonMediaPhotos(hiddenState, fileIds, assetRefresh, changedRows);
     assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     MediaAnalysisHelper::StartMediaAnalysisServiceAsync(
         static_cast<int32_t>(MediaAnalysisProxy::ActivateServiceType::START_UPDATE_INDEX), notifyUris);
@@ -2231,6 +2273,9 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     SendHideNotify(notifyUris, hiddenState);
     assetRefresh.Notify();
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("HidePhotos end, changedRows: %{public}d, timeCostInMs: %{public}" PRId64, changedRows,
+        endTime - startTime);
     return changedRows;
 }
 
@@ -3245,11 +3290,11 @@ int32_t MediaLibraryPhotoOperations::UpdateOrientation(MediaLibraryCommand &cmd,
     return rowId;
 }
 
-static void HandleAssetMoveFromLake(int32_t mediaId)
+static void HandleAssetMoveFromLake(AccurateRefresh::AccurateRefreshBase &refresh, int32_t mediaId)
 {
     MEDIA_INFO_LOG("HandleAssetMoveFromLake media: %{public}d", mediaId);
-    int32_t ret = LakeFileOperations::MoveAssetsFromLake({ to_string(mediaId) });
-    CHECK_AND_PRINT_LOG(ret == E_OK, "HandleAssetMoveFromLake");
+    int32_t ret = LakeFileOperations::MoveAssetsFromLake(refresh, { to_string(mediaId) });
+    CHECK_AND_PRINT_LOG(ret >= 0, "HandleAssetMoveFromLake");
 }
 
 static vector<string> GetUpdateFileAssetColumns()
@@ -3290,7 +3335,7 @@ int32_t MediaLibraryPhotoOperations::HandleAssetRenameAndMove(MediaLibraryComman
         fileAsset->GetStoragePath().find(LAKE_PATH_PREFIX) != std::string::npos) {
         HandleLakeAssetRename(baseRefresh, cmd, fileAsset);
     } else if (hasDateTrashed && dateTrashed != 0) {
-        HandleAssetMoveFromLake(fileAsset->GetId());
+        HandleAssetMoveFromLake(baseRefresh, fileAsset->GetId());
     }
 #endif
     CHECK_AND_RETURN_RET_LOG(

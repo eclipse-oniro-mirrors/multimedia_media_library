@@ -815,6 +815,28 @@ bool MDKRecordPhotosData::hasProperties()
     return !this->properties_.empty();
 }
 
+std::optional<int32_t> MDKRecordPhotosData::GetSupportedDeferredEffects() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::SUPPORTED_DEFERRED_EFFECTS);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetSupportedDeferredEffects(const int32_t supportedDeferredEffects)
+{
+    this->attributes_[PhotoColumn::SUPPORTED_DEFERRED_EFFECTS] = MDKRecordField(supportedDeferredEffects);
+    return *this;
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetDeferredEffectsStatus() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::DEFERRED_EFFECT_STATUS);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetDeferredEffectsStatus(const int32_t deferredEffectStatus)
+{
+    this->attributes_[PhotoColumn::DEFERRED_EFFECT_STATUS] = MDKRecordField(deferredEffectStatus);
+    return *this;
+}
+
 std::optional<int32_t> MDKRecordPhotosData::GetCompressionQuality() const
 {
     return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::COMPRESSION_QUALITY);

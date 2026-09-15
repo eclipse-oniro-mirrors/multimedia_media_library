@@ -749,8 +749,12 @@ int64_t FileParser::GetFileDateAdded(const struct stat &statInfo)
 
 void FileParser::SetFileManagerScanFlagBySingle(const std::string &fileIdStr, bool stopScan)
 {
-    CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
-    int32_t fileId = std::stoi(fileIdStr);
+    int32_t fileId;
+    bool result = MediaStringUtils::ConvertToInt(fileIdStr, fileId);
+    if (!result) {
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", fileIdStr.c_str());
+        return;
+    }
     std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
     if (stopScan) {
         g_fileManagerScanFlag[fileId] = stopScan;

@@ -54,6 +54,8 @@ public:
     int32_t movingPhotoEffectMode;
     int32_t supportedWatermarkType;
     int32_t isStylePhoto;
+    int32_t supportedDeferredEffects;
+    int32_t deferredEffectStatus;
     int32_t strongAssociation;
     int32_t fileId;
     std::string cloudId;

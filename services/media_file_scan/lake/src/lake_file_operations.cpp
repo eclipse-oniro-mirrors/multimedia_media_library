@@ -200,6 +200,23 @@ static int32_t CreateParentDir(int32_t &targetAlbumId, std::string &parentDir)
     return E_OK;
 }
 
+static int32_t UpdateAssetHiddenState(AccurateRefreshBase &refresh, int32_t mediaId,
+    const HiddenStateInfo &hiddenInfo)
+{
+    if (!hiddenInfo.NeedUpdate()) {
+        return E_OK;
+    }
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, mediaId);
+    ValuesBucket values;
+    values.PutInt(MediaColumn::MEDIA_HIDDEN, static_cast<int32_t>(hiddenInfo.hiddenState));
+    values.PutLong(PhotoColumn::PHOTO_HIDDEN_TIME,
+        hiddenInfo.hiddenState == HiddenState::HIDDEN ? MediaFileUtils::UTCTimeMilliSeconds() : 0);
+    int32_t changedRows = refresh.UpdateWithDateTime(values, predicates);
+    CHECK_AND_RETURN_RET_LOG(changedRows > 0, E_ERR, "update hidden state error");
+    return E_OK;
+}
+
 static int32_t UpdateAfterMoveAssetsToLake(AccurateRefreshBase &refresh,
     const std::vector<MoveAssetsToLakeUpdateData> &updateDatas, const FileSourceType &type)
 {
@@ -212,6 +229,7 @@ static int32_t UpdateAfterMoveAssetsToLake(AccurateRefreshBase &refresh,
         values.PutString(MediaColumn::MEDIA_NAME, updateData.displayName);
         values.PutString(MediaColumn::MEDIA_TITLE, updateData.title);
         values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(type));
+        values.PutLong(PhotoColumn::MEDIA_TIME_PENDING, 0);
         int32_t changedRows = -1;
         int32_t ret = refresh.Update(changedRows, values, predicates);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "update move assets from lake error");
@@ -494,9 +512,9 @@ int32_t LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(
     return E_OK;
 }
 
-int32_t LakeFileOperations::MoveAssetsToLake(AccurateRefreshBase &refresh, const std::vector<std::string> &ids)
+static AbsRdbPredicates GetMoveAssetsToLakePredicates(const std::vector<std::string> &ids,
+    const HiddenStateInfo &hiddenInfo)
 {
-    CHECK_AND_RETURN_RET_LOG(!ids.empty(), E_INVALID_ARGUMENTS, "move asset param error");
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
     predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA));
@@ -512,7 +530,20 @@ int32_t LakeFileOperations::MoveAssetsToLake(AccurateRefreshBase &refresh, const
         ->Or()
         ->EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)))
         ->EndWrap();
-    predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);
+    if (!hiddenInfo.NeedUpdate()) {
+        predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0); // 非隐藏场景，维持原有条件
+    }
+    return predicates;
+}
+
+int32_t LakeFileOperations::MoveAssetsToLake(AccurateRefreshBase &refresh, const std::vector<std::string> &ids,
+    const HiddenStateInfo &hiddenInfo)
+{
+    MEDIA_DEBUG_LOG("MoveAssetsToLake enter %{public}zu", ids.size());
+    CHECK_AND_RETURN_RET_LOG(!ids.empty(), E_INVALID_ARGUMENTS, "move asset param error");
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+
+    AbsRdbPredicates predicates = GetMoveAssetsToLakePredicates(ids, hiddenInfo);
     auto resultSet = MediaLibraryRdbStore::Query(predicates,
         { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_TITLE, MediaColumn::MEDIA_NAME,
             MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH,
@@ -530,30 +561,38 @@ int32_t LakeFileOperations::MoveAssetsToLake(AccurateRefreshBase &refresh, const
         resultSet->Close();
         return E_OK;
     }
-    std::vector<MoveAssetsToLakeUpdateData> updateDatas;
+
+    UpdateTimePendingAsHideInProgress(predicates, hiddenInfo);
+    int32_t successCount = 0;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t mediaId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+        // 1. 先更新hidden状态
+        int32_t hiddenRet = UpdateAssetHiddenState(refresh, mediaId, hiddenInfo);
+        CHECK_AND_CONTINUE(hiddenRet == E_OK);
+        // 2. 移动源文件
+        std::vector<MoveAssetsToLakeUpdateData> updateDatas;
         MoveAssetToLake(refresh, resultSet, updateDatas);
+        // 3. 更新file_source_type
+        CHECK_AND_CONTINUE(!updateDatas.empty());
+        int32_t ret = UpdateAfterMoveAssetsToLake(refresh, updateDatas, FileSourceType::MEDIA_HO_LAKE);
+        successCount += (ret == E_OK ? 1 : 0);
     }
     resultSet->Close();
-    return UpdateAfterMoveAssetsToLake(refresh, updateDatas, FileSourceType::MEDIA_HO_LAKE);
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("MoveAssetsToLake end, hiddenInfo: %{public}d, successCount: %{public}d, timeCostInMs: "
+        "%{public}" PRId64, static_cast<int32_t>(hiddenInfo.hiddenState), successCount, endTime - startTime);
+    return successCount;
 }
 
-static int32_t UpdateFileSourceType(const std::vector<std::string> &updateIds, const FileSourceType &type)
+static int32_t UpdateAssetAfterMoveFromLake(AccurateRefreshBase &refresh, int32_t mediaId, const FileSourceType &type)
 {
-    CHECK_AND_RETURN_RET_LOG(!updateIds.empty(), E_INVALID_ARGUMENTS, "update file source type param error");
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(MediaColumn::MEDIA_ID, updateIds);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, mediaId);
     ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(type));
-    int32_t changedRows = -1;
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB, "update file source type rdbstore error");
-    int32_t ret = rdbStore->Update(changedRows, values, predicates);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK && changedRows > 0,
-        E_ERR,
-        "update file source type error ret: %{public}d, change rows: %{public}d",
-        ret,
-        changedRows);
+    values.PutLong(PhotoColumn::MEDIA_TIME_PENDING, 0);
+    int32_t changedRows = refresh.UpdateWithDateTime(values, predicates);
+    CHECK_AND_RETURN_RET_LOG(changedRows > 0, E_ERR, "Update failed, changedRows: %{public}d", changedRows);
     return E_OK;
 }
 
@@ -573,28 +612,32 @@ static int32_t ConvertToMovingPhoto(const std::string &srcPath)
     return E_OK;
 }
 
-int32_t LakeFileOperations::MoveAssetsFromLake(const std::vector<std::string> &ids)
+static AbsRdbPredicates GetMoveAssetsFromLakePredicates(const std::vector<std::string> &ids)
 {
-    MediaLibraryTracer tracer;
-    tracer.Start("LakeFileOperations::MoveAssetsFromLake");
-    MEDIA_INFO_LOG("MoveAssetsFromLake enter %{public}zu", ids.size());
-    CHECK_AND_RETURN_RET_LOG(!ids.empty(), E_INVALID_ARGUMENTS, "move asset param error");
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
     // 只处理湖内且file_source_type为MEDIA_HO_LAKE，且position=1和position=3的类型资源
     predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE));
+    return predicates;
+}
+
+int32_t LakeFileOperations::MoveAssetsFromLake(AccurateRefreshBase &refresh,
+    const std::vector<std::string> &ids, const HiddenStateInfo &hiddenInfo)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("LakeFileOperations::MoveAssetsFromLake");
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("MoveAssetsFromLake enter %{public}zu", ids.size());
+    CHECK_AND_RETURN_RET_LOG(!ids.empty(), E_INVALID_ARGUMENTS, "move asset param error");
+
+    AbsRdbPredicates predicates = GetMoveAssetsFromLakePredicates(ids);
     auto resultSet = MediaLibraryRdbStore::Query(predicates,
         { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH });
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "query storage path error");
     int32_t rowCount = -1;
     int32_t ret = resultSet->GetRowCount(rowCount);
-    if (ret != E_OK) {
+    if (ret != E_OK || rowCount < 0) {
         MEDIA_ERR_LOG("move asset get row count error");
-        resultSet->Close();
-        return E_ERR;
-    }
-    if (rowCount < 0) {
-        MEDIA_ERR_LOG("move asset row count error");
         resultSet->Close();
         return E_ERR;
     }
@@ -603,25 +646,33 @@ int32_t LakeFileOperations::MoveAssetsFromLake(const std::vector<std::string> &i
         resultSet->Close();
         return E_OK;
     }
-    std::vector<std::string> updateIds;
+
+    UpdateTimePendingAsHideInProgress(predicates, hiddenInfo);
+    int32_t successCount = 0;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t mediaId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
         std::string innerLakePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
         std::string outerLakePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-        if (outerLakePath.empty() || innerLakePath.empty()) {
-            continue;
-        }
-        // 移动湖内文件到湖外
+        CHECK_AND_CONTINUE(!outerLakePath.empty() && !innerLakePath.empty());
+
+        // 1. 先更新hidden状态
+        int32_t hiddenRet = UpdateAssetHiddenState(refresh, mediaId, hiddenInfo);
+        CHECK_AND_CONTINUE(hiddenRet == E_OK);
+        // 2. 移动湖内文件到湖外
         ret = MoveLakeFile(innerLakePath, outerLakePath);
         CHECK_AND_PRINT_LOG(ret == E_OK, "move asset %{public}s to %{public}s error, errno: %{public}d",
             DfxUtils::GetSafePath(innerLakePath).c_str(), DfxUtils::GetSafePath(outerLakePath).c_str(), errno);
         ConvertToMovingPhoto(outerLakePath);
-        if (ret == E_OK) {
-            updateIds.emplace_back(to_string(mediaId));
-        }
+        CHECK_AND_CONTINUE(ret == E_OK);
+        // 3. 更新file_source_type
+        int32_t dbRet = UpdateAssetAfterMoveFromLake(refresh, mediaId, FileSourceType::MEDIA);
+        successCount += (dbRet == E_OK ? 1 : 0);
     }
     resultSet->Close();
-    return UpdateFileSourceType(updateIds, FileSourceType::MEDIA);
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("MoveAssetsFromLake end, hiddenInfo: %{public}d, successCount: %{public}d, timeCostInMs: "
+        "%{public}" PRId64, static_cast<int32_t>(hiddenInfo.hiddenState), successCount, endTime - startTime);
+    return successCount;
 }
 
 static bool IsLakeModify(const std::string& editPath, int64_t editTime)
@@ -780,6 +831,25 @@ int32_t LakeFileOperations::RenamePhoto(AccurateRefreshBase &refresh, const int3
         UpdateOuterLakeAssetInfo(refresh, fileId, newPath, newDisplayName, newTitle);
     }
     return ret;
+}
+
+int32_t LakeFileOperations::UpdateTimePendingAsHideInProgress(const AbsRdbPredicates &predicates,
+    const HiddenStateInfo &hiddenInfo)
+{
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    CHECK_AND_RETURN_RET(hiddenInfo.NeedUpdate(), E_OK);
+    ValuesBucket values;
+    values.PutLong(PhotoColumn::MEDIA_TIME_PENDING, static_cast<int32_t>(TIME_PENDING_HIDE_IN_PROGRESS));
+
+    AssetAccurateRefresh assetRefresh;
+    int32_t changedRows = assetRefresh.UpdateWithDateTime(values, predicates);
+    CHECK_AND_RETURN_RET_LOG(changedRows > 0, E_ERR, "Update failed, changedRows: %{public}d", changedRows);
+    assetRefresh.RefreshAlbum();
+    assetRefresh.Notify();
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("Update succeeded, hiddenInfo: %{public}d, changedRows: %{public}d, timeCostInMs: %{public}" PRId64,
+        static_cast<int32_t>(hiddenInfo.hiddenState), changedRows, endTime - startTime);
+    return E_OK;
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media

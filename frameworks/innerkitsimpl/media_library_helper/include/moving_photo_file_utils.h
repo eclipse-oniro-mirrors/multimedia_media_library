@@ -61,6 +61,8 @@ public:
     EXPORT static int32_t GetLivePhotoCoverPosition(const std::string &videoPath,
         const std::string &livePhotoPath, int64_t &coverPosition);
     EXPORT static int32_t GetLivePhotoCoverPosition(const std::string livePhotoPath, int64_t &coverPosition);
+    EXPORT static int32_t GetLivePhotoCoverPositionAndDuration(const std::string livePhotoPath,
+        int64_t &coverPosition, int32_t &duration);
     EXPORT static int32_t GetCoverPositionFromExtraData(const std::string &videoPath,
         const std::string &extraDataPath, int64_t &coverPosition);
     EXPORT static int32_t GetVersionAndFrameNum(const std::string &tag,

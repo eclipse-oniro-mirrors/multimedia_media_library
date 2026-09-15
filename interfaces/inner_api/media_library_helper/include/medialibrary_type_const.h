@@ -378,6 +378,7 @@ static constexpr int UNCREATE_FILE_TIMEPENDING = -1;
 static constexpr int UNCLOSE_FILE_TIMEPENDING = -2;
 static constexpr int UNOPEN_FILE_COMPONENT_TIMEPENDING = -3;
 static constexpr int TIME_PENDING_OFFLINE_CLEANUP = -4;  // For file manager offline cleanup use
+static constexpr int TIME_PENDING_HIDE_IN_PROGRESS = -5;  // For lake file hide use
 
 const int32_t DEFAULT_FILE_ID = 0;
 const int32_t DEFAULT_SHARE_COUNT = 0;

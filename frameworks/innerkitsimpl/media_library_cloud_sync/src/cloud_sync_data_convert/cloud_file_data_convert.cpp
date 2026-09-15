@@ -236,6 +236,8 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = MDKRecordField(upLoadRecord.burstCoverLevel);
     map[PhotoColumn::PHOTO_BURST_KEY] = MDKRecordField(upLoadRecord.burstKey);
     map[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = MDKRecordField(upLoadRecord.ownerAlbumId);
+    map[PhotoColumn::SUPPORTED_DEFERRED_EFFECTS] = MDKRecordField(upLoadRecord.supportedDeferredEffects);
+    map[PhotoColumn::DEFERRED_EFFECT_STATUS] = MDKRecordField(upLoadRecord.deferredEffectStatus);
     map[FILE_FIX_VERSION] = MDKRecordField(0);
     map[KEY_EDITED_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
     // no need to upload file_source_type and storage_path.
@@ -1009,6 +1011,8 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.supportedWatermarkType = data.GetSupportedWatermarkType().value_or(0);
     onFetchPhotoVo.musicMasterMode = data.GetMusicMasterMode().value_or(0);
     onFetchPhotoVo.strongAssociation = data.GetStrongAssociation().value_or(0);
+    onFetchPhotoVo.supportedDeferredEffects = data.GetSupportedDeferredEffects().value_or(0);
+    onFetchPhotoVo.deferredEffectStatus = data.GetDeferredEffectsStatus().value_or(-1);
     // no need to fetch file_source_type and storage_path from cloud.
     onFetchPhotoVo.uniqueId = data.GetUniqueId().value_or("");
     onFetchPhotoVo.packageName = data.GetPackageName().value_or("");

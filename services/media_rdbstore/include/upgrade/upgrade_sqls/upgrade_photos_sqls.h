@@ -53,22 +53,22 @@
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_date_added ON Photos (" \
     "owner_album_id,hidden,clean_flag,sync_status,date_trashed,time_pending," \
-    "is_temp,burst_cover_level,date_added DESC,display_name DESC, file_id);"
+    "is_temp,burst_cover_level,date_added DESC,display_name DESC, file_id, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_date_taken ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending,is_temp," \
-    "burst_cover_level,owner_album_id,date_taken DESC,display_name DESC, file_id);"
+    "burst_cover_level,owner_album_id,date_taken DESC,display_name DESC, file_id, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_display_name ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp," \
-    "burst_cover_level,owner_album_id,display_name DESC, date_taken DESC, file_id DESC);"
+    "burst_cover_level,owner_album_id,display_name DESC, date_taken DESC, file_id DESC, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_size ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, " \
-    "is_temp,burst_cover_level,owner_album_id,size DESC,file_id DESC, date_taken DESC);"
+    "is_temp,burst_cover_level,owner_album_id,size DESC,file_id DESC, date_taken DESC, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_media_type_date_added ON Photos (" \

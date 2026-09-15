@@ -97,6 +97,7 @@
 #include "media_progress_change_info.h"
 #include "medialibrary_db_const.h"
 #include "media_file_uri.h"
+#include "media_string_utils.h"
 #include "medialibrary_rdb_operations.h"
 #include "media_values_bucket_utils.h"
 
@@ -3121,9 +3122,9 @@ int32_t DoMoveFilesByPath(const std::vector<FileAssetsInfo> &moveAssetInfos, std
         }
         CHECK_AND_RETURN_RET_LOG(all_of(dto.targetAlbumId.begin(), dto.targetAlbumId.end(), ::isdigit),
             E_INVALID_PARAM, "albumId is not digit.");
+        MediaStringUtils::ConvertToInt(dto.targetAlbumId, updateInfo.ownerAlbumId);
         updateInfo.fileId = info.fileId;
         updateInfo.fileSourceType = info.fileSourceType;
-        updateInfo.ownerAlbumId = std::stoi(dto.targetAlbumId.c_str());
         updateInfo.storagePath = "";
         updateInfo.burstKey = info.burstKey;
         updateInfo.photoSubtype = info.photoSubtype;

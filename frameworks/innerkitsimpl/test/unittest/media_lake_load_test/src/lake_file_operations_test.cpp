@@ -223,8 +223,8 @@ HWTEST_F(LakeFileOperationsTest, MoveAssetsToLake_Test_001, TestSize.Level1)
 HWTEST_F(LakeFileOperationsTest, MoveAssetsFromLake_Test_001, TestSize.Level1)
 {
     std::vector<std::string> ids;
-    
-    int32_t ret = LakeFileOperations::MoveAssetsFromLake(ids);
+    AccurateRefresh::AssetAccurateRefresh refresh;
+    int32_t ret = LakeFileOperations::MoveAssetsFromLake(refresh, ids);
     EXPECT_EQ(ret, E_INVALID_ARGUMENTS);
 }
 

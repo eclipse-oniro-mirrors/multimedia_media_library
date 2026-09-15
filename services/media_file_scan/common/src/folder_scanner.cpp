@@ -444,7 +444,12 @@ void FolderScanner::BatchInsertAssets(std::shared_ptr<AccurateRefresh::AssetAccu
         MEDIA_ERR_LOG("Batch insert photo assets failed, valueBuckets array size is %{public}zu",
             insertFileBuckets_.size());
     }
-    std::vector<string> uris = FileParser::GenerateThumbnail(scanMode_, inodes_);
+    std::vector<string> uris;
+    if (scene_ == CheckScene::FILE_MANAGER) {
+        uris = FileManagerParser::GenerateThumbnailWithPowerControl(scanMode_, inodes_);
+    } else {
+        uris = FileParser::GenerateThumbnail(scanMode_, inodes_);
+    }
     notifyFileUris_.insert(uris.begin(), uris.end());
     inodes_.clear();
     insertFileBuckets_.clear();

@@ -16,6 +16,7 @@
 #ifndef FILE_MANAGER_PARSER_H
 #define FILE_MANAGER_PARSER_H
 
+#include "cloud_sync_manager.h"
 #include "file_parser.h"
 
 namespace OHOS::Media {
@@ -39,12 +40,18 @@ public:
         const std::vector<std::string> &inodes);
     bool CheckTypeValidForFileManagerParser();
 
+    // 端云场景Dentry文件创建
+    static void BatchCreateDentryFiles(
+        const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryInfoList);
+    static void CreateDentryFilesByFileIds(const std::vector<std::string> &fileIds);
+
 private:
     void SetCloudPath() override;
     void SetSubtypeFromMetadata(std::unique_ptr<Metadata> &data) override;
 
     FileUpdateType GetTrashAssetUpdateType();
     void HandleTrashedLocalAndCloudAsset(NativeRdb::AbsRdbPredicates &predicates);
+    void CreateDentryFileForCloudAsset(const FileParser::PhotosRowData &rowData);
 };
 } // namespace OHOS::Media
 #endif // FILE_MANAGER_PARSER_H
