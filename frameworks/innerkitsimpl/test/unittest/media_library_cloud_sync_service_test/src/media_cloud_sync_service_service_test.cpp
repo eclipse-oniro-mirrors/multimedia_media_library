@@ -1030,7 +1030,9 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotoServiceProcessor_GetPhotosDto
     photosPo.thumbStatus = 4;
     photosPo.orientation = 5;
     std::vector<PhotosPo> photosPos = {photosPo};
-    std::vector<PhotosDto> photosDtoList = processor.GetPhotosDtos(photosPos);
+    std::vector<PhotosDto> photosDtoList;
+    int32_t ret = processor.GetPhotosDtos(photosPos, photosDtoList);
+    EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(photosPos.size(), photosDtoList.size());
 }
 
@@ -1083,14 +1085,6 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_GetCopyRecords_Test_
     int32_t size = 0;
     std::vector<PhotosPo> copyRecords;
     int32_t ret = service.GetCopyRecords(size, copyRecords);
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_GetRetryRecords_Test_001, TestSize.Level1)
-{
-    CloudMediaPhotosService service;
-    std::vector<std::string> cloudIds;
-    int32_t ret = service.GetRetryRecords(cloudIds);
     EXPECT_EQ(ret, E_OK);
 }
 

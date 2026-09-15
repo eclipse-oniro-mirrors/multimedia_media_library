@@ -22,6 +22,7 @@
 #include "cloud_file_data_convert.h"
 #include "cloud_share_album_define.h"
 #include "cloud_media_operation_code.h"
+#include "cloud_media_photo_handler_processor.h"
 #include "cloud_mdkrecord_photos_vo.h"
 #include "get_retey_records_vo.h"
 #include "medialibrary_errno.h"
@@ -190,9 +191,27 @@ int32_t CloudMediaPhotoHandler::GetRetryRecords(std::vector<std::string> &record
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader(GetHeader())
         .Get(operationCode, respBody);
-    records = respBody.cloudIds;
+    for (const auto &[key, value] : respBody.retryDataList) {
+        records.emplace_back(key);
+    }
     MEDIA_INFO_LOG("GetRetryRecords completed, result-size: %{public}zu", records.size());
     return ret;
+}
+
+int32_t CloudMediaPhotoHandler::GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords)
+{
+    MEDIA_INFO_LOG("enter CloudMediaPhotoHandler::GetRetryRecords");
+    uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_RETRY_RECORDS);
+    GetRetryRecordsRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+        .SetHeader(GetHeader())
+        .Get(operationCode, respBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetRetryRecords, ret:%{public}d", ret);
+    MEDIA_INFO_LOG("GetRetryRecords GetRetryRecordsRespBody: %{public}s", respBody.ToString().c_str());
+    retryRecords.clear();
+    ret = photoHandlerProcessor_.ConvertFromRetryRecordsRespBodyToCloudMetaData(respBody, retryRecords);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to ConvertFromRetryRecordsRespBodyToCloudMetaData");
+    return E_OK;
 }
 
 int32_t CloudMediaPhotoHandler::GetCheckRecords(

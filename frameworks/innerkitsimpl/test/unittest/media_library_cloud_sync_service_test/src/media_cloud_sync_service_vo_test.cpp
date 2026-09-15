@@ -193,7 +193,7 @@ HWTEST_F(CloudMediaSyncServiceVoTest, GeneralToString_Test, TestSize.Level1)
     EXPECT_TRUE(GetDownloadThmsByUriRespBody().ToString().empty());
     EXPECT_TRUE(GetDownloadThmsByUriReqBody().ToString().empty());
     EXPECT_TRUE(GetCloudThmStatRespBody().ToString().empty());
-    EXPECT_TRUE(GetRetryRecordsRespBody().ToString().empty());
+    EXPECT_FALSE(GetRetryRecordsRespBody().ToString().empty());
 
     EXPECT_FALSE(GetDownloadThmNumRespBody().ToString().empty());
     EXPECT_FALSE(GetDownloadThmNumReqBody().ToString().empty());

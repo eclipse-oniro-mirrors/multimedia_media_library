@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Copyright (C) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,24 +13,21 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTO_SERVICE_PROCESSOR_H
-#define OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTO_SERVICE_PROCESSOR_H
+#ifndef OHOS_MEDIA_CLOUD_MEDIA_PHOTO_HANDLER_PROCESSOR_H
+#define OHOS_MEDIA_CLOUD_MEDIA_PHOTO_HANDLER_PROCESSOR_H
 
-#include <vector>
+#include <string>
 #include <unordered_map>
 
-#include "photos_po.h"
-#include "photos_dto.h"
-#include "cloud_media_define.h"
+#include "cloud_meta_data.h"
+#include "get_retey_records_vo.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS::Media::CloudSync {
-using namespace OHOS::Media::ORM;
-class EXPORT CloudMediaPhotoServiceProcessor {
+class CloudMediaPhotoHandlerProcessor {
 public:
-    int32_t GetPhotosDtos(const std::vector<PhotosPo> &photosPos, std::vector<PhotosDto> &photoDtoList);
-
-private:
-    PhotosDto Parse(const PhotosPo &photosPo);
+    int32_t ConvertFromRetryRecordsRespBodyToCloudMetaData(const GetRetryRecordsRespBody &respBody,
+        std::unordered_map<std::string, CloudMetaData> &retryRecords);
 };
 }  // namespace OHOS::Media::CloudSync
-#endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTO_SERVICE_PROCESSOR_H
+#endif  // OHOS_MEDIA_CLOUD_MEDIA_PHOTO_HANDLER_PROCESSOR_H
