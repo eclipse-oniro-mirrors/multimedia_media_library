@@ -927,7 +927,7 @@ shared_ptr<FileAsset> MediaLibraryAssetOperations::GetFileAssetByUri(const strin
 
 static inline string GetVirtualPath(const string &relativePath, const string &displayName)
 {
-    if (relativePath[relativePath.size() - 1] != SLASH_CHAR) {
+    if (relativePath.empty() || relativePath.back() != SLASH_CHAR) {
         return relativePath + SLASH_CHAR + displayName;
     } else {
         return relativePath + displayName;
@@ -1644,7 +1644,7 @@ void MediaLibraryAssetOperations::UpdateVirtualPath(MediaLibraryCommand &cmd,
         relativePath = fileAsset->GetRelativePath();
     }
 
-    if (relativePath.back() != '/') {
+    if (relativePath.empty() || relativePath.back() != '/') {
         relativePath += '/';
     }
     string virtualPath = relativePath + displayName;
