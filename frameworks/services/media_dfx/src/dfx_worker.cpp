@@ -99,6 +99,7 @@ static void HandleLoopTask(DfxData *data)
     int64_t lastReportTime = prefs->GetLong(LAST_REPORT_TIME, 0);
     int64_t lastMiddleReportTime = prefs->GetLong(LAST_MIDDLE_REPORT_TIME, 0);
     DfxManager::GetInstance()->HandleFiveMinuteTask();
+    DfxManager::GetInstance()->HandleSixHourMissions();
     if (MediaFileUtils::UTCTimeSeconds() - lastMiddleReportTime >= SIX_HOUR) {
         MEDIA_INFO_LOG("Report Middle Xml");
         lastMiddleReportTime = DfxManager::GetInstance()->HandleMiddleReport();

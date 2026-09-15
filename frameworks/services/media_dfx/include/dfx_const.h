@@ -346,6 +346,46 @@ struct PhotoLcdStatistics {
     int32_t albumCoverCount = 0;
     int32_t smartCount = 0;
 };
+
+struct DfxPortraitAlbumInfo {
+    int32_t visibleCount = 0;
+    int32_t hiddenCount = 0;
+    int32_t namedCount = 0;
+    int32_t unnamedCount = 0;
+    std::string top10List;
+};
+
+struct DfxGroupPhotoAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
+
+struct DfxClassifyAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
+
+struct DfxCityAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
+
+struct DfxGeographyPhotoInfo {
+    int32_t locationPhotoCount = 0;
+    int32_t localCount = 0;
+    int32_t cloudCount = 0;
+};
+
+struct DfxHighlightAlbumInfo {
+    int32_t visibleCount = 0;
+    int32_t hiddenCount = 0;
+    std::string top10List;
+};
+
+struct DfxShootingModeAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
 } // namespace Media
 } // namespace OHOS
 

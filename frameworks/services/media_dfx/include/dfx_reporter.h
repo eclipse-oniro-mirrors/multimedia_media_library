@@ -67,6 +67,10 @@ struct QuerySizeAndResolution {
     std::string highlightRomSize;
     std::string ThumbnailRomSize;
     std::string EditdataRomSize;
+    std::string thumbDirRomSize;
+    std::string editDataDirRomSize;
+    std::string kvdbDirRomSize;
+    std::string dentryRomSize;
     std::string totalSize;
 };
 
@@ -202,7 +206,7 @@ public:
     void ReportThumbnailGeneration(const ThumbnailData::GenerateStats &stats);
     void ReportPhotoInfo(const PhotoStatistics& stats);
     void ReportAlbumInfo(const std::string &albumName, int32_t albumImageCount, int32_t albumVideoCount,
-        bool isLocal);
+        bool isLocal, const std::string &albumInfo = "");
     void ReportDirtyCloudPhoto(const std::string &data, int32_t dirty, int32_t cloudVersion);
     void ReportCommonVersion(int32_t dbVersion);
     void ReportAnalysisVersion(const std::string &analysisName, int32_t version);

@@ -791,7 +791,7 @@ static string GetInfoToString(const unordered_map<string, int32_t>& defaultMap)
     return result;
 }
 
-bool DfxDatabaseUtils::GetSizeAndResolutionInfo(QuerySizeAndResolution &queryInfo)
+bool DfxDatabaseUtils::GetSizeAndResolutionInfo(QuerySizeAndResolution &queryInfo, bool needChargingAndScreenOff)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
@@ -808,7 +808,7 @@ bool DfxDatabaseUtils::GetSizeAndResolutionInfo(QuerySizeAndResolution &queryInf
     CHECK_AND_RETURN_RET_LOG(count > 0, false, "Failed to get count");
     SizeAndResolutionInfoMap infoMap;
     for (int32_t offset = 0; offset < count; offset += BATCH_QUERY_PHOTO_NUMBER) {
-        if (!CheckChargingAndScreenOff(false)) {
+        if (needChargingAndScreenOff && !CheckChargingAndScreenOff(false)) {
             MEDIA_ERR_LOG("Charging and screen off");
             return false;
         }
@@ -1148,6 +1148,226 @@ int32_t DfxDatabaseUtils::QueryBurstKeyAnomalyInfo(int32_t &crossAlbumDupCount, 
     }
 
     return E_OK;
+}
+
+// AnalysisAlbum table column names used in DFX queries
+static const std::string AA_ALBUM_ID = "album_id";
+static const std::string AA_ALBUM_SUBTYPE = "album_subtype";
+static const std::string AA_ALBUM_NAME = "album_name";
+static const std::string AA_TAG_ID = "tag_id";
+static const std::string AA_GROUP_TAG = "group_tag";
+static const std::string AA_USER_DISPLAY_LEVEL = "user_display_level";
+static const std::string AA_IS_REMOVED = "is_removed";
+static const std::string AA_COUNT = "count";
+static const std::string AA_TABLE = "AnalysisAlbum";
+static const std::string APM_TABLE = "AnalysisPhotoMap";
+static const std::string APM_MAP_ALBUM = "map_album";
+
+static std::string BuildAnalysisAlbumTop10Sql(int32_t albumSubtype)
+{
+    return "SELECT " + AA_ALBUM_NAME + ", " + AA_TAG_ID + ", " + AA_GROUP_TAG + ", " + AA_COUNT +
+        " FROM " + AA_TABLE +
+        " WHERE " + AA_ALBUM_SUBTYPE + " = " + std::to_string(albumSubtype) +
+        " AND (" + AA_IS_REMOVED + " = 0 OR " + AA_IS_REMOVED + " IS NULL)" +
+        " ORDER BY " + AA_COUNT + " DESC LIMIT 10";
+}
+
+static std::string FormatTop10List(shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    std::string result;
+    int32_t idx = 0;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        if (idx > 0) {
+            result += "; ";
+        }
+        std::string name = GetStringVal(AA_ALBUM_NAME, resultSet);
+        std::string tagId = GetStringVal(AA_TAG_ID, resultSet);
+        std::string groupTag = GetStringVal(AA_GROUP_TAG, resultSet);
+        int32_t count = GetInt32Val(AA_COUNT, resultSet);
+        result += name + "," + tagId + "," + groupTag + "," + std::to_string(count);
+        idx++;
+    }
+    return result;
+}
+
+static int32_t QueryAnalysisAlbumCount(int32_t albumSubtype, const std::string &extraCondition = "")
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, 0, "rdbStore is nullptr");
+    std::string sql = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " + AA_TABLE +
+        " WHERE " + AA_ALBUM_SUBTYPE + " = " + std::to_string(albumSubtype) +
+        " AND (" + AA_IS_REMOVED + " = 0 OR " + AA_IS_REMOVED + " IS NULL)";
+    if (!extraCondition.empty()) {
+        sql += " AND " + extraCondition;
+    }
+    auto resultSet = rdbStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "resultSet is nullptr");
+    int32_t count = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        count = GetInt32Val(RECORD_COUNT, resultSet);
+    }
+    resultSet->Close();
+    return count;
+}
+
+void DfxDatabaseUtils::QueryPortraitAlbumInfo(DfxPortraitAlbumInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    constexpr int32_t portraitSubtype = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+    info.visibleCount = QueryAnalysisAlbumCount(portraitSubtype,
+        AA_USER_DISPLAY_LEVEL + " > 0");
+    info.hiddenCount = QueryAnalysisAlbumCount(portraitSubtype,
+        "(" + AA_USER_DISPLAY_LEVEL + " = 0 OR " + AA_USER_DISPLAY_LEVEL + " IS NULL)");
+    info.namedCount = QueryAnalysisAlbumCount(portraitSubtype,
+        AA_ALBUM_NAME + " IS NOT NULL AND " + AA_ALBUM_NAME + " <> ''");
+    info.unnamedCount = QueryAnalysisAlbumCount(portraitSubtype,
+        "(" + AA_ALBUM_NAME + " IS NULL OR " + AA_ALBUM_NAME + " = '')");
+
+    auto resultSet = rdbStore->QuerySql(BuildAnalysisAlbumTop10Sql(portraitSubtype));
+    if (resultSet != nullptr) {
+        info.top10List = FormatTop10List(resultSet);
+        resultSet->Close();
+    }
+}
+
+void DfxDatabaseUtils::QueryGroupPhotoAlbumInfo(DfxGroupPhotoAlbumInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    constexpr int32_t groupPhotoSubtype = static_cast<int32_t>(PhotoAlbumSubType::GROUP_PHOTO);
+    info.totalCount = QueryAnalysisAlbumCount(groupPhotoSubtype);
+
+    auto resultSet = rdbStore->QuerySql(BuildAnalysisAlbumTop10Sql(groupPhotoSubtype));
+    if (resultSet != nullptr) {
+        info.top10List = FormatTop10List(resultSet);
+        resultSet->Close();
+    }
+}
+
+void DfxDatabaseUtils::QueryClassifyAlbumInfo(DfxClassifyAlbumInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    constexpr int32_t classifySubtype = static_cast<int32_t>(PhotoAlbumSubType::CLASSIFY);
+    info.totalCount = QueryAnalysisAlbumCount(classifySubtype);
+
+    auto resultSet = rdbStore->QuerySql(BuildAnalysisAlbumTop10Sql(classifySubtype));
+    if (resultSet != nullptr) {
+        info.top10List = FormatTop10List(resultSet);
+        resultSet->Close();
+    }
+}
+
+void DfxDatabaseUtils::QueryCityAlbumInfo(DfxCityAlbumInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    constexpr int32_t citySubtype = static_cast<int32_t>(PhotoAlbumSubType::GEOGRAPHY_CITY);
+    info.totalCount = QueryAnalysisAlbumCount(citySubtype);
+
+    auto resultSet = rdbStore->QuerySql(BuildAnalysisAlbumTop10Sql(citySubtype));
+    if (resultSet != nullptr) {
+        info.top10List = FormatTop10List(resultSet);
+        resultSet->Close();
+    }
+}
+
+void DfxDatabaseUtils::QueryGeographyPhotoInfo(DfxGeographyPhotoInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    const std::string baseCondition = PhotoColumn::PHOTO_IS_TEMP + " = 0 AND " +
+        PhotoColumn::MEDIA_DATE_TRASHED + " = 0 AND " +
+        PhotoColumn::PHOTO_BURST_COVER_LEVEL + " = 1 AND " +
+        "(" + PhotoColumn::PHOTO_LATITUDE + " != 0 OR " + PhotoColumn::PHOTO_LONGITUDE + " != 0)";
+
+    std::string sqlTotal = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " + PhotoColumn::PHOTOS_TABLE +
+        " WHERE " + baseCondition;
+    auto resultSet = rdbStore->QuerySql(sqlTotal);
+    if (resultSet != nullptr) {
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            info.locationPhotoCount = GetInt32Val(RECORD_COUNT, resultSet);
+        }
+        resultSet->Close();
+    }
+
+    std::string sqlLocal = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " + PhotoColumn::PHOTOS_TABLE +
+        " WHERE " + baseCondition + " AND " + PhotoColumn::PHOTO_POSITION + " IN (1, 3)";
+    resultSet = rdbStore->QuerySql(sqlLocal);
+    if (resultSet != nullptr) {
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            info.localCount = GetInt32Val(RECORD_COUNT, resultSet);
+        }
+        resultSet->Close();
+    }
+
+    std::string sqlCloud = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " + PhotoColumn::PHOTOS_TABLE +
+        " WHERE " + baseCondition + " AND " + PhotoColumn::PHOTO_POSITION + " = 2";
+    resultSet = rdbStore->QuerySql(sqlCloud);
+    if (resultSet != nullptr) {
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            info.cloudCount = GetInt32Val(RECORD_COUNT, resultSet);
+        }
+        resultSet->Close();
+    }
+}
+
+void DfxDatabaseUtils::QueryHighlightAlbumInfo(DfxHighlightAlbumInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    constexpr int32_t highlightSubtype = static_cast<int32_t>(PhotoAlbumSubType::HIGHLIGHT);
+    info.visibleCount = QueryAnalysisAlbumCount(highlightSubtype,
+        AA_USER_DISPLAY_LEVEL + " > 0");
+    info.hiddenCount = QueryAnalysisAlbumCount(highlightSubtype,
+        "(" + AA_USER_DISPLAY_LEVEL + " = 0 OR " + AA_USER_DISPLAY_LEVEL + " IS NULL)");
+
+    auto resultSet = rdbStore->QuerySql(BuildAnalysisAlbumTop10Sql(highlightSubtype));
+    if (resultSet != nullptr) {
+        info.top10List = FormatTop10List(resultSet);
+        resultSet->Close();
+    }
+}
+
+void DfxDatabaseUtils::QueryShootingModeAlbumInfo(DfxShootingModeAlbumInfo &info)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
+    constexpr int32_t shootingModeSubtype = static_cast<int32_t>(PhotoAlbumSubType::SHOOTING_MODE);
+    info.totalCount = QueryAnalysisAlbumCount(shootingModeSubtype);
+
+    auto resultSet = rdbStore->QuerySql(BuildAnalysisAlbumTop10Sql(shootingModeSubtype));
+    if (resultSet != nullptr) {
+        info.top10List = FormatTop10List(resultSet);
+        resultSet->Close();
+    }
+}
+
+int32_t DfxDatabaseUtils::QueryOrphanAnalysisAlbumCount()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, 0, "rdbStore is nullptr");
+
+    const std::string sql = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " + AA_TABLE + " AA" +
+        " WHERE (AA." + AA_IS_REMOVED + " = 0 OR AA." + AA_IS_REMOVED + " IS NULL)" +
+        " AND NOT EXISTS (SELECT 1 FROM " + APM_TABLE +
+        " APM WHERE APM." + APM_MAP_ALBUM + " = AA." + AA_ALBUM_ID + ")";
+    auto resultSet = rdbStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "resultSet is nullptr");
+    int32_t count = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        count = GetInt32Val(RECORD_COUNT, resultSet);
+    }
+    resultSet->Close();
+    return count;
 }
 } // namespace Media
 } // namespace OHOS

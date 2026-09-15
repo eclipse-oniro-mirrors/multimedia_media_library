@@ -65,7 +65,8 @@ public:
     EXPORT static int32_t QueryOperationRecordInfo(OperationRecordInfo &operationRecordInfo);
     EXPORT static int32_t QueryPhotoErrorCount();
     EXPORT static void GetPhotoMimeType(std::string &photoMimeType);
-    EXPORT static bool GetSizeAndResolutionInfo(QuerySizeAndResolution &queryInfo);
+    EXPORT static bool GetSizeAndResolutionInfo(QuerySizeAndResolution &queryInfo,
+        bool needChargingAndScreenOff = true);
     EXPORT static int32_t QueryAncoPhotosFormatAndCount(AncoCountFormatInfo &reportData);
     EXPORT static std::vector<std::string> QueryAlbumNamesByUploadStatus(const int32_t uploadStatus);
     EXPORT static int32_t QueryAllCompatibleInfo(std::map<std::string, DfxCompatibleInfo>& infoMap);
@@ -79,6 +80,14 @@ public:
     EXPORT static int32_t QueryDocsScanMaxId(int32_t &maxId);
     EXPORT static int32_t DropDocsMediaScanTempTable();
     EXPORT static int32_t QueryBurstKeyAnomalyInfo(int32_t &crossAlbumDupCount, int32_t &multiCoverGroupCount);
+    EXPORT static void QueryPortraitAlbumInfo(DfxPortraitAlbumInfo &info);
+    EXPORT static void QueryGroupPhotoAlbumInfo(DfxGroupPhotoAlbumInfo &info);
+    EXPORT static void QueryClassifyAlbumInfo(DfxClassifyAlbumInfo &info);
+    EXPORT static void QueryCityAlbumInfo(DfxCityAlbumInfo &info);
+    EXPORT static void QueryGeographyPhotoInfo(DfxGeographyPhotoInfo &info);
+    EXPORT static void QueryHighlightAlbumInfo(DfxHighlightAlbumInfo &info);
+    EXPORT static void QueryShootingModeAlbumInfo(DfxShootingModeAlbumInfo &info);
+    EXPORT static int32_t QueryOrphanAnalysisAlbumCount();
 
 private:
     static int32_t QueryInt(const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,

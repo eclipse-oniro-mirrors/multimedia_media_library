@@ -193,6 +193,10 @@ PHOTO_INFO_EXT:
   LOCAL_VIDEO_RESOLUTION: { type: STRING, desc: Resolution size statistics of local video }
   CLOUD_IMAGE_RESOLUTION: { type: STRING, desc: Resolution size statistics of cloud images }
   CLOUD_VIDEO_RESOLUTION: { type: STRING, desc: Resolution size statistics of cloud video }
+  THUMB_DIR_ROM_SIZE: { type: STRING, desc: Thumbnail directory actual disk usage size }
+  EDIT_DATA_DIR_ROM_SIZE: { type: STRING, desc: Edit data directory actual disk usage size }
+  KVDB_DIR_ROM_SIZE: { type: STRING, desc: KVDB directory actual disk usage size }
+  DENTRY_ROM_SIZE: { type: STRING, desc: Dentry cache file occupied size }
 
 MEDIALIB_CUSTOM_RESTORE:
   __BASE: {type: STATISTIC, level: CRITICAL, desc: Report the data transfer result after Upgrade Restore task, preserve: true }
@@ -294,6 +298,14 @@ MEDIALIB_DATABASE_INFO:
   PHOTO_WAIT_UPLOAD_HDC_COUNT: { type: INT32, desc: Count of photos waiting to upload via HDC }
   WATCH_LIST_INFO: { type: STRING, desc: Inotify watch list info }
   ABNORMAL_DATE_TAKEN_COUNT: { type: INT32, desc: Count of records with abnormal date_taken including future time second-unit misuse zero and negative values }
+
+MEDIALIB_ALBUM_INFO:
+  __BASE: { type: STATISTIC, level: CRITICAL, desc: Album information statistics, preserve: true }
+  ALBUM_NAME: { type: STRING, desc: Album name }
+  ALBUM_IMAGE_COUNT: { type: INT32, desc: Number of images in the album }
+  ALBUM_VIDEO_COUNT: { type: INT32, desc: Number of videos in the album }
+  IS_LOCAL: { type: BOOL, desc: Whether the album is local }
+  ALBUM_INFO: { type: STRING, desc: Detailed album information for smart albums }
 
 MEDIALIB_HEIF_AGING:
   __BASE: { type: STATISTIC, level: CRITICAL, desc: Charging and screen-off trigger aging business successfully, preserve: true }
