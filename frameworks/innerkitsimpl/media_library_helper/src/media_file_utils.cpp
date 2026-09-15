@@ -17,6 +17,7 @@
 #define MLOG_TAG "FileUtils"
 
 #include "media_file_utils.h"
+#include "napi/native_api.h"
 
 #include <stack>
 #include <dirent.h>
@@ -2773,6 +2774,13 @@ bool MediaFileUtils::IsValidInteger(const std::string &value)
     }
     auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), convetValue);
     return ec == std::errc{};
+}
+
+bool MediaFileUtils::IsParamNullish(void *env, void *arg)
+{
+    napi_valuetype type = napi_undefined;
+    napi_typeof(static_cast<napi_env>(env), static_cast<napi_value>(arg), &type);
+    return type == napi_null || type == napi_undefined;
 }
 
 static int64_t GetRoundSize(int64_t size)

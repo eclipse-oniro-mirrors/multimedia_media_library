@@ -1619,13 +1619,58 @@ ani_string MediaAssetManagerAni::RequestImageData(ani_env *env, [[maybe_unused]]
     return RequestComplete(env, aniContext);
 }
 
+static bool IsAniParamNullish(ani_env *env, ani_object arg)
+{
+    if (arg == nullptr) {
+        return true;
+    }
+    return MediaLibraryAniUtils::IsUndefined(env, arg) == ANI_TRUE;
+}
+
+static bool ValidateCompositeAssetAniParam(ani_env *env, ani_object asset,
+    unique_ptr<MediaAssetManagerAniContext> &aniContext)
+{
+    FileAssetAni *obj = FileAssetAni::Unwrap(env, asset);
+    if (obj == nullptr || obj->GetFileAssetInstance() == nullptr) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData asset is invalid");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "invalid asset");
+        return false;
+    }
+    aniContext->fileId = obj->GetFileId();
+    aniContext->photoUri = obj->GetFileUri();
+    aniContext->displayName = obj->GetFileDisplayName();
+    aniContext->userId = obj->GetFileAssetInstance()->GetUserId();
+    return true;
+}
+
+static bool ValidateCompositeDataHandlerAniParam(ani_env *env, ani_object dataHandler,
+    unique_ptr<MediaAssetManagerAniContext> &aniContext)
+{
+    aniContext->dataHandler = dataHandler;
+
+    ani_method onDataPrepared {};
+    ani_status status = MediaLibraryAniUtils::FindClassMethod(env, PAH_ANI_CLASS_MEDIA_DATA_HANDLER,
+        std::string(ON_DATA_PREPARED_FUNC), &onDataPrepared);
+    if (status != ANI_OK || onDataPrepared == nullptr) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData onDataPrepared is invalid");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "invalid onDataPrepared");
+        return false;
+    }
+    aniContext->needsExtraInfo = true;
+    return true;
+}
+
 bool MediaAssetManagerAni::ParseAndValidateCompositeAuxiliaryArgs(ani_env *env, ani_object context,
     ani_object asset, ani_object dataHandler, unique_ptr<MediaAssetManagerAniContext> &aniContext)
 {
-    if (ParseArgGetPhotoAsset(env, asset, aniContext) != ANI_OK) {
-        ANI_ERR_LOG("requestCompositeAuxiliaryImageData ParseArgGetPhotoAsset error");
-        AniError::ThrowError(env, JS_E_INNER_FAIL,
-            "requestCompositeAuxiliaryImageData ParseArgGetPhotoAsset error");
+    if (IsAniParamNullish(env, context) ||
+        IsAniParamNullish(env, asset) ||
+        IsAniParamNullish(env, dataHandler)) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData param is null or undefined");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "param is null or undefined");
+        return false;
+    }
+    if (!ValidateCompositeAssetAniParam(env, asset, aniContext)) {
         return false;
     }
     if (MediaFileUtils::GetMediaType(aniContext->displayName) == MEDIA_TYPE_VIDEO) {
@@ -1634,10 +1679,7 @@ bool MediaAssetManagerAni::ParseAndValidateCompositeAuxiliaryArgs(ani_env *env, 
             "The asset has no composite auxiliary image");
         return false;
     }
-    if (ParseArgGetDataHandler(env, dataHandler, aniContext) != ANI_OK) {
-        ANI_ERR_LOG("requestCompositeAuxiliaryImageData ParseArgGetDataHandler error");
-        AniError::ThrowError(env, JS_E_INNER_FAIL,
-            "requestCompositeAuxiliaryImageData ParseArgGetDataHandler error");
+    if (!ValidateCompositeDataHandlerAniParam(env, dataHandler, aniContext)) {
         return false;
     }
     if (!HasReadPermission()) {
