@@ -17,6 +17,7 @@
 #define OHOS_MEDIA_SHARE_PHOTO_DATA_CONTROLLER_SERVICE_H
 
 #include <map>
+#include <string>
 
 #include "message_parcel.h"
 #include "i_media_controller_service.h"
@@ -26,7 +27,6 @@
 
 #include "cloud_media_operation_code.h"
 #include "sys_utils.h"
-#include "media_share_photo_data_service.h"
 
 namespace OHOS::Media::ShareAlbum {
 
@@ -59,14 +59,13 @@ public:
 private:
     int32_t GetShareAlbumOwnerId(MessageParcel &data, MessageParcel &reply);
 
+    int32_t GetShareAlbumOwnerIdWithTimeout(const std::string &queryData, std::string &ownerId);
+
     using RequestHandle = int32_t (MediaSharePhotoDataControllerService::*)(MessageParcel &, MessageParcel &);
     const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaSharePhotoOperationCode::CMD_GET_SHARE_ALBUM_OWNER_ID),
             &MediaSharePhotoDataControllerService::GetShareAlbumOwnerId},
     };
-
-private:
-    MediaSharePhotoDataService dataService_;
 };
 
 }  // namespace OHOS::Media::ShareAlbum
