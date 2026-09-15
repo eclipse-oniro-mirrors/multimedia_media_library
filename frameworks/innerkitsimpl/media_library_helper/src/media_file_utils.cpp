@@ -2291,7 +2291,7 @@ bool MediaFileUtils::IsFileTablePath(const string &path)
         return false;
     }
 
-    if (path.find(ROOT_MEDIA_DIR) == string::npos) {
+    if (path.find(ROOT_MEDIA_DIR) != 0) {
         return false;
     }
 
@@ -2308,7 +2308,7 @@ bool MediaFileUtils::IsPhotoTablePath(const string &path)
         return false;
     }
 
-    if (path.find(ROOT_MEDIA_DIR) == string::npos) {
+    if (path.find(ROOT_MEDIA_DIR) != 0) {
         return false;
     }
 
