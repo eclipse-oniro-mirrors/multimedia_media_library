@@ -380,7 +380,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX = Ba
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_TIME_PENDING + "," +
     PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
     MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
-    MediaColumn::MEDIA_ID + ");";
+    MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -389,7 +389,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX = Ba
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
     "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
-    MediaColumn::MEDIA_ID + ");";
+    MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_SIZE_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -398,7 +398,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX = BaseColu
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
     "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC, " +
-    MediaColumn::MEDIA_DATE_TAKEN + " DESC);";
+    MediaColumn::MEDIA_DATE_TAKEN + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -416,7 +416,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX = 
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
     "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " +
-    MediaColumn::MEDIA_ID + " DESC);";
+    MediaColumn::MEDIA_ID + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +

@@ -139,5 +139,21 @@ static vector<pair<int32_t, int32_t>> AddPhotoC2PAConfigInfoColumn(NativeRdb::Rd
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_C2PA_CONFIG_INFO, PHOTOS_MODULE_NAME,
     AddPhotoC2PAConfigInfoColumn);
 
+static vector<pair<int32_t, int32_t>> UpdatePositionIndexesOnPhotos(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_SIZE_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX)
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_POSITION_INDEX_ON_PHOTO, PHOTOS_MODULE_NAME,
+    UpdatePositionIndexesOnPhotos);
 } // namespace Media
 } // namespace OHOS

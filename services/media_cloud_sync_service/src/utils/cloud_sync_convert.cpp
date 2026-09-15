@@ -300,6 +300,27 @@ int32_t CloudSyncConvert::CompensateIsStylePhoto(
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateSupportedDeferredEffects(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t supportedDeferredEffects = data.supportedDeferredEffects;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        supportedDeferredEffects != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::supportedDeferredEffects.");
+    values.PutInt(PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, supportedDeferredEffects);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateDeferredEffectsStatus(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t deferredEffectsStatus = data.deferredEffectsStatus;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        // 字段初始默认值就是-1，做特殊适配-2
+        deferredEffectsStatus != -2, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::deferredEffectsStatus.");
+    values.PutInt(PhotoColumn::DEFERRED_EFFECT_STATUS, deferredEffectsStatus);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateAttStrongAssociation(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
@@ -692,6 +713,8 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttSupportedWatermarkType(data, values);
     CompensateIsStylePhoto(data, values);
     CompensateAttStrongAssociation(data, values);
+    CompensateSupportedDeferredEffects(data, values);
+    CompensateDeferredEffectsStatus(data, values);
     CompensateUniqueId(data, values);
     CompensatePackageName(data, values);
     // Safe Album: risk status for children's watch

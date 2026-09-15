@@ -43,6 +43,7 @@ namespace fs = std::filesystem;
 
 constexpr const char* TASK_PROGRESS_XML = "/data/storage/el2/base/preferences/task_progress.xml";
 constexpr const char* FILE_PROCESS_STATUS_KEY = "file_process_status";
+constexpr const char* REPAIR_LAST_FILE_ID_KEY = "repair_last_file_id";
 
 const std::string FILE_LPATH_PREFIX = "/FromDocs";
 const std::string FILE_ROOT_LPATH = "/FromDocs/";
@@ -51,6 +52,7 @@ const std::string FILE_ROOT_ALBUM = "根目录";
 const std::string PHOTOS_ALL_ALBUM_UPLOAD_COMFIRMED = "photos_all_album_upload_comfirmed ";
 
 constexpr int32_t TASK_STATUS_IDLE = 0;
+constexpr int32_t REPAIR_STATUS_IDLE = -1;
 
 const std::vector<std::string> DOWNLOAD_TRASH_SUFFIX = {
     "/temp/",
@@ -254,5 +256,35 @@ bool MediaFileInterworkUtil::IsDownloadTrashDir(const std::string &dirPath)
         }
     }
     return false;
+}
+
+int32_t MediaFileInterworkUtil::GetRepairProgress(int32_t &lastFileId)
+{
+    int32_t errCode = E_OK;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    if (errCode != E_OK || prefs == nullptr) {
+        MEDIA_ERR_LOG("Failed to get preferences for repair progress, errCode = %{public}d", errCode);
+        lastFileId = 0;
+        return errCode;
+    }
+    lastFileId = prefs->GetInt(REPAIR_LAST_FILE_ID_KEY, REPAIR_STATUS_IDLE);
+    MEDIA_INFO_LOG("Get repair progress, lastFileId = %{public}d", lastFileId);
+    return E_OK;
+}
+
+int32_t MediaFileInterworkUtil::SaveRepairProgress(int32_t lastFileId)
+{
+    int32_t errCode = E_OK;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    if (errCode != E_OK || prefs == nullptr) {
+        MEDIA_ERR_LOG("Failed to get preferences for save repair progress, errCode = %{public}d", errCode);
+        return errCode;
+    }
+    prefs->PutInt(REPAIR_LAST_FILE_ID_KEY, lastFileId);
+    prefs->Flush();
+    MEDIA_INFO_LOG("Save repair progress, lastFileId = %{public}d", lastFileId);
+    return E_OK;
 }
 }

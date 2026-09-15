@@ -40,7 +40,7 @@ const std::string SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE = "\
 const std::string SQL_PHOTOS_FIND_SAME_FILE_BY_STORAGE_PATH = "\
         SELECT file_id, size, date_modified, mime_type, media_type, inode, storage_path, file_source_type, \
         owner_album_id, owner_package, package_name, date_taken, data, sync_status, edit_time, subtype, position, \
-        date_year, date_month, date_day, detail_time \
+        date_year, date_month, date_day, cloud_id, display_name, detail_time \
         FROM Photos \
         WHERE LOWER(storage_path) = LOWER(?) AND \
         (file_source_type = ? OR (file_source_type = ? AND position IN (?, ?) AND date_trashed = ? AND hidden = ?)) \
@@ -169,6 +169,8 @@ PhotoDao::PhotosRowData PhotoDao::FindSameFileInDatabase(const std::string &quer
     rowData.dateMonth = GetInt32Val(PhotoColumn::PHOTO_DATE_MONTH, resultSet);
     rowData.detailTime = GetStringVal(PhotoColumn::PHOTO_DETAIL_TIME, resultSet);
     rowData.dateDay = GetInt32Val(PhotoColumn::PHOTO_DATE_DAY, resultSet);
+    rowData.cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
+    rowData.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("PhotoDao: rowData: %{public}s", rowData.ToString().c_str());
     return rowData;

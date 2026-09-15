@@ -68,6 +68,8 @@ protected:
         bool isStoragePathChanged {false};
         bool isInvisible {false};
         bool IsChanged() const;
+        std::string cloudId;
+        std::string displayName;
         std::string ToString() const;
     };
 

@@ -288,6 +288,8 @@ private:
         {"moving_photo_effect_mode", &MDKRecordPhotosData::GetMovingPhotoEffectMode},
         {"supported_watermark_type", &MDKRecordPhotosData::GetSupportedWatermarkType},
         {"is_style_photo", &MDKRecordPhotosData::GetIsStylePhoto},
+        {"supported_deferred_effects", &MDKRecordPhotosData::GetSupportedDeferredEffects},
+        {"deferred_effect_status", &MDKRecordPhotosData::GetDeferredEffectsStatus},
         {"strong_association", &MDKRecordPhotosData::GetStrongAssociation},
         {"file_id", &MDKRecordPhotosData::GetCloudFileId},
         {"owner_album_id", &MDKRecordPhotosData::GetOwnerAlbumId},

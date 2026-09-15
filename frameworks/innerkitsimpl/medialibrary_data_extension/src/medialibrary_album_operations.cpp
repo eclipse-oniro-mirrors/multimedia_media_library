@@ -2171,7 +2171,7 @@ static void HandleLakeAndFileManager(AssetAccurateRefresh &refresh, const std::v
 {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     int32_t ret = LakeFileOperations::MoveAssetsToLake(refresh, ids);
-    CHECK_AND_PRINT_LOG(ret == E_OK, "recover inner anco file error when recover asset");
+    CHECK_AND_PRINT_LOG(ret >= 0, "recover inner anco file error when recover asset");
 #endif
     int32_t res = FileManagerAssetOperations::MoveAssetsToFileManager(refresh, ids);
     CHECK_AND_PRINT_LOG(res == E_OK, "recover file manager asset error when recover asset");

@@ -814,6 +814,34 @@ bool PhotosPoWriter::GetThumbSize(std::string &val)
     return true;
 }
 
+void PhotosPoWriter::SetSupportedDeferredEffects(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.supportedDeferredEffects = std::get<int32_t>(val);
+}
+
+void PhotosPoWriter::SetDeferredEffectsStatus(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.deferredEffectStatus = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetSupportedDeferredEffects(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.supportedDeferredEffects.has_value(), false);
+    val = std::to_string(this->photosPo_.supportedDeferredEffects.value());
+    return true;
+}
+
+bool PhotosPoWriter::GetDeferredEffectsStatus(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.deferredEffectStatus.has_value(), false);
+    val = std::to_string(this->photosPo_.deferredEffectStatus.value());
+    return true;
+}
+
 std::string PhotosPoWriter::GetStringValByPrecision(const double doubleVal, const int32_t precision)
 {
     std::stringstream stream;

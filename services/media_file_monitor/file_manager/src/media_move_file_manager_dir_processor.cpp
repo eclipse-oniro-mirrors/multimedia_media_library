@@ -50,6 +50,12 @@ constexpr int32_t INVALID_COUNT = 0;
 // 存量核查任务状态
 constexpr int32_t TASK_STATUS_COMPLETE = 3;
 
+enum class AlbumCreateResult {
+    CREATED,
+    MERGED,
+    FAILED
+};
+
 inline void NotifyAssetChange(int32_t fileId, NotifyType notifyType)
 {
     auto watch = MediaLibraryNotify::GetInstance();
@@ -194,51 +200,93 @@ std::string ComputeNewAlbumName(const std::string &oldLPath, const std::string &
     return detailName;
 }
 
-bool CreateAlbumsByLPathReplace(MoveDirData &moveDirData)
+bool QueryExistingAlbumByLPath(const shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    const std::string &lPath, int32_t &existingAlbumId)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
+    const string sql = "SELECT " + PhotoAlbumColumns::ALBUM_ID + " FROM " + PhotoAlbumColumns::TABLE +
+        " WHERE LOWER(lpath) = LOWER(?) AND dirty != " + to_string(static_cast<int32_t>(DirtyTypes::TYPE_DELETED)) +
+        " ORDER BY " + PhotoAlbumColumns::ALBUM_ID + " DESC LIMIT 1";
+    const vector<ValueObject> bindArgs { lPath };
+
+    auto resultSet = rdbStore->QuerySql(sql, bindArgs);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false,
+        "Query failed for lPath: %{public}s", DfxUtils::GetSafePath(lPath).c_str());
+
+    if (resultSet->GoToFirstRow() == E_OK) {
+        existingAlbumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        resultSet->Close();
+        return true;
+    }
+    MEDIA_ERR_LOG("No existing album found for lPath: %{public}s", DfxUtils::GetSafePath(lPath).c_str());
+    resultSet->Close();
+    return false;
+}
+
+AlbumCreateResult GetOrCreateAlbumId(AlbumAccurateRefresh &albumRefresh,
+    const shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    const MoveDirData &moveDirData, const AlbumDetailInfo &detail, int32_t &albumId)
+{
+    std::string newLPath = ComputeNewLPath(moveDirData.oldLPath, detail.albumLPath, moveDirData.newLPath);
+    if (newLPath.empty()) {
+        MEDIA_ERR_LOG("ComputeNewLPath failed, oldLPath: %{public}s, detailLPath: %{public}s",
+            DfxUtils::GetSafePath(moveDirData.oldLPath).c_str(), DfxUtils::GetSafePath(detail.albumLPath).c_str());
+        return AlbumCreateResult::FAILED;
+    }
+    std::string newAlbumName = ComputeNewAlbumName(
+        moveDirData.oldLPath, moveDirData.newAlbumName, detail.albumLPath, detail.albumName);
+
+    int32_t existingAlbumId = -1;
+    if (QueryExistingAlbumByLPath(rdbStore, newLPath, existingAlbumId)) {
+        albumId = existingAlbumId;
+        return AlbumCreateResult::MERGED;
+    }
+
+    ValuesBucket values;
+    values.PutString(PhotoAlbumColumns::ALBUM_NAME, newAlbumName);
+    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, detail.albumType);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, detail.albumSubtype);
+    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, newLPath);
+
+    int64_t newRowId = 0;
+    int32_t ret = albumRefresh.Insert(newRowId, PhotoAlbumColumns::TABLE, values);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, AlbumCreateResult::FAILED,
+        "Insert album failed, ret: %{public}d, lPath: %{public}s",
+        ret, DfxUtils::GetSafePath(newLPath).c_str());
+
+    albumId = static_cast<int32_t>(newRowId);
+    return AlbumCreateResult::CREATED;
+}
+
+bool CreateAlbumsByLPathReplace(MoveDirData &moveDirData,
+    const shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
     CHECK_AND_RETURN_RET_LOG(!moveDirData.albumDetails.empty(), false, "albumDetails is empty");
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
 
     AlbumAccurateRefresh albumRefresh;
 
     for (const auto &detail : moveDirData.albumDetails) {
-        std::string newLPathForThisAlbum =
-            ComputeNewLPath(moveDirData.oldLPath, detail.albumLPath, moveDirData.newLPath);
-        if (newLPathForThisAlbum.empty()) {
-            continue;
+        int32_t albumId = -1;
+        auto result = GetOrCreateAlbumId(albumRefresh, rdbStore, moveDirData, detail, albumId);
+        CHECK_AND_RETURN_RET_LOG(result != AlbumCreateResult::FAILED, false,
+            "GetOrCreateAlbumId failed for oldAlbumId: %{public}d", detail.albumId);
+
+        moveDirData.albumIdMap[detail.albumId] = albumId;
+        if (result == AlbumCreateResult::CREATED) {
+            moveDirData.newAlbumIdStrings.push_back(to_string(albumId));
         }
-
-        std::string nameForNewAlbum = ComputeNewAlbumName(moveDirData.oldLPath, moveDirData.newAlbumName,
-            detail.albumLPath, detail.albumName);
-
-        ValuesBucket values;
-        values.PutString(PhotoAlbumColumns::ALBUM_NAME, nameForNewAlbum);
-        values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, detail.albumType);
-        values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, detail.albumSubtype);
-        values.PutString(PhotoAlbumColumns::ALBUM_LPATH, newLPathForThisAlbum);
-
-        int64_t newRowId = 0;
-        int32_t ret = albumRefresh.Insert(newRowId, PhotoAlbumColumns::TABLE, values);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK && newRowId > 0, false,
-            "Insert album failed, ret: %{public}d, newRowId: %{public}" PRId64, ret, newRowId);
-
-        moveDirData.albumIdMap[detail.albumId] = static_cast<int32_t>(newRowId);
-        moveDirData.newAlbumIdStrings.push_back(to_string(static_cast<int32_t>(newRowId)));
-        MEDIA_INFO_LOG("New album created, oldId: %{public}d -> newId: %{public}d, "
-            "lpath: %{public}s -> %{public}s, name: %{public}s -> %{public}s",
-            detail.albumId, static_cast<int32_t>(newRowId),
-            DfxUtils::GetSafePath(detail.albumLPath).c_str(),
-            DfxUtils::GetSafePath(newLPathForThisAlbum).c_str(),
-            detail.albumName.c_str(), nameForNewAlbum.c_str());
     }
     CHECK_AND_RETURN_RET_LOG(!moveDirData.albumIdMap.empty(), false, "albumIdMap is empty after creation");
-    CHECK_AND_RETURN_RET_LOG(albumRefresh.NotifyAddAlbums(moveDirData.newAlbumIdStrings) == E_OK, false,
-        "AlbumAccurateRefresh NotifyAddAlbums failed");
-    
-    // 立即发送新相册新增的旧通知
-    MediaFileMonitorRdbUtils::NotifyAlbums(moveDirData.newAlbumIdStrings,
-        AlbumNotifyType::COMMON_ALBUM, NotifyType::NOTIFY_ADD);
-    MEDIA_INFO_LOG("New albums created and notified, count: %{public}zu", moveDirData.newAlbumIdStrings.size());
-    
+    MEDIA_INFO_LOG("Albums processed, created: %{public}zu, merged: %{public}zu",
+        moveDirData.newAlbumIdStrings.size(),
+        moveDirData.albumIdMap.size() - moveDirData.newAlbumIdStrings.size());
+    if (!moveDirData.newAlbumIdStrings.empty()) {
+        CHECK_AND_PRINT_LOG(albumRefresh.NotifyAddAlbums(moveDirData.newAlbumIdStrings) == E_OK,
+            "AlbumAccurateRefresh NotifyAddAlbums failed");
+        MediaFileMonitorRdbUtils::NotifyAlbums(moveDirData.newAlbumIdStrings,
+            AlbumNotifyType::COMMON_ALBUM, NotifyType::NOTIFY_ADD);
+    }
     return true;
 }
 
@@ -350,10 +398,10 @@ bool QueryMoveDirData(const shared_ptr<MediaLibraryRdbStore> &rdbStore, MoveDirD
     return true;
 }
 
-bool SwapAlbums(MoveDirData &moveDirData)
+bool SwapAlbums(MoveDirData &moveDirData, const shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
     CHECK_AND_RETURN_RET_LOG(
-        CreateAlbumsByLPathReplace(moveDirData),
+        CreateAlbumsByLPathReplace(moveDirData, rdbStore),
         false, "CreateAlbumsByLPathReplace failed");
 
     CHECK_AND_RETURN_RET_LOG(DeleteAlbumsByIds(moveDirData.oldAlbumIds),
@@ -425,7 +473,7 @@ bool MoveFileManagerDir(const std::string &oldPath, const std::string &newPath,
     CHECK_AND_RETURN_RET_LOG(MarkAssetsTimePending(moveDirData.oldAlbumIds, -1), false,
         "Mark assets time_pending failed");
     // 新增、删除相册
-    CHECK_AND_RETURN_RET_LOG(SwapAlbums(moveDirData), false, "Swap albums failed");
+    CHECK_AND_RETURN_RET_LOG(SwapAlbums(moveDirData, rdbStore), false, "Swap albums failed");
     // 刷新数据库资产（owner_album_id, storage_path, time_pending）
     CHECK_AND_RETURN_RET_LOG(RefreshAssetsForDirMove(moveDirData.albumIdMap, moveDirData.dataList,
         moveDirData.oldPath, moveDirData.newPath),

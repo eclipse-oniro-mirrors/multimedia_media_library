@@ -195,7 +195,7 @@ void CloudLakeFileHandler::HandleMetaChanged(int32_t fileId)
     HandleLakeFileRename(assetRefresh, lakeData);
 
     if (!moveAssetsFromLakeList.empty()) {
-        LakeFileOperations::MoveAssetsFromLake(moveAssetsFromLakeList);
+        LakeFileOperations::MoveAssetsFromLake(assetRefresh, moveAssetsFromLakeList);
     }
     if (!moveAssetsToLakeList.empty()) {
         LakeFileOperations::MoveAssetsToLake(assetRefresh, moveAssetsToLakeList);

@@ -3864,11 +3864,11 @@ int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &
     set<string> albumIds;
     MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets(fileIds, albumIds);
     MediaLibraryPhotoOperations::UpdateSourcePath(fileIds);
-#ifdef MEDIALIBRARY_LAKE_SUPPORT
-    int32_t ret = LakeFileOperations::MoveAssetsFromLake(fileIds);
-    CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to move assets from lake.");
-#endif
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::TRASH_PHOTOS_BUSSINESS_NAME);
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+    int32_t ret = LakeFileOperations::MoveAssetsFromLake(assetRefresh, fileIds);
+    CHECK_AND_PRINT_LOG(ret >= 0, "Failed to move assets from lake.");
+#endif
     int32_t res = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, fileIds, false);
     CHECK_AND_PRINT_LOG(res == E_OK, "Failed to move assets from file manager.");
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT

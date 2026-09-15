@@ -33,12 +33,15 @@ public:
     EXPORT virtual ~MediaFileInterworkScanner() = default;
     EXPORT static MediaFileInterworkScanner* GetInstance();
     EXPORT void ScanFileManager();
+    EXPORT void SetStopFlag(bool flag);
+    EXPORT bool GetStopFlag();
 private:
     MediaFileInterworkScanner() = default;
     std::mutex asyncTaskMutex_;  // 异步任务互斥锁
     std::atomic<bool> isAsyncTaskRunning_{false};  // 异步任务运行状态标志
     std::thread taskThread_;
     map<std::string, int32_t> albumCache_;
+    std::atomic<bool> stopFlag_{false};
 
     int32_t GetTaskStatus();
     int32_t SetTaskStatus(int32_t status);
@@ -70,6 +73,9 @@ private:
     int32_t BatchInsert(std::vector<RestoreFileInfo> &files);
     int32_t HandlePhotosRestore(const std::vector<std::string> &files);
     int32_t ExecutePhaseTwo();
+    int32_t RepairDateAdded();
+    int32_t RepairDateAddedBatch(const std::map<int32_t, std::string> &fileIdAndPaths, int32_t &processedCount);
+    void InitRepairStatus();
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_INTERWORKING_SCANNER_H

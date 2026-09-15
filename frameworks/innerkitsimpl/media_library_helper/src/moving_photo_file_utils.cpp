@@ -1293,6 +1293,79 @@ int32_t MovingPhotoFileUtils::GetLivePhotoCoverPosition(const std::string livePh
     return E_OK;
 }
 
+static void GetLivePhotoDuration(shared_ptr<AVMetadataHelper> &helper, int32_t &duration)
+{
+    if (helper == nullptr) {
+        MEDIA_ERR_LOG("AV metadata helper is null");
+        return;
+    }
+    unordered_map<int32_t, string> resultMap = helper->ResolveMetadata();
+    if (resultMap.find(AV_KEY_DURATION) == resultMap.end()) {
+        MEDIA_ERR_LOG("GetLivePhotoDuratio failed, AV_KEY_DURATION does not exist");
+        return;
+    }
+    string durationStr = resultMap.at(AV_KEY_DURATION);
+    duration = std::atoi(durationStr.c_str());
+}
+
+int32_t MovingPhotoFileUtils::GetLivePhotoCoverPositionAndDuration(const std::string livePhotoPath,
+    int64_t &coverPosition, int32_t &duration)
+{
+    string absLivePhotoPath;
+    if (!PathToRealPath(livePhotoPath, absLivePhotoPath)) {
+        MEDIA_ERR_LOG("file is not real path: %{private}s, errno: %{public}d", livePhotoPath.c_str(), errno);
+        return E_HAS_FS_ERROR;
+    }
+
+    UniqueFd livePhotoFd(open(absLivePhotoPath.c_str(), O_RDONLY));
+    if (livePhotoFd.Get() < 0) {
+        MEDIA_ERR_LOG("Failed to open %{private}s, errno: %{public}d", absLivePhotoPath.c_str(), errno);
+        return E_HAS_FS_ERROR;
+    }
+
+    int64_t imageSize = 0;
+    int64_t videoSize = 0;
+    int64_t extraDataSize = 0;
+    int32_t err = GetMovingPhotoDetailedSize(livePhotoFd.Get(), imageSize, videoSize, extraDataSize);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to get detailed size of moving photo");
+    struct stat64 st;
+    CHECK_AND_RETURN_RET_LOG(fstat64(livePhotoFd.Get(), &st) == 0, E_HAS_FS_ERROR,
+        "Failed to get file state of live photo, errno:%{public}d", errno);
+
+    shared_ptr<AVMetadataHelper> helper = AVMetadataHelperFactory::CreateAVMetadataHelper();
+    if (helper == nullptr) {
+        MEDIA_ERR_LOG("AV metadata helper is null");
+        return E_AVMETADATA;
+    }
+
+    err = helper->SetSource(livePhotoFd.Get(), imageSize, videoSize, AV_META_USAGE_META_ONLY);
+    if (err != 0) {
+        MEDIA_ERR_LOG("SetSource failed for the given fd, err = %{public}d", err);
+        return E_AVMETADATA;
+    }
+    GetLivePhotoDuration(helper, duration);
+
+    std::shared_ptr<Meta> meta = helper->GetAVMetadata();
+    shared_ptr<Meta> customMeta = make_shared<Meta>();
+    bool isValid = meta->GetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+    if (!isValid || customMeta == nullptr) {
+        MEDIA_WARN_LOG("Unable to retrieve customInfo from Meta");
+        customMeta = nullptr;
+        return ParseLivePhotoCoverPosition(livePhotoFd, coverPosition, helper);
+    }
+
+    float metaCoverPosition = 0.0f;
+    isValid = customMeta->GetData(PHOTO_DATA_VIDEO_COVER_TIME, metaCoverPosition);
+    if (!isValid) {
+        MEDIA_INFO_LOG("Video of moving photo does not contain cover position");
+        return ParseLivePhotoCoverPosition(livePhotoFd, coverPosition, helper);
+    }
+    // convert cover position from ms(float) to us(int64_t)
+    constexpr int32_t MS_TO_US = 1000;
+    coverPosition = static_cast<int64_t>(metaCoverPosition * MS_TO_US);
+    return E_OK;
+}
+
 int32_t MovingPhotoFileUtils::GetVersionAndFrameNum(const string &tag,
     uint32_t &version, uint32_t &frameIndex, bool &hasCinemagraphInfo)
 {

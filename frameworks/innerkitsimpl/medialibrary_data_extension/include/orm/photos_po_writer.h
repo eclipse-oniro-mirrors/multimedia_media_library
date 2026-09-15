@@ -129,6 +129,10 @@ private:
         {PhotoColumn::PHOTO_CLOUD_VERSION, {&PhotosPoWriter::GetCloudVersion, &PhotosPoWriter::SetCloudVersion}},
         {PhotoColumn::PHOTO_LCD_SIZE, {&PhotosPoWriter::GetLcdSize, &PhotosPoWriter::SetLcdSize}},
         {PhotoColumn::PHOTO_THUMB_SIZE, {&PhotosPoWriter::GetThumbSize, &PhotosPoWriter::SetThumbSize}},
+        {PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, {&PhotosPoWriter::GetSupportedDeferredEffects,
+            &PhotosPoWriter::SetSupportedDeferredEffects}},
+        {PhotoColumn::DEFERRED_EFFECT_STATUS, {&PhotosPoWriter::GetDeferredEffectsStatus,
+            &PhotosPoWriter::SetDeferredEffectsStatus}},
         {MediaColumn::MEDIA_PACKAGE_NAME, {&PhotosPoWriter::GetPackageName, &PhotosPoWriter::SetPackageName}},
         {PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE,
             {&PhotosPoWriter::GetSouthDeviceType, &PhotosPoWriter::SetSouthDeviceType}},
@@ -281,6 +285,10 @@ private:
     bool GetLcdSize(std::string &val);
     void SetThumbSize(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetThumbSize(std::string &val);
+    void SetSupportedDeferredEffects(std::variant<int32_t, int64_t, double, std::string> &val);
+    void SetDeferredEffectsStatus(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetSupportedDeferredEffects(std::string &val);
+    bool GetDeferredEffectsStatus(std::string &val);
     std::string GetStringValByPrecision(const double doubleVal, const int32_t precision);
     void SetEditDataExist(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetEditDataExist(std::string &val);

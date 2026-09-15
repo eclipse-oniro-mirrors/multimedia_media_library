@@ -594,8 +594,9 @@ bool MediaFileMonitorRdbUtils::HandleFileManagerCloudAssets(
         }
     }
 
-    // 处理端云合一图：更新 position 为 CLOUD
+    // 处理端云合一图：创建dentry文件后更新 position 为 CLOUD
     if (!updateFileIds.empty()) {
+        FileManagerParser::CreateDentryFilesByFileIds(updateFileIds);
         NativeRdb::AbsRdbPredicates updatePredicates(PhotoColumn::PHOTOS_TABLE);
         updatePredicates.In(MediaColumn::MEDIA_ID, updateFileIds);
         FileManagerParser::HandleUpdateCloudAsset(updatePredicates, PhotoPositionType::CLOUD);

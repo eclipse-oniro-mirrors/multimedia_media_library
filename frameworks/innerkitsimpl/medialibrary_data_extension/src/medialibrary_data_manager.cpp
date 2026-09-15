@@ -4001,6 +4001,8 @@ bool MediaLibraryDataManager::IsSupportHmos()
 
 void MediaLibraryDataManager::SetIsLakeAssetScanned(bool isScanned)
 {
+    CHECK_AND_RETURN_LOG(FileScanUtils::IsDefaultAccount(), "Privacy account no need to set lake asset scan status");
+
     scanStatus_ = isScanned ? "true" : "false";
     auto ret = system::SetParameter("multimedia.medialibrary.lake_asset.scan_status", scanStatus_);
     MEDIA_INFO_LOG("anco_media SetIsLakeAssetScanned[%{public}d], ret: %{public}d", isScanned, ret);
@@ -4015,7 +4017,7 @@ void MediaLibraryDataManager::ScanLakeAsset()
         return;
     }
 
-    if (IsLakeAssetScanned()) {
+    if (FileScanUtils::IsDefaultAccount() && IsLakeAssetScanned()) {
         return;
     }
 

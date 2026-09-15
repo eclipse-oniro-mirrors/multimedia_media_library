@@ -837,7 +837,9 @@ HWTEST_F(CloudMediaPhotoHandlerOnFetchRecordsTest, OnDentryFileInsert, TestSize.
                                                        "sourcePath",
                                                        "supportedWatermarkType",
                                                        "strongAssociation",
-                                                       "is_style_photo"};
+                                                       "is_style_photo"
+                                                       "supported_deferred_effects",
+                                                       "deferred_effect_status"};
     CloudDataUtils utils;
     for (auto cloudId : cloudIds) {
         ret = photosDao.GetPhotoByCloudId(photosList, cloudId, photo);

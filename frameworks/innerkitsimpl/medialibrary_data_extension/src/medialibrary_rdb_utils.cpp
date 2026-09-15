@@ -2132,8 +2132,8 @@ int32_t MediaLibraryRdbUtils::UpdateTrashedAssetOnAlbum(const shared_ptr<MediaLi
             "Update failed on trashed, album id is: %{public}s", albumId.c_str());
         assetRefresh.RefreshAlbum();
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
-        int32_t ret = LakeFileOperations::MoveAssetsFromLake(fileAssetsIds);
-        CHECK_AND_PRINT_LOG(ret == E_OK, "trash inner anco file error");
+        int32_t ret = LakeFileOperations::MoveAssetsFromLake(assetRefresh, fileAssetsIds);
+        CHECK_AND_PRINT_LOG(ret >= 0, "trash inner anco file error");
         ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, fileAssetsIds, true);
         CHECK_AND_PRINT_LOG(ret == E_OK, "trash file manager asset error");
 #endif

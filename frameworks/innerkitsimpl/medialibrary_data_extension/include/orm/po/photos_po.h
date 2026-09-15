@@ -84,6 +84,8 @@ public:
     std::optional<int64_t> baseVersion;               // PhotoColumn::PHOTO_CLOUD_VERSION
     std::optional<std::string> recordType;            // PhotoColumn::PHOTO_CLOUD_ID
     std::optional<std::string> recordId;              // PhotoColumn::PHOTO_CLOUD_ID
+    std::optional<int32_t> supportedDeferredEffects;              // PhotoColumn::SUPPORTED_DEFERRED_EFFECTS
+    std::optional<int32_t> deferredEffectStatus;              // PhotoColumn::DEFERRED_EFFECT_STATUS
     std::optional<bool> isNew;
     std::optional<int64_t> lcdVisitTime;              // PhotoColumn::PHOTO_LCD_VISIT_TIME
     std::optional<int64_t> thumbnailReady;            // PhotoColumn::PHOTO_THUMBNAIL_READY

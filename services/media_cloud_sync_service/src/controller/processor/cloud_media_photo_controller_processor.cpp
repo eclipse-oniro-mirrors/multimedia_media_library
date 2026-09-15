@@ -176,6 +176,8 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.supportedWatermarkType = record.supportedWatermarkType.value_or(0);
     photosVo.musicMasterMode = record.musicMasterMode.value_or(0);
     photosVo.isStylePhoto = record.isStylePhoto.value_or(0);
+    photosVo.supportedDeferredEffects = record.supportedDeferredEffects.value_or(0);
+    photosVo.deferredEffectStatus = record.deferredEffectStatus.value_or(-1);
     photosVo.strongAssociation = record.strongAssociation.value_or(0);
     photosVo.fileId = record.fileId.value_or(0);
     photosVo.data = record.data.value_or("");
@@ -292,6 +294,8 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.attributesSupportedWatermarkType = photosVo.supportedWatermarkType;
     data.attributesMusicMasterMode = photosVo.musicMasterMode;
     data.attributesIsStylePhoto = photosVo.isStylePhoto;
+    data.supportedDeferredEffects = photosVo.supportedDeferredEffects;
+    data.deferredEffectsStatus = photosVo.deferredEffectStatus;
     data.attributesStrongAssociation = photosVo.strongAssociation;
     data.attributesUniqueId = photosVo.uniqueId;
     data.attributesPackageName = photosVo.packageName;

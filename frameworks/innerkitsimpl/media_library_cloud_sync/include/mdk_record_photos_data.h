@@ -175,6 +175,10 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetEditedTimeMs(int64_t editedTimeMs);
     std::optional<std::string> GetEditDataCamera() const;
     MDKRecordPhotosData &SetEditDataCamera(const std::string &editDataCamera);
+    std::optional<int32_t> GetSupportedDeferredEffects() const;
+    MDKRecordPhotosData &SetSupportedDeferredEffects(const int32_t supportedDeferredEffects);
+    std::optional<int32_t> GetDeferredEffectsStatus() const;
+    MDKRecordPhotosData &SetDeferredEffectsStatus(const int32_t deferredEffectStatus);
     std::optional<int32_t> GetFileSourceType() const;
     MDKRecordPhotosData &SetFileSourceType(int32_t fileSourceType);
     std::optional<std::string> GetStoragePath() const;
