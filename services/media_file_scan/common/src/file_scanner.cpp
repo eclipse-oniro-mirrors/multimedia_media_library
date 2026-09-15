@@ -29,6 +29,7 @@
 #include "media_file_utils.h"
 #include "thumbnail_service.h"
 #include "medialibrary_tracer.h"
+#include "photo_album_column.h"
 
 using namespace std;
 
@@ -228,6 +229,14 @@ void FileScanner::UpdateAlbum()
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is null.");
     MediaLibraryRdbUtils::UpdateCommonAlbumInternal(rdbStore, albumIds_, true, true);
     MediaLibraryRdbUtils::UpdateCommonAlbumHiddenState(rdbStore, albumIds_);
+
+    // 补充相册通知
+    auto watch = MediaLibraryNotify::GetInstance();
+    for (const auto& albumId : albumIds_) {
+        CHECK_AND_BREAK_ERR_LOG(watch != nullptr, "watch is nullptr");
+        watch->Notify(MediaFileUtils::GetUriByExtrConditions(PhotoAlbumColumns::ALBUM_URI_PREFIX, albumId),
+            NotifyType::NOTIFY_UPDATE);
+    }
     albumIds_.clear();
 
     // 文件扫描触发的场景需要更新的系统相册
