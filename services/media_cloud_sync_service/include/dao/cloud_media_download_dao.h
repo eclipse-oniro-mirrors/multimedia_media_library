@@ -97,6 +97,7 @@ private:
         PhotoColumn::PHOTO_SUBTYPE,
         MediaColumn::MEDIA_HIDDEN,
         MediaColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
     };
     const uint32_t THM_TO_DOWNLOAD_MASK = 0x2;
     const uint32_t LCD_TO_DOWNLOAD_MASK = 0x1;

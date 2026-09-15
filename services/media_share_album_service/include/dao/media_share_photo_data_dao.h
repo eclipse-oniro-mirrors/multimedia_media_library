@@ -30,7 +30,7 @@ public:
     ~MediaSharePhotoDataDao() = default;
 
 public:
-    int32_t GetShareAlbumOwnerId(const std::string &data, std::vector<PhotosPo> &photosPos);
+    int32_t GetShareAlbumOwnerId(const std::string &cloudId, std::vector<PhotosPo> &photosPos);
 };
 
 }  // namespace OHOS::Media::ShareAlbum

@@ -21,12 +21,12 @@ namespace OHOS::Media::ShareAlbum {
 
 bool GetShareAlbumOwnerReqBody::Marshalling(MessageParcel &parcel) const
 {
-    return parcel.WriteString(data);
+    return parcel.WriteString(cloudId);
 }
 
 bool GetShareAlbumOwnerReqBody::Unmarshalling(MessageParcel &parcel)
 {
-    return parcel.ReadString(data);
+    return parcel.ReadString(cloudId);
 }
 
 bool GetShareAlbumOwnerRespBody::Marshalling(MessageParcel &parcel) const
@@ -43,7 +43,7 @@ std::string GetShareAlbumOwnerReqBody::ToString() const
 {
     std::stringstream ss;
     ss << "{"
-       << "\"data\": \"" << this->data << "\""
+       << "\"cloudId\": \"" << this->cloudId << "\""
        << "}";
     return ss.str();
 }

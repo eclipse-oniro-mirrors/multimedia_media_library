@@ -24,7 +24,7 @@ namespace OHOS::Media::ShareAlbum {
 
 class MediaSharePhotoDataService {
 public:
-    int32_t GetShareAlbumOwnerId(const std::string &data, std::string &shareAlbumOwner);
+    int32_t GetShareAlbumOwnerId(const std::string &cloudId, std::string &shareAlbumOwner);
 
 private:
     MediaSharePhotoDataDao photoDataDao_;

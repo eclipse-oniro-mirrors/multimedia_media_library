@@ -32,7 +32,7 @@ public:  // getter & setter
     virtual void SetCloudType(const int32_t cloudType) = 0;
 
 public:
-    virtual int32_t GetShareAlbumOwnerId(std::string data, std::string &ownerId) = 0;
+    virtual int32_t GetShareAlbumOwnerId(std::string cloudId, std::string &ownerId) = 0;
 };
 }  // namespace OHOS::Media::ShareAlbum
 #endif  // OHOS_MEDIA_SHARE_ALBUM_I_MEDIA_SHARE_PHOTO_DATA_CLIENT_H

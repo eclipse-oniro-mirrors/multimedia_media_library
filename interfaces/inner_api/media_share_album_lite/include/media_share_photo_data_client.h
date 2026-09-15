@@ -35,7 +35,7 @@ public:  // getter & setter
     void SetCloudType(const int32_t cloudType) override;
 
 public:
-    int32_t GetShareAlbumOwnerId(std::string data, std::string &ownerId) override;
+    int32_t GetShareAlbumOwnerId(std::string cloudId, std::string &ownerId) override;
 
 private:
     std::shared_ptr<IMediaSharePhotoDataClient> dataHandler_;

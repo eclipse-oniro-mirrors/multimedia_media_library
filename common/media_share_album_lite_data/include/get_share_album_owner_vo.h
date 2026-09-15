@@ -28,7 +28,7 @@ namespace OHOS::Media::ShareAlbum {
 
 class EXPORT GetShareAlbumOwnerReqBody : public IPC::IMediaParcelable {
 public:
-    std::string data;
+    std::string cloudId;
 
 public:
     virtual ~GetShareAlbumOwnerReqBody() = default;
