@@ -337,7 +337,7 @@ void DfxReporter::ReportAstcInfo(const LcdAndAstcCount& count)
 }
 
 void DfxReporter::ReportAlbumInfo(const std::string &albumName, int32_t albumImageCount, int32_t albumVideoCount,
-    bool isLocal)
+    bool isLocal, const std::string &albumInfo)
 {
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
@@ -346,7 +346,8 @@ void DfxReporter::ReportAlbumInfo(const std::string &albumName, int32_t albumIma
         "ALBUM_NAME", albumName,
         "ALBUM_IMAGE_COUNT", albumImageCount,
         "ALBUM_VIDEO_COUNT", albumVideoCount,
-        "IS_LOCAL", isLocal);
+        "IS_LOCAL", isLocal,
+        "ALBUM_INFO", albumInfo);
     if (ret != 0) {
         MEDIA_ERR_LOG("ReportAlbumInfo error:%{public}d", ret);
     }
@@ -788,7 +789,11 @@ void DfxReporter::ReportPhotoSizeAndResolutionInfo(const QuerySizeAndResolution&
         "CACHE_ROM_SIZE", querySizeAndResolution.cacheRomSize,
         "HIGHLIGHT_ROM_SIZE", querySizeAndResolution.highlightRomSize,
         "THUMBNAIL_ROM_SIZE", querySizeAndResolution.ThumbnailRomSize,
-        "EDITDATA_ROM_SIZE", querySizeAndResolution.EditdataRomSize);
+        "EDITDATA_ROM_SIZE", querySizeAndResolution.EditdataRomSize,
+        "THUMB_DIR_ROM_SIZE", querySizeAndResolution.thumbDirRomSize,
+        "EDIT_DATA_DIR_ROM_SIZE", querySizeAndResolution.editDataDirRomSize,
+        "KVDB_DIR_ROM_SIZE", querySizeAndResolution.kvdbDirRomSize,
+        "DENTRY_ROM_SIZE", querySizeAndResolution.dentryRomSize);
     if (ret != 0) {
         MEDIA_ERR_LOG("Report ReportPhotoSizeAndResolutionInfo error: %{public}d", ret);
     }

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <type_traits>
+#include <chrono>
 #define MLOG_TAG "AlbumOperation"
 
 #include "medialibrary_album_operations.h"
@@ -27,6 +28,7 @@
 #include "media_file_utils.h"
 #include "analysis_album_attribute_const.h"
 #include "dfx_utils.h"
+#include "dfx_manager.h"
 #include "hi_audit.h"
 #include "media_analysis_helper.h"
 #include "medialibrary_album_fusion_utils.h"
@@ -314,7 +316,13 @@ shared_ptr<ResultSet> MediaLibraryAlbumOperations::QueryAlbumOperation(
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, nullptr, "uniStore is nullptr!");
 
     if (cmd.GetOprnObject() == OperationObject::MEDIA_VOLUME) {
-        return PhotoStorageOperation().FindStorage(uniStore);
+        StorageQueryCache storageCache = {};
+        PhotoStorageOperation photoStorageOperation;
+        auto resultSet = photoStorageOperation.FindStorage(uniStore, storageCache);
+
+        DfxManager::GetInstance()->HandleImmediatePhotoInfoExtReport(storageCache);
+        
+        return resultSet;
     }
 
     string whereClause = cmd.GetAbsRdbPredicates()->GetWhereClause();

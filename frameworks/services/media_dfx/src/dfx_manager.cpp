@@ -15,6 +15,7 @@
 #define MLOG_TAG "DfxManager"
 
 #include <sstream>
+#include <chrono>
 #include "dfx_manager.h"
 #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "cloud_media_context.h"
@@ -503,6 +504,68 @@ static void HandleAlbumInfoByUploadStatus(std::shared_ptr<DfxReporter> &dfxRepor
     }
 }
 
+static void HandleSmartAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
+{
+    // Portrait album
+    DfxPortraitAlbumInfo portraitInfo;
+    DfxDatabaseUtils::QueryPortraitAlbumInfo(portraitInfo);
+    std::string portraitDetail = "visible:" + std::to_string(portraitInfo.visibleCount) +
+        ",hidden:" + std::to_string(portraitInfo.hiddenCount) +
+        ",named:" + std::to_string(portraitInfo.namedCount) +
+        ",unnamed:" + std::to_string(portraitInfo.unnamedCount) +
+        ",top10:" + portraitInfo.top10List;
+    dfxReporter->ReportAlbumInfo("PORTRAIT", 0, 0, false, portraitDetail);
+
+    // Group photo album
+    DfxGroupPhotoAlbumInfo groupPhotoInfo;
+    DfxDatabaseUtils::QueryGroupPhotoAlbumInfo(groupPhotoInfo);
+    std::string groupPhotoDetail = "total:" + std::to_string(groupPhotoInfo.totalCount) +
+        ",top10:" + groupPhotoInfo.top10List;
+    dfxReporter->ReportAlbumInfo("GROUP_PHOTO", 0, 0, false, groupPhotoDetail);
+
+    // Classify album
+    DfxClassifyAlbumInfo classifyInfo;
+    DfxDatabaseUtils::QueryClassifyAlbumInfo(classifyInfo);
+    std::string classifyDetail = "total:" + std::to_string(classifyInfo.totalCount) +
+        ",top10:" + classifyInfo.top10List;
+    dfxReporter->ReportAlbumInfo("CLASSIFY", 0, 0, false, classifyDetail);
+
+    // City album
+    DfxCityAlbumInfo cityInfo;
+    DfxDatabaseUtils::QueryCityAlbumInfo(cityInfo);
+    std::string cityDetail = "total:" + std::to_string(cityInfo.totalCount) +
+        ",top10:" + cityInfo.top10List;
+    dfxReporter->ReportAlbumInfo("GEOGRAPHY_CITY", 0, 0, false, cityDetail);
+
+    // Geography photo
+    DfxGeographyPhotoInfo geoInfo;
+    DfxDatabaseUtils::QueryGeographyPhotoInfo(geoInfo);
+    std::string geoDetail = "location:" + std::to_string(geoInfo.locationPhotoCount) +
+        ",local:" + std::to_string(geoInfo.localCount) +
+        ",cloud:" + std::to_string(geoInfo.cloudCount);
+    dfxReporter->ReportAlbumInfo("GEOGRAPHY_LOCATION", 0, 0, false, geoDetail);
+
+    // Highlight album
+    DfxHighlightAlbumInfo highlightInfo;
+    DfxDatabaseUtils::QueryHighlightAlbumInfo(highlightInfo);
+    std::string highlightDetail = "visible:" + std::to_string(highlightInfo.visibleCount) +
+        ",hidden:" + std::to_string(highlightInfo.hiddenCount) +
+        ",top10:" + highlightInfo.top10List;
+    dfxReporter->ReportAlbumInfo("HIGHLIGHT", 0, 0, false, highlightDetail);
+
+    // Shooting mode album
+    DfxShootingModeAlbumInfo shootingModeInfo;
+    DfxDatabaseUtils::QueryShootingModeAlbumInfo(shootingModeInfo);
+    std::string shootingModeDetail = "total:" + std::to_string(shootingModeInfo.totalCount) +
+        ",top10:" + shootingModeInfo.top10List;
+    dfxReporter->ReportAlbumInfo("SHOOTING_MODE", 0, 0, false, shootingModeDetail);
+
+    // Orphan analysis album count
+    int32_t orphanCount = DfxDatabaseUtils::QueryOrphanAnalysisAlbumCount();
+    std::string orphanDetail = "orphan:" + std::to_string(orphanCount);
+    dfxReporter->ReportAlbumInfo("ORPHAN_ANALYSIS", 0, 0, false, orphanDetail);
+}
+
 static void HandleAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
 {
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::IMAGE));
@@ -512,6 +575,7 @@ static void HandleAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::TRASH));
     HandleAlbumInfoByUploadStatus(dfxReporter, false);
     HandleAlbumInfoByUploadStatus(dfxReporter, true);
+    HandleSmartAlbumInfo(dfxReporter);
 }
 
 static void HandleDirtyCloudPhoto(std::shared_ptr<DfxReporter> &dfxReporter)
@@ -851,7 +915,7 @@ void DfxManager::HandleCinematicVideoMultistageResult(bool multistageResult)
     dfxCollector_->CollectCinematicVideoMultistageResult(multistageResult);
 }
 
-static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
+static void GetPhotoAndPhotoExtSizesNoCache(QuerySizeAndResolution &queryInfo)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is null");
@@ -880,13 +944,55 @@ static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
     queryInfo.localImageRomSize = std::to_string(localPhotoSizeResult.localImageSize);
     queryInfo.localVideoRomSize = std::to_string(localPhotoSizeResult.localVideoSize);
     queryInfo.totalSize = std::to_string(totalSize);
+    queryInfo.thumbDirRomSize = std::to_string(photoStorageOperation.GetThumbDirSize());
+    queryInfo.editDataDirRomSize = std::to_string(photoStorageOperation.GetEditDataDirSize());
+    queryInfo.kvdbDirRomSize = std::to_string(photoStorageOperation.GetKVDBDirSize());
+    queryInfo.dentryRomSize = std::to_string(photoStorageOperation.GetDentrySize());
     MEDIA_INFO_LOG("localImageRomSize: %{public}s, localVideoRomSize: %{public}s, totalThumbnailSize: %{public}s, "
                    "totalEditdataSize: %{public}s, cacheSize: %{public}s, highlightSize: %{public}s, "
-                   "totalSize: %{public}s",
+                   "totalSize: %{public}s, thumbDirRomSize: %{public}s, editDataDirRomSize: %{public}s, "
+                   "kvdbDirRomSize: %{public}s, dentryRomSize: %{public}s",
                    queryInfo.localImageRomSize.c_str(), queryInfo.localVideoRomSize.c_str(),
                    queryInfo.ThumbnailRomSize.c_str(), queryInfo.EditdataRomSize.c_str(),
                    queryInfo.cacheRomSize.c_str(), queryInfo.highlightRomSize.c_str(),
-                   queryInfo.totalSize.c_str());
+                   queryInfo.totalSize.c_str(), queryInfo.thumbDirRomSize.c_str(),
+                   queryInfo.editDataDirRomSize.c_str(), queryInfo.kvdbDirRomSize.c_str(),
+                   queryInfo.dentryRomSize.c_str());
+}
+
+static void GetPhotoAndPhotoExtSizesFromCache(QuerySizeAndResolution &queryInfo, StorageQueryCache &cache)
+{
+    queryInfo.cacheRomSize = std::to_string(cache.cacheSize);
+    queryInfo.highlightRomSize = std::to_string(cache.highlightSize);
+    queryInfo.ThumbnailRomSize = std::to_string(cache.thumbnailResult.totalThumbnailSize);
+    queryInfo.EditdataRomSize = std::to_string(cache.editdataResult.totalEditdataSize);
+    queryInfo.localImageRomSize = std::to_string(cache.localPhotoResult.localImageSize);
+    queryInfo.localVideoRomSize = std::to_string(cache.localPhotoResult.localVideoSize);
+    queryInfo.totalSize = std::to_string(cache.totalSize);
+    queryInfo.thumbDirRomSize = std::to_string(cache.thumbDirSize);
+    queryInfo.editDataDirRomSize = std::to_string(cache.editDataDirSize);
+    queryInfo.kvdbDirRomSize = std::to_string(cache.kvdbDirSize);
+    queryInfo.dentryRomSize = std::to_string(cache.dentrySize);
+    MEDIA_INFO_LOG("localImageRomSize: %{public}s, localVideoRomSize: %{public}s, totalThumbnailSize: %{public}s, "
+                   "totalEditdataSize: %{public}s, cacheSize: %{public}s, highlightSize: %{public}s, "
+                   "totalSize: %{public}s, thumbDirRomSize: %{public}s, editDataDirRomSize: %{public}s, "
+                   "kvdbDirRomSize: %{public}s, dentryRomSize: %{public}s",
+                   queryInfo.localImageRomSize.c_str(), queryInfo.localVideoRomSize.c_str(),
+                   queryInfo.ThumbnailRomSize.c_str(), queryInfo.EditdataRomSize.c_str(),
+                   queryInfo.cacheRomSize.c_str(), queryInfo.highlightRomSize.c_str(),
+                   queryInfo.totalSize.c_str(), queryInfo.thumbDirRomSize.c_str(),
+                   queryInfo.editDataDirRomSize.c_str(), queryInfo.kvdbDirRomSize.c_str(),
+                   queryInfo.dentryRomSize.c_str());
+}
+
+static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
+{
+    GetPhotoAndPhotoExtSizesNoCache(queryInfo);
+}
+
+static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo, StorageQueryCache &cache)
+{
+    GetPhotoAndPhotoExtSizesFromCache(queryInfo, cache);
 }
 
 static void HandleGetSizeAndResolutionInfo(std::shared_ptr<DfxReporter>& dfxReporter)
@@ -894,12 +1000,32 @@ static void HandleGetSizeAndResolutionInfo(std::shared_ptr<DfxReporter>& dfxRepo
     MEDIA_INFO_LOG("HandleGetSizeAndResolutionInfo start");
     CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for HandleGetSizeAndResolutionInfo!");
     QuerySizeAndResolution queryInfo = {};
-    bool bQueryInfo = DfxDatabaseUtils::GetSizeAndResolutionInfo(queryInfo);
+    bool bQueryInfo = DfxDatabaseUtils::GetSizeAndResolutionInfo(queryInfo, true);
     CHECK_AND_RETURN_LOG(bQueryInfo, "E_OK");
     std::string photoMimeType;
     DfxDatabaseUtils::GetPhotoMimeType(photoMimeType);
     GetPhotoAndPhotoExtSizes(queryInfo);
     dfxReporter->ReportPhotoSizeAndResolutionInfo(queryInfo, photoMimeType);
+}
+
+static void HandleGetSizeAndResolutionInfo(std::shared_ptr<DfxReporter>& dfxReporter, StorageQueryCache &cache)
+{
+    MEDIA_INFO_LOG("HandleGetSizeAndResolutionInfo start (with cache)");
+    CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for HandleGetSizeAndResolutionInfo!");
+    QuerySizeAndResolution queryInfo = {};
+    bool bQueryInfo = DfxDatabaseUtils::GetSizeAndResolutionInfo(queryInfo, false);
+    CHECK_AND_RETURN_LOG(bQueryInfo, "E_OK");
+    std::string photoMimeType;
+    DfxDatabaseUtils::GetPhotoMimeType(photoMimeType);
+    GetPhotoAndPhotoExtSizes(queryInfo, cache);
+    dfxReporter->ReportPhotoSizeAndResolutionInfo(queryInfo, photoMimeType);
+}
+
+void DfxManager::HandleImmediatePhotoInfoExtReport(StorageQueryCache &cache)
+{
+    MEDIA_INFO_LOG("HandleImmediatePhotoInfoExtReport start");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    HandleGetSizeAndResolutionInfo(dfxReporter_, cache);
 }
 
 static void HandleCheckOneWeekDayTask(DfxData *data)
@@ -932,6 +1058,40 @@ void DfxManager::HandleOneWeekMissions()
         dfxWorker_->AddTask(oneWeekTask);
         int64_t time = MediaFileUtils::UTCTimeSeconds();
         prefs->PutLong(LAST_WEEK_REPORT_TIME, time);
+        prefs->FlushSync();
+    }
+}
+
+static void HandleCheckSixHourTask(DfxData *data)
+{
+    CHECK_AND_RETURN_LOG(data != nullptr, "Failed to get data for Handle Check Six Hour Task!");
+    auto *taskData = static_cast<StatisticData *>(data);
+    std::shared_ptr<DfxReporter> dfxReporter = taskData->dfxReporter_;
+    CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for Handle Check Six Hour Task!");
+    HandleGetSizeAndResolutionInfo(dfxReporter);
+}
+
+void DfxManager::HandleSixHourMissions()
+{
+    MEDIA_INFO_LOG("HandlePhotoInfo start");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+    int64_t lastReportTime = prefs->GetLong(LAST_SIX_HOUR_REPORT_TIME, 0);
+    if (MediaFileUtils::UTCTimeSeconds() - lastReportTime > SIX_HOUR && dfxWorker_ != nullptr) {
+        MEDIA_INFO_LOG("start handle statistic behavior");
+        auto *taskData = new (nothrow) StatisticData(dfxReporter_);
+        CHECK_AND_RETURN_LOG(taskData != nullptr, "Failed to alloc async data for Handle Six Hour Missions!");
+        auto sixHourTask = make_shared<DfxTask>(HandleCheckSixHourTask, taskData);
+        CHECK_AND_RETURN_LOG(sixHourTask != nullptr, "Failed to create dfx task.");
+        dfxWorker_->AddTask(sixHourTask);
+        int64_t time = MediaFileUtils::UTCTimeSeconds();
+        prefs->PutLong(LAST_SIX_HOUR_REPORT_TIME, time);
         prefs->FlushSync();
     }
 }

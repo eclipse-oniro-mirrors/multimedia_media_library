@@ -26,6 +26,7 @@
 #include "ipc_skeleton.h"
 #include "dfx_worker.h"
 #include "dfx_cloud_const.h"
+#include "photo_storage_operation.h"
 
 namespace OHOS {
 namespace Media {
@@ -97,6 +98,8 @@ public:
     void HandleSyncEnd(const int32_t stopReason = 0);
     void HandleReportSyncFault(const std::string& position, const SyncFaultEvent& event);
     void HandleOneWeekMissions();
+    void HandleSixHourMissions();
+    EXPORT void HandleImmediatePhotoInfoExtReport(StorageQueryCache &cache);
     EXPORT void HandleTranscodeAccessTime(const TranscodeAccessType type, TranscodeType transcodeType);
     EXPORT void HandleTranscodeFailed(const TranscodeErrorType type, TranscodeType transcodeType);
     EXPORT void HandleTranscodeCostTime(const int32_t costTime, TranscodeType transcodeType);
