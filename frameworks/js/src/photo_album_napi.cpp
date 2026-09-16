@@ -702,7 +702,7 @@ static napi_value ParseArgsCommitModify(napi_env env, napi_callback_info info,
     }
 
     if (MediaFileUtils::CheckAlbumName(photoAlbum->GetAlbumName()) < 0) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, 
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
             "The album name exceeds the length limit or contains invalid characters");
         return nullptr;
     }
