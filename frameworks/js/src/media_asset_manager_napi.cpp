@@ -2253,7 +2253,7 @@ napi_value MediaAssetManagerNapi::JSRequestMovingPhoto(napi_env env, napi_callba
     CHECK_ARGS(env, napi_get_cb_info(env, info, &(asyncContext->argc), asyncContext->argv, nullptr, nullptr),
         JS_INNER_FAIL);
     CHECK_NULLPTR_RET(ParseArgsForRequestMovingPhoto(env, asyncContext->argc, asyncContext->argv, asyncContext));
-    CHECK_COND(env, InitUserFileClient(env, info, asyncContext->userId), JS_INNER_FAIL,
+    CHECK_COND_WI(env, InitUserFileClient(env, info, asyncContext->userId), JS_INNER_FAIL,
         "User file service initialization failed, possible causes: 1. Database exception;"
         "2. File system exception; 3. IPC timeout. please check if the context is valid and retry");
     if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef) != napi_ok
