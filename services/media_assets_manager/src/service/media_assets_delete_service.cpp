@@ -429,7 +429,6 @@ int32_t MediaAssetsDeleteService::CreateLocalTrashedPhotosPo(const PhotosPo &pho
     this->ResetNullableFields(targetPhotoInfo);
     this->ResetFileSourceType(targetPhotoInfo);  // Set file_source_type to MEDIA (default).
     this->ResetSouthDeviceType(targetPhotoInfo);  // Reset south_device_type to default: SOUTH_DEVICE_NULL(0).
-    this->ResetUniqueId(targetPhotoInfo);
     this->ResetTransCode(targetPhotoInfo);
     if (photoInfo.ShouldHandleAsFileManager()) {
         this->ResetStoragePath(targetPhotoInfo);

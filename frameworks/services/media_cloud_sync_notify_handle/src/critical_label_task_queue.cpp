@@ -36,9 +36,10 @@ public:
     std::string uri_;
     int type_;
     bool is_send_;
+    int retry_count_{0};
 
     Element(std::string truncated_path, int id, int p, const std::string& element_uri,
-        int element_type, bool is_send, std::string original_path)
+        int element_type, bool is_send, std::string original_path, int retryCount = 0)
     {
         truncated_path_ = truncated_path;
         id_ = id;
@@ -50,6 +51,7 @@ public:
         type_ = element_type;
         is_send_ = is_send;
         original_path_ = original_path;
+        retry_count_ = retryCount;
     }
 
     bool IsExpired() const
@@ -157,7 +159,8 @@ TTLPriorityQueue::~TTLPriorityQueue()
         }
 
         auto newElement = std::make_shared<Element>(dataParams.truncated_path, dataParams.id,
-                    dataParams.priority, dataParams.uri, dataParams.type, dataParams.is_sent, dataParams.original_path);
+                    dataParams.priority, dataParams.uri, dataParams.type, dataParams.is_sent,
+                    dataParams.original_path, dataParams.retry_count);
 
         int realTimePriority = 2;
         int nonRealTimePriority = 1;
@@ -217,6 +220,7 @@ TTLPriorityQueue::~TTLPriorityQueue()
                 newQueue.push(topElement);
             } else {
                 signatures.erase(name);
+                attemptedThisSession_.erase(name);
                 std::string original_path = topElement->original_path_;
                 auto it = find(originalPathsInQueue.begin(),
                     originalPathsInQueue.end(), original_path);
@@ -266,7 +270,8 @@ TTLPriorityQueue::~TTLPriorityQueue()
             auto currentElement = pq.top();
             pq.pop();
             tempQueue.push(currentElement);
-            if (!currentElement->IsSent()) {
+            if (!currentElement->IsSent() &&
+                attemptedThisSession_.find(currentElement->truncated_path_) == attemptedThisSession_.end()) {
                 poppedElement = currentElement;
                 break;
             }
@@ -297,6 +302,7 @@ TTLPriorityQueue::~TTLPriorityQueue()
             params.type = pref->GetInt("CA_" + std::to_string(i) + "_TYPE", 0);
             params.added_time = pref->GetLong("CA_" + std::to_string(i) + "_ADDEDTIME", 0);
             params.is_sent = pref->GetBool("CA_" + std::to_string(i) + "_ISSENT", false);
+            params.retry_count = pref->GetInt("CA_" + std::to_string(i) + "_RETRYCOUNT", 0);
             reverseCriticalAssetsMap.emplace(params.truncated_path, i);
 
             criticalAssets.push_back(params);
@@ -331,7 +337,7 @@ TTLPriorityQueue::~TTLPriorityQueue()
 
         for (const auto& asset : criticalAssets) {
             auto elementFromXml = std::make_shared<Element>(asset.truncated_path, asset.id,
-                asset.priority, asset.uri, asset.type, asset.is_sent, asset.original_path);
+                asset.priority, asset.uri, asset.type, asset.is_sent, asset.original_path, asset.retry_count);
             pq.push(elementFromXml);
             signatures.insert(asset.truncated_path);
         }
@@ -393,6 +399,7 @@ TTLPriorityQueue::~TTLPriorityQueue()
         pref->PutInt("CA_" + std::to_string(slot) + "_TYPE", assetParam.type);
         pref->PutLong("CA_" + std::to_string(slot) + "_ADDEDTIME", assetParam.added_time);
         pref->PutBool("CA_" + std::to_string(slot) + "_ISSENT", assetParam.is_sent);
+        pref->PutInt("CA_" + std::to_string(slot) + "_RETRYCOUNT", assetParam.retry_count);
 
         pref->PutInt("CA_COUNT", count + 1);
         pref->FlushSync();
@@ -410,6 +417,7 @@ TTLPriorityQueue::~TTLPriorityQueue()
         pref->Delete("CA_" + std::to_string(slot) + "_TYPE");
         pref->Delete("CA_" + std::to_string(slot) + "_ADDEDTIME");
         pref->Delete("CA_" + std::to_string(slot) + "_ISSENT");
+        pref->Delete("CA_" + std::to_string(slot) + "_RETRYCOUNT");
     }
 
     void TTLPriorityQueue::RemovePreferenceCriticalAssets(const std::string &dpName)
@@ -487,6 +495,33 @@ TTLPriorityQueue::~TTLPriorityQueue()
             displayName.c_str(), isSent);
     }
 
+    void TTLPriorityQueue::UpdateRetryCountInXML(const std::string& displayName, int retryCount)
+    {
+        std::lock_guard<std::mutex> lock(xmlUpdateMutex);
+
+        MEDIA_INFO_LOG("updateRetryCountInXML start for display_name %{public}s, retryCount: %{public}d",
+            displayName.c_str(), retryCount);
+
+        std::shared_ptr<NativePreferences::Preferences> pref = nullptr;
+        int32_t errcode = ERR_OK;
+        pref = NativePreferences::PreferencesHelper::GetPreferences(CA_CONFIG_PATH, errcode);
+
+        CHECK_AND_RETURN_LOG(pref != nullptr, "pref is nullptr, errCode: %{public}d", errcode);
+
+        auto it = reverseCriticalAssetsMap.find(displayName);
+        if (it == reverseCriticalAssetsMap.end()) {
+            MEDIA_INFO_LOG("Element with display_name %{public}s not found in XML.", displayName.c_str());
+            return;
+        }
+
+        int slot = it->second;
+        pref->PutInt("CA_" + std::to_string(slot) + "_RETRYCOUNT", retryCount);
+        pref->FlushSync();
+
+        MEDIA_INFO_LOG("retry_count updated for display_name %{public}s to %{public}d",
+            displayName.c_str(), retryCount);
+    }
+
     void TTLPriorityQueue::PopInsertBack(const std::shared_ptr<Element>& element)
     {
         AssetParams params;
@@ -496,6 +531,7 @@ TTLPriorityQueue::~TTLPriorityQueue()
         params.priority = element->priority_;
         params.type = element->type_;
         params.uri = element->uri_;
+        params.retry_count = element->retry_count_;
         RemoveByName(element->truncated_path_);
         AddElement(params);
     }
@@ -532,33 +568,37 @@ TTLPriorityQueue::~TTLPriorityQueue()
         auto instance = MedialibraryRelatedSystemStateManager::GetInstance();
         CHECK_AND_RETURN_RET_LOG(instance != nullptr, false,
             "MedialibraryRelatedSystemStateManager instance is nullptr");
-        int32_t maxRetryCount = 3;
-        int32_t retryCount = 0;
-        int32_t res = -1;
-        while (res != 0 && retryCount < maxRetryCount) {
-            bool isWifiConnected = instance->IsNetAvailableInOnlyWifiCondition();
-            bool networkAvaliable = isWifiConnected
-                    || (instance->IsNetValidatedAtRealTime() && instance->IsCellularNetConnected());
-            CHECK_AND_RETURN_RET_LOG(networkAvaliable != false, false,
-                "MedialibraryRelatedSystemStateManager network is not connected");
-            retryCount++;
-            res = cloudAuditInstance->UploadInfoToAudit(element->type_, element->uri_, element->truncated_path_);
-            if (res != 0) {
-                MEDIA_DEBUG_LOG("UploadInfoToAudit Failed display_name %{public}s, retryCount %{public}d",
-                    element->truncated_path_.c_str(), retryCount);
-            }
+        bool isWifiConnected = instance->IsNetAvailableInOnlyWifiCondition();
+        bool networkAvaliable = isWifiConnected
+                || (instance->IsNetValidatedAtRealTime() && instance->IsCellularNetConnected());
+        CHECK_AND_RETURN_RET_LOG(networkAvaliable != false, false,
+            "MedialibraryRelatedSystemStateManager network is not connected");
+        int32_t res = cloudAuditInstance->UploadInfoToAudit(element->type_, element->uri_, element->truncated_path_);
+        if (res == 0) {
+            element->MarkAsSent();
+            UpdateIsSentInXML(element->truncated_path_, true);
+            MEDIA_DEBUG_LOG("UploadInfoToAudit success display_name %{public}s",
+                element->truncated_path_.c_str());
+            return true;
         }
-        // If 3 time upload failled
-        if (res != 0 && maxRetryCount == retryCount) {
-            MEDIA_DEBUG_LOG("UploadInfoToAudit Failed to upload to audit display_name %{public}s",
+        element->retry_count_++;
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            attemptedThisSession_.insert(element->truncated_path_);
+        }
+        int32_t newRetryCount = element->retry_count_;
+        UpdateRetryCountInXML(element->truncated_path_, newRetryCount);
+        MEDIA_INFO_LOG("UploadInfoToAudit Failed display_name %{public}s, retryCount %{public}d",
+            element->truncated_path_.c_str(), newRetryCount);
+        const int32_t maxRetryCount = 3;
+        if (newRetryCount >= maxRetryCount) {
+            MEDIA_WARN_LOG("UploadInfoToAudit reached max retry, give up display_name %{public}s",
                 element->truncated_path_.c_str());
             UpdatePhotoRiskStatus(element->truncated_path_,
                 static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS));
             RemoveByName(element->truncated_path_);
         }
-        element->MarkAsSent();
-        UpdateIsSentInXML(element->truncated_path_, true);
-        return true;
+        return false;
     }
 
     void TTLPriorityQueue::CheckConditions(bool &doPass, const int &priority)
@@ -598,7 +638,8 @@ TTLPriorityQueue::~TTLPriorityQueue()
             auto currentElement = pq.top();
             pq.pop();
             tempQueue.push(currentElement);
-            if (!currentElement->IsSent()) {
+            if (!currentElement->IsSent() &&
+                attemptedThisSession_.find(currentElement->truncated_path_) == attemptedThisSession_.end()) {
                 queueHasAssetToUpload = true;
                 if (currentElement->priority_ == realtimePriority) {
                     suitableRealtime = true;
@@ -626,6 +667,16 @@ TTLPriorityQueue::~TTLPriorityQueue()
     void TTLPriorityQueue::NotifyThread()
     {
         cv_.notify_one();
+    }
+
+    void TTLPriorityQueue::StartNewCriticalSession()
+    {
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            attemptedThisSession_.clear();
+        }
+        MEDIA_INFO_LOG("New critical session started, attemptedThisSession cleared");
+        NotifyThread();
     }
 
     void TTLPriorityQueue::CleanupExpiredItemsPeriodically()
