@@ -143,7 +143,6 @@ bool C2paUtils::HasImageSignature(const std::string &filePath)
     tracer.Start("C2paUtils::HasImageSignature");
     std::string absFilePath = GetRealPath(filePath);
     CHECK_AND_RETURN_RET_LOG(!absFilePath.empty(), false, "[c2pa] to real path failed");
-    CHECK_AND_RETURN_RET_LOG(CertInitialize() == E_OK, false, "[c2pa] CertInitialize failed");
 
     OHOS::TrustedService::ImageData imageData;
     SetImageData(imageData, absFilePath);
