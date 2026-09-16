@@ -92,6 +92,12 @@ group("test") {
     "unittest/medialibrary_album_cover_order_test:unittest",
     "unittest/medialibrary_migrate_live_photo_4d_pair_test:unittest",
     "unittest/medialibrary_fix_duplicate_unique_id_test:unittest",
+    "unittest/add_share_member_test:unittest",
+    "unittest/delete_member_share_album_test:unittest",
+    "unittest/delete_share_album_test:unittest",
+    "unittest/delete_share_member_test:unittest",
+    "unittest/set_share_album_name_test:unittest",
+    "unittest/update_share_member_status_test:unittest",
   ]
 
   deps_cloud_sync_unittest = [
