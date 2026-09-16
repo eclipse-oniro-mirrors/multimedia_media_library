@@ -19,8 +19,10 @@
 
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_share_album_lite_errno.h"
 #include "medialibrary_errno.h"
 
+#include <string>
 #include <vector>
 
 namespace OHOS::Media::ShareAlbum {
@@ -30,15 +32,13 @@ constexpr int32_t PHOTOS_NOT_TRASHED = 0;
 constexpr int32_t PHOTOS_IS_SHARED = 1;
 int32_t MediaSharePhotoDataService::GetShareAlbumOwnerId(const std::string &cloudId, std::string &shareAlbumOwner)
 {
-    constexpr int32_t ERR_NOT_FOUND = -1;
-    constexpr int32_t ERR_RESULT_NOT_SHARED = -3;
     std::vector<PhotosPo> photosPos;
 
     int32_t ret = this->photoDataDao_.GetShareAlbumOwnerId(cloudId, photosPos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetShareAlbumOwnerId, ret = %{public}d", ret);
     if (photosPos.empty()) {
         MEDIA_INFO_LOG("Empty result, cloudId:%{public}s", cloudId.c_str());
-        return ERR_NOT_FOUND;
+        return ERR_SHARE_ALBUM_NOT_FOUND;
     }
     if (photosPos.size() > 1) {
         MEDIA_INFO_LOG("More than one result found, cloudId:%{public}s", cloudId.c_str());
@@ -50,14 +50,14 @@ int32_t MediaSharePhotoDataService::GetShareAlbumOwnerId(const std::string &clou
     if (hidden == PHOTOS_HIDDEN || dateTrashed != PHOTOS_NOT_TRASHED) {
         MEDIA_INFO_LOG("File is hidden or trashed, hidden:%{public}d, dateTrashed:%{public}lld, cloudId:%{public}s",
             hidden, (long long)dateTrashed, cloudId.c_str());
-        return ERR_NOT_FOUND;
+        return ERR_SHARE_ALBUM_NOT_FOUND;
     }
 
     int32_t photoIsShared = photosInfo.isShared.value_or(0);
     if (photoIsShared != PHOTOS_IS_SHARED) {
         MEDIA_INFO_LOG("Photo is not shared album photo, is_shared:%{public}d, cloudId:%{public}s",
             photoIsShared, cloudId.c_str());
-        return ERR_RESULT_NOT_SHARED;
+        return ERR_SHARE_ALBUM_RESULT_NOT_SHARED;
     }
 
     shareAlbumOwner = photosInfo.shareAlbumOwner.value_or("");
