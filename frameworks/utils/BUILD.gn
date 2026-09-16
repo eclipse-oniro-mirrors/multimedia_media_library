@@ -67,6 +67,7 @@ ohos_static_library("permission_utils") {
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
@@ -97,6 +98,7 @@ ohos_static_library("post_event_utils") {
   sources = [ "src/post_event_utils.cpp" ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "ipc:ipc_core",
