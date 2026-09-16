@@ -176,17 +176,23 @@ static napi_value ParsePhotoAlbum(napi_env env, napi_value arg, shared_ptr<Photo
     napi_valuetype valueType;
     PhotoAlbumNapi* photoAlbumNapi;
     CHECK_ARGS(env, napi_typeof(env, arg, &valueType), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, valueType == napi_object, "Invalid argument type");
-    CHECK_ARGS(env, napi_unwrap(env, arg, reinterpret_cast<void**>(&photoAlbumNapi)), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, photoAlbumNapi != nullptr, "Failed to get PhotoAlbumNapi object");
+    CHECK_COND_WITH_MESSAGE(env, valueType == napi_object, "The album parameter must be of type Album");
+    CHECK_ARGS_WITH_ERRMSG(env, napi_unwrap(env, arg, reinterpret_cast<void**>(&photoAlbumNapi)), JS_INNER_FAIL,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
+    CHECK_COND_WITH_MESSAGE(env, photoAlbumNapi != nullptr,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
 
     auto photoAlbumPtr = photoAlbumNapi->GetPhotoAlbumInstance();
-    CHECK_COND_WITH_MESSAGE(env, photoAlbumPtr != nullptr, "photoAlbum is null");
+    CHECK_COND_WITH_MESSAGE(env, photoAlbumPtr != nullptr,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
     CHECK_COND_WITH_MESSAGE(env,
         photoAlbumPtr->GetResultNapiType() == ResultNapiType::TYPE_PHOTOACCESS_HELPER &&
-            PhotoAlbum::CheckPhotoAlbumType(photoAlbumPtr->GetPhotoAlbumType()) &&
-            PhotoAlbum::CheckPhotoAlbumSubType(photoAlbumPtr->GetPhotoAlbumSubType()),
-        "Unsupported type of photoAlbum");
+        PhotoAlbum::CheckPhotoAlbumType(photoAlbumPtr->GetPhotoAlbumType()) &&
+        PhotoAlbum::CheckPhotoAlbumSubType(photoAlbumPtr->GetPhotoAlbumSubType()),
+        "The album type is not supported, must be USER, SYSTEM, SMART, or SOURCE");
     photoAlbum = photoAlbumPtr;
     RETURN_NAPI_TRUE(env);
 }
@@ -202,7 +208,7 @@ napi_value MediaAlbumChangeRequestNapi::Constructor(napi_env env, napi_callback_
     napi_value thisVar = nullptr;
     shared_ptr<PhotoAlbum> photoAlbum = nullptr;
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, argc == ARGS_ONE, "Number of args is invalid");
+    CHECK_COND_WITH_MESSAGE(env, argc == ARGS_ONE, "The number of parameters is invalid, expected 1 parameter");
     CHECK_COND_WITH_MESSAGE(env, ParsePhotoAlbum(env, argv[PARAM0], photoAlbum), "Failed to parse album");
 
     unique_ptr<MediaAlbumChangeRequestNapi> obj = make_unique<MediaAlbumChangeRequestNapi>();
@@ -514,7 +520,9 @@ napi_value MediaAlbumChangeRequestNapi::JSGetAlbum(napi_env env, napi_callback_i
 
     auto changeRequest = asyncContext->objectInfo;
     auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
-    CHECK_COND(env, photoAlbum != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, photoAlbum != nullptr, JS_INNER_FAIL,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
     if (photoAlbum->GetAlbumId() > 0) {
         return PhotoAlbumNapi::CreatePhotoAlbumNapi(env, photoAlbum);
     }
@@ -734,18 +742,21 @@ napi_value MediaAlbumChangeRequestNapi::JSAddAssets(napi_env env, napi_callback_
 
     auto changeRequest = asyncContext->objectInfo;
     auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
-    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
+    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()) ||
-            PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
-        "Only user and highlight album can add assets");
+        PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
+        "Only user albums and highlight albums support addAssets, the current album type is not supported");
 
     vector<string> assetUriArray;
     CHECK_COND_WITH_MESSAGE(env, ParseAssetArray(env, asyncContext->argv[PARAM0], assetUriArray),
         "Failed to parse assets");
     if (!CheckDuplicatedAssetArray(assetUriArray, changeRequest->assetsToAdd_)) {
         NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The previous addAssets operation has contained the same asset");
+            "The assets array contains assets that were already added in a previous addAssets operation, "
+            "please remove duplicates");
         return nullptr;
     }
     changeRequest->assetsToAdd_.insert(changeRequest->assetsToAdd_.end(), assetUriArray.begin(), assetUriArray.end());
@@ -762,17 +773,20 @@ napi_value MediaAlbumChangeRequestNapi::JSRemoveAssets(napi_env env, napi_callba
 
     auto changeRequest = asyncContext->objectInfo;
     auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
-    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
+    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
-        "Only user album can remove assets");
+        "Only user albums support removeAssets, the current album type is not supported");
 
     vector<string> assetUriArray;
     CHECK_COND_WITH_MESSAGE(env, ParseAssetArray(env, asyncContext->argv[PARAM0], assetUriArray),
         "Failed to parse assets");
     if (!CheckDuplicatedAssetArray(assetUriArray, changeRequest->assetsToRemove_)) {
         NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The previous removeAssets operation has contained the same asset");
+            "The assets array contains assets that were already added in a previous addAssets operation, "
+            "please remove duplicates");
         return nullptr;
     }
     changeRequest->assetsToRemove_.insert(
@@ -818,7 +832,9 @@ napi_value MediaAlbumChangeRequestNapi::JSMoveAssetsImplement(napi_env env, napi
 
     auto changeRequest = asyncContext->objectInfo;
     auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
-    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
+    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
 
     shared_ptr<PhotoAlbum> targetAlbum = nullptr;
     CHECK_COND_WITH_MESSAGE(
@@ -1348,11 +1364,15 @@ napi_value MediaAlbumChangeRequestNapi::JSSetAlbumName(napi_env env, napi_callba
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::ParseArgsStringCallback(env, info, asyncContext, albumName) == napi_ok,
         "Failed to parse args");
-    CHECK_COND_WITH_MESSAGE(env, asyncContext->argc == ARGS_ONE, "Number of args is invalid");
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckAlbumName(albumName) == E_OK, "Invalid album name");
+    CHECK_COND_WITH_MESSAGE(env, asyncContext->argc == ARGS_ONE,
+        "The number of parameters is invalid, expected 1 parameter");
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckAlbumName(albumName) == E_OK,
+        "The album name contains unsupported characters or exceeds the length limit");
 
     auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
-    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
+    CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr,
+        "The album to be modified is invalid, the passed Album is not a valid instance "
+        "obtained from photoAccessHelper.getAlbums() or createAlbum()");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()) ||
         PhotoAlbum::IsSmartPortraitPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()) ||
@@ -1360,7 +1380,7 @@ napi_value MediaAlbumChangeRequestNapi::JSSetAlbumName(napi_env env, napi_callba
         PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()) ||
         PhotoAlbum::IsSourceAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()) ||
         PhotoAlbum::IsPetAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
-        "Only user source, highlight, pet, smart portrait album and group photo can set album name");
+        "Only user, source, highlight, smart portrait albums and group photos support setting album name");
     photoAlbum->SetAlbumName(albumName);
     asyncContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::SET_ALBUM_NAME);
     RETURN_NAPI_UNDEFINED(env);

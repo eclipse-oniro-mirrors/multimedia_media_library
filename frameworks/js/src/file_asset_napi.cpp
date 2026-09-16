@@ -1325,20 +1325,20 @@ static bool CheckDisplayNameInCommitModify(FileAssetAsyncContext *context)
         if (context->objectPtr->GetMediaType() != MediaType::MEDIA_TYPE_FILE) {
             if (MediaFileUtils::CheckDisplayName(context->objectPtr->GetDisplayName(), true) != E_OK) {
                 context->error = JS_E_DISPLAYNAME;
-                context->errorMsg = "Invalid displayName.";
+                context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
                 return false;
             }
         } else {
             if (MediaFileUtils::CheckFileDisplayName(context->objectPtr->GetDisplayName()) != E_OK) {
                 context->error = JS_E_DISPLAYNAME;
-                context->errorMsg = "Invalid displayName.";
+                context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
                 return false;
             }
         }
     } else {
         if (MediaFileUtils::CheckTitleCompatible(context->objectPtr->GetTitle()) != E_OK) {
             context->error = JS_E_DISPLAYNAME;
-            context->errorMsg = "Title is invalid.";
+            context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
             return false;
         }
     }
@@ -3018,7 +3018,7 @@ static void PhotoAccessHelperCreateTmpCompatibleDupExecute(napi_env env, void *d
 
     auto context = static_cast<FileAssetAsyncContext*>(data);
     if (context == nullptr || context->objectPtr == nullptr) {
-        NapiError::ThrowError(env, E_INNER_FAIL, "context or objectPtr is null");
+        NapiError::ThrowError(env, E_INNER_FAIL, "The asset parameter is not a valid PhotoAsset object");
         return;
     }
 
@@ -3088,7 +3088,8 @@ napi_value FileAssetNapi::PhotoAccessHelperCreateTmpCompatibleDup(napi_env env, 
 
     asyncContext->objectPtr = changeRequest->fileAssetPtr;
     auto fileAsset = asyncContext->objectPtr;
-    CHECK_COND(env, fileAsset != nullptr, JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID,
+        "The asset parameter is not a valid PhotoAsset object");
     if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
         NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
             "The current asset belongs to a shared album and does not support this operation");
@@ -3395,7 +3396,7 @@ napi_value FileAssetNapi::HandleDateTransitionKey(napi_env env, const string &ke
 {
     napi_value jsResult = nullptr;
     if (fileAssetPtr->GetMemberMap().count(key) == 0) {
-        NapiError::ThrowError(env, JS_E_FILE_KEY);
+        NapiError::ThrowError(env, JS_E_FILE_KEY, "The member name does not exist");
         return jsResult;
     }
 
@@ -3403,7 +3404,7 @@ napi_value FileAssetNapi::HandleDateTransitionKey(napi_env env, const string &ke
     if (m.index() == MEMBER_TYPE_INT64) {
         napi_create_int64(env, get<int64_t>(m), &jsResult);
     } else {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The member value type does not match");
         return jsResult;
     }
     return jsResult;
@@ -3443,7 +3444,7 @@ napi_value FileAssetNapi::UserFileMgrGet(napi_env env, napi_callback_info info)
 
     if (obj->fileAssetPtr->GetMemberMap().count(inputKey) == 0) {
         // no exist throw error
-        NapiError::ThrowError(env, JS_E_FILE_KEY);
+        NapiError::ThrowError(env, JS_E_FILE_KEY, "The member name does not exist");
         return jsResult;
     }
 
@@ -3463,7 +3464,7 @@ napi_value FileAssetNapi::UserFileMgrGet(napi_env env, napi_callback_info info)
     } else if (m.index() == MEMBER_TYPE_DOUBLE) {
         napi_create_double(env, get<double>(m), &jsResult);
     } else {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The member value type does not match");
         return jsResult;
     }
     return jsResult;
@@ -3523,7 +3524,7 @@ napi_value FileAssetNapi::UserFileMgrSet(napi_env env, napi_callback_info info)
         return jsResult;
     }
     if (!obj->HandleParamSet(inputKey, value, obj->fileAssetPtr->GetResultNapiType())) {
-        NapiError::ThrowError(env, JS_E_FILE_KEY);
+        NapiError::ThrowError(env, JS_E_FILE_KEY, "The member name does not exist");
         return jsResult;
     }
     return jsResult;
@@ -3790,7 +3791,7 @@ napi_value FileAssetNapi::UserFileMgrOpen(napi_env env, napi_callback_info info)
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrOpen(env, info, asyncContext, false));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -3804,7 +3805,7 @@ napi_value FileAssetNapi::JSGetReadOnlyFd(napi_env env, napi_callback_info info)
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrOpen(env, info, asyncContext, true));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -3923,18 +3924,20 @@ napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_
 {
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
-            "This interface can be called only by system apps with read permission");
+            "Permission verification failed. A non-system application calls a system API");
         return nullptr;
     }
     if (!HasReadPermission()) {
-        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE, "Have no read permission");
+        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE,
+            "Permission verification failed. The application does not have permission required to call the API");
         return nullptr;
     }
 
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrWithCachedOpen(env, info, asyncContext, true));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "PhotoAsset asset does not exist");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID,
+            "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -3953,9 +3956,10 @@ static napi_value ParseArgsUserFileMgrClose(napi_env env, napi_callback_info inf
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
 
     int32_t fd = 0;
-    CHECK_COND(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd), JS_ERR_PARAMETER_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd),
+        JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
     if (fd <= 0) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
         return nullptr;
     }
     context->fd = fd;
@@ -4036,7 +4040,7 @@ napi_value FileAssetNapi::UserFileMgrClose(napi_env env, napi_callback_info info
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrClose(env, info, asyncContext));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -4326,7 +4330,7 @@ napi_value FileAssetNapi::UserFileMgrSetUserComment(napi_env env, napi_callback_
         JS_ERR_PARAMETER_INVALID);
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     if (asyncContext->objectPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
 
@@ -4466,7 +4470,7 @@ napi_value FileAssetNapi::PhotoAccessHelperOpen(napi_env env, napi_callback_info
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsPhotoAccessHelperOpen(env, info, asyncContext, false));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -4484,9 +4488,10 @@ static napi_value ParseArgsPhotoAccessHelperClose(napi_env env, napi_callback_in
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
 
     int32_t fd = 0;
-    CHECK_COND(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd), JS_ERR_PARAMETER_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd),
+        JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
     if (fd <= 0) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
         return nullptr;
     }
     context->fd = fd;
@@ -4567,7 +4572,7 @@ napi_value FileAssetNapi::PhotoAccessHelperClose(napi_env env, napi_callback_inf
 
     CHECK_NULLPTR_RET(ParseArgsPhotoAccessHelperClose(env, info, asyncContext));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -4696,7 +4701,8 @@ napi_value FileAssetNapi::PhotoAccessHelperCloneAsset(napi_env env, napi_callbac
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
     if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
         NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
             "The current asset belongs to a shared album and does not support this operation");
@@ -4708,7 +4714,8 @@ napi_value FileAssetNapi::PhotoAccessHelperCloneAsset(napi_env env, napi_callbac
 
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title + "." + extension;
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK, "Input title is invalid");
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
+        "The title contains unsupported characters or exceeds the length limit");
 
     asyncContext->title = title;
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "CloneAssetHandlerExecute",
@@ -4853,7 +4860,8 @@ napi_value FileAssetNapi::PhotoAccessHelperConvertFormat(napi_env env, napi_call
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID,
+        "The asset parameter is not a valid PhotoAsset object");
     if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
         NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
             "The current asset belongs to a shared album and does not support this operation");
@@ -5513,7 +5521,7 @@ napi_value FileAssetNapi::PhotoAccessHelperSetUserComment(napi_env env, napi_cal
         JS_ERR_PARAMETER_INVALID);
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     if (asyncContext->objectPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
 
