@@ -55,6 +55,8 @@ int32_t GalleryDbUpgrade::OnUpgrade(NativeRdb::RdbStore &store)
     this->AddUserDisplayLevelIntoMergeTag(store);
     this->AddHdcUniqueIdIntoGalleryMedia(store);
     this->AddColumnsOfTOcrResult(store);
+    this->AddIndexOfTOcrResult(store);
+    this->AddIndexOfGalleryMedia(store);
     this->AddDirtyIntoGalleryAlbum(store);
     return NativeRdb::E_OK;
 }
@@ -355,6 +357,36 @@ int32_t GalleryDbUpgrade::AddColumnsOfTOcrResult(NativeRdb::RdbStore &store)
         MEDIA_INFO_LOG("AddColumnsOfTOcrResult copy width height end");
     }
     return NativeRdb::E_OK;
+}
+
+/**
+ * @brief Add hash index of t_ocr_result table in gallery.db to speed up OCR restore join query.
+ */
+int32_t GalleryDbUpgrade::AddIndexOfTOcrResult(NativeRdb::RdbStore &store)
+{
+    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "t_ocr_result", "hash");
+    CHECK_AND_RETURN_RET(cond, NativeRdb::E_OK);
+    std::string sql = this->SQL_T_OCR_RESULT_INDEX_HASH;
+    int32_t ret = store.ExecuteSql(sql);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "Media_Restore: GalleryDbUpgrade::AddIndexOfTOcrResult failed,"
+        " ret=%{public}d, sql=%{public}s", ret, sql.c_str());
+    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddIndexOfTOcrResult success");
+    return ret;
+}
+
+/**
+ * @brief Add hash index of gallery_media table in gallery.db to speed up OCR restore join query.
+ */
+int32_t GalleryDbUpgrade::AddIndexOfGalleryMedia(NativeRdb::RdbStore &store)
+{
+    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "gallery_media", "hash");
+    CHECK_AND_RETURN_RET(cond, NativeRdb::E_OK);
+    std::string sql = this->SQL_GALLERY_MEDIA_INDEX_HASH;
+    int32_t ret = store.ExecuteSql(sql);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "Media_Restore: GalleryDbUpgrade::AddIndexOfGalleryMedia failed,"
+        " ret=%{public}d, sql=%{public}s", ret, sql.c_str());
+    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddIndexOfGalleryMedia success");
+    return ret;
 }
 
 /**
