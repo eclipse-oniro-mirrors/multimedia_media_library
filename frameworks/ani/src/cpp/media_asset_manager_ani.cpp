@@ -1310,8 +1310,6 @@ void MediaAssetManagerAni::RequestExecute(ani_env *env, unique_ptr<MediaAssetMan
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     OnHandleRequestImage(env, context);
     if (context->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = CONST_LOG_MOVING_PHOTO;
-        Uri logMovingPhotoUri(uri);
         DataShare::DataShareValuesBucket valuesBucket;
         string result;
         valuesBucket.Put("adapted", context->returnDataType == ReturnDataType::TYPE_MOVING_PHOTO);
