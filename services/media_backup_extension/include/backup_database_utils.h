@@ -17,6 +17,7 @@
 #define BACKUP_DATABASE_UTILS_H
 
 #include <string>
+#include "field_config/clone_field_writer.h"
 #include <sstream>
 #include <vector>
 #include <type_traits>
@@ -360,19 +361,7 @@ template <typename T>
 void BackupDatabaseUtils::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }  else if constexpr (std::is_same_v<std::decay_t<T>, std::vector<uint8_t>>) {
-            values.PutBlob(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 } // namespace Media
 } // namespace OHOS
