@@ -39,10 +39,8 @@ int32_t CloudMediaAlbumControllerService::OnFetchRecords(MessageParcel &data, Me
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret),
         "OnFetchRecords Read Req Error");
-    if (req.albums.empty()) {
-        MEDIA_ERR_LOG("OnFetchRecords Param Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, resp);
-    }
+    CHECK_AND_RETURN_RET_LOG(!req.albums.empty(), IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret),
+        "OnFetchRecords Param Error");
     MEDIA_INFO_LOG("OnFetchRecords, size: %{public}zu, data: %{public}s", req.albums.size(), req.ToString().c_str());
     std::vector<PhotoAlbumDto> albumDtoList;
     for (const auto &album : req.albums) {

@@ -24,6 +24,8 @@
 #include "mdk_database.h"
 #include "mdk_record_reader.h"
 #include "cloud_media_define.h"
+#include "mdk_scadetail.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT MDKRecordPhotosData {
@@ -32,6 +34,7 @@ private:  // data member
     std::map<std::string, MDKRecordField> fields_;
     std::map<std::string, MDKRecordField> properties_;
     std::map<std::string, MDKRecordField> attributes_;
+    std::vector<MDKRecordField> scaDetailList_;
 
 private:  // composited class
     MDKRecordReader recordReader_;
@@ -203,6 +206,9 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetPhotoShareDateDay(const int64_t shareDateDay);
     std::optional<int64_t> GetPhotoShareGroup() const;
     MDKRecordPhotosData &SetPhotoShareGroup(const int64_t shareGroup);
+    void GetScadetailList(std::vector<ScaDetailVo> &scaDetailList);
+    std::string GetMediaCreatedId() const;
+    std::string GetCurrentUserId() const;
     std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
     std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
 
@@ -261,6 +267,8 @@ private:
     const std::string KEY_RECYCLED_TIME = "recycledTime";
     const std::string KEY_FAVORITE = "favorite";
     const std::string KEY_DESCRIPTION = "description";
+    const std::string KEY_MEDIA_CREATE_ID = "mediaCreateId";
+    const std::string KEY_SCA_DETAIL = "scaDetail";
     const std::string KEY_SOURCE_PATH = "sourcePath";
     const std::string KEY_SOURCE_FILE_NAME = "sourceFileName";
     const std::string KEY_FIRST_UPDATE_TIME = "first_update_time";

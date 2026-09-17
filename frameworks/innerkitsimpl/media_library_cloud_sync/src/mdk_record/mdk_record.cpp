@@ -74,6 +74,11 @@ std::string MDKRecord::GetOwnerId() const
 {
     return ownerId_;
 }
+// 获取当前用户id
+std::string MDKRecord::GetCurrentUserId() const
+{
+    return currentUserId_;
+}
 // 获取可操作权限,值参考：privilege flag value
 uint32_t MDKRecord::GetPrivilege() const
 {
@@ -164,6 +169,11 @@ void MDKRecord::SetRecordRelations(std::vector<MDKRelation> &relations)
 void MDKRecord::SetOwnerId(std::string ownerId)
 {
     ownerId_ = std::move(ownerId);
+}
+// 设置当前用户id
+void MDKRecord::SetCurrentUserId(std::string currentUserId)
+{
+    currentUserId_ = std::move(currentUserId);
 }
 // 设置记录是否共享
 void MDKRecord::SetShared(bool isShared)

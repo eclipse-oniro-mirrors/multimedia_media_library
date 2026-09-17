@@ -539,6 +539,7 @@ public:
         dkRecord.SetOwnerId(record.GetOwnerId());
         // shareUri_ & privilege_ & baseCursor_: no setter.
         dkRecord.SetShared(record.GetShared());
+        dkRecord.SetCurrentUserId(record.GetCurrentUserId());
         return dkRecord;
     }
 

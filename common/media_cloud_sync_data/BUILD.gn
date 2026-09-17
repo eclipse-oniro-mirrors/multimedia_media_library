@@ -75,6 +75,7 @@ ohos_shared_library("media_cloud_sync_data") {
     "./src/vo/clean_attachment_vo.cpp",
     "./src/vo/share_member_data_vo.cpp",
     "./src/vo/share_album_detail_vo.cpp",
+    "./src/vo/sca_detail_vo.cpp",
   ]
 
   include_media_ipc_common = [

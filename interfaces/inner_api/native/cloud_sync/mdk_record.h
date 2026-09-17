@@ -62,6 +62,8 @@ public:
     uint64_t GetEditedTime() const;
     // 获取记录ownerID
     std::string GetOwnerId() const;
+    // 获取当前用户id
+    std::string GetCurrentUserId() const;
     // 获取可操作权限,值参考：privilege flag value
     uint32_t GetPrivilege() const;
     // 获取分享uri
@@ -97,6 +99,8 @@ public:
     void SetRecordRelations(std::vector<MDKRelation> &relations);
     // 设置记录ownerID
     void SetOwnerId(std::string ownerId);
+    // 设置当前用户id
+    void SetCurrentUserId(std::string currentUserId);
     // 设置记录是否共享
     void SetShared(bool isShared);
     void SetSrcRecordId(std::string srcRecordId);
@@ -122,6 +126,7 @@ private:
     uint64_t createdTime_ = 0;
     uint64_t editedTime_ = 0;
     std::string ownerId_;
+    std::string currentUserId_;
     std::string shareUri_;
     uint32_t privilege_ = 0;  // 被共享者具备对该记录的操作能力，值参考：privilege flag value
     std::string baseCursor_;  // 目录软删除和硬删除才需要

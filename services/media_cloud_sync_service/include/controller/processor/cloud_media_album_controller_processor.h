@@ -38,6 +38,8 @@ public:
         std::vector<ShareMemberDataDto> &shareMemberDataDtoList);
     void ConvertShareAlbumDetailFromVoToDto(const std::optional<ShareAlbumDetailVo> &shareAlbumDetailVoOp,
         std::optional<ShareAlbumDetailDto> &shareAlbumDetailDtoOp);
+    void ConvertShareDetailDataFromVoToDto(const std::vector<ScaDetailVo> &scaDetailVoList,
+        std::vector<ScaDetailDataDto> &scaDetailDataDtoList);
 
     bool GetAttributesHashMap(const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo);
     bool GetInt64FieldsHashMap(const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo);

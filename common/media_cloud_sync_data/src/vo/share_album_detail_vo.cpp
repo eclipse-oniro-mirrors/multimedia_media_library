@@ -28,6 +28,9 @@ bool ShareAlbumDetailVo::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(
         IPC::ITypeMediaUtil::UnmarshallingParcelable<ShareMemberDataVo>(this->shareMemberData, parcel),
         false, "shareMemberData");
+    CHECK_AND_RETURN_RET_LOG(
+        IPC::ITypeMediaUtil::UnmarshallingParcelable<ScaDetailVo>(this->scaDetailList, parcel),
+        false, "scaDetailList");
     return true;
 }
 
@@ -36,20 +39,36 @@ bool ShareAlbumDetailVo::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(
         IPC::ITypeMediaUtil::MarshallingParcelable<ShareMemberDataVo>(this->shareMemberData, parcel),
         false, "shareMemberData");
+    CHECK_AND_RETURN_RET_LOG(
+        IPC::ITypeMediaUtil::MarshallingParcelable<ScaDetailVo>(this->scaDetailList, parcel),
+        false, "scaDetailList");
     return true;
 }
 
 std::string ShareAlbumDetailVo::ToString() const
 {
     std::stringstream ss;
+    ss << "{";
+
     ss << "\"shareMemberData\": [";
-        for (size_t i = 0; i < shareMemberData.size(); i++) {
-            ss << shareMemberData[i].ToString();
-            if (i != shareMemberData.size() - 1) {
-                ss << ", ";
-            }
+    for (size_t i = 0; i < shareMemberData.size(); ++i) {
+        ss << shareMemberData[i].ToString();
+        if (i != shareMemberData.size() - 1) {
+            ss << ", ";
         }
+    }
+    ss << "],";
+
+    ss << "\"scaDetailList\": [";
+    for (size_t i = 0; i < scaDetailList.size(); ++i) {
+        ss << scaDetailList[i].ToString();
+        if (i != scaDetailList.size() - 1) {
+            ss << ", ";
+        }
+    }
     ss << "]";
+
+    ss << "}";
     return ss.str();
 }
 }  // namespace OHOS::Media::CloudSync

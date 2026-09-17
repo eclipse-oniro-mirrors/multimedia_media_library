@@ -85,6 +85,9 @@ void CloudMediaAlbumHandler::InitShareAlbumDetailVo(
     CHECK_AND_RETURN(data.shareAlbumDetailVoOp.has_value());
     std::vector<ShareMemberDataVo> &shareMemberDatalList = data.shareAlbumDetailVoOp.value().shareMemberData;
     albumData.GetShareMembers(shareMemberDatalList);
+
+    std::vector<ScaDetailVo> &scaDetailList = data.shareAlbumDetailVoOp.value().scaDetailList;
+    albumData.GetScadetailList(scaDetailList);
 }
 
 void CloudMediaAlbumHandler::InitAlbumReqData(

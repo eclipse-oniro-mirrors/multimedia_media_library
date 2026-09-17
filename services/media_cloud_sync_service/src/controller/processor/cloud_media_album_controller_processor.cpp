@@ -95,6 +95,18 @@ void CloudMediaAlbumControllerProcessor::ConvertShareMemberDataFromVoToDto (
     }
 }
 
+void CloudMediaAlbumControllerProcessor::ConvertShareDetailDataFromVoToDto(
+    const std::vector<ScaDetailVo> &scaDetailVoList,
+    std::vector<ScaDetailDataDto> &scaDetailDataDtoList)
+{
+    for (const auto &scaDetailVo : scaDetailVoList) {
+        ScaDetailDataDto scaDetailDataDto;
+        scaDetailDataDto.usage = scaDetailVo.usage;
+        scaDetailDataDto.riskResult = scaDetailVo.riskResult;
+        scaDetailDataDtoList.push_back(scaDetailDataDto);
+    }
+}
+
 void CloudMediaAlbumControllerProcessor::ConvertShareAlbumDetailFromVoToDto(
     const std::optional<ShareAlbumDetailVo> &shareAlbumDetailVoOp,
     std::optional<ShareAlbumDetailDto> &shareAlbumDetailDtoOp)
@@ -107,6 +119,9 @@ void CloudMediaAlbumControllerProcessor::ConvertShareAlbumDetailFromVoToDto(
 
     this->ConvertShareMemberDataFromVoToDto(
         shareAlbumDetailVo.shareMemberData, shareAlbumDetailDto.shareMemberDataList);
+
+    this->ConvertShareDetailDataFromVoToDto(
+        shareAlbumDetailVo.scaDetailList, shareAlbumDetailDto.scaDetailDataList);
 }
 
 bool CloudMediaAlbumControllerProcessor::GetAttributesHashMap(

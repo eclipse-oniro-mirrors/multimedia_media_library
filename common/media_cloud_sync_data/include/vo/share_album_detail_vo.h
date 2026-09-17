@@ -21,11 +21,13 @@
 #include "i_media_parcelable.h"
 #include "cloud_media_define.h"
 #include "share_member_data_vo.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT ShareAlbumDetailVo : public IPC::IMediaParcelable {
 public:
     std::vector<ShareMemberDataVo> shareMemberData;
+    std::vector<ScaDetailVo> scaDetailList;
 
 public:
     virtual ~ShareAlbumDetailVo() = default;

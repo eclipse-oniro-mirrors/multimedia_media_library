@@ -22,6 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "itypes_util.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnFetchPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
@@ -184,6 +185,7 @@ bool OnFetchPhotosVo::Unmarshalling(MessageParcel &parcel)
         IPC::ITypeMediaUtil::Unmarshalling<std::string>(this->sourceAlbumIds, parcel), false, "sourceAlbumIds");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(int64fields, parcel), false, "int64fields");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetail.Unmarshalling(parcel), false, "sharePhotoDetail");
     return true;
 }
 
@@ -199,6 +201,7 @@ bool OnFetchPhotosVo::Marshalling(MessageParcel &parcel) const
         IPC::ITypeMediaUtil::Marshalling<std::string>(this->sourceAlbumIds, parcel), false, "sourceAlbumIds");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(int64fields, parcel), false, "int64fields");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetail.Marshalling(parcel), false, "sharePhotoDetail");
     return true;
 }
 
