@@ -2645,8 +2645,6 @@ void MediaAssetManagerNapi::JSRequestExecute(napi_env env, void *data)
     }
     OnHandleRequestImage(env, context);
     if (context->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = CONST_LOG_MOVING_PHOTO;
-        Uri logMovingPhotoUri(uri);
         DataShare::DataShareValuesBucket valuesBucket;
         string result;
         valuesBucket.Put("adapted", context->returnDataType == ReturnDataType::TYPE_MOVING_PHOTO);
