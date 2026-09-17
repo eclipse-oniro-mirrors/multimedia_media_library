@@ -710,4 +710,14 @@ int32_t CloudMediaSyncUtils::FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, con
     photosDto.shareGroup = pullData.attributesShareGroup;
     return E_OK;
 }
+
+bool CloudMediaSyncUtils::IsCloudStd(const CloudMediaPullDataDto &pullData, const PhotosPo &photoInfo)
+{
+    const int64_t localMetaModifiedTime = photoInfo.metaDateModified.value_or(0);
+    const int64_t singleEditTime = pullData.attributesMetaDateModified;
+    const int64_t dualEditTime = pullData.basicEditedTime;
+    const int64_t cloudMetaModifiedTime = dualEditTime > singleEditTime ? dualEditTime : singleEditTime;
+
+    return (localMetaModifiedTime != 0) && (cloudMetaModifiedTime >= localMetaModifiedTime);
+}
 }  // namespace OHOS::Media::CloudSync

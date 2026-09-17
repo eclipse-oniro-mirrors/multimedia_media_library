@@ -77,6 +77,7 @@ public:
         const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
     static bool IsLivePhotoWithMetaData(const PhotosPo &photosPo);
     static bool IsMediaFile(const std::string &filePath);
+    static bool IsCloudStd(const CloudMediaPullDataDto &pullData, const PhotosPo &photoinfo);
     static int32_t MoveLivePhoto(const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
 
     template <typename T>

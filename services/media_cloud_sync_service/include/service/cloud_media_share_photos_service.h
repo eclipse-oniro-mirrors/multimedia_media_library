@@ -66,6 +66,9 @@ private:
     int32_t PullUpdate(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto);
     int32_t PullDelete(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto);
     int32_t PullInsert(const std::vector<CloudMediaPullDataDto> &pullDatas, std::vector<std::string> &failedRecords);
+    int32_t DoDataMerge(const CloudMediaPullDataDto &pullData,
+        CloudMediaPullDataHandleDto &handleDto, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    void DoDataMergeNotify(const CloudMediaPullDataDto &pullData, const PhotosPo &photoInfo);
 
 private:
     CloudMediaPhotosDao photosDao_;
