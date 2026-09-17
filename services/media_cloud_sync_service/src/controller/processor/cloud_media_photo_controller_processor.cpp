@@ -261,6 +261,18 @@ bool CloudMediaPhotoControllerProcessor::GetBasicInfo(const OnFetchPhotosVo &pho
     return true;
 }
 
+void CloudMediaPhotoControllerProcessor::GetScadetailInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
+{
+    data.currentUserId = photosVo.sharePhotoDetail.currentUserId;
+    data.mediaCreateId = photosVo.sharePhotoDetail.mediaCreateId;
+    for (const auto &scaDetailVo : photosVo.sharePhotoDetail.scaDetailList) {
+        ScaDetailDataDto scaDetail;
+        scaDetail.usage = scaDetailVo.usage;
+        scaDetail.riskResult = scaDetailVo.riskResult;
+        data.scaDetailDataList.emplace_back(scaDetail);
+    }
+}
+
 bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
 {
     data.attributesFileId = photosVo.fileId;
@@ -354,6 +366,7 @@ CloudMediaPullDataDto CloudMediaPhotoControllerProcessor::ConvertToCloudMediaPul
     this->GetAlbumInfo(photosVo, data);
     this->GetAttributesHashMap(photosVo, data);
     this->GetInt64FieldsHashMap(photosVo, data);
+    this->GetScadetailInfo(photosVo, data);
     return data;
 }
 

@@ -24,6 +24,7 @@
 #include "photos_vo.h"
 #include "media_itypes_utils.h"
 #include "cloud_media_define.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT OnFetchPhotosVo : public IPC::IMediaParcelable {
@@ -106,6 +107,7 @@ public:
     int64_t shareDateDay{0};
     int64_t shareGroup{0};
     std::string shareAlbumOwner;
+    SharePhotoDetailVo sharePhotoDetail;
     int32_t editDataExist;
 
 public:  // functions of Parcelable.

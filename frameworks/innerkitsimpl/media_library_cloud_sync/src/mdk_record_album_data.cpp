@@ -41,6 +41,9 @@ void MDKRecordAlbumData::UnMarshalling(const MDKRecord &record)
     if (this->fields_.find(this->KEY_PERMISSIONS) != this->fields_.end()) {
         this->fields_[this->KEY_PERMISSIONS].GetRecordList(this->permissions_);
     }
+    if (this->fields_.find(this->KEY_SCA_DETAIL) != this->fields_.end()) {
+        this->fields_[this->KEY_SCA_DETAIL].GetRecordList(this->scaDetailList_);
+    }
 }
 void MDKRecordAlbumData::Marshalling()
 {
@@ -308,6 +311,23 @@ void MDKRecordAlbumData::GetShareMembers(std::vector<ShareMemberDataVo> &shareMe
         memberData.userId = ref.userId;
         memberData.status = static_cast<int32_t>(ref.status);
         shareMemberDatas.push_back(memberData);
+    }
+}
+
+void MDKRecordAlbumData::GetScadetailList(std::vector<ScaDetailVo> &scaDetailList)
+{
+    if (this->scaDetailList_.empty()) {
+        return;
+    }
+    for (auto &scadetail : this->scaDetailList_) {
+        MDKScadetail ref;
+        if (scadetail.GetScadetail(ref) != MDKLocalErrorCode::NO_ERROR) {
+            continue;
+        }
+        ScaDetailVo scaDetailVo;
+        scaDetailVo.usage = ref.usage;
+        scaDetailVo.riskResult = ref.riskResult;
+        scaDetailList.push_back(scaDetailVo);
     }
 }
 }  // namespace OHOS::Media::CloudSync

@@ -23,6 +23,7 @@
 #include "cloud_media_define.h"
 #include "photo_album_po.h"
 #include "photos_po.h"
+#include "photo_album_dto.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
@@ -108,6 +109,10 @@ public:
     std::string attributesShareAlbumOwner;        /* share_album_owner */
     int64_t attributesShareDateDay{0};            /* share_date_day */
     int64_t attributesShareGroup{0};              /* share_group */
+    // Shared Album Risk Control
+    std::vector<ScaDetailDataDto> scaDetailDataList;
+    std::string currentUserId;                    /* 当前用户ID，用于角色判定 */
+    std::string mediaCreateId;                    /* 资产创建者ID */
 
     // "properties"
     bool hasProperties{false};

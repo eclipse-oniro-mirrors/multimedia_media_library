@@ -21,6 +21,7 @@
 
 #include "values_bucket.h"
 #include "cloud_media_pull_data_dto.h"
+#include "photo_album_dto.h"
 
 namespace OHOS::Media::CloudSync {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -75,6 +76,8 @@ public:
     // Safe Album: critical type for children's watch
     static int32_t CompensateAttRiskStatus(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttIsCritical(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAssetShareRisk(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static void CompensateAlbumShareRisk(const PhotoAlbumDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateEditDataExist(const CloudMediaPullDataDto &data,
         NativeRdb::ValuesBucket &values);
 
@@ -116,11 +119,11 @@ public:
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateInt64FieldsHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static int32_t CompensateAttIsShared(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static int32_t CompensateAttShareOwnerInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static int32_t CompensateAttShareAlbumOwner(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static int32_t CompensateAttShareDateDay(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static int32_t CompensateAttShareGroup(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttIsShared(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareOwnerInfo(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareAlbumOwner(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareDateDay(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareGroup(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
 };
 
 }  // namespace OHOS::Media::CloudSync
