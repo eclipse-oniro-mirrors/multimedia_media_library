@@ -59,6 +59,7 @@ UpgradeRestore::UpgradeRestore(const std::string &galleryAppName, const std::str
     audioAppName_ = "Audio";
     ffrt_disable_worker_escape();
     MEDIA_INFO_LOG("Set ffrt_disable_worker_escape");
+    LoadResumeState();
 }
 
 UpgradeRestore::UpgradeRestore(const std::string &galleryAppName, const std::string &mediaAppName, int32_t sceneCode,
@@ -70,6 +71,7 @@ UpgradeRestore::UpgradeRestore(const std::string &galleryAppName, const std::str
     dualDirName_ = dualDirName;
     ffrt_disable_worker_escape();
     MEDIA_INFO_LOG("Set ffrt_disable_worker_escape");
+    LoadResumeState();
 }
 
 int32_t UpgradeRestore::Init(const std::string &backupRestoreDir, const std::string &upgradeFilePath, bool isUpgrade)
@@ -110,6 +112,9 @@ int32_t UpgradeRestore::Init(const std::string &backupRestoreDir, const std::str
     }
     SetCloneParameterAndStopSync();
     MEDIA_INFO_LOG("Shoud include Sd: %{public}d", static_cast<int32_t>(shouldIncludeSd_));
+    if (sceneCode_ == UPGRADE_RESTORE_ID && !isResumeMode_) {
+        UpgradeRestoreResumeMarker::Create(sceneCode_);
+    }
     return InitDbAndXml(photosPreferencesPath, isUpgrade);
 }
 
@@ -251,6 +256,11 @@ int32_t UpgradeRestore::ParseXml(const std::string &path)
 void UpgradeRestore::RestoreAudio(void)
 {
     int64_t startRestoreAudio = MediaFileUtils::UTCTimeMilliSeconds();
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::AUDIO_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::AUDIO_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreAudio (already done)");
+        return;
+    }
     if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
         if (!MediaFileUtils::IsFileExists(RESTORE_MUSIC_LOCAL_DIR)) {
             MEDIA_INFO_LOG("music dir is not exists!!!");
@@ -270,6 +280,7 @@ void UpgradeRestore::RestoreAudio(void)
     }
     int64_t endRestoreAudio = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: RestoreAudio cost: %{public}" PRId64, endRestoreAudio - startRestoreAudio);
+    UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::AUDIO_DONE);
 }
 
 void UpgradeRestore::RestoreAudioFromFile()
@@ -366,19 +377,49 @@ void UpgradeRestore::RestoreSmartAlbums()
     CHECK_AND_RETURN(sceneCode_ == UPGRADE_RESTORE_ID || sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID);
     MEDIA_INFO_LOG("RestoreSmartAlbums start");
     int64_t startRestoreGeo = MediaFileUtils::UTCTimeMilliSeconds();
-    geoKnowledgeRestore_.RestoreGeo(photoInfoMap_);
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::SMART_GEO_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::SMART_GEO_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreGeo (already done)");
+    } else {
+        geoKnowledgeRestore_.RestoreGeo(photoInfoMap_);
+        UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::SMART_GEO_DONE);
+    }
     int64_t startRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
-    RestoreHighlightAlbums();
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::SMART_HIGHLIGHT_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::SMART_HIGHLIGHT_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreHighlightAlbums (already done)");
+    } else {
+        RestoreHighlightAlbums();
+        UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::SMART_HIGHLIGHT_DONE);
+    }
     int64_t endRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
-    classifyRestore_.RestoreClassify(photoInfoMap_);
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::SMART_CLASSIFY_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::SMART_CLASSIFY_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreClassify (already done)");
+    } else {
+        classifyRestore_.RestoreClassify(photoInfoMap_);
+        UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::SMART_CLASSIFY_DONE);
+    }
     int64_t endRestoreClassify = MediaFileUtils::UTCTimeMilliSeconds();
-    ocrRestore_.RestoreOCR(photoInfoMap_, IsCloudRestoreSatisfied());
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::SMART_OCR_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::SMART_OCR_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreOCR (already done)");
+    } else {
+        ocrRestore_.RestoreOCR(photoInfoMap_, IsCloudRestoreSatisfied());
+        UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::SMART_OCR_DONE);
+    }
     int64_t startGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t endGroupPhoto = startGroupPhoto;
     if (isNeedCloneGroupAlbum_) {
-        CloneGroupPhotoAlbum cloneGroupPhotoAlbum(sceneCode_, taskId_, mediaLibraryRdb_, galleryRdb_);
-        cloneGroupPhotoAlbum.RestoreGroupPhotoAlbum(photoInfoMap_);
-        endGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::SMART_GROUP_PHOTO_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::SMART_GROUP_PHOTO_DONE);
+            MEDIA_INFO_LOG("Skipping RestoreGroupPhotoAlbum (already done)");
+        } else {
+            CloneGroupPhotoAlbum cloneGroupPhotoAlbum(sceneCode_, taskId_, mediaLibraryRdb_, galleryRdb_);
+            cloneGroupPhotoAlbum.RestoreGroupPhotoAlbum(photoInfoMap_);
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::SMART_GROUP_PHOTO_DONE);
+            endGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
+        }
     }
     MEDIA_INFO_LOG("TimeCost: RestoreGeo cost: %{public}" PRId64 ", RestoreHighlight cost: %{public}" PRId64
         " RestoreClassify cost: %{public}" PRId64 ", RestoreOCR cost: %{public}" PRId64
@@ -425,15 +466,33 @@ void UpgradeRestore::RestorePhotoInner()
             isSyncSwitchOn_);
         // upgrade gallery.db
         int64_t startGalleryDbUpgrade = MediaFileUtils::UTCTimeMilliSeconds();
-        DataTransfer::GalleryDbUpgrade().OnUpgrade(this->galleryRdb_);
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::DB_UPGRADE_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::DB_UPGRADE_DONE);
+            MEDIA_INFO_LOG("Skipping GalleryDbUpgrade (already done)");
+        } else {
+            DataTransfer::GalleryDbUpgrade().OnUpgrade(this->galleryRdb_);
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::DB_UPGRADE_DONE);
+        }
         int64_t startAnalyzeGallerySource = MediaFileUtils::UTCTimeMilliSeconds();
         AnalyzeGallerySource();
         InitGarbageAlbum();
         int64_t startAlbumRestore = MediaFileUtils::UTCTimeMilliSeconds();
         // restore PhotoAlbum
-        this->photoAlbumRestore_.Restore();
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::ALBUM_RESTORE_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::ALBUM_RESTORE_DONE);
+            MEDIA_INFO_LOG("Skipping photoAlbumRestore (already done)");
+        } else {
+            this->photoAlbumRestore_.Restore();
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::ALBUM_RESTORE_DONE);
+        }
         int64_t startRestorePortrait = MediaFileUtils::UTCTimeMilliSeconds();
-        RestoreAnalysisAlbum();
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::ANALYSIS_ALBUM_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::ANALYSIS_ALBUM_DONE);
+            MEDIA_INFO_LOG("Skipping RestoreAnalysisAlbum (already done)");
+        } else {
+            RestoreAnalysisAlbum();
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::ANALYSIS_ALBUM_DONE);
+        }
         int64_t endRestoreAlbums = MediaFileUtils::UTCTimeMilliSeconds();
         MEDIA_INFO_LOG("TimeCost: GalleryDbUpgrade cost: %{public}" PRId64
             ", AnalyzeGallerySource cost: %{public}" PRId64
@@ -454,7 +513,16 @@ void UpgradeRestore::RestorePhotoInner()
             rotateLcdMigrateFileNumber_.load(), rotateThmMigrateFileNumber_.load(),
             totalCloudMetaNumber_.load(), migrateDatabaseNumber_.load());
         }
-        InheritManualCover();
+        if (isResumeMode_) {
+            RebuildPhotoInfoMap();
+        }
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::INHERIT_COVER_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::INHERIT_COVER_DONE);
+            MEDIA_INFO_LOG("Skipping InheritManualCover (already done)");
+        } else {
+            InheritManualCover();
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::INHERIT_COVER_DONE);
+        }
     } else {
         maxId_ = 0;
         SetErrorCode(RestoreError::GALLERY_DATABASE_CORRUPTION);
@@ -471,19 +539,38 @@ void UpgradeRestore::RestorePhoto()
     MEDIA_INFO_LOG("migrate from gallery number: %{public}lld, file number: %{public}lld",
         (long long) migrateDatabaseNumber_, (long long) migrateFileNumber_);
     if (sceneCode_ == UPGRADE_RESTORE_ID) {
-        RestoreFromExternal(true);
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::EXTERNAL_CAM_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::EXTERNAL_CAM_DONE);
+            MEDIA_INFO_LOG("Skipping RestoreFromExternal(camera) (already done)");
+        } else {
+            RestoreFromExternal(true);
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::EXTERNAL_CAM_DONE);
+        }
         MEDIA_INFO_LOG("migrate from camera number: %{public}lld, file number: %{public}lld",
             (long long) migrateDatabaseNumber_, (long long) migrateFileNumber_);
-        RestoreFromExternal(false);
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::EXTERNAL_OTH_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::EXTERNAL_OTH_DONE);
+            MEDIA_INFO_LOG("Skipping RestoreFromExternal(others) (already done)");
+        } else {
+            RestoreFromExternal(false);
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::EXTERNAL_OTH_DONE);
+        }
         MEDIA_INFO_LOG("migrate from others number: %{public}lld, file number: %{public}lld",
             (long long) migrateDatabaseNumber_, (long long) migrateFileNumber_);
     }
 
     if (sceneCode_ == UPGRADE_RESTORE_ID) {
-        int64_t startUpdateFace = MediaFileUtils::UTCTimeMilliSeconds();
-        UpdateFaceAnalysisStatus();
-        int64_t endUpdateFace = MediaFileUtils::UTCTimeMilliSeconds();
-        MEDIA_INFO_LOG("TimeCost: UpdateFaceAnalysisStatus cost: %{public}" PRId64, endUpdateFace - startUpdateFace);
+        if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::UPDATE_FACE_DONE)) {
+            SetContinueSkipBit(ResumeBusinessFlag::UPDATE_FACE_DONE);
+            MEDIA_INFO_LOG("Skipping UpdateFaceAnalysisStatus (already done)");
+        } else {
+            int64_t startUpdateFace = MediaFileUtils::UTCTimeMilliSeconds();
+            UpdateFaceAnalysisStatus();
+            int64_t endUpdateFace = MediaFileUtils::UTCTimeMilliSeconds();
+            MEDIA_INFO_LOG("TimeCost: UpdateFaceAnalysisStatus cost: %{public}" PRId64,
+                endUpdateFace - startUpdateFace);
+            UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::UPDATE_FACE_DONE);
+        }
     } else {
         int64_t startUpdateDual = MediaFileUtils::UTCTimeMilliSeconds();
         UpdateDualCloneFaceAnalysisStatus();
@@ -498,7 +585,13 @@ void UpgradeRestore::RestorePhoto()
         .SetSceneCode(sceneCode_)
         .SetTaskId(taskId_)
         .ReportRestoreMode(restoreMode, BaseRestore::GetNotFoundNumber());
-    ProcessBurstPhotos(this->photosRestore_.GetMaxFileId());
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::BURST_PHOTO_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::BURST_PHOTO_DONE);
+        MEDIA_INFO_LOG("Skipping ProcessBurstPhotos (already done)");
+    } else {
+        ProcessBurstPhotos(this->photosRestore_.GetMaxFileId());
+        UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::BURST_PHOTO_DONE);
+    }
 }
 
 void UpgradeRestore::AnalyzeSource()
@@ -605,17 +698,34 @@ void UpgradeRestore::RestoreFromGallery()
     totalNumber_ += static_cast<uint64_t>(totalNumber);
     std::vector<int32_t> minIds = GetLocalPhotoMinIds();
     MEDIA_INFO_LOG("onProcess Update totalNumber_: %{public}lld", (long long)totalNumber_);
+
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::GALLERY_LOCAL_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::GALLERY_LOCAL_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreFromGallery (already done)");
+        return;
+    }
+
+    int32_t startIdx = isResumeMode_ ? resumeGalleryLocalIdx_ : 0;
+    MEDIA_INFO_LOG("RestoreFromGallery startIdx=%{public}d, minIds.size=%{public}zu", startIdx, minIds.size());
+
     int64_t startRestoreBatch = MediaFileUtils::UTCTimeMilliSeconds();
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
-    for (auto minId : minIds) {
-        ffrt::submit([this, minId]() { RestoreBatch(minId); }, { &minId }, {},
-            ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
+    for (int32_t i = startIdx; i < static_cast<int32_t>(minIds.size()); i++) {
+        int32_t minId = minIds[i];
+        ffrt::submit([this, minId, i]() {
+            RestoreBatch(minId);
+            UpgradeRestoreResumeMarker::SetGalleryLocalMinIdIndex(i + 1);
+            }, { &minIds[i] }, {}, ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
     int64_t endRestoreBatch = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: RestoreBatch cost: %{public}" PRId64, endRestoreBatch - startRestoreBatch);
+    if (!minIds.empty()) {
+        UpgradeRestoreResumeMarker::SetGalleryLocalMinIdIndex(static_cast<int32_t>(minIds.size()));
+    }
     ProcessGalleryFailedOffsets();
+    UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::GALLERY_LOCAL_DONE);
     MEDIA_INFO_LOG("RestoreFromGallery end");
 }
 
@@ -629,18 +739,35 @@ void UpgradeRestore::RestoreCloudFromGallery()
             this->photosRestore_.GetHdcMetaCount(this->shouldIncludeSd_, false);
     std::vector<int32_t> minIds = GetCloudPhotoMinIds();
     MEDIA_INFO_LOG("the cloud count is %{public}d", cloudMetaCount);
+
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(ResumeBusinessFlag::GALLERY_CLOUD_DONE)) {
+        SetContinueSkipBit(ResumeBusinessFlag::GALLERY_CLOUD_DONE);
+        MEDIA_INFO_LOG("Skipping RestoreCloudFromGallery (already done)");
+        return;
+    }
+
+    int32_t startIdx = isResumeMode_ ? resumeGalleryCloudIdx_ : 0;
+    MEDIA_INFO_LOG("RestoreCloudFromGallery startIdx=%{public}d, minIds.size=%{public}zu", startIdx, minIds.size());
+
     int64_t startRestoreBatch = MediaFileUtils::UTCTimeMilliSeconds();
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     totalNumber_ += static_cast<uint64_t>(cloudMetaCount);
-    for (auto minId : minIds) {
-        ffrt::submit([this, minId]() { RestoreBatchForCloud(minId); }, { &minId }, {},
-            ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
+    for (int32_t i = startIdx; i < static_cast<int32_t>(minIds.size()); i++) {
+        int32_t minId = minIds[i];
+        ffrt::submit([this, minId, i]() {
+            RestoreBatchForCloud(minId);
+            UpgradeRestoreResumeMarker::SetGalleryCloudMinIdIndex(i + 1);
+            }, { &minIds[i] }, {}, ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
     int64_t endRestoreBatch = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: RestoreBatchForCloud cost: %{public}" PRId64, endRestoreBatch - startRestoreBatch);
+    if (!minIds.empty()) {
+        UpgradeRestoreResumeMarker::SetGalleryCloudMinIdIndex(static_cast<int32_t>(minIds.size()));
+    }
     ProcessCloudGalleryFailedOffsets();
+    UpgradeRestoreResumeMarker::SetBusinessDone(ResumeBusinessFlag::GALLERY_CLOUD_DONE);
     MEDIA_INFO_LOG("RestoreCloudFromGallery end");
 }
 
@@ -757,6 +884,13 @@ void UpgradeRestore::RestoreFromExternal(bool isCamera)
 {
     int64_t startRestoreFromExternal = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("start restore from %{public}s", (isCamera ? "camera" : "others"));
+    ResumeBusinessFlag doneFlag = isCamera ? ResumeBusinessFlag::EXTERNAL_CAM_DONE :
+        ResumeBusinessFlag::EXTERNAL_OTH_DONE;
+    if (isResumeMode_ && UpgradeRestoreResumeMarker::IsBusinessDone(doneFlag)) {
+        SetContinueSkipBit(doneFlag);
+        MEDIA_INFO_LOG("Skipping RestoreFromExternal(%{public}s) (already done)", isCamera ? "camera" : "others");
+        return;
+    }
     int32_t maxId = BackupDatabaseUtils::QueryInt(galleryRdb_, isCamera ?
         QUERY_MAX_ID_CAMERA_SCREENSHOT : QUERY_MAX_ID_OTHERS, CUSTOM_MAX_ID);
     maxId = (maxId_ == -1) ? maxId : maxId_;
@@ -765,15 +899,24 @@ void UpgradeRestore::RestoreFromExternal(bool isCamera)
     MEDIA_INFO_LOG("totalNumber = %{public}d, maxId = %{public}d", totalNumber, maxId);
     totalNumber_ += static_cast<uint64_t>(totalNumber);
     MEDIA_INFO_LOG("onProcess Update totalNumber_: %{public}lld", (long long)totalNumber_);
+    int32_t startOffset = isResumeMode_ ?
+        (isCamera ? resumeExternalCamOffset_ : resumeExternalOthOffset_) : 0;
+    MEDIA_INFO_LOG("RestoreFromExternal startOffset=%{public}d", startOffset);
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
-    for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
+    for (int32_t offset = startOffset; offset < totalNumber; offset += QUERY_COUNT) {
         ffrt::submit([this, offset, maxId, isCamera, type]() {
                 RestoreExternalBatch(offset, maxId, isCamera, type);
+                if (isCamera) {
+                    UpgradeRestoreResumeMarker::SetExternalCameraOffset(offset + QUERY_COUNT);
+                } else {
+                    UpgradeRestoreResumeMarker::SetExternalOthersOffset(offset + QUERY_COUNT);
+                }
             }, { &offset }, {}, ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
     ProcessExternalFailedOffsets(maxId, isCamera, type);
+    UpgradeRestoreResumeMarker::SetBusinessDone(doneFlag);
     int64_t endstat = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: RestoreFromExternal cost: %{public}" PRId64, endstat - startRestoreFromExternal);
 }
@@ -850,6 +993,17 @@ void UpgradeRestore::HandleRestData(void)
         ",UpdateEmptyAlbumHidden:" + std::to_string(endUpdateEmptyAlbumHidden - startUpdateEmptyAlbumHidden) +
         ",ProcessVideoRingtones:" + std::to_string(endProcessVideoRingtones - endUpdateEmptyAlbumHidden);
     UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report("HandleRestData", "0", timeCostInfo);
+
+    int32_t continueInfo = continueInfo_.load();
+    if (continueInfo != 0) {
+        UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_)
+            .Report("ContinueRestore", std::to_string(continueInfo),
+                "Resume restore skipped businesses bit flags");
+    }
+    if (UpgradeRestoreResumeMarker::Exists()) {
+        UpgradeRestoreResumeMarker::Delete();
+        MEDIA_INFO_LOG("Upgrade restore resume marker deleted after successful completion");
+    }
 }
 
 std::vector<FileInfo> UpgradeRestore::QueryFileInfos(int32_t minId)
@@ -1997,6 +2151,74 @@ void UpgradeRestore::BatchDeleteEmptyAlbums(const std::vector<int32_t> &batchAlb
     }
     deletePredicates.SetWhereArgs(whereArgs);
     BackupDatabaseUtils::Delete(deletePredicates, deleteRows, mediaLibraryRdb_);
+}
+
+void UpgradeRestore::LoadResumeState()
+{
+    if (!UpgradeRestoreResumeMarker::Exists()) {
+        isResumeMode_ = false;
+        return;
+    }
+    int32_t savedSceneCode = UpgradeRestoreResumeMarker::GetSceneCode();
+    if (savedSceneCode != sceneCode_) {
+        MEDIA_INFO_LOG("Resume marker sceneCode mismatch (saved=%{public}d, current=%{public}d), deleting marker",
+            savedSceneCode, sceneCode_);
+        UpgradeRestoreResumeMarker::Delete();
+        isResumeMode_ = false;
+        return;
+    }
+    isResumeMode_ = true;
+    resumeGalleryLocalIdx_ = UpgradeRestoreResumeMarker::GetGalleryLocalMinIdIndex();
+    resumeGalleryCloudIdx_ = UpgradeRestoreResumeMarker::GetGalleryCloudMinIdIndex();
+    resumeExternalCamOffset_ = UpgradeRestoreResumeMarker::GetExternalCameraOffset();
+    resumeExternalOthOffset_ = UpgradeRestoreResumeMarker::GetExternalOthersOffset();
+    continueInfo_.store(UpgradeRestoreResumeMarker::GetContinueInfo());
+    MEDIA_INFO_LOG("Resume mode enabled: galleryLocalIdx=%{public}d, galleryCloudIdx=%{public}d, "
+        "extCamOffset=%{public}d, extOthOffset=%{public}d, continueInfo=%{public}d",
+        resumeGalleryLocalIdx_, resumeGalleryCloudIdx_, resumeExternalCamOffset_,
+        resumeExternalOthOffset_, continueInfo_.load());
+}
+
+void UpgradeRestore::RebuildPhotoInfoMap()
+{
+    MEDIA_INFO_LOG("Rebuilding photoInfoMap_ for resume");
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    if (mediaLibraryRdb_ == nullptr) {
+        MEDIA_ERR_LOG("mediaLibraryRdb_ is null, cannot rebuild photoInfoMap_");
+        return;
+    }
+    // Query tab_old_photos joined with Photos to get old_file_id -> new file_id, data, display_name
+    std::string sql = "SELECT t.old_file_id, t.file_id, p.data, p.display_name, p.media_type "
+        "FROM tab_old_photos t "
+        "INNER JOIN Photos p ON t.file_id = p.file_id "
+        "WHERE t.old_file_id > 0";
+    auto resultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, sql);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("Failed to query tab_old_photos for photoInfoMap_ rebuild");
+        return;
+    }
+    std::lock_guard<ffrt::mutex> lock(photoInfoMutex_);
+    int32_t count = 0;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t oldFileId = GetInt32Val("old_file_id", resultSet);
+        PhotoInfo photoInfo;
+        photoInfo.fileIdNew = GetInt32Val("file_id", resultSet);
+        photoInfo.cloudPath = GetStringVal("data", resultSet);
+        photoInfo.displayName = GetStringVal("display_name", resultSet);
+        photoInfo.fileType = GetInt32Val("media_type", resultSet);
+        photoInfoMap_.insert(std::make_pair(oldFileId, photoInfo));
+        count++;
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("RebuildPhotoInfoMap done, size=%{public}d, cost=%{public}" PRId64,
+        count, MediaFileUtils::UTCTimeMilliSeconds() - startTime);
+}
+
+void UpgradeRestore::SetContinueSkipBit(ResumeBusinessFlag flag)
+{
+    int32_t bit = 1 << static_cast<int32_t>(flag);
+    continueInfo_.fetch_or(bit);
+    UpgradeRestoreResumeMarker::SetContinueInfo(continueInfo_.load());
 }
 
 } // namespace Media

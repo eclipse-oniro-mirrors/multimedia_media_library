@@ -178,6 +178,7 @@ ohos_shared_library("mediabackup") {
     "./src/restore/tab_old_photos_restore.cpp",
     "./src/video_ringtone_processor/video_ringtone_processor.cpp",
     "./src/upgrade_restore.cpp",
+    "./src/upgrade_restore_resume_marker.cpp",
     "./src/restore_map_code_utils.cpp",
     "./src/reverse_clone_reliability_marker.cpp",
     "./src/reverse_clone_restore_resume.cpp",
