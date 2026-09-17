@@ -549,12 +549,15 @@ napi_value FetchFileResultNapi::JSGetCount(napi_env env, napi_callback_info info
     if ((status == napi_ok) && CheckIfFFRNapiNotEmpty(obj)) {
         GetCountFromObject(obj, count);
         if (count < 0) {
-            NapiError::ThrowError(env, JS_INNER_FAIL, "Failed to get count");
+            NapiError::ThrowError(env, JS_INNER_FAIL,
+                "System internal error. Possible causes: "
+                "1. The query result set has been closed via close() or is in an invalid state, "
+                "please re-execute the query");
             return nullptr;
         }
         napi_create_int32(env, count, &jsResult);
     } else {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get native obj");
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The object is not a valid instance");
         return nullptr;
     }
 
@@ -607,7 +610,7 @@ napi_value FetchFileResultNapi::JSIsAfterLast(napi_env env, napi_callback_info i
         napi_get_boolean(env, isAfterLast, &jsResult);
     } else {
         NAPI_ERR_LOG("JSIsAfterLast obj == nullptr, status: %{public}d", status);
-        NAPI_ASSERT(env, false, "JSIsAfterLast obj == nullptr");
+        NAPI_ASSERT(env, false, "The object is not a valid instance");
     }
 
     return jsResult;
@@ -654,7 +657,9 @@ static void GetNapiResFromAsset(napi_env env, FetchFileResultAsyncContext *conte
         NAPI_ERR_LOG("Failed to get file asset napi object");
         napi_get_undefined(env, &jsContext->data);
         MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, JS_INNER_FAIL,
-            "System inner fail");
+            "System internal error. Possible causes: "
+            "1. Database exception; "
+            "2. IPC timeout. Please retry and check logs");
     } else {
         jsContext->data = jsAsset;
         napi_get_undefined(env, &jsContext->error);
@@ -696,7 +701,7 @@ napi_value FetchFileResultNapi::JSGetFirstObject(napi_env env, napi_callback_inf
     tracer.Start("JSGetFirstObject");
 
     GET_JS_ARGS(env, info, argc, argv, thisVar);
-    NAPI_ASSERT(env, argc <= ARGS_ONE, "requires 1 parameter");
+    NAPI_ASSERT(env, argc <= ARGS_ONE, "Parameter count exceeds the limit");
     napi_get_undefined(env, &result);
 
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
@@ -748,7 +753,7 @@ napi_value FetchFileResultNapi::JSGetNextObject(napi_env env, napi_callback_info
     tracer.Start("JSGetNextObject");
 
     GET_JS_ARGS(env, info, argc, argv, thisVar);
-    NAPI_ASSERT(env, argc <= ARGS_ONE, "requires 1 parameter");
+    NAPI_ASSERT(env, argc <= ARGS_ONE, "Parameter count exceeds the limit");
 
     napi_get_undefined(env, &result);
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
@@ -802,7 +807,7 @@ napi_value FetchFileResultNapi::JSGetLastObject(napi_env env, napi_callback_info
     tracer.Start("JSGetLastObject");
 
     GET_JS_ARGS(env, info, argc, argv, thisVar);
-    NAPI_ASSERT(env, argc <= ARGS_ONE, "requires 1 parameter");
+    NAPI_ASSERT(env, argc <= ARGS_ONE, "Parameter count exceeds the limit");
 
     napi_get_undefined(env, &result);
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
@@ -855,7 +860,7 @@ napi_value FetchFileResultNapi::JSGetPositionObject(napi_env env, napi_callback_
     tracer.Start("JSGetPositionObject");
 
     GET_JS_ARGS(env, info, argc, argv, thisVar);
-    NAPI_ASSERT(env, (argc == ARGS_ONE || argc == ARGS_TWO), "requires 2 parameter maximum");
+    NAPI_ASSERT(env, (argc == ARGS_ONE || argc == ARGS_TWO), "Parameter count exceeds the limit");
 
     napi_get_undefined(env, &result);
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
@@ -987,7 +992,8 @@ static void GetAllObjectCompleteCallback(napi_env env, napi_status status, Fetch
             NAPI_ERR_LOG("unsupported FetchResType");
             napi_get_undefined(env, &jsContext->data);
             MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, ERR_INVALID_OUTPUT,
-                "Failed to obtain fileAsset array from DB");
+                "System internal error. Possible causes: "
+                "1. Database exception; 2. IPC timeout. Please retry and check logs");
     }
 
     if (context->work != nullptr) {
@@ -1061,7 +1067,7 @@ napi_value FetchFileResultNapi::JSGetAllObject(napi_env env, napi_callback_info 
     tracer.Start("JSGetAllObject");
 
     GET_JS_ARGS(env, info, argc, argv, thisVar);
-    NAPI_ASSERT(env, argc <= ARGS_ONE, "requires 1 parameter maximum");
+    NAPI_ASSERT(env, argc <= ARGS_ONE, "Parameter count exceeds the limit");
 
     napi_get_undefined(env, &result);
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
@@ -1125,7 +1131,7 @@ napi_value FetchFileResultNapi::ProcessValidContext(
     GetCountFromObject(asyncContext->objectInfo, total_count);
     if (asyncContext->offset < 0 || asyncContext->length <= 0 ||
         (asyncContext->offset + asyncContext->length) > total_count) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Index exceeds range of objects");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The index is out of range, must be within [0, count)");
         return nullptr;
     }
     NAPI_CREATE_PROMISE(env, asyncContext->callbackRef, asyncContext->deferred, result);
@@ -1434,7 +1440,7 @@ napi_value FetchFileResultNapi::JSGetObjectsByIndexSet(napi_env env, napi_callba
     NAPI_ASSERT(env, argc == ARGS_ONE, "Number of args is invalid");
     bool isArray = false;
     CHECK_ARGS_WITH_MSG(env, napi_is_array(env, argv[PARAM0], &isArray), JS_E_PARAM_INVALID,
-                        "Failed to check argv[0] is array");
+                        "The parameter is not an array");
     napi_get_undefined(env, &result);
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
     status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&asyncContext->objectInfo));

@@ -208,7 +208,7 @@ void NapiError::ThrowErrorWithIntCode(napi_env env, int32_t errCode, const char 
     const std::string &errMsg)
 {
     string message = errMsg;
-    if (errCode == JS_E_INNER_FAIL) {
+    if (errCode == JS_E_INNER_FAIL || errCode == JS_INNER_FAIL) {
         std::string combineMsg = jsErrMap.count(errCode) > 0 ? jsErrMap.at(errCode) : "operation not support";
         if (!message.empty()) {
             message = combineMsg + ":" + message;
@@ -250,7 +250,7 @@ void NapiError::ThrowError(napi_env env, int32_t err, const std::string &errMsg)
 void NapiError::ThrowError(napi_env env, int32_t err, const char *funcName, int32_t line, const std::string &errMsg)
 {
     string message = errMsg;
-    if (err == JS_E_INNER_FAIL) {
+    if (err == JS_E_INNER_FAIL || err == JS_INNER_FAIL) {
         std::string combineMsg = jsErrMap.count(err) > 0 ? jsErrMap.at(err) : "operation not support";
         if (!message.empty()) {
             message = combineMsg + ":" + message;

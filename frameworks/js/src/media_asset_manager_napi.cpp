@@ -593,7 +593,7 @@ napi_status ParseArgGetDestPath(napi_env env, napi_value arg, std::string &destP
     }
     napi_get_print_string(env, arg, destPath);
     if (destPath.empty()) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "failed to get destPath napi object");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The fileUri (destPath) is an empty string");
         return napi_invalid_arg;
     }
     return napi_ok;
@@ -772,18 +772,18 @@ napi_status MediaAssetManagerNapi::ParseRequestMediaArgs(napi_env env, napi_call
         if (ParseArgGetDataHandler(env, asyncContext->argv[PARAM3], asyncContext->dataHandler,
             asyncContext->needsExtraInfo) != napi_ok) {
             NAPI_ERR_LOG("requestMedia ParseArgGetDataHandler error");
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "requestMedia ParseArgGetDataHandler error");
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The dataHandler is null or invalid");
             return napi_invalid_arg;
         }
     } else if (asyncContext->argc == ARGS_FIVE) {
         if (ParseArgGetDestPath(env, asyncContext->argv[PARAM3], asyncContext->destUri) != napi_ok) {
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "requestMedia ParseArgGetDestPath error");
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The fileUri (destPath) is an empty string");
             return napi_invalid_arg;
         }
         if (ParseArgGetDataHandler(env, asyncContext->argv[PARAM4], asyncContext->dataHandler,
             asyncContext->needsExtraInfo) != napi_ok) {
             NAPI_ERR_LOG("requestMedia ParseArgGetDataHandler error");
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "requestMedia ParseArgGetDataHandler error");
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The dataHandler is null or invalid");
             return napi_invalid_arg;
         }
     }
@@ -884,12 +884,15 @@ napi_value MediaAssetManagerNapi::JSRequestImageData(napi_env env, napi_callback
     asyncContext->returnDataType = ReturnDataType::TYPE_ARRAY_BUFFER;
     if (ParseRequestMediaArgs(env, info, asyncContext) != napi_ok) {
         NAPI_ERR_LOG("failed to parse requestImagedata args");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "failed to parse requestImagedata args");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Parameter error. please check the number and types of parameters");
         return nullptr;
     }
     if (!InitUserFileClient(env, info, asyncContext->userId)) {
         NAPI_ERR_LOG("JSRequestEfficientIImage init user file client failed");
-        NapiError::ThrowError(env, JS_INNER_FAIL, "handler is invalid");
+        NapiError::ThrowError(env, JS_INNER_FAIL,
+            "User file service initialization failed, possible causes: 1. Database exception;"
+            "2. File system exception; 3. IPC timeout. please check if the context is valid and retry");
         return nullptr;
     }
     if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef) != napi_ok
@@ -1095,12 +1098,15 @@ napi_value MediaAssetManagerNapi::JSRequestImage(napi_env env, napi_callback_inf
     asyncContext->returnDataType = ReturnDataType::TYPE_IMAGE_SOURCE;
     if (ParseRequestMediaArgs(env, info, asyncContext) != napi_ok) {
         NAPI_ERR_LOG("failed to parse requestImage args");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "failed to parse requestImage args");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Parameter error. Please check the number and types of parameters");
         return nullptr;
     }
     if (!InitUserFileClient(env, info, asyncContext->userId)) {
         NAPI_ERR_LOG("JSRequestImage init user file client failed");
-        NapiError::ThrowError(env, JS_INNER_FAIL, "handler is invalid");
+        NapiError::ThrowError(env, JS_INNER_FAIL,
+            "User file service initialization failed, possible causes: 1. Database exception;"
+            "2. File system exception; 3. IPC timeout. please check if the context is valid and retry");
         return nullptr;
     }
     if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef) != napi_ok
@@ -1244,27 +1250,30 @@ bool MediaAssetManagerNapi::ParseAndCheckArgs(napi_env env, napi_callback_info i
 {
     if (ParseRequestMediaArgs(env, info, asyncContext) != napi_ok) {
         NAPI_ERR_LOG("failed to parse requestVideo args");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "failed to parse requestVideo args");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Parameter error. Please check the number and types of parameters");
         return false;
     }
 
     if (!InitUserFileClient(env, info, asyncContext->userId)) {
         NAPI_ERR_LOG("JSRequestVideoFile init user file client failed, userId is %{public}d", asyncContext->userId);
-        NapiError::ThrowError(env, JS_INNER_FAIL, "handler is invalid");
+        NapiError::ThrowError(env, JS_INNER_FAIL,
+            "User file service initialization failed, possible causes: 1. Database exception; "
+            "2. File system exception; 3. IPC timeout. please check if the context is valid and retry");
         return false;
     }
 
     if (asyncContext->photoUri.length() > MAX_URI_SIZE || asyncContext->destUri.length() > MAX_URI_SIZE) {
         NAPI_ERR_LOG("request video file uri lens out of limit photoUri lens: %{public}zu, destUri lens: %{public}zu",
             asyncContext->photoUri.length(), asyncContext->destUri.length());
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "request video file uri lens out of limit");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The URI length exceeds the maximum limit(384)");
         return false;
     }
 
     if (MediaFileUtils::GetMediaType(asyncContext->displayName) != MEDIA_TYPE_VIDEO ||
         MediaFileUtils::GetMediaType(MediaFileUtils::GetFileName(asyncContext->destUri)) != MEDIA_TYPE_VIDEO) {
         NAPI_ERR_LOG("request video file type invalid");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "request video file type invalid");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The media file type is not video, must be a video file");
         return false;
     }
     return true;
@@ -1334,24 +1343,27 @@ napi_value MediaAssetManagerNapi::JSRequestVideo(napi_env env, napi_callback_inf
 
     if (ParseRequestVideoArgs(env, info, asyncContext) != napi_ok) {
         NAPI_ERR_LOG("failed to parse requestVideo args");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "failed to parse requestVideo args");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Parameter error. Please check the number and types of parameters");
         return nullptr;
     }
     if (!InitUserFileClient(env, info, asyncContext->userId)) {
         NAPI_ERR_LOG("JSRequestVideo init user file client failed, userId is %{public}d", asyncContext->userId);
-        NapiError::ThrowError(env, JS_INNER_FAIL, "handler is invalid");
+        NapiError::ThrowError(env, JS_INNER_FAIL,
+            "User file service initialization failed, possible causes: 1. Database exception;"
+            "2. File system exception; 3. IPC timeout. please check if the context is valid and retry");
         return nullptr;
     }
 
     if (asyncContext->photoUri.length() > MAX_URI_SIZE) {
         NAPI_ERR_LOG("request video file uri lens out of limit photoUri lens: %{public}zu",
             asyncContext->photoUri.length());
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "request video file uri lens out of limit");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The URI length exceeds the maximum limit(384)");
         return nullptr;
     }
     if (MediaFileUtils::GetMediaType(asyncContext->displayName) != MEDIA_TYPE_VIDEO) {
         NAPI_ERR_LOG("request video file type invalid");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "request video file type invalid");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The media file type is not video, must be a video file");
         return nullptr;
     }
 
@@ -2225,13 +2237,14 @@ static napi_value ParseArgsForRequestMovingPhoto(napi_env env, size_t argc, cons
         context->mediaAssetProgressHandler) == napi_ok, "Failed to parse request option more");
     CHECK_COND_WITH_MESSAGE(env, IsMovingPhoto(fileAssetPtr->GetPhotoSubType(),
         fileAssetPtr->GetMovingPhotoEffectMode(), static_cast<int32_t>(context->sourceMode)),
-        "Asset is not a moving photo");
+        "The asset is not a moving photo, this API only supports moving photos");
     if (fileAssetPtr->GetUserId() != -1) {
         MediaFileUtils::UriAppendKeyValue(context->photoUri, "user", to_string(fileAssetPtr->GetUserId()));
     }
     if (ParseArgGetDataHandler(env, argv[PARAM3], context->dataHandler, context->needsExtraInfo) != napi_ok) {
         NAPI_ERR_LOG("requestMovingPhoto ParseArgGetDataHandler error");
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "requestMovingPhoto ParseArgGetDataHandler error");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "The dataHandler parameter is invalid, must be an object with onDataPrepared callback");
         return nullptr;
     }
 
@@ -2292,7 +2305,9 @@ napi_value MediaAssetManagerNapi::JSRequestMovingPhoto(napi_env env, napi_callba
     CHECK_ARGS(env, napi_get_cb_info(env, info, &(asyncContext->argc), asyncContext->argv, nullptr, nullptr),
         JS_INNER_FAIL);
     CHECK_NULLPTR_RET(ParseArgsForRequestMovingPhoto(env, asyncContext->argc, asyncContext->argv, asyncContext));
-    CHECK_COND(env, InitUserFileClient(env, info, asyncContext->userId), JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, InitUserFileClient(env, info, asyncContext->userId), JS_INNER_FAIL,
+        "User file service initialization failed, possible causes: 1. Database exception;"
+        "2. File system exception; 3. IPC timeout. please check if the context is valid and retry");
     if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef) != napi_ok
             || CreateOnDataPreparedThreadSafeFunc(env, asyncContext, asyncContext->onDataPreparedPtr) != napi_ok) {
         NAPI_ERR_LOG("CreateDataHandlerRef or CreateOnDataPreparedThreadSafeFunc failed");
@@ -2460,12 +2475,12 @@ napi_value MediaAssetManagerNapi::JSCancelRequest(napi_env env, napi_callback_in
 static napi_value ParseArgsForLoadMovingPhoto(napi_env env, size_t argc, const napi_value argv[],
     unique_ptr<MediaAssetManagerAsyncContext> &context)
 {
-    CHECK_COND_WITH_MESSAGE(env, (argc == ARGS_THREE), "Invalid number of arguments");
+    CHECK_COND_WITH_MESSAGE(env, (argc == ARGS_THREE), "The number of parameters is invalid, expected 3 parameters");
 
     std::string imageFileUri;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM1], imageFileUri) == napi_ok,
-        "Failed to parse image file uri");
+        "The videoFileUri parameter must be a string");
     std::string videoFileUri;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM2], videoFileUri) == napi_ok,

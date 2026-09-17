@@ -208,18 +208,18 @@ napi_value MediaAssetChangeRequestNapi::Constructor(napi_env env, napi_callback_
     napi_valuetype valueType;
     FileAssetNapi* fileAssetNapi;
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, argc == ARGS_ONE, "Number of args is invalid");
+    CHECK_COND_WITH_MESSAGE(env, argc == ARGS_ONE, "The number of parameters must be 1");
     CHECK_ARGS(env, napi_typeof(env, argv[PARAM0], &valueType), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, valueType == napi_object, "Invalid argument type");
+    CHECK_COND_WITH_MESSAGE(env, valueType == napi_object, "The asset parameter must be of type PhotoAsset");
     CHECK_ARGS(env, napi_unwrap(env, argv[PARAM0], reinterpret_cast<void**>(&fileAssetNapi)), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, fileAssetNapi != nullptr, "Failed to get FileAssetNapi object");
+    CHECK_COND_WITH_MESSAGE(env, fileAssetNapi != nullptr, "The PhotoAsset object is not a valid PhotoAsset");
 
     auto fileAssetPtr = fileAssetNapi->GetFileAssetInstance();
-    CHECK_COND_WITH_MESSAGE(env, fileAssetPtr != nullptr, "fileAsset is null");
+    CHECK_COND_WITH_MESSAGE(env, fileAssetPtr != nullptr, "The asset parameter is not a valid PhotoAsset object");
     CHECK_COND_WITH_MESSAGE(env,
         fileAssetPtr->GetResultNapiType() == ResultNapiType::TYPE_PHOTOACCESS_HELPER &&
-            (fileAssetPtr->GetMediaType() == MEDIA_TYPE_IMAGE || fileAssetPtr->GetMediaType() == MEDIA_TYPE_VIDEO),
-        "Unsupported type of fileAsset");
+        (fileAssetPtr->GetMediaType() == MEDIA_TYPE_IMAGE || fileAssetPtr->GetMediaType() == MEDIA_TYPE_VIDEO),
+        "The object is not a PhotoAccessHelper type or the photoType is invalid or the subType is invalid");
 
     unique_ptr<MediaAssetChangeRequestNapi> obj = make_unique<MediaAssetChangeRequestNapi>();
     CHECK_COND(env, obj != nullptr, JS_INNER_FAIL);
@@ -533,7 +533,7 @@ bool MediaAssetChangeRequestNapi::CheckChangeOperations(napi_env env,
     unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
 {
     if (assetChangeOperations_.empty()) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "None request to apply");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "No pending change request to apply");
         return false;
     }
 
@@ -554,20 +554,20 @@ bool MediaAssetChangeRequestNapi::CheckChangeOperations(napi_env env,
     }
 
     if (containsEdit && (isCreateFromScratch || isCreateFromUri)) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Cannot create together with edit");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Cannot create and edit at the same time");
         return false;
     }
 
     auto fileAsset = GetFileAssetInstance();
     if (fileAsset == nullptr) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "fileAsset is null");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "The PhotoAsset is not a valid PhotoAsset object");
         return false;
     }
 
     AssetChangeOperation firstOperation = assetChangeOperations_.front();
     if (fileAsset->GetId() <= 0 && firstOperation != AssetChangeOperation::CREATE_FROM_SCRATCH &&
         firstOperation != AssetChangeOperation::CREATE_FROM_URI) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Invalid asset change request");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Invalid asset change request, the asset ID is invalid");
         return false;
     }
 
@@ -689,7 +689,8 @@ napi_value MediaAssetChangeRequestNapi::JSGetAsset(napi_env env, napi_callback_i
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
     if (fileAsset->GetId() > 0) {
         return FileAssetNapi::CreatePhotoAsset(env, fileAsset);
     }
@@ -836,10 +837,12 @@ static napi_value ParseArgsCreateAssetSystem(
     MediaType mediaType;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[PARAM1], displayName) == napi_ok,
-        "Failed to get displayName");
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName) == E_OK, "Failed to check displayName");
+        "The fileUri parameter must be a string and within length limit");
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName) == E_OK,
+        "The file name is invalid (contains \"..\", empty title, or exceeds 255 characters)");
     mediaType = MediaFileUtils::GetMediaType(displayName);
-    CHECK_COND_WITH_MESSAGE(env, mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO, "Invalid file type");
+    CHECK_COND_WITH_MESSAGE(env, mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO,
+        "The file type is not IMAGE or VIDEO");
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
 
@@ -848,7 +851,7 @@ static napi_value ParseArgsCreateAssetSystem(
         napi_valuetype valueType;
         napi_value createOptionsNapi = context->argv[PARAM2];
         CHECK_COND_WITH_MESSAGE(
-            env, napi_typeof(env, createOptionsNapi, &valueType) == napi_ok, "Failed to get napi type");
+            env, napi_typeof(env, createOptionsNapi, &valueType) == napi_ok, "The options parameter must be an object");
         if (valueType != napi_object) {
             NAPI_ERR_LOG("Napi type is wrong in PhotoCreateOptions");
             return nullptr;
@@ -856,7 +859,8 @@ static napi_value ParseArgsCreateAssetSystem(
 
         CHECK_COND_WITH_MESSAGE(env,
             ParseAssetCreateOptions(env, createOptionsNapi, *context, PHOTO_CREATE_OPTIONS_PARAM, true) == napi_ok,
-            "Parse PhotoCreateOptions failed");
+            "Invalid subtype value or the subtype is MOVING_PHOTO but mediaType is not IMAGE or extension is not "
+            "a supported moving photo format");
     }
     RETURN_NAPI_TRUE(env);
 }
@@ -868,17 +872,19 @@ static napi_value ParseArgsCreateAssetCommon(
     MediaType mediaType;
     int32_t type = 0;
     CHECK_COND_WITH_MESSAGE(
-        env, napi_get_value_int32(env, context->argv[PARAM1], &type) == napi_ok, "Failed to get photoType");
+        env, napi_get_value_int32(env, context->argv[PARAM1], &type) == napi_ok,
+        "The photoType parameter must be a number");
     mediaType = static_cast<MediaType>(type);
-    CHECK_COND_WITH_MESSAGE(env, mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO, "Invalid photoType");
+    CHECK_COND_WITH_MESSAGE(env, mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO,
+        "The photoType must be IMAGE(1) or VIDEO(2)");
 
     // Parse extension.
     string extension;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[PARAM2], extension) == napi_ok,
-        "Failed to get extension");
+        "The extension parameter must be a string and within 260 characters");
     CHECK_COND_WITH_MESSAGE(
-        env, mediaType == MediaFileUtils::GetMediaType("." + extension), "Failed to check extension");
+        env, mediaType == MediaFileUtils::GetMediaType("." + extension), "The extension does notmatch the photoType");
     context->valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
 
@@ -887,7 +893,7 @@ static napi_value ParseArgsCreateAssetCommon(
         napi_valuetype valueType;
         napi_value createOptionsNapi = context->argv[PARAM3];
         CHECK_COND_WITH_MESSAGE(
-            env, napi_typeof(env, createOptionsNapi, &valueType) == napi_ok, "Failed to get napi type");
+            env, napi_typeof(env, createOptionsNapi, &valueType) == napi_ok, "The options parameter must be an object");
         if (valueType != napi_object) {
             NAPI_ERR_LOG("Napi type is wrong in CreateOptions");
             return nullptr;
@@ -895,7 +901,8 @@ static napi_value ParseArgsCreateAssetCommon(
 
         CHECK_COND_WITH_MESSAGE(env,
             ParseAssetCreateOptions(env, createOptionsNapi, *context, CREATE_OPTIONS_PARAM, false) == napi_ok,
-            "Parse CreateOptions failed");
+            "Invalid subtype value or the subtype is MOVING_PHOTO but mediaType is not IMAGE or extension is not a "
+            "supported moving photo format");
     }
 
     bool isValid = false;
@@ -908,7 +915,7 @@ static napi_value ParseArgsCreateAssetCommon(
 
     string displayName = title + "." + extension;
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
-        "Failed to check displayName");
+        "The generated file name is invalid or too long");
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
     RETURN_NAPI_TRUE(env);
 }
@@ -921,17 +928,18 @@ static napi_value ParseArgsCreateAsset(
     napi_value result = nullptr;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, minArgs, maxArgs) == napi_ok,
-        "Failed to get args");
+        "The number of parameters must be between 2 and 4");
 
     napi_valuetype valueType;
     CHECK_COND_WITH_MESSAGE(
-        env, napi_typeof(env, context->argv[PARAM1], &valueType) == napi_ok, "Failed to get napi type");
+        env, napi_typeof(env, context->argv[PARAM1], &valueType) == napi_ok,
+        "The photoType parameter must be number or the fileUri parameter must be string");
     if (valueType == napi_string) {
         if (!MediaLibraryNapiUtils::IsSystemApp()) {
             NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
             return nullptr;
         }
-        CHECK_COND_WITH_MESSAGE(env, context->argc <= ARGS_THREE, "Number of args is invalid");
+        CHECK_COND_WITH_MESSAGE(env, context->argc <= ARGS_THREE, "The number of parameters must be between 2 and 3");
         result = ParseArgsCreateAssetSystem(env, info, context);
     } else if (valueType == napi_number) {
         result = ParseArgsCreateAssetCommon(env, info, context);
@@ -939,7 +947,8 @@ static napi_value ParseArgsCreateAsset(
         NAPI_ERR_LOG("param type %{public}d is invalid", static_cast<int32_t>(valueType));
         return nullptr;
     }
-    CHECK_COND(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info, context->userId_), JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info, context->userId_),
+        JS_INNER_FAIL, "User file service initialization failed, please check if the context is valid and retry");
     return result;
 }
 
@@ -981,13 +990,15 @@ static napi_value ParseFileUri(napi_env env, napi_value arg, MediaType mediaType
     unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
 {
     string fileUriStr;
-    CHECK_COND_WITH_MESSAGE(
-        env, MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok, "Failed to get fileUri");
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok,
+        "The fileUri parameter must be a string and within length limit");
     AppFileService::ModuleFileUri::FileUri fileUri(fileUriStr);
     string path = fileUri.GetRealPath();
-    CHECK_COND(env, PathToRealPath(path, context->realPath), JS_ERR_NO_SUCH_FILE);
+    CHECK_COND_WITH_ERR_MESSAGE(env, PathToRealPath(path, context->realPath), JS_ERR_NO_SUCH_FILE,
+        "The file corresponding to the URI is not in the app sandbox");
 
-    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType(context->realPath), "Invalid file type");
+    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType(context->realPath),
+        "The file type does not match the expected type");
     RETURN_NAPI_TRUE(env);
 }
 
@@ -996,15 +1007,18 @@ static napi_value ParseArgsCreateAssetFromFileUri(napi_env env, napi_callback_in
 {
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, ARGS_TWO, ARGS_TWO) == napi_ok,
-        "Failed to get args");
-    CHECK_COND(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
+        "The number of parameeters must be 2");
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info), JS_INNER_FAIL,
+        "The contxt parameter is invalid or not properly initialized, please pass a valid Context obtained from the "
+        "application context");
     return ParseFileUri(env, context->argv[PARAM1], mediaType, context);
 }
 
 napi_value MediaAssetChangeRequestNapi::CreateAssetRequestFromRealPath(napi_env env, const string& realPath)
 {
     string displayName = MediaFileUtils::GetFileName(realPath);
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK, "Invalid fileName");
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
+        "The file name is invalid (contains \"..\", empty title, or exceeds 255 characters)");
     string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
     MediaType mediaType = MediaFileUtils::GetMediaType(displayName);
     auto emptyFileAsset = make_unique<FileAsset>();
@@ -1096,8 +1110,9 @@ static napi_value ParseArgsDeleteAssets(
     constexpr size_t maxArgs = ARGS_FOUR;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, minArgs, maxArgs) == napi_ok,
-        "Failed to get args");
-    CHECK_COND(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
+        "The number of parameters is invalid, excepted 2parameters (context, assets)");
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info), JS_INNER_FAIL,
+        "User file service initialization failed, please check if the context is valid and retry");
 
     napi_valuetype valueType = napi_undefined;
     CHECK_ARGS(env, napi_typeof(env, context->argv[PARAM1], &valueType), JS_INNER_FAIL);
@@ -1106,23 +1121,24 @@ static napi_value ParseArgsDeleteAssets(
     vector<string> uris;
     vector<napi_value> napiValues;
     CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, context->argv[PARAM2], napiValues));
-    CHECK_COND_WITH_MESSAGE(env, !napiValues.empty(), "array is empty");
+    CHECK_COND_WITH_MESSAGE(env, !napiValues.empty(), "The assets array is empty");
     CHECK_ARGS(env, napi_typeof(env, napiValues.front(), &valueType), JS_INNER_FAIL);
     if (valueType == napi_string) { // array of asset uri
         CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetStringArray(env, napiValues, uris));
     } else if (valueType == napi_object) { // array of asset object
         CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetUriArrayFromAssets(env, napiValues, uris));
     } else {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Invalid type");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "The array element type must be string (URI) or PhotoAsset object");
         return nullptr;
     }
 
-    CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "Failed to check empty array");
+    CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "The assets array is empty");
     for (const auto& uri : uris) {
         std::string userId = MediaLibraryNapiUtils::GetUserIdFromUri(uri);
         context->userId_ = StrIsNumber(userId) ? stoi(userId) : -1;
         CHECK_COND_WITH_MSG(env, uri.find(PhotoColumn::PHOTO_URI_PREFIX) != string::npos, JS_E_URI,
-                            "Invalid uri, uri must start with " + PhotoColumn::PHOTO_URI_PREFIX);
+            "The URI format is incorrect or the URI does not exit");
     }
 
     NAPI_INFO_LOG("DeleteAssetsExecute size:%{public}zu", uris.size());
@@ -1185,11 +1201,12 @@ napi_value MediaAssetChangeRequestNapi::JSDeleteAssets(napi_env env, napi_callba
 
 #ifdef HAS_ACE_ENGINE_PART
     // Deletion control by ui extension
-    CHECK_COND(env, HasWritePermission(), OHOS_PERMISSION_DENIED_CODE);
+    CHECK_COND_WITH_ERR_MESSAGE(env, HasWritePermission(), OHOS_PERMISSION_DENIED_CODE,
+        "Permission verification failed. The application does not have permission required to call the API");
     CHECK_COND_WITH_MESSAGE(
         env, asyncContext->uris.size() <= MAX_DELETE_NUMBER, "No more than 300 assets can be deleted at one time");
     auto context = OHOS::AbilityRuntime::GetStageModeContext(env, asyncContext->argv[PARAM0]);
-    CHECK_COND_WITH_MESSAGE(env, context != nullptr, "Failed to get stage mode context");
+    CHECK_COND_WITH_MESSAGE(env, context != nullptr, "The context parameter is invalid");
     auto abilityContext = OHOS::AbilityRuntime::Context::ConvertTo<OHOS::AbilityRuntime::AbilityContext>(context);
     CHECK_COND(env, abilityContext != nullptr, JS_INNER_FAIL);
     auto abilityInfo = abilityContext->GetAbilityInfo();
@@ -1388,15 +1405,18 @@ napi_value MediaAssetChangeRequestNapi::JSSetTitle(napi_env env, napi_callback_i
     string title;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::ParseArgsStringCallback(env, info, asyncContext, title) == napi_ok,
-        "Failed to parse args");
-    CHECK_COND_WITH_MESSAGE(env, asyncContext->argc == ARGS_ONE, "Number of args is invalid");
+        "The title parameter must be a string");
+    CHECK_COND_WITH_MESSAGE(env, asyncContext->argc == ARGS_ONE,
+        "The number of parameters is invalid, expected 1 parameter");
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title + "." + extension;
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK, "Invalid title");
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
+        "The title contains unsupported characters or exceeds the length limit (max 255 characters)");
 
     fileAsset->SetTitle(title);
     fileAsset->SetDisplayName(displayName);
@@ -1419,17 +1439,19 @@ napi_value MediaAssetChangeRequestNapi::JSSetOrientation(napi_env env, napi_call
     int orientationValue;
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::ParseArgsNumberCallback(env, info, asyncContext, orientationValue) == napi_ok,
-        "Failed to parse args for orientation");
-    CHECK_COND_WITH_MESSAGE(env, asyncContext->argc == ARGS_ONE, "Number of args is invalid");
+        "The orientation parameter must be a number");
+    CHECK_COND_WITH_MESSAGE(env, asyncContext->argc == ARGS_ONE,
+        "The number of parameters is invalid, expected 1 parameter");
     if (std::find(ORIENTATION_ARRAY.begin(), ORIENTATION_ARRAY.end(), orientationValue) == ORIENTATION_ARRAY.end()) {
-        napi_throw_range_error(env, nullptr, "orientationValue value is invalid.");
+        napi_throw_range_error(env, nullptr, "The orientation value must be 0, 90, 180 or 270");
         return nullptr;
     }
 
     auto changeRequest = asyncContext->objectInfo;
-    CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
+    CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr,
+        "The ChangeRequest is not a valid object created through the constructor or static factory methods");
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
+    CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "The PhotoAsset is not a valid PhotoAsset object");
     fileAsset->SetOrientation(orientationValue);
 
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_ORIENTATION);
@@ -1690,7 +1712,7 @@ napi_value MediaAssetChangeRequestNapi::JSSaveCameraPhoto(napi_env env, napi_cal
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, minArgs, maxArgs) == napi_ok,
-        "Failed to get object info");
+        "The object is not a valid instance");
     auto changeRequest = asyncContext->objectInfo;
     if (asyncContext->argc == ARGS_ONE) {
         int32_t fileType;
@@ -1699,7 +1721,8 @@ napi_value MediaAssetChangeRequestNapi::JSSaveCameraPhoto(napi_env env, napi_cal
         changeRequest->SetImageFileType(fileType);
     }
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
     if ((changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) ||
         changeRequest->Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA)) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
@@ -1714,11 +1737,12 @@ napi_value MediaAssetChangeRequestNapi::JSDiscardCameraPhoto(napi_env env, napi_
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ZERO, ARGS_ZERO) == napi_ok,
-        "Failed to get object info");
+        "The object is not a valid instance");
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
     changeRequest->RecordChangeOperation(AssetChangeOperation::DISCARD_CAMERA_PHOTO);
     RETURN_NAPI_UNDEFINED(env);
 }
@@ -1870,7 +1894,9 @@ static napi_value CheckWriteOperation(napi_env env, MediaAssetChangeRequestNapi*
     ResourceType resourceType = ResourceType::INVALID_RESOURCE)
 {
     if (changeRequest == nullptr) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "changeRequest is null");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "The ChangeRequest is invalid, the resource has already been added, or ADD_RESOURCE operation exceeds "
+            "1 time");
         return nullptr;
     }
 
@@ -1886,7 +1912,7 @@ static napi_value CheckWriteOperation(napi_env env, MediaAssetChangeRequestNapi*
         changeRequest->Contains(AssetChangeOperation::GET_WRITE_CACHE_HANDLER) ||
         changeRequest->Contains(AssetChangeOperation::ADD_RESOURCE)) {
         NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The previous asset creation/modification request has not been applied");
+            "A previous asset creation or modification request has not been applied yet");
         return nullptr;
     }
     RETURN_NAPI_TRUE(env);
@@ -1897,12 +1923,14 @@ napi_value MediaAssetChangeRequestNapi::JSGetWriteCacheHandler(napi_env env, nap
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ZERO, ARGS_ONE) == napi_ok,
-        "Failed to get object info");
+        "The object is not a valid instance");
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
-    CHECK_COND(env, !changeRequest->IsMovingPhoto(), JS_E_OPERATION_NOT_SUPPORT);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
+    CHECK_COND_WITH_ERR_MESSAGE(env, !changeRequest->IsMovingPhoto(), JS_E_OPERATION_NOT_SUPPORT,
+        "The operation type is not supported, the asset is a moving photo which does not support this operation");
     CHECK_COND(env, CheckWriteOperation(env, changeRequest), JS_E_OPERATION_NOT_SUPPORT);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ChangeRequestGetWriteCacheHandler",
         GetWriteCacheHandlerExecute, GetWriteCacheHandlerCompleteCallback);
@@ -1949,22 +1977,24 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResource(napi_env env
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_TWO, ARGS_TWO) == napi_ok,
-        "Failed to get object info");
+        "The object is not a valid instance");
     auto changeRequest = asyncContext->objectInfo;
 
     napi_valuetype valueType;
     napi_value value = asyncContext->argv[PARAM1];
-    CHECK_COND_WITH_MESSAGE(env, napi_typeof(env, value, &valueType) == napi_ok, "Failed to get napi type");
+    CHECK_COND_WITH_MESSAGE(env, napi_typeof(env, value, &valueType) == napi_ok,
+        "The fileUri parameter must be a string or the data parameter must be of type ArrayBuffer");
     if (valueType == napi_string) { // addResource by file uri
         CHECK_COND(env, ParseFileUri(env, value, MediaType::MEDIA_TYPE_VIDEO, asyncContext), OHOS_INVALID_PARAM_CODE);
         if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(asyncContext->realPath, false)) {
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                "The fileUri does not point to a valid moving photo video resource");
             return nullptr;
         }
         int32_t duration = MovingPhotoFileUtils::GetMovingPhotoVideoDuration(asyncContext->realPath);
         if (!MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(duration)) {
             NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
-                "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
+                "The moving photo video duration must be > 0 and <= 10 seconds");
             return nullptr;
         }
         changeRequest->movingPhotoVideoRealPath_ = asyncContext->realPath;
@@ -1972,17 +2002,18 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResource(napi_env env
     } else { // addResource by ArrayBuffer
         bool isArrayBuffer = false;
         CHECK_COND_WITH_MESSAGE(env, napi_is_arraybuffer(env, value, &isArrayBuffer) == napi_ok && isArrayBuffer,
-            "Failed to check data type");
+            "The data parameter must be of type ArrayBuffer");
         CHECK_COND_WITH_MESSAGE(env,
             napi_get_arraybuffer_info(env, value, &(changeRequest->movingPhotoVideoDataBuffer_),
                 &(changeRequest->movingPhotoVideoBufferSize_)) == napi_ok,
             "Failed to get data buffer");
         CHECK_COND_WITH_MESSAGE(env, changeRequest->movingPhotoVideoBufferSize_ > 0,
-            "Failed to check size of data buffer");
+            "The ArrayBuffer length is 0, please provide valid data");
         if (!CheckMovingPhotoVideo(changeRequest->movingPhotoVideoDataBuffer_,
             changeRequest->movingPhotoVideoBufferSize_)) {
             NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
-                "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
+                "The data in ArrayBuffer is not a valid moving photo video resource or the moving photo video duration "
+                "must be > 0 and <= 10 seconds");
             return nullptr;
         }
         changeRequest->movingPhotoVideoResourceMode_ = AddResourceMode::DATA_BUFFER;
@@ -2034,20 +2065,22 @@ napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callbac
 {
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext,
-        ARGS_TWO, ARGS_TWO) == napi_ok, "Failed to get object info");
+        ARGS_TWO, ARGS_TWO) == napi_ok, "The object is not a valid instance");
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetInt32(env, asyncContext->argv[PARAM0],
-        resourceType) == napi_ok, "Failed to get resourceType");
+        resourceType) == napi_ok, "The type parameter must be a valid ResourceType enum value");
     CHECK_COND(env, CheckWriteOperation(env, changeRequest, GetResourceType(resourceType)), JS_E_OPERATION_NOT_SUPPORT);
     if (changeRequest->IsMovingPhoto() && resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE)) {
         return AddMovingPhotoVideoResource(env, info);
     }
     CHECK_COND_WITH_MESSAGE(env, resourceType == static_cast<int32_t>(fileAsset->GetMediaType()) ||
-        resourceType == static_cast<int32_t>(ResourceType::PHOTO_PROXY), "Failed to check resourceType");
+        resourceType == static_cast<int32_t>(ResourceType::PHOTO_PROXY),
+        "The resourceType does not match the media type of the asset");
 
     napi_valuetype valueType;
     napi_value value = asyncContext->argv[PARAM1];
