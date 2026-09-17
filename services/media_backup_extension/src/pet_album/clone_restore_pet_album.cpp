@@ -509,11 +509,7 @@ template<typename T, typename U>
 void CloneRestorePet::PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const U& defaultValue)
 {
-    if (optionalValue.has_value()) {
-        BackupDatabaseUtils::PutIfPresent(values, columnName, optionalValue);
-    } else {
-        BackupDatabaseUtils::PutIfPresent(values, columnName, std::optional<T>(static_cast<T>(defaultValue)));
-    }
+    CloneFieldWriter::PutWithDefault<T, U>(values, columnName, optionalValue, defaultValue);
 }
 
 void CloneRestorePet::RestorePetFaceInfo()

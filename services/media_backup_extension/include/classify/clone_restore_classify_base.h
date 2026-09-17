@@ -17,6 +17,7 @@
 #define CLONE_RESTORE_CLASSIFY_BASE_H
 
 #include "values_bucket.h"
+#include "field_config/clone_field_writer.h"
 #include "backup_const_column.h"
 #include "classify_restore_const.h"
 
@@ -62,17 +63,7 @@ protected:
         const std::optional<T>& optionalValue,
         const std::unordered_set<std::string> &intersection)
     {
-        if (intersection.count(columnName) > 0 && optionalValue.has_value()) {
-            if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-                values.PutInt(columnName, optionalValue.value());
-            } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-                values.PutLong(columnName, optionalValue.value());
-            } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-                values.PutString(columnName, optionalValue.value());
-            } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-                values.PutDouble(columnName, optionalValue.value());
-            }
-        }
+        CloneFieldWriter::PutIfInIntersection<T>(values, columnName, optionalValue, intersection);
     }
 
     int32_t sceneCode_{-1};

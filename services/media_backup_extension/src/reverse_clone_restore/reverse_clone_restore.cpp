@@ -3593,22 +3593,8 @@ bool ReverseCloneRestore::PrepareCommonColumnInfoMapForAbsorb(const string &tabl
     const unordered_map<string, string> &srcColumnInfoMap, const unordered_map<string, string> &dstColumnInfoMap)
 {
     auto &commonColumnInfoMap = tableCommonColumnInfoMap_[tableName];
-    commonColumnInfoMap.clear();
-
-    // 遍历目标数据库的所有列
-    for (auto it = dstColumnInfoMap.begin(); it != dstColumnInfoMap.end(); ++it) {
-        const string &columnName = it->first;
-        const string &columnType = it->second;
-
-        // 只检查源数据库是否有相同名称和类型的列，不排除任何字段
-        if (!HasSameColumn(srcColumnInfoMap, columnName, columnType)) {
-            continue;
-        }
-
-        // 将所有共有的字段都加入 commonColumnInfoMap（无脑复制）
-        commonColumnInfoMap[columnName] = columnType;
-    }
-
+    commonColumnInfoMap = CloneFieldQuery::GetCommonColumns(tableName, srcColumnInfoMap, dstColumnInfoMap,
+        CloneDirection::REVERSE, RecordPath::INSERT);
     MEDIA_INFO_LOG("Table %{public}s has %{public}zu common columns (absorb mode)",
         BackupDatabaseUtils::GarbleInfoName(tableName).c_str(),
         commonColumnInfoMap.size());
@@ -3660,24 +3646,10 @@ vector<NativeRdb::ValuesBucket> ReverseCloneRestore::GetInsertValuesForAbsorb(ve
         // 设置其他字段（从 valMap 获取）
         for (auto it = fileInfos[i].valMap.begin(); it != fileInfos[i].valMap.end(); ++it) {
             const string &columnName = it->first;
-
-            const auto &columnValue = it->second;
-
-            // 跳过 MEDIA_ID，因为已经设置过了
             if (columnName == MediaColumn::MEDIA_ID) {
                 continue;
             }
-
-            // 根据值类型放入 ValuesBucket
-            if (holds_alternative<int32_t>(columnValue)) {
-                value.PutInt(columnName, get<int32_t>(columnValue));
-            } else if (holds_alternative<int64_t>(columnValue)) {
-                value.PutLong(columnName, get<int64_t>(columnValue));
-            } else if (holds_alternative<double>(columnValue)) {
-                value.PutDouble(columnName, get<double>(columnValue));
-            } else if (holds_alternative<string>(columnValue)) {
-                value.PutString(columnName, get<string>(columnValue));
-            }
+            CloneFieldWriter::PutFromVariant(value, columnName, it->second);
         }
 
         value.PutString(MediaColumn::MEDIA_FILE_PATH, fileInfos[i].cloudPath);
@@ -4090,19 +4062,7 @@ vector<NativeRdb::ValuesBucket> ReverseCloneRestore::GetInsertValuesForAbsorbAlb
 
         // 设置其他字段（从 valMap 获取）
         for (auto it = albumInfos[i].valMap.begin(); it != albumInfos[i].valMap.end(); ++it) {
-            const string &columnName = it->first;
-            const auto &columnValue = it->second;
-
-            // 根据值类型放入 ValuesBucket
-            if (holds_alternative<int32_t>(columnValue)) {
-                value.PutInt(columnName, get<int32_t>(columnValue));
-            } else if (holds_alternative<int64_t>(columnValue)) {
-                value.PutLong(columnName, get<int64_t>(columnValue));
-            } else if (holds_alternative<double>(columnValue)) {
-                value.PutDouble(columnName, get<double>(columnValue));
-            } else if (holds_alternative<string>(columnValue)) {
-                value.PutString(columnName, get<string>(columnValue));
-            }
+            CloneFieldWriter::PutFromVariant(value, it->first, it->second);
         }
 
         values.emplace_back(value);
@@ -4244,22 +4204,13 @@ NativeRdb::ValuesBucket ReverseCloneRestore::BuildAlbumValuesBucket(const AlbumI
     // 遍历 valMap 添加所有其他字段
     for (auto it = albumInfo.valMap.begin(); it != albumInfo.valMap.end(); ++it) {
         const string &columnName = it->first;
-        const auto &columnValue = it->second;
 
         // 跳过排除的列
         if (excludeColumns.find(columnName) != excludeColumns.end()) {
             continue;
         }
 
-        if (holds_alternative<int32_t>(columnValue)) {
-            values.PutInt(columnName, get<int32_t>(columnValue));
-        } else if (holds_alternative<int64_t>(columnValue)) {
-            values.PutLong(columnName, get<int64_t>(columnValue));
-        } else if (holds_alternative<double>(columnValue)) {
-            values.PutDouble(columnName, get<double>(columnValue));
-        } else if (holds_alternative<string>(columnValue)) {
-            values.PutString(columnName, get<string>(columnValue));
-        }
+        CloneFieldWriter::PutFromVariant(values, columnName, it->second);
     }
 
     return values;
