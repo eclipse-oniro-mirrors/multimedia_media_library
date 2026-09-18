@@ -1295,7 +1295,8 @@ int32_t MediaAlbumsControllerService::SetShareAlbumName(MessageParcel &data, Mes
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     if (reqBody.albumId <= 0 || reqBody.owner.empty() || reqBody.albumName.empty()) {
-        MEDIA_ERR_LOG("SetShareAlbumName params invalid, albumId=%{public}d", reqBody.albumId);
+        MEDIA_ERR_LOG("SetShareAlbumName params invalid, albumId=%{public}d, owner=%{public}s, albumName=%{public}s",
+            reqBody.albumId, reqBody.owner.c_str(), reqBody.albumName.c_str());
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
     MEDIA_INFO_LOG("SetShareAlbumName albumId=%{public}d, owner=%{public}s, albumName=%{public}s",
@@ -1316,7 +1317,8 @@ int32_t MediaAlbumsControllerService::DeleteSharePhotoAlbums(MessageParcel &data
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     if (reqBody.owner.empty() || reqBody.albumIds.empty()) {
-        MEDIA_ERR_LOG("DeleteSharePhotoAlbums owner or albumIds is empty");
+        MEDIA_ERR_LOG("DeleteSharePhotoAlbums owner or albumIds is empty, owner=%{public}s, albumIdsSize=%{public}zu",
+            reqBody.owner.c_str(), reqBody.albumIds.size());
         return IPC::UserDefineIPC().WriteResponseBody(reply, -EINVAL);
     }
     ret = MediaAlbumsService::GetInstance().DeleteSharePhotoAlbums(reqBody.owner, reqBody.albumIds);

@@ -4599,7 +4599,7 @@ static int32_t VerifyShareAlbumOwnerMatched(const std::string &owner,
     const std::vector<int32_t> &albumIds, std::shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        return E_HAS_DB_ERROR;
+        return E_SHARE_ALBUM_INVALID_ID_ARG;
     }
     do {
         int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, resultSet);
@@ -4683,7 +4683,7 @@ static int32_t DeleteShareLocalPhotos(const std::vector<int32_t> &albumIds)
     localPhotoPredicates.In(PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumIdsString)
         ->And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     int32_t deletedPhotoRows = MediaLibraryAssetOperations::DeleteFromDisk(localPhotoPredicates, false, true);
-    CHECK_AND_RETURN_RET_LOG(deletedPhotoRows == E_OK, E_HAS_DB_ERROR,
+    CHECK_AND_RETURN_RET_LOG(deletedPhotoRows >= 0, E_HAS_DB_ERROR,
         "delete share local photos failed, ret=%{public}d", deletedPhotoRows);
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: physically deleted local photo assets for %{public}zu albums",
         albumIds.size());
@@ -4920,7 +4920,7 @@ static int32_t ValidateShareMemberStatusTransition(int32_t oldStatus, int32_t st
     if (!isTargetFinal || !isSourcePending) {
         MEDIA_ERR_LOG("UpdateShareMemberStatus: invalid status transition, oldStatus=%{public}d, newStatus=%{public}d",
             oldStatus, status);
-        return -EINVAL;
+        return E_SHARE_ALBUM_INVALID_ID_ARG;
     }
     return E_OK;
 }

@@ -321,13 +321,13 @@ ani_status MediaAlbumChangeRequestAni::PlaceBefore([[maybe_unused]] ani_env *env
     auto sourceAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
     if (sourceAlbum != nullptr &&
         PhotoAlbum::IsShareAlbum(sourceAlbum->GetPhotoAlbumType(), sourceAlbum->GetPhotoAlbumSubType())) {
-        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "The current album type does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "This operation is not supported for this album type");
         return ANI_ERROR;
     }
     auto referenceAlbum = aniContext->objectInfo->referencePhotoAlbum_;
     if (referenceAlbum != nullptr &&
         PhotoAlbum::IsShareAlbum(referenceAlbum->GetPhotoAlbumType(), referenceAlbum->GetPhotoAlbumSubType())) {
-        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "The current album type does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "This operation is not supported for this album type");
         return ANI_ERROR;
     }
     aniContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ORDER_ALBUM);
@@ -500,7 +500,7 @@ ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object
     auto photoAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_WITH_RET_MESSAGE(env, photoAlbum != nullptr, ANI_INVALID_ARGS, "photoAlbum is null");
     if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "The current album type does not support this operation");
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for this album type");
         return ANI_ERROR;
     }
     if (!IsPortraitAlbumAttributeTarget(photoAlbum)) {
@@ -583,7 +583,6 @@ bool MediaAlbumChangeRequestAni::CheckDismissAssetVaild(std::vector<std::string>
     return true;
 }
 
-
 ani_status MediaAlbumChangeRequestAni::DismissAssets(ani_env *env, ani_object object, ani_object arrayPhotoAssetStr)
 {
     CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is null");
@@ -603,6 +602,10 @@ ani_status MediaAlbumChangeRequestAni::DismissAssets(ani_env *env, ani_object ob
         AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "This dismissAssets is not support");
         return ANI_INVALID_ARGS;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(newAssetArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     auto photoAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_RET(photoAlbum != nullptr, ANI_INVALID_ARGS, "photoAlbum is null");
     auto type = photoAlbum->GetPhotoAlbumType();
@@ -654,6 +657,10 @@ ani_status MediaAlbumChangeRequestAni::AddAssets(ani_env *env, ani_object object
             "The previous addAssets operation has contained the same asset");
         return ANI_ERROR;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     changeRequest->assetsToAdd_.insert(changeRequest->assetsToAdd_.end(), assetUriArray.begin(), assetUriArray.end());
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::ADD_ASSETS);
     return ANI_OK;
@@ -728,6 +735,10 @@ ani_status MediaAlbumChangeRequestAni::MoveAssets(ani_env *env, ani_object objec
             return ANI_ERROR;
         }
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     changeRequest->RecordMoveAssets(assetUriArray, targetPhotoAlbum);
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::MOVE_ASSETS);
     return ANI_OK;
@@ -804,6 +815,13 @@ ani_status MediaAlbumChangeRequestAni::MoveAssetsWithUri(ani_env *env, ani_objec
             return ANI_ERROR;
         }
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    if (MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray)) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "This operation is not supported for assets in shared albums");
+        return ANI_INVALID_ARGS;
+    }
     changeRequest->RecordMoveAssets(assetUriArray, targetPhotoAlbum);
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::MOVE_ASSETS_WITH_URI);
     return ANI_OK;
@@ -831,6 +849,10 @@ ani_status MediaAlbumChangeRequestAni::RemoveAssets(ani_env *env, ani_object obj
             "The previous RemoveAssets operation has contained the same asset");
         return ANI_ERROR;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     changeRequest->assetsToRemove_.insert(
         changeRequest->assetsToRemove_.end(), assetUriArray.begin(), assetUriArray.end());
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::REMOVE_ASSETS);

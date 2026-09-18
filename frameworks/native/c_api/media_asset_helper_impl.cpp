@@ -105,7 +105,7 @@ OH_MediaAsset *MediaAssetHelperImpl::GetOhMediaAsset(const std::string &uri)
     fileAsset->SetDisplayName(MediaFileUtils::GetFileName(uri));
     SetFileAssetInfo(fileAsset, resultSet);
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED), nullptr,
-        "asset belong to shared album, not support the operation");
+        "This operation is not supported for assets in shared albums");
     fileAsset->SetResultNapiType(ResultNapiType::TYPE_MEDIALIBRARY);
     auto mediaAsset = MediaAssetFactory::CreateMediaAsset(fileAsset);
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr, nullptr, "create media asset failed");
@@ -145,7 +145,7 @@ OH_MediaAsset* MediaAssetHelperImpl::GetMediaAsset(std::string uri, int32_t came
 
     InitFileAsset(fileAsset);
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED), nullptr,
-        "asset belong to shared album, not support the operation");
+        "This operation is not supported for assets in shared albums");
     auto mediaAssetObj = MediaAssetFactory::CreateMediaAsset(fileAsset);
     auto mediaAsset = new OH_MediaAsset(mediaAssetObj);
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr, nullptr, "create media asset failed");

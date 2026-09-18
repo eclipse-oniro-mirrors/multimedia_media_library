@@ -42,6 +42,24 @@ constexpr int32_t YES = 1;
 constexpr int32_t NO = 0;
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 
+static void FilterOutSharedAssets(std::vector<std::shared_ptr<FileAsset>>& fileAssets)
+{
+    fileAssets.erase(
+        std::remove_if(fileAssets.begin(), fileAssets.end(),
+            [](const auto& asset) {
+                if (asset == nullptr) {
+                    return true;
+                }
+                bool isShared = asset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED);
+                if (isShared) {
+                    NAPI_INFO_LOG("Skip shared album asset, fileId=%{public}d", asset->GetId());
+                }
+                return isShared;
+            }),
+        fileAssets.end()
+    );
+}
+
 napi_value MediaAssetsChangeRequestNapi::Init(napi_env env, napi_value exports)
 {
     NapiClassInfo info = { .name = MEDIA_ASSETS_CHANGE_REQUEST_CLASS,
@@ -190,15 +208,9 @@ napi_value MediaAssetsChangeRequestNapi::JSSetFavorite(napi_env env, napi_callba
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isFavorite_ = isFavorite;
-    auto& fileAssets = changeRequest->fileAssets_;
-    for (auto it = fileAssets.begin(); it != fileAssets.end();) {
-        if ((*it)->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-            NAPI_INFO_LOG("Skip shared album asset in batch setFavorite, fileId=%{public}d", (*it)->GetId());
-            it = fileAssets.erase(it);
-            continue;
-        }
-        (*it)->SetFavorite(isFavorite);
-        ++it;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
+    for (const auto& fileAsset : changeRequest->fileAssets_) {
+        fileAsset->SetFavorite(isFavorite);
     }
     changeRequest->assetsChangeOperations_.push_back(AssetsChangeOperation::BATCH_SET_FAVORITE);
     RETURN_NAPI_UNDEFINED(env);
@@ -220,6 +232,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetHidden(napi_env env, napi_callback
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isHidden_ = isHidden;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetHidden(isHidden);
     }
@@ -244,6 +257,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetUserComment(napi_env env, napi_cal
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->userComment_ = userComment;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetUserComment(userComment);
     }
@@ -267,6 +281,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetIsRecentShow(napi_env env, napi_ca
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isRecentShow_ = isRecentShow;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetRecentShow(isRecentShow);
     }
@@ -427,7 +442,7 @@ napi_value MediaAssetsChangeRequestNapi::ApplyChanges(napi_env env, napi_callbac
     for (const auto& fileAsset : fileAssets_) {
         if (fileAsset != nullptr && fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
             NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
+                "This operation is not supported for assets in shared albums");
             return nullptr;
         }
     }

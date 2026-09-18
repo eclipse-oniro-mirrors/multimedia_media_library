@@ -16,6 +16,7 @@
 
 #include "medialibrary_ani_utils.h"
 
+#include <charconv>
 #include <cctype>
 #include <nlohmann/json.hpp>
 #include "accesstoken_kit.h"
@@ -48,6 +49,11 @@
 #include "media_audio_column.h"
 #include "media_string_utils.h"
 #include "parameters.h"
+#include "result_set_utils.h"
+#include "user_define_ipc_client.h"
+#include "medialibrary_business_code.h"
+#include "get_assets_vo.h"
+#include "get_albums_by_ids_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -60,6 +66,7 @@ using OperationItem = OHOS::DataShare::OperationItem;
 using DataSharePredicates = OHOS::DataShare::DataSharePredicates;
 static const std::string MULTI_USER_URI_FLAG = "user=";
 static const std::string CONST_LOGSYSTEM_VERSIONTYPE = "const.logsystem.versiontype";
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 
 struct AniArrayOperator {
     ani_class cls {};
@@ -1958,6 +1965,8 @@ int MediaLibraryAniUtils::TransErrorCode(const string &Name, int error)
             error = JS_E_INNER_FAIL;
         } else if (error == E_BETA_VERSION_FAIL || error == E_OPERATION_NOT_SUPPORT) {
             error = JS_E_OPR_TYPE_NOT_SUPPORT;
+        } else if (error == E_SHARE_ALBUM_NOT_SUPPORT_PARAM_INVALID) {
+            error = OHOS_INVALID_PARAM_CODE;
         } else {
             error = JS_INNER_FAIL;
         }
@@ -2747,6 +2756,99 @@ string MediaLibraryAniUtils::GetUserIdFromUri(const string &uri)
     }
     return userId;
 }
+
+bool MediaLibraryAniUtils::HasSharedAlbumAsset(const std::vector<std::string>& fileIds)
+{
+    if (fileIds.empty()) {
+        return false;
+    }
+    GetAssetsReqBody reqBody;
+    reqBody.predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    reqBody.columns = { PhotoColumn::PHOTO_IS_SHARED };
+    GetAssetsRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("IPC get assets failed, ret: %{public}d", ret);
+        return false;
+    }
+    auto resultSet = respBody.resultSet;
+    if (resultSet == nullptr) {
+        ANI_ERR_LOG("IPC get assets resultSet is nullptr");
+        return false;
+    }
+    bool hasSharedAsset = false;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            hasSharedAsset = true;
+            break;
+        }
+    }
+    resultSet->Close();
+    return hasSharedAsset;
+}
+
+bool MediaLibraryAniUtils::HasSharedAlbum(const std::vector<std::string>& albumIds)
+{
+    if (albumIds.empty()) {
+        return false;
+    }
+    GetAlbumsByIdsReqBody reqBody;
+    reqBody.predicates.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
+    reqBody.columns = { PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE };
+    GetAlbumsByIdsRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("IPC get albums failed, ret: %{public}d", ret);
+        return false;
+    }
+    auto resultSet = respBody.resultSet;
+    if (resultSet == nullptr) {
+        ANI_ERR_LOG("IPC get albums resultSet is nullptr");
+        return false;
+    }
+    bool hasSharedAlbum = false;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_TYPE,
+            resultSet, TYPE_INT32));
+        int32_t albumSubType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_SUBTYPE,
+            resultSet, TYPE_INT32));
+        if (albumType == static_cast<int32_t>(PhotoAlbumType::SHARE) &&
+            albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC)) {
+            hasSharedAlbum = true;
+            break;
+        }
+    }
+    resultSet->Close();
+    return hasSharedAlbum;
+}
+
+void MediaLibraryAniUtils::ExtractFileIdsFromUris(const std::vector<std::string>& uriArray,
+    std::vector<std::string>& fileIdArray)
+{
+    for (const auto& uri : uriArray) {
+        MediaFileUri fileUri(uri);
+        if (!fileUri.IsApi10()) {
+            fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
+        }
+        string fileId = fileUri.GetFileId();
+        if (fileId.empty()) {
+            ANI_ERR_LOG("Invalid fileId extracted from uri: %{public}s", uri.c_str());
+            continue;
+        }
+        int32_t value = 0;
+        auto [ptr, ec] = std::from_chars(fileId.data(), fileId.data() + fileId.size(), value);
+        if (ec != std::errc{} || ptr != fileId.data() + fileId.size() || value <= 0) {
+            ANI_ERR_LOG("Invalid fileId extracted from uri: %{public}s", uri.c_str());
+            continue;
+        }
+        fileIdArray.push_back(fileId);
+    }
+}
+
 
 template ani_status MediaLibraryAniUtils::GetFetchOption<unique_ptr<MediaLibraryAsyncContext>>(ani_env *env,
     ani_object fetchOptions, FetchOptionType fetchOptType, unique_ptr<MediaLibraryAsyncContext> &context);

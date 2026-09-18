@@ -156,8 +156,6 @@ constexpr int32_t NO = 0;
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 constexpr int32_t MAX_DELETE_NUMBER = 300;
 
-constexpr int32_t SHARED_ASSET_FLAG = 1;
-
 const std::string PAH_SUBTYPE = "subtype";
 const std::string CAMERA_SHOT_KEY = "cameraShotKey";
 const std::string USER_ID = "userId";
@@ -1119,26 +1117,7 @@ static bool HasSharedAssetInDeleteUris(const std::vector<std::string>& uris)
         return false;
     }
 
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet == nullptr) {
-        ANI_ERR_LOG("Query photo is shared failed, errCode:%{public}d", errCode);
-        return false;
-    }
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            ANI_ERR_LOG("DeleteAssets does not support shared album asset");
-            return true;
-        }
-    }
-    resultSet->Close();
-    return false;
+    return !fileIds.empty() && MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds);
 }
 
 bool PrepareAssetDeletion(ani_env *env, const std::vector<std::string>& uris,
@@ -1167,8 +1146,7 @@ static bool CheckSharedAssetForDelete(ani_env *env, const std::vector<std::strin
     if (!HasSharedAssetInDeleteUris(uris)) {
         return true;
     }
-    AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-        "The current asset belongs to a shared album and does not support this operation");
+    AniError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for assets in shared albums");
     return false;
 }
 
@@ -1442,6 +1420,8 @@ ani_object MediaAssetChangeRequestAni::AddResourceByFileUri(ani_env *env, ani_ob
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueInt32(env, resourceTypeAni, resourceType) == ANI_OK,
@@ -1472,6 +1452,8 @@ ani_object MediaAssetChangeRequestAni::AddResourceByArrayBuffer(ani_env *env, an
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueInt32(env, resourceTypeAni, resourceType) == ANI_OK,
@@ -1506,6 +1488,8 @@ ani_object MediaAssetChangeRequestAni::AddResourceByPhotoProxy(ani_env *env, ani
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueInt32(env, resourceTypeAni, resourceType) == ANI_OK,
@@ -3257,8 +3241,7 @@ ani_object MediaAssetChangeRequestAni::SetFavorite(ani_env *env, ani_object obje
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
     if (changeRequest->GetFileAssetInstance()->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, JS_INNER_FAIL, "This operation is not supported for assets in shared albums");
         return nullptr;
     }
     changeRequest->GetFileAssetInstance()->SetFavorite(isFavorite);
@@ -3280,6 +3263,9 @@ ani_object MediaAssetChangeRequestAni::SetHidden(ani_env *env, ani_object object
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetHidden(isHidden);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_HIDDEN);
     return ReturnAniUndefined(env);
@@ -3369,6 +3355,9 @@ ani_object MediaAssetChangeRequestAni::SetUserComment(ani_env *env, ani_object o
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetUserComment(userCommentValue);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_USER_COMMENT);
     return ReturnAniUndefined(env);
@@ -3394,6 +3383,9 @@ ani_object MediaAssetChangeRequestAni::SetLocation(ani_env *env, ani_object obje
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetLongitude(longitudeValue);
     changeRequest->GetFileAssetInstance()->SetLatitude(latitudeValue);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_LOCATION);
@@ -3414,6 +3406,8 @@ ani_object MediaAssetChangeRequestAni::SetTitle(ani_env *env, ani_object object,
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is nullptr");
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title_str + "." + extension;
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK, "Invalid title");

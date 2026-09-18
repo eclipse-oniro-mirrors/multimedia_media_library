@@ -725,6 +725,9 @@ public:
     static napi_value BuildNextRowAlbumObject(const napi_env& env, std::shared_ptr<RowObject>& rowObj);
     static napi_status hasFetchOpt(napi_env env, const napi_value arg, bool &hasFetchOpt);
     static bool ParseFileIdFromPredicates(const DataShare::DataSharePredicates &predicates, std::string &fileId);
+    static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds);
+    static bool HasSharedAlbum(const std::vector<std::string>& albumIds);
+    static void ExtractFileIdsFromUris(const std::vector<std::string>& uriArray, std::vector<std::string>& fileIdArray);
 
 private:
     static napi_value BuildValueByIndex(const napi_env& env, int32_t index, const std::string& name,
