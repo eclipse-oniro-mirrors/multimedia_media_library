@@ -153,7 +153,14 @@ int32_t CloudMediaAlbumHandler::OnDentryFileInsert(
 // album does not handle this operation <GetRetryRecords>.
 int32_t CloudMediaAlbumHandler::GetRetryRecords(std::vector<std::string> &records)
 {
-    MEDIA_INFO_LOG("OnDentryFileInsert, records size: %{public}zu", records.size());
+    MEDIA_INFO_LOG("GetRetryRecords, records size: %{public}zu", records.size());
+    return E_OK;
+}
+
+// album does not handle this operation <GetRetryRecords>.
+int32_t CloudMediaAlbumHandler::GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords)
+{
+    MEDIA_INFO_LOG("album does not handle this operation <GetRetryRecords>.");
     return E_OK;
 }
 

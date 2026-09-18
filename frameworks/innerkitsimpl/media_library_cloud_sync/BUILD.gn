@@ -41,6 +41,7 @@ ohos_shared_library("media_library_cloud_sync") {
     "./src/mdk_record_photos_data.cpp",
     "./src/mdk_record_reader.cpp",
     "./src/processor/cloud_media_data_client_handler_processor.cpp",
+    "./src/processor/cloud_media_photo_handler_processor.cpp",
     "./src/utils/cloud_media_client_utils.cpp",
     "./src/utils/cloud_media_path_utils.cpp",
   ]

@@ -250,6 +250,15 @@ int32_t CloudMediaDataHandler::GetRetryRecords(std::vector<std::string> &records
     return this->dataHandler_->GetRetryRecords(records);
 }
 
+int32_t CloudMediaDataHandler::GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords)
+{
+    if (this->dataHandler_ == nullptr) {
+        MEDIA_ERR_LOG("No data handler found! tableName: %{public}s", this->tableName_.c_str());
+        return E_IPC_INVAL_ARG;
+    }
+    return this->dataHandler_->GetRetryRecords(retryRecords);
+}
+
 int32_t CloudMediaDataHandler::OnStartSync()
 {
     if (this->dataHandler_ == nullptr) {

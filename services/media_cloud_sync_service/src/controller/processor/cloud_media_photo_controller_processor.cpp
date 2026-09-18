@@ -132,6 +132,19 @@ std::unordered_map<std::string, CheckData> CloudMediaPhotoControllerProcessor::G
     return checkDataList;
 }
 
+int32_t CloudMediaPhotoControllerProcessor::ConvertFromPhotosDtoToRetryRecordsRespBody(
+    const std::vector<PhotosDto> &photosDtoVec, GetRetryRecordsRespBody &respBody)
+{
+    for (const auto &photosDto : photosDtoVec) {
+        GetRetryRecordsDataVo retryData;
+        retryData.cloudId = photosDto.cloudId;
+        retryData.shareAlbumOwner = photosDto.shareAlbumOwner;
+        respBody.retryDataList[retryData.cloudId] = retryData;
+        MEDIA_DEBUG_LOG("CloudMediaPhotoControllerProcessor RetryCheckData: %{public}s", retryData.ToString().c_str());
+    }
+    return E_OK;
+}
+
 bool CloudMediaPhotoControllerProcessor::GetBasicInfo(const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo)
 {
     photosVo.title = record.title.value_or("");

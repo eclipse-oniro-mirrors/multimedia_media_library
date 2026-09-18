@@ -170,13 +170,10 @@ static void GetMergeDataMapFuzzer()
 static void GetRecordsFuzzer()
 {
     CloudMediaPhotosService service;
-    string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
-    vector<string> cloudIds = { cloudId };
     int32_t recordsSize = provider->ConsumeIntegral<uint8_t>();
     vector<PhotosPo> photosPo;
     service.GetFileModifiedRecords(recordsSize, photosPo);
     service.GetCopyRecords(recordsSize, photosPo);
-    service.GetRetryRecords(cloudIds);
 }
 
 static void PullDeleteFuzzer()

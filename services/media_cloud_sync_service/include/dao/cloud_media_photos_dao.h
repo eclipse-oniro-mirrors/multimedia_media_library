@@ -90,7 +90,7 @@ public:
     int32_t GetLocalKeyData(KeyData &localKeyData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     bool JudgeConflict(const CloudMediaPullDataDto &pullData, const KeyData &localKeyData, const KeyData &cloudKeyData);
     void UpdateAlbumInternal(std::set<std::string> &refreshAlbums);
-    int32_t GetRetryRecords(std::vector<std::string> &cloudIds);
+    int32_t GetRetryRecords(std::vector<PhotosPo> &photoInfoList);
     std::vector<PhotosPo> GetCheckRecords(const std::vector<std::string> cloudIds);
     int32_t GetCreatedRecords(int32_t size, std::vector<PhotosPo> &createdRecords);
     int32_t GetMetaModifiedRecords(int32_t size, std::vector<PhotosPo> &cloudRecordPoList);

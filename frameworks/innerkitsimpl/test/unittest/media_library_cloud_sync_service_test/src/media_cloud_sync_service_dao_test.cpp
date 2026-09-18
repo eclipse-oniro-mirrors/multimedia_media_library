@@ -359,14 +359,6 @@ HWTEST_F(CloudMediaSyncServiceDaoTest, IsHiddenAsset_Test_002, TestSize.Level1)
     EXPECT_EQ(ret, false);
 }
 
-HWTEST_F(CloudMediaSyncServiceDaoTest, GetRetryRecords_Test_001, TestSize.Level1)
-{
-    CloudMediaPhotosDao photosDao;
-    std::vector<std::string> cloudIds;
-    int32_t ret = photosDao.GetRetryRecords(cloudIds);
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaSyncServiceDaoTest, GetCheckRecords_Test_001, TestSize.Level1)
 {
     CloudMediaPhotosDao photosDao;
