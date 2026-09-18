@@ -130,7 +130,7 @@ int32_t CloudMediaSharePhotosService::HandleRecords(std::vector<CloudMediaPullDa
     for (auto &pullData : pullDataList) {
         MEDIA_INFO_LOG("pullData: %{public}s, sceneType(share): %{public}d", pullData.ToString().c_str(),
             CloudMediaContext::GetInstance().GetSceneType());
-        ret = this->HandleUpdateOrDeleteRecord(pullData, handleDto, notifyType);
+        ret = this->HandleUpdateOrDeleteRecord(pullData, handleDto, notifyType, photoRefresh);
         if (ret == FileManagement::E_STOP) {
             MEDIA_ERR_LOG("HandleRecord stop sync cloudId: %{public}s, error: %{public}d",
                 pullData.cloudId.c_str(), ret);
@@ -155,7 +155,8 @@ int32_t CloudMediaSharePhotosService::HandleRecords(std::vector<CloudMediaPullDa
 }
 
 int32_t CloudMediaSharePhotosService::HandleUpdateOrDeleteRecord(
-    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto, NotifyType &notifyType)
+    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto, NotifyType &notifyType,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     const bool hasLocalInfo = pullData.localPhotosPoOp.has_value();
     CHECK_AND_RETURN_RET(hasLocalInfo, E_OK);
@@ -164,10 +165,10 @@ int32_t CloudMediaSharePhotosService::HandleUpdateOrDeleteRecord(
     const bool isDelete = hasLocalInfo && pullData.basicIsDelete;
     int32_t ret = E_OK;
     if (isUpdate) {
-        ret = this->PullUpdate(pullData, handleDto);
+        ret = this->PullUpdate(pullData, handleDto, photoRefresh);
         notifyType = NotifyType::NOTIFY_UPDATE;
     } else if (isDelete) {
-        ret = this->PullDelete(pullData, handleDto);
+        ret = this->PullDelete(pullData, handleDto, photoRefresh);
         notifyType = NotifyType::NOTIFY_REMOVE;
         handleDto.stats[StatsIndex::DELETE_RECORDS_COUNT]++;
     }
@@ -243,13 +244,12 @@ int32_t CloudMediaSharePhotosService::HandleCloudDeleteRecord(std::vector<CloudM
 }
 
 int32_t CloudMediaSharePhotosService::PullUpdate(
-    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto)
+    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     std::set<std::string> &refreshAlbums = handleDto.refreshAlbums;
     std::vector<PhotosDto> &fdirtyData = handleDto.fdirtyData;
     std::vector<int32_t> &stats = handleDto.stats;
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
-        std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     const std::string cloudId = pullData.cloudId;
     MEDIA_DEBUG_LOG("Update cloudId: %{public}s.", cloudId.c_str());
     CHECK_AND_RETURN_RET_INFO_LOG(!CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, false),
@@ -286,7 +286,7 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
         "HandleRiskControlUpdate failed, cloudId: %{public}s.", cloudId.c_str());
     // 封禁资产: 非相册成员删除缩略图 + 原图 + metadata, 复用 PullDelete 删除链路
     if (needPullDelete) {
-        int32_t deleteRet = this->PullDelete(pullData, handleDto);
+        int32_t deleteRet = this->PullDelete(pullData, handleDto, photoRefresh);
         if (deleteRet == E_OK) {
             stats[StatsIndex::DELETE_RECORDS_COUNT]++;
         }
@@ -309,11 +309,10 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
 }
 
 int32_t CloudMediaSharePhotosService::PullDelete(
-    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto)
+    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     std::set<std::string> &refreshAlbums = handleDto.refreshAlbums;
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
-        std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     std::string cloudId = pullData.cloudId;
     std::string localPath = pullData.localPath;
     CHECK_AND_RETURN_RET_INFO_LOG(!cloudId.empty(), E_OK, "cloudId is empty, ignore cloud delete");
