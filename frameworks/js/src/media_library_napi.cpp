@@ -10540,7 +10540,7 @@ static napi_value ParseArgsPahGetAlbums(napi_env env, napi_callback_info info,
             return nullptr;
         }
         CHECK_NULLPTR_RET(GetAlbumFetchOption(env, context, hasCallback));
-        CHECK_ARGS_WITH_ERRMSG(env, CheckAlbumFetchColumns(context->fetchColumn), JS_ERR_PARAMETER_INVALID,
+        CHECK_COND_WITH_ERR_MESSAGE(env, CheckAlbumFetchColumns(context->fetchColumn), JS_ERR_PARAMETER_INVALID,
             "The fetchColumns contain invalid column names");
         if (context->isAnalysisAlbum) {
             context->photoAlbumType = PhotoAlbumType::SMART;
