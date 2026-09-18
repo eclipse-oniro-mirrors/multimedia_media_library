@@ -1020,6 +1020,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.compressionQuality = data.GetCompressionQuality().value_or(-1);
     onFetchPhotoVo.editDataExist = data.GetEditDataExist().value_or(0);
     ConvertShareAlbumInfoToVo(data, onFetchPhotoVo);
+    ConvertScaDetailToVo(data, onFetchPhotoVo);
 }
 
 void CloudFileDataConvert::ConvertSourceAlbumIds(const MDKRecord &mdkRecord, OnFetchPhotosVo &onFetchPhotoVo)
@@ -1165,5 +1166,12 @@ void CloudFileDataConvert::ConvertShareAlbumInfoToVo(const MDKRecordPhotosData &
     onFetchPhotoVo.shareAlbumOwner = data.GetShareAlbumOwner().value_or("");
     onFetchPhotoVo.shareDateDay = data.GetPhotoShareDateDay().value_or(0L);
     onFetchPhotoVo.shareGroup = data.GetPhotoShareGroup().value_or(0L);
+}
+
+void CloudFileDataConvert::ConvertScaDetailToVo(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
+{
+    onFetchPhotoVo.sharePhotoDetail.currentUserId = data.GetCurrentUserId();
+    onFetchPhotoVo.sharePhotoDetail.mediaCreateId = data.GetMediaCreatedId();
+    data.GetScadetailList(onFetchPhotoVo.sharePhotoDetail.scaDetailList);
 }
 } // namespace OHOS::Media::CloudSync

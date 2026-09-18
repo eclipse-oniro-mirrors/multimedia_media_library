@@ -31,6 +31,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_kvstore_manager.h"
 #include "backup_database_utils.h"
+#include "field_config/clone_field_writer.h"
 #include "photo_album_clone.h"
 #include "photos_clone.h"
 #include "clone_restore_highlight.h"
@@ -389,30 +390,14 @@ template<typename T>
 void CloneRestore::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }  else if constexpr (std::is_same_v<std::decay_t<T>, std::vector<uint8_t>>) {
-            values.PutBlob(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 
 template<typename T, typename U>
 void CloneRestore::PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const U& defaultValue)
 {
-    if (optionalValue.has_value()) {
-        PutIfPresent(values, columnName, optionalValue);
-    } else {
-        PutIfPresent(values, columnName, std::optional<T>(static_cast<T>(defaultValue)));
-    }
+    CloneFieldWriter::PutWithDefault<T, U>(values, columnName, optionalValue, defaultValue);
 }
 } // namespace Media
 } // namespace OHOS

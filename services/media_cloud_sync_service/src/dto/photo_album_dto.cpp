@@ -85,6 +85,25 @@ std::string ShareAlbumDetailDto::ToString() const
         }
     }
     ss << "]"
+       << ","
+       << "\"scaDetailDataList\": [";
+    for (size_t i = 0; i < scaDetailDataList.size(); i++) {
+        ss << scaDetailDataList[i].ToString();
+        if (i != scaDetailDataList.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "]"
+       << "}";
+    return ss.str();
+}
+
+std::string ScaDetailDataDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"usage\": \"" << usage << "\", "
+       << "\"riskResult\": \"" << riskResult << "\", "
        << "}";
     return ss.str();
 }

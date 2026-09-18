@@ -264,9 +264,21 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
     // UpdateRecordToDatabase更新成功，stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT]会增加
     int32_t updateCount = stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT];
     ret = this->photosDao_.UpdateRecordToDatabase(pullData, isLocal, mtimeChanged, refreshAlbums, stats, photoRefresh);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("PullUpdate database Error cloudId: %{public}s, ret: %{public}d.", cloudId.c_str(), ret);
-        return ret;
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
+        "PullUpdate database Error cloudId: %{public}s, ret:%{public}d.", cloudId.c_str(), ret);
+    bool needClearLocalData = false;
+    bool needPullDelete = false;
+    int32_t handleRiskRet = photosRiskService_.HandleRiskControlUpdate(pullData, needClearLocalData,
+        needPullDelete);
+    CHECK_AND_RETURN_RET_LOG(handleRiskRet = E_OK, handleRiskRet,
+        "HandleRiskControlUpdate failed, cloudId: %{public}s.", cloudId.c_str());
+    // 封禁资产: 非相册成员删除缩略图 + 原图 + metadata, 复用 PullDelete 删除链路
+    if (needPullDelete) {
+        int32_t deleteRet = this->PullDelete(pullData, handleDto);
+        if (deleteRet == E_OK) {
+            stats[StatsIndex::DELETE_RECORDS_COUNT]++;
+        }
+        return deleteRet;
     }
     std::string notifyUri = PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX + std::to_string(pullData.localFileId);
     MediaGallerySyncNotify::GetInstance().TryNotify(
@@ -276,7 +288,7 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
 
     refreshAlbums.emplace(std::to_string(pullData.localOwnerAlbumId));
     this->photosService_.ExtractEditDataCamera(pullData);
-    if (mtimeChanged && (updateCount != stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT])) {
+    if ((mtimeChanged && (updateCount != stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT])) || needClearLocalData) {
         this->photosService_.ClearLocalData(pullData, fdirtyData);
     } else {
         this->photosService_.PullUpdateEndWithNoFdirty(pullData, fdirtyData);
@@ -346,8 +358,10 @@ int32_t CloudMediaSharePhotosService::PullInsert(
     std::map<std::string, std::set<int>> recordAlbumMaps;
     std::vector<NativeRdb::ValuesBucket> insertFiles;
 
+    std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
+    photosRiskService_.HandleRiskControlInsert(allPullDatas);
     int32_t ret;
-    for (auto insertData : pullDatas) {
+    for (auto insertData : allPullDatas) {
         MEDIA_DEBUG_LOG("PullInsert insert of record %{public}s", insertData.cloudId.c_str());
         this->photosService_.ExtractEditDataCamera(insertData);
         ret = this->photosDao_.GetInsertParams(

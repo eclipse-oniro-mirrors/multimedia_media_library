@@ -71,6 +71,8 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "user_define_ipc_client.h"
+#include "field_config/clone_field_query.h"
+#include "field_config/clone_field_registry.h"
 
 using namespace std;
 namespace OHOS {
@@ -89,155 +91,7 @@ const int32_t MIGRATE_CLOUD_ASTC_TYPE = 2;
 const int32_t RELEATED_TO_PHOTO_MAP = 1;
 const int32_t MAX_ALBUM_NAME_SEQUENCE = 1000;
 const std::string PHOTO_LCD_FILE_SIZE = "lcd_file_size";
-const unordered_map<string, unordered_set<string>> NEEDED_COLUMNS_MAP = {
-    { PhotoColumn::PHOTOS_TABLE,
-        {
-            MediaColumn::MEDIA_ID,
-            MediaColumn::MEDIA_FILE_PATH,
-            MediaColumn::MEDIA_SIZE,
-            MediaColumn::MEDIA_TYPE,
-            MediaColumn::MEDIA_NAME,
-            MediaColumn::MEDIA_TITLE,
-            MediaColumn::MEDIA_DATE_ADDED,
-            MediaColumn::MEDIA_DATE_MODIFIED,
-            PhotoColumn::PHOTO_ORIENTATION,
-            PhotoColumn::PHOTO_SUBTYPE,
-            MediaColumn::MEDIA_DATE_TRASHED,
-            MediaColumn::MEDIA_HIDDEN,
-        }},
-    { PhotoAlbumColumns::TABLE,
-        {
-            PhotoAlbumColumns::ALBUM_ID,
-            PhotoAlbumColumns::ALBUM_TYPE,
-            PhotoAlbumColumns::ALBUM_SUBTYPE,
-            PhotoAlbumColumns::ALBUM_NAME,
-            PhotoAlbumColumns::ALBUM_BUNDLE_NAME,
-        }},
-    { PhotoMap::TABLE,
-        {
-            PhotoMap::ALBUM_ID,
-            PhotoMap::ASSET_ID,
-        }},
-    { ANALYSIS_ALBUM_TABLE,
-        {
-            PhotoAlbumColumns::ALBUM_ID,
-            PhotoAlbumColumns::ALBUM_TYPE,
-            PhotoAlbumColumns::ALBUM_SUBTYPE,
-            PhotoAlbumColumns::ALBUM_NAME,
-        }},
-    { ANALYSIS_PHOTO_MAP_TABLE,
-        {
-            PhotoMap::ALBUM_ID,
-            PhotoMap::ASSET_ID,
-        }},
-    { AudioColumn::AUDIOS_TABLE,
-        {
-            MediaColumn::MEDIA_ID,
-            MediaColumn::MEDIA_FILE_PATH,
-            MediaColumn::MEDIA_SIZE,
-            MediaColumn::MEDIA_TYPE,
-            MediaColumn::MEDIA_NAME,
-            MediaColumn::MEDIA_DATE_ADDED,
-            MediaColumn::MEDIA_DATE_MODIFIED,
-        }},
-};
-const unordered_map<string, unordered_set<string>> NEEDED_COLUMNS_EXCEPTION_MAP = {
-    { PhotoAlbumColumns::TABLE,
-        {
-            PhotoAlbumColumns::ALBUM_BUNDLE_NAME,
-        }},
-};
-const unordered_map<string, unordered_set<string>> EXCLUDED_COLUMNS_MAP = {
-    { PhotoColumn::PHOTOS_TABLE,
-        {
-            PhotoColumn::PHOTO_CLOUD_ID, PhotoColumn::PHOTO_DIRTY, PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE,
-            PhotoColumn::PHOTO_SYNC_STATUS, PhotoColumn::PHOTO_CLOUD_VERSION, PhotoColumn::PHOTO_POSITION,
-            PhotoColumn::PHOTO_THUMB_STATUS, PhotoColumn::PHOTO_CLEAN_FLAG, // cloud related
-            PhotoColumn::PHOTO_THUMBNAIL_READY, PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, // thumbnail related
-            PhotoColumn::PHOTO_LCD_VISIT_TIME, // lcd related
-            PhotoColumn::PHOTO_CE_AVAILABLE, PhotoColumn::PHOTO_CE_STATUS_CODE, // cloud enhancement
-            PhotoColumn::PHOTO_METADATA_FLAGS, // meta recovery related
-            PhotoColumn::PHOTO_EXIF_ROTATE, PhotoColumn::PHOTO_TRANSCODE_TIME,
-            PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
-            PhotoColumn::PHOTO_FILE_INODE, PhotoColumn::PHOTO_STORAGE_PATH,
-            PhotoColumn::PHOTO_FILE_SOURCE_TYPE, // east lake related
-            PhotoColumn::UNIQUE_ID, PhotoColumn::C2PA_CONFIG_INFO,
-        }},
-    { PhotoAlbumColumns::TABLE,
-        {
-            PhotoAlbumColumns::ALBUM_COVER_URI, PhotoAlbumColumns::ALBUM_COUNT, PhotoAlbumColumns::CONTAINS_HIDDEN,
-            PhotoAlbumColumns::HIDDEN_COUNT, PhotoAlbumColumns::HIDDEN_COVER, PhotoAlbumColumns::ALBUM_IMAGE_COUNT,
-            PhotoAlbumColumns::ALBUM_VIDEO_COUNT, // updated by album udpate
-            PhotoAlbumColumns::ALBUM_DIRTY, PhotoAlbumColumns::ALBUM_CLOUD_ID, // cloud related
-            PhotoAlbumColumns::ALBUM_ORDER, // created by trigger
-            PhotoAlbumColumns::PHOTO_METADATA_FLAGS, // meta recovery related
-            PhotoAlbumColumns::UNIQUE_ID,
-        }},
-    { ANALYSIS_ALBUM_TABLE,
-        {
-            PhotoAlbumColumns::ALBUM_COVER_URI,
-            PhotoAlbumColumns::ALBUM_COUNT,
-        }},
-};
-const unordered_map<string, unordered_map<string, string>> TABLE_QUERY_WHERE_CLAUSE_MAP = {
-    { PhotoColumn::PHOTOS_TABLE,
-        {
-            { PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_POSITION + " IN (1, 3) "},
-            { PhotoColumn::PHOTO_SYNC_STATUS, PhotoColumn::PHOTO_SYNC_STATUS + " = " +
-                to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)) },
-            { PhotoColumn::PHOTO_CLEAN_FLAG, PhotoColumn::PHOTO_CLEAN_FLAG + " = " +
-                to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) },
-            { MediaColumn::MEDIA_TIME_PENDING, MediaColumn::MEDIA_TIME_PENDING + " = 0" },
-            { PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_IS_TEMP + " = 0" },
-            { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " IN (0, 3)" },
-        }},
-    { PhotoAlbumColumns::TABLE,
-        {
-            { PhotoAlbumColumns::ALBUM_NAME, PhotoAlbumColumns::ALBUM_NAME + " IS NOT NULL" },
-            { PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_TYPE + " != " +
-                to_string(PhotoAlbumType::SYSTEM)},
-        }},
-    { ANALYSIS_ALBUM_TABLE,
-        {
-            { PhotoAlbumColumns::ALBUM_NAME, PhotoAlbumColumns::ALBUM_NAME + " IS NOT NULL" },
-            { PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumColumns::ALBUM_SUBTYPE + " IN (" +
-                to_string(PhotoAlbumSubType::SHOOTING_MODE) + ", " +
-                to_string(PhotoAlbumSubType::GEOGRAPHY_CITY) + ", " +
-                to_string(PhotoAlbumSubType::CLASSIFY) + ")" }
-        }},
-};
-const unordered_map<string, unordered_map<string, string>> TABLE_QUERY_WHERE_CLAUSE_MAP_WITH_CLOUD = {
-    { PhotoColumn::PHOTOS_TABLE,
-        {
-            { PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_POSITION + " IN (1, 2, 3) "},
-            { PhotoColumn::PHOTO_SYNC_STATUS, PhotoColumn::PHOTO_SYNC_STATUS + " = " +
-                to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)) },
-            { PhotoColumn::PHOTO_CLEAN_FLAG, PhotoColumn::PHOTO_CLEAN_FLAG + " = " +
-                to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) },
-            { MediaColumn::MEDIA_TIME_PENDING, MediaColumn::MEDIA_TIME_PENDING + " = 0" },
-            { PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_IS_TEMP + " = 0" },
-            { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " IN (0, 3)" },
-        }},
-    { PhotoAlbumColumns::TABLE,
-        {
-            { PhotoAlbumColumns::ALBUM_NAME, PhotoAlbumColumns::ALBUM_NAME + " IS NOT NULL" },
-            { PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_TYPE + " != " +
-                to_string(PhotoAlbumType::SYSTEM)},
-        }},
-    { ANALYSIS_ALBUM_TABLE,
-        {
-            { PhotoAlbumColumns::ALBUM_NAME, PhotoAlbumColumns::ALBUM_NAME + " IS NOT NULL" },
-            { PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumColumns::ALBUM_SUBTYPE + " IN (" +
-                to_string(PhotoAlbumSubType::SHOOTING_MODE) + ", " +
-                to_string(PhotoAlbumSubType::GEOGRAPHY_CITY) + ", " +
-                to_string(PhotoAlbumSubType::CLASSIFY) + ")" },
-        }},
-};
-const vector<string> CLONE_ALBUMS = { PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
-const unordered_map<string, string> CLONE_ALBUM_MAP = {
-    { PhotoAlbumColumns::TABLE, PhotoMap::TABLE },
-    { ANALYSIS_ALBUM_TABLE, ANALYSIS_PHOTO_MAP_TABLE },
-};
+
 const unordered_map<string, ResultSetDataType> COLUMN_TYPE_MAP = {
     { "INT", ResultSetDataType::TYPE_INT32 },
     { "INTEGER", ResultSetDataType::TYPE_INT32 },
@@ -814,6 +668,7 @@ void CloneRestore::InitThumbnailStatus()
 int32_t CloneRestore::Init(const string &backupRestoreDir, const string &upgradePath, bool isUpgrade)
 {
     MEDIA_INFO_LOG("CloneRestore init begin");
+    CloneFieldRegistry::Instance().Init();
     dbPath_ = backupRestoreDir_ + MEDIA_DB_PATH;
     filePath_ = backupRestoreDir_ + "/storage/media/local/files";
     if (!MediaFileUtils::IsFileExists(dbPath_)) {
@@ -1022,7 +877,7 @@ void CloneRestore::RestoreAlbum()
     maxTotalFileId_ = BackupDatabaseUtils::QueryMaxId(mediaLibraryRdb_,
         VISION_TOTAL_TABLE, TOTAL_COL_FILE_ID);
 
-    for (const auto &tableName : CLONE_ALBUMS) {
+    for (const auto &tableName : CloneFieldQuery::GetCloneAlbums()) {
         if (!IsReadyForRestore(tableName)) {
             MEDIA_ERR_LOG("Column status of %{public}s is not ready for restore album, quit",
                 BackupDatabaseUtils::GarbleInfoName(tableName).c_str());
@@ -2421,21 +2276,21 @@ NativeRdb::ValuesBucket CloneRestore::GetCloudInsertValue(const FileInfo &fileIn
 bool CloneRestore::PrepareCommonColumnInfoMap(const string &tableName,
     const unordered_map<string, string> &srcColumnInfoMap, const unordered_map<string, string> &dstColumnInfoMap)
 {
-    auto neededColumns = GetValueFromMap(NEEDED_COLUMNS_MAP, tableName);
-    auto neededColumnsException = GetValueFromMap(NEEDED_COLUMNS_EXCEPTION_MAP, tableName);
-    auto excludedColumns = GetValueFromMap(EXCLUDED_COLUMNS_MAP, tableName);
+    const CloneTableMeta *meta = CloneFieldRegistry::Instance().GetTable(tableName);
     auto &commonColumnInfoMap = tableCommonColumnInfoMap_[tableName];
-    CHECK_AND_RETURN_RET_LOG(HasColumns(dstColumnInfoMap, neededColumns), false, "Destination lack needed columns");
-    for (auto it = dstColumnInfoMap.begin(); it != dstColumnInfoMap.end(); ++it) {
-        if (!HasSameColumn(srcColumnInfoMap, it->first, it->second) || excludedColumns.count(it->first) > 0) {
-            continue;
-        }
-        if (neededColumns.count(it->first) > 0 && (neededColumnsException.empty() ||
-            neededColumnsException.count(it->first) == 0)) {
-            continue;
-        }
-        commonColumnInfoMap[it->first] = it->second;
+    if (meta == nullptr) {
+        MEDIA_ERR_LOG("Table %{public}s not registered in CloneFieldRegistry",
+            BackupDatabaseUtils::GarbleInfoName(tableName).c_str());
+        return false;
     }
+    for (const auto &f : meta->fields) {
+        if (f.isNeeded && dstColumnInfoMap.find(f.column) == dstColumnInfoMap.end()) {
+            MEDIA_ERR_LOG("Destination lack needed column %{public}s", f.column.c_str());
+            return false;
+        }
+    }
+    commonColumnInfoMap = CloneFieldQuery::GetCommonColumns(tableName, srcColumnInfoMap, dstColumnInfoMap,
+        CloneDirection::FORWARD, RecordPath::INSERT);
     MEDIA_INFO_LOG("Table %{public}s has %{public}zu common columns",
         BackupDatabaseUtils::GarbleInfoName(tableName).c_str(), commonColumnInfoMap.size());
     return true;
@@ -2501,55 +2356,38 @@ void CloneRestore::PrepareCommonColumnVal(NativeRdb::ValuesBucket &values, const
 {
     string columnType = GetValueFromMap(commonColumnInfoMap, columnName);
     CHECK_AND_RETURN_LOG(!columnType.empty(), "No such column %{public}s", columnName.c_str());
-    ResultSetDataType dataType = GetValueFromMap(COLUMN_TYPE_MAP, columnType, ResultSetDataType::TYPE_NULL);
-    switch (dataType) {
-        case ResultSetDataType::TYPE_INT32: {
-            values.PutInt(columnName, get<int32_t>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_INT64: {
-            values.PutLong(columnName, get<int64_t>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_DOUBLE: {
-            values.PutDouble(columnName, get<double>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_STRING: {
-            values.PutString(columnName, get<string>(columnVal));
-            break;
-        }
-        default:
-            MEDIA_ERR_LOG("No such column type: %{public}s", columnType.c_str());
-    }
+    CloneFieldWriter::PutFromVariant(values, columnName, columnVal);
 }
 
 void CloneRestore::GetQueryWhereClause(const string &tableName, const unordered_map<string, string> &columnInfoMap)
 {
-    unordered_map<string, string> queryWhereClauseMap;
-    if (IsCloudRestoreSatisfied()) {
-        queryWhereClauseMap = GetValueFromMap(TABLE_QUERY_WHERE_CLAUSE_MAP_WITH_CLOUD, tableName);
-    } else {
-        queryWhereClauseMap = GetValueFromMap(TABLE_QUERY_WHERE_CLAUSE_MAP, tableName);
-    }
-    
-    if (queryWhereClauseMap.empty()) {
-        return;
-    }
+    bool withCloud = IsCloudRestoreSatisfied();
     string &queryWhereClause = tableQueryWhereClauseMap_[tableName];
     queryWhereClause.clear();
-    for (auto it = queryWhereClauseMap.begin(); it != queryWhereClauseMap.end(); ++it) {
-        CHECK_AND_CONTINUE(columnInfoMap.count(it->first) != 0);
+    const CloneTableMeta *meta = CloneFieldRegistry::Instance().GetTable(tableName);
+    if (meta == nullptr) {
+        MEDIA_ERR_LOG("Table %{public}s not registered in CloneFieldRegistry",
+            BackupDatabaseUtils::GarbleInfoName(tableName).c_str());
+        return;
+    }
+    for (const auto &f : meta->fields) {
+        if (columnInfoMap.count(f.column) == 0) {
+            continue;
+        }
+        string clause = CloneFieldQuery::GetWhereClause(tableName, f.column, withCloud);
+        if (clause.empty()) {
+            continue;
+        }
         if (!queryWhereClause.empty()) {
             queryWhereClause += " AND ";
         }
-        queryWhereClause += it->second + " ";
+        queryWhereClause += clause + " ";
     }
 }
 
 void CloneRestore::GetAlbumExtraQueryWhereClause(const string &tableName)
 {
-    string mapTableName = GetValueFromMap(CLONE_ALBUM_MAP, tableName);
+    string mapTableName = CloneFieldQuery::GetMapTable(tableName);
     CHECK_AND_RETURN_LOG(!mapTableName.empty(), "Get map of table %{public}s failed",
         BackupDatabaseUtils::GarbleInfoName(tableName).c_str());
     string albumQueryWhereClause = "EXISTS (SELECT " + PhotoMap::ASSET_ID + " FROM " + mapTableName + " WHERE " +
@@ -2914,7 +2752,7 @@ void CloneRestore::BatchInsertMap(const vector<FileInfo> &fileInfos, int64_t &to
     SetFileIdReference(fileInfos, selection, fileIdMap);
     std::string tableName = ANALYSIS_ALBUM_TABLE;
     string garbledTableName = BackupDatabaseUtils::GarbleInfoName(tableName);
-    string mapTableName = GetValueFromMap(CLONE_ALBUM_MAP, tableName);
+    string mapTableName = CloneFieldQuery::GetMapTable(tableName);
     CHECK_AND_RETURN_LOG(!mapTableName.empty(),
         "Get map of table %{public}s failed", garbledTableName.c_str());
     auto albumIdMap = GetValueFromMap(tableAlbumIdMap_, tableName);
@@ -2959,8 +2797,19 @@ void CloneRestore::CheckTableColumnStatus(shared_ptr<NativeRdb::RdbStore> rdbSto
         for (const auto &tableName : tableList) {
             auto &columnInfoMap = tableColumnInfoMap[tableName];
             columnInfoMap = BackupDatabaseUtils::GetColumnInfoMap(rdbStore, tableName);
-            auto neededColumns = GetValueFromMap(NEEDED_COLUMNS_MAP, tableName);
-            columnStatusGlobal = columnStatusGlobal && HasColumns(columnInfoMap, neededColumns);
+            const CloneTableMeta *meta = CloneFieldRegistry::Instance().GetTable(tableName);
+            if (meta == nullptr) {
+                MEDIA_ERR_LOG("Table %{public}s not registered in CloneFieldRegistry",
+                    BackupDatabaseUtils::GarbleInfoName(tableName).c_str());
+            } else {
+                unordered_set<string> neededCols;
+                for (const auto &f : meta->fields) {
+                    if (f.isNeeded) {
+                        neededCols.insert(f.column);
+                    }
+                }
+                columnStatusGlobal = columnStatusGlobal && HasColumns(columnInfoMap, neededCols);
+            }
         }
         for (const auto &tableName : tableList) {
             tableColumnStatusMap_[tableName] = columnStatusGlobal;
@@ -3161,7 +3010,7 @@ void CloneRestore::RestoreTabOldAlbumsData()
 {
     TabOldAlbumsClone tabOldAlbumsClone(mediaRdb_, mediaLibraryRdb_, tableAlbumIdMap_);
     tabOldAlbumsClone.GetNextCloneSequence();
-    tabOldAlbumsClone.CloneAlbums(CLONE_ALBUMS);
+    tabOldAlbumsClone.CloneAlbums(CloneFieldQuery::GetCloneAlbums());
 }
 
 void CloneRestore::RestoreAiRetouchData()

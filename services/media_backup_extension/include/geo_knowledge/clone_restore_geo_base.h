@@ -23,6 +23,7 @@
 #include <memory>
 #include <optional>
 #include "rdb_store.h"
+#include "field_config/clone_field_writer.h"
 #include "values_bucket.h"
 #include "vision_column.h"
 
@@ -121,17 +122,7 @@ void CloneRestoreGeoBase::PutIfPresent(NativeRdb::ValuesBucket& values,
     const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 
 template<typename T>
@@ -140,9 +131,7 @@ void CloneRestoreGeoBase::PutIfInIntersection(NativeRdb::ValuesBucket& values,
     const std::optional<T>& optionalValue,
     const std::unordered_set<std::string> &intersection)
 {
-    if (intersection.count(columnName) > 0) {
-        PutIfPresent<T>(values, columnName, optionalValue);
-    }
+    CloneFieldWriter::PutIfInIntersection<T>(values, columnName, optionalValue, intersection);
 }
 
 } // namespace OHOS::Media

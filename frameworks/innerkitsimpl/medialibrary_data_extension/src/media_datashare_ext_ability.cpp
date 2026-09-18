@@ -579,14 +579,8 @@ static int32_t HandleNoPermCheck(MediaLibraryCommand &cmd)
         CONST_URI_CLOSE_FILE,
     };
 
-    static const set<OperationObject> NO_NEED_PERM_CHECK_OBJ = {
-        OperationObject::MISCELLANEOUS
-    };
-
     string uri = cmd.GetUri().ToString();
-    OperationObject obj = cmd.GetOprnObject();
-    if (NO_NEED_PERM_CHECK_URI.find(uri) != NO_NEED_PERM_CHECK_URI.end() ||
-        NO_NEED_PERM_CHECK_OBJ.find(obj) != NO_NEED_PERM_CHECK_OBJ.end()) {
+    if (NO_NEED_PERM_CHECK_URI.find(uri) != NO_NEED_PERM_CHECK_URI.end()) {
         return E_SUCCESS;
     }
     return E_NEED_FURTHER_CHECK;
@@ -676,6 +670,16 @@ static int32_t PhotoAccessHelperPermCheck(MediaLibraryCommand &cmd, const bool i
     return PermissionUtils::CheckCallerPermission(perms) ? E_SUCCESS : E_PERMISSION_DENIED;
 }
 
+static int32_t HandleMiscellaneous(MediaLibraryCommand &cmd)
+{
+    if (cmd.GetOprnType() == Media::OperationType::LOG_MOVING_PHOTO) {
+        return PermissionUtils::CheckCallerPermission(PERM_READ_IMAGEVIDEO) ? E_SUCCESS : E_PERMISSION_DENIED;
+    } else if (cmd.GetOprnType() == Media::OperationType::LOG_MEDIALIBRARY_API) {
+        return PermissionUtils::CheckCallerPermission(PERMISSION_NAME_WRITE_MEDIA) ? E_SUCCESS : E_PERMISSION_DENIED;
+    }
+    return E_PERMISSION_DENIED;
+}
+
 static int32_t HandleSpecialObjectPermission(MediaLibraryCommand &cmd, bool isWrite)
 {
     int err = HandleNoPermCheck(cmd);
@@ -688,6 +692,8 @@ static int32_t HandleSpecialObjectPermission(MediaLibraryCommand &cmd, bool isWr
         return HandleMediaVolumePerm(cmd);
     } else if (obj == OperationObject::BUNDLE_PERMISSION) {
         return HandleBundlePermCheck(cmd);
+    } else if (obj == OperationObject::MISCELLANEOUS) {
+        return HandleMiscellaneous(cmd);
     }
 
     return E_NEED_FURTHER_CHECK;

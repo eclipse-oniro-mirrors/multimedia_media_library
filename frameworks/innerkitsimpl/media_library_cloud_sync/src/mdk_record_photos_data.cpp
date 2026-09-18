@@ -36,6 +36,9 @@ MDKRecordPhotosData &MDKRecordPhotosData::UnMarshalling(const MDKRecord &record)
     if (this->fields_.find(this->KEY_ATTRIBUTES) != this->fields_.end()) {
         this->fields_[this->KEY_ATTRIBUTES].GetRecordMap(this->attributes_);
     }
+    if (this->fields_.find(this->KEY_SCA_DETAIL) != this->fields_.end()) {
+        this->fields_[this->KEY_SCA_DETAIL].GetRecordList(this->scaDetailList_);
+    }
     return *this;
 }
 MDKRecordPhotosData &MDKRecordPhotosData::Marshalling()
@@ -660,54 +663,21 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoRiskStatus(const int32_t photo
     return *this;
 }
 
-std::optional<int32_t> MDKRecordPhotosData::GetPhotoIsShared() const
+void MDKRecordPhotosData::GetScadetailList(std::vector<ScaDetailVo> &scaDetailList)
 {
-    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_IS_SHARED);
-}
-MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoIsShared(const int32_t isShared)
-{
-    this->attributes_[PhotoColumn::PHOTO_IS_SHARED] = MDKRecordField(isShared);
-    return *this;
-}
-
-std::optional<std::string> MDKRecordPhotosData::GetPhotoShareOwnerInfo() const
-{
-    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_SHARE_OWNER_INFO);
-}
-MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareOwnerInfo(const std::string &shareOwnerInfo)
-{
-    this->attributes_[PhotoColumn::PHOTO_SHARE_OWNER_INFO] = MDKRecordField(shareOwnerInfo);
-    return *this;
-}
-
-std::optional<std::string> MDKRecordPhotosData::GetShareAlbumOwner() const
-{
-    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_SHARE_ALBUM_OWNER);
-}
-MDKRecordPhotosData &MDKRecordPhotosData::SetShareAlbumOwner(const std::string &shareAlbumOwner)
-{
-    this->attributes_[PhotoColumn::PHOTO_SHARE_ALBUM_OWNER] = MDKRecordField(shareAlbumOwner);
-    return *this;
-}
-
-std::optional<int64_t> MDKRecordPhotosData::GetPhotoShareDateDay() const
-{
-    return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_SHARE_DATE_DAY);
-}
-MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareDateDay(const int64_t shareDateDay)
-{
-    this->attributes_[PhotoColumn::PHOTO_SHARE_DATE_DAY] = MDKRecordField(shareDateDay);
-    return *this;
-}
-
-std::optional<int64_t> MDKRecordPhotosData::GetPhotoShareGroup() const
-{
-    return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_SHARE_GROUP);
-}
-MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareGroup(const int64_t shareGroup)
-{
-    this->attributes_[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(shareGroup);
-    return *this;
+    if (this->scaDetailList_.empty()) {
+        return;
+    }
+    for (auto &scadetail : this->scaDetailList_) {
+        MDKScadetail ref;
+        if (scadetail.GetScadetail(ref) != MDKLocalErrorCode::NO_ERROR) {
+            continue;
+        }
+        ScaDetailVo scaDetailVo;
+        scaDetailVo.usage = ref.usage;
+        scaDetailVo.riskResult = ref.riskResult;
+        scaDetailList.push_back(scaDetailVo);
+    }
 }
 
 std::optional<std::string> MDKRecordPhotosData::GetSourcePath() const
@@ -867,5 +837,65 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetEditDataExist(const int32_t editDat
 {
     this->attributes_[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = MDKRecordField(editDataExist);
     return *this;
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetPhotoIsShared() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_IS_SHARED);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoIsShared(const int32_t isShared)
+{
+    this->attributes_[PhotoColumn::PHOTO_IS_SHARED] = MDKRecordField(isShared);
+    return *this;
+}
+
+std::optional<std::string> MDKRecordPhotosData::GetPhotoShareOwnerInfo() const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_SHARE_OWNER_INFO);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareOwnerInfo(const std::string &shareOwnerInfo)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_OWNER_INFO] = MDKRecordField(shareOwnerInfo);
+    return *this;
+}
+
+std::optional<std::string> MDKRecordPhotosData::GetShareAlbumOwner() const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_SHARE_ALBUM_OWNER);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetShareAlbumOwner(const std::string &shareAlbumOwner)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_ALBUM_OWNER] = MDKRecordField(shareAlbumOwner);
+    return *this;
+}
+
+std::optional<int64_t> MDKRecordPhotosData::GetPhotoShareDateDay() const
+{
+    return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_SHARE_DATE_DAY);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareDateDay(const int64_t shareDateDay)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_DATE_DAY] = MDKRecordField(shareDateDay);
+    return *this;
+}
+
+std::optional<int64_t> MDKRecordPhotosData::GetPhotoShareGroup() const
+{
+    return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_SHARE_GROUP);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareGroup(const int64_t shareGroup)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(shareGroup);
+    return *this;
+}
+
+std::string MDKRecordPhotosData::GetMediaCreatedId() const
+{
+    return this->record_.GetOwnerId();
+}
+
+std::string MDKRecordPhotosData::GetCurrentUserId() const
+{
+    return this->record_.GetCurrentUserId();
 }
 }  // namespace OHOS::Media::CloudSync

@@ -38,9 +38,21 @@ public:
     std::string ToString() const;
 };
 
+class ScaDetailDataDto {
+public:
+    std::string usage; // 风控对应的类型
+    int32_t riskResult{0};
+
+public:
+    virtual ~ScaDetailDataDto() = default;
+
+    std::string ToString() const;
+};
+
 class ShareAlbumDetailDto {
 public:
     std::vector<ShareMemberDataDto> shareMemberDataList;
+    std::vector<ScaDetailDataDto> scaDetailDataList;
 
 public:
     virtual ~ShareAlbumDetailDto() = default;
@@ -70,6 +82,7 @@ public:
     std::string uniqueId;
     int32_t sceneId;
     int32_t shareType;
+    int32_t shareRiskStatus;
     std::string shareAlbumOwner;
     std::optional<ShareAlbumDetailDto> shareAlbumDetailDtoOp;
     int32_t serverErrorCode;

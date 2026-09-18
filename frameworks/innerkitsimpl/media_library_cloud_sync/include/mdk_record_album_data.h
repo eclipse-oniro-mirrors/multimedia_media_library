@@ -29,6 +29,8 @@
 #include "mdk_record_field.h"
 #include "cloud_media_define.h"
 #include "share_member_data_vo.h"
+#include "mdk_scadetail.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT MDKRecordAlbumData {
@@ -38,6 +40,7 @@ private:  // data member
     std::map<std::string, MDKRecordField> properties_;
     std::map<std::string, MDKRecordField> attributes_;
     std::vector<MDKRecordField> permissions_;
+    std::vector<MDKRecordField> scaDetailList_;
 
 private:  // composited class
     MDKRecordReader recordReader_;
@@ -103,6 +106,7 @@ public:  // getter & setter
     void SetShareType(const int32_t &shareType);
     std::string GetOwnerId() const;
     void GetShareMembers(std::vector<ShareMemberDataVo> &shareMemberDataList);
+    void GetScadetailList(std::vector<ScaDetailVo> &scaDetailList);
     
     std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
     std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
@@ -118,6 +122,7 @@ private:
     const std::string KEY_PROPERTIES = "properties";
     const std::string KEY_ATTRIBUTES = "attributes";
     const std::string KEY_PERMISSIONS = "permissions";
+    const std::string KEY_SCA_DETAIL = "scaDetail";
 
     /* properties */
     const std::string ALBUM_NAME = "albumName";

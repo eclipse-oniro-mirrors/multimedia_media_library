@@ -332,6 +332,7 @@ void CloudMediaAlbumDao::FillAlbumBaseValues(const PhotoAlbumDto &record, Native
     values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
     values.PutString(PhotoAlbumColumns::SHARE_ALBUM_OWNER, record.shareAlbumOwner);
+    CloudSyncConvert::CompensateAlbumShareRisk(record, values);
 }
 
 int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, const std::string &field,
@@ -717,6 +718,7 @@ void CloudMediaAlbumDao::SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRd
     values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
     values.PutString(PhotoAlbumColumns::SHARE_ALBUM_OWNER, record.shareAlbumOwner);
+    CloudSyncConvert::CompensateAlbumShareRisk(record, values);
 }
 
 int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,

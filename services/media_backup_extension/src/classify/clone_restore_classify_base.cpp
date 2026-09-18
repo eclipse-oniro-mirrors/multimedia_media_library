@@ -116,47 +116,19 @@ void CloneRestoreClassifyBase::GetMapInsertValue(
     ClassifyCloneInfo &info,
     const std::unordered_set<std::string> &intersection)
 {
-    // 新旧机file_id一致
-    if (intersection.count(FILE_ID) > 0 && info.fileIdOld.has_value()) {
-        value.PutInt(FILE_ID, info.fileIdOld.value());
-    }
-    if (intersection.count(CATEGORY_ID) > 0 && info.categoryId.has_value()) {
-        value.PutInt(CATEGORY_ID, info.categoryId.value());
-    }
-    if (intersection.count(SUB_LABEL) > 0 && info.subLabel.has_value()) {
-        value.PutString(SUB_LABEL, info.subLabel.value());
-    }
-    if (intersection.count(PROB) > 0 && info.prob.has_value()) {
-        value.PutDouble(PROB, info.prob.value());
-    }
-    if (intersection.count(FEATURE) > 0 && info.feature.has_value()) {
-        value.PutBlob(FEATURE, info.feature.value());
-    }
-    if (intersection.count(SIM_RESULT) > 0 && info.simResult.has_value()) {
-        value.PutString(SIM_RESULT, info.simResult.value());
-    }
-    if (intersection.count(LABEL_VERSION) > 0 && info.labelVersion.has_value()) {
-        value.PutString(LABEL_VERSION, info.labelVersion.value());
-    }
-    if (intersection.count(SALIENCY_SUB_PROB) > 0 && info.saliencySubProb.has_value()) {
-        value.PutString(SALIENCY_SUB_PROB, info.saliencySubProb.value());
-    }
-    if (intersection.count(ANALYSIS_VERSION) > 0 && info.analysisVersion.has_value()) {
-        value.PutString(ANALYSIS_VERSION, info.analysisVersion.value());
-    }
-    if (intersection.count(CAPTION_RESULT) > 0 && info.captionResult.has_value()) {
-        value.PutString(CAPTION_RESULT, info.captionResult.value());
-    }
-    if (intersection.count(CAPTION_VERSION) > 0 && info.captionVersion.has_value()) {
-        value.PutString(CAPTION_VERSION, info.captionVersion.value());
-    }
-    if (intersection.count(SIGNIFICANCE_SCORE) > 0 && info.significanceScore.has_value()) {
-        value.PutInt(SIGNIFICANCE_SCORE, info.significanceScore.value());
-    }
-    if (intersection.count(SIGNIFICANCE_SCORE_VERSION) > 0 &&
-        info.significanceScoreVersion.has_value()) {
-        value.PutString(SIGNIFICANCE_SCORE_VERSION, info.significanceScoreVersion.value());
-    }
+    PutIfInIntersection(value, FILE_ID, info.fileIdOld, intersection);
+    PutIfInIntersection(value, CATEGORY_ID, info.categoryId, intersection);
+    PutIfInIntersection(value, SUB_LABEL, info.subLabel, intersection);
+    PutIfInIntersection(value, PROB, info.prob, intersection);
+    PutIfInIntersection(value, FEATURE, info.feature, intersection);
+    PutIfInIntersection(value, SIM_RESULT, info.simResult, intersection);
+    PutIfInIntersection(value, LABEL_VERSION, info.labelVersion, intersection);
+    PutIfInIntersection(value, SALIENCY_SUB_PROB, info.saliencySubProb, intersection);
+    PutIfInIntersection(value, ANALYSIS_VERSION, info.analysisVersion, intersection);
+    PutIfInIntersection(value, CAPTION_RESULT, info.captionResult, intersection);
+    PutIfInIntersection(value, CAPTION_VERSION, info.captionVersion, intersection);
+    PutIfInIntersection(value, SIGNIFICANCE_SCORE, info.significanceScore, intersection);
+    PutIfInIntersection(value, SIGNIFICANCE_SCORE_VERSION, info.significanceScoreVersion, intersection);
 }
 
 void CloneRestoreClassifyBase::GetVideoMapInsertValue(
@@ -164,49 +136,20 @@ void CloneRestoreClassifyBase::GetVideoMapInsertValue(
     const ClassifyVideoCloneInfo &info,
     const std::unordered_set<std::string> &intersection)
 {
-    if (intersection.count(FILE_ID) > 0 && info.fileIdOld.has_value()) {
-        value.PutInt(FILE_ID, info.fileIdOld.value());
-    }
-    if (intersection.count(CATEGORY_ID) > 0 && info.categoryId.has_value()) {
-        value.PutString(CATEGORY_ID, info.categoryId.value());
-    }
-    if (intersection.count(CONFIDENCE_PROBABILITY) > 0 && info.confidenceProbability.has_value()) {
-        value.PutString(CONFIDENCE_PROBABILITY, info.confidenceProbability.value());
-    }
-    if (intersection.count(SUB_CATEGORY) > 0 && info.subCategory.has_value()) {
-        value.PutString(SUB_CATEGORY, info.subCategory.value());
-    }
-    if (intersection.count(SUB_CONFIDENCE_PROB) > 0 && info.subConfidenceProb.has_value()) {
-        value.PutString(SUB_CONFIDENCE_PROB, info.subConfidenceProb.value());
-    }
-    if (intersection.count(SUB_LABEL) > 0 && info.subLabel.has_value()) {
-        value.PutString(SUB_LABEL, info.subLabel.value());
-    }
-    if (intersection.count(SUB_LABEL_PROB) > 0 && info.subLabelProb.has_value()) {
-        value.PutString(SUB_LABEL_PROB, info.subLabelProb.value());
-    }
-    if (intersection.count(SUB_LABEL_TYPE) > 0 && info.subLabelType.has_value()) {
-        value.PutString(SUB_LABEL_TYPE, info.subLabelType.value());
-    }
-    if (intersection.count(TRACKS) > 0 && info.tracks.has_value()) {
-        value.PutString(TRACKS, info.tracks.value());
-    }
-    if (intersection.count(VIDEO_PART_FEATURE) > 0 && info.videoPartFeature.has_value()) {
-        value.PutBlob(VIDEO_PART_FEATURE, info.videoPartFeature.value());
-    }
-    if (intersection.count(FILTER_TAG) > 0 && info.filterTag.has_value()) {
-        value.PutString(FILTER_TAG, info.filterTag.value());
-    }
-    if (intersection.count(ALGO_VERSION) > 0 && info.algoVersion.has_value()) {
-        value.PutString(ALGO_VERSION, info.algoVersion.value());
-    }
-    if (intersection.count(ANALYSIS_VERSION) > 0 && info.analysisVersion.has_value()) {
-        value.PutString(ANALYSIS_VERSION, info.analysisVersion.value());
-    }
-    if (intersection.count(TRIGGER_GENERATE_THUMBNAIL) > 0 &&
-        info.triggerGenerateThumbnail.has_value()) {
-        value.PutInt(TRIGGER_GENERATE_THUMBNAIL, info.triggerGenerateThumbnail.value());
-    }
+    PutIfInIntersection(value, FILE_ID, info.fileIdOld, intersection);
+    PutIfInIntersection(value, CATEGORY_ID, info.categoryId, intersection);
+    PutIfInIntersection(value, CONFIDENCE_PROBABILITY, info.confidenceProbability, intersection);
+    PutIfInIntersection(value, SUB_CATEGORY, info.subCategory, intersection);
+    PutIfInIntersection(value, SUB_CONFIDENCE_PROB, info.subConfidenceProb, intersection);
+    PutIfInIntersection(value, SUB_LABEL, info.subLabel, intersection);
+    PutIfInIntersection(value, SUB_LABEL_PROB, info.subLabelProb, intersection);
+    PutIfInIntersection(value, SUB_LABEL_TYPE, info.subLabelType, intersection);
+    PutIfInIntersection(value, TRACKS, info.tracks, intersection);
+    PutIfInIntersection(value, VIDEO_PART_FEATURE, info.videoPartFeature, intersection);
+    PutIfInIntersection(value, FILTER_TAG, info.filterTag, intersection);
+    PutIfInIntersection(value, ALGO_VERSION, info.algoVersion, intersection);
+    PutIfInIntersection(value, ANALYSIS_VERSION, info.analysisVersion, intersection);
+    PutIfInIntersection(value, TRIGGER_GENERATE_THUMBNAIL, info.triggerGenerateThumbnail, intersection);
 }
 
 bool CloneRestoreClassifyBase::CheckTableColumns(const std::string &tableName,

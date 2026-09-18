@@ -176,35 +176,8 @@ void CloneRestoreAnalysisData::PrepareCommonColumnVal(NativeRdb::ValuesBucket &v
     const std::string &columnType,
     const std::variant<int32_t, int64_t, double, std::string, std::vector<uint8_t>> &columnVal)
 {
-    ResultSetDataType dataType = GetValueFromMap(COLUMN_TYPE_MAP, columnType, ResultSetDataType::TYPE_NULL);
-    switch (dataType) {
-        case ResultSetDataType::TYPE_INT32: {
-            value.PutInt(columnName, get<int32_t>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_INT64: {
-            value.PutLong(columnName, get<int64_t>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_DOUBLE: {
-            value.PutDouble(columnName, get<double>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_BLOB: {
-            value.PutBlob(columnName, get<std::vector<uint8_t>>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_STRING: {
-            if (std::holds_alternative<std::string>(columnVal)) {
-                value.PutString(columnName, get<std::string>(columnVal));
-            } else {
-                value.PutBlob(columnName, get<std::vector<uint8_t>>(columnVal));
-            }
-            break;
-        }
-        default:
-            MEDIA_ERR_LOG("No such column type: %{public}s", columnType.c_str());
-    }
+    (void)columnType;
+    CloneFieldWriter::PutFromVariant(value, columnName, columnVal);
 }
 
 void CloneRestoreAnalysisData::GetAnalysisDataInsertValue(NativeRdb::ValuesBucket &value,

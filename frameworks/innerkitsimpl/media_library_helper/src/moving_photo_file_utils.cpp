@@ -1420,6 +1420,10 @@ string MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(const string &imagePath,
         MEDIA_ERR_LOG("imagePath is null");
         return "";
     }
+    if (MediaPathUtils::CheckPathTraversal(imagePath)) {
+        MEDIA_ERR_LOG("Invalid imagePath with path traversal: %{private}s", imagePath.c_str());
+        return "";
+    }
     if (MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
         if (imagePath.find("custom_restore") != std::string::npos) {
             return imagePath + TMP;
@@ -1455,6 +1459,10 @@ string MovingPhotoFileUtils::GetLivePhotoCacheDir(const string &imagePath, int32
 {
     if (imagePath.empty()) {
         MEDIA_ERR_LOG("imagePath is null");
+        return "";
+    }
+    if (MediaPathUtils::CheckPathTraversal(imagePath)) {
+        MEDIA_ERR_LOG("Invalid imagePath with path traversal: %{private}s", imagePath.c_str());
         return "";
     }
     if (MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {

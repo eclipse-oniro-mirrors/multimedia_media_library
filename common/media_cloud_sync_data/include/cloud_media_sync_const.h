@@ -48,6 +48,15 @@ const std::string FILE_FIX_VERSION = "fix_version";
 const std::string FILE_LOCAL_ID = "local_id";
 constexpr int MILLISECOND_TO_SECOND = 1000;
 constexpr int BATCH_LIMIT_SIZE = 500;
+//riskResult语义:0=审核中 1=低风险可见 2=高风险屏蔽
+constexpr int32_t RISK_RESULT_REVIEWING = 0;
+constexpr int32_t RISK_RESULT_VISIBLE = 1;
+constexpr int32_t RISK_RESULT_BLOCKED = 2;
+
+//scaDetail usage维度分类
+const std::set<std::string> MEDIA_ASSET_USAGES = {"description", "name", "content"};
+const std::string ALBUM_ASSET_USAGE = "name";
+const std::set<std::string> ALBUM_ASSET_USAGES = {ALBUM_ASSET_USAGE};
 const std::string FILE_PROPERTIES = "properties";
 const uint32_t NO_ORIENTATION = 0;
 const std::string THUMB_SUFFIX = "THM";
