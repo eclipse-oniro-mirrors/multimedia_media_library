@@ -45,7 +45,6 @@ using namespace OHOS::MediaEnhance;
 
 namespace OHOS {
 namespace Media {
-constexpr int32_t SHARED_ASSET_FLAG = 1;
 struct SubmitCloudEnhancementParams {
     ani_object photoAssets;
     ani_boolean hasCloudWatermark;
@@ -526,20 +525,10 @@ void CloudEnhancementAni::PrioritizeCloudEnhancementTask(ani_env *env, ani_objec
     CHECK_IF_EQUAL(ParseArgPrioritize(env, aniObject, photoAsset, aniContext) == true,
         "Failed to parse args");
     std::vector<std::string> fileIds = { std::to_string(aniContext->fileId) };
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
-            return;
-        }
+    if (MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return;
     }
     PrioritizeCloudEnhancementTaskExecute(aniContext);
     CommonComplete(env, aniContext);
@@ -816,21 +805,8 @@ ani_object CloudEnhancementAni::QueryCloudEnhancementTaskState(ani_env *env, ani
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(
         env, aniObject, photoAsset, aniContext), "Failed to parse args");
     std::vector<std::string> fileIds = { std::to_string(aniContext->fileId) };
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
-            return nullptr;
-        }
-    }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
 
     QueryCloudEnhancementTaskStateExecute(aniContext);
     return QueryCloudEnhancementTaskStateComplete(env, aniContext);
@@ -973,21 +949,8 @@ ani_object CloudEnhancementAni::GetCloudEnhancementPair(ani_env *env, ani_object
     CHECK_COND(env, CloudEnhancementAni::InitUserFileClient(env, aniObject), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(env, aniObject, asset, aniContext) == true, "Failed to parse args");
     std::vector<std::string> fileIds = { std::to_string(aniContext->fileId) };
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
-            return nullptr;
-        }
-    }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     GetCloudEnhancementPairExecute(env, aniContext);
     return GetCloudEnhancementPairComplete(env, aniContext);
 }

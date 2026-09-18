@@ -261,6 +261,7 @@ public:
     int32_t GetUserId();
     void SetUserId(const int32_t &userId);
     static int32_t AssignRequestId();
+    static bool ProcessAssetMemberKey(napi_env env, napi_value members, std::string &inputKey, FileAssetNapi *obj);
 
     EXPORT MediaLibraryNapi();
     EXPORT ~MediaLibraryNapi();

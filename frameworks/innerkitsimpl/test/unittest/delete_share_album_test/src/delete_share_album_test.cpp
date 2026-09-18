@@ -152,7 +152,7 @@ HWTEST_F(DeleteShareAlbumTest, DeleteSharePhotoAlbum_002, TestSize.Level1)
 
     std::vector<int32_t> albumIds = { NOT_EXIST_ALBUM_ID };
     int32_t ret = MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(TEST_OWNER, albumIds);
-    EXPECT_EQ(ret, E_HAS_DB_ERROR);
+    EXPECT_EQ(ret, E_SHARE_ALBUM_INVALID_ID_ARG);
 
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum_002 end, ret=%{public}d", ret);
 }

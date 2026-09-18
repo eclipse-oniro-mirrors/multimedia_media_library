@@ -348,7 +348,7 @@ HWTEST_F(SetShareAlbumNameTest, SetShareAlbumName_012, TestSize.Level0)
     ClearAlbumTable();
 
     int32_t ret = MediaLibraryAlbumOperations::SetShareAlbumName(NOT_EXIST_ALBUM_ID, TEST_OWNER, NEW_ALBUM_NAME);
-    EXPECT_EQ(ret, E_HAS_DB_ERROR);
+    EXPECT_EQ(ret, E_SHARE_ALBUM_INVALID_ID_ARG);
 
     MEDIA_INFO_LOG("SetShareAlbumName_012 end, ret=%{public}d", ret);
 }

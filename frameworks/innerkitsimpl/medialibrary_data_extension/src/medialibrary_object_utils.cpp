@@ -1030,6 +1030,10 @@ int32_t MediaLibraryObjectUtils::CloseFile(MediaLibraryCommand &cmd)
         MEDIA_ERR_LOG("Get fileAsset from database fail!");
         return E_INVALID_FILEID;
     }
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        MEDIA_WARN_LOG("This operation is not supported for assets in shared albums");
+        return E_SUCCESS;
+    }
     string srcPath = fileAsset->GetPath();
     string fileName = MediaFileUtils::GetFileName(srcPath);
     if ((fileName.length() != 0) && (fileName.at(0) != '.')) {

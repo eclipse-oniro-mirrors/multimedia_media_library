@@ -181,7 +181,7 @@ static void DeleteShareAlbumsExecute(napi_env env, void *data)
     auto *context = static_cast<MediaShareAlbumChangeRequestAsyncContext *>(data);
     if (context->owner.empty() || context->deleteIds.empty()) {
         NAPI_ERR_LOG("deleteShareAlbums: owner or deleteIds is empty");
-        context->SaveError(MEDIA_LIBRARY_INVALID_PARAMETER_ERROR);
+        context->SaveError(E_SHARE_ALBUM_INVALID_ID_ARG);
         return;
     }
     DeleteShareAlbumReqBody reqBody;
@@ -457,6 +457,8 @@ static napi_value ParseArgsDeleteShareAlbums(napi_env env, napi_value argv[], De
     }
     vector<napi_value> albumArray;
     if (MediaLibraryNapiUtils::GetNapiValueArray(env, argv[PARAM2], albumArray)) {
+        CHECK_WITH_INT_ERR_MESSAGE(env, !albumArray.empty(),
+            MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "albums array is empty");
         for (auto &album : albumArray) {
             shared_ptr<PhotoAlbum> photoAlbum = nullptr;
             if (!ParseSharePhotoAlbum(env, album, photoAlbum)) {

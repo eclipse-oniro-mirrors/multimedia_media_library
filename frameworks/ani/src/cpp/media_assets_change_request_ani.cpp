@@ -14,6 +14,7 @@
  */
 
 #include "media_assets_change_request_ani.h"
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,6 +32,24 @@ namespace OHOS::Media {
 constexpr int32_t YES = 1;
 constexpr int32_t NO = 0;
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
+
+static void FilterOutSharedAssets(std::vector<std::shared_ptr<FileAsset>>& fileAssets)
+{
+    fileAssets.erase(
+        std::remove_if(fileAssets.begin(), fileAssets.end(),
+            [](const auto& asset) {
+                if (asset == nullptr) {
+                    return false;
+                }
+                bool isShared = asset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED);
+                if (isShared) {
+                    ANI_ERR_LOG("Skip shared album asset, fileId=%{public}d", asset->GetId());
+                }
+                return isShared;
+            }),
+        fileAssets.end()
+    );
+}
 
 MediaAssetsChangeRequestAni::MediaAssetsChangeRequestAni(vector<shared_ptr<FileAsset>> fileAssets)
 {
@@ -55,12 +74,9 @@ void MediaAssetsChangeRequestAni::SetFavorite([[maybe_unused]] ani_env *env, [[m
     auto changeRequest = asyncContext->objectInfo;
     CHECK_NULL_PTR_RETURN_VOID(changeRequest, "changeRequest is null");
     changeRequest->isFavorite_ = isFavorite;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         CHECK_NULL_PTR_RETURN_VOID(fileAsset, "fileAsset is null");
-        if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-            ANI_ERR_LOG("SetFavorite skip shared album asset, fileId=%{public}d", fileAsset->GetId());
-            continue;
-        }
         fileAsset->SetFavorite(isFavorite);
     }
     changeRequest->assetsChangeOperations_.push_back(AssetsChangeOperation::BATCH_SET_FAVORITE);
@@ -80,6 +96,7 @@ void MediaAssetsChangeRequestAni::SetHidden([[maybe_unused]] ani_env *env, [[may
     auto changeRequest = asyncContext->objectInfo;
     CHECK_NULL_PTR_RETURN_VOID(changeRequest, "changeRequest is null");
     changeRequest->isHidden_ = isHidden;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         CHECK_NULL_PTR_RETURN_VOID(fileAsset, "fileAsset is null");
         fileAsset->SetHidden(isHidden);
@@ -107,6 +124,7 @@ ani_object MediaAssetsChangeRequestAni::SetUserComment([[maybe_unused]] ani_env 
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryAniUtils::GetString(env, comment, userComment) == ANI_OK,
         "Failed to get comment");
     CHECK_COND_WITH_MESSAGE(env, userComment.length() <= USER_COMMENT_MAX_LEN, "user comment too long");
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
         fileAsset->SetUserComment(userComment);
@@ -133,6 +151,7 @@ ani_object MediaAssetsChangeRequestAni::SetIsRecentShow([[maybe_unused]] ani_env
     bool isRecentShow;
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryAniUtils::GetBool(env, isRecentShowAni, isRecentShow) == ANI_OK,
         "Failed to get isRecentShowAni");
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
         fileAsset->SetRecentShow(isRecentShow);

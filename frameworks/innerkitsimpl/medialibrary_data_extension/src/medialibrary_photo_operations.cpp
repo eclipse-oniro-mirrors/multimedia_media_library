@@ -884,6 +884,10 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
         MEDIA_ERR_LOG("Get FileAsset From Uri Failed, uri:%{public}s", uriString.c_str());
         return E_INVALID_URI;
     }
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        MEDIA_ERR_LOG("This operation is not supported for assets in shared albums");
+        return E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR;
+    }
 
     int32_t isSync = 0;
     int32_t errCode = 0;
@@ -6086,7 +6090,7 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
     int32_t errCode = CheckFileAssetStatus(fileAsset, true);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to check status of fileAsset, id: %{public}d", id);
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        E_INVALID_VALUES, "asset belong to shared album, not support the operation");
+        E_INVALID_VALUES, "This operation is not supported for assets in shared albums");
 
     string imageCachePath;
     string videoCachePath;
@@ -6165,7 +6169,7 @@ int32_t MediaLibraryPhotoOperations::SubmitCache(MediaLibraryCommand& cmd)
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES,
         "Failed to getmapmanagerthread:: FileAsset, fileId=%{public}d", id);
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        E_INVALID_VALUES, "asset belong to shared album, not support the operation");
+        E_INVALID_VALUES, "This operation is not supported for assets in shared albums");
     int32_t errCode = SubmitCacheExecute(cmd, fileAsset, cachePath);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to submit cache, fileId=%{public}d", id);
     return id;

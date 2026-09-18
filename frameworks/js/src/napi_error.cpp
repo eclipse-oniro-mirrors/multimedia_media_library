@@ -95,6 +95,14 @@ void NapiError::SaveError(int32_t ret)
             if (ret == E_FILE_OPER_FAIL) {
                 errorMsg = "File operation failed";
             }
+        } else if (error == OHOS_INVALID_PARAM_CODE) {
+            if (ret == E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR) {
+                errorMsg = "This operation is not supported for assets in shared albums";
+            }
+        } else if (error == JS_ERR_PARAMETER_INVALID) {
+            if (ret == E_SHARE_ALBUM_NOT_SUPPORT_PARAM_INVALID) {
+                errorMsg = "This operation is not supported for this album type";
+            }
         }
     }
 }

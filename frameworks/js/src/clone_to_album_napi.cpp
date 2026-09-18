@@ -41,8 +41,6 @@ using namespace std;
 
 namespace OHOS {
 namespace Media {
-constexpr int32_t SHARED_ASSET_FLAG = 1;
-
 static bool CheckPropertyListner(napi_env env, napi_value arg, const string &property, napi_value &listener)
 {
     bool present = false;
@@ -349,28 +347,6 @@ static napi_value ParsePhotoAlbum(napi_env env, napi_value arg, shared_ptr<Photo
     RETURN_NAPI_TRUE(env);
 }
 
-static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds)
-{
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet == nullptr) {
-        return false;
-    }
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            return true;
-        }
-    }
-    resultSet->Close();
-    return false;
-}
-
 napi_value MediaLibraryNapi::JSCloneToAlbum(napi_env env, napi_callback_info info)
 {
     NAPI_INFO_LOG("JSCloneToAlbum start");
@@ -405,9 +381,9 @@ napi_value MediaLibraryNapi::JSCloneToAlbum(napi_env env, napi_callback_info inf
             fileIds.push_back(std::to_string(fileId));
         }
     }
-    if (!fileIds.empty() && HasSharedAlbumAsset(fileIds)) {
-        NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+    if (!fileIds.empty() && MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds)) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID,
+            "This operation is not supported for assets in shared albums");
         return nullptr;
     }
 

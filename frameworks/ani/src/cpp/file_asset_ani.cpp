@@ -408,8 +408,8 @@ void FileAssetAni::Set(ani_env *env, ani_object object, ani_string member, ani_s
     std::shared_ptr<FileAsset> fileAssetPtr = fileAssetAni->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_VOID(fileAssetPtr, "fileAssetPtr is null");
     if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     ResultNapiType resultNapiType = fileAssetPtr->GetResultNapiType();
@@ -904,8 +904,8 @@ void FileAssetAni::PhotoAccessHelperCommitModify(ani_env *env, ani_object object
     }
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
     if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
@@ -1036,6 +1036,11 @@ static void PhotoAccessHelperCloseExecute(ani_env *env, unique_ptr<FileAssetCont
         ANI_ERR_LOG("CheckFileOpenStatus failed");
         return;
     }
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return;
+    }
     UniqueFd uniFd(mediaFd);
     string closeUri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
@@ -1088,11 +1093,6 @@ void FileAssetAni::PhotoAccessHelperClose(ani_env *env, ani_object object, ani_d
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->objectPtr = fileAssetPtr;
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "context->objectPtr is null");
-    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
-        return;
-    }
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectPtr->GetUri());
 
     double fdValue;
@@ -1266,8 +1266,8 @@ void FileAssetAni::PhotoAccessHelperSetUserComment(ani_env *env, ani_object obje
 
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
     if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
@@ -1802,8 +1802,8 @@ ani_object FileAssetAni::PhotoAccessHelperCloneAsset(ani_env * env, ani_object o
     context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
 
     if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return nullptr;
     }
 
@@ -1946,8 +1946,7 @@ ani_object FileAssetAni::PhotoAccessHelperConvertFormat(ani_env *env, ani_object
     context->extension = extension;
     context->objectPtr = fileAssetAni->fileAssetPtr;
     if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for assets in shared albums");
         return nullptr;
     }
     PhotoAccessHelperConvertFormatExecute(env, context);
@@ -2175,8 +2174,8 @@ void FileAssetAni::PhotoAccessHelperCommitEditedAsset(ani_env *env, ani_object o
         return;
     }
     if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     auto fileUri = fileAssetAni->GetFileUri();
@@ -2256,8 +2255,8 @@ void FileAssetAni::PhotoAccessHelperRevertToOriginal(ani_env *env, ani_object ob
         return;
     }
     if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     context->valuesBucket.Put(MediaColumn::MEDIA_ID, context->objectPtr->GetId());
@@ -2367,8 +2366,8 @@ void FileAssetAni::PhotoAccessHelperCancelPhotoRequest(ani_env *env, ani_object 
     }
 
     if (fileAssetAni->fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
 
@@ -2528,8 +2527,8 @@ void FileAssetAni::PhotoAccessHelperSetHidden(ani_env *env, ani_object object, a
 
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
     if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
@@ -2630,8 +2629,8 @@ void FileAssetAni::PhotoAccessHelperSetFavorite(ani_env *env, ani_object object,
 
     auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
     if (fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return;
     }
     unique_ptr<FileAssetContext> context = make_unique<FileAssetContext>();
@@ -2998,8 +2997,8 @@ ani_status FileAssetAni::PhotoAccessHelperSetPending(ani_env *env, ani_object ob
     context->objectPtr = fileAssetAni->fileAssetPtr;
     CHECK_COND_WITH_RET_MESSAGE(env, context->objectPtr != nullptr, ANI_INVALID_ARGS, "context->objectPtr is nullptr");
     if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        AniError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return ANI_ERROR;
     }
 
