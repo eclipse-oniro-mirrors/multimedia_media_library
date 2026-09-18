@@ -274,7 +274,7 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
         "HandleRiskControlUpdate failed, cloudId: %{public}s.", cloudId.c_str());
     // 封禁资产: 非相册成员删除缩略图 + 原图 + metadata, 复用 PullDelete 删除链路
     if (needPullDelete) {
-        int32_t deleteRet = this->PullDelete(pullData, handleDto);
+        int32_t deleteRet = this->PullDelete(pullData, handleDto, photoRefresh);
         if (deleteRet == E_OK) {
             stats[StatsIndex::DELETE_RECORDS_COUNT]++;
         }
