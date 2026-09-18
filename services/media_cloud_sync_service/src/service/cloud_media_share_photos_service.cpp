@@ -157,6 +157,8 @@ int32_t CloudMediaSharePhotosService::HandleUpdateOrDeleteRecord(
     const bool hasLocalInfo = pullData.localPhotosPoOp.has_value();
     CHECK_AND_RETURN_RET(hasLocalInfo, E_OK);
 
+    this->shareCheckService_.VerifyPullData(pullData);
+
     const bool isUpdate = hasLocalInfo && !pullData.basicIsDelete;
     const bool isDelete = hasLocalInfo && pullData.basicIsDelete;
     int32_t ret = E_OK;
@@ -364,6 +366,8 @@ int32_t CloudMediaSharePhotosService::PullInsert(
     int32_t ret;
     for (auto insertData : allPullDatas) {
         MEDIA_DEBUG_LOG("PullInsert insert of record %{public}s", insertData.cloudId.c_str());
+        this->shareCheckService_.VerifyPullData(insertData);
+        
         this->photosService_.ExtractEditDataCamera(insertData);
         ret = this->photosDao_.GetInsertParams(
             insertData, recordAnalysisAlbumMaps, recordAlbumMaps, refreshAlbums, insertFiles);

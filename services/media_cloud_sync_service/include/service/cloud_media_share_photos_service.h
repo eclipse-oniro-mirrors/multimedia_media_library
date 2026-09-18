@@ -27,9 +27,11 @@
 #include "cloud_media_photos_delete_service.h"
 #include "cloud_media_pull_data_dto.h"
 #include "medialibrary_notify.h"
+#include "media_asset_bucket_type.h"
 #include "photos_dto.h"
 #include "photos_po.h"
 #include "cloud_media_photos_risk_service.h"
+#include "cloud_media_share_check_service.h"
 // LCOV_EXCL_START
 
 namespace OHOS::Media::CloudSync {
@@ -74,6 +76,7 @@ private:
     CloudMediaPhotosDeleteService photosDeleteService_;
     CloudMediaPhotosService photosService_;
     CloudMediaPhotosRiskService photosRiskService_;
+    CloudMediaShareCheckService shareCheckService_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_SHARE_PHOTOS_SERVICE_H

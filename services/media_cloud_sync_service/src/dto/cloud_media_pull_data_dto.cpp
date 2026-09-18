@@ -25,6 +25,28 @@
 #include "media_log.h"
 
 namespace OHOS::Media::CloudSync {
+std::string SharePhotoDetailDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"attributesShareOwnerInfo\": \"" << attributesShareOwnerInfo << "\","
+       << "\"attributesShareAlbumOwner\": \"" << attributesShareAlbumOwner << "\","
+       << "\"attributesShareDateDay\": " << attributesShareDateDay << ","
+       << "\"attributesShareGroup\": " << attributesShareGroup << ","
+       << "\"currentUserId\": \"" << currentUserId << "\","
+       << "\"mediaCreateId\": \"" << mediaCreateId << "\","
+       << "\"scaDetailDataList\": [";
+    for (size_t i = 0; i < scaDetailDataList.size(); i++) {
+        ss << "{\"usage\": \"" << scaDetailDataList[i].usage << "\", \"riskResult\": "
+           << scaDetailDataList[i].riskResult << "}";
+        if (i != scaDetailDataList.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "]}";
+    return ss.str();
+}
+
 void CloudMediaPullDataDto::GetBasicInfo(std::stringstream &ss) const
 {
     ss << "\"cloudId\": \"" << cloudId << "\","
@@ -110,6 +132,9 @@ std::string CloudMediaPullDataDto::ToString() const
     this->GetPropertiesInfo(ss);
     this->GetCloudInfo(ss);
     this->GetAlbumIds(ss);
+    if (this->sharePhotoDetailDtoOp.has_value()) {
+        ss << "\"sharePhotoDetailDto\": " << this->sharePhotoDetailDtoOp.value().ToString();
+    }
     ss << "}";
     return ss.str();
 }

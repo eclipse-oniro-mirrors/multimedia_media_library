@@ -50,15 +50,20 @@ static bool IsPhotoRiskAsset(const std::vector<ScaDetailDataDto> &scaDetailList,
 CloudMediaPhotosRiskService::CharacterType CloudMediaPhotosRiskService::GetCurrentCharacter(
     const CloudMediaPullDataDto &pullData)
 {
-    if (pullData.currentUserId.empty()) {
+    if (!pullData.sharePhotoDetailDtoOp.has_value()) {
+        MEDIA_WARN_LOG("GetCurrentCharacter: sharePhotoDetailDtoOp is empty");
+        return CharacterType::CHARACTER_ERR;
+    }
+    const auto &shareDetailDto = pullData.sharePhotoDetailDtoOp.value();
+    if (shareDetailDto.currentUserId.empty()) {
         MEDIA_WARN_LOG("GetCurrentCharacter: currentUserId is empty");
         return CharacterType::CHARACTER_ERR;
     }
-    if (!pullData.mediaCreateId.empty() &&
-        pullData.currentUserId == pullData.mediaCreateId) {
+    if (!shareDetailDto.mediaCreateId.empty() &&
+        shareDetailDto.currentUserId == shareDetailDto.mediaCreateId) {
         return CharacterType::CHARACTER_CREATER;
-    } else if (!pullData.attributesShareAlbumOwner.empty() &&
-        pullData.currentUserId == pullData.attributesShareAlbumOwner) {
+    } else if (!shareDetailDto.attributesShareAlbumOwner.empty() &&
+                shareDetailDto.currentUserId == shareDetailDto.attributesShareAlbumOwner) {
         return CharacterType::CHARACTER_OWNER;
     }
     return CharacterType::CHARACTER_OTHER;
@@ -79,11 +84,12 @@ bool CloudMediaPhotosRiskService::NeedPullDelete(const CloudMediaPullDataDto &pu
 int32_t CloudMediaPhotosRiskService::HandleRiskControlUpdate(
     const CloudMediaPullDataDto &pullData, bool &needClearLocalData, bool &needPullDelete)
 {
-    if (pullData.attributesIsShared != 1) {
+    if (pullData.attributesIsShared != 1 || !pullData.sharePhotoDetailDtoOp.has_value()) {
         return E_OK;
     }
+    const auto &shareDetailDto = pullData.sharePhotoDetailDtoOp.value();
     int32_t maxRiskResult = -1;
-    if (!IsPhotoRiskAsset(pullData.scaDetailDataList, maxRiskResult)) {
+    if (!IsPhotoRiskAsset(shareDetailDto.scaDetailDataList, maxRiskResult)) {
         MEDIA_INFO_LOG("PullUpdate: not a photo risk asset, skip ban, "
             "cloudId=%{public}s", pullData.cloudId.c_str());
         return E_OK;
@@ -109,8 +115,8 @@ bool CloudMediaPhotosRiskService::IsNeedBanPhotoAsset(const CloudMediaPullDataDt
 {
     // 仅共享相册的高风险(封禁)照片资产需要拦截
     int32_t maxRiskResult = -1;
-    if (pullData.attributesIsShared != 1 ||
-        !IsPhotoRiskAsset(pullData.scaDetailDataList, maxRiskResult) ||
+    if (pullData.attributesIsShared != 1 || !pullData.sharePhotoDetailDtoOp.has_value() ||
+        !IsPhotoRiskAsset(pullData.sharePhotoDetailDtoOp.value().scaDetailDataList, maxRiskResult) ||
         maxRiskResult != RISK_RESULT_BLOCKED) {
         return false;
     }

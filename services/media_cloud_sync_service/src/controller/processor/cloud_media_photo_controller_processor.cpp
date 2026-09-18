@@ -261,16 +261,37 @@ bool CloudMediaPhotoControllerProcessor::GetBasicInfo(const OnFetchPhotosVo &pho
     return true;
 }
 
+void CloudMediaPhotoControllerProcessor::GetShareAttributesInfo(const OnFetchPhotosVo &photosVo,
+    CloudMediaPullDataDto &data)
+{
+    CHECK_AND_RETURN(photosVo.sharePhotoDetailOp.has_value());
+    if (!data.sharePhotoDetailDtoOp.has_value()) {
+        data.sharePhotoDetailDtoOp = SharePhotoDetailDto();
+    }
+    auto &shareDetailDto = data.sharePhotoDetailDtoOp.value();
+    const auto &sharePhotoDetailVo = photosVo.sharePhotoDetailOp.value();
+    shareDetailDto.attributesShareOwnerInfo = sharePhotoDetailVo.shareOwnerInfo;
+    shareDetailDto.attributesShareAlbumOwner = sharePhotoDetailVo.shareAlbumOwner;
+    shareDetailDto.attributesShareDateDay = sharePhotoDetailVo.shareDateDay;
+    shareDetailDto.attributesShareGroup = sharePhotoDetailVo.shareGroup;
+}
+
 void CloudMediaPhotoControllerProcessor::GetScadetailInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
 {
-    data.currentUserId = photosVo.sharePhotoDetail.currentUserId;
-    data.mediaCreateId = photosVo.sharePhotoDetail.mediaCreateId;
-    for (const auto &scaDetailVo : photosVo.sharePhotoDetail.scaDetailList) {
+    CHECK_AND_RETURN(photosVo.sharePhotoDetailOp.has_value());
+    if (!data.sharePhotoDetailDtoOp.has_value()) {
+        data.sharePhotoDetailDtoOp = SharePhotoDetailDto();
+    }
+    auto &shareDetailDto = data.sharePhotoDetailDtoOp.value();
+    const auto &sharePhotoDetailVo = photosVo.sharePhotoDetailOp.value();
+    shareDetailDto.currentUserId = sharePhotoDetailVo.currentUserId;
+    shareDetailDto.mediaCreateId = sharePhotoDetailVo.mediaCreateId;
+    for (const auto &scaDetailVo : sharePhotoDetailVo.scaDetailList) {
         ScaDetailDataDto scaDetail;
         scaDetail.usage = scaDetailVo.usage;
         scaDetail.riskResult = scaDetailVo.riskResult;
-        data.scaDetailDataList.emplace_back(scaDetail);
-    }
+        shareDetailDto.scaDetailList.emplace_back(scaDetail);
+     }
 }
 
 bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
@@ -314,11 +335,8 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     // Safe Album: risk status for children's watch
     data.attributesRiskStatus = photosVo.photoRiskStatus;
     data.attributesIsShared = photosVo.isShared;
-    data.attributesShareOwnerInfo = photosVo.shareOwnerInfo;
-    data.attributesShareAlbumOwner = photosVo.shareAlbumOwner;
-    data.attributesShareDateDay = photosVo.shareDateDay;
-    data.attributesShareGroup = photosVo.shareGroup;
     data.attributesIsCritical = photosVo.isCritical;
+    this->GetShareAttributesInfo(photosVo, data);
     data.compressionQuality = photosVo.compressionQuality;
     data.editDataExist = photosVo.editDataExist;
     return true;

@@ -49,6 +49,10 @@ std::string ScaDetailVo::ToString() const
  
 bool SharePhotoDetailVo::Unmarshalling(MessageParcel &parcel)
 {
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->shareGroup), false, "shareGroup");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->currentUserId), false, "currentUserId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->mediaCreateId), false, "mediaCreateId");
     CHECK_AND_RETURN_RET_LOG(
@@ -58,6 +62,10 @@ bool SharePhotoDetailVo::Unmarshalling(MessageParcel &parcel)
  
 bool SharePhotoDetailVo::Marshalling(MessageParcel &parcel) const
 {
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->shareGroup), false, "shareGroup");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->currentUserId), false, "currentUserId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->mediaCreateId), false, "mediaCreateId");
     CHECK_AND_RETURN_RET_LOG(
@@ -69,6 +77,10 @@ std::string SharePhotoDetailVo::ToString() const
 {
     std::stringstream ss;
     ss << "{"
+       << "\"shareOwnerInfo\": \"" << shareOwnerInfo << "\",";
+       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\",";
+       << "\"shareDateDay\": " << shareDateDay << ",";
+       << "\"shareGroup\": " << shareGroup << ",";
        << "\"currentUserId\": \"" << currentUserId << "\","
        << "\"mediaCreateId\": \"" << mediaCreateId << "\","
        << "\"scaDetailList\": [";
