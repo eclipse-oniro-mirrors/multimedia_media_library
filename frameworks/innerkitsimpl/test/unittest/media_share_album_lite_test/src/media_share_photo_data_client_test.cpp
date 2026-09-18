@@ -37,11 +37,12 @@ namespace {
 // Service side MediaSharePhotoDataService::GetShareAlbumOwnerId return codes.
 constexpr int32_t ERR_NOT_FOUND = -1;
 constexpr int32_t ERR_RESULT_NOT_SHARED = -3;
-// Data rows from share_photo_handler-photos.csv:
-// index 10011 (is_shared = 0) and index 10012 (is_shared = 1, share_album_owner = shareAlbumOwner002).
-const std::string SHARED_PHOTO_PATH = "/storage/cloud/files/Photo/11/IMG_1744190669_028.jpg";
-const std::string NOT_SHARED_PHOTO_PATH = "/storage/cloud/files/Photo/9/IMG_1739459141_009.jpg";
-const std::string NOT_EXIST_PHOTO_PATH = "/storage/cloud/files/Photo/99/IMG_9999999999_999.jpg";
+// Data rows from share_photo_handler-photos.csv (query by cloud_id, not data path):
+// index 10011: is_shared = 0, cloud_id = 373b364a...54ff97c1
+// index 10012: is_shared = 1, cloud_id = 374b364a...54ff97d9
+const std::string SHARED_PHOTO_CLOUD_ID = "374b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97d9";
+const std::string NOT_SHARED_PHOTO_CLOUD_ID = "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97c1";
+const std::string NOT_EXIST_PHOTO_CLOUD_ID = "no_exist_cloud_id";
 const std::string EXPECTED_SHARE_ALBUM_OWNER = "shareAlbumOwner002";
 }  // namespace
 
@@ -99,9 +100,9 @@ HWTEST_F(MediaSharePhotoDataClientTest, GetShareAlbumOwnerId_IsSharedTrue_001, T
 {
     std::shared_ptr<MediaSharePhotoDataClient> photoDataClient = std::make_shared<MediaSharePhotoDataClient>(1, 100);
     string ownerId;
-    int32_t ret = photoDataClient->GetShareAlbumOwnerId(SHARED_PHOTO_PATH, ownerId);
-    EXPECT_NE(ret, E_OK);
-    EXPECT_NE(ownerId, EXPECTED_SHARE_ALBUM_OWNER);
+    int32_t ret = photoDataClient->GetShareAlbumOwnerId(SHARED_PHOTO_CLOUD_ID, ownerId);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(ownerId, EXPECTED_SHARE_ALBUM_OWNER);
 }
 
 /**
@@ -113,8 +114,8 @@ HWTEST_F(MediaSharePhotoDataClientTest, GetShareAlbumOwnerId_IsSharedFalse_001, 
 {
     std::shared_ptr<MediaSharePhotoDataClient> photoDataClient = std::make_shared<MediaSharePhotoDataClient>(1, 100);
     string ownerId;
-    int32_t ret = photoDataClient->GetShareAlbumOwnerId(NOT_SHARED_PHOTO_PATH, ownerId);
-    EXPECT_NE(ret, ERR_RESULT_NOT_SHARED);
+    int32_t ret = photoDataClient->GetShareAlbumOwnerId(NOT_SHARED_PHOTO_CLOUD_ID, ownerId);
+    EXPECT_EQ(ret, ERR_RESULT_NOT_SHARED);
     EXPECT_TRUE(ownerId.empty());
 }
 
@@ -127,7 +128,7 @@ HWTEST_F(MediaSharePhotoDataClientTest, GetShareAlbumOwnerId_NotExist_001, TestS
 {
     std::shared_ptr<MediaSharePhotoDataClient> photoDataClient = std::make_shared<MediaSharePhotoDataClient>(1, 100);
     string ownerId;
-    int32_t ret = photoDataClient->GetShareAlbumOwnerId(NOT_EXIST_PHOTO_PATH, ownerId);
+    int32_t ret = photoDataClient->GetShareAlbumOwnerId(NOT_EXIST_PHOTO_CLOUD_ID, ownerId);
     EXPECT_EQ(ret, ERR_NOT_FOUND);
     EXPECT_TRUE(ownerId.empty());
 }
