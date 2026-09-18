@@ -123,8 +123,7 @@ bool ShareAlbumInfoCalculation::IsNewerAsset(const PhotoAssetChangeInfo &compare
     if (compareAssetInfo.displayName_ != currentAssetInfo.displayName_) {
         return compareAssetInfo.displayName_ > currentAssetInfo.displayName_;
     }
-    // fileId 降序兜底
-    return compareAssetInfo.fileId_ > currentAssetInfo.fileId_;
+    return false;
 }
 
 bool ShareAlbumInfoCalculation::IsNewerHiddenAsset(const PhotoAssetChangeInfo &compareAssetInfo,
