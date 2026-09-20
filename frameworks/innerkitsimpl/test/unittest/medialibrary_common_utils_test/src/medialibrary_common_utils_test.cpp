@@ -64,6 +64,28 @@ HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_test_001, TestSi
     EXPECT_EQ(ret, false);
 }
 
+HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_sql_injection_test_001, TestSize.Level1)
+{
+    // Always-true condition attack
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("1=1"), false);
+    // Subquery / cross-table keywords with word boundary
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id IN (SELECT file_id FROM Photos)"), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("1=1 UNION SELECT * FROM Photos"), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1; DROP TABLE Photos"), false);
+    // Comment-based keyword splitting: SEL/**/ECT
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id/**/=1"), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1 -- comment"), false);
+    // Legal column names containing keyword substrings must NOT be blocked by \b
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("date_added>0"), true);
+}
+
+HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_comment_marker_test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1;--"), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1/*"), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1"), true);
+}
+
 HWTEST_F(MediaLibraryCommonUtilsTest, medialib_AppendSelections_test_001, TestSize.Level1)
 {
     string selections = "";

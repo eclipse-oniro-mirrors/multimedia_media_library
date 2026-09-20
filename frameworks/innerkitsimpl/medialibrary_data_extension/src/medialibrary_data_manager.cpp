@@ -1750,6 +1750,9 @@ int32_t MediaLibraryDataManager::Update(MediaLibraryCommand &cmd, const DataShar
         return E_INVALID_VALUES;
     }
 
+    auto whereClause = predicates.GetWhereClause();
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause), E_INVALID_VALUES,
+        "illegal query whereClause input %{private}s", whereClause.c_str());
     CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_INVALID_VALUES,
         "illegal query key");
 
