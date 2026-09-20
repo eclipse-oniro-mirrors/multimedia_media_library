@@ -324,8 +324,8 @@ void CloudMediaAlbumDao::FillAlbumBaseValues(const PhotoAlbumDto &record, Native
     values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, record.albumType);
     values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, record.albumSubType);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, record.albumDateAdded);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, record.albumDateModified);
+    this->HandleDateAdded(record, values);
+    this->HandleDateModified(record, values);
     values.PutString(PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE, record.localLanguage);
     values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
@@ -709,8 +709,8 @@ void CloudMediaAlbumDao::SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRd
     values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, record.albumType);
     values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, record.albumSubType);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, record.albumDateAdded);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, record.albumDateModified);
+    this->HandleDateAdded(record, values);
+    this->HandleDateModified(record, values);
     values.PutString(PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE, record.localLanguage);
     values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
@@ -1423,5 +1423,36 @@ int32_t CloudMediaAlbumDao::GetShareAlbumsIsSdirty(std::vector<int32_t> &albumId
     MEDIA_INFO_LOG("GetShareAlbumsIsSdirty albumIds size: %{public}zu", albumIds.size());
     return E_OK;
 }
+
+void CloudMediaAlbumDao::HandleDateAdded(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    int64_t dateAdded = record.albumDateAdded;
+    const bool isCreatedTimeValid = dateAdded <= 0 && record.albumDateCreated > 0;
+    dateAdded = isCreatedTimeValid ? record.albumDateCreated : record.albumDateAdded;
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, dateAdded);
+
+    CHECK_AND_PRINT_LOG(!isCreatedTimeValid,
+        "date_added invalid, use createdTime instead. "
+        "cloudId: %{public}s, dateAdded: %{public}s, createdTime: %{public}s",
+        record.cloudId.c_str(),
+        std::to_string(record.albumDateAdded).c_str(),
+        std::to_string(record.albumDateCreated).c_str());
+}
+
+void CloudMediaAlbumDao::HandleDateModified(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    int64_t dateModified = record.albumDateModified;
+    const bool isCreatedTimeValid = dateModified <= 0 && record.albumDateCreated > 0;
+    dateModified = isCreatedTimeValid ? record.albumDateCreated : record.albumDateModified;
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, dateModified);
+
+    CHECK_AND_PRINT_LOG(!isCreatedTimeValid,
+        "date_modified invalid, use createdTime instead. "
+        "cloudId: %{public}s, dateModified: %{public}s, createdTime: %{public}s",
+        record.cloudId.c_str(),
+        std::to_string(record.albumDateModified).c_str(),
+        std::to_string(record.albumDateCreated).c_str());
+}
+
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync
