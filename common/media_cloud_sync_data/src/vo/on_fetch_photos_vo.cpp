@@ -187,7 +187,7 @@ bool OnFetchPhotosVo::Unmarshalling(MessageParcel &parcel)
         IPC::ITypeMediaUtil::Unmarshalling<std::string>(this->sourceAlbumIds, parcel), false, "sourceAlbumIds");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(int64fields, parcel), false, "int64fields");
-    CHECK_AND_RETURN_RET_LOG(this->UnmarshallSharePhotoDetailVo(parcel), false, "sharePhotoDetailOp");
+    CHECK_AND_RETURN_RET_LOG(this->UnmarshallSharePhotoDetailVo(parcel), false, "sharePhotoDetailDtoOp");
     return true;
 }
 
@@ -203,7 +203,7 @@ bool OnFetchPhotosVo::Marshalling(MessageParcel &parcel) const
         IPC::ITypeMediaUtil::Marshalling<std::string>(this->sourceAlbumIds, parcel), false, "sourceAlbumIds");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(int64fields, parcel), false, "int64fields");
-    CHECK_AND_RETURN_RET_LOG(this->MarshallSharePhotoDetailVo(parcel), false, "sharePhotoDetailOp");
+    CHECK_AND_RETURN_RET_LOG(this->MarshallSharePhotoDetailVo(parcel), false, "sharePhotoDetailDtoOp");
     return true;
 }
 
@@ -289,7 +289,7 @@ std::string OnFetchPhotosVo::ToString() const
     }
     ss << "]";
     ss << ", \"isShared\": " << isShared << ",";
-    ss << ", \"sharePhotoDetailOp\": \"" << SharePhotoDetailVoToString() << "\"";
+    ss << ", \"sharePhotoDetailDtoOp\": \"" << SharePhotoDetailVoToString() << "\"";
     ss << "}";
     return ss.str();
 }
@@ -326,15 +326,15 @@ bool OnFetchPhotosVo::ReadShareAlbumInfo(OHOS::Parcel &parcel)
 void OnFetchPhotosVo::InitSharePhotoDetailVo(int32_t isShared)
 {
     CHECK_AND_RETURN(isShared == SHARED_ASSET_FLAG);
-    CHECK_AND_RETURN(this->sharePhotoDetailOp.has_value());
-    this->sharePhotoDetailOp = sharePhotoDetailVo;
+    CHECK_AND_RETURN(this->sharePhotoDetailDtoOp.has_value());
+    this->sharePhotoDetailDtoOp = SharePhotoDetailVo();
 }
 
 bool OnFetchPhotosVo::MarshallSharePhotoDetailVo(MessageParcel &parcel) const
 {
     CHECK_AND_RETURN_RET(isShared == SHARED_ASSET_FLAG, true);
-    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailOp.has_value(), true, "not share photo.");
-    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailOp.value().Marshalling(parcel), false, "sharePhotoDetailOp");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailDtoOp.has_value(), true, "not share photo.");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailDtoOp.value().Marshalling(parcel), false, "sharePhotoDetailDtoOp");
     return true;
 }
 
@@ -342,14 +342,14 @@ bool OnFetchPhotosVo::UnmarshallSharePhotoDetailVo(MessageParcel &parcel)
 {
     CHECK_AND_RETURN_RET(isShared == SHARED_ASSET_FLAG, true);
     this->InitSharePhotoDetailVo(isShared);
-    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailOp.has_value(), true, "not share photo.");
-    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailOp.value().Unmarshalling(parcel), false, "sharePhotoDetailOp");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailDtoOp.has_value(), true, "not share photo.");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailDtoOp.value().Unmarshalling(parcel), false, "sharePhotoDetailDtoOp");
     return true;
 }
 
 std::string OnFetchPhotosVo::SharePhotoDetailVoToString() const
 {
-    CHECK_AND_RETURN_LOG(this->sharePhotoDetailOp.has_value(), "", "sharePhotoDetailOp");
-    return this->sharePhotoDetailOp.value().ToString();
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailDtoOp.has_value(), "", "sharePhotoDetailDtoOp has no value");
+    return this->sharePhotoDetailDtoOp.value().ToString();
 }
 }  // namespace OHOS::Media::CloudSync

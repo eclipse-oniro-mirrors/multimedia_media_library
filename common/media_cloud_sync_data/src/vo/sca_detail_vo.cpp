@@ -77,10 +77,10 @@ std::string SharePhotoDetailVo::ToString() const
 {
     std::stringstream ss;
     ss << "{"
-       << "\"shareOwnerInfo\": \"" << shareOwnerInfo << "\",";
-       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\",";
-       << "\"shareDateDay\": " << shareDateDay << ",";
-       << "\"shareGroup\": " << shareGroup << ",";
+       << "\"shareOwnerInfo\": \"" << shareOwnerInfo << "\","
+       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\","
+       << "\"shareDateDay\": " << shareDateDay << ","
+       << "\"shareGroup\": " << shareGroup << ","
        << "\"currentUserId\": \"" << currentUserId << "\","
        << "\"mediaCreateId\": \"" << mediaCreateId << "\","
        << "\"scaDetailList\": [";

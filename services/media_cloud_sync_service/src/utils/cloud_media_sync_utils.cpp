@@ -706,10 +706,10 @@ int32_t CloudMediaSyncUtils::FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, con
     photosDto.isShared = pullData.attributesIsShared;
     CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), E_OK);
     const auto &shareDetailDto = pullData.sharePhotoDetailDtoOp.value();
-    photoDto.shareOwnerInfo = shareDetailDto.attributesShareOwnerInfo;
-    photoDto.shareAlbumOwner = shareDetailDto.attributesShareAlbumOwner;
-    photoDto.shareDateDay = shareDetailDto.attributesShareDateDay;
-    photoDto.shareGroup = shareDetailDto.attributesShareGroup;
+    photosDto.shareOwnerInfo = shareDetailDto.attributesShareOwnerInfo;
+    photosDto.shareAlbumOwner = shareDetailDto.attributesShareAlbumOwner;
+    photosDto.shareDateDay = shareDetailDto.attributesShareDateDay;
+    photosDto.shareGroup = shareDetailDto.attributesShareGroup;
     return E_OK;
 }
 

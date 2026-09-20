@@ -35,7 +35,7 @@ public:
     int64_t attributesShareDateDay{0};     /* share_date_day */
     int64_t attributesShareGroup{0};       /* share_group */
     // Shared Album Risk Control
-    std::vector<ScaDetailDto> scaDetailList;
+    std::vector<ScaDetailDataDto> scaDetailList;
     std::string currentUserId;             /* 当前用户ID，用于角色判定 */
     std::string mediaCreateId;             /* 资产创建者ID */
 
@@ -122,7 +122,7 @@ public:
     int32_t attributesRiskStatus{0};              /* photo_risk_status */
     int32_t attributesIsCritical{0};              /* is_critical */
     int32_t attributesIsShared{0};                /* is_shared */
-    std::optional<SharePhotoDetailDto> sharePhotoDetailOp;
+    std::optional<SharePhotoDetailDto> sharePhotoDetailDtoOp;
 
     // "properties"
     bool hasProperties{false};

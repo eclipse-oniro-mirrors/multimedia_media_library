@@ -277,12 +277,12 @@ bool CloudMediaPhotoControllerProcessor::GetBasicInfo(const OnFetchPhotosVo &pho
 void CloudMediaPhotoControllerProcessor::GetShareAttributesInfo(const OnFetchPhotosVo &photosVo,
     CloudMediaPullDataDto &data)
 {
-    CHECK_AND_RETURN(photosVo.sharePhotoDetailOp.has_value());
+    CHECK_AND_RETURN(photosVo.sharePhotoDetailDtoOp.has_value());
     if (!data.sharePhotoDetailDtoOp.has_value()) {
         data.sharePhotoDetailDtoOp = SharePhotoDetailDto();
     }
     auto &shareDetailDto = data.sharePhotoDetailDtoOp.value();
-    const auto &sharePhotoDetailVo = photosVo.sharePhotoDetailOp.value();
+    const auto &sharePhotoDetailVo = photosVo.sharePhotoDetailDtoOp.value();
     shareDetailDto.attributesShareOwnerInfo = sharePhotoDetailVo.shareOwnerInfo;
     shareDetailDto.attributesShareAlbumOwner = sharePhotoDetailVo.shareAlbumOwner;
     shareDetailDto.attributesShareDateDay = sharePhotoDetailVo.shareDateDay;
@@ -291,12 +291,12 @@ void CloudMediaPhotoControllerProcessor::GetShareAttributesInfo(const OnFetchPho
 
 void CloudMediaPhotoControllerProcessor::GetScadetailInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
 {
-    CHECK_AND_RETURN(photosVo.sharePhotoDetailOp.has_value());
+    CHECK_AND_RETURN(photosVo.sharePhotoDetailDtoOp.has_value());
     if (!data.sharePhotoDetailDtoOp.has_value()) {
         data.sharePhotoDetailDtoOp = SharePhotoDetailDto();
     }
     auto &shareDetailDto = data.sharePhotoDetailDtoOp.value();
-    const auto &sharePhotoDetailVo = photosVo.sharePhotoDetailOp.value();
+    const auto &sharePhotoDetailVo = photosVo.sharePhotoDetailDtoOp.value();
     shareDetailDto.currentUserId = sharePhotoDetailVo.currentUserId;
     shareDetailDto.mediaCreateId = sharePhotoDetailVo.mediaCreateId;
     for (const auto &scaDetailVo : sharePhotoDetailVo.scaDetailList) {
@@ -304,7 +304,7 @@ void CloudMediaPhotoControllerProcessor::GetScadetailInfo(const OnFetchPhotosVo 
         scaDetail.usage = scaDetailVo.usage;
         scaDetail.riskResult = scaDetailVo.riskResult;
         shareDetailDto.scaDetailList.emplace_back(scaDetail);
-     }
+    }
 }
 
 bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)

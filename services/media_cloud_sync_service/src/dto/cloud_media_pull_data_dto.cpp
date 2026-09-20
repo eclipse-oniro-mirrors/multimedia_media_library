@@ -36,10 +36,10 @@ std::string SharePhotoDetailDto::ToString() const
        << "\"currentUserId\": \"" << currentUserId << "\","
        << "\"mediaCreateId\": \"" << mediaCreateId << "\","
        << "\"scaDetailDataList\": [";
-    for (size_t i = 0; i < scaDetailDataList.size(); i++) {
-        ss << "{\"usage\": \"" << scaDetailDataList[i].usage << "\", \"riskResult\": "
-           << scaDetailDataList[i].riskResult << "}";
-        if (i != scaDetailDataList.size() - 1) {
+    for (size_t i = 0; i < scaDetailList.size(); i++) {
+        ss << "{\"usage\": \"" << scaDetailList[i].usage << "\", \"riskResult\": "
+           << scaDetailList[i].riskResult << "}";
+        if (i != scaDetailList.size() - 1) {
             ss << ", ";
         }
     }

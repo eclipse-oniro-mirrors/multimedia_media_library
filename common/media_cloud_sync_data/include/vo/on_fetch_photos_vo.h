@@ -103,7 +103,7 @@ public:
     int32_t isCritical{0};
     int32_t compressionQuality{-1};
     int32_t isShared{0};
-    std::optional<SharePhotoDetailVo> sharePhotoDetailOp;
+    std::optional<SharePhotoDetailVo> sharePhotoDetailDtoOp;
     int32_t editDataExist;
 
 public:  // functions of Parcelable.

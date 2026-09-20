@@ -420,6 +420,7 @@ int32_t CloudMediaSharePhotosService::DoDataMerge(const CloudMediaPullDataDto &p
     CloudMediaPullDataHandleDto &handleDto, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     CHECK_AND_RETURN_RET_LOG(pullData.localPhotosPoOp.has_value(), E_OK, "pullData has no local value");
+    this->shareCheckService_.VerifyPullData(pullData);
 
     const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
     const std::string filePath = photoInfo.data.value_or("");

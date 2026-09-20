@@ -17,6 +17,7 @@
 
 #include "cloud_media_share_check_service.h"
 
+#include <cinttypes>
 #include <string>
 #include <vector>
 
@@ -57,10 +58,8 @@ void CloudMediaShareCheckService::VerifyBucketNumberWhenInsert(const CloudMediaP
     CHECK_AND_RETURN_LOG(!dataPath.empty(), "dataPath empty, pullData: %{public}s", pullData.ToString().c_str());
 
     const bool isValid = this->CheckAssetBucketFromPath(dataPath);
-    CHECK_AND_PRINT_LOG(isValid,
-        "sceneType: %{public}d, pullData: %{public}s",
-        CloudMediaContext::GetInstance().GetSceneType(),
-        pullData.ToString().c_str());
+    CHECK_AND_PRINT_LOG(isValid, "sceneType: %{public}d, pullData: %{public}s",
+        CloudMediaContext::GetInstance().GetSceneType(), pullData.ToString().c_str());
     return;
 }
 void CloudMediaShareCheckService::VerifyBucketNumberWhenUpdate(const CloudMediaPullDataDto &pullData)
@@ -72,10 +71,8 @@ void CloudMediaShareCheckService::VerifyBucketNumberWhenUpdate(const CloudMediaP
     CHECK_AND_RETURN_LOG(!dataPath.empty(), "dataPath empty, pullData: %{public}s", pullData.ToString().c_str());
 
     const bool isValid = this->CheckAssetBucketFromPath(dataPath);
-    CHECK_AND_PRINT_LOG(isValid,
-        "sceneType: %{public}d, pullData: %{public}s",
-        CloudMediaContext::GetInstance().GetSceneType(),
-        pullData.ToString().c_str());
+    CHECK_AND_PRINT_LOG(isValid, "sceneType: %{public}d, pullData: %{public}s",
+        CloudMediaContext::GetInstance().GetSceneType(), pullData.ToString().c_str());
     return;
 }
 
@@ -86,11 +83,8 @@ void CloudMediaShareCheckService::VerifySceneTypeAndIsSharedWhenInsert(const Clo
     const int32_t sceneType = CloudMediaContext::GetInstance().GetSceneType();
     const int32_t isSharedOfCloud = pullData.attributesIsShared;
     const bool isValid = sceneType == isSharedOfCloud;
-    CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, isSharedOfCloud: %{public}d, pullData: %{public}s",
-                sceneType,
-                isSharedOfCloud,
-                pullData.ToString().c_str());
+    CHECK_AND_PRINT_LOG(isValid, "sceneType: %{public}d, isSharedOfCloud: %{public}d, pullData: %{public}s",
+        sceneType, isSharedOfCloud, pullData.ToString().c_str());
     return;
 }
 
@@ -104,13 +98,9 @@ void CloudMediaShareCheckService::VerifySceneTypeAndIsSharedWhenUpdate(const Clo
     const int32_t isSharedOfLocal = photoInfo.isShared.value_or(0);
 
     const bool isValid = sceneType == isSharedOfCloud && sceneType == isSharedOfLocal;
-    CHECK_AND_PRINT_LOG(
-        isValid,
+    CHECK_AND_PRINT_LOG(isValid,
         "sceneType: %{public}d, isSharedOfCloud: %{public}d, isSharedOfLocal: %{public}d, pullData: %{public}s",
-        sceneType,
-        isSharedOfCloud,
-        isSharedOfLocal,
-        pullData.ToString().c_str());
+        sceneType, isSharedOfCloud, isSharedOfLocal, pullData.ToString().c_str());
     return;
 }
 
@@ -123,9 +113,7 @@ void CloudMediaShareCheckService::VerifySharePhotoDetail(const CloudMediaPullDat
     const bool isValid = !isShared || (isShared && isShareDetailExist);
     CHECK_AND_PRINT_LOG(isValid,
         "sceneType: %{public}d, isShareDetailExist: %{public}d, pullData: %{public}s",
-        sceneType,
-        isShareDetailExist,
-        pullData.ToString().c_str());
+        sceneType, isShareDetailExist, pullData.ToString().c_str());
     return;
 }
 
@@ -143,10 +131,8 @@ void CloudMediaShareCheckService::VerifyShareAlbumOwnerWhenInsert(const CloudMed
     const bool isShareValid = isShared && !shareAlbumOwnerOfCloud.empty();
     const bool isValid = isNormalValid || isShareValid;
     CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, shareAlbumOwnerOfCloud: %{public}s, pullData: %{public}s",
-                sceneType,
-                shareAlbumOwnerOfCloud.c_str(),
-                pullData.ToString().c_str());
+        "sceneType: %{public}d, shareAlbumOwnerOfCloud: %{public}s, pullData: %{public}s",
+        sceneType, shareAlbumOwnerOfCloud.c_str(), pullData.ToString().c_str());
     return;
 }
 
@@ -167,12 +153,9 @@ void CloudMediaShareCheckService::VerifyShareAlbumOwnerWhenUpdate(const CloudMed
         isShared && !shareAlbumOwnerOfCloud.empty() && shareAlbumOwnerOfCloud == shareAlbumOwnerOfLocal;
     const bool isValid = isNormalValid || isShareValid;
     CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, shareAlbumOwnerOfCloud: %{public}s, "
-                "shareAlbumOwnerOfLocal: %{public}s, pullData: %{public}s",
-                sceneType,
-                shareAlbumOwnerOfCloud.c_str(),
-                shareAlbumOwnerOfLocal.c_str(),
-                pullData.ToString().c_str());
+        "sceneType: %{public}d, shareAlbumOwnerOfCloud: %{public}s, "
+        "shareAlbumOwnerOfLocal: %{public}s, pullData: %{public}s",
+        sceneType, shareAlbumOwnerOfCloud.c_str(), shareAlbumOwnerOfLocal.c_str(), pullData.ToString().c_str());
     return;
 }
 
@@ -191,10 +174,8 @@ void CloudMediaShareCheckService::VerifyShareDateDayWhenInsert(const CloudMediaP
     const bool isShareValid = isShared && shareDateDayOfCloud != 0;
     const bool isValid = isNormalValid || isShareValid;
     CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, shareDateDayOfCloud: %{public}ld, pullData: %{public}s",
-                sceneType,
-                shareDateDayOfCloud,
-                pullData.ToString().c_str());
+        "sceneType: %{public}d, shareDateDayOfCloud: %{public}" PRId64 ", pullData: %{public}s",
+        sceneType, shareDateDayOfCloud, pullData.ToString().c_str());
     return;
 }
 
@@ -215,12 +196,9 @@ void CloudMediaShareCheckService::VerifyShareDateDayWhenUpdate(const CloudMediaP
         isShared && shareDateDayOfCloud != 0 && shareDateDayOfCloud == shareDateDayOfLocal;
     const bool isValid = isNormalValid || isShareValid;
     CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, shareDateDayOfCloud: %{public}ld, "
-                "shareDateDayOfLocal: %{public}ld, pullData: %{public}s",
-                sceneType,
-                shareDateDayOfCloud,
-                shareDateDayOfLocal,
-                pullData.ToString().c_str());
+        "sceneType: %{public}d, shareDateDayOfCloud: %{public}" PRId64 ", "
+        "shareDateDayOfLocal: %{public}" PRId64 ", pullData: %{public}s",
+        sceneType, shareDateDayOfCloud, shareDateDayOfLocal, pullData.ToString().c_str());
     return;
 }
 
@@ -238,10 +216,8 @@ void CloudMediaShareCheckService::VerifyShareGroupWhenInsert(const CloudMediaPul
     const bool isShareValid = isShared && shareGroupOfCloud != 0;
     const bool isValid = isNormalValid || isShareValid;
     CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, shareGroupOfCloud: %{public}ld, pullData: %{public}s",
-                sceneType,
-                shareGroupOfCloud,
-                pullData.ToString().c_str());
+        "sceneType: %{public}d, shareGroupOfCloud: %{public}" PRId64 ", pullData: %{public}s",
+        sceneType, shareGroupOfCloud, pullData.ToString().c_str());
     return;
 }
 
@@ -262,12 +238,9 @@ void CloudMediaShareCheckService::VerifyShareGroupWhenUpdate(const CloudMediaPul
         isShared && shareGroupOfCloud != 0 && shareGroupOfCloud == shareGroupOfLocal;
     const bool isValid = isNormalValid || isShareValid;
     CHECK_AND_PRINT_LOG(isValid,
-                "sceneType: %{public}d, shareGroupOfCloud: %{public}ld, "
-                "shareGroupOfLocal: %{public}ld, pullData: %{public}s",
-                sceneType,
-                shareGroupOfCloud,
-                shareGroupOfLocal,
-                pullData.ToString().c_str());
+        "sceneType: %{public}d, shareGroupOfCloud: %{public}" PRId64 ", "
+        "shareGroupOfLocal: %{public}" PRId64 ", pullData: %{public}s",
+        sceneType, shareGroupOfCloud, shareGroupOfLocal, pullData.ToString().c_str());
     return;
 }
 

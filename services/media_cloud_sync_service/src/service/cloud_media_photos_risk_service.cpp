@@ -89,7 +89,7 @@ int32_t CloudMediaPhotosRiskService::HandleRiskControlUpdate(
     }
     const auto &shareDetailDto = pullData.sharePhotoDetailDtoOp.value();
     int32_t maxRiskResult = -1;
-    if (!IsPhotoRiskAsset(shareDetailDto.scaDetailDataList, maxRiskResult)) {
+    if (!IsPhotoRiskAsset(shareDetailDto.scaDetailList, maxRiskResult)) {
         MEDIA_INFO_LOG("PullUpdate: not a photo risk asset, skip ban, "
             "cloudId=%{public}s", pullData.cloudId.c_str());
         return E_OK;
@@ -116,7 +116,7 @@ bool CloudMediaPhotosRiskService::IsNeedBanPhotoAsset(const CloudMediaPullDataDt
     // 仅共享相册的高风险(封禁)照片资产需要拦截
     int32_t maxRiskResult = -1;
     if (pullData.attributesIsShared != 1 || !pullData.sharePhotoDetailDtoOp.has_value() ||
-        !IsPhotoRiskAsset(pullData.sharePhotoDetailDtoOp.value().scaDetailDataList, maxRiskResult) ||
+        !IsPhotoRiskAsset(pullData.sharePhotoDetailDtoOp.value().scaDetailList, maxRiskResult) ||
         maxRiskResult != RISK_RESULT_BLOCKED) {
         return false;
     }

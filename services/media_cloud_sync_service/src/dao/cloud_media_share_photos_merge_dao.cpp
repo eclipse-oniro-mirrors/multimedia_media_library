@@ -81,6 +81,7 @@ int32_t CloudMediaSharePhotosMergeDao::FindLocalAssetInCacheWithDisplayName(
 bool CloudMediaSharePhotosMergeDao::IsSameAsset(const CloudMediaPullDataDto &pullData, const PhotosPo &photoInfo)
 {
     CHECK_AND_RETURN_RET(photoInfo.albumInfoOp.has_value(), false);
+    CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), false);
 
     const PhotoAlbumPo &albumInfo = photoInfo.albumInfoOp.value();
     const std::string cloudAlbumLocalPath = CloudMediaSyncUtils::GetLpath(pullData);
@@ -108,12 +109,13 @@ bool CloudMediaSharePhotosMergeDao::IsSameAsset(const CloudMediaPullDataDto &pul
         exifRotateValue,
         photoInfo.orientation.value_or(0));
 
-    const bool isSameCreatorId = pullData.mediaCreateId == photoInfo.shareOwnerInfo.value_or("");
+    const std::string mediaCreateId = pullData.sharePhotoDetailDtoOp.value().mediaCreateId;
+    const bool isSameCreatorId = mediaCreateId == photoInfo.shareOwnerInfo.value_or("");
     CHECK_AND_RETURN_RET_LOG(
         isSameCreatorId,
         false,
         "createId not same, mediaCreateId:%{public}s, shareOwnerInfo:%{public}s",
-        pullData.mediaCreateId.c_str(),
+        mediaCreateId.c_str(),
         photoInfo.shareOwnerInfo.value_or("").c_str());
 
     return true;

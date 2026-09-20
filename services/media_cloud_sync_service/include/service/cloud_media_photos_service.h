@@ -39,6 +39,7 @@
 #include "cloud_media_photos_rename_service.h"
 #include "cloud_media_photos_album_hidden_service.h"
 #include "media_asset_bucket_type.h"
+#include "cloud_media_share_check_service.h"
 // LCOV_EXCL_START
 
 namespace OHOS::Media::CloudSync {
@@ -170,6 +171,7 @@ private:
     bool needRecoverSmartData_{false};
     CloudMediaPhotosRenameService photosRenameService_;
     CloudMediaPhotosAlbumHiddenService photosAlbumHiddenService_;
+    CloudMediaShareCheckService shareCheckService_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_SERVICE_H// LCOV_EXCL_STOP
