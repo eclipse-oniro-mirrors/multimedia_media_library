@@ -66,9 +66,10 @@ HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_test_001, TestSi
 
 HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_sql_injection_test_001, TestSize.Level1)
 {
-    // Always-true condition attack
+    // Default (non-SA): keyword check enabled
+    // Always-true condition attack (caught by whitelist, not keyword check)
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("1=1"), false);
-    // Subquery / cross-table keywords with word boundary
+    // Subquery / cross-table keywords blocked for non-SA
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id IN (SELECT file_id FROM Photos)"), false);
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("1=1 UNION SELECT * FROM Photos"), false);
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1; DROP TABLE Photos"), false);
@@ -84,6 +85,19 @@ HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_comment_marker_t
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1;--"), false);
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1/*"), false);
     EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1"), true);
+}
+
+HWTEST_F(MediaLibraryCommonUtilsTest, medialib_CheckWhereClause_sa_skip_keyword_test_001, TestSize.Level1)
+{
+    // SA (trusted): CheckIllegalCharacter still blocks ; -- /*
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1; DROP TABLE Photos", true), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id=1 -- comment", true), false);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id/**/=1", true), false);
+    // SA: SQL keyword check is skipped, but whitelist still validates column names
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("file_id IN (SELECT file_id FROM Photos)", true), true);
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("1=1", true), false);
+    // SA: legal column names pass
+    EXPECT_EQ(MediaLibraryCommonUtils::CheckWhereClause("date_added>0", true), true);
 }
 
 HWTEST_F(MediaLibraryCommonUtilsTest, medialib_AppendSelections_test_001, TestSize.Level1)

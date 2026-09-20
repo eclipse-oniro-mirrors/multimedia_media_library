@@ -365,7 +365,7 @@ bool MediaLibraryCommonUtils::CheckIllegalCharacter(const std::string &strCondit
     return true;
 }
 
-bool MediaLibraryCommonUtils::CheckWhereClause(const std::string &whereClause)
+bool MediaLibraryCommonUtils::CheckWhereClause(const std::string &whereClause, bool isSA)
 {
     MediaLibraryTracer tracer;
     tracer.Start("CommonUtils::CheckWhereClause");
@@ -378,8 +378,9 @@ bool MediaLibraryCommonUtils::CheckWhereClause(const std::string &whereClause)
         return false;
     }
 
-    /* check whether query condition has key word */
-    if (!CheckKeyWord(whereClause)) {
+    /* SA (trusted system ability) may use raw whereClause with SQL keywords;
+     * non-SA (untrusted app) must be checked for SQL keyword injection. */
+    if (!isSA && !CheckKeyWord(whereClause)) {
         MEDIA_ERR_LOG("CheckKeyWord is failed!");
         return false;
     }

@@ -69,7 +69,7 @@ public:
     static int32_t CheckVideoEnhancementAttr(const AssetChangeReqBody &reqBody);
     static int32_t CheckWatermarkType(const AssetChangeReqBody &reqBody);
     static int32_t CheckCompositeDisplayMode(const AssetChangeReqBody &reqBody);
-    static int32_t CheckWhereClause(const std::string &whereClause);
+    static int32_t CheckWhereClause(const std::string &whereClause, bool isSA = false);
     static bool CheckPhotoUri(const std::string &uri);
     static int32_t CheckRestore(const RestoreReqBody &reqBody);
     static int32_t CheckCancelRequest(const CancelRequestReqBody &reqBody);
