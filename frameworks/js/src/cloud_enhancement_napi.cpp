@@ -47,7 +47,6 @@ using namespace OHOS::MediaEnhance;
 namespace OHOS::Media {
 static const string CLOUD_ENHANCEMENT_CLASS = "CloudEnhancement";
 thread_local napi_ref CloudEnhancementNapi::constructor_ = nullptr;
-constexpr int32_t SHARED_ASSET_FLAG = 1;
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 static void* dynamicHandler = nullptr;
 static MediaEnhanceClientHandle* clientWrapper = nullptr;
@@ -599,21 +598,8 @@ napi_value CloudEnhancementNapi::JSPrioritizeCloudEnhancementTask(napi_env env, 
     CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgPrioritize(env, info, asyncContext) == napi_ok, "Failed to parse args");
     std::vector<std::string> fileIds = { std::to_string(asyncContext->fileId) };
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
-            return nullptr;
-        }
-    }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSPrioritizeCloudEnhancementTask",
         PrioritizeCloudEnhancementTaskExecute, PrioritizeCloudEnhancementTaskCompleteCallback);
 }
@@ -911,21 +897,8 @@ napi_value CloudEnhancementNapi::JSQueryCloudEnhancementTaskState(napi_env env, 
     CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(env, info, asyncContext) == napi_ok, "Failed to parse args");
     std::vector<std::string> fileIds = { std::to_string(asyncContext->fileId) };
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
-            return nullptr;
-        }
-    }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "QueryCloudEnhancementTaskState",
         QueryCloudEnhancementTaskStateExecute, QueryCloudEnhancementTaskStateCompleteCallback);
 }
@@ -1095,21 +1068,8 @@ napi_value CloudEnhancementNapi::JSGetCloudEnhancementPair(napi_env env, napi_ca
     CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(env, info, asyncContext) == napi_ok, "Failed to parse args");
     std::vector<std::string> fileIds = { std::to_string(asyncContext->fileId) };
-    Uri queryUri(CONST_PAH_QUERY_PHOTO);
-    DataShare::DataSharePredicates predicates;
-    predicates.In(MediaColumn::MEDIA_ID, fileIds);
-    std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-    int32_t errCode = 0;
-    auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-            resultSet, TYPE_INT32));
-        if (isShared == SHARED_ASSET_FLAG) {
-            NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                "The current asset belongs to a shared album and does not support this operation");
-            return nullptr;
-        }
-    }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "GetCloudEnhancementPair",
         GetCloudEnhancementPairExecute, GetCloudEnhancementPairCompleteCallback);
 }

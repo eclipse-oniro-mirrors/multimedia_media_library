@@ -591,11 +591,6 @@ static napi_value DealWithDeletedAlbumsDefault(napi_env env, vector<napi_value>&
         PhotoAlbumNapi* obj = nullptr;
         CHECK_ARGS(env, napi_unwrap(env, napiValue, reinterpret_cast<void**>(&obj)), JS_INNER_FAIL);
         CHECK_COND_WITH_MESSAGE(env, obj != nullptr, "Failed to get album napi object");
-        if (PhotoAlbum::IsShareAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType())) {
-            NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-                "The current album type does not support this operation");
-            return nullptr;
-        }
         CHECK_COND_WITH_MESSAGE(env,
             PhotoAlbum::IsUserPhotoAlbumByType(obj->GetPhotoAlbumType()) ||
             PhotoAlbum::IsHighlightAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType()) ||
@@ -759,6 +754,10 @@ napi_value MediaAlbumChangeRequestNapi::JSAddAssets(napi_env env, napi_callback_
             "please remove duplicates");
         return nullptr;
     }
+    vector<string> fileIdArray;
+    MediaLibraryNapiUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+        "This operation is not supported for assets in shared albums");
     changeRequest->assetsToAdd_.insert(changeRequest->assetsToAdd_.end(), assetUriArray.begin(), assetUriArray.end());
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::ADD_ASSETS);
     RETURN_NAPI_UNDEFINED(env);
@@ -789,6 +788,10 @@ napi_value MediaAlbumChangeRequestNapi::JSRemoveAssets(napi_env env, napi_callba
             "please remove duplicates");
         return nullptr;
     }
+    vector<string> fileIdArray;
+    MediaLibraryNapiUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+        "This operation is not supported for assets in shared albums");
     changeRequest->assetsToRemove_.insert(
         changeRequest->assetsToRemove_.end(), assetUriArray.begin(), assetUriArray.end());
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::REMOVE_ASSETS);
@@ -814,6 +817,51 @@ napi_value CheckPhotoAlbumType(napi_env env, shared_ptr<PhotoAlbum> photoAlbum,
         return nullptr;
     }
     RETURN_NAPI_TRUE(env);
+}
+
+static napi_value CheckSharedAlbumAsset(napi_env env, vector<string> &assetUriArray, ParameterType parameterType)
+{
+    vector<string> fileIdArray;
+    MediaLibraryNapiUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    if (parameterType == ParameterType::ASSET_URI) {
+        CHECK_ARGS_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+            "This operation is not supported for assets in shared albums");
+    } else {
+        CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+            "This operation is not supported for assets in shared albums");
+    }
+    return nullptr;
+}
+
+static napi_value ParseMoveAssetsArray(napi_env env, unique_ptr<MediaAlbumChangeRequestAsyncContext>& asyncContext,
+    ParameterType parameterType, shared_ptr<PhotoAlbum> targetAlbum, vector<string>& assetUriArray)
+{
+    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    if (parameterType == ParameterType::ASSET_URI) {
+        CHECK_ARGS_WITH_MESSAGE(env,
+            CheckPhotoAlbumType(env, photoAlbum, targetAlbum) != nullptr, "checkAlbumType error");
+        CHECK_ARGS_WITH_MESSAGE(env, ParseUriArray(env, asyncContext->argv[PARAM0], assetUriArray), "Fail get uri");
+    } else {
+        CHECK_COND_WITH_MESSAGE(env,
+            CheckPhotoAlbumType(env, photoAlbum, targetAlbum) != nullptr, "checkAlbumType error");
+        CHECK_COND_WITH_MESSAGE(env, ParseAssetArray(env, asyncContext->argv[PARAM0], assetUriArray), "Fail parse");
+    }
+    RETURN_NAPI_TRUE(env);
+}
+
+static bool CheckMoveAssetsArray(napi_env env, unique_ptr<MediaAlbumChangeRequestAsyncContext>& asyncContext,
+    ParameterType parameterType, vector<string>& assetUriArray)
+{
+    auto moveMap = asyncContext->objectInfo->GetMoveMap();
+    for (auto iter = moveMap.begin(); iter != moveMap.end(); iter++) {
+        if (!CheckDuplicatedAssetArray(assetUriArray, iter->second)) {
+            NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+                "The previous moveAssets operation has contained the same asset");
+            return false;
+        }
+    }
+    CheckSharedAlbumAsset(env, assetUriArray, parameterType);
+    return true;
 }
 
 napi_value MediaAlbumChangeRequestNapi::JSMoveAssetsImplement(napi_env env, napi_callback_info info,
@@ -842,22 +890,11 @@ napi_value MediaAlbumChangeRequestNapi::JSMoveAssetsImplement(napi_env env, napi
     CHECK_COND_WITH_MESSAGE(env, targetAlbum->GetAlbumId() != photoAlbum->GetAlbumId(), "targetAlbum cannot be self");
 
     vector<string> assetUriArray;
-    if (parameterType == ParameterType::ASSET_URI) {
-        CHECK_ARGS_WITH_MESSAGE(env,
-            CheckPhotoAlbumType(env, photoAlbum, targetAlbum) != nullptr, "checkAlbumType error");
-        CHECK_ARGS_WITH_MESSAGE(env, ParseUriArray(env, asyncContext->argv[PARAM0], assetUriArray), "Fail get uri");
-    } else {
-        CHECK_COND_WITH_MESSAGE(env,
-            CheckPhotoAlbumType(env, photoAlbum, targetAlbum) != nullptr, "checkAlbumType error");
-        CHECK_COND_WITH_MESSAGE(env, ParseAssetArray(env, asyncContext->argv[PARAM0], assetUriArray), "Fail parse");
+    if (ParseMoveAssetsArray(env, asyncContext, parameterType, targetAlbum, assetUriArray) == nullptr) {
+        return nullptr;
     }
-    auto moveMap = changeRequest->GetMoveMap();
-    for (auto iter = moveMap.begin(); iter != moveMap.end(); iter++) {
-        if (!CheckDuplicatedAssetArray(assetUriArray, iter->second)) {
-            NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-                "The previous moveAssets operation has contained the same asset");
-            return nullptr;
-        }
+    if (!CheckMoveAssetsArray(env, asyncContext, parameterType, assetUriArray)) {
+        return nullptr;
     }
     changeRequest->RecordMoveAssets(assetUriArray, targetAlbum);
 
@@ -1093,6 +1130,10 @@ napi_value MediaAlbumChangeRequestNapi::JSDismissAssets(napi_env env, napi_callb
         NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "This dismissAssets is not support");
         return nullptr;
     }
+    vector<string> fileIdArray;
+    MediaLibraryNapiUtils::ExtractFileIdsFromUris(newAssetArray, fileIdArray);
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+        "This operation is not supported for assets in shared albums");
     auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
     auto type = photoAlbum->GetPhotoAlbumType();
     auto subtype = photoAlbum->GetPhotoAlbumSubType();
@@ -1459,8 +1500,7 @@ napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_ca
     auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
     if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current album type does not support this operation");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for this album type");
         return nullptr;
     }
     CHECK_COND_WITH_ERR_MESSAGE(env, IsPortraitAlbumAttributeTarget(photoAlbum), JS_E_OPR_TYPE_NOT_SUPPORT,
@@ -1609,15 +1649,13 @@ napi_value MediaAlbumChangeRequestNapi::JSPlaceBefore(napi_env env, napi_callbac
     auto sourceAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
     if (sourceAlbum != nullptr &&
         PhotoAlbum::IsShareAlbum(sourceAlbum->GetPhotoAlbumType(), sourceAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current album type does not support this operation");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "This operation is not supported for this album type");
         return nullptr;
     }
     auto referenceAlbum = asyncContext->objectInfo->referencePhotoAlbum_;
     if (referenceAlbum != nullptr &&
         PhotoAlbum::IsShareAlbum(referenceAlbum->GetPhotoAlbumType(), referenceAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current album type does not support this operation");
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "This operation is not supported for this album type");
         return nullptr;
     }
     asyncContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ORDER_ALBUM);
@@ -1698,6 +1736,9 @@ static napi_value ParseArgsSetUploadStatus(
         PhotoAlbumNapi* obj = nullptr;
         CHECK_ARGS(env, napi_unwrap(env, napiValue, reinterpret_cast<void**>(&obj)), JS_E_PARAM_INVALID);
         CHECK_COND_WITH_ERR_MESSAGE(env, obj != nullptr, JS_E_PARAM_INVALID, "Failed to get album napi object");
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            !PhotoAlbum::IsShareAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType()), JS_E_PARAM_INVALID,
+            "This operation is not supported for this album type");
 
         if (PhotoAlbum::IsUserPhotoAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType()) ||
             PhotoAlbum::IsSourceAlbum(obj->GetPhotoAlbumType(), obj->GetPhotoAlbumSubType())) {
@@ -2869,8 +2910,7 @@ napi_value MediaAlbumChangeRequestNapi::ApplyChanges(napi_env env, napi_callback
     auto photoAlbum = GetPhotoAlbumInstance();
     if (photoAlbum != nullptr &&
         PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current album is a shared album and does not support this operation");
+        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "This operation is not supported for this album type");
         return nullptr;
     }
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,

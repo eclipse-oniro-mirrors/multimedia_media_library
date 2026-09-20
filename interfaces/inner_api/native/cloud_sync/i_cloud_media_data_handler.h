@@ -56,6 +56,7 @@ public:
         std::vector<int32_t> &stats) = 0;
     virtual int32_t OnDentryFileInsert(std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords) = 0;
     virtual int32_t GetRetryRecords(std::vector<std::string> &records) = 0;
+    virtual int32_t GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords) = 0;
     virtual int32_t OnStartSync() = 0;
     virtual int32_t OnCompleteSync() = 0;
     virtual int32_t OnCompletePull(const MediaOperateResult &optRet) = 0;

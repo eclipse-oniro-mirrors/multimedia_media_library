@@ -67,7 +67,7 @@ public:
         std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
     int32_t OnDentryFileInsert(
         const std::vector<CloudMediaPullDataDto> &pullDatas, std::vector<std::string> &failedRecords);
-    int32_t GetRetryRecords(std::vector<std::string> &cloudIds);
+    int32_t GetRetryRecords(std::vector<PhotosDto> &photoDtoList);
     int32_t OnStartSync();
     int32_t OnCompleteSync();
     int32_t OnCompletePull(const MediaOperateResult &optRet);

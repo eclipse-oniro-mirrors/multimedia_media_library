@@ -29,6 +29,7 @@
 #include "restore_photos_album_hidden.h"
 #include "photos_restore.h"
 #include "tab_old_photos_restore.h"
+#include "upgrade_restore_resume_marker.h"
 
 // LCOV_EXCL_START
 namespace OHOS {
@@ -193,6 +194,16 @@ protected:
 
 private:
     void BatchDeleteEmptyAlbums(const std::vector<int32_t> &batchAlbumIds, int32_t &deleteRows);
+    void LoadResumeState();
+    void RebuildPhotoInfoMap();
+    void SetContinueSkipBit(ResumeBusinessFlag flag);
+
+    bool isResumeMode_ {false};
+    int32_t resumeGalleryLocalIdx_ {0};
+    int32_t resumeGalleryCloudIdx_ {0};
+    int32_t resumeExternalCamOffset_ {0};
+    int32_t resumeExternalOthOffset_ {0};
+    std::atomic<int32_t> continueInfo_ {0};
 };
 } // namespace Media
 } // namespace OHOS

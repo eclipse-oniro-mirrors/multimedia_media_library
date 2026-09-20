@@ -97,25 +97,32 @@ sptr<AppExecFwk::IBundleMgr> PermissionUtils::GetSysBundleManager()
 
 void PermissionUtils::GetBundleNameFromCache(int uid, string &bundleName)
 {
-    lock_guard<mutex> lock(uninstallMutex_);
-    auto iter = bundleInfoMap_.find(uid);
-    if (iter != bundleInfoMap_.end() && !iter->second->second.bundleName.empty()) {
-        bundleInfoList_.splice(bundleInfoList_.begin(), bundleInfoList_, iter->second);
-        bundleName = iter->second->second.bundleName;
-        return;
+    {
+        lock_guard<mutex> lock(uninstallMutex_);
+        auto iter = bundleInfoMap_.find(uid);
+        if (iter != bundleInfoMap_.end() && !iter->second->second.bundleName.empty()) {
+            bundleInfoList_.splice(bundleInfoList_.begin(), bundleInfoList_, iter->second);
+            bundleName = iter->second->second.bundleName;
+            return;
+        }
     }
-    bundleMgr_ = GetSysBundleManager();
-    if (bundleMgr_ == nullptr) {
+    auto bundleMgr = GetSysBundleManager();
+    if (bundleMgr == nullptr) {
         bundleName = "";
         return;
     }
-    auto result = bundleMgr_->GetBundleNameForUid(uid, bundleName);
+    auto result = bundleMgr->GetBundleNameForUid(uid, bundleName);
     if (!result) {
         bundleName = "";
         return;
     }
-
-    UpdateBundleNameInCache(uid, bundleName);
+    {
+        lock_guard<mutex> lock(uninstallMutex_);
+        auto iter = bundleInfoMap_.find(uid);
+        if (iter == bundleInfoMap_.end() || iter->second->second.bundleName.empty()) {
+            UpdateBundleNameInCache(uid, bundleName);
+        }
+    }
 }
 
 void PermissionUtils::GetPackageNameFromCache(int uid, const string &bundleName, string &packageName)

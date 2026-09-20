@@ -22,6 +22,7 @@
 #include "photos_dto.h"
 #include "photos_vo.h"
 #include "get_check_records_vo.h"
+#include "get_retey_records_vo.h"
 #include "cloud_mdkrecord_photos_vo.h"
 #include "on_fetch_photos_vo.h"
 #include "cloud_media_pull_data_dto.h"
@@ -40,6 +41,8 @@ public:
     std::vector<PhotosVo> SetNewDataVoFromDto(std::vector<PhotosDto> &newDataDtos);
     std::unordered_map<std::string, GetCheckRecordsRespBodyCheckData> GetCheckRecordsRespBody(
         std::vector<PhotosDto> photosDtoVec);
+    int32_t ConvertFromPhotosDtoToRetryRecordsRespBody(
+        const std::vector<PhotosDto> &photosDtoVec, GetRetryRecordsRespBody &respBody);
     CloudMdkRecordPhotosVo ConvertRecordPoToVo(const PhotosPo &record);
     CloudMediaPullDataDto ConvertToCloudMediaPullData(const OnFetchPhotosVo &photosVo);
     PhotosDto ConvertToPhotoDto(const OnCreateRecord &recordVo);

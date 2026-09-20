@@ -65,6 +65,7 @@ public:
         std::vector<int32_t> &stats) override;
     int32_t OnDentryFileInsert(std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords) override;
     int32_t GetRetryRecords(std::vector<std::string> &records) override;
+    int32_t GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords) override;
     int32_t OnStartSync() override;
     int32_t OnCompleteSync() override;
     int32_t OnCompletePull(const MediaOperateResult &optRet) override;

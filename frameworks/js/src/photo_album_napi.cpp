@@ -893,6 +893,8 @@ static napi_value ParseArgsAddAssets(napi_env env, napi_callback_info info,
         CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
         return result;
     }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(assetsArray),
+        "This operation is not supported for assets in shared albums");
     int32_t albumId = photoAlbum->GetAlbumId();
     for (const auto &assetId : assetsArray) {
         DataShareValuesBucket valuesBucket;
@@ -1081,6 +1083,11 @@ static napi_value ParseArgsRemoveAssets(napi_env env, napi_callback_info info,
         CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
         return result;
     }
+
+    vector<string> fileIdArray;
+    MediaLibraryNapiUtils::ExtractFileIdsFromUris(assetsArray, fileIdArray);
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+        "This operation is not supported for assets in shared albums");
 
     context->assetsArray = assetsArray;
     context->predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
@@ -1833,8 +1840,7 @@ static napi_value ParseArgsSetCoverUri(napi_env env, napi_callback_info info,
         return nullptr;
     }
     if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-            "The current album type does not support this operation");
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "This operation is not supported for this album type");
         return nullptr;
     }
 

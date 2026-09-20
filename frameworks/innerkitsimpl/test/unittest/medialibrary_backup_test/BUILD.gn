@@ -110,6 +110,7 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_photos_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/video_ringtone_processor/video_ringtone_processor.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore_resume_marker.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/external_source.cpp",

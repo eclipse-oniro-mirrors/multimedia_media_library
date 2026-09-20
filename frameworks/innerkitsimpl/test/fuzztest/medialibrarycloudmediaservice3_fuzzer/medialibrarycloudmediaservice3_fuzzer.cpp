@@ -118,7 +118,7 @@ static void CloudMediaServiceProcessorFuzzer()
         return;
     }
     cloudMediaDataServiceProcessor->GetPhotosDto(photosPos, photosDtos);
-    cloudMediaPhotoServiceProcessor->GetPhotosDtos(photosPos);
+    cloudMediaPhotoServiceProcessor->GetPhotosDtos(photosPos, photosDtos);
 }
 
 void SetTables()

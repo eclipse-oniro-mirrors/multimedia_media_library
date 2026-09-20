@@ -267,7 +267,7 @@ int32_t ThumbnailGenerateHelper::CreateAstcMthAndYear(ThumbRdbOpt &opts)
         "CreateAstcMthAndYear query data from fileId failed, id: %{public}s", opts.fileId.c_str());
     if (data.isShared == static_cast<int32_t>(PhotoSharedType::SHARED)) {
         MEDIA_WARN_LOG("share asset not support create astc mth and year thumbnail");
-        return E_OK;
+        return E_ERR;
     }
 
     data.loaderOpts.loadingStates = data.isLocalFile ?

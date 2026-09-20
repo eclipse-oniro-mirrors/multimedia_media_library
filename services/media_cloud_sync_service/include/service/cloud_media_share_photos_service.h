@@ -53,8 +53,8 @@ public:
 
 private:
     int32_t HandleRecords(std::vector<CloudMediaPullDataDto> &pullDataList, CloudMediaPullDataHandleDto &handleDto);
-    int32_t HandleUpdateOrDeleteRecord(
-        const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto, NotifyType &notifyType);
+    int32_t HandleUpdateOrDeleteRecord(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+        NotifyType &notifyType, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t HandleMergeOrNewRecords(const std::vector<CloudMediaPullDataDto> &pullDataList,
         CloudMediaPullDataHandleDto &handleDto, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t HandleMergeRecords(std::vector<CloudMediaPullDataDto> &pullDataList,
@@ -66,9 +66,14 @@ private:
     int32_t MergePhotoInfoIntoPullData(
         std::vector<CloudMediaPullDataDto> &pullDataList, const std::vector<PhotosPo> &photoInfoList);
     int32_t FindLocalPhotoInfo(std::vector<CloudMediaPullDataDto> &pullDataList);
-    int32_t PullUpdate(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto);
-    int32_t PullDelete(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto);
+    int32_t PullUpdate(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t PullDelete(const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t PullInsert(const std::vector<CloudMediaPullDataDto> &pullDatas, std::vector<std::string> &failedRecords);
+    int32_t DoDataMerge(const CloudMediaPullDataDto &pullData,
+        CloudMediaPullDataHandleDto &handleDto, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    void DoDataMergeNotify(const CloudMediaPullDataDto &pullData, const PhotosPo &photoInfo);
 
 private:
     CloudMediaPhotosDao photosDao_;

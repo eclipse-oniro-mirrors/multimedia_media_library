@@ -17,7 +17,9 @@
 
 #include "cloud_media_share_photos_service.h"
 
+#include <cstdint>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -36,6 +38,7 @@
 #include "cloud_media_dfx_service.h"
 #include "cloud_file_error.h"
 #include "cloud_media_context.h"
+#include "cloud_media_share_photos_merge_dao.h"
 
 // LCOV_EXCL_START
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
@@ -100,7 +103,7 @@ int32_t CloudMediaSharePhotosService::MergePhotoInfoIntoPullData(
         CHECK_AND_CONTINUE_ERR_LOG(!cloudId.empty(), "cloudId empty");
         photoInfoMap[cloudId] = photoInfo;
     }
-    
+
     for (auto &pullData : pullDataList) {
         cloudId = pullData.cloudId;
         CHECK_AND_CONTINUE_ERR_LOG(!cloudId.empty(), "cloudId empty");
@@ -127,7 +130,7 @@ int32_t CloudMediaSharePhotosService::HandleRecords(std::vector<CloudMediaPullDa
     for (auto &pullData : pullDataList) {
         MEDIA_INFO_LOG("pullData: %{public}s, sceneType(share): %{public}d", pullData.ToString().c_str(),
             CloudMediaContext::GetInstance().GetSceneType());
-        ret = this->HandleUpdateOrDeleteRecord(pullData, handleDto, notifyType);
+        ret = this->HandleUpdateOrDeleteRecord(pullData, handleDto, notifyType, photoRefresh);
         if (ret == FileManagement::E_STOP) {
             MEDIA_ERR_LOG("HandleRecord stop sync cloudId: %{public}s, error: %{public}d",
                 pullData.cloudId.c_str(), ret);
@@ -152,7 +155,8 @@ int32_t CloudMediaSharePhotosService::HandleRecords(std::vector<CloudMediaPullDa
 }
 
 int32_t CloudMediaSharePhotosService::HandleUpdateOrDeleteRecord(
-    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto, NotifyType &notifyType)
+    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto, NotifyType &notifyType,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     const bool hasLocalInfo = pullData.localPhotosPoOp.has_value();
     CHECK_AND_RETURN_RET(hasLocalInfo, E_OK);
@@ -163,10 +167,10 @@ int32_t CloudMediaSharePhotosService::HandleUpdateOrDeleteRecord(
     const bool isDelete = hasLocalInfo && pullData.basicIsDelete;
     int32_t ret = E_OK;
     if (isUpdate) {
-        ret = this->PullUpdate(pullData, handleDto);
+        ret = this->PullUpdate(pullData, handleDto, photoRefresh);
         notifyType = NotifyType::NOTIFY_UPDATE;
     } else if (isDelete) {
-        ret = this->PullDelete(pullData, handleDto);
+        ret = this->PullDelete(pullData, handleDto, photoRefresh);
         notifyType = NotifyType::NOTIFY_REMOVE;
         handleDto.stats[StatsIndex::DELETE_RECORDS_COUNT]++;
     }
@@ -189,7 +193,7 @@ int32_t CloudMediaSharePhotosService::HandleMergeOrNewRecords(const std::vector<
 
     // Handle merge records.
     this->HandleMergeRecords(newOrMergePullDataList, handleDto, photoRefresh);
-    
+
     // Find records for new records.
     std::vector<CloudMediaPullDataDto> newPullDataList;
     for (const auto &pullData : newOrMergePullDataList) {
@@ -205,7 +209,16 @@ int32_t CloudMediaSharePhotosService::HandleMergeOrNewRecords(const std::vector<
 int32_t CloudMediaSharePhotosService::HandleMergeRecords(std::vector<CloudMediaPullDataDto> &pullDataList,
     CloudMediaPullDataHandleDto &handleDto, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    MEDIA_ERR_LOG("To merge cloud with local by album,name,size,orientaion,creatorId.");
+    MEDIA_INFO_LOG("Merge cloud info into local asset.");
+    CloudMediaSharePhotosMergeDao sharePhotosMergeDao;
+    sharePhotosMergeDao.BatchFindLocalAsset(pullDataList);
+
+    for (const auto &pullData : pullDataList) {
+        CHECK_AND_CONTINUE(pullData.localPhotosPoOp.has_value());
+        // Merge cloud info into local asset.
+        this->DoDataMerge(pullData, handleDto, photoRefresh);
+    }
+
     return E_OK;
 }
 
@@ -233,13 +246,12 @@ int32_t CloudMediaSharePhotosService::HandleCloudDeleteRecord(std::vector<CloudM
 }
 
 int32_t CloudMediaSharePhotosService::PullUpdate(
-    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto)
+    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     std::set<std::string> &refreshAlbums = handleDto.refreshAlbums;
     std::vector<PhotosDto> &fdirtyData = handleDto.fdirtyData;
     std::vector<int32_t> &stats = handleDto.stats;
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
-        std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     const std::string cloudId = pullData.cloudId;
     MEDIA_DEBUG_LOG("Update cloudId: %{public}s.", cloudId.c_str());
     CHECK_AND_RETURN_RET_INFO_LOG(!CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, false),
@@ -276,7 +288,7 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
         "HandleRiskControlUpdate failed, cloudId: %{public}s.", cloudId.c_str());
     // 封禁资产: 非相册成员删除缩略图 + 原图 + metadata, 复用 PullDelete 删除链路
     if (needPullDelete) {
-        int32_t deleteRet = this->PullDelete(pullData, handleDto);
+        int32_t deleteRet = this->PullDelete(pullData, handleDto, photoRefresh);
         if (deleteRet == E_OK) {
             stats[StatsIndex::DELETE_RECORDS_COUNT]++;
         }
@@ -299,11 +311,10 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
 }
 
 int32_t CloudMediaSharePhotosService::PullDelete(
-    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto)
+    const CloudMediaPullDataDto &pullData, CloudMediaPullDataHandleDto &handleDto,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     std::set<std::string> &refreshAlbums = handleDto.refreshAlbums;
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
-        std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     std::string cloudId = pullData.cloudId;
     std::string localPath = pullData.localPath;
     CHECK_AND_RETURN_RET_INFO_LOG(!cloudId.empty(), E_OK, "cloudId is empty, ignore cloud delete");
@@ -388,6 +399,49 @@ int32_t CloudMediaSharePhotosService::PullInsert(
     photoRefresh->Notify();
     this->photosService_.NotifyPhotoInserted(insertFiles, refreshAlbums);
     return ret;
+}
+
+void CloudMediaSharePhotosService::DoDataMergeNotify(const CloudMediaPullDataDto &pullData, const PhotosPo &photoInfo)
+{
+    const int64_t cloudCreateTime = pullData.basicCreatedTime;
+    const int64_t localCreateTime = photoInfo.dateTaken.value_or(0);
+    const bool isValid = cloudCreateTime != localCreateTime;
+    CHECK_AND_RETURN(isValid);
+
+    const int32_t fileId = photoInfo.fileId.value_or(0);
+    std::stringstream ss;
+    ss << PhotoColumn::PHOTO_CLOUD_URI_PREFIX << fileId << "/" << localCreateTime << "/" << cloudCreateTime;
+    const std::string notifyUri = ss.str();
+    MediaGallerySyncNotify::GetInstance().TryNotify(
+        notifyUri, static_cast<ChangeType>(ExtraChangeType::PHOTO_TIME_UPDATE), std::to_string(fileId));
+}
+
+int32_t CloudMediaSharePhotosService::DoDataMerge(const CloudMediaPullDataDto &pullData,
+    CloudMediaPullDataHandleDto &handleDto, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    CHECK_AND_RETURN_RET_LOG(pullData.localPhotosPoOp.has_value(), E_OK, "pullData has no local value");
+
+    const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
+    const std::string filePath = photoInfo.data.value_or("");
+    CHECK_AND_RETURN_RET_LOG(
+        !filePath.empty(), E_OK, "filePath empty, pullData: %{public}s", pullData.ToString().c_str());
+
+    std::set<int32_t> cloudMapIds;
+    const bool cloudStd = CloudMediaSyncUtils::IsCloudStd(pullData, photoInfo);
+    int32_t ret = this->photosDao_.ConflictDataMerge(
+        pullData, filePath, cloudStd, cloudMapIds, handleDto.refreshAlbums, photoRefresh);
+
+    CHECK_AND_EXECUTE(ret == E_OK, handleDto.failedRecords.emplace_back(pullData.cloudId));
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Conflict dataMerge fail");
+
+    handleDto.stats[StatsIndex::MERGE_RECORDS_COUNT]++;
+    CHECK_AND_EXECUTE(!cloudStd, this->DoDataMergeNotify(pullData, photoInfo));
+
+    MEDIA_INFO_LOG("DoDataMerge completed, "
+        "cloudId: %{public}s, cloudStd: %{public}d",
+        pullData.cloudId.c_str(),
+        cloudStd);
+    return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync
 // LCOV_EXCL_STOP

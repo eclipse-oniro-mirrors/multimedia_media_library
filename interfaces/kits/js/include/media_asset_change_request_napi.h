@@ -198,6 +198,8 @@ private:
     int32_t CopyMovingPhotoVideo(const std::string& assetUri);
     void SetNewFileAsset(int32_t id, const std::string& uri);
     bool CheckSetLivePhoto4dStatus(napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context);
+    static napi_value ParseAddResourceValue(napi_env env,
+        unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, const std::shared_ptr<FileAsset>& fileAsset);
 
     static thread_local napi_ref constructor_;
     static std::atomic<uint32_t> cacheFileId_;

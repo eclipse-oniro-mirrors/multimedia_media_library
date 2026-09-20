@@ -493,6 +493,9 @@ public:
         VarMap &result);
     static ani_status ToAniVariantArray(ani_env *env, const std::vector<VarMap> &array, ani_object &aniArray);
     static string GetUserIdFromUri(const string &uri);
+    static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds);
+    static bool HasSharedAlbum(const std::vector<std::string>& albumIds);
+    static void ExtractFileIdsFromUris(const std::vector<std::string>& uriArray, std::vector<std::string>& fileIdArray);
 private:
     static ani_status VariantMapToAniMap(ani_env *env, const VarMap &map, ani_object &aniMap);
 };

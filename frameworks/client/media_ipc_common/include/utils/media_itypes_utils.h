@@ -221,6 +221,18 @@ bool UnmarshallingParcelable(std::vector<T> &val, MessageParcel &parcel)
     return UnmarshalFromContainerParcelable(val, parcel);
 }
 
+template <class V>
+bool Unmarshalling(V &val, MessageParcel &parcel)
+{
+    return val.Unmarshalling(parcel);
+}
+
+template <class V>
+bool Marshalling(const V &val, MessageParcel &parcel)
+{
+    return val.Marshalling(parcel);
+}
+
 template <class K, class V>
 bool Marshalling(const std::unordered_map<K, V> &result, MessageParcel &parcel)
 {

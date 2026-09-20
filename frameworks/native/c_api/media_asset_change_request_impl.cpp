@@ -109,7 +109,7 @@ MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::GetWriteCacheHandler(int32_t
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset get failed!");
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
     CHECK_AND_RETURN_RET_LOG(!IsMovingPhoto(), MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "cann't be moving photo!");
     CHECK_AND_RETURN_RET_LOG(CheckWriteOperation(MediaLibrary_ResourceType::MEDIA_LIBRARY_VIDEO_RESOURCE),
         MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "Not supported!");
@@ -129,7 +129,7 @@ MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::SaveCameraPhoto(MediaLibrary
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "fileAsset get failed!");
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
 
     MediaType mediaType = fileAsset->GetMediaType();
     if ((mediaType == MEDIA_TYPE_IMAGE && imageFileType == MEDIA_LIBRARY_IMAGE_JPEG) ||
@@ -149,7 +149,7 @@ MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::DiscardCameraPhoto()
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "fileAsset get failed!");
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
 
     RecordChangeOperation(AssetChangeOperation::DISCARD_CAMERA_PHOTO);
     return MEDIA_LIBRARY_OK;
@@ -171,7 +171,7 @@ MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::AddResourceWithUri(MediaLibr
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "fileAsset get failed!");
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
     CHECK_AND_RETURN_RET_LOG(!IsMovingPhoto(), MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED,
         "not support edit moving photo with uri");
 
@@ -195,7 +195,7 @@ MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::AddResourceWithBuffer(MediaL
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "fileAsset get failed!");
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
     CHECK_AND_RETURN_RET_LOG(!IsMovingPhoto(), MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED,
         "not support edit moving photo with buffer");
 
@@ -235,7 +235,7 @@ MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::ApplyChanges()
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset is nullptr");
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
 
     unordered_set<AssetChangeOperation> appliedOperations;
     for (const auto& changeOperation : assetChangeOperations_) {

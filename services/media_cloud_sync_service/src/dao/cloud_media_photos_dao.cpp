@@ -1050,7 +1050,7 @@ bool CloudMediaPhotosDao::JudgeConflict(
     return true;  // never execute
 }
 
-int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<std::string> &cloudIds)
+int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<PhotosPo> &photoInfoList)
 {
     MEDIA_INFO_LOG("GetRetryRecords enter");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -1061,22 +1061,10 @@ int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<std::string> &cloudIds)
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
     predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.Limit(LIMIT_SIZE);
-
-    const std::vector<std::string> columns = {PhotoColumn::PHOTO_CLOUD_ID};
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetRetryRecords Failed to query.");
-    int32_t rowCount = 0;
-    int32_t ret = resultSet->GetRowCount(rowCount);
-    CHECK_AND_RETURN_RET_LOG((ret == E_OK && rowCount >= 0), E_RDB, "GetRetryRecords Failed to Get Count.");
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        std::string cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
-        if (cloudId.empty()) {
-            continue;
-        }
-        MEDIA_DEBUG_LOG("GetRetryRecords result cloudId:%{public}s", cloudId.c_str());
-        cloudIds.push_back(cloudId);
-    }
-    resultSet->Close();
+    auto resultSet = rdbStore->Query(predicates, {});
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetRetryRecords resultset is null");
+    int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photoInfoList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetRetryRecords ReadRecords failed, ret: %{public}d", ret);
     return E_OK;
 }
 

@@ -1323,8 +1323,7 @@ napi_value MediaAssetChangeRequestNapi::JSSetFavorite(napi_env env, napi_callbac
     auto changeRequest = asyncContext->objectInfo;
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
     if (changeRequest->GetFileAssetInstance()->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
-        NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+        NapiError::ThrowError(env, JS_INNER_FAIL, "This operation is not supported for assets in shared albums");
         return nullptr;
     }
     changeRequest->GetFileAssetInstance()->SetFavorite(isFavorite);
@@ -1348,6 +1347,9 @@ napi_value MediaAssetChangeRequestNapi::JSSetHidden(napi_env env, napi_callback_
 
     auto changeRequest = asyncContext->objectInfo;
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetHidden(isHidden);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_HIDDEN);
     RETURN_NAPI_UNDEFINED(env);
@@ -1413,6 +1415,8 @@ napi_value MediaAssetChangeRequestNapi::JSSetTitle(napi_env env, napi_callback_i
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
         "The asset parameter is not a valid PhotoAsset object");
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title + "." + extension;
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
@@ -1569,6 +1573,10 @@ napi_value MediaAssetChangeRequestNapi::JSSetLocation(napi_env env, napi_callbac
     MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_TWO, ARGS_TWO);
     MediaLibraryNapiUtils::GetDouble(env, asyncContext->argv[0], longitude);
     MediaLibraryNapiUtils::GetDouble(env, asyncContext->argv[1], latitude);
+    auto fileAsset = asyncContext->objectInfo->fileAsset_;
+    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     asyncContext->objectInfo->fileAsset_->SetLongitude(longitude);
     asyncContext->objectInfo->fileAsset_->SetLatitude(latitude);
     asyncContext->objectInfo->assetChangeOperations_.push_back(AssetChangeOperation::SET_LOCATION);
@@ -1643,6 +1651,9 @@ napi_value MediaAssetChangeRequestNapi::JSSetUserComment(napi_env env, napi_call
 
     auto changeRequest = asyncContext->objectInfo;
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetUserComment(userComment);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_USER_COMMENT);
     RETURN_NAPI_UNDEFINED(env);
@@ -2061,27 +2072,10 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResourceForPicker(nap
     RETURN_NAPI_UNDEFINED(env);
 }
 
-napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callback_info info)
+napi_value MediaAssetChangeRequestNapi::ParseAddResourceValue(napi_env env,
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, const std::shared_ptr<FileAsset>& fileAsset)
 {
-    auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
-    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext,
-        ARGS_TWO, ARGS_TWO) == napi_ok, "The object is not a valid instance");
     auto changeRequest = asyncContext->objectInfo;
-    auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
-        "The asset parameter is not a valid PhotoAsset object");
-
-    int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
-    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetInt32(env, asyncContext->argv[PARAM0],
-        resourceType) == napi_ok, "The type parameter must be a valid ResourceType enum value");
-    CHECK_COND(env, CheckWriteOperation(env, changeRequest, GetResourceType(resourceType)), JS_E_OPERATION_NOT_SUPPORT);
-    if (changeRequest->IsMovingPhoto() && resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE)) {
-        return AddMovingPhotoVideoResource(env, info);
-    }
-    CHECK_COND_WITH_MESSAGE(env, resourceType == static_cast<int32_t>(fileAsset->GetMediaType()) ||
-        resourceType == static_cast<int32_t>(ResourceType::PHOTO_PROXY),
-        "The resourceType does not match the media type of the asset");
-
     napi_valuetype valueType;
     napi_value value = asyncContext->argv[PARAM1];
     CHECK_COND_WITH_MESSAGE(env, napi_typeof(env, value, &valueType) == napi_ok, "Failed to get napi type");
@@ -2104,7 +2098,7 @@ napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callbac
             // addResource by photoProxy
             if (!MediaLibraryNapiUtils::IsSystemApp()) {
                 NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-                RETURN_NAPI_UNDEFINED(env);
+                return nullptr;
             }
             PhotoProxyNapi* napiPhotoProxyPtr = nullptr;
             CHECK_ARGS(env, napi_unwrap(env, asyncContext->argv[PARAM1], reinterpret_cast<void**>(&napiPhotoProxyPtr)),
@@ -2112,6 +2106,35 @@ napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callbac
             changeRequest->photoProxy_ = napiPhotoProxyPtr->photoProxy_;
             changeRequest->addResourceMode_ = AddResourceMode::PHOTO_PROXY;
         }
+    }
+    RETURN_NAPI_UNDEFINED(env);
+}
+
+napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callback_info info)
+{
+    auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext,
+        ARGS_TWO, ARGS_TWO) == napi_ok, "The object is not a valid instance");
+    auto changeRequest = asyncContext->objectInfo;
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
+
+    int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetInt32(env, asyncContext->argv[PARAM0],
+        resourceType) == napi_ok, "The type parameter must be a valid ResourceType enum value");
+    CHECK_COND(env, CheckWriteOperation(env, changeRequest, GetResourceType(resourceType)), JS_E_OPERATION_NOT_SUPPORT);
+    if (changeRequest->IsMovingPhoto() && resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE)) {
+        return AddMovingPhotoVideoResource(env, info);
+    }
+    CHECK_COND_WITH_MESSAGE(env, resourceType == static_cast<int32_t>(fileAsset->GetMediaType()) ||
+        resourceType == static_cast<int32_t>(ResourceType::PHOTO_PROXY),
+        "The resourceType does not match the media type of the asset");
+
+    if (ParseAddResourceValue(env, asyncContext, fileAsset) == nullptr) {
+        return nullptr;
     }
 
     changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE);
@@ -2134,6 +2157,8 @@ napi_value MediaAssetChangeRequestNapi::JSAddResourceForPicker(napi_env env, nap
         RETURN_NAPI_UNDEFINED(env);
     }
     CHECK_COND(env, HasAccessMedialibThumbDbPermission(), OHOS_PERMISSION_DENIED_CODE);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        JS_E_PARAM_INVALID, "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetInt32(env, asyncContext->argv[PARAM0],
@@ -3564,7 +3589,7 @@ napi_value MediaAssetChangeRequestNapi::ApplyChanges(napi_env env, napi_callback
     if (fileAsset_ != nullptr &&
         fileAsset_->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
         NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
-            "The current asset belongs to a shared album and does not support this operation");
+            "This operation is not supported for assets in shared albums");
         return nullptr;
     }
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,

@@ -37,7 +37,16 @@ std::string MediaPathUtils::AppendUserId(const std::string& path, int32_t userId
 
 bool MediaPathUtils::CheckPhotoPath(const std::string& photoPath)
 {
+    if (photoPath.find("..") != std::string::npos) {
+        MEDIA_ERR_LOG("Invalid photoPath with path traversal: %{private}s", photoPath.c_str());
+        return false;
+    }
     return photoPath.length() >= ROOT_MEDIA_DIR.length() && MediaStringUtils::StartsWith(photoPath, ROOT_MEDIA_DIR);
+}
+
+bool MediaPathUtils::CheckPathTraversal(const std::string& path)
+{
+    return path.find("..") != std::string::npos;
 }
 
 std::string MediaPathUtils::GetFileName(const std::string &filePath)

@@ -292,7 +292,7 @@ HWTEST_F(UpdateShareMemberStatusTest, UpdateShareMemberStatus_008, TestSize.Leve
 
     int32_t ret = MediaLibraryAlbumOperations::UpdateShareMemberStatus(
         SHARE_ALBUM_ID, TEST_OWNER, TEST_MEMBER, ShareMemberStatus::DECLINED);
-    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(ret, E_SHARE_ALBUM_INVALID_ID_ARG);
 
     MEDIA_INFO_LOG("UpdateShareMemberStatus_008 end, ret=%{public}d", ret);
 }

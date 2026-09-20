@@ -133,7 +133,7 @@ int32_t MediaAlbumsService::DeletePhotoAlbums(const std::vector<std::string> &al
     int32_t ret = CheckNoShareAlbumInDeleteList(albumIds);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("DeletePhotoAlbums reject share album, ret=%{public}d", ret);
-        return ret;
+        return E_SHARE_ALBUM_NOT_SUPPORT_PARAM_INVALID;
     }
     NativeRdb::RdbPredicates rdbPredicate(PhotoAlbumColumns::TABLE);
     rdbPredicate.In(PhotoAlbumColumns::ALBUM_ID, albumIds);

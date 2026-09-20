@@ -590,7 +590,7 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestImageSource(OH_MediaA
     std::shared_ptr<FileAsset> fileAsset_ = mediaAsset->mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset_ is null");
     CHECK_AND_RETURN_RET_LOG(fileAsset_->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
     MediaLibraryTracer tracer;
     tracer.Start("NativeRequestImageSource");
 
@@ -652,7 +652,7 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestMovingPhoto(OH_MediaA
     CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset_ is nullptr");
     CHECK_AND_RETURN_RET_LOG(fileAsset_->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
     MediaLibraryTracer tracer;
     tracer.Start("NativeRequestMovingPhoto");
 
@@ -961,7 +961,7 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
     std::shared_ptr<FileAsset> fileAsset_ = mediaAsset->mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset_ is null");
     CHECK_AND_RETURN_RET_LOG(fileAsset_->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
-        MEDIA_LIBRARY_PARAMETER_ERROR, "asset belong to shared album, not support the operation");
+        MEDIA_LIBRARY_PARAMETER_ERROR, "This operation is not supported for assets in shared albums");
     MediaLibraryTracer tracer;
     tracer.Start("NativeQuickRequestImage");
 

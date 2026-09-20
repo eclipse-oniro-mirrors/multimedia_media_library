@@ -270,7 +270,7 @@ int32_t MediaAssetsService::AssetChangeSetFavorite(const int32_t fileId, const b
     if (ret != E_OK) {
         MEDIA_ERR_LOG("AssetChangeSetFavorite reject shared album asset, fileId=%{public}d, ret=%{public}d",
             fileId, ret);
-        return ret;
+        return E_FAIL;
     }
     DataShare::DataSharePredicates predicate;
     predicate.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileId));

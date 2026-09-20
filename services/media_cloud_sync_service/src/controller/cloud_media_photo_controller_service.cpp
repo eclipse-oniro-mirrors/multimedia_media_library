@@ -408,12 +408,16 @@ int32_t CloudMediaPhotoControllerService::OnCopyRecords(MessageParcel &data, Mes
 
 int32_t CloudMediaPhotoControllerService::GetRetryRecords(MessageParcel &data, MessageParcel &reply)
 {
+    std::vector<PhotosDto> photosDtoVec;
+    int32_t ret = this->photosService_.GetRetryRecords(photosDtoVec);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetRetryRecords, ret:%{public}d", ret);
     GetRetryRecordsRespBody respBody;
-    int32_t ret = this->photosService_.GetRetryRecords(respBody.cloudIds);
+    ret = this->processor_.ConvertFromPhotosDtoToRetryRecordsRespBody(photosDtoVec, respBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("GetRetryRecords ret error");
+        MEDIA_ERR_LOG("Failed to convert retry records, ret:%{public}d", ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+    MEDIA_DEBUG_LOG("GetRetryRecords RespBody: %{public}s", respBody.ToString().c_str());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 

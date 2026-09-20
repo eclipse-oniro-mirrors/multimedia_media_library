@@ -731,18 +731,19 @@ int32_t CloudMediaPhotosService::OnDentryFileInsert(
     return PullInsert(pullDatas, failedRecords);
 }
 
-int32_t CloudMediaPhotosService::GetRetryRecords(std::vector<std::string> &cloudIds)
+int32_t CloudMediaPhotosService::GetRetryRecords(std::vector<PhotosDto> &photoDtoList)
 {
-    int32_t ret = this->photosDao_.GetRetryRecords(cloudIds);
-    MEDIA_INFO_LOG("CloudMediaPhotosService::GetRetryRecords end, "
-                   "ret: %{public}d, size: %{public}zu",
-        ret,
-        cloudIds.size());
+    std::vector<PhotosPo> photosPos;
+    int32_t ret = this->photosDao_.GetRetryRecords(photosPos);
     if (ret != E_OK) {
         std::string errMsg = "gallery data syncer pull file err";
         REPORT_SYNC_FAULT({FaultScenario::CLOUD_SYNC_PULL, FaultType::QUERY_DATABASE, ret, errMsg});
+        return ret;
     }
-    return ret;
+    ret = this->processor_.GetPhotosDtos(photosPos, photoDtoList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to get photos dtos, ret:%{public}d", ret);
+    MEDIA_INFO_LOG("CloudMediaPhotosService::GetRetryRecords end, size: %{public}zu", photoDtoList.size());
+    return E_OK;
 }
 
 std::vector<PhotosDto> CloudMediaPhotosService::GetCheckRecords(const std::vector<std::string> &cloudIds)
@@ -750,7 +751,8 @@ std::vector<PhotosDto> CloudMediaPhotosService::GetCheckRecords(const std::vecto
     MEDIA_INFO_LOG("CloudMediaPhotosService::GetCheckRecords enter");
     // get & cache local photos data. cloudId -> photosDto
     std::vector<PhotosPo> photosPos = this->photosDao_.GetCheckRecords(cloudIds);
-    std::vector<PhotosDto> result = this->processor_.GetPhotosDtos(photosPos);
+    std::vector<PhotosDto> result;
+    this->processor_.GetPhotosDtos(photosPos, result);
     return result;
 }
 

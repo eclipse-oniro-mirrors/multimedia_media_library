@@ -391,11 +391,9 @@ static void GetRecordsFuzzer()
     std::vector<std::string> cloudIds;
     std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
     InsertPhotoAsset(cloudId);
-    cloudMediaPhotosDao->GetRetryRecords(cloudIds);
     cloudMediaPhotosDao->GetCheckRecords(cloudIds);
     cloudIds.emplace_back(cloudId);
     cloudIds.emplace_back(provider->ConsumeBytesAsString(NUM_BYTES));
-    cloudMediaPhotosDao->GetRetryRecords(cloudIds);
     cloudMediaPhotosDao->GetCheckRecords(cloudIds);
 
     int32_t querySize = provider->ConsumeIntegral<uint32_t>() & 0xf;

@@ -56,6 +56,7 @@
 #include "image_packer.h"
 #include "media_audio_column.h"
 #include "media_string_utils.h"
+#include "media_path_utils.h"
 #include "moving_photo_file_utils.h"
 #include "photo_file_utils.h"
 #include "media_edit_utils.h"
@@ -2455,11 +2456,19 @@ string MediaFileUtils::GetMovingPhotoVideoPath(const string &imagePath)
 
 string MediaFileUtils::GetOriMovingPhotoVideoPath(const string &imagePath)
 {
+    if (!MediaPathUtils::CheckPhotoPath(imagePath)) {
+        MEDIA_ERR_LOG("Invalid imagePath: %{private}s", imagePath.c_str());
+        return "";
+    }
     return MEDIA_EDIT_DATA_DIR + imagePath.substr(ROOT_MEDIA_DIR.length())+ "/source.mp4";
 }
 
 string MediaFileUtils::GetTempOriMovingPhotoVideoPath(const string &imagePath)
 {
+    if (!MediaPathUtils::CheckPhotoPath(imagePath)) {
+        MEDIA_ERR_LOG("Invalid imagePath: %{private}s", imagePath.c_str());
+        return "";
+    }
     string outPath = MEDIA_EDIT_DATA_DIR + imagePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
     size_t lastSlashIndex = outPath.find_last_of('/');
     return outPath.substr(0, lastSlashIndex + 1) + "temp_" + outPath.substr(lastSlashIndex + 1);
