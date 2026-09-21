@@ -82,8 +82,6 @@ static const std::string TYPE_PHOTOS = "1";
 static const int32_t AVERAGE_FACTOR = 2;
 static const int32_t SLEEP_100_MS = 100;
 
-constexpr int32_t SHARED_ASSET_FLAG = 1;
-
 thread_local unique_ptr<ChangeListenerNapi> g_multiStagesRequestListObj = nullptr;
 thread_local napi_ref constructor_ = nullptr;
 
@@ -2539,24 +2537,8 @@ napi_value MediaAssetManagerNapi::JSLoadMovingPhoto(napi_env env, napi_callback_
         imageFileUri = imageFileUri.substr(0, splitPos);
     }
     int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(imageFileUri);
-    if (fileId > 0) {
-        std::vector<std::string> fileIds = { std::to_string(fileId) };
-        Uri queryUri(CONST_PAH_QUERY_PHOTO);
-        DataShare::DataSharePredicates predicates;
-        predicates.In(MediaColumn::MEDIA_ID, fileIds);
-        std::vector<std::string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-        int32_t errCode = 0;
-        auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
-        if (resultSet != nullptr && resultSet->GoToFirstRow() == E_OK) {
-            int32_t isShared = std::get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-                resultSet, TYPE_INT32));
-            if (isShared == SHARED_ASSET_FLAG) {
-                NapiError::ThrowError(env, E_OPERATION_NOT_SUPPORT,
-                    "The current asset belongs to a shared album and does not support this operation");
-                return nullptr;
-            }
-        }
-    }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset({ std::to_string(fileId) }),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSLoadMovingPhoto", JSLoadMovingPhotoExecute,
         JSLoadMovingPhotoComplete);
 }
