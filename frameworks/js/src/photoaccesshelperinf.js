@@ -1196,6 +1196,29 @@ function parsePhotoPickerSelectOption(args) {
   return config;
 }
 
+function checkCarDeviceUnsupportedOptions(args) {
+  let option = args.length > ARGS_ZERO && typeof args[ARGS_ZERO] === 'object' ? args[ARGS_ZERO] : null;
+  if (!option) {
+    return;
+  }
+  if (deviceinfo.deviceType !== 'car') {
+    return;
+  } 
+  const unsupportedParams = ['isSearchSupported', 'isEditSupported', 'recommendationOptions'];
+  for (const paramName of unsupportedParams) {
+    console.log(`[picker] checkCarDeviceUnsupportedOptions: ${paramName}, ${option[paramName]}`);
+    if (option[paramName] !== undefined) {
+      console.error(`[picker] config: Car unsupported param: ${paramName}. ` +
+        `The device does not support the following APIs: ${unsupportedParams.join(', ')}`);
+      break;
+    }
+  }
+  // 车机强制默认关闭搜索和编辑
+  option.isSearchSupported = false;
+  option.isEditSupported = false;
+  option.recommendationOptions = {};
+}
+
 function parseAutoPlayScenes(autoPlayScenes) {
   if (!autoPlayScenes) {
     return undefined;
@@ -1308,7 +1331,8 @@ async function photoPickerSelect(...args) {
     console.log('[picker] Invalid argument');
     throw checkArgsResult;
   }
-  
+  // car 不支持搜索、编辑、推荐功能
+  checkCarDeviceUnsupportedOptions(args);
   const config = parsePhotoPickerSelectOption(args);
   console.log('[picker] config: ' + encrypt(JSON.stringify(config)));
   if (config.parameters.userId && config.parameters.userId > 0) {
