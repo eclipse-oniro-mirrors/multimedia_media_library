@@ -380,11 +380,11 @@ int32_t ParameterUtils::CheckCompositeDisplayMode(const AssetChangeReqBody &reqB
     return E_OK;
 }
 
-int32_t ParameterUtils::CheckWhereClause(const std::string &whereClause)
+int32_t ParameterUtils::CheckWhereClause(const std::string &whereClause, bool isSA)
 {
     int32_t ret = E_OK;
     MEDIA_DEBUG_LOG("CheckWhereClause start");
-    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause)) {
+    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause, isSA)) {
         ret = E_INVALID_VALUES;
         MEDIA_ERR_LOG("illegal query whereClause input %{private}s", whereClause.c_str());
         VariantMap map = {

@@ -1605,7 +1605,8 @@ int32_t MediaLibraryDataManager::Delete(MediaLibraryCommand &cmd, const DataShar
     MediaLibraryTracer tracer;
     tracer.Start("CheckWhereClause");
     auto whereClause = predicates.GetWhereClause();
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause), E_SQL_CHECK_FAIL,
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause,
+        PermissionUtils::IsNativeSAApp()), E_INVALID_VALUES,
         "illegal query whereClause input %{private}s", whereClause.c_str());
     CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_SQL_CHECK_FAIL,
         "illegal query key");
@@ -1769,6 +1770,9 @@ int32_t MediaLibraryDataManager::Update(MediaLibraryCommand &cmd, const DataShar
         return E_INVALID_VALUES;
     }
 
+    auto whereClause = predicates.GetWhereClause();
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause), E_INVALID_VALUES,
+        "illegal query whereClause input %{private}s", whereClause.c_str());
     CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_INVALID_VALUES,
         "illegal query key");
 
@@ -2488,7 +2492,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QuerySet(MediaLibraryC
     tracer.Start("CheckWhereClause");
     MEDIA_DEBUG_LOG("CheckWhereClause start %{public}s", cmd.GetUri().ToString().c_str());
     auto whereClause = predicates.GetWhereClause();
-    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause)) {
+    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause, PermissionUtils::IsNativeSAApp())) {
         errCode = E_INVALID_VALUES;
         MEDIA_ERR_LOG("illegal query whereClause input %{private}s", whereClause.c_str());
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, errCode},

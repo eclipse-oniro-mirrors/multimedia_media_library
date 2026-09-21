@@ -341,9 +341,11 @@ void MediaLibraryCommonUtils::SeprateSelection(std::string &strCondition, std::v
 
 bool MediaLibraryCommonUtils::CheckKeyWord(const std::string &strCondition)
 {
-    std::regex pattern("\\s*exec\\s*|\\s*insert\\s*|\\s*delete\\s*|\\s*update\\s*|" \
-                            "\\s*join\\s*|\\s*union\\s*|\\s*master\\s*|\\s*truncate\\s*",
-                    std::regex_constants::ECMAScript | std::regex_constants::icase);
+    // SQL keywords indicating cross-table operations (subquery/join/union) or DDL/DML.
+    // \b word boundary keeps legal column names like update_time from false positives.
+    static const std::regex pattern(R"(\b(SELECT|FROM|JOIN|UNION|INTO|EXISTS|DROP|DELETE|INSERT|)"
+                                    R"(UPDATE|CREATE|ALTER|TRUNCATE|EXEC|EXECUTE|MASTER)\b)",
+        std::regex_constants::ECMAScript | std::regex_constants::icase | std::regex_constants::optimize);
 
     if (regex_search(strCondition, pattern)) {
         return false;
@@ -354,15 +356,16 @@ bool MediaLibraryCommonUtils::CheckKeyWord(const std::string &strCondition)
 
 bool MediaLibraryCommonUtils::CheckIllegalCharacter(const std::string &strCondition)
 {
-    /* if strCondition contains ';', it will be sepreate to two clause */
-    if (strCondition.find(';') == std::string::npos) {
-        return true;
+    // Statement separator and comment markers; blocks keyword-splitting like SEL/**/ECT
+    if (strCondition.find(';') != std::string::npos ||
+        strCondition.find("--") != std::string::npos ||
+        strCondition.find("/*") != std::string::npos) {
+        return false;
     }
-    /* other check to do */
-    return false;
+    return true;
 }
 
-bool MediaLibraryCommonUtils::CheckWhereClause(const std::string &whereClause)
+bool MediaLibraryCommonUtils::CheckWhereClause(const std::string &whereClause, bool isSA)
 {
     MediaLibraryTracer tracer;
     tracer.Start("CommonUtils::CheckWhereClause");
@@ -375,8 +378,9 @@ bool MediaLibraryCommonUtils::CheckWhereClause(const std::string &whereClause)
         return false;
     }
 
-    /* check whether query condition has key word */
-    if (!CheckKeyWord(whereClause)) {
+    /* SA (trusted system ability) may use raw whereClause with SQL keywords;
+     * non-SA (untrusted app) must be checked for SQL keyword injection. */
+    if (!isSA && !CheckKeyWord(whereClause)) {
         MEDIA_ERR_LOG("CheckKeyWord is failed!");
         return false;
     }
