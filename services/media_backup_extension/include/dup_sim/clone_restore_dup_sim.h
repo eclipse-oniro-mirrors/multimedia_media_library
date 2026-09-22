@@ -68,6 +68,15 @@ struct AffectiveInfo {
     std::optional<std::string> analysisVersion;
     std::optional<int32_t> affectiveScore;
     std::optional<std::string> affectiveScoreVersion;
+    std::optional<std::int32_t> valenceScore;
+    std::optional<std::int32_t> arousalScore;
+    std::optional<std::int32_t> authenticity;
+    std::optional<std::string> atmosphere;
+    std::optional<std::string> emotion;
+    std::optional<std::string> interestingness;
+    std::optional<std::string> cuteness;
+    std::optional<std::string> caption;
+    std::optional<std::string> affectiveDetectorVersion;
 };
 
 class CloneRestoreDupSim {

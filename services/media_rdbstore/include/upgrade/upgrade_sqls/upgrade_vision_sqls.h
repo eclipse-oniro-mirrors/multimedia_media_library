@@ -19,6 +19,7 @@
 #define TABLE_TAB_ANALYSIS_LABEL "tab_analysis_label"
 #define TABLE_TAB_ANALYSIS_TOTAL "tab_analysis_total"
 #define TABLE_TAB_ANALYSIS_OCR "tab_analysis_ocr"
+#define TABLE_TAB_ANALYSIS_AFFECTIVE "tab_analysis_affective"
 // column name should be added here
 #define COLUMN_ANALYSIS_CAPTION "caption"
 #define COLUMN_OCR_TIME "ocr_time"
@@ -28,6 +29,16 @@
 #define COLUMN_CLS_SCHED_VERSION "cls_sched_version"
 #define COLUMN_CLS_SCHED "cls_sched"
 #define COLUMN_SHEET "sheet"
+#define COLUMN_VALENCE_SCORE "valence_score"
+#define COLUMN_AROUSAL_SCORE "arousal_score"
+#define COLUMN_AUTHENTICITY "authenticity"
+#define COLUMN_ATMOSPHERE "atmosphere"
+#define COLUMN_AFFECTIVE_EMOTION "emotion"
+#define COLUMN_INTERESTINGNESS "interestingness"
+#define COLUMN_CUTENESS "cuteness"
+#define COLUMN_AFFECTIVE_CAPTION "caption"
+#define COLUMN_AFFECTIVE_DETECTOR_VERSION "affective_detector_version"
+#define COLUMN_AFFECTIVE_DETECTOR "affective_detector"
 // trigger name should be added here
 #define TRIGGER_ANALYSIS_UPDATE_SEARCH_TRIGGER "analysis_update_search_trigger"
 

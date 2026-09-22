@@ -58,6 +58,7 @@
 #include "media_upgrade.h"
 #include "analysis_data_watermark_dao.h"
 #include "analysis_data_caption_dao.h"
+#include "vision_affective_column.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -106,6 +107,7 @@ static std::vector<std::string> createTableSqlLists = {
     CREATE_TAB_ANALYSIS_TOTAL_FOR_ONCREATE,
     CREATE_TAB_ANALYSIS_DEDUP_SELECTION,
     CREATE_TAB_ANALYSIS_PROFILE,
+    CREATE_TAB_ANALYSIS_AFFECTIVE,
     CREATE_TAB_IMAGE_FACE,
     CREATE_TAB_FACE_TAG,
     CREATE_GEO_DICTIONARY_TABLE,
@@ -133,6 +135,7 @@ static std::vector<std::string> testTables = {
     VISION_HEAD_TABLE,
     VISION_POSE_TABLE,
     VISION_TOTAL_TABLE,
+    VISION_AFFECTIVE_TABLE,
     VISION_IMAGE_FACE_TABLE,
     VISION_FACE_TAG_TABLE,
     GEO_DICTIONARY_TABLE,
@@ -191,6 +194,8 @@ void CleanVisionData()
     MediaLibraryCommand poseCmd(poseUri);
     Uri totalUri(URI_TOTAL);
     MediaLibraryCommand totalCmd(totalUri);
+    Uri affectiveUri(MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_AFFECTIVE);
+    MediaLibraryCommand affectiveCmd(affectiveUri);
     Uri geoDictionaryUri(URI_GEO_DICTIONARY);
     MediaLibraryCommand geoDictionaryCmd(geoDictionaryUri);
     Uri geoKnowledgeUri(URI_GEO_KEOWLEDGE);
@@ -206,6 +211,7 @@ void CleanVisionData()
     MediaLibraryDataManager::GetInstance()->Delete(headCmd, predicates);
     MediaLibraryDataManager::GetInstance()->Delete(poseCmd, predicates);
     MediaLibraryDataManager::GetInstance()->Delete(totalCmd, predicates);
+    MediaLibraryDataManager::GetInstance()->Delete(affectiveCmd, predicates);
     MediaLibraryDataManager::GetInstance()->Delete(geoDictionaryCmd, predicates);
     MediaLibraryDataManager::GetInstance()->Delete(geoKnowledgeCmd, predicates);
     CleanVisionDataPart1(predicates);
@@ -4535,6 +4541,220 @@ HWTEST_F(MediaLibraryVisionTest, Vision_TotalClsSched_DefaultZero_Test_001, Test
     EXPECT_EQ(sheet, 0);
     MEDIA_INFO_LOG("Vision_TotalClsSched_DefaultZero_Test_001::clsSched=%{public}d sheet=%{public}d. End",
         clsSched, sheet);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_InsertAffective_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_InsertAffective_Test_001::Start");
+    Uri affectiveUri(MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_AFFECTIVE);
+    MediaLibraryCommand cmd(affectiveUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 1);
+    valuesBucket.Put(VALENCE_SCORE, 85);
+    valuesBucket.Put(AROUSAL_SCORE, 72);
+    valuesBucket.Put(AUTHENTICITY, 80);
+    valuesBucket.Put(ATMOSPHERE, "warm");
+    valuesBucket.Put(AFFECTIVE_EMOTION, "happy");
+    valuesBucket.Put(INTERESTINGNESS, "very interesting");
+    valuesBucket.Put(CUTENESS, "cute");
+    valuesBucket.Put(AFFECTIVE_CAPTION, "A beautiful sunset");
+    valuesBucket.Put(AFFECTIVE_DETECTOR_VERSION, "1.0.0");
+
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+    EXPECT_NE(retVal, E_FAIL);
+    EXPECT_NE(retVal, E_INVALID_VALUES);
+    EXPECT_NE(retVal, E_HAS_DB_ERROR);
+
+    vector<string> columns;
+    columns.push_back(VALENCE_SCORE);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(1));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    ASSERT_NE(resultSet, nullptr);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_EQ(count, 1);
+    resultSet->GoToFirstRow();
+    int valenceScore = 0;
+    resultSet->GetInt(0, valenceScore);
+    EXPECT_EQ(valenceScore, 85);
+    MEDIA_INFO_LOG("Vision_InsertAffective_Test_001::retVal = %{public}d. End", retVal);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_InsertAffective_Test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_InsertAffective_Test_002::Start");
+    Uri affectiveUri(MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_AFFECTIVE);
+    MediaLibraryCommand cmd(affectiveUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 2);
+    valuesBucket.Put(VALENCE_SCORE, 70);
+    valuesBucket.Put(AROUSAL_SCORE, 65);
+    valuesBucket.Put(AUTHENTICITY, 90);
+    valuesBucket.Put(ATMOSPHERE, "peaceful");
+    valuesBucket.Put(AFFECTIVE_EMOTION, "calm");
+    valuesBucket.Put(INTERESTINGNESS, "interesting");
+    valuesBucket.Put(CUTENESS, "not cute");
+    valuesBucket.Put(AFFECTIVE_CAPTION, "A quiet lake");
+    valuesBucket.Put(AFFECTIVE_DETECTOR_VERSION, "1.0.1");
+
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+    EXPECT_NE(retVal, E_FAIL);
+    EXPECT_NE(retVal, E_INVALID_VALUES);
+    EXPECT_NE(retVal, E_HAS_DB_ERROR);
+
+    DataShare::DataShareValuesBucket valuesBucket2;
+    valuesBucket2.Put(FILE_ID, 2);
+    valuesBucket2.Put(VALENCE_SCORE, 75);
+    auto retVal2 = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket2);
+    EXPECT_GT(retVal2, 0);
+    EXPECT_NE(retVal2, E_FAIL);
+    EXPECT_NE(retVal2, E_INVALID_VALUES);
+    EXPECT_NE(retVal2, E_HAS_DB_ERROR);
+
+    vector<string> columns;
+    columns.push_back(VALENCE_SCORE);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(2));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    ASSERT_NE(resultSet, nullptr);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 2);
+    resultSet->GoToFirstRow();
+    int valenceScore1 = 0;
+    resultSet->GetInt(0, valenceScore1);
+    EXPECT_EQ(valenceScore1, 70);
+    resultSet->GoToNextRow();
+    int valenceScore2 = 0;
+    resultSet->GetInt(0, valenceScore2);
+    EXPECT_EQ(valenceScore2, 75);
+    MEDIA_INFO_LOG("Vision_InsertAffective_Test_002::retVal = %{public}d. retVal2 = %{public}d. End",
+        retVal, retVal2);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_UpdateAffective_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_UpdateAffective_Test_001::Start");
+    Uri affectiveUri(MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_AFFECTIVE);
+    MediaLibraryCommand cmd(affectiveUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 3);
+    valuesBucket.Put(VALENCE_SCORE, 60);
+    valuesBucket.Put(AROUSAL_SCORE, 55);
+    valuesBucket.Put(AUTHENTICITY, 75);
+    valuesBucket.Put(ATMOSPHERE, "neutral");
+    valuesBucket.Put(AFFECTIVE_EMOTION, "neutral");
+    valuesBucket.Put(INTERESTINGNESS, "normal");
+    valuesBucket.Put(CUTENESS, "neutral");
+    valuesBucket.Put(AFFECTIVE_CAPTION, "A common scene");
+    valuesBucket.Put(AFFECTIVE_DETECTOR_VERSION, "1.0.0");
+    MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+
+    DataShare::DataShareValuesBucket updateValues;
+    updateValues.Put(VALENCE_SCORE, 80);
+    updateValues.Put(AROUSAL_SCORE, 75);
+    updateValues.Put(AFFECTIVE_DETECTOR_VERSION, "2.0.0");
+    DataShare::DataSharePredicates predicates;
+    vector<string> inValues;
+    inValues.push_back("3");
+    predicates.In(FILE_ID, inValues);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Update(cmd, updateValues, predicates);
+    EXPECT_EQ(retVal, 1);
+    MEDIA_INFO_LOG("Vision_UpdateAffective_Test_001::retVal = %{public}d. End", retVal);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_DeleteAffective_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_DeleteAffective_Test_001::Start");
+    Uri affectiveUri(MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_AFFECTIVE);
+    MediaLibraryCommand cmd(affectiveUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 4);
+    valuesBucket.Put(VALENCE_SCORE, 90);
+    valuesBucket.Put(AFFECTIVE_DETECTOR_VERSION, "1.0.0");
+    MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+
+    DataShare::DataShareValuesBucket valuesBucket2;
+    valuesBucket2.Put(FILE_ID, 5);
+    valuesBucket2.Put(VALENCE_SCORE, 85);
+    valuesBucket2.Put(AFFECTIVE_DETECTOR_VERSION, "1.0.0");
+    MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket2);
+
+    DataShare::DataSharePredicates predicates;
+    predicates.GreaterThan(FILE_ID, 3);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Delete(cmd, predicates);
+    EXPECT_EQ(retVal, 2);
+    MEDIA_INFO_LOG("Vision_DeleteAffective_Test_001::retVal = %{public}d. End", retVal);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_Total_AffectiveDetector_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_Total_AffectiveDetector_Test_001::Start");
+    Uri totalUri(URI_TOTAL);
+    MediaLibraryCommand cmd(totalUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 200);
+    valuesBucket.Put(STATUS, 0);
+    valuesBucket.Put(AFFECTIVE_DETECTOR, 1);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, 200);
+    vector<string> columns;
+    columns.push_back(AFFECTIVE_DETECTOR);
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    ASSERT_NE(resultSet, nullptr);
+    int count;
+    resultSet->GetRowCount(count);
+    EXPECT_EQ(count, 1);
+    resultSet->GoToFirstRow();
+    int affectiveDetector;
+    resultSet->GetInt(0, affectiveDetector);
+    EXPECT_EQ(affectiveDetector, 1);
+    MEDIA_INFO_LOG("Vision_Total_AffectiveDetector_Test_001::affective_detector = %{public}d. End", affectiveDetector);
+}
+
+HWTEST_F(MediaLibraryVisionTest, Vision_Total_AffectiveDetector_Test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_Total_AffectiveDetector_Test_002::Start");
+    Uri totalUri(URI_TOTAL);
+    MediaLibraryCommand cmd(totalUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 201);
+    valuesBucket.Put(STATUS, 0);
+    valuesBucket.Put(AFFECTIVE_DETECTOR, 1);
+    MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+
+    DataShare::DataShareValuesBucket updateValues;
+    updateValues.Put(AFFECTIVE_DETECTOR, 0);
+    DataShare::DataSharePredicates predicates;
+    vector<string> inValues;
+    inValues.push_back("201");
+    predicates.In(FILE_ID, inValues);
+    auto retVal = MediaLibraryDataManager::GetInstance()->Update(cmd, updateValues, predicates);
+    EXPECT_EQ(retVal, 1);
+
+    vector<string> columns;
+    columns.push_back(AFFECTIVE_DETECTOR);
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    ASSERT_NE(resultSet, nullptr);
+    resultSet->GoToFirstRow();
+    int affectiveDetector;
+    resultSet->GetInt(0, affectiveDetector);
+    EXPECT_EQ(affectiveDetector, 0);
+    MEDIA_INFO_LOG("Vision_Total_AffectiveDetector_Test_002::affective_detector = %{public}d. End", affectiveDetector);
 }
 } // namespace Media
 } // namespace OHOS

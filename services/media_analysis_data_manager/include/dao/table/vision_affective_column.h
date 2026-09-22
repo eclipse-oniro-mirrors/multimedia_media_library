@@ -29,6 +29,15 @@ const std::string EXTRA = "extra";
 const std::string CREATE_TIMESTAMP = "timestamp";
 const std::string AFFECTIVE_SCORE = "affective_score";
 const std::string AFFECTIVE_SCORE_VERSION = "affective_score_version";
+const std::string VALENCE_SCORE = "valence_score";
+const std::string AROUSAL_SCORE = "arousal_score";
+const std::string AUTHENTICITY = "authenticity";
+const std::string ATMOSPHERE = "atmosphere";
+const std::string AFFECTIVE_EMOTION = "emotion";
+const std::string INTERESTINGNESS = "interestingness";
+const std::string CUTENESS = "cuteness";
+const std::string AFFECTIVE_CAPTION = "caption";
+const std::string AFFECTIVE_DETECTOR_VERSION = "affective_detector_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_AFFECTIVE_COLUMN_H
