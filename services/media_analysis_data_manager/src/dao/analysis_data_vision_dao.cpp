@@ -314,9 +314,9 @@ int32_t AnalysisDataVisionDao::DeleteFromAffectiveByFileId(const string &fileId)
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is null");
     string RESET_STATUS_AND_AFFECTIVE = "\
         UPDATE tab_analysis_total \
-        SET status = 0, affective = 0 \
+        SET status = 0, affective = 0, affective_detector = 0 \
         WHERE \
-            file_id = ? AND affective = 1;";
+            file_id = ? AND (affective = 1 OR affective_detector = 1);";
     const std::vector<NativeRdb::ValueObject> bindArgs = {fileId};
 
     int64_t changedRowCount = 0;
