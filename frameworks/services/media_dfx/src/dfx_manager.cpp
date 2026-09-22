@@ -31,6 +31,7 @@
 #include "medialibrary_meta_recovery.h"
 #endif
 #include "dfx_database_utils.h"
+#include "dfx_photo_error_processor.h"
 #include "dfx_deprecated_perm_usage.h"
 #include "dfx_photo_error_processor.h"
 #include "vision_aesthetics_score_column.h"
