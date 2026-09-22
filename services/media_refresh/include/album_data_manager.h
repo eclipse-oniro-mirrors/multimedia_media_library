@@ -41,6 +41,7 @@ public:
     int32_t UpdateModifiedDatas() override;
     int32_t PostProcessModifiedDatas(const std::vector<int32_t> &keys) override;
     std::unordered_map<int32_t, AlbumChangeInfo> GetInitAlbumInfos();
+    PhotoAssetChangeInfo GetPhotoAssetInfo(int32_t fileId);
     std::vector<int32_t> GetInitKeys() override;
     static std::vector<AlbumChangeData> GetAlbumDatasFromAddAlbum(const std::vector<std::string> &albumIdsStr);
     // 共享相册成员表变更场景：按 albumId 查当前状态构造 UPDATE 变更数据（before==after==当前值）
@@ -61,7 +62,6 @@ private:
 
     std::vector<AlbumChangeInfo> GetAlbumInfos(const std::vector<int32_t> &albumIds,
         const std::vector<std::string> systemTypes = {});
-    PhotoAssetChangeInfo GetPhotoAssetInfo(int32_t fileId);
 protected:
     bool CheckIsExceed(const NativeRdb::AbsRdbPredicates &predicates, bool isLengthChanged = false) override;
     bool CheckIsExceed(const std::string &sql,

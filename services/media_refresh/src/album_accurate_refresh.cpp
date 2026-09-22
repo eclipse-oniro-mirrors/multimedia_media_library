@@ -136,6 +136,11 @@ unordered_map<int32_t, AlbumChangeInfo> AlbumAccurateRefresh::GetInitAlbumInfos(
     return dataManager_.GetInitAlbumInfos();
 }
 
+PhotoAssetChangeInfo AlbumAccurateRefresh::GetPhotoAssetInfo(int32_t fileId)
+{
+    return dataManager_.GetPhotoAssetInfo(fileId);
+}
+
 string AlbumAccurateRefresh::GetReturningKeyName()
 {
     return PhotoAlbumColumns::ALBUM_ID;

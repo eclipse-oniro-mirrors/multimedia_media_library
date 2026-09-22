@@ -59,6 +59,7 @@ public:
 
     std::unordered_map<int32_t, AlbumChangeInfo> GetInitAlbumInfos();
     
+    PhotoAssetChangeInfo GetPhotoAssetInfo(int32_t fileId);
     using AccurateRefreshBase::LogicalDeleteReplaceByUpdate;
     int32_t LogicalDeleteReplaceByUpdate(MediaLibraryCommand &cmd, int32_t &deletedRows) override;
     int32_t LogicalDeleteReplaceByUpdate(const NativeRdb::AbsRdbPredicates &predicates, int32_t &deletedRows) override;

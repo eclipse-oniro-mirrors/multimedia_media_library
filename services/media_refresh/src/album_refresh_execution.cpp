@@ -650,7 +650,7 @@ static bool IsNewerByShareGroup(const AccurateRefresh::PhotoAssetChangeInfo &new
     if (newAsset.displayName_ != currentAsset.displayName_) {
         return newAsset.displayName_ > currentAsset.displayName_;
     }
-    return newAsset.fileId_ > currentAsset.fileId_;
+    return false;
 }
 
 static bool RefreshByCoverOrder(const AlbumRefreshInfo &refreshInfo, AlbumChangeInfo &albumInfo,
@@ -826,6 +826,9 @@ bool AlbumRefreshExecution::CalShareAlbumCover(AlbumChangeInfo &albumInfo, const
     auto coverFileId = MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(albumInfo.coverUri_);
 
     if (IsValidCover(refreshInfo.deltaAddCover_) && refreshInfo.removeFileIds.size() == 0) {
+        if (coverFileId > 0 && !IsValidCover(albumInfo.coverInfo_)) {
+            albumInfo.coverInfo_ = albumRefresh_.GetPhotoAssetInfo(coverFileId);
+        }
         bool isRefresh = IsNewerByShareGroup(refreshInfo.deltaAddCover_, albumInfo.coverInfo_);
         if (isRefresh) {
             albumInfo.coverInfo_ = refreshInfo.deltaAddCover_;
