@@ -6687,8 +6687,10 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestore(MediaLibraryCommand& c
     string dbPath;
     CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "albumLpath", albumLpath),
         E_INVALID_VALUES, "Failed to get albumLpath: %{public}s", albumLpath.c_str());
+    CHECK_AND_RETURN_RET_LOG(albumLpath.find("..") == string::npos, E_INVALID_PATH, "albumLpath is crossing.");
     CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "keyPath", keyPath),
         E_INVALID_VALUES, "Failed to get keyPath: %{public}s", keyPath.c_str());
+    CHECK_AND_RETURN_RET_LOG(keyPath.find("..") == string::npos, E_INVALID_PATH, "keyPath is crossing.");
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     string dir = CUSTOM_RESTORE_DIR + "/" + keyPath;
     CHECK_AND_RETURN_RET_LOG(
@@ -6702,6 +6704,7 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestore(MediaLibraryCommand& c
         E_INVALID_VALUES, "Failed to get appName: %{public}s", appName.c_str());
     MediaValuesBucketUtils::GetString(values, "appId", appId);
     MediaValuesBucketUtils::GetString(values, "dbPath", dbPath);
+    CHECK_AND_RETURN_RET_LOG(dbPath.find("..") == string::npos, E_INVALID_PATH, "dbPath is crossing.");
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     RestoreTaskInfo restoreTaskInfo = {.dbPath = dbPath,
         .albumLpath = albumLpath,
