@@ -46,6 +46,18 @@ bool GetStringFromValMap(const FileInfo &fileInfo, const std::string &columnName
     value = std::get<std::string>(iter->second);
     return true;
 }
+
+bool HasMovingPhotoVideo(const ReverseCloneAssetResource &resource)
+{
+    return resource.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
+        resource.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
+}
+
+bool IsCrossLakeMovingPhoto(const ReverseCloneAssetResource &absorbed, const ReverseCloneAssetResource &donor)
+{
+    return (HasMovingPhotoVideo(absorbed) || HasMovingPhotoVideo(donor)) &&
+        absorbed.IsLakeAsset() != donor.IsLakeAsset();
+}
 } // namespace
 
 // LCOV_EXCL_START
@@ -105,6 +117,10 @@ ReverseCloneResourcePlan ReverseCloneResourcePlanBuilder::BuildInheritPlan(const
     plan.inheritOrigin = donor.HasOriginCandidate();
     plan.inheritLcdThumbnail = HasLcdThumbnail(donor);
     plan.inheritThumbnail = HasThumbnail(donor);
+    if (IsCrossLakeMovingPhoto(absorbed, donor)) {
+        plan.blockOriginInheritance = true;
+        plan.inheritOrigin = false;
+    }
     plan.decision = plan.HasResourceAction() ? ReverseCloneResourceDecision::INHERIT :
         ReverseCloneResourceDecision::SKIP_NO_DONOR_RESOURCE;
     return plan;

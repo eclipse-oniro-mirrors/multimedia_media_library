@@ -219,6 +219,9 @@ const ReverseCloneAssetResource *GetSourceResourceForCommitFailure(const Reverse
 bool ForceAbsorbSourceResourceOnCommitFailed(const ReverseCloneResourcePlan &plan, int32_t &successCount,
     int32_t &failedCount)
 {
+    if (plan.blockOriginInheritance) {
+        return false;
+    }
     const ReverseCloneAssetResource *source = GetSourceResourceForCommitFailure(plan);
     if (source == nullptr || !HasLocalOriginPosition(*source)) {
         return false;
