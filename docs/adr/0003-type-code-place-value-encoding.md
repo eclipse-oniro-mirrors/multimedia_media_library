@@ -1,6 +1,6 @@
 # type 码 place-value 编码
 
-type 码 = `fst×FILE_SOURCE_TYPE_BASE + norm(sd)×SOUTH_DEVICE_TYPE_BASE + pos×POSITION_BASE + mt×MEDIA_TYPE_BASE + err×ERROR_SUBTYPE_BASE`，各基数定义为 `PhotoErrorEncodeBase` 枚举常量（`FILE_SOURCE_TYPE_BASE=1000000`、`SOUTH_DEVICE_TYPE_BASE=100000`、`POSITION_BASE=10000`、`MEDIA_TYPE_BASE=1000`、`ERROR_SUBTYPE_BASE=10`）。基数整体 ×10，为 `PhotoErrorType` err 位预留 2 位（0-99）的 10 倍余量。**用枚举原值**（fst=3 编 3，不重映射）。`err` 取 `PhotoErrorType` 枚举原值（`CONSISTENT=0` 不编码、`FILE_NOT_EXIST=1`…`FILE_LARGER_THAN_DB=4`；`FILE_NOT_EXIST=1` 与旧 `PHOTO_MISS_TYPE=1` 语义连续）。维度顺序 `fst > sd > pos > mt > err` 选定，是因按 type 码排序打包时同来源/出处/位置天然聚拢。
+type 码 = `fst×FILE_SOURCE_TYPE_BASE + norm(sd)×SOUTH_DEVICE_TYPE_BASE + pos×POSITION_BASE + mt×MEDIA_TYPE_BASE + err`，各基数定义为 `PhotoErrorEncodeBase` 枚举常量（`FILE_SOURCE_TYPE_BASE=1000000`、`SOUTH_DEVICE_TYPE_BASE=100000`、`POSITION_BASE=10000`、`MEDIA_TYPE_BASE=1000`）。为 `PhotoErrorType` err 位预留 3 位（0-990）的错误码。**用枚举原值**（fst=3 编 3，不重映射）。`err` 取 `PhotoErrorType` 枚举原值（`CONSISTENT=0` 不编码、`FILE_NOT_EXIST=1`…`FILE_LARGER_THAN_DB=4`；`FILE_NOT_EXIST=1` 与旧 `PHOTO_MISS_TYPE=1` 语义连续）。维度顺序 `fst > sd > pos > mt > err` 选定，是因按 type 码排序打包时同来源/出处/位置天然聚拢。
 
 纯逻辑函数通过 `namespace DfxPhotoErrorHelper`（仿 `CheckSceneHelper`）组织，调用形如 `DfxPhotoErrorHelper::EncodePhotoErrorType(...)`。
 
@@ -16,6 +16,6 @@ fst/sd/pos/mt 各占 1 位（<10）、err 占 2 位（<100）。当前实际值�
 | sd | {0,1,2} | 100000 | 2 | 10 | 无 |
 | pos | {1,3} | 10000 | 3 | 10 | 无 |
 | mt | {1,2} | 1000 | 2 | 10 | 无 |
-| err | {0,1,2,3,4} | 10 | 4 | 100 | 无 |
+| err | {0,1,2,3,4} | 1 | 4，支持后续增加啊 | 1000 | 无 |
 
 最小上报码 = `fst0/sd0/pos1/mt1/err1` = 11010（`CONSISTENT=0` 不上报，故 err 从 1 起）。若未来 fst/sd/pos/mt 扩到 ≥10 或 err 扩到 ≥100 会撞位，需届时重审编码或改 bitfield。
