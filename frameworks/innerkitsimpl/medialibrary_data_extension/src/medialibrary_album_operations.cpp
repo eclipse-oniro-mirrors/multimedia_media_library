@@ -4661,7 +4661,7 @@ int32_t MediaLibraryAlbumOperations::SetShareAlbumName(const int32_t &albumId, c
     NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
     int32_t changedRows = 0;
-    AlbumAccurateRefresh albumRefresh(AccurateRefresh::UPDATE_PHOTO_ALBUM_BUSSINESS_NAME);
+    AlbumAccurateRefresh albumRefresh(AccurateRefresh::SET_SHARE_ALBUM_NAME_BUSSINESS_NAME);
     int32_t ret = albumRefresh.Update(changedRows, values, predicates);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && changedRows > 0, E_SET_SHARE_ALBUM_NAME_DB_FAIL,
         "update failed, ret=%{public}d, changedRows=%{public}d", ret, changedRows);
@@ -4755,7 +4755,7 @@ int32_t MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(const std::string &ow
     ret = MarkShareCloudPhotosDirty(albumIds);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "mark share cloud photos dirty failed");
     shared_ptr<AlbumAccurateRefresh> albumRefresh =
-        make_shared<AlbumAccurateRefresh>(AccurateRefresh::DELETE_PHOTO_ALBUMS_BUSSINESS_NAME);
+        make_shared<AlbumAccurateRefresh>(AccurateRefresh::DELETE_SHARE_PHOTO_ALBUMS_BUSSINESS_NAME);
     ret = MarkShareCloudAlbumsDirty(albumIds, albumRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "mark share cloud albums dirty failed");
 
@@ -4813,7 +4813,7 @@ int32_t MediaLibraryAlbumOperations::ValidateAddShareMember(const std::shared_pt
 static void NotifyShareMemberChange(const std::vector<int32_t> &albumIds)
 {
     CHECK_AND_RETURN_LOG(!albumIds.empty(), "albumIds is empty");
-    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh(AccurateRefresh::SHARE_MEMBER_CHANGE_BUSSINESS_NAME);
     albumRefresh.NotifyShareAlbumUpdateForMemberChange(albumIds);
 }
 
@@ -5125,7 +5125,7 @@ int32_t MediaLibraryAlbumOperations::DeleteMemberShareAlbum(const std::string &o
         deletedPhotoRows, albumIds.size());
 
     // 3. 清理 photoalbum 表中所有相关相册记录（批量 IN，直接物理删除，不进回收站）
-    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh(AccurateRefresh::DELETE_MEMBER_SHARE_ALBUM_BUSSINESS_NAME);
     NativeRdb::RdbPredicates albumPredicates(PhotoAlbumColumns::TABLE);
     albumPredicates.In(PhotoAlbumColumns::ALBUM_ID, valueObjs);
     int32_t albumDeletedRows = 0;

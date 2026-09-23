@@ -560,6 +560,8 @@ static napi_value ParseArgsAddShareMember(napi_env env, napi_value argv[],
  
 napi_value MediaShareAlbumChangeRequestNapi::JSAddShareMember(napi_env env, napi_callback_info info)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("JSAddShareMember");
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
             "This interface can be called only by system apps");
@@ -621,6 +623,8 @@ static napi_value ParseArgsUpdateShareMemberStatus(napi_env env, napi_value argv
  
 napi_value MediaShareAlbumChangeRequestNapi::JSUpdateShareMemberStatus(napi_env env, napi_callback_info info)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("JSUpdateShareMemberStatus");
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
             "This interface can be called only by system apps");
@@ -673,6 +677,8 @@ static napi_value ParseArgsDeleteShareMember(napi_env env, napi_value argv[],
  
 napi_value MediaShareAlbumChangeRequestNapi::JSDeleteShareMember(napi_env env, napi_callback_info info)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("JSDeleteShareMember");
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
             "This interface can be called only by system apps");
@@ -772,6 +778,8 @@ static napi_value ParseArgsDeleteMemberShareAlbum(napi_env env, napi_value argv[
  
 napi_value MediaShareAlbumChangeRequestNapi::JSDeleteMemberShareAlbum(napi_env env, napi_callback_info info)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("JSDeleteMemberShareAlbum");
     napi_value argv[ARGS_THREE] = { nullptr };
     size_t argc = ARGS_THREE;
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr), JS_INNER_FAIL);
