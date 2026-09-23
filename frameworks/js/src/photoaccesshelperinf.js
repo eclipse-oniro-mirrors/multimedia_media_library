@@ -52,6 +52,7 @@ const GET_APP_NAME_FAIL = 'Failed to get BundleInfo. The \'abilities\' configura
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 
 const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
+const RECENT_PHOTO_PERIOD_INT_MAX = 2147483647;
 const RECENT_PHOTO_INFO_DELAY_TIME = 70;
 const RETRY_COUNTER = 10;
 const RPC_TOKEN_RECENT_PHOTO_INFO = 'rpcRecentPhotoInfoServiceAbility';
@@ -634,6 +635,22 @@ function convertMIMETypeToFilterType(e) {
     return o;
 }
 
+function validatedAndNormalizedPeriod(option) {
+  // check whether period is number when it exist
+  if (option.period === undefined || option.period === null) {
+    option.period = SECONDS_OF_ONE_DAY;
+  }
+  if (typeof option.period !== 'number') {
+    console.error('photoAccessHelper invalid, option.period type is not number.');
+    return false;
+  }
+  if (option.period === Number.POSITIVE_INFINITY) {
+    option.period = RECENT_PHOTO_PERIOD_INT_MAX;
+  } else if (Number.isNaN(option.period) || option.period <= 0 || option.period > RECENT_PHOTO_PERIOD_INT_MAX) {
+    option.period = SECONDS_OF_ONE_DAY;
+  }
+  return true;
+}
 function checkIsRecentPhotoOptionValid(option) {
   if (!option) {
     console.error('photoAccessHelper invalid, option is null.');
@@ -644,16 +661,8 @@ function checkIsRecentPhotoOptionValid(option) {
     console.error('photoAccessHelper invalid, option type is not object.');
     return false;
   }
-  // check whether period is number when it exist
-  if (!option.period) {
-    option.period = SECONDS_OF_ONE_DAY;
-  }
-  if (typeof option.period !== 'number') {
-    console.error('photoAccessHelper invalid, option.period type is not number.');
+  if (!validatedAndNormalizedPeriod(option)) {
     return false;
-  }
-  if (option.period <= 0 || option.period > SECONDS_OF_ONE_DAY) {
-    option.period = SECONDS_OF_ONE_DAY;
   }
   // check whether MIMEType is PhotoViewMIMETypes
   if (!option.MIMEType) {
@@ -680,6 +689,16 @@ function checkIsRecentPhotoOptionValid(option) {
   }
   if (option.photoSource < PhotoSource.ALL || option.photoSource > PhotoSource.SCREENSHOT) {
     option.photoSource = PhotoSource.ALL;
+  }
+  if (option.assetFilter !== undefined && option.assetFilter !== null) {
+    if (!Array.isArray(option.assetFilter)) {
+      console.error('photoAccessHelper invalid, option.assetFilter is not array.');
+      return false;
+    }
+    if (checkAssetFilterInvalid(option.assetFilter)) {
+      console.error('photoAccessHelper invalid, option.assetFilter has invalid items.');
+      return false;
+    }
   }
   return true;
 }
@@ -734,6 +753,7 @@ async function rpcGetRecentPhotoInfo(recentPhotoOption) {
     data.writeInt(recentPhotoOption.period);
     data.writeString(recentPhotoOption.MIMEType);
     data.writeInt(recentPhotoOption.photoSource);
+    data.writeString(Array.isArray(recentPhotoOption.assetFilter) ? JSON.stringify(recentPhotoOption.assetFilter) : '');
     let result = await proxy.sendMessageRequest(RPC_MSGID_RECENT_PHOTO_INFO, data, reply, option);
     if (result.errCode !== 0) {
       console.error('rpcGetRecentPhotoInfo sendMessageRequest failed, errCode: ' + result.errCode);
@@ -755,7 +775,16 @@ async function rpcGetRecentPhotoInfo(recentPhotoOption) {
 async function getRecentPhotoInfoOk(recentPhotoOption) {
   try {
     console.info('getRecentPhotoInfoOk enter');
-    const photoInfo = await rpcGetRecentPhotoInfo(recentPhotoOption);
+    try {
+      let bundleName = bundleManager.getBundleInfoForSelfSync(
+          bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT).name;
+      console.info(`getRecentPhotoInfo config from ${bundleName} - period: ${recentPhotoOption.period}, ` +
+          `MIMEType: ${recentPhotoOption.MIMEType}, photoSource: ${recentPhotoOption.photoSource}, ` +
+          `assetFilter set: ${Array.isArray(recentPhotoOption.assetFilter)}`);
+    } catch (error) {
+      console.error('getRecentPhotoInfo get bundleName failed');
+    }
+    let photoInfo = await rpcGetRecentPhotoInfo(recentPhotoOption);
     if (!photoInfo) {
       photoInfo = { dateTaken: -1, identifier: '-1' };
     }

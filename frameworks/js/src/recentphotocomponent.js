@@ -24,6 +24,72 @@ const FILTER_MEDIA_TYPE_ALL = 'FILTER_MEDIA_TYPE_ALL';
 const FILTER_MEDIA_TYPE_IMAGE = 'FILTER_MEDIA_TYPE_IMAGE';
 const FILTER_MEDIA_TYPE_VIDEO = 'FILTER_MEDIA_TYPE_VIDEO';
 const FILTER_MEDIA_TYPE_IMAGE_MOVING_PHOTO = 'FILTER_MEDIA_TYPE_IMAGE_MOVING_PHOTO';
+const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
+const RECENT_PHOTO_PERIOD_INT_MAX = 2147483647;
+
+const OperationType = {
+    EQUAL_TO : 1,
+    NOT_EQUAL_TO : 2,
+    GREATER_THAN : 3,
+    LESS_THAN : 4,
+    GREATER_THAN_OR_EQUAL_TO : 5,
+    LESS_THAN_OR_EQUAL_TO : 6,
+    AND : 7,
+    OR : 8,
+    IN : 9,
+    NOT_IN : 10,
+    BEGIN_WRAP : 11,
+    END_WRAP : 12,
+    BETWEEN : 13,
+    NOT_BETWEEN : 14
+};
+
+const PickerFilterPhotoKeys = {
+
+    URI: 'uri',
+
+    PHOTO_TYPE: 'media_type',
+
+    DISPLAY_NAME: 'display_name',
+
+    SIZE: 'size',
+
+    DURATION: 'duration',
+
+    WIDTH: 'width',
+
+    HEIGHT: 'height',
+
+    ORIENTATION: 'orientation',
+
+    FAVORITE: 'is_favorite',
+
+    TITLE: 'title',
+
+    POSITION: 'position',
+
+    PHOTO_SUBTYPE: 'subtype',
+
+    DYNAMIC_RANGE_TYPE: 'dynamic_range_type',
+
+    COVER_POSITION: 'cover_position',
+
+    BURST_KEY: 'burst_key',
+
+    LCD_SIZE: 'lcd_size',
+
+    THM_SIZE: 'thm_size',
+
+    DETAIL_TIME: 'detail_time',
+
+    OWNER_ALBUM_ID: 'owner_album_id',
+
+    MEDIA_SUFFIX: 'media_suffix',
+
+    ASPECT_RATIO: 'aspect_ratio',
+
+    DATE_TAKEN_MS: 'date_taken_ms',
+};
 
 export class RecentPhotoComponent extends ViewPU {
     constructor(j3, k3, l3, m3 = -1, n3 = undefined, o3) {
@@ -35,6 +101,7 @@ export class RecentPhotoComponent extends ViewPU {
         this.onRecentPhotoCheckResult = undefined;
         this.onRecentPhotoClick = undefined;
         this.onRecentPhotoCheckInfo = undefined;
+        this.onError = undefined;
         this.setInitiallyProvidedValue(k3);
         this.finalizeConstruction();
     }
@@ -51,16 +118,68 @@ export class RecentPhotoComponent extends ViewPU {
         if (i3.onRecentPhotoCheckInfo !== undefined) {
             this.onRecentPhotoCheckInfo = i3.onRecentPhotoCheckInfo;
         }
+        if (i3.onError !== undefined) {
+            this.onError = i3.onError;
+        }
     }
     updateStateVars(h3) {
     }
     purgeVariableDependenciesOnElmtId(g3) {
     }
+
+    checkAssetFilterInvalid(assetFilter) {
+        // 获取所有有效的值
+        const validOperationTypes = Object.values(OperationType);
+        const validPhotoKeys = Object.values(PickerFilterPhotoKeys);
+
+        //遍历数组中的每个OperationItem
+        for (const item of assetFilter) {
+            //检查operationType是否有值且在枚举中
+            if (!item || !item.operationType || !validOperationTypes.includes(item.operationType)) {
+                console.log('PhotoPickerComponent, Invalid operationType');
+                return true;
+            }
+
+            //如果field有值，检查是否在枚举中
+            if (item.field !== undefined && item.field !== null) {
+                if (!validPhotoKeys.includes(item.field)) {
+                    console.log('PhotoPickerComponent, Invalid photokeys');
+                    return true;
+                }
+                // uri仅支持EQUAL_TO操作
+                if (item.field === PickerFilterPhotoKeys.URI && item.operationType !== OperationType.EQUAL_TO) {
+                    console.log('PhotoPickerComponent, Invalid uri operation');
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     aboutToBeDeleted() {
         SubscriberManager.Get().delete(this.id__());
         this.aboutToBeDeletedInternal();
     }
+
+    validateAssetFilter() {
+        const assetFilter = this.recentPhotoOptions?.assetFilter;
+        if (assetFilter && (!Array.isArray(assetFilter) || this.checkAssetFilterInvalid(assetFilter))) {
+            console.error('RecentPhotoComponent, assetFilter has value but invalid');
+            if (this.onError) {
+                let e = new PickerError();
+                e.functionName = 'recentPhotoOptions.assetFilter';
+                e.errorCode = 401;
+                e.message = 'input assetFilter invalid';
+                this.onError(e);
+            }
+            return false;
+        }
+        return true;
+    }
+
     initialRender() {
+        if (!this.validateAssetFilter()) {
+            return;
+        }
         this.observeComponentCreation2((e3, f3) => {
             Row.create();
             Row.height('100%');
@@ -76,12 +195,15 @@ export class RecentPhotoComponent extends ViewPU {
                 parameters: {
                     'ability.want.params.uiExtensionType': 'recentPhoto',
                     filterMediaType: this.convertMIMETypeToFilterType(this.recentPhotoOptions?.MIMEType),
-                    period: this.recentPhotoOptions?.period,
+                    period: this.normalizePeriod(this.recentPhotoOptions?.period),
                     photoSource: this.recentPhotoOptions?.photoSource,
                     isAutoRefreshSupported: this.recentPhotoOptions?.isAutoRefreshSupported,
                     colorMode: this.recentPhotoOptions?.colorMode,
                     isFromPickerView: true,
-                    isRecentPhotoCheckResultSet: this.onRecentPhotoCheckResult ? true : false
+                    isRecentPhotoCheckResultSet: this.onRecentPhotoCheckResult ? true : false,
+                    isPersistAfterClick: this.recentPhotoOptions?.isPersistAfterClick,
+                    isShowBadge: this.recentPhotoOptions?.isShowBadge,
+                    assetFilter: this.recentPhotoOptions?.assetFilter,
                 }
             });
             SecurityUIExtensionComponent.height('100%');
@@ -93,13 +215,25 @@ export class RecentPhotoComponent extends ViewPU {
                 let b3 = a3;
                 this.handleOnReceive(b3);
             });
-            SecurityUIExtensionComponent.onError(() => {
-                console.info('RecentPhotoComponent onError');
+            SecurityUIExtensionComponent.onError((error) => {
+                this.handleOnError(error);
             });
         }, SecurityUIExtensionComponent);
         Column.pop();
         Row.pop();
     }
+
+    handleOnError(error) {
+        console.info('RecentPhotoComponent onError: ' + JSON.stringify(error));
+        if (this.onError) {
+            let e = new PickerError();
+            e.functionName = error?.name || 'extension_exit_abnormally';
+            e.errorCode = error?.code ?? 0;
+            e.message = error?.message || 'the extension ability exited abnormally, please check the log.';
+            this.onError(e);
+        }
+    }
+
     handleOnReceive(p2) {
         console.info('RecentPhotoComponent OnReceive:' + this.encrypt(JSON.stringify(p2)));
         let q2 = p2.dataType;
@@ -131,6 +265,16 @@ export class RecentPhotoComponent extends ViewPU {
                 this.onRecentPhotoCheckInfo(p2.isExist, s2);
             }
         }
+    }
+    normalizePeriod(period) {
+        if (period === Number.POSITIVE_INFINITY) {
+            return RECENT_PHOTO_PERIOD_INT_MAX;
+        }
+        if (typeof period !== 'number' || Number.isNaN(period) || period <= 0 ||
+            period > RECENT_PHOTO_PERIOD_INT_MAX) {
+            return SECONDS_OF_ONE_DAY;
+        }
+        return period;
     }
     convertMIMETypeToFilterType(e) {
         let o;
@@ -167,6 +311,10 @@ export class RecentPhotoOptions {
 export class RecentPhotoInfo {
 }
 
+export class PickerError {
+
+}
+
 export let PhotoSource;
 (function (m2) {
     m2[m2.ALL = 0] = 'ALL';
@@ -174,4 +322,4 @@ export let PhotoSource;
     m2[m2.SCREENSHOT = 2] = 'SCREENSHOT';
 })(PhotoSource || (PhotoSource = {}));
 
-export default { RecentPhotoComponent, RecentPhotoOptions, PhotoSource, RecentPhotoInfo };
+export default { RecentPhotoComponent, RecentPhotoOptions, PhotoSource, RecentPhotoInfo, PickerError };
