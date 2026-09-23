@@ -149,16 +149,36 @@ shared_ptr<PhotoAlbum> MediaShareAlbumChangeRequestNapi::GetPhotoAlbumInstance()
     return photoAlbum_;
 }
 
+static bool RefreshShareAlbumId(MediaShareAlbumChangeRequestAsyncContext &context)
+{
+    auto *changeRequest = context.shareAlbumObjectInfo;
+    if (changeRequest == nullptr) {
+        NAPI_ERR_LOG("shareAlbumObjectInfo is null, share album id is unavailable");
+        context.SaveError(E_SHARE_ALBUM_INVALID_ID_ARG);
+        return false;
+    }
+    auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
+    if (photoAlbum == nullptr) {
+        NAPI_ERR_LOG("photoAlbum is null, share album id is unavailable");
+        context.SaveError(E_SHARE_ALBUM_INVALID_ID_ARG);
+        return false;
+    }
+
+    context.albumId = photoAlbum->GetAlbumId();
+    context.hasValidAlbum = context.albumId > 0;
+    if (!context.hasValidAlbum) {
+        NAPI_ERR_LOG("share album id is invalid, albumId: %{public}d", context.albumId);
+        context.SaveError(E_SHARE_ALBUM_INVALID_ID_ARG);
+    }
+    return context.hasValidAlbum;
+}
+
 static bool SetShareAlbumNameExecute(MediaShareAlbumChangeRequestAsyncContext &context)
 {
     MediaLibraryTracer tracer;
     tracer.Start("SetShareAlbumNameExecute");
 
-    if (!context.hasValidAlbum) {
-        NAPI_ERR_LOG("setShareAlbumName: album is invalid");
-        return false;
-    }
-
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
     SetShareAlbumNameReqBody reqBody;
     reqBody.albumId = context.albumId;
     reqBody.owner = context.shareOwnerInfo;
@@ -201,7 +221,7 @@ static bool AddShareMemberExecute(MediaShareAlbumChangeRequestAsyncContext& cont
     MediaLibraryTracer tracer;
     tracer.Start("AddShareMemberExecute");
  
-    CHECK_COND_RET(context.hasValidAlbum, false, "album is invalid");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
  
     AddShareMemberReqBody reqBody;
     reqBody.albumId = context.albumId;
@@ -227,7 +247,7 @@ static bool UpdateShareMemberStatusExecute(MediaShareAlbumChangeRequestAsyncCont
     MediaLibraryTracer tracer;
     tracer.Start("UpdateShareMemberStatusExecute");
  
-    CHECK_COND_RET(context.hasValidAlbum, false, "album is invalid");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
  
     UpdateShareMemberStatusReqBody reqBody;
     reqBody.albumId = context.albumId;
@@ -253,7 +273,7 @@ static bool DeleteShareMemberExecute(MediaShareAlbumChangeRequestAsyncContext& c
     MediaLibraryTracer tracer;
     tracer.Start("DeleteShareMemberExecute");
  
-    CHECK_COND_RET(context.hasValidAlbum, false, "album is invalid");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
  
     DeleteShareMemberReqBody reqBody;
     reqBody.albumId = context.albumId;
