@@ -23,13 +23,13 @@ namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 class EXPORT C2paUtils {
 public:
-    static bool HasImageSignature(const std::string &filePath);
-    static int32_t SignForCreate(const std::string &filePath,
-        const std::string &authorId, const std::string &authorName);
-    static int32_t SignForTranscode(const std::string &sourcePath, const std::string &targetPath);
-    static int32_t SignForRevert(const std::string &sourcePath, const std::string &targetPath);
-    static int32_t SignatureToLcd(const std::string &sourcePath, const std::string &targetPath);
-    static int32_t SignForEnhancement(const std::string &sourcePath, const std::string &targetPath);
+    static bool HasImageSignature(const std::string& filePath);
+    static int32_t SignForCreate(const std::string& filePath,
+        const std::string& authorId, const std::string& authorName);
+    static int32_t SignForTranscode(const std::string& sourcePath, const std::string& targetPath);
+    static int32_t SignForRevert(const std::string& sourcePath, const std::string& targetPath);
+    static int32_t SignatureToLcd(const std::string& sourcePath, const std::string& targetPath);
+    static int32_t SignForEnhancement(const std::string& sourcePath, const std::string& targetPath);
 private:
     C2paUtils() = delete;
     ~C2paUtils() = delete;
@@ -40,8 +40,8 @@ private:
     };
 
     static int32_t CertInitialize(bool isTranscode = false);
-    static int32_t GetExifInfo(const std::string &filePath, ExifInfo &info);
-    static int32_t CopySignatureInner(const std::string &sourcePath, const std::string &targetPath,
+    static int32_t GetExifInfo(const std::string& filePath, ExifInfo& info);
+    static int32_t CopySignatureInner(const std::string& sourcePath, const std::string& targetPath,
         bool isTranscode = false);
 };
 } // namespace Media

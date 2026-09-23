@@ -699,8 +699,10 @@ bool IThumbnailHelper::SaveLcdPictureSource(ThumbRdbOpt &opts, ThumbnailData &da
         data.thumbnailQuality = ThumbnailQuality::DEFAULT;
     }
     // c2pa signature
-    std::string lcdPath = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
-    C2paUtils::SignatureToLcd(data.path, lcdPath);
+    if (data.mediaType == MediaType::MEDIA_TYPE_IMAGE) {
+        std::string lcdPath = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
+        C2paUtils::SignatureToLcd(data.path, lcdPath);
+    }
 
     if (!isSourceEx) {
         CacheLcdDbState(opts, data);
@@ -763,8 +765,10 @@ bool IThumbnailHelper::SaveLcdPixelMapSource(ThumbRdbOpt &opts, ThumbnailData &d
 
     data.lcd.clear();
     // c2pa signature
-    std::string lcdPath = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
-    C2paUtils::SignatureToLcd(data.path, lcdPath);
+    if (data.mediaType == MediaType::MEDIA_TYPE_IMAGE) {
+        std::string lcdPath = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
+        C2paUtils::SignatureToLcd(data.path, lcdPath);
+    }
 
     if (!isSourceEx) {
         CacheLcdDbState(opts, data);
