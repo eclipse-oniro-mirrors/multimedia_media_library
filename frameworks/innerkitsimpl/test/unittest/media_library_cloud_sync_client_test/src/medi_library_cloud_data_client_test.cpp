@@ -102,8 +102,10 @@ HWTEST_F(CloudMediaDataClientTest, CloudMediaDataClientVacantHandler_Test, TestS
     client->GetDirtyTypeStat(filePosStat);
     client->GetDownloadThmNum(failSize, 1);
     client->UpdateLocalFileDirty(records);
-    EXPECT_EQ(client->GetCloudSyncUnPreparedData(res), E_IPC_INVAL_ARG);
-    EXPECT_EQ(client->SubmitCloudSyncPreparedDataTask(), E_IPC_INVAL_ARG);
+    EXPECT_EQ(client->GetCloudSyncUnPreparedData(
+        CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE, res), E_IPC_INVAL_ARG);
+    EXPECT_EQ(client->SubmitCloudSyncPreparedDataTask(
+        CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE), E_IPC_INVAL_ARG);
 }
 
 HWTEST_F(CloudMediaDataClientTest, CloudMediaDataClientMDKProperty_Test, TestSize.Level1)
