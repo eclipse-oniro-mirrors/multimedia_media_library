@@ -524,6 +524,7 @@ const static vector<string> PHOTO_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_HEIGHT,
     MediaColumn::MEDIA_MIME_TYPE,
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+    PhotoColumn::PHOTO_STORAGE_PATH,
     PhotoColumn::PHOTO_IS_SHARED,
     PhotoColumn::PHOTO_STORAGE_PATH,
 };
