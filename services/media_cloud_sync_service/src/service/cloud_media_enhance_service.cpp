@@ -31,24 +31,46 @@
 #include "multistages_photo_capture_manager.h"
 #include "userfilemgr_uri.h"
 #include "request_policy.h"
+#include "preferences.h"
+#include "preferences_helper.h"
 
 namespace OHOS::Media::CloudSync {
 const int32_t SUBMIT_TIMEOUT_SECONDS = 5;
+const std::string FORCE_THUMB_GENERATE_CONFIG = "/data/storage/el2/base/preferences/cloud_sync_prepare_data.xml";
+const std::string FORCE_THUMB_GENERATE_FLAG = "force_thumb_generate_flag";
 #ifdef ABILITY_CAMERA_SUPPORT
 const int32_t SUBMIT_MAX = 10;
 #endif
 // LCOV_EXCL_START
-int32_t CloudMediaEnhanceService::GetCloudSyncUnPreparedData(int32_t &result)
+int32_t CloudMediaEnhanceService::GetCloudSyncUnPreparedData(CloudSyncPrepareDataType type, int32_t &result)
 {
     MEDIA_INFO_LOG("GetCloudSyncUnPreparedData begin");
-    int32_t ret = this->enhanceDao_.GetCloudSyncUnPreparedDataCount(result);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetCloudSyncUnPreparedData.");
-    return ret;
+    if (type == CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE) {
+        int32_t ret = this->enhanceDao_.GetCloudSyncUnPreparedDataCount(result);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetCloudSyncUnPreparedData");
+        return ret;
+    } else if (type == CloudSyncPrepareDataType::ASSET_THUMBNAIL_MISSING) {
+        int32_t ret = this->enhanceDao_.GetCloudSyncUnPreparedDataCount(result);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetCloudSyncUnPreparedData.");
+        return ret;
+    }
+    MEDIA_ERR_LOG("Invaild CloudSyncPrepareDataType");
+    return E_ERR;
 }
 
-int32_t CloudMediaEnhanceService::SubmitCloudSyncPreparedDataTask()
+int32_t CloudMediaEnhanceService::SubmitCloudSyncPreparedDataTask(CloudSyncPrepareDataType type)
 {
     MEDIA_INFO_LOG("SubmitCloudSyncPreparedDataTask begin");
+
+    if (type == CloudSyncPrepareDataType::ASSET_THUMBNAIL_MISSING) {
+        int32_t errCode = 0;
+        auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FORCE_THUMB_GENERATE_CONFIG, errCode);
+        CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
+        prefs->PutInt(FORCE_THUMB_GENERATE_FLAG, 1);
+        prefs->FlushSync();
+        MEDIA_INFO_LOG("SubmitCloudSyncPreparedDataTask set force generate flag");
+        return E_OK;
+    }
 
     if (submitRunning_.load()) {
         MEDIA_WARN_LOG("SubmitCloudSyncPreparedDataTask reject new task, a task is already running ");

@@ -289,22 +289,22 @@ int32_t CloudMediaDataClient::UpdateLocalFileDirty(std::vector<MDKRecord> &recor
     return this->dataHandler_->UpdateLocalFileDirty(records);
 }
 
-int32_t CloudMediaDataClient::GetCloudSyncUnPreparedData(int32_t &result)
+int32_t CloudMediaDataClient::GetCloudSyncUnPreparedData(CloudSyncPrepareDataType type, int32_t &result)
 {
     if (this->dataHandler_ == nullptr) {
         MEDIA_ERR_LOG("No data handler found!");
         return E_IPC_INVAL_ARG;
     }
-    return this->dataHandler_->GetCloudSyncUnPreparedData(result);
+    return this->dataHandler_->GetCloudSyncUnPreparedData(type, result);
 }
 
-int32_t CloudMediaDataClient::SubmitCloudSyncPreparedDataTask()
+int32_t CloudMediaDataClient::SubmitCloudSyncPreparedDataTask(CloudSyncPrepareDataType type)
 {
     if (this->dataHandler_ == nullptr) {
         MEDIA_ERR_LOG("No data handler found!");
         return E_IPC_INVAL_ARG;
     }
-    return this->dataHandler_->SubmitCloudSyncPreparedDataTask();
+    return this->dataHandler_->SubmitCloudSyncPreparedDataTask(type);
 }
 
 int32_t CloudMediaDataClient::CheckAndFixAlbum()

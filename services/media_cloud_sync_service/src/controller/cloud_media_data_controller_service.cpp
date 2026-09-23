@@ -230,15 +230,29 @@ int32_t CloudMediaDataControllerService::UpdateLocalFileDirty(MessageParcel &dat
 
 int32_t CloudMediaDataControllerService::GetCloudSyncUnPreparedData(MessageParcel &data, MessageParcel &reply)
 {
+    CloudSyncUnPreparedDataReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetCloudSyncUnPreparedData Read Req Error, ret: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    CloudSyncPrepareDataType type = static_cast<CloudSyncPrepareDataType>(reqBody.type);
     CloudSyncUnPreparedDataRespBody respBody;
-    int32_t ret = this->enhanceService_.GetCloudSyncUnPreparedData(respBody.count);
+    ret = this->enhanceService_.GetCloudSyncUnPreparedData(type, respBody.count);
     MEDIA_INFO_LOG("GetCloudSyncUnPreparedData %{public}d, %{public}d", respBody.count, ret);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
 int32_t CloudMediaDataControllerService::SubmitCloudSyncPreparedDataTask(MessageParcel &data, MessageParcel &reply)
 {
-    int32_t ret = this->enhanceService_.SubmitCloudSyncPreparedDataTask();
+    CloudSyncUnPreparedDataReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("SubmitCloudSyncPreparedDataTask Read Req Error, ret: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    CloudSyncPrepareDataType type = static_cast<CloudSyncPrepareDataType>(reqBody.type);
+    ret = this->enhanceService_.SubmitCloudSyncPreparedDataTask(type);
     MEDIA_INFO_LOG("SubmitCloudSyncPreparedDataTask, %{public}d", ret);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }

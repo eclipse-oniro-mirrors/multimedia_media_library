@@ -31,6 +31,7 @@
 #include "datashare_predicates.h"
 #include "cloud_lake_info.h"
 #include "datashare_values_bucket.h"
+#include "cloud_sync_prepare_data_type.h"
 
 #define EXPORT __attribute__ ((visibility ("default")))
 
@@ -84,8 +85,8 @@ public:
     virtual int32_t UpdateLocalFileDirty(std::vector<MDKRecord> &records) = 0;
     virtual int32_t UpdateSyncStatus(const std::string &cloudId, int32_t syncStatus) = 0;
 
-    virtual int32_t GetCloudSyncUnPreparedData(int32_t &result) = 0;
-    virtual int32_t SubmitCloudSyncPreparedDataTask() = 0;
+    virtual int32_t GetCloudSyncUnPreparedData(CloudSyncPrepareDataType type, int32_t &result) = 0;
+    virtual int32_t SubmitCloudSyncPreparedDataTask(CloudSyncPrepareDataType type) = 0;
 
     virtual int32_t CheckAndFixAlbum() = 0;
     virtual int32_t QueryData(const DataShare::DataSharePredicates &predicates,

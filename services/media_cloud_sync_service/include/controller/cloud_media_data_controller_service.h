@@ -37,6 +37,7 @@
 #include "cloud_media_define.h"
 #include "cloud_media_enhance_service.h"
 #include "cloud_media_context.h"
+#include "cloud_sync_prepare_data_type.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaDataControllerService : public IPC::IMediaControllerService {

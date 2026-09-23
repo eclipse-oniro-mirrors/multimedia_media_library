@@ -22,6 +22,27 @@
 #include "media_log.h"
 
 namespace OHOS::Media::CloudSync {
+bool CloudSyncUnPreparedDataReqBody::Unmarshalling(MessageParcel &parcel)
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(type), false, "type");
+    return true;
+}
+
+bool CloudSyncUnPreparedDataReqBody::Marshalling(MessageParcel &parcel) const
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(type), false, "type");
+    return true;
+}
+
+std::string CloudSyncUnPreparedDataReqBody::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"type\": \"" << type << "\","
+       << "}";
+    return ss.str();
+}
+
 bool CloudSyncUnPreparedDataRespBody::Unmarshalling(MessageParcel &parcel)
 {
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(count), false, "count");

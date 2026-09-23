@@ -49,7 +49,8 @@ HWTEST_F(PhotoEnhanceTest, GetCloudSyncUnPreparedData_OK, TestSize.Level1)
 
     int32_t resultCount = 0;
     MediaLibraryUnitTestUtils::InitUnistore();
-    int32_t ret = service.GetCloudSyncUnPreparedData(resultCount);
+    int32_t ret = service.GetCloudSyncUnPreparedData(CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE,
+        resultCount);
 
     EXPECT_GE(ret, E_OK);
     EXPECT_GE(resultCount, 0);
@@ -61,7 +62,7 @@ HWTEST_F(PhotoEnhanceTest, SubmitCloudSyncPreparedDataTask_OK, TestSize.Level1)
     CloudMediaEnhanceService service;
 
     MediaLibraryUnitTestUtils::InitUnistore();
-    int32_t ret = service.SubmitCloudSyncPreparedDataTask();
+    int32_t ret = service.SubmitCloudSyncPreparedDataTask(CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE);
 
     EXPECT_EQ(ret, E_OK);
 }
