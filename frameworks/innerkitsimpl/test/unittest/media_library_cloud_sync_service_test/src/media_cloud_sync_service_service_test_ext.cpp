@@ -886,7 +886,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt,
     CloudMediaEnhanceService service;
     int32_t result = 0;
 
-    int32_t ret = service.GetCloudSyncUnPreparedData(result);
+    int32_t ret = service.GetCloudSyncUnPreparedData(
+        CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE, result);
 
     EXPECT_EQ(ret, E_OK);
 }
@@ -898,7 +899,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt,
     CloudMediaEnhanceService service;
     service.submitRunning_ = true;
 
-    int32_t ret = service.SubmitCloudSyncPreparedDataTask();
+    int32_t ret = service.SubmitCloudSyncPreparedDataTask(
+        CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE);
 
     EXPECT_EQ(ret, E_ERR);
 }
@@ -911,7 +913,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt,
     service.submitRunning_ = false;
     service.executor_ = nullptr;
 
-    int32_t ret = service.SubmitCloudSyncPreparedDataTask();
+    int32_t ret = service.SubmitCloudSyncPreparedDataTask(
+        CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE);
 
     EXPECT_EQ(ret, E_OK);
 }
@@ -924,7 +927,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt,
     service.submitRunning_ = false;
     service.executor_ = std::make_unique<OHOS::ThreadPool>("TestExecutor");
 
-    int32_t ret = service.SubmitCloudSyncPreparedDataTask();
+    int32_t ret = service.SubmitCloudSyncPreparedDataTask(
+        CloudSyncPrepareDataType::ASSET_MULTISTATE_INCOMPLETE);
 
     EXPECT_EQ(ret, E_OK);
 }
