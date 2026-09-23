@@ -65,7 +65,7 @@ int32_t CloudMediaEnhanceService::SubmitCloudSyncPreparedDataTask(CloudSyncPrepa
     if (type == CloudSyncPrepareDataType::ASSET_THUMBNAIL_MISSING) {
         int32_t errCode = 0;
         auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FORCE_THUMB_GENERATE_CONFIG, errCode);
-        CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
+        CHECK_AND_RETURN_RET_LOG(prefs != nullptr, E_ERR, "get preferences error: %{public}d", errCode);
         prefs->PutInt(FORCE_THUMB_GENERATE_FLAG, 1);
         prefs->FlushSync();
         MEDIA_INFO_LOG("SubmitCloudSyncPreparedDataTask set force generate flag");
