@@ -189,7 +189,6 @@ ohos_shared_library("media_library") {
       defined(global_parts_info.tee_trusted_service_client) &&
       global_parts_info.tee_trusted_service_client) {
     defines += [ "C2PA_SUPPORT" ]
-    external_deps += [ "trusted_service_client:libtrusted_app_service_client" ]
   }
 
   if (!media_library_link_opt) {
