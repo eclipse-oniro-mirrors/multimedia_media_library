@@ -69,8 +69,6 @@ private:
     std::mutex invalidKeyLock_;
     std::mutex invalidPrivateOpenLock_;
     std::mutex invalidSpecialOpenLock_;
-    std::mutex photoErrorLock_;
-    std::map<int32_t, int32_t> photoErrorMap_;
     AdaptationToMovingPhotoInfo adaptationToMovingPhotoInfo_;
     CinematicVideoInfo cinematicVideoInfo_;
 };
