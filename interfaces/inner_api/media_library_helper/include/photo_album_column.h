@@ -58,6 +58,7 @@ public:
     static const std::string ALBUM_FILE_HIDDEN;
     static const std::string ALBUM_SCENE_ID;
     static const std::string ALBUM_SHARE_TYPE;
+    static const std::string ALBUM_SHARE_ALBUM_OWNER;
     static const std::string COVER_ORDER_KEY;
     static const std::string COVER_ORDER_SUBKEY;
     static const std::string COVER_ORDER_TYPE;

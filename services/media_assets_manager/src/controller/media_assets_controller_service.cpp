@@ -742,6 +742,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::CloneToAlbumCancel
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_WITH_SHARE_ALBUM),
+        &MediaAssetsControllerService::CloneWithShareAlbum
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::MOVE_ASSETS_TO_DIR),
         &MediaAssetsControllerService::MoveAssetsToDir
     },
@@ -3643,6 +3647,12 @@ int32_t MediaAssetsControllerService::CloneToAlbumCancel(MessageParcel &data, Me
 {
     return HandleCloneRequest(data, reply, "CloneToAlbumCancel",
         [this](CloneToAlbumReqBody &reqBody) { return this->cloneToAlbumService_.CloneToAlbumCancel(reqBody); });
+}
+
+int32_t MediaAssetsControllerService::CloneWithShareAlbum(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleCloneRequest(data, reply, "CloneWithShareAlbum",
+        [this](CloneToAlbumReqBody &reqBody) { return this->cloneToAlbumService_.CloneWithShareAlbum(reqBody); });
 }
 
 int32_t MediaAssetsControllerService::MoveAssetsToDir(MessageParcel &data, MessageParcel &reply)

@@ -19,9 +19,11 @@
 #include <vector>
 #include <mutex>
 
+#include "media_asset_bucket_type.h"
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_uri_utils.h"
 #include "medialibrary_errno.h"
 #include "photo_map_column.h"
 #include "source_album.h"
@@ -62,6 +64,11 @@ struct TargetAssetInfo {
     bool supportRename = true;
     int32_t cloneCallbackType = -1;
     std::string filePath = "";
+    bool isShareAlbumTarget = false;
+    std::string shareOwnerInfo = "";
+    std::string shareAlbumOwner = "";
+    int64_t shareDateDay {0};
+    int64_t shareGroup {0};
 };
 
 public:
@@ -105,7 +112,8 @@ public:
         const std::shared_ptr<MediaLibraryRdbStore> rdbStore);
     static bool ScreenOnInterrupt();
     static void MigratePhotoMapData(const std::shared_ptr<MediaLibraryRdbStore> rdbStore);
-    static void BuildTargetFilePath(std::string &targetPath, std::string displayName, int32_t mediaType);
+    static void BuildTargetFilePath(std::string &targetPath, std::string displayName,
+        int32_t mediaType, AssetBucketType bucketType = AssetBucketType::NORMAL);
     EXPORT static int32_t CloneProgressAsset(const CloneAssetInfo &cloneAssetInfo, const int32_t targetAlbumId,
         std::string &newAssetIds, std::function<void(uint64_t)> progressCallback, int32_t cloneCallbackType = -1);
     EXPORT static int32_t CheckBatchAssets(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);

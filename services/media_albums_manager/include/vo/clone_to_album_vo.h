@@ -35,6 +35,9 @@ public:
     std::string albumLpath = "";
     std::string targetDir = "";
     sptr<IRemoteObject> progressCallback;
+    std::string owner = "";
+    int64_t shareGroup {0};
+    std::string shareAlbumOwner = "";
 
 public:
     bool Unmarshalling(MessageParcel &parcel) override;

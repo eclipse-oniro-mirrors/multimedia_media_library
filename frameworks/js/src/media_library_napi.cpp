@@ -626,6 +626,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("cloneToAlbum", JSCloneToAlbum),
             DECLARE_NAPI_FUNCTION("cloneToDir", JSCloneToDir),
             DECLARE_NAPI_FUNCTION("cloneAssetsByPath", JSCloneAssetsByPath),
+            DECLARE_NAPI_FUNCTION("cloneWithShareAlbum", JSCloneWithShareAlbum),
             DECLARE_NAPI_FUNCTION("setAssetCompatibleCapability", PhotoAccessHelperSetFileCompatibleConfig),
             DECLARE_NAPI_FUNCTION("getAssetCompatibleCapability", PhotoAccessHelperGetAssetCompatibleConfig),
             DECLARE_NAPI_FUNCTION("setPreferredCompatibleMode", PhotoAccessHelperSetPreferredCompatibleMode),

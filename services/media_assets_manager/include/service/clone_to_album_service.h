@@ -55,6 +55,13 @@ struct CloneAssetInfo {
     int32_t movingPhotoEffectMode {0};
     int32_t fileSourceType {-1};
     std::vector<CloneAssetInfo> burstCloneAssetList;
+    int32_t isShared {0};
+    std::string shareOwnerInfo = "";
+    std::string shareAlbumOwner = "";
+    int64_t shareDateDay {0};
+    int64_t shareGroup {0};
+    bool isShareAlbumTarget {false};
+    int32_t burstCoverLevel {0};
 };
 
 enum CloneCallbackType {
@@ -73,6 +80,11 @@ struct CloneTaskInfo {
     int32_t requestId {0};
     std::string targetDir = "";
     CloneCallbackType cloneCallbackType {CloneCallbackType::URI};
+    bool isShareAlbumTarget {false};
+    std::string owner = "";
+    int64_t shareGroup {0};
+    std::string shareAlbumOwner = "";
+    std::vector<std::string> resultFileIds;
 
     CloneTaskInfo() = default;
 
@@ -86,6 +98,11 @@ struct CloneTaskInfo {
         albumSubType = tmp.albumSubType;
         targetDir = tmp.targetDir;
         cloneCallbackType = tmp.cloneCallbackType;
+        isShareAlbumTarget = tmp.isShareAlbumTarget;
+        owner = tmp.owner;
+        shareGroup = tmp.shareGroup;
+        shareAlbumOwner = tmp.shareAlbumOwner;
+        resultFileIds = tmp.resultFileIds;
     }
 };
 
@@ -98,22 +115,29 @@ public:
     int32_t CloneToDir(CloneToAlbumReqBody &reqBody);
     int32_t CloneAssetByPath(CloneToAlbumReqBody &reqBody);
     int32_t CloneToAlbumCancel(const CloneToAlbumReqBody &reqBody);
+    int32_t CloneWithShareAlbum(CloneToAlbumReqBody &reqBody);
 
 private:
     int32_t StartCopy(uint64_t totalSize, uint32_t totalCount, CloneTaskInfo &cloneTaskInfo);
     int32_t ValidateRequest(CloneToAlbumReqBody &reqBody);
+    int32_t ValidateShareAlbumRequest(CloneToAlbumReqBody &reqBody);
+    int32_t ValidateShareAlbumBasicParam(const CloneToAlbumReqBody &reqBody);
+    int32_t ValidateShareAlbumAssets(const CloneToAlbumReqBody &reqBody, bool isTargetShareAlbum);
+    int32_t CheckAssetCloudAndShared(const std::string &id, bool &hasSharedAsset);
+    void FillShareAlbumFields(CloneTaskInfo &cloneTaskInfo, const CloneToAlbumReqBody &reqBody);
+    void SetupCloneTaskInfo(CloneTaskInfo &cloneTaskInfo,
+        const CloneToAlbumReqBody &reqBody, bool isTargetShareAlbum);
     int32_t QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBody,
-        CloneTaskInfo &assets, uint64_t &displayTotalSize, uint64_t &actualTotalSize);
+        CloneTaskInfo &assets, uint64_t &displayTotalSize, uint64_t &actualTotalSize,
+        bool isShareAlbumTarget = false);
     int32_t QueryBurstAssetInfo(CloneAssetInfo &cloneAssetInfo, uint64_t &displayTotalSize,
-        uint64_t &actualTotalSize);
+        uint64_t &actualTotalSize, bool isShareAlbumTarget = false);
     int32_t HandleAssetClone(const CloneAssetInfo &asset, std::string &newFileId,
         std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount,
         const CloneCallbackType &cloneCallbackType);
     int32_t QueryAssetInfo(const std::string &fileId, CloneAssetInfo &info);
-    int32_t DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo, std::function<void(uint64_t)> progressCallback);
-    int32_t GetUriFromResult(std::shared_ptr<OHOS::NativeRdb::ResultSet> &resultSet,
-        const std::vector<std::string> &resultFileId, std::vector<std::string> &resultUris,
-        CloneCallbackType cloneCallbackType);
+    int32_t DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo,
+        std::function<void(uint64_t)> progressCallback);
 };
 
 } // namespace Media

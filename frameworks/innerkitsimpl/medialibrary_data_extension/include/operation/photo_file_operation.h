@@ -41,6 +41,7 @@ private:
         std::function<void(uint64_t)> progressCallback = nullptr;
         std::string requestId = "";
         bool isLivePhoto{false};
+        bool isShareAlbum{false};
     };
 
 public:
@@ -53,10 +54,12 @@ public:
 public:
     int32_t CopyPhoto(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         const std::string &targetPath, MediaLibraryAlbumFusionUtils::TargetAssetInfo &targetAssetInfo);
+    int32_t CopyPhotoForShareAlbum(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+        const std::string &targetPath, MediaLibraryAlbumFusionUtils::TargetAssetInfo &targetAssetInfo);
     int32_t MovePhoto(const PhotosPo &sourcePhotosPo, const PhotosPo &targetPhotosPo);
     int32_t CopyPhoto(const PhotosPo &sourcePhotosPo, const PhotosPo &targetPhotosPo);
     int32_t CopyThumbnail(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &targetPath,
-        int64_t &newAssetId);
+        int64_t &newAssetId, bool skipYearMonthAstc = false);
     int32_t CopyThumbnail(const PhotosPo &sourcePhotosPo, const PhotosPo &targetPhotosPo, bool withAstcData = true);
     int32_t ConvertFormatPhoto(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &targetPath,
         const std::string &extension);
@@ -81,6 +84,8 @@ private:
     int32_t CopyPhotoFile(const PhotoAssetInfo &sourcePhotoInfo, const PhotoAssetInfo &targetPhotoInfo);
     int32_t CopyPhotoRelatedVideoFile(const PhotoAssetInfo &sourcePhotoInfo, const PhotoAssetInfo &targetPhotoInfo);
     int32_t CopyPhotoRelatedExtraData(const PhotoAssetInfo &sourcePhotoInfo, const PhotoAssetInfo &targetPhotoInfo);
+    int32_t CopyPhotoRelatedExtraDataOnly(const PhotoAssetInfo &sourcePhotoInfo,
+        const PhotoAssetInfo &targetPhotoInfo);
     int32_t CopyPhotoRelatedThumbnail(const PhotoAssetInfo &sourcePhotoInfo, const PhotoAssetInfo &targetPhotoInfo);
     int32_t CopyPhotoRelatedData(const PhotoAssetInfo &sourcePhotoInfo, const PhotoAssetInfo &targetPhotoInfo,
         const std::string &srcFolder, const std::string &targetFolder);
@@ -88,6 +93,8 @@ private:
     int32_t CopyFile(const std::string &srcPath, std::string &targetPath,
         std::function<void(uint64_t)> progressCallback = nullptr, const std::string &requestId = "");
     int32_t ConvertAndCopyLivePhoto(const PhotoAssetInfo &sourcePhotoInfo, const PhotoAssetInfo &targetPhotoInfo);
+    void BuildSourcePhotoInfo(PhotoAssetInfo &sourcePhotoInfo,
+        const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     std::string ToString(const PhotoAssetInfo &photoInfo);
     int32_t HandleThumbnailAstcData(const std::string &dateTaken, const std::string &oldAssetId,
         const std::string &newAssetId);
