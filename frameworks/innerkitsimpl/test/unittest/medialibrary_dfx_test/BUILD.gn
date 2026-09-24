@@ -58,6 +58,8 @@ ohos_unittest("medialibrary_dfx_test") {
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/dfx_deprecated_perm_usage_test.cpp",
     "./src/dfx_photo_error_helper_test.cpp",
+    "./src/dfx_photo_error_open_test.cpp",
+    "./src/dfx_photo_error_processor_test.cpp",
     "./src/dfx_moving_photo_test.cpp",
     "./src/dfx_photo_error_helper_test.cpp",
     "./src/dfx_photo_error_open_test.cpp",

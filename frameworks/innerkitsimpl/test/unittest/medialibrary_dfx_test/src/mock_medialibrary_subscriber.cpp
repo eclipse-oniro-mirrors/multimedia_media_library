@@ -16,6 +16,12 @@
 #include "mock_medialibrary_subscriber.h"
 
 #include "medialibrary_subscriber.h"
+#include "mock_medialibrary_subscriber.h"
+
+namespace {
+int32_t g_trueLimit = -1;  // -1 = always true
+int32_t g_callCount = 0;
+}
 
 namespace {
 int32_t g_trueLimit = -1;  // -1 = always true
