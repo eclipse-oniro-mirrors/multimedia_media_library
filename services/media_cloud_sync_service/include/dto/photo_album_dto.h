@@ -51,6 +51,7 @@ public:
 
 class ShareAlbumDetailDto {
 public:
+    std::string currentUserId;
     std::vector<ShareMemberDataDto> shareMemberDataList;
     std::vector<ScaDetailDataDto> scaDetailDataList;
 

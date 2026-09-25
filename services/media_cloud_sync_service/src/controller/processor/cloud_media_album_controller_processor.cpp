@@ -116,6 +116,7 @@ void CloudMediaAlbumControllerProcessor::ConvertShareAlbumDetailFromVoToDto(
 
     shareAlbumDetailDtoOp = ShareAlbumDetailDto();
     ShareAlbumDetailDto &shareAlbumDetailDto = shareAlbumDetailDtoOp.value();
+    shareAlbumDetailDto.currentUserId = shareAlbumDetailVo.currentUserId;
 
     this->ConvertShareMemberDataFromVoToDto(
         shareAlbumDetailVo.shareMemberData, shareAlbumDetailDto.shareMemberDataList);

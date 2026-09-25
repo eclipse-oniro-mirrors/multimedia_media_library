@@ -88,6 +88,8 @@ void CloudMediaAlbumHandler::InitShareAlbumDetailVo(
 
     std::vector<ScaDetailVo> &scaDetailList = data.shareAlbumDetailVoOp.value().scaDetailList;
     albumData.GetScadetailList(scaDetailList);
+
+    data.shareAlbumDetailVoOp.value().currentUserId = albumData.GetCurrentUserId();
 }
 
 void CloudMediaAlbumHandler::InitAlbumReqData(

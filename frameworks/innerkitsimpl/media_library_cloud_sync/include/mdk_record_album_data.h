@@ -105,6 +105,7 @@ public:  // getter & setter
     std::optional<int32_t> GetShareType() const;
     void SetShareType(const int32_t &shareType);
     std::string GetOwnerId() const;
+    std::string GetCurrentUserId() const;
     void GetShareMembers(std::vector<ShareMemberDataVo> &shareMemberDataList);
     void GetScadetailList(std::vector<ScaDetailVo> &scaDetailList);
     

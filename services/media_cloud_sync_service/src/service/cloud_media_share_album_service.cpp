@@ -80,6 +80,70 @@ int32_t CloudMediaShareAlbumService::FindAlbumInfo(PhotoAlbumDto &record)
     return this->commonDao_.QueryPhotoAlbumByCloudId(record.cloudId, record.localAlbumInfo);
 }
 
+bool CloudMediaShareAlbumService::HasAlbumPermission(const PhotoAlbumDto &record) const
+{
+    /* 旧版本下行记录未携带 currentUserId，无法判断权限，保持原行为 */
+    CHECK_AND_RETURN_RET_INFO_LOG(!record.shareAlbumDetailDtoOp.has_value(), true,
+        "HasAlbumPermission no shareAlbumDetailDtoOp, fallback true, cloudId: %{public}s", record.cloudId.c_str());
+    const ShareAlbumDetailDto &detail = record.shareAlbumDetailDtoOp.value();
+    if (detail.currentUserId.empty()) {
+        MEDIA_WARN_LOG("HasAlbumPermission currentUserId empty, fallback true, cloudId: %{public}s",
+            record.cloudId.c_str());
+        return true;
+    }
+    /* owner 恒有权限 */
+    if (detail.currentUserId == record.shareAlbumOwner) {
+        return true;
+    }
+    for (const auto &member : detail.shareMemberDataList) {
+        if (member.userId == detail.currentUserId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+int32_t CloudMediaShareAlbumService::PullRemoveAlbumOnExit(
+    PhotoAlbumDto &record, ChangeType &changeType, std::vector<std::string> &failedRecords)
+{
+    const int32_t albumId = record.localAlbumInfo.value().albumId.value_or(0);
+    MEDIA_INFO_LOG("PullRemoveAlbumOnExit cloudId: %{public}s, albumId: %{public}d", record.cloudId.c_str(), albumId);
+    /* 退出场景走 RemoveShareAssetsByAlbumIds：标记删除资产 + 删除相册，内部自行 Notify */
+    changeType = ChangeType::DELETE;
+    int32_t ret = MediaShareAssetsService::GetInstance().RemoveShareAssetsByAlbumIds({albumId});
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("RemoveShareAssetsByAlbumIds failed, ret: %{public}d, cloudId: %{public}s",
+            ret, record.cloudId.c_str());
+        failedRecords.emplace_back(record.cloudId);
+        return ret;
+    }
+    ret = this->shareAlbumMemberService_.HandleDeleteMembers(record);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("HandleDeleteMembers failed, ret: %{public}d, cloudId: %{public}s",
+            ret, record.cloudId.c_str());
+        failedRecords.emplace_back(record.cloudId);
+        return ret;
+    }
+    return ret;
+}
+
+int32_t CloudMediaShareAlbumService::HandleNoPermissionRecord(
+    PhotoAlbumDto &record, ChangeType &changeType, std::vector<std::string> &failedRecords)
+{
+    const bool insertFlag = !record.localAlbumInfo.has_value() && !record.isDelete;
+    const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
+    if (insertFlag) {
+        /* 本机不在成员列表中且非 owner，跳过新增该共享相册 */
+        MEDIA_INFO_LOG("PullInsert skipped, no permission, cloudId: %{public}s", record.cloudId.c_str());
+        return E_OK;
+    }
+    if (updateFlag) {
+        /* 本机已退出/被移出共享相册，下行增量转退出清理：删除本地共享相册及资产 */
+        return this->PullRemoveAlbumOnExit(record, changeType, failedRecords);
+    }
+    return E_OK;
+}
+
 int32_t CloudMediaShareAlbumService::HandleRecord(
     PhotoAlbumDto &record, ChangeType &changeType, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords)
 {
@@ -87,6 +151,9 @@ int32_t CloudMediaShareAlbumService::HandleRecord(
     const bool insertFlag = !record.localAlbumInfo.has_value() && !record.isDelete;
     const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
     const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
+    if (!this->HasAlbumPermission(record) && (insertFlag || updateFlag)) {
+        return this->HandleNoPermissionRecord(record, changeType, failedRecords);
+    }
     CHECK_AND_EXECUTE(!insertFlag, ret = this->PullInsert(record, changeType, stats, failedRecords));
     CHECK_AND_EXECUTE(!updateFlag, ret = this->PullUpdate(record, changeType, stats, failedRecords));
     CHECK_AND_EXECUTE(!deleteFlag, ret = this->PullDelete(record, changeType, stats, failedRecords));

@@ -31,6 +31,8 @@ bool ShareAlbumDetailVo::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(
         IPC::ITypeMediaUtil::UnmarshallingParcelable<ScaDetailVo>(this->scaDetailList, parcel),
         false, "scaDetailList");
+    CHECK_AND_RETURN_RET_LOG(parcel.GetReadableBytes() > 0, false, "currentUserId");
+    this->currentUserId = parcel.ReadString();
     return true;
 }
 
@@ -42,6 +44,7 @@ bool ShareAlbumDetailVo::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(
         IPC::ITypeMediaUtil::MarshallingParcelable<ScaDetailVo>(this->scaDetailList, parcel),
         false, "scaDetailList");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->currentUserId), false, "currentUserId");
     return true;
 }
 
@@ -50,6 +53,7 @@ std::string ShareAlbumDetailVo::ToString() const
     std::stringstream ss;
     ss << "{";
 
+    ss << "\"currentUserId\": \"" << currentUserId << "\",";
     ss << "\"shareMemberData\": [";
     for (size_t i = 0; i < shareMemberData.size(); ++i) {
         ss << shareMemberData[i].ToString();
