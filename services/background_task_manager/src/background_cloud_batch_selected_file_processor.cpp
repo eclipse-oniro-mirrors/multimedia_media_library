@@ -832,7 +832,7 @@ void BackgroundCloudBatchSelectedFileProcessor::HandleBatchSelectedStoppedCallba
     downloadLock.unlock();
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFilesNum()
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFilesNum(int32_t isShared)
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
@@ -842,6 +842,9 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFil
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING)) + ","
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
         + ")";
+    if (isShared >= 0) {
+        sql += " AND " + DownloadResourcesColumn::MEDIA_IS_SHARED + " = " + std::to_string(isShared);
+    }
     // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (0, 1, 2)
     std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
@@ -856,7 +859,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFil
     return num;
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumForAutoResume()
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumForAutoResume(int32_t isShared)
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
@@ -867,6 +870,9 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumFor
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE)) + ","
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
         + ")";
+    if (isShared >= 0) {
+        sql += " AND " + DownloadResourcesColumn::MEDIA_IS_SHARED + " = " + std::to_string(isShared);
+    }
     // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (0, 1, 2)
     std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
@@ -897,38 +903,44 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadResourcesTask()
 {
     MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask START");
     CHECK_AND_RETURN_RET_INFO_LOG(batchDownloadTaskAdded_, false, "no batch download start trigger");
-    int32_t num = QueryBatchSelectedResourceFilesNum(); // 查询是否有需要下载 或处理的任务
-    if (num == 0) {
+    int32_t normalNum = QueryBatchSelectedResourceFilesNum(0);
+    int32_t shareNum = QueryBatchSelectedResourceFilesNum(1);
+    if (normalNum == 0 && shareNum == 0) {
         downloadLatestFinished_.store(true); // 之前下载已完成
         MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadResourcesTask change to true");
-    } else {
-        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END count num: %{public}d", num);
-        if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
-            MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
-            SetBatchDownloadAddedFlag(false);
-            return false;
-        }
+        return false;
     }
-    return (num > 0);
+    MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask normalNum: %{public}d, shareNum: %{public}d",
+        normalNum, shareNum);
+    bool hasActiveTask = (normalNum > 0 && IsSceneCloudSyncSwitchOn(CloudSync::SceneType::NORMAL))
+        || (shareNum > 0 && IsSceneCloudSyncSwitchOn(CloudSync::SceneType::SHARE));
+    if (!hasActiveTask) {
+        MEDIA_INFO_LOG("Cloud sync switch off for all active scenc, skip BatchSelectFileDownload");
+        SetBatchDownloadAddedFlag(false);
+    }
+    return hasActiveTask;
 }
 
 bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask()
 {
     MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask START");
-    int32_t num = QueryBatchSelectedFilesNumForAutoResume(); // 查询是否有需要下载 或处理的任务
-    if (num == 0) {
+    int32_t normalNum = QueryBatchSelectedFilesNumForAutoResume(0);
+    int32_t shareNum = QueryBatchSelectedFilesNumForAutoResume(1);
+    if (normalNum == 0 && shareNum == 0) {
         downloadLatestFinished_.store(true); // 之前下载已完成
         MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadForAutoResumeTask"
             " change to true");
-    } else {
-        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END Resume count num: %{public}d", num);
-        if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
-            MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
-            SetBatchDownloadAddedFlag(false);
-            return false;
-        }
+        return false;
     }
-    return (num > 0);
+    MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask normalNum: %{public}d,"
+        "shareNum: %{public}d", normalNum, shareNum);
+    bool hasActiveTask = (normalNum > 0 && IsSceneCloudSyncSwitchOn(CloudSync::SceneType::NORMAL))
+        || (shareNum > 0 && IsSceneCloudSyncSwitchOn(CloudSync::SceneType::SHARE));
+    if (!hasActiveTask) {
+        MEDIA_INFO_LOG("Cloud sync switch off for all active scencs, skip BatchSelectFileDownload");
+        SetBatchDownloadAddedFlag(false);
+    }
+    return hasActiveTask;
 }
 
 bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTaskWithException()
@@ -957,7 +969,8 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTask
     return (num > 0);
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInAutoPauseWithException()
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInAutoPauseWithException(
+    int32_t isShared)
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
@@ -967,6 +980,9 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInA
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE))
         + ") AND " + DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON +  " != " +
         to_string(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+    if (isShared >= 0) {
+        sql += " AND " + DownloadResourcesColumn::MEDIA_IS_SHARED + " = " + std::to_string(isShared);
+    }
     // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (5)
     std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
@@ -981,7 +997,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInA
     return num;
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInAutoPause()
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInAutoPause(int32_t isShared)
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
@@ -991,6 +1007,9 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInA
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE))
         + ") AND " + DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON +  " = " +
         to_string(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+    if (isShared >= 0) {
+        sql += " AND " + DownloadResourcesColumn::MEDIA_IS_SHARED + " = " + std::to_string(isShared);
+    }
     // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (5)
     std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
@@ -1060,23 +1079,25 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
         MEDIA_INFO_LOG("BatchSelectFileDownload no task to stop");
         return false;
     }
-    
+
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_DEFAULT;
-    if (!BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason)) {
+    bool stopNormal = false;
+    bool stopShare = false;
+    if (!BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason, stopNormal, stopShare)) {
         MEDIA_INFO_LOG("BatchSelectFileDownload check result: keep downloading");
         return false;
     }
-    AutoStopAction(autoPauseReason);
+    AutoStopAction(autoPauseReason, stopNormal, stopShare);
     return true;
 }
 
 // 全量设置自动暂停
 int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoPauseDownloadResourcesInfo(
-    BatchDownloadAutoPauseReasonType &autoPauseReason)
+    BatchDownloadAutoPauseReasonType &autoPauseReason, int32_t isShared)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdatePauseDownload Failed to get rdbStore.");
-    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause In fileid");
+    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause In fileid, isShared: %{public}d", isShared);
     // update download_resources_task_records set download_status = 2 where download_status != 4 AND download_status !=3
     NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
     NativeRdb::ValuesBucket value;
@@ -1088,6 +1109,9 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoPauseDownloadRes
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_PAUSE));
     predicates.And()->NotEqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
+    if (isShared >= 0) {
+        predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_IS_SHARED, isShared);
+    }
     value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
@@ -1099,26 +1123,29 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoPauseDownloadRes
 }
 
 // 全量设置自动恢复
-int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoResumeDownloadResourcesInfo()
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoResumeDownloadResourcesInfo(int32_t isShared)
 {
-    int32_t ret = UpdateAllStatusAutoPauseToDownloading();
+    int32_t ret = UpdateAllStatusAutoPauseToDownloading(isShared);
     CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "UpdateAllStatusAutoPauseToDownloading fail");
-    ret = UpdateAllStatusAutoPauseToWaiting();
+    ret = UpdateAllStatusAutoPauseToWaiting(isShared);
     CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "UpdateAllStatusAutoPauseToWating fail");
     return ret;
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToDownloading()
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToDownloading(int32_t isShared)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdatePauseDownload Failed to get rdbStore.");
-    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause To Downloading");
+    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause To Downloading, isShared: %{public}d", isShared);
     // update download_resources_task_records set download_status = 1 where (download_status = 5 AND percent > -1)
     NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
     NativeRdb::ValuesBucket value;
     predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     predicates.And()->GreaterThan(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+    if (isShared >= 0) {
+        predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_IS_SHARED, isShared);
+    }
     value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING));
     value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
@@ -1129,17 +1156,20 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToDow
     return ret;
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToWaiting()
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToWaiting(int32_t isShared)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdatePauseDownload Failed to get rdbStore.");
-    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause To Waiting");
+    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause To Waiting, isShared: %{public}d", isShared);
     // update download_resources_task_records set download_status = 0 where (download_status = 5 AND percent == -1)
     NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
     NativeRdb::ValuesBucket value;
     predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+    if (isShared >= 0) {
+        predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_IS_SHARED, isShared);
+    }
     value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING));
     value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
@@ -1188,17 +1218,25 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::DeleteCancelStateDownloadReso
     return NativeRdb::E_OK;
 }
 
-void BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(BatchDownloadAutoPauseReasonType &autoPauseReason)
+void BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(BatchDownloadAutoPauseReasonType &autoPauseReason,
+    bool stopNormal, bool stopShare)
 {
     unique_lock<std::mutex> lock(autoActionMutex_);
-    MEDIA_INFO_LOG("BatchSelectFileDownload AutoStopAction cause: %{public}d", static_cast<int32_t>(autoPauseReason));
+    MEDIA_INFO_LOG("BatchSelectFileDownload AutoStopAction cause: %{public}d, stopNormal: %{public}d, stopShare:"
+        "%{public}d", static_cast<int32_t>(autoPauseReason), stopNormal, stopShare);
     // 检查点 批量下载 通知应用 notify type 4 自动暂停
     MEDIA_INFO_LOG("BatchSelectFileDownload autoPause task START");
-    StopAllDownloadingTask(false);
-    // updateDB
-    UpdateAllAutoPauseDownloadResourcesInfo(autoPauseReason);
+    if (stopNormal) {
+        StopAllDownloadingTask(false, CloudSync::SceneType::NORMAL);
+        UpdateAllAutoPauseDownloadResourcesInfo(autoPauseReason, 0);
+        TriggerStopBatchDownloadProcessor(false, CloudSync::SceneType::NORMAL);
+    }
+    if (stopShare) {
+        StopAllDownloadingTask(false, CloudSync::SceneType::SHARE);
+        UpdateAllAutoPauseDownloadResourcesInfo(autoPauseReason, 1);
+        TriggerStopBatchDownloadProcessor(false, CloudSync::SceneType::SHARE);
+    }
     MEDIA_INFO_LOG("BatchSelectFileDownload autoPause task END");
-    TriggerStopBatchDownloadProcessor(false);
     int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
         DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
         static_cast<int32_t>(autoPauseReason));
@@ -1206,12 +1244,18 @@ void BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(BatchDownloadAuto
         static_cast<int32_t>(autoPauseReason), ret);
 }
 
-void BackgroundCloudBatchSelectedFileProcessor::AutoResumeAction()
+void BackgroundCloudBatchSelectedFileProcessor::AutoResumeAction(bool restoreNormal, bool restoreShare)
 {
     unique_lock<std::mutex> lock(autoActionMutex_);
-    MEDIA_INFO_LOG("BatchSelectFileDownload AutoResumeAction");
+    MEDIA_INFO_LOG("BatchSelectFileDownload AutoResumeAction restoreNormal: %{public}d, restoreShare: %{public}d",
+        restoreNormal, restoreShare);
     // updateDB
-    UpdateAllAutoResumeDownloadResourcesInfo();
+    if (restoreNormal) {
+        UpdateAllAutoResumeDownloadResourcesInfo(0);
+    }
+    if (restoreShare) {
+        UpdateAllAutoResumeDownloadResourcesInfo(1);
+    }
     // 检查点 批量下载 通知应用 notify type 5 自动恢复
     int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
         DownloadAssetsNotifyType::DOWNLOAD_AUTO_RESUME, -1, -1);
@@ -1263,7 +1307,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::TriggerNetLimitCheck()
     
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT;
     MEDIA_INFO_LOG("BatchSelectFileDownload TriggerNetLimitCheck: stop downloading");
-    AutoStopAction(autoPauseReason);
+    AutoStopAction(autoPauseReason, true, true);
     return true;
 }
 
@@ -1285,11 +1329,14 @@ void BackgroundCloudBatchSelectedFileProcessor::LaunchAutoResumeBatchDownloadPro
 {
     bool isProcessRunning = IsBatchDownloadProcessRunningStatus();
     if (!isProcessRunning) { // 未运行状态
+        bool restoreNormal = false;
+        bool restoreShare = false;
         if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask() &&
             !BackgroundCloudBatchSelectedFileProcessor::IsStartTimerRunning() &&
-            BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()) { // 有任务 无timer在运行 启动
+            BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition(restoreNormal, restoreShare)) {
+            // 有任务 无timer在运行 启动
             MEDIA_INFO_LOG("LaunchAutoResumeBatchDownloadProcessor Start Timer");
-            AutoResumeAction();
+            AutoResumeAction(restoreNormal, restoreShare);
             BackgroundCloudBatchSelectedFileProcessor::StartBatchDownloadResourcesTimer();
             SetBatchDownloadProcessRunningStatus(true); // 恢复任务
         }
@@ -1312,10 +1359,12 @@ void BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor()
             !BackgroundCloudBatchSelectedFileProcessor::IsStartTimerRunning()) { // 有任务 无timer在运行 启动
             MEDIA_INFO_LOG("LaunchBatchDownloadProcessor condition satisfy Start Timer");
             // 新增：检查是否有自动暂停的任务，如果有则发送自动恢复通知
+            bool restoreNormal = false;
+            bool restoreShare = false;
             if ((BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTask() ||
                 BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTaskWithException()) &&
-                BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()) {
-                AutoResumeAction();
+                BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition(restoreNormal, restoreShare)) {
+                AutoResumeAction(restoreNormal, restoreShare);
             }
             SetBatchDownloadProcessRunningStatus(true);
             BackgroundCloudBatchSelectedFileProcessor::StartBatchDownloadResourcesTimer();
@@ -1454,6 +1503,13 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoPauseReason(int3
     return ret;
 }
 
+bool BackgroundCloudBatchSelectedFileProcessor::IsSceneCloudSyncSwitchOn(CloudSync::SceneType sceneType)
+{
+    return sceneType == CloudSync::SceneType::SHARE
+        ? CloudSyncUtils::IsSharedAlbumCloudSyncSwitchOn()
+        : CloudSyncUtils::IsCloudSyncSwitchOn();
+}
+
 void BackgroundCloudBatchSelectedFileProcessor::RefreshNotRestoreReason(vector<int32_t>
     &notRestoreReasons)
 {
@@ -1471,8 +1527,11 @@ void BackgroundCloudBatchSelectedFileProcessor::RefreshNotRestoreReason(vector<i
 }
 
 // 自动停止 网络不满足 电量20- rom 可用10以下 任意满足
-bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownloadAutoPauseReasonType &autoPauseReason)
+bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownloadAutoPauseReasonType &autoPauseReason,
+    bool &stopNormal, bool &stopShare)
 {
+    stopNormal = false;
+    stopShare = false;
     bool netValidated = MedialibraryRelatedSystemStateManager::GetInstance()->IsNetValidatedAtRealTime();
     bool isNetworkAvailable =
         MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableWithUnlimitCondition();
@@ -1480,6 +1539,8 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownlo
         autoPauseReason = netValidated ?
             BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT :
             BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
+        stopNormal = true;
+        stopShare = true;
         return true;
     }
     bool isPowerSufficient = true;
@@ -1488,6 +1549,8 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownlo
         isPowerSufficient = batteryCapacity > ABLE_STOP_DOWNLOAD_POWER;
         if (!isPowerSufficient) {
             autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_POWER_LOW;
+            stopNormal = true;
+            stopShare = true;
             return true;
         }
     #endif
@@ -1500,28 +1563,41 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownlo
     }
     if (!isDiskEnough) {
         autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_ROM_LOW;
+        stopNormal = true;
+        stopShare = true;
         return true;
     }
-    bool isCloudSyncOn = CloudSyncUtils::IsCloudSyncSwitchOn();
-    bool ableAutoStopDownload = !(isCloudSyncOn && isNetworkAvailable && isPowerSufficient && isDiskEnough);
-    MEDIA_DEBUG_LOG("BatchSelectFileDownloadAuto AutoStopCondition ableAutoStopDownload: %{public}d, "
-        "isNetworkAvailable: %{public}d, power: %{public}d, disk: %{public}d, cloudsync: %{public}d",
-        ableAutoStopDownload, isNetworkAvailable, isPowerSufficient, isDiskEnough, isCloudSyncOn);
-    if (!ableAutoStopDownload && HaveBatchDownloadResourcesTask()) { // 如果有自动暂停的任务，新增任务都保持同样的自动暂停状态
+    // 开关检查按场景区分：普通任务走普通开关 共享任务走共享开关
+    int32_t normalNum = QueryBatchSelectedResourceFilesNum(0);
+    int32_t shareNum = QueryBatchSelectedResourceFilesNum(1);
+    bool isNormalSwitchOn = IsSceneCloudSyncSwitchOn(CloudSync::SceneType::NORMAL);
+    bool isShareSwitchOn = IsSceneCloudSyncSwitchOn(CloudSync::SceneType::SHARE);
+    stopNormal = (normalNum > 0 && isNormalSwitchOn);
+    stopShare = (shareNum > 0 && isShareSwitchOn);
+    MEDIA_DEBUG_LOG("BatchSelectFileDownloadAuto AutoStopCondition stopNormal: %{public}d, stopShare: %{public}d, "
+        "isNetworkAvailable: %{public}d, power: %{public}d, disk: %{public}d, normalSwitch: %{public}d, "
+        "shareSwitch: %{public}d", stopNormal, stopShare, isNetworkAvailable, isPowerSufficient, isDiskEnough,
+        isNormalSwitchOn, isShareSwitchOn);
+    if (!stopNormal && !stopShare && HaveBatchDownloadResourcesTask()) {
+        // 如果有自动暂停的任务，新增任务都保持同样的自动暂停状态
         int32_t autoStopReason = -1;
         QueryAutoPauseReason(autoStopReason);
         if (autoStopReason == static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_POWER_LOW) ||
             autoStopReason == static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_ROM_LOW)) {
             autoPauseReason = static_cast<BatchDownloadAutoPauseReasonType>(autoStopReason);
+            stopNormal = true;
+            stopShare = true;
             MEDIA_DEBUG_LOG("BatchSelectFileDownloadAuto AutoStopCondition Keep Reason: %{public}d", autoStopReason);
             return true;
         }
     }
-    return ableAutoStopDownload;
+    return stopNormal || stopShare;
 }
 
-bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()
+bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition(bool &restoreNormal, bool &restoreShare)
 {
+    restoreNormal = false;
+    restoreShare = false;
     // 自动恢复 网络 电量50+ rom 可用20以上 全满足
     bool netValidated = MedialibraryRelatedSystemStateManager::GetInstance()->IsNetValidatedAtRealTime();
     vector<int32_t> currentNotRestoreReasons;
@@ -1533,7 +1609,6 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()
             BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
         currentNotRestoreReasons.push_back(static_cast<int32_t>(reason));
     }
-    bool isCloudSyncOn = CloudSyncUtils::IsCloudSyncSwitchOn();
     bool isPowerSufficient = true;
     #ifdef HAS_BATTERY_MANAGER_PART
         int32_t batteryCapacity = PowerMgr::BatterySrvClient::GetInstance().GetCapacity();
@@ -1553,15 +1628,23 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()
     if (!isDiskEnough) {
         currentNotRestoreReasons.push_back(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_ROM_LOW));
     }
-    bool ableAutoResotreDownload = isCloudSyncOn && isNetworkAvailable && isPowerSufficient && isDiskEnough;
-    MEDIA_DEBUG_LOG("BatchSelectFileDownloadAuto AutoRestoreCondition ableAutoResotreDownload: %{public}d, "
-        "isNetworkAvailable: %{public}d, power: %{public}d, disk: %{public}d, cloudsync: %{public}d",
-        ableAutoResotreDownload, isNetworkAvailable, isPowerSufficient,
-        isDiskEnough, isCloudSyncOn);
-    if (!ableAutoResotreDownload) {
+    // 开关检查按场景区分 普通任务走普通开关 共享任务走共享开关
+    int32_t normalNum = QueryBatchSelectedFilesNumInAutoPause(0);
+    int32_t shareNum = QueryBatchSelectedFilesNumInAutoPause(1);
+    bool isNormalSwitchOn = IsSceneCloudSyncSwitchOn(CloudSync::SceneType::NORMAL);
+    bool isShareSwitchOn = IsSceneCloudSyncSwitchOn(CloudSync::SceneType::SHARE);
+    restoreNormal = isNetworkAvailable && isPowerSufficient && isDiskEnough && normalNum > 0 && isNormalSwitchOn;
+    restoreShare = isNetworkAvailable && isPowerSufficient && isDiskEnough && shareNum > 0 && isShareSwitchOn;
+    bool ableAutoRestoreDownload = restoreNormal || restoreShare;
+    MEDIA_DEBUG_LOG("BatchSelectFileDownloadAuto AutoRestoreCondition ableAutoRestoreDownload: %{public}d, "
+        "restoreNormal: %{public}d, restoreShare: %{public}d, isNetworkAvailable: %{public}d, power: %{public}d, "
+        "disk: %{public}d, normalSwitch: %{public}d, shareSwitch: %{public}d",
+        ableAutoRestoreDownload, restoreNormal, restoreShare, isNetworkAvailable, isPowerSufficient,
+        isDiskEnough, isNormalSwitchOn, isShareSwitchOn);
+    if (!ableAutoRestoreDownload) {
         RefreshNotRestoreReason(currentNotRestoreReasons);
     }
-    return ableAutoResotreDownload;
+    return ableAutoRestoreDownload;
 }
 
 int32_t BackgroundCloudBatchSelectedFileProcessor::GetDeviceTemperature()

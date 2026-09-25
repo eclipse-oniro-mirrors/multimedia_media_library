@@ -1223,7 +1223,8 @@ int32_t CloudMediaAssetManager::GetCloudMediaBatchDownloadResourcesStatus(
                     << downloadResourcesTask.autoPauseReason.value_or(0) << "|"
                     << downloadResourcesTask.coverLevel.value_or(1) << "|"
                     << downloadResourcesTask.taskSeq.value_or(0) << "|"
-                    << downloadResourcesTask.networkPolicy.value_or(0);
+                    << downloadResourcesTask.networkPolicy.value_or(0) << "|"
+                    << downloadResourcesTask.isShared.value_or(0);
 
         std::string entry = entryStream.str();
         respBody.downloadResourcesStatus.emplace_back(std::move(entry));

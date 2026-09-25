@@ -56,12 +56,14 @@ public:
         CloudSync::SceneType sceneType = CloudSync::SceneType::NORMAL);
     EXPORT static bool IsStartTimerRunning();
 
-    EXPORT static bool CanAutoStopCondition(BatchDownloadAutoPauseReasonType &autoPauseReason);
-    EXPORT static bool CanAutoRestoreCondition();
+    EXPORT static bool CanAutoStopCondition(BatchDownloadAutoPauseReasonType &autoPauseReason,
+        bool &stopNormal, bool &stopShare);
+    EXPORT static bool CanAutoRestoreCondition(bool &restoreNormal, bool &restoreShare);
     EXPORT static bool StopProcessConditionCheck();
 
-    EXPORT static void AutoStopAction(BatchDownloadAutoPauseReasonType &autoPauseReason);
-    EXPORT static void AutoResumeAction();
+    EXPORT static void AutoStopAction(BatchDownloadAutoPauseReasonType &autoPauseReason,
+        bool stopNormal, bool stopShare);
+    EXPORT static void AutoResumeAction(bool restoreNormal, bool restoreShare);
     EXPORT static void NotifyRefreshProgressInfo();
     EXPORT static void TriggerAutoResumeBatchDownloadResourceCheck();
     EXPORT static void TriggerAutoStopBatchDownloadResourceCheck();
@@ -128,13 +130,14 @@ private:
     EXPORT static void StopAllDownloadingTask(bool needClean = false,
         CloudSync::SceneType sceneType = CloudSync::SceneType::NORMAL);
     EXPORT static void RefreshNotRestoreReason(vector<int32_t> &currentNotRestoreReasons);
+    EXPORT static bool IsSceneCloudSyncSwitchOn(CloudSync::SceneType sceneType);
     // DB
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryBatchSelectedResourceFiles();
     EXPORT static void UpdateDBProgressStatusInfoForBatch(vector<int32_t> fileIds, int32_t status);
     EXPORT static int32_t UpdateDBProgressInfoForFileId(std::string &fileIdStr, int32_t percent,
         int64_t finishTime, int32_t status);
-    EXPORT static int32_t QueryBatchSelectedResourceFilesNum();
-    EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResume();
+    EXPORT static int32_t QueryBatchSelectedResourceFilesNum(int32_t isShared = -1);
+    EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResume(int32_t isShared = -1);
     EXPORT static int32_t QueryBatchDownloadFinishStatusCountFromDB(int32_t &totalValue,
         int32_t &completedValue, int32_t &failedValue);
     EXPORT static int32_t ClassifyFileIdsInDownloadResourcesTable(const std::vector<std::string> &fileIds,
@@ -143,13 +146,14 @@ private:
     EXPORT static int32_t QueryPercentOnTaskStart(std::string &fileId, int32_t &percent, int32_t &isShared);
     EXPORT static int32_t QueryAutoPauseReason(int32_t &autoStopReason);
     EXPORT static int32_t UpdateAllAutoPauseReason(int32_t reason);
-    EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPause();
-    EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPauseWithException();
+    EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPause(int32_t isShared = -1);
+    EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPauseWithException(int32_t isShared = -1);
     // Auto pause resume
-    EXPORT static int32_t UpdateAllAutoPauseDownloadResourcesInfo(BatchDownloadAutoPauseReasonType &autoPauseReason);
-    EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfo();
-    EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading();
-    EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting();
+    EXPORT static int32_t UpdateAllAutoPauseDownloadResourcesInfo(BatchDownloadAutoPauseReasonType &autoPauseReason,
+        int32_t isShared = -1);
+    EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfo(int32_t isShared = -1);
+    EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading(int32_t isShared = -1);
+    EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting(int32_t isShared = -1);
     EXPORT static int32_t GetDeviceTemperature();
     EXPORT static void ControlDownloadLimit();
 
