@@ -798,6 +798,7 @@ int32_t CloudFileDataConvert::ConvertToMdkRecord(const CloudMdkRecordPhotosVo &u
         record.SetNewCreate(true);
     }
     record.SetRecordId(upLoadRecord.cloudId);
+    record.SetOwnerId(upLoadRecord.shareAlbumOwner);
     if (type_ == CloudOperationType::FILE_DELETE) {
         return E_OK;
     }
@@ -807,7 +808,6 @@ int32_t CloudFileDataConvert::ConvertToMdkRecord(const CloudMdkRecordPhotosVo &u
     ret = HandleCompatibleFileds(data, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleCompatibleFileds failed, ret: %{public}d", ret);
     record.SetRecordData(data);
-    record.SetOwnerId(upLoadRecord.shareAlbumOwner);
     ret = SetSourceAlbum(record, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SetSourceAlbum failed, ret: %{public}d", ret);
     return E_OK;
