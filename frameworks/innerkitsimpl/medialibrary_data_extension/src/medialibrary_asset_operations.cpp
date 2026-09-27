@@ -1813,6 +1813,20 @@ static void AddPhotoErrorDfx(const shared_ptr<FileAsset> &fileAsset, const std::
     dfxManager->HandlePhotoError(data);
 }
 
+static void AddWriteWatchList(const string &path, const string &mode,
+    const shared_ptr<FileAsset> &fileAsset, bool isMovingPhotoVideo, bool noNeedWatchNotify)
+{
+    if (mode.find(MEDIA_FILEMODE_WRITEONLY) != string::npos && !isMovingPhotoVideo && IsNotMusicFile(path)
+        && !noNeedWatchNotify) {
+        auto watch = MediaLibraryInotify::GetInstance();
+        if (watch != nullptr) {
+            MEDIA_INFO_LOG("enter inotify, path = %{public}s, fileId = %{public}d",
+                DfxUtils::GetSafePath(path).c_str(), fileAsset->GetId());
+            watch->AddWatchList(path, fileAsset->GetUri(), MediaLibraryApi::API_10);
+        }
+    }
+}
+
 int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &fileAsset, const string &mode,
     MediaLibraryApi api, bool isMovingPhotoVideo, int32_t type, bool noNeedWatchNotify,
     bool isCloseMovingPhotoStatusSharing)
@@ -1865,15 +1879,7 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
         fileAsset->GetUserId(), fileAsset->GetUri().c_str(), fileAsset->GetPath().c_str(), fd, errno);
 
     tracer.Start("AddWatchList");
-    if (mode.find(MEDIA_FILEMODE_WRITEONLY) != string::npos && !isMovingPhotoVideo && IsNotMusicFile(path)
-        && !noNeedWatchNotify) {
-        auto watch = MediaLibraryInotify::GetInstance();
-        if (watch != nullptr) {
-            MEDIA_INFO_LOG("enter inotify, path = %{public}s, fileId = %{public}d",
-                DfxUtils::GetSafePath(path).c_str(), fileAsset->GetId());
-            watch->AddWatchList(path, fileAsset->GetUri(), MediaLibraryApi::API_10);
-        }
-    }
+    AddWriteWatchList(path, mode, fileAsset, isMovingPhotoVideo, noNeedWatchNotify);
     tracer.Finish();
     return fd;
 }

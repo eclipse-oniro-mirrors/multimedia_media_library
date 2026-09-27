@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
+#include "dfx_photo_error_dao.h"
 #include "dfx_photo_error_helper.h"
 #include "dfx_photo_error_processor.h"
 #include "dfx_reporter.h"
@@ -50,29 +51,27 @@ static int32_t ClearTable(const std::string &table)
     return E_OK;
 }
 
-static int32_t InsertPhoto(const std::string &data, const std::string &storagePath,
-    int32_t fileSourceType, int32_t mediaType, int32_t southDeviceType,
-    int32_t position, int64_t size)
+static int32_t InsertPhoto(const PhotoErrorRow &row)
 {
     EXPECT_NE(g_rdbStore, nullptr);
     int64_t ts = MediaTimeUtils::UTCTimeMilliSeconds();
     std::string title = "DFXPE_" + std::to_string(++g_seq);
     std::string displayName = title + ".jpg";
     NativeRdb::ValuesBucket values;
-    values.PutString(MediaColumn::MEDIA_FILE_PATH, data);
+    values.PutString(MediaColumn::MEDIA_FILE_PATH, row.data);
     values.PutString(MediaColumn::MEDIA_TITLE, title);
     values.PutString(MediaColumn::MEDIA_NAME, displayName);
-    values.PutInt(MediaColumn::MEDIA_TYPE, mediaType);
-    values.PutLong(MediaColumn::MEDIA_SIZE, size);
+    values.PutInt(MediaColumn::MEDIA_TYPE, row.mediaType);
+    values.PutLong(MediaColumn::MEDIA_SIZE, row.size);
     values.PutLong(MediaColumn::MEDIA_DATE_ADDED, ts);
     values.PutLong(MediaColumn::MEDIA_TIME_PENDING, 0);
     values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, 0);
     values.PutInt(MediaColumn::MEDIA_HIDDEN, 0);
-    values.PutInt(PhotoColumn::PHOTO_POSITION, position);
-    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, 0);
-    values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, storagePath);
-    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, fileSourceType);
-    values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, southDeviceType);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, row.position);
+    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, row.subtype);
+    values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, row.storagePath);
+    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, row.fileSourceType);
+    values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, row.southDeviceType);
     values.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, 0);
     values.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, 0);
     values.PutInt(PhotoColumn::PHOTO_IS_TEMP, 0);
@@ -115,7 +114,12 @@ HWTEST_F(DfxPhotoErrorProcessorTest, empty_scan_returns_no_batches, TestSize.Lev
 
 HWTEST_F(DfxPhotoErrorProcessorTest, missing_file_counted_as_not_exist, TestSize.Level0)
 {
-    InsertPhoto("/nonexistent/dfx_processor_test/photo.jpg", "", 0, MEDIA_TYPE_IMAGE, 0, 1, 100);
+    PhotoErrorRow row{};
+    row.data = "/nonexistent/dfx_processor_test/photo.jpg";
+    row.mediaType = MEDIA_TYPE_IMAGE;
+    row.position = 1;
+    row.size = 100;
+    InsertPhoto(row);
 
     DfxPhotoErrorProcessor processor;
     auto batches = processor.GetPhotoErrorBatches(500, 5);
@@ -129,7 +133,13 @@ HWTEST_F(DfxPhotoErrorProcessorTest, missing_file_counted_as_not_exist, TestSize
 
 HWTEST_F(DfxPhotoErrorProcessorTest, empty_resolved_path_row_excluded, TestSize.Level0)
 {
-    InsertPhoto("/d/a.jpg", "", 1, MEDIA_TYPE_IMAGE, 0, 1, 100);
+    PhotoErrorRow row{};
+    row.data = "/d/a.jpg";
+    row.fileSourceType = 1;
+    row.mediaType = MEDIA_TYPE_IMAGE;
+    row.position = 1;
+    row.size = 100;
+    InsertPhoto(row);
 
     DfxPhotoErrorProcessor processor;
     auto batches = processor.GetPhotoErrorBatches(500, 5);
@@ -138,8 +148,19 @@ HWTEST_F(DfxPhotoErrorProcessorTest, empty_resolved_path_row_excluded, TestSize.
 
 HWTEST_F(DfxPhotoErrorProcessorTest, same_dimension_rows_accumulate_count, TestSize.Level0)
 {
-    InsertPhoto("/nonexistent/dfx_processor_test/a.jpg", "", 0, MEDIA_TYPE_IMAGE, 0, 1, 100);
-    InsertPhoto("/nonexistent/dfx_processor_test/b.jpg", "", 0, MEDIA_TYPE_IMAGE, 0, 1, 200);
+    PhotoErrorRow row1{};
+    row1.data = "/nonexistent/dfx_processor_test/a.jpg";
+    row1.mediaType = MEDIA_TYPE_IMAGE;
+    row1.position = 1;
+    row1.size = 100;
+    InsertPhoto(row1);
+
+    PhotoErrorRow row2{};
+    row2.data = "/nonexistent/dfx_processor_test/b.jpg";
+    row2.mediaType = MEDIA_TYPE_IMAGE;
+    row2.position = 1;
+    row2.size = 200;
+    InsertPhoto(row2);
 
     DfxPhotoErrorProcessor processor;
     auto batches = processor.GetPhotoErrorBatches(500, 5);
@@ -150,8 +171,19 @@ HWTEST_F(DfxPhotoErrorProcessorTest, same_dimension_rows_accumulate_count, TestS
 
 HWTEST_F(DfxPhotoErrorProcessorTest, interruption_discards_partial_stat, TestSize.Level0)
 {
-    InsertPhoto("/nonexistent/dfx_processor_test/interrupt_a.jpg", "", 0, MEDIA_TYPE_IMAGE, 0, 1, 100);
-    InsertPhoto("/nonexistent/dfx_processor_test/interrupt_b.jpg", "", 0, MEDIA_TYPE_IMAGE, 0, 1, 200);
+    PhotoErrorRow row1{};
+    row1.data = "/nonexistent/dfx_processor_test/interrupt_a.jpg";
+    row1.mediaType = MEDIA_TYPE_IMAGE;
+    row1.position = 1;
+    row1.size = 100;
+    InsertPhoto(row1);
+
+    PhotoErrorRow row2{};
+    row2.data = "/nonexistent/dfx_processor_test/interrupt_b.jpg";
+    row2.mediaType = MEDIA_TYPE_IMAGE;
+    row2.position = 1;
+    row2.size = 200;
+    InsertPhoto(row2);
     test::SetSubscriberTrueLimit(1);
 
     DfxPhotoErrorProcessor processor;
