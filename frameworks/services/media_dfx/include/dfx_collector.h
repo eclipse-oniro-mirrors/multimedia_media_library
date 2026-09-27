@@ -45,6 +45,8 @@ public:
     void CollectInvalidPrivateOpen(const std::string &bundleName, const std::string &operation);
     void CollectSpecialOpen(const std::string &bundleName, const std::string &operation);
     void GetInvalidMap(std::unordered_map<std::string, std::string> &result, int32_t type);
+    void CollectPhotoError(int32_t typeCode);
+    std::map<int32_t, int32_t> GetPhotoError();
 
 private:
     std::mutex thumbnailErrorLock_;
@@ -54,6 +56,7 @@ private:
     std::mutex removeLock_;
     std::mutex adaptationToMovingPhotoLock_;
     std::mutex cinematicVideoStaticLock_;
+    std::mutex photoErrorLock_;
     std::unordered_map<std::string, ThumbnailErrorInfo> thumbnailErrorMap_;
     std::unordered_map<std::string, CommonBehavior> commonBehaviorMap_;
     std::unordered_map<std::string, int32_t> deleteToTrashMap_;
@@ -62,6 +65,7 @@ private:
     std::unordered_map<std::string, std::string> invalidKeyMap_;
     std::unordered_map<std::string, std::string> invalidPrivateOpenMap_;
     std::unordered_map<std::string, std::string> invalidSpecialOpenMap_;
+    std::map<int32_t, int32_t> photoErrorMap_;
     std::mutex invalidKeyLock_;
     std::mutex invalidPrivateOpenLock_;
     std::mutex invalidSpecialOpenLock_;

@@ -45,6 +45,7 @@ public:
     EXPORT static std::string GetAssetRealPath(const AssetOperationInfo &obj);
     EXPORT static std::string GetAssetRealPath(const std::string &path);
     EXPORT static std::string GetAssetRealPathById(const std::string &fileId);
+    EXPORT static std::string GetAssetRealPath(const std::shared_ptr<FileAsset> &fileAsset);
 
     /**
      * @brief Move asset, support cross policy move and same name rename.

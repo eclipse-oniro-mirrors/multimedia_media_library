@@ -33,11 +33,16 @@ ohos_unittest("medialibrary_dfx_test") {
   cflags = [ "-fno-access-control" ]
 
   sources = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/hi_audit.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_storage_operation.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/zip_util.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_analyzer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_collector.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_database_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_photo_error_dao.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_photo_error_helper.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_photo_error_processor.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_deprecated_perm_usage.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_moving_photo.cpp",
@@ -49,6 +54,9 @@ ohos_unittest("medialibrary_dfx_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/media_library_monitor.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/dfx_deprecated_perm_usage_test.cpp",
+    "./src/dfx_photo_error_helper_test.cpp",
+    "./src/dfx_photo_error_open_test.cpp",
+    "./src/dfx_photo_error_processor_test.cpp",
     "./src/dfx_moving_photo_test.cpp",
     "./src/media_library_monitor_test.cpp",
     "./src/medialibrary_dfx_test.cpp",

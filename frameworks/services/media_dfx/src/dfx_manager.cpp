@@ -31,6 +31,7 @@
 #include "medialibrary_meta_recovery.h"
 #endif
 #include "dfx_database_utils.h"
+#include "dfx_photo_error_processor.h"
 #include "dfx_deprecated_perm_usage.h"
 #include "vision_aesthetics_score_column.h"
 #include "parameters.h"
@@ -658,23 +659,16 @@ static void HandleStatistic(DfxData *data)
     DfxDeprecatedPermUsage::Statistics();
 }
 
-static void CheckPhotoError(std::shared_ptr<DfxReporter>& dfxReporter)
-{
-    CHECK_AND_RETURN_INFO_LOG(dfxReporter != nullptr, "E_OK");
-    auto photoCount = DfxDatabaseUtils::QueryPhotoErrorCount();
-    CHECK_AND_RETURN_INFO_LOG(photoCount, "E_OK");
-    MEDIA_ERR_LOG("DFX ReportPhotoError count is %{public}d", photoCount);
-    PhotoErrorCount photoError = { {PhotoErrorType::PHOTO_MISS_TYPE}, {photoCount} };
-    dfxReporter->ReportPhotoError(photoError);
-}
-
 static void HandleCheckTwoDayTask(DfxData *data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "Failed to get data for Handle Check Two Day Task!");
     auto *taskData = static_cast<StatisticData *>(data);
     std::shared_ptr<DfxReporter> dfxReporter = taskData->dfxReporter_;
     CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for Handle Check Two Day Task!");
-    CheckPhotoError(dfxReporter);
+
+    auto dfxManager = DfxManager::GetInstance();
+    CHECK_AND_RETURN_LOG(dfxManager != nullptr, "Failed to get dfxManager");
+    dfxManager->CheckPhotoError(dfxReporter);
 }
 
 void DfxManager::HandleHalfDayMissions()
@@ -1688,6 +1682,74 @@ void DfxManager::HandleVisitLcd()
     CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
     CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
     dfxAnalyzer_->FlushVisitLcd();
+}
+
+static void LogPhotoError(DfxData *data)
+{
+    CHECK_AND_RETURN(data != nullptr);
+    auto *taskData = static_cast<PhotoErrorTask *>(data);
+    CHECK_AND_RETURN(taskData != nullptr);
+    const int32_t typeCode = taskData->typeCode_;
+    const PhotoErrorData &photoErrorData = taskData->photoErrorData_;
+    AuditLog auditLog = { false, "DFX", "OPEN_EMPTY_CREATE", "io", 1, "success",
+        to_string(typeCode), to_string(photoErrorData.fileId), DfxType::OLD_API_OPEN, 0,
+        DfxUtils::GetSafePath(photoErrorData.path), DfxUtils::GetSafeDiaplayNameWhenChinese(photoErrorData.displayName),
+        "", MediaMapConstUtils::MediaTypeToString(photoErrorData.mediaType) };
+    HiAudit::GetInstance().Write(auditLog);
+}
+
+void DfxManager::HandlePhotoError(const PhotoErrorData &data)
+{
+    PhotoErrorDimension dim{ data.fileSourceType, data.southDeviceType, data.position, data.mediaType,
+        PhotoErrorType::OPEN_CREATE_EMPTY_FILE };
+    int32_t typeCode = DfxPhotoErrorHelper::EncodePhotoErrorType(dim);
+    if (dfxCollector_ != nullptr) {
+        dfxCollector_->CollectPhotoError(typeCode);
+    }
+    CHECK_AND_RETURN_LOG(dfxWorker_ != nullptr, "Can not get dfxWorker_");
+    auto *taskData = new (nothrow) PhotoErrorTask(typeCode, data);
+    CHECK_AND_RETURN_LOG(taskData != nullptr, "Failed to new taskData");
+    auto photoErrorTask = make_shared<DfxTask>(LogPhotoError, taskData);
+    if (photoErrorTask == nullptr) {
+        MEDIA_ERR_LOG("Failed to create async task for photoErrorTask.");
+        delete taskData;
+        return;
+    }
+    dfxWorker_->AddTask(photoErrorTask);
+}
+
+void DfxManager::CheckPhotoError(std::shared_ptr<DfxReporter> &dfxReporter)
+{
+    static constexpr int32_t PHOTO_ERROR_SCAN_BATCH_SIZE = 500; // 每批查询、扫描数量
+    static constexpr int32_t PHOTO_ERROR_PACK_BATCH_SIZE = 5;   // 一次上报长度
+    CheckPhotoErrorInScan(dfxReporter, PHOTO_ERROR_SCAN_BATCH_SIZE, PHOTO_ERROR_PACK_BATCH_SIZE);
+    CheckPhotoErrorInOpen(dfxReporter, PHOTO_ERROR_PACK_BATCH_SIZE);
+}
+
+void DfxManager::CheckPhotoErrorInScan(std::shared_ptr<DfxReporter> &dfxReporter, int32_t scanBatchSize,
+    int32_t packBatchSize)
+{
+    CHECK_AND_RETURN_INFO_LOG(dfxReporter != nullptr, "E_OK");
+    // processor 驱动完整扫描后返回打包 batches；中断则返回空，不上报。
+    DfxPhotoErrorProcessor processor;
+    auto batches = processor.GetPhotoErrorBatches(scanBatchSize, packBatchSize);
+    MEDIA_INFO_LOG("DFX ReportPhotoError batches: %{public}d", static_cast<int32_t>(batches.size()));
+    for (const auto& batch : batches) {
+        dfxReporter->ReportPhotoError(batch);
+    }
+}
+
+void DfxManager::CheckPhotoErrorInOpen(std::shared_ptr<DfxReporter> &dfxReporter, int32_t packBatchSize)
+{
+    CHECK_AND_RETURN_INFO_LOG(dfxReporter != nullptr, "E_OK");
+    CHECK_AND_RETURN(dfxCollector_ != nullptr);
+    auto openMap = dfxCollector_->GetPhotoError();
+    CHECK_AND_RETURN(!openMap.empty());
+    auto openBatches = DfxPhotoErrorHelper::PackPhotoErrors(openMap, packBatchSize);
+    MEDIA_INFO_LOG("DFX ReportPhotoError open batches: %{public}d", static_cast<int32_t>(openBatches.size()));
+    for (const auto& openBatch : openBatches) {
+        dfxReporter->ReportPhotoError(openBatch);
+    }
 }
 } // namespace Media
 } // namespace OHOS
