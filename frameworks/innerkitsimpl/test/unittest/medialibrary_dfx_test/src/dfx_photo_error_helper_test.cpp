@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#define MLOG_TAG "DfxPhotoErrorProcessorTest"
+
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <map>
