@@ -194,7 +194,9 @@ bool ShareAlbumInfoCalculation::CalShareAlbumRefreshInfo(const PhotoAssetChangeD
 
     // 共享相册普通信息变化：入口使用 IsShareAlbumAsset（不含 photo_visibility 过滤，count 需包含封禁图片）
     // cover_uri 在 UpdateRefreshNormalInfo 内部通过 IsShareAlbumCoverAsset 单独过滤
-    if (IsShareAlbumInfoChange(assetChangeData, IsShareAlbumAsset, albumId)) {
+    bool isNormalInfoChange = IsShareAlbumInfoChange(assetChangeData, IsShareAlbumAsset, albumId) ||
+        IsShareAlbumInfoChange(assetChangeData, IsShareAlbumCoverAsset, albumId);
+    if (isNormalInfoChange) {
         function<bool(AlbumRefreshInfo&)> calRefreshInfoFunc = [&assetChangeData, albumId]
             (AlbumRefreshInfo &refreshInfo) -> bool {
                 return ShareAlbumInfoCalculation::UpdateRefreshNormalInfo(assetChangeData, albumId, refreshInfo);
@@ -234,8 +236,14 @@ bool ShareAlbumInfoCalculation::UpdateRefreshNormalInfo(const PhotoAssetChangeDa
         ret = true;
     }
     // cover 增量：使用 IsShareAlbumCoverAsset（含 photo_visibility=0 过滤）+ share_group 排序
+    size_t removeSizeBefore = refreshInfo.removeFileIds.size();
     if (UpdateCover(assetChangeData, IsShareAlbumCoverAsset, albumId, IsNewerAsset,
         refreshInfo.deltaAddCover_, refreshInfo.removeFileIds)) {
+        ret = true;
+    }
+    // 封面候选集合变化（如 photo_visibility 0->1 导致资产不能再做封面）虽不影响 count，
+    // 但必须触发刷新重选封面，否则 cover_uri 会停留在被封禁的资产上
+    if (refreshInfo.removeFileIds.size() > removeSizeBefore) {
         ret = true;
     }
     return ret;
