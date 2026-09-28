@@ -263,6 +263,8 @@ static const std::unordered_set<std::string> FILE_KEY_WHITE_LIST {
     HIGHLIGHT_FLUSH,
     GROUP_ID_REP,
     GROUP_ID_SIM,
+    AESTHETICS_VLM,
+    FACIAL_DETECTION,
 };
 
 bool MediaLibraryCommonUtils::CheckWhiteList(const std::string &express)

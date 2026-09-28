@@ -195,6 +195,23 @@ static void UpdateSearchIndexCvStatus(std::shared_ptr<NativeRdb::RdbStore> media
     CHECK_AND_RETURN_LOG(!totalUpdateFailed, "Failed to update ANALYSIS_SEARCH_INDEX_TABLE cv_status field to 0");
 }
 
+static void ClearFacialDetectionStatus(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
+    const std::string &fileIdCondition)
+{
+    MEDIA_INFO_LOG("Clear tab_analysis_total facial_detection status");
+    std::unique_ptr<NativeRdb::AbsRdbPredicates> totalTablePredicates =
+        std::make_unique<NativeRdb::AbsRdbPredicates>(VISION_TOTAL_TABLE);
+    totalTablePredicates->SetWhereClause(fileIdCondition);
+    NativeRdb::ValuesBucket totalValues;
+    totalValues.PutInt("facial_detection", 0);
+    int32_t totalUpdatedRows = 0;
+    int32_t totalRet =
+        BackupDatabaseUtils::Update(mediaLibraryRdb, totalUpdatedRows, totalValues, totalTablePredicates);
+    MEDIA_INFO_LOG("Clear facial_detection, updatedRows %{public}d", totalUpdatedRows);
+    bool totalUpdateFailed = (totalUpdatedRows < 0 || totalRet < 0);
+    CHECK_AND_RETURN_LOG(!totalUpdateFailed, "Failed to update VISION_TOTAL_TABLE facial_detection field to 0");
+}
+
 static void DeleteAnalysisPhotoMap(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
     const std::string &fileIdFilterClause)
 {
@@ -231,6 +248,7 @@ void CloneRestorePortrait::DeleteExistingImageFaceInfos()
     ClearTotalScoreBit2(mediaLibraryRdb_);
     UpdateTotalTableFaceStatus(mediaLibraryRdb_, fileIdCondition);
     UpdateSearchIndexCvStatus(mediaLibraryRdb_, fileIdCondition);
+    ClearFacialDetectionStatus(mediaLibraryRdb_, fileIdCondition);
     DeleteAnalysisPhotoMap(mediaLibraryRdb_, fileIdFilterClause);
     DeleteFaceTables(mediaLibraryRdb_);
 
@@ -251,6 +269,7 @@ void CloneRestorePortrait::Restore(bool isReverse)
     int32_t ret = RestoreMaps();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to update analysis photo map status");
     RestoreAnalysisTotalFaceStatus();
+    RestoreAnalysisTotalFacialDetectionStatus();
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     migratePortraitTotalTimeCost_ += end - start;
     ReportPortraitCloneStat(sceneCode_);
@@ -707,6 +726,20 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
     MEDIA_INFO_LOG("RestoreImageFaceInfo cost %{public}lld", (long long)(end - start));
 }
 
+void CloneRestorePortrait::RestoreAnalysisTotalFacialDetectionStatus()
+{
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    CloneRestoreAnalysisTotal cloneRestoreAnalysisTotal;
+    cloneRestoreAnalysisTotal.Init("facial_detection", PAGE_SIZE, mediaRdb_, mediaLibraryRdb_);
+    int32_t totalNumber = cloneRestoreAnalysisTotal.GetTotalNumber();
+    for (int32_t offset = 0; offset < totalNumber; offset += PAGE_SIZE) {
+        cloneRestoreAnalysisTotal.GetInfos(photoInfoMap_);
+        cloneRestoreAnalysisTotal.UpdateDatabase();
+    }
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("TimeCost: UpdateDatabase facial_detection: %{public}" PRId64, end - start);
+}
+
 std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::vector<ImageFaceTbl>& imageFaceTbls,
     const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
 {
@@ -835,6 +868,12 @@ void  CloneRestorePortrait::ParseImageFaceResultSet1(const std::shared_ptr<Nativ
         IMAGE_FACE_COL_FACE_SCORE);
     imageFaceTbl.faceScoreVersion = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
         IMAGE_FACE_COL_FACE_SCORE_VERSION);
+    imageFaceTbl.facialExpressionScore = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
+        IMAGE_FACE_COL_FACIAL_EXPRESSION_SCORE);
+    imageFaceTbl.facialExpressionDetail = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
+        IMAGE_FACE_COL_FACIAL_EXPRESSION_DETAIL);
+    imageFaceTbl.facialExpressionVersion = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
+        IMAGE_FACE_COL_FACIAL_EXPRESSION_VERSION);
 }
 
 void CloneRestorePortrait::BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls)
@@ -909,6 +948,12 @@ NativeRdb::ValuesBucket CloneRestorePortrait::CreateValuesBucketFromImageFaceTbl
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACE_SATURATION, imageFaceTbl.faceSaturation);
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACE_EYE_CLOSE, imageFaceTbl.faceEyeClose);
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACE_EXPRESSION, imageFaceTbl.faceExpression);
+    PutImageFaceDetailValues(values, imageFaceTbl);
+    return values;
+}
+
+void CloneRestorePortrait::PutImageFaceDetailValues(NativeRdb::ValuesBucket& values, const ImageFaceTbl& imageFaceTbl)
+{
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_AGE, imageFaceTbl.age);
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_GENDER, imageFaceTbl.gender);
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_PREFERRED_GRADE, imageFaceTbl.preferredGrade);
@@ -924,7 +969,12 @@ NativeRdb::ValuesBucket CloneRestorePortrait::CreateValuesBucketFromImageFaceTbl
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_COMPLETENESS, imageFaceTbl.completeness);
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACE_SCORE, imageFaceTbl.faceScore);
     BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACE_SCORE_VERSION, imageFaceTbl.faceScoreVersion);
-    return values;
+    BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACIAL_EXPRESSION_SCORE,
+        imageFaceTbl.facialExpressionScore);
+    BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACIAL_EXPRESSION_DETAIL,
+        imageFaceTbl.facialExpressionDetail);
+    BackupDatabaseUtils::PutIfPresent(values, IMAGE_FACE_COL_FACIAL_EXPRESSION_VERSION,
+        imageFaceTbl.facialExpressionVersion);
 }
 
 void CloneRestorePortrait::UpdateAnalysisTotalTblNoFaceStatus()

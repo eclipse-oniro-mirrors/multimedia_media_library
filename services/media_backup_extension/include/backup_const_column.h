@@ -158,6 +158,9 @@ const std::string IMAGE_FACE_COL_EMOTION = "emotion";
 const std::string IMAGE_FACE_COL_COMPLETENESS = "completeness";
 const std::string IMAGE_FACE_COL_FACE_SCORE = "face_score";
 const std::string IMAGE_FACE_COL_FACE_SCORE_VERSION = "face_score_version";
+const std::string IMAGE_FACE_COL_FACIAL_EXPRESSION_SCORE = "facial_expression_score";
+const std::string IMAGE_FACE_COL_FACIAL_EXPRESSION_DETAIL = "facial_expression_detail";
+const std::string IMAGE_FACE_COL_FACIAL_EXPRESSION_VERSION = "facial_expression_version";
 
 // video_face_tbl COL_NAME
 const std::string ANALYSIS_VIDEO_FACE_TABLE = "tab_analysis_video_face";
@@ -205,6 +208,17 @@ const std::string BEAUTY_SCORE_COL_SEMANTICS_SCORE = "semantics_score";
 const std::string BEAUTY_SCORE_COL_IS_BLACK_WHITE_STRIPE = "is_black_white_stripe";
 const std::string BEAUTY_SCORE_COL_IS_BLURRY = "is_blurry";
 const std::string BEAUTY_SCORE_COL_IS_MOSAIC = "is_mosaic";
+const std::string BEAUTY_SCORE_COL_NARRATIVE_TAGS = "narrative_tags";
+const std::string BEAUTY_SCORE_COL_NARRATIVE_SCORE = "narrative_score";
+const std::string BEAUTY_SCORE_COL_PORTRAIT_TAGS = "portrait_tags";
+const std::string BEAUTY_SCORE_COL_PORTRAIT_SCORE = "portrait_score";
+const std::string BEAUTY_SCORE_COL_COMPOSITION_TAGS = "composition_tags";
+const std::string BEAUTY_SCORE_COL_COMPOSITION_SCORE = "composition_score";
+const std::string BEAUTY_SCORE_COL_QUALITY_TAGS = "quality_tags";
+const std::string BEAUTY_SCORE_COL_QUALITY_SCORE = "quality_score";
+const std::string BEAUTY_SCORE_COL_CAPTION = "caption";
+const std::string BEAUTY_SCORE_COL_VLM_SCORE = "vlm_score";
+const std::string BEAUTY_SCORE_COL_AESTHETICS_VLM_VERSION = "aesthetics_vlm_version";
 
 // Asset Map TBL COL_NAME
 const std::string TAB_OLD_PHOTOS = "tab_old_photos";

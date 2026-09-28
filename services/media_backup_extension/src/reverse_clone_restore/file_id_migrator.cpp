@@ -641,7 +641,8 @@ bool FileIdMigrator::UpdateFaceTableFileIds(std::shared_ptr<RdbStore> db,
 bool FileIdMigrator::UpdateAnalysisTotalFields(std::shared_ptr<RdbStore> db,
     const std::unordered_map<int32_t, int32_t>& fileIdMap)
 {
-    const std::vector<std::string> fields = {"face", "selection"};
+    // 新增的 total 表字段必须显式加进来，否则判重资产不会继承旧机的值
+    const std::vector<std::string> fields = {"face", "selection", "facial_detection"};
     return UpdateAnalysisTotalFieldsByConfig(db, fileIdMap, fields);
 }
 
