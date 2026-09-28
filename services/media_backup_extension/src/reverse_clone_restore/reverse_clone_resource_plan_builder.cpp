@@ -53,10 +53,20 @@ bool HasMovingPhotoVideo(const ReverseCloneAssetResource &resource)
         resource.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
 }
 
-bool IsCrossLakeMovingPhoto(const ReverseCloneAssetResource &absorbed, const ReverseCloneAssetResource &donor)
+bool ShouldBlockMovingPhotoOrigin(const ReverseCloneAssetResource &target,
+    const ReverseCloneAssetResource &source)
 {
-    return (HasMovingPhotoVideo(absorbed) || HasMovingPhotoVideo(donor)) &&
-        absorbed.IsLakeAsset() != donor.IsLakeAsset();
+    // 旧机提供动态照片，新机目标是湖内资产。
+    if (HasMovingPhotoVideo(source) && !target.storagePath.empty()) {
+        return true;
+    }
+
+    // 旧机提供湖内资源，新机目标是动态照片。
+    if (source.IsLakeAsset() && HasMovingPhotoVideo(target)) {
+        return true;
+    }
+
+    return false;
 }
 } // namespace
 
@@ -64,66 +74,50 @@ bool IsCrossLakeMovingPhoto(const ReverseCloneAssetResource &absorbed, const Rev
 ReverseCloneResourcePlan ReverseCloneResourcePlanBuilder::Build(const FileInfo &absorbedFile,
     const ReverseCloneCandidate &candidate, int32_t absorbedFileId) const
 {
-    ReverseCloneAssetResource absorbed = ToResource(absorbedFile, absorbedFileId);
+    ReverseCloneResourcePlan plan;
+    plan.absorbed = ToResource(absorbedFile, absorbedFileId);
     if (!candidate.IsFound()) {
-        ReverseCloneResourcePlan plan;
-        plan.absorbed = absorbed;
         return plan;
     }
+    plan.donor = candidate.donor;
+    plan.matchType = candidate.matchType;
     if (candidate.matchType == ReverseCloneMatchType::SAME_CLOUD_CONFLICT) {
-        ReverseCloneResourcePlan plan;
-        FillCommonPlan(plan, absorbed, candidate);
         plan.decision = ReverseCloneResourceDecision::SKIP_CLOUD_VERSION_CONFLICT;
         return plan;
     }
     if (!candidate.CanInheritResource()) {
-        ReverseCloneResourcePlan plan;
-        FillCommonPlan(plan, absorbed, candidate);
         return plan;
     }
     if (!candidate.donor.HasResourcePath()) {
-        ReverseCloneResourcePlan plan;
-        FillCommonPlan(plan, absorbed, candidate);
         plan.decision = ReverseCloneResourceDecision::SKIP_NO_DONOR_RESOURCE;
         return plan;
     }
-    return BuildInheritPlan(absorbed, candidate);
+    plan.blockOriginInheritance = ShouldBlockMovingPhotoOrigin(plan.absorbed, plan.donor);
+    FillResourceActions(plan);
+    return plan;
 }
 
 ReverseCloneResourcePlan ReverseCloneResourcePlanBuilder::BuildFromSource(const FileInfo &sourceFile,
     const std::string &sourceRoot, const std::string &sourceOriginPath, int32_t absorbedFileId) const
 {
-    ReverseCloneAssetResource absorbed = ToResource(sourceFile, absorbedFileId);
-    ReverseCloneAssetResource donor = absorbed;
-    donor.localRoot = sourceRoot;
-    donor.originPath = sourceOriginPath;
-    donor.relativePath = sourceFile.relativePath;
-    return BuildInheritPlan(absorbed, donor, ReverseCloneMatchType::SOURCE_ASSET);
-}
-
-ReverseCloneResourcePlan ReverseCloneResourcePlanBuilder::BuildInheritPlan(const ReverseCloneAssetResource &absorbed,
-    const ReverseCloneCandidate &candidate) const
-{
-    return BuildInheritPlan(absorbed, candidate.donor, candidate.matchType);
-}
-
-ReverseCloneResourcePlan ReverseCloneResourcePlanBuilder::BuildInheritPlan(const ReverseCloneAssetResource &absorbed,
-    const ReverseCloneAssetResource &donor, ReverseCloneMatchType matchType) const
-{
     ReverseCloneResourcePlan plan;
-    plan.absorbed = absorbed;
-    plan.donor = donor;
-    plan.matchType = matchType;
-    plan.inheritOrigin = donor.HasOriginCandidate();
-    plan.inheritLcdThumbnail = HasLcdThumbnail(donor);
-    plan.inheritThumbnail = HasThumbnail(donor);
-    if (IsCrossLakeMovingPhoto(absorbed, donor)) {
-        plan.blockOriginInheritance = true;
-        plan.inheritOrigin = false;
-    }
+    plan.absorbed = ToResource(sourceFile, absorbedFileId);
+    plan.donor = plan.absorbed;
+    plan.donor.localRoot = sourceRoot;
+    plan.donor.originPath = sourceOriginPath;
+    plan.donor.relativePath = sourceFile.relativePath;
+    plan.matchType = ReverseCloneMatchType::SOURCE_ASSET;
+    FillResourceActions(plan);
+    return plan;
+}
+
+void ReverseCloneResourcePlanBuilder::FillResourceActions(ReverseCloneResourcePlan &plan) const
+{
+    plan.inheritOrigin = !plan.blockOriginInheritance && plan.donor.HasOriginCandidate();
+    plan.inheritLcdThumbnail = plan.donor.HasThumbnailCandidate();
+    plan.inheritThumbnail = plan.inheritLcdThumbnail;
     plan.decision = plan.HasResourceAction() ? ReverseCloneResourceDecision::INHERIT :
         ReverseCloneResourceDecision::SKIP_NO_DONOR_RESOURCE;
-    return plan;
 }
 
 ReverseCloneAssetResource ReverseCloneResourcePlanBuilder::ToResource(const FileInfo &fileInfo,
@@ -177,22 +171,5 @@ ReverseCloneAssetResource ReverseCloneResourcePlanBuilder::ToResource(const File
     return resource;
 }
 
-bool ReverseCloneResourcePlanBuilder::HasLcdThumbnail(const ReverseCloneAssetResource &asset) const
-{
-    return asset.HasThumbnailCandidate();
-}
-
-bool ReverseCloneResourcePlanBuilder::HasThumbnail(const ReverseCloneAssetResource &asset) const
-{
-    return asset.HasThumbnailCandidate();
-}
-
-void ReverseCloneResourcePlanBuilder::FillCommonPlan(ReverseCloneResourcePlan &plan,
-    const ReverseCloneAssetResource &absorbed, const ReverseCloneCandidate &candidate) const
-{
-    plan.absorbed = absorbed;
-    plan.donor = candidate.donor;
-    plan.matchType = candidate.matchType;
-}
 // LCOV_EXCL_STOP
 } // namespace OHOS::Media

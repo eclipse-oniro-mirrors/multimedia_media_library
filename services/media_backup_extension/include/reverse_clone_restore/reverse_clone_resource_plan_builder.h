@@ -27,15 +27,8 @@ public:
         const std::string &sourceOriginPath, int32_t absorbedFileId) const;
 
 private:
-    ReverseCloneResourcePlan BuildInheritPlan(const ReverseCloneAssetResource &absorbed,
-        const ReverseCloneCandidate &candidate) const;
-    ReverseCloneResourcePlan BuildInheritPlan(const ReverseCloneAssetResource &absorbed,
-        const ReverseCloneAssetResource &donor, ReverseCloneMatchType matchType) const;
+    void FillResourceActions(ReverseCloneResourcePlan &plan) const;
     ReverseCloneAssetResource ToResource(const FileInfo &fileInfo, int32_t absorbedFileId) const;
-    bool HasLcdThumbnail(const ReverseCloneAssetResource &asset) const;
-    bool HasThumbnail(const ReverseCloneAssetResource &asset) const;
-    void FillCommonPlan(ReverseCloneResourcePlan &plan, const ReverseCloneAssetResource &absorbed,
-        const ReverseCloneCandidate &candidate) const;
 };
 } // namespace OHOS::Media
 
