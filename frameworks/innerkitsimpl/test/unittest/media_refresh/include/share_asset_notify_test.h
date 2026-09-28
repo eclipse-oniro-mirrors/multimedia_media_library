@@ -1,10 +1,10 @@
 /*
- * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Copyright (C) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,24 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef FRAMEWORKS_INNERKITSIMPL_MEDIALIBRARY_NOTIFY_UTILS_TEST_H_
-#define FRAMEWORKS_INNERKITSIMPL_MEDIALIBRARY_NOTIFY_UTILS_TEST_H_
+#ifndef MEDIALIBRARY_SHARE_ASSET_NOTIFY_UNIT_TEST_H
+#define MEDIALIBRARY_SHARE_ASSET_NOTIFY_UNIT_TEST_H
 
-#include <napi/native_api.h>
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 namespace OHOS {
 namespace Media {
-
-class MediaLibraryNotifyUtilsTest : public testing::Test {
+namespace AccurateRefresh {
+class ShareAssetNotifyTest : public testing::Test {
 public:
-    static void SetUpTestCase();
-    static void TearDownTestCase();
-    void SetUp();
-    void TearDown();
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp() override;
+    void TearDown() override;
 };
+} // namespace AccurateRefresh
+} // namespace Media
+} // namespace OHOS
 
-}
-}
-
-#endif // FRAMEWORKS_INNERKITSIMPL_MEDIALIBRARY_NOTIFY_UTILS_TEST_H_
+#endif // MEDIALIBRARY_SHARE_ASSET_NOTIFY_UNIT_TEST_H

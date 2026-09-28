@@ -40,6 +40,7 @@ ohos_unittest("media_refresh_test") {
     "./src/asset_accurate_refresh_test.cpp",
     "./src/accurate_refresh_test_util.cpp",
     "./src/live_photo_4d_asset_helper_test.cpp",
+    "./src/share_asset_notify_test.cpp",
     "./src/media_refresh_controller_service_test.cpp",
   ]
   accurate_refresh_source = [

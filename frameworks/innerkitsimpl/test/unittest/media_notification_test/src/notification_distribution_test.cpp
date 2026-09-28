@@ -400,5 +400,23 @@ HWTEST_F(NotificationDistributionTest, medialib_ProcessUserDefineNotifyInfo_test
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("end medialib_ProcessUserDefineNotifyInfo_test04");
 }
+
+/**
+ * 用例说明：共享图片 / 共享相册 URI 通过权限过滤并原样返回
+ * 覆盖分支点：FilterNotifyInfoByPermission 新增的 SHARE_PHOTO_URI、SHARE_PHOTO_ALBUM_URI 两个或条件
+ */
+HWTEST_F(NotificationDistributionTest, medialib_distribution_share_uri_test001, TestSize.Level1)
+{
+    MediaChangeInfo changeInfo;
+    changeInfo.notifyUri = NotifyUriType::SHARE_PHOTO_URI;
+    MediaChangeInfo sharePhotoRet = Notification::NotificationDistribution::FilterNotifyInfoByPermission(
+        changeInfo, NotifyUriType::SHARE_PHOTO_URI);
+    EXPECT_EQ(sharePhotoRet.notifyUri, NotifyUriType::SHARE_PHOTO_URI);
+
+    changeInfo.notifyUri = NotifyUriType::SHARE_PHOTO_ALBUM_URI;
+    MediaChangeInfo shareAlbumRet = Notification::NotificationDistribution::FilterNotifyInfoByPermission(
+        changeInfo, NotifyUriType::SHARE_PHOTO_ALBUM_URI);
+    EXPECT_EQ(shareAlbumRet.notifyUri, NotifyUriType::SHARE_PHOTO_ALBUM_URI);
+}
 } // namespace Media
 } // namespace OHOS

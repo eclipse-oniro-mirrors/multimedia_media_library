@@ -1321,6 +1321,37 @@ HWTEST_F(AlbumDataManagerTest, EdgeCase_VerySmallAlbumId_Test, TestSize.Level0)
     EXPECT_EQ(result, ACCURATE_REFRESH_RET_OK);
 }
 
+/**
+ * 用例说明：按 albumId 查当前相册状态构造 UPDATE 变更数据（before == after）
+ * 覆盖分支点：GetAlbumDatasForUpdateNoChange 中 albumIds 非空 + 查询有结果循环
+ */
+HWTEST_F(AlbumDataManagerTest, GetAlbumDatasForUpdateNoChange_NonEmpty_Test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start GetAlbumDatasForUpdateNoChange_NonEmpty_Test");
+    // SetUp 中已插入 TEST_ALBUM_ID_1(100)、TEST_ALBUM_ID_2(200) 两个相册
+    vector<int32_t> albumIds = {TEST_ALBUM_ID_1, TEST_ALBUM_ID_2};
+    vector<AlbumChangeData> changeDatas = AlbumDataManager::GetAlbumDatasForUpdateNoChange(albumIds);
+
+    ASSERT_EQ(changeDatas.size(), albumIds.size());
+    for (auto &changeData : changeDatas) {
+        EXPECT_EQ(changeData.operation_, RDB_OPERATION_UPDATE);
+        // 无变更：变更前后为同一份当前状态
+        EXPECT_EQ(changeData.infoBeforeChange_.albumId_, changeData.infoAfterChange_.albumId_);
+    }
+}
+
+/**
+ * 用例说明：入参为空时不做查询，直接返回空结果
+ * 覆盖分支点：GetAlbumDatasForUpdateNoChange 中 albumIds.empty() 为真
+ */
+HWTEST_F(AlbumDataManagerTest, GetAlbumDatasForUpdateNoChange_Empty_Test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start GetAlbumDatasForUpdateNoChange_Empty_Test");
+    vector<AlbumChangeData> changeDatas = AlbumDataManager::GetAlbumDatasForUpdateNoChange({});
+
+    EXPECT_TRUE(changeDatas.empty());
+}
+
 } // namespace AccurateRefresh
 } // namespace Media
 } // namespace OHOS
