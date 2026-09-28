@@ -4756,5 +4756,164 @@ HWTEST_F(MediaLibraryVisionTest, Vision_Total_AffectiveDetector_Test_002, TestSi
     EXPECT_EQ(affectiveDetector, 0);
     MEDIA_INFO_LOG("Vision_Total_AffectiveDetector_Test_002::affective_detector = %{public}d. End", affectiveDetector);
 }
+
+HWTEST_F(MediaLibraryVisionTest, Vision_InsertAestheticsVlm_Full_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_InsertAestheticsVlm_Full_Test_001::Start");
+    Uri attsUri(URI_AESTHETICS);
+    MediaLibraryCommand cmd(attsUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 700);
+    valuesBucket.Put(AESTHETICS_SCORE, 85);
+    valuesBucket.Put(NARRATIVE_TAGS, "sunset");
+    valuesBucket.Put(NARRATIVE_SCORE, 75);
+    valuesBucket.Put(PORTRAIT_TAGS, "person");
+    valuesBucket.Put(PORTRAIT_SCORE, 80);
+    valuesBucket.Put(COMPOSITION_SCORE, 85);
+    valuesBucket.Put(COMPOSITION_TAGS, "rule_of_thirds");
+    valuesBucket.Put(QUALITY_TAGS, "high");
+    valuesBucket.Put(QUALITY_SCORE, 88);
+    valuesBucket.Put(AESTHETICS_CAPTION, "a beautiful sunset");
+    valuesBucket.Put(VLM_SCORE, 90);
+    valuesBucket.Put(AESTHETICS_VLM_VERSION, "1.0");
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    // 查询验证 VLM_SCORE 和 version
+    vector<string> columns;
+    columns.push_back(VLM_SCORE);
+    columns.push_back(AESTHETICS_VLM_VERSION);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(700));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int vlmScore = 0;
+    string vlmVersion;
+    resultSet->GetInt(0, vlmScore);
+    resultSet->GetString(1, vlmVersion);
+    EXPECT_EQ(vlmScore, 90);
+    EXPECT_EQ(vlmVersion, "1.0");
+    MEDIA_INFO_LOG("Vision_InsertAestheticsVlm_Full_Test_001::vlmScore=%{public}d. End", vlmScore);
+}
+
+// ==================== 需求 1.38 人脸表情 ====================
+HWTEST_F(MediaLibraryVisionTest, Vision_InsertFacialExpression_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_InsertFacialExpression_Test_001::Start");
+    Uri imageFaceUri(URI_IMAGE_FACE);
+    MediaLibraryCommand cmd(imageFaceUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(FILE_ID, 701);
+    valuesBucket.Put(FACE_ID, 1);
+    valuesBucket.Put(FACIAL_EXPRESSION_SCORE, 80);
+    valuesBucket.Put(FACIAL_EXPRESSION_DETAIL, "smile");
+    valuesBucket.Put(FACIAL_EXPRESSION_VERSION, "1.0");
+    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    EXPECT_GT(retVal, 0);
+
+    // 查询验证
+    vector<string> columns;
+    columns.push_back(FACIAL_EXPRESSION_SCORE);
+    columns.push_back(FACIAL_EXPRESSION_DETAIL);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(701));
+    int errCode = 0;
+    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int expressionScore = 0;
+    string expressionDetail;
+    resultSet->GetInt(0, expressionScore);
+    resultSet->GetString(1, expressionDetail);
+    EXPECT_EQ(expressionScore, 80);
+    EXPECT_EQ(expressionDetail, "smile");
+    MEDIA_INFO_LOG("Vision_InsertFacialExpression_Test_001::score=%{public}d. End", expressionScore);
+}
+
+// 需求 1.38 人脸表情：Update 测试
+HWTEST_F(MediaLibraryVisionTest, Vision_UpdateFacialExpression_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_UpdateFacialExpression_Test_001::Start");
+    Uri imageFaceUri(URI_IMAGE_FACE);
+    MediaLibraryCommand cmd(imageFaceUri);
+    DataShare::DataShareValuesBucket insertBucket;
+    insertBucket.Put(FILE_ID, 702);
+    insertBucket.Put(FACE_ID, 1);
+    insertBucket.Put(FACIAL_EXPRESSION_SCORE, 80);
+    insertBucket.Put(FACIAL_EXPRESSION_DETAIL, "smile");
+    insertBucket.Put(FACIAL_EXPRESSION_VERSION, "1.0");
+    auto insertRet = MediaLibraryDataManager::GetInstance()->Insert(cmd, insertBucket);
+    EXPECT_GT(insertRet, 0);
+
+    DataShare::DataShareValuesBucket updateBucket;
+    updateBucket.Put(FACIAL_EXPRESSION_SCORE, 92);
+    updateBucket.Put(FACIAL_EXPRESSION_DETAIL, "laugh");
+    DataShare::DataSharePredicates updatePred;
+    updatePred.EqualTo(FILE_ID, to_string(702));
+    updatePred.EqualTo(FACE_ID, "1");
+    auto updateRet = MediaLibraryDataManager::GetInstance()->Update(cmd, updateBucket, updatePred);
+    EXPECT_EQ(updateRet, 1);
+
+    // 查询验证更新后的值
+    vector<string> columns;
+    columns.push_back(FACIAL_EXPRESSION_SCORE);
+    columns.push_back(FACIAL_EXPRESSION_DETAIL);
+    DataShare::DataSharePredicates queryPred;
+    queryPred.EqualTo(FILE_ID, to_string(702));
+    int errCode = 0;
+    auto queryResult = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, queryPred, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResult);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_GT(count, 0);
+    resultSet->GoToFirstRow();
+    int expressionScore = 0;
+    string expressionDetail;
+    resultSet->GetInt(0, expressionScore);
+    resultSet->GetString(1, expressionDetail);
+    EXPECT_EQ(expressionScore, 92);
+    EXPECT_EQ(expressionDetail, "laugh");
+    MEDIA_INFO_LOG("Vision_UpdateFacialExpression_Test_001::score=%{public}d. End", expressionScore);
+}
+
+// 需求 1.38 人脸表情：Delete 测试
+HWTEST_F(MediaLibraryVisionTest, Vision_DeleteFacialExpression_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Vision_DeleteFacialExpression_Test_001::Start");
+    Uri imageFaceUri(URI_IMAGE_FACE);
+    MediaLibraryCommand cmd(imageFaceUri);
+    DataShare::DataShareValuesBucket insertBucket;
+    insertBucket.Put(FILE_ID, 703);
+    insertBucket.Put(FACE_ID, 1);
+    insertBucket.Put(FACIAL_EXPRESSION_SCORE, 85);
+    insertBucket.Put(FACIAL_EXPRESSION_DETAIL, "smile");
+    insertBucket.Put(FACIAL_EXPRESSION_VERSION, "1.0");
+    auto insertRet = MediaLibraryDataManager::GetInstance()->Insert(cmd, insertBucket);
+    EXPECT_GT(insertRet, 0);
+
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(FILE_ID, to_string(703));
+    auto retVal = MediaLibraryDataManager::GetInstance()->Delete(cmd, predicates);
+    EXPECT_EQ(retVal, 1);
+
+    // 查询验证已删除
+    vector<string> columns;
+    columns.push_back(FACIAL_EXPRESSION_SCORE);
+    int errCode = 0;
+    auto queryResult = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
+    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResult);
+    int count = 0;
+    resultSet->GetRowCount(count);
+    EXPECT_EQ(count, 0);
+    MEDIA_INFO_LOG("Vision_DeleteFacialExpression_Test_001::retVal=%{public}d. End", retVal);
+}
 } // namespace Media
 } // namespace OHOS

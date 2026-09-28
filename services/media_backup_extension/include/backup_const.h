@@ -849,6 +849,9 @@ struct ImageFaceTbl {
     std::optional<int32_t> completeness;
     std::optional<int32_t> faceScore;
     std::optional<std::string> faceScoreVersion;
+    std::optional<int32_t> facialExpressionScore;
+    std::optional<std::string> facialExpressionDetail;
+    std::optional<std::string> facialExpressionVersion;
 };
 
 struct AnalysisPhotoMapTbl {

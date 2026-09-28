@@ -894,9 +894,10 @@ void BackupDatabaseUtils::DeleteExistingImageFaceData(std::shared_ptr<NativeRdb:
         " WHERE " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdNewFilterClause;
     BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb, deleteFaceSql);
 
+    // 人脸明细已被删除，表情分析状态一并清零，避免残留"状态已完成、明细为空"
     const std::string updateTotalSql =
         "UPDATE " + VISION_TOTAL_TABLE +
-        " SET face = 0, status = CASE WHEN status =1 THEN 0 ELSE status END " +
+        " SET face = 0, facial_detection = 0, status = CASE WHEN status =1 THEN 0 ELSE status END " +
         " WHERE " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdNewFilterClause;
     int32_t totalRet = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb, updateTotalSql);
 

@@ -103,5 +103,30 @@ static vector<pair<int32_t, int32_t>> VersionAddAffectiveColumn(NativeRdb::RdbSt
     return UpgradeHelper::ExecuteCommands(commands, store);
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_AFFECTIVE_COLUMN, VISION_MODULE_NAME, VersionAddAffectiveColumn)
+
+static vector<pair<int32_t, int32_t>> VersionAddAestheticsVlm(NativeRdb::RdbStore& store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_NARRATIVE_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_NARRATIVE_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_PORTRAIT_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_PORTRAIT_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_COMPOSITION_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_COMPOSITION_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_QUALITY_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_QUALITY_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_AESTHETICS_CAPTION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_VLM_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_AESTHETICS_VLM_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_IMAGE_FACE, COLUMN_FACIAL_EXPRESSION_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_IMAGE_FACE, COLUMN_FACIAL_EXPRESSION_DETAIL, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_IMAGE_FACE, COLUMN_FACIAL_EXPRESSION_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_AESTHETICS_VLM, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_FACIAL_DETECTION, "INT NOT NULL DEFAULT 0")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(
+    VERSION_ADD_AESTHETICS_VLM, VISION_MODULE_NAME, VersionAddAestheticsVlm)
 }
 }

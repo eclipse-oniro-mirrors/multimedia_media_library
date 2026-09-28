@@ -90,9 +90,9 @@ int32_t AnalysisDataVisionDao::DeleteFromAestheticsScoreByFileId(const string &f
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is null");
     string RESET_STATUS_AND_SCORE = "\
         UPDATE tab_analysis_total \
-        SET status = 0, aesthetics_score = 0 \
+        SET status = 0, aesthetics_score = 0, aesthetics_vlm = 0 \
         WHERE \
-            file_id = ? AND aesthetics_score = 1;";
+            file_id = ? AND (aesthetics_score = 1 OR aesthetics_vlm = 1);";
     const std::vector<NativeRdb::ValueObject> bindArgs = {fileId};
 
     int64_t changedRowCount = 0;
@@ -174,9 +174,9 @@ int32_t AnalysisDataVisionDao::DeleteFromImageFaceByFileId(const string &fileId)
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is null");
     string RESET_STATUS_AND_FACE = "\
         UPDATE tab_analysis_total \
-        SET status = 0, face = 0 \
+        SET status = 0, face = 0, facial_detection = 0 \
         WHERE \
-            file_id = ? AND face IN (-2, 1, 2, 3, 4);";
+            file_id = ? AND (face IN (-2, 1, 2, 3, 4) OR facial_detection = 1);";
     const std::vector<NativeRdb::ValueObject> bindArgs = {fileId};
 
     int64_t changedRowCount = 0;

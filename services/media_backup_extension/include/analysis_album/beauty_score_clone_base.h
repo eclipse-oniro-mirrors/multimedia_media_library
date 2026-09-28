@@ -52,6 +52,17 @@ struct BeautyScoreTbl {
     std::optional<int32_t> isBlackWhiteStripe;
     std::optional<int32_t> isBlurry;
     std::optional<int32_t> isMosaic;
+    std::optional<std::string> narrativeTags;
+    std::optional<int32_t> narrativeScore;
+    std::optional<std::string> portraitTags;
+    std::optional<int32_t> portraitScore;
+    std::optional<std::string> compositionTags;
+    std::optional<int32_t> compositionScore;
+    std::optional<std::string> qualityTags;
+    std::optional<int32_t> qualityScore;
+    std::optional<std::string> caption;
+    std::optional<int32_t> vlmScore;
+    std::optional<std::string> aestheticsVlmVersion;
 };
 
 class BeautyScoreCloneBase {

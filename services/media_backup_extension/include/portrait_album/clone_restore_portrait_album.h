@@ -85,6 +85,7 @@ private:
         ImageFaceTbl& imageFaceTbl);
     void ParseImageFaceResultSet1(const std::shared_ptr<NativeRdb::ResultSet>& resultSet, ImageFaceTbl& imageFaceTbl);
     NativeRdb::ValuesBucket CreateValuesBucketFromImageFaceTbl(const ImageFaceTbl& imageFaceTbl);
+    void PutImageFaceDetailValues(NativeRdb::ValuesBucket& values, const ImageFaceTbl& imageFaceTbl);
     void BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls);
     void RestoreMapsBatch();
     void UpdateMapInsertValues(std::vector<NativeRdb::ValuesBucket> &values);
@@ -94,6 +95,7 @@ private:
     void InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesBucket> &values);
     void ReportPortraitCloneStat(int32_t sceneCode);
     void RestoreAnalysisTotalFaceStatus();
+    void RestoreAnalysisTotalFacialDetectionStatus();
     void UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId);
 
 public:

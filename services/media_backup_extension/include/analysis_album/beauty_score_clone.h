@@ -58,6 +58,8 @@ private:
         const std::vector<std::string> &commonColumns);
     void ParseBeautyScoreResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
         BeautyScoreTbl& beautyScoreTbl);
+    void ParseVlmFieldsFromResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
+        BeautyScoreTbl& beautyScoreTbl);
     std::vector<BeautyScoreTbl> ProcessBeautyScoreTbls(
         const std::vector<BeautyScoreTbl>& beautyScoreTbls);
     std::unordered_set<int32_t> BatchInsertBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
@@ -85,6 +87,10 @@ private:
     void UpdateAnalysisTotalTblBeautyScoreAll(std::shared_ptr<NativeRdb::RdbStore> newRdbStore,
         std::shared_ptr<NativeRdb::RdbStore> oldRdbStore, const std::vector<int32_t>& fileIdNew,
         const std::vector<int32_t>& fileIdOld);
+    void MergeAnalysisTotalAestheticsVlm(const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
+        const std::shared_ptr<NativeRdb::RdbStore>& destRdb, const std::vector<int32_t>& sourceFileIds);
+    void UpdateTotalColumnInBatches(const std::shared_ptr<NativeRdb::RdbStore>& rdbStore,
+        const std::string& columnName, int32_t value, const std::vector<int32_t>& fileIds);
 
     bool QueryAndInsertSourceBeautyScores();
     void ReverseUpdateTotalScoresBatch(const std::vector<int32_t>& batchIds);
