@@ -28,11 +28,12 @@ namespace Media {
 
 enum class PhotoErrorType : int32_t {
     CONSISTENT = 0,
-    FILE_NOT_EXIST = 1,
-    FILE_SIZE_ZERO = 2,
-    FILE_SMALLER_THAN_DB = 3,
-    FILE_LARGER_THAN_DB = 4,
-    OPEN_CREATE_EMPTY_FILE = 5,
+    FILE_NOT_EXIST_THUMB_EXIST = 1, // 与旧 PHOTO_MISS_TYPE=1 定义值一致
+    FILE_NOT_EXIST_THUMB_NOT_EXIST = 2,
+    FILE_SIZE_ZERO = 3,
+    FILE_SMALLER_THAN_DB = 4,
+    FILE_LARGER_THAN_DB = 5,
+    OPEN_CREATE_EMPTY_FILE = 6,
 };
 
 enum PhotoErrorEncodeBase : int32_t {
@@ -57,7 +58,7 @@ int32_t NormalizeSouthDeviceType(int32_t southDeviceType);
 int32_t NormalizePosition(int32_t position);
 int32_t EncodePhotoErrorType(const PhotoErrorDimension& dimension);
 std::string ResolveRealPath(int32_t fileSourceType, const std::string& data, const std::string& storagePath);
-PhotoErrorType ClassifyPhotoError(bool fileExists, int64_t diskSize, int64_t dbSize);
+PhotoErrorType ClassifyPhotoError(bool fileExists, bool thumbExists, int64_t diskSize, int64_t dbSize);
 std::vector<PhotoErrorCount> PackPhotoErrors(const std::map<int32_t, int32_t>& typeToCount, int32_t packBatchSize);
 } // namespace DfxPhotoErrorHelper
 } // namespace Media

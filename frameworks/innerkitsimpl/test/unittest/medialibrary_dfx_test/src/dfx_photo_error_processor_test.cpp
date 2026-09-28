@@ -128,7 +128,7 @@ HWTEST_F(DfxPhotoErrorProcessorTest, missing_file_counted_as_not_exist, TestSize
     ASSERT_EQ(batches[0].photoErrorCounts.size(), 1u);
     EXPECT_EQ(batches[0].photoErrorCounts[0], 1);
     EXPECT_EQ(batches[0].photoErrorTypes[0] % MEDIA_TYPE_BASE,
-        static_cast<int32_t>(PhotoErrorType::FILE_NOT_EXIST));
+        static_cast<int32_t>(PhotoErrorType::FILE_NOT_EXIST_THUMB_NOT_EXIST));
 }
 
 HWTEST_F(DfxPhotoErrorProcessorTest, empty_resolved_path_row_excluded, TestSize.Level0)

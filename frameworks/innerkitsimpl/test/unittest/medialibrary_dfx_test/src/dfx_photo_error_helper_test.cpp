@@ -65,17 +65,17 @@ HWTEST_F(DfxPhotoErrorHelperTest, normalize_all_dims, TestSize.Level0)
 HWTEST_F(DfxPhotoErrorHelperTest, encode_round_trip_all_dimensions, TestSize.Level0)
 {
     MEDIA_INFO_LOG("encode round-trip: lake image local missing");
-    ExpectRoundTrip(3, 0, 1, 1, PhotoErrorType::FILE_NOT_EXIST);
+    ExpectRoundTrip(3, 0, 1, 1, PhotoErrorType::FILE_NOT_EXIST_THUMB_EXIST);
     MEDIA_INFO_LOG("encode round-trip: min domain");
-    ExpectRoundTrip(0, 0, 1, 1, PhotoErrorType::FILE_NOT_EXIST);
+    ExpectRoundTrip(0, 0, 1, 1, PhotoErrorType::FILE_NOT_EXIST_THUMB_NOT_EXIST);
     MEDIA_INFO_LOG("encode round-trip: max domain");
     ExpectRoundTrip(3, 2, 3, 2, PhotoErrorType::FILE_LARGER_THAN_DB);
     MEDIA_INFO_LOG("encode round-trip: sd normalization");
-    ExpectRoundTrip(1, -1, 1, 2, PhotoErrorType::FILE_NOT_EXIST);
+    ExpectRoundTrip(1, -1, 1, 2, PhotoErrorType::FILE_NOT_EXIST_THUMB_EXIST);
     MEDIA_INFO_LOG("encode round-trip: smaller subtype");
     ExpectRoundTrip(0, 1, 3, 1, PhotoErrorType::FILE_SMALLER_THAN_DB);
 
-    EXPECT_GT(DfxPhotoErrorHelper::EncodePhotoErrorType({0, 0, 1, 1, PhotoErrorType::FILE_NOT_EXIST}), 0);
+    EXPECT_GT(DfxPhotoErrorHelper::EncodePhotoErrorType({0, 0, 1, 1, PhotoErrorType::FILE_NOT_EXIST_THUMB_EXIST}), 0);
 }
 
 HWTEST_F(DfxPhotoErrorHelperTest, resolve_all_cases, TestSize.Level0)
@@ -95,17 +95,22 @@ HWTEST_F(DfxPhotoErrorHelperTest, resolve_all_cases, TestSize.Level0)
 HWTEST_F(DfxPhotoErrorHelperTest, classify_all_branches, TestSize.Level0)
 {
     MEDIA_INFO_LOG("classify: size zero");
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, 0, 100), PhotoErrorType::FILE_SIZE_ZERO);
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, 0, 0), PhotoErrorType::FILE_SIZE_ZERO);
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, false, 0, 100), PhotoErrorType::FILE_SIZE_ZERO);
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, false, 0, 0), PhotoErrorType::FILE_SIZE_ZERO);
     MEDIA_INFO_LOG("classify: smaller and larger than db");
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, 50, 100), PhotoErrorType::FILE_SMALLER_THAN_DB);
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, 150, 100), PhotoErrorType::FILE_LARGER_THAN_DB);
-    MEDIA_INFO_LOG("classify: missing file");
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(false, 0, 100), PhotoErrorType::FILE_NOT_EXIST);
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, false, 50, 100), PhotoErrorType::FILE_SMALLER_THAN_DB);
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, false, 150, 100), PhotoErrorType::FILE_LARGER_THAN_DB);
+    MEDIA_INFO_LOG("classify: missing file with thumbnail");
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(false, true, 0, 100),
+        PhotoErrorType::FILE_NOT_EXIST_THUMB_EXIST);
+    MEDIA_INFO_LOG("classify: missing file without thumbnail");
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(false, false, 0, 100),
+        PhotoErrorType::FILE_NOT_EXIST_THUMB_NOT_EXIST);
     MEDIA_INFO_LOG("classify: consistent");
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, 100, 100), PhotoErrorType::CONSISTENT);
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(true, false, 100, 100), PhotoErrorType::CONSISTENT);
     MEDIA_INFO_LOG("classify: missing precedence over size_zero");
-    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(false, 0, 0), PhotoErrorType::FILE_NOT_EXIST);
+    EXPECT_EQ(DfxPhotoErrorHelper::ClassifyPhotoError(false, false, 0, 0),
+        PhotoErrorType::FILE_NOT_EXIST_THUMB_NOT_EXIST);
 }
 
 HWTEST_F(DfxPhotoErrorHelperTest, pack_empty_and_single, TestSize.Level0)

@@ -23,12 +23,14 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "moving_photo_file_utils.h"
+#include "photo_file_utils.h"
 
 namespace OHOS {
 namespace Media {
 
 std::vector<PhotoErrorCount> DfxPhotoErrorProcessor::GetPhotoErrorBatches(int32_t scanBatchSize, int32_t packBatchSize)
 {
+    MEDIA_INFO_LOG("GetPhotoErrorBatches start");
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::map<int32_t, int32_t> typeToCount;
     int32_t lastFileId = 0;
@@ -45,13 +47,15 @@ std::vector<PhotoErrorCount> DfxPhotoErrorProcessor::GetPhotoErrorBatches(int32_
             CHECK_AND_CONTINUE(type != static_cast<int32_t>(PhotoErrorType::CONSISTENT));
             typeToCount[type]++;
         }
+        MEDIA_INFO_LOG("Batch: lastFileId: %{public}d, typeToCount: %{public}zu, batches: %{public}zu, timeCost: "
+            "%{public}" PRId64, lastFileId, typeToCount.size(), batches.size(), endTime - startTime);
     }
     CHECK_AND_RETURN_RET_LOG(completed, {},
         "Scan interrupted, discard partial stat. lastFileId=%{public}d", lastFileId);
     std::vector<PhotoErrorCount> batches = DfxPhotoErrorHelper::PackPhotoErrors(typeToCount, packBatchSize);
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
-    MEDIA_INFO_LOG("lastFileId: %{public}d, typeToCount: %{public}zu, batches: %{public}zu, timeCost: %{public}" PRId64,
-        lastFileId, typeToCount.size(), batches.size(), endTime - startTime);
+    MEDIA_INFO_LOG("Total: lastFileId: %{public}d, typeToCount: %{public}zu, batches: %{public}zu, timeCost: "
+        "%{public}" PRId64, lastFileId, typeToCount.size(), batches.size(), endTime - startTime);
     return batches;
 }
 
@@ -71,7 +75,9 @@ int32_t DfxPhotoErrorProcessor::ProcessRow(const PhotoErrorRow& row)
             diskSize = static_cast<int64_t>(primarySize);
         }
     }
-    PhotoErrorType err = DfxPhotoErrorHelper::ClassifyPhotoError(exists, diskSize, row.size);
+    // 当文件不存在时再检查缩略图
+    bool thumbExists = !exists ? PhotoFileUtils::IsThumbnailExists(row.data) : false;
+    PhotoErrorType err = DfxPhotoErrorHelper::ClassifyPhotoError(exists, thumbExists, diskSize, row.size);
     CHECK_AND_RETURN_RET(err != PhotoErrorType::CONSISTENT, static_cast<int32_t>(PhotoErrorType::CONSISTENT));
 
     PhotoErrorDimension dim{row.fileSourceType, row.southDeviceType, row.position, row.mediaType, err};

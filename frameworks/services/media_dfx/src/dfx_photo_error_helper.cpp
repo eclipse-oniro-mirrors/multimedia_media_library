@@ -63,10 +63,11 @@ std::string ResolveRealPath(int32_t fileSourceType, const std::string& data, con
         fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) ? storagePath : data;
 }
 
-PhotoErrorType ClassifyPhotoError(bool fileExists, int64_t diskSize, int64_t dbSize)
+PhotoErrorType ClassifyPhotoError(bool fileExists, bool thumbExists, int64_t diskSize, int64_t dbSize)
 {
     if (!fileExists) {
-        return PhotoErrorType::FILE_NOT_EXIST;
+        return thumbExists ? PhotoErrorType::FILE_NOT_EXIST_THUMB_EXIST
+                           : PhotoErrorType::FILE_NOT_EXIST_THUMB_NOT_EXIST;
     }
     if (diskSize == 0) {
         return PhotoErrorType::FILE_SIZE_ZERO;
