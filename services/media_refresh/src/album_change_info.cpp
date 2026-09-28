@@ -233,6 +233,8 @@ string AlbumChangeInfo::ToString(bool isDetail) const
         ss << ", dirty_: " << dirty_ << ", coverUriSource_: " << coverUriSource_;
         ss << ", albumsOrder_: " << albumsOrder_ << ", orderSection_: " << orderSection_ << ", lpath_: " << lpath_;
         ss << ", isLocal_: " << isLocal_ << ", cloudId_: " << cloudId_ << ", hidden_: " << hidden_;
+        // 共享相册字段
+        ss << ", shareRiskStatus_: " << shareRiskStatus_ << ", shareRiskType_: " << shareRiskType_;
         if (isCoverChange_) {
             ss << ", cover info: " << coverInfo_.ToString().c_str();
         }

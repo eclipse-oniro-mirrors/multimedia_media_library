@@ -1309,6 +1309,9 @@ int32_t MediaAlbumsControllerService::SetShareAlbumName(MessageParcel &data, Mes
 int32_t MediaAlbumsControllerService::DeleteSharePhotoAlbums(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("enter DeleteSharePhotoAlbums");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
     DeleteShareAlbumReqBody reqBody;
 
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -1325,31 +1328,39 @@ int32_t MediaAlbumsControllerService::DeleteSharePhotoAlbums(MessageParcel &data
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
+struct ShareMemberRequestInfo {
+    const std::string name;
+    uint32_t operationCode;
+};
+
 template<typename Body, typename Validator, typename Handler>
-static int32_t HandleShareMemberRequest(MessageParcel &data, MessageParcel &reply, const std::string &name,
+static int32_t HandleShareMemberRequest(MessageParcel &data, MessageParcel &reply, const ShareMemberRequestInfo &info,
     Validator validator, Handler handler)
 {
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(info.operationCode);
+    DfxTimer dfxTimer(info.operationCode, timeout, true);
     Body reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("%{public}s Read Request Error, ret:%{public}d", name.c_str(), ret);
+        MEDIA_ERR_LOG("%{public}s Read Request Error, ret:%{public}d", info.name.c_str(), ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     ret = validator(reqBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("Check%{public}s ret:%{public}d", name.c_str(), ret);
+        MEDIA_ERR_LOG("Check%{public}s ret:%{public}d", info.name.c_str(), ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     ret = handler(reqBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("%{public}s failed, ret:%{public}d", name.c_str(), ret);
+        MEDIA_ERR_LOG("%{public}s failed, ret:%{public}d", info.name.c_str(), ret);
     }
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
 int32_t MediaAlbumsControllerService::AddShareMember(MessageParcel &data, MessageParcel &reply)
 {
-    return HandleShareMemberRequest<AddShareMemberReqBody>(data, reply, "AddShareMember",
+    return HandleShareMemberRequest<AddShareMemberReqBody>(data, reply,
+        {"AddShareMember", static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER)},
         ParameterUtils::CheckAddShareMember, [](const AddShareMemberReqBody &body) {
             return MediaAlbumsService::GetInstance().AddShareMember(body);
         });
@@ -1357,7 +1368,8 @@ int32_t MediaAlbumsControllerService::AddShareMember(MessageParcel &data, Messag
 
 int32_t MediaAlbumsControllerService::UpdateShareMemberStatus(MessageParcel &data, MessageParcel &reply)
 {
-    return HandleShareMemberRequest<UpdateShareMemberStatusReqBody>(data, reply, "UpdateShareMemberStatus",
+    return HandleShareMemberRequest<UpdateShareMemberStatusReqBody>(data, reply,
+        {"UpdateShareMemberStatus", static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS)},
         ParameterUtils::CheckUpdateShareMemberStatus, [](const UpdateShareMemberStatusReqBody &body) {
             return MediaAlbumsService::GetInstance().UpdateShareMemberStatus(body);
         });
@@ -1365,7 +1377,8 @@ int32_t MediaAlbumsControllerService::UpdateShareMemberStatus(MessageParcel &dat
 
 int32_t MediaAlbumsControllerService::DeleteShareMember(MessageParcel &data, MessageParcel &reply)
 {
-    return HandleShareMemberRequest<DeleteShareMemberReqBody>(data, reply, "DeleteShareMember",
+    return HandleShareMemberRequest<DeleteShareMemberReqBody>(data, reply,
+        {"DeleteShareMember", static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER)},
         ParameterUtils::CheckDeleteShareMember, [](const DeleteShareMemberReqBody &body) {
             return MediaAlbumsService::GetInstance().DeleteShareMember(body);
         });
@@ -1373,7 +1386,8 @@ int32_t MediaAlbumsControllerService::DeleteShareMember(MessageParcel &data, Mes
 
 int32_t MediaAlbumsControllerService::DeleteMemberShareAlbum(MessageParcel &data, MessageParcel &reply)
 {
-    return HandleShareMemberRequest<DeleteMemberShareAlbumReqBody>(data, reply, "DeleteMemberShareAlbum",
+    return HandleShareMemberRequest<DeleteMemberShareAlbumReqBody>(data, reply,
+        {"DeleteMemberShareAlbum", static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM)},
         ParameterUtils::CheckDeleteMemberShareAlbum, [](const DeleteMemberShareAlbumReqBody &body) {
             return MediaAlbumsService::GetInstance().DeleteMemberShareAlbum(body);
         });

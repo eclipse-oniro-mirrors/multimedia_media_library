@@ -239,6 +239,12 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM), 200},
 };
 
 int64_t DfxTimer::GetOperationCodeTimeout(uint32_t operationCode)

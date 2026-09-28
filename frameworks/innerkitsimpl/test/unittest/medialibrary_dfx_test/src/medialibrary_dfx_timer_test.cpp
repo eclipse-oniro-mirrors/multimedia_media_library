@@ -116,5 +116,28 @@ HWTEST_F(MediaLibraryDfxTimerTest, DfxTimer_OperationCodeTimeout_HiddenAttribute
     }
     MEDIA_INFO_LOG("DfxTimer_OperationCodeTimeout_HiddenAttributeGroup End");
 }
+
+HWTEST_F(MediaLibraryDfxTimerTest, DfxTimer_OperationCodeTimeout_ShareAlbumGroup, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DfxTimer_OperationCodeTimeout_ShareAlbumGroup Start");
+    std::vector<MediaLibraryBusinessCode> codes = {
+        MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME,
+        MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS,
+        MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER,
+        MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS,
+        MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER,
+        MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM,
+    };
+    for (auto code : codes) {
+        uint32_t key = static_cast<uint32_t>(code);
+        auto it = DfxTimer::operationCodeTimeoutMap.find(key);
+        EXPECT_NE(it, DfxTimer::operationCodeTimeoutMap.end());
+        if (it != DfxTimer::operationCodeTimeoutMap.end()) {
+            EXPECT_EQ(it->second, 200);
+        }
+        EXPECT_EQ(DfxTimer::GetOperationCodeTimeout(key), 200);
+    }
+    MEDIA_INFO_LOG("DfxTimer_OperationCodeTimeout_ShareAlbumGroup End");
+}
 } // namespace Media
 } // namespace OHOS
