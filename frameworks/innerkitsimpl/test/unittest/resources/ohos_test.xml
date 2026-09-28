@@ -464,6 +464,15 @@
             <option name="push" value="cloudsync_datafile/oncopyrecords_photo/oncopyrecord_photo.csv -> /data/test/cloudsync/oncopyrecords_photo" src="res"/>
             <option name="push" value="cloudsync_datafile/oncopyrecords_photo/oncopyrecord_album.csv -> /data/test/cloudsync/oncopyrecords_photo" src="res"/>
             <option name="push" value="cloudsync_datafile/oncopyrecords_photo/photo_on_copy_records_test.json -> /data/test/cloudsync" src="res"/>
+            <option name="shell" value="rm -rf /data/test/cloudsync/share_album"/>
+            <option name="shell" value="mkdir -p /data/test/cloudsync/share_album"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_album_records.json -> /data/test/cloudsync/share_album" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_photo_records.json -> /data/test/cloudsync/share_album" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_photo_delete_records.json -> /data/test/cloudsync/share_album" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_photo_meta_records.json -> /data/test/cloudsync/share_album" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_album_update_records.json -> /data/test/cloudsync/share_album" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_album_update_lpath_records.json -> /data/test/cloudsync/share_album" src="res"/>
+            <option name="push" value="cloudsync_datafile/share_album/share_album_delete_records.json -> /data/test/cloudsync/share_album" src="res"/>
         </preparer>
     </target>
     <target name="media_share_album_lite_test">
