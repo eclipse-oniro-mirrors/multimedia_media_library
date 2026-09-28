@@ -382,6 +382,10 @@ NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(RestoreFileInf
     value.PutLong(MediaColumn::MEDIA_SIZE, data->GetFileSize());
     value.PutInt(MediaColumn::MEDIA_DURATION, data->GetFileDuration());
     value.PutLong(MediaColumn::MEDIA_TIME_PENDING, -1);
+    if (data->GetFileWidth() <= 0 || data->GetFileHeight() <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [FileInterworkScanner] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            data->GetFileId(), data->GetFileWidth(), data->GetFileHeight());
+    }
     value.PutInt(PhotoColumn::PHOTO_HEIGHT, data->GetFileHeight());
     value.PutInt(PhotoColumn::PHOTO_WIDTH, data->GetFileWidth());
     value.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, data->GetFileAspectRatio());

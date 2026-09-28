@@ -850,6 +850,10 @@ static void SetAbnormalValuesFromMetaData(std::unique_ptr<Metadata> &metadata, N
 {
     values.PutLong(MediaColumn::MEDIA_SIZE, metadata->GetFileSize());
     values.PutInt(MediaColumn::MEDIA_DURATION, metadata->GetFileDuration());
+    if (metadata->GetFileWidth() <= 0 || metadata->GetFileHeight() <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [CloudFileProcessor] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            metadata->GetFileId(), metadata->GetFileWidth(), metadata->GetFileHeight());
+    }
     values.PutInt(PhotoColumn::PHOTO_HEIGHT, metadata->GetFileHeight());
     values.PutInt(PhotoColumn::PHOTO_WIDTH, metadata->GetFileWidth());
     double aspectRatio =

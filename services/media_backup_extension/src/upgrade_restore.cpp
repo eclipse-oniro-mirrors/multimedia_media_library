@@ -1236,6 +1236,10 @@ NativeRdb::ValuesBucket UpgradeRestore::GetInsertValue(const FileInfo &fileInfo,
         string fileName = fileInfo.displayName;
         MEDIA_WARN_LOG("the file :%{public}s is hidden.", BackupFileUtils::GarbleFileName(fileName).c_str());
     }
+    if (fileInfo.width <= 0 || fileInfo.height <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [UpgradeRestore] width=%{public}d, height=%{public}d, displayName=%{public}s",
+            fileInfo.width, fileInfo.height, BackupFileUtils::GarbleFileName(fileInfo.displayName).c_str());
+    }
     values.PutInt(PhotoColumn::PHOTO_HEIGHT, fileInfo.height);
     values.PutInt(PhotoColumn::PHOTO_WIDTH, fileInfo.width);
     double aspectRatio =

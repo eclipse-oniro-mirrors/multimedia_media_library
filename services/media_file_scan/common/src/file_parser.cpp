@@ -494,6 +494,10 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
 
     values.Put(MediaColumn::MEDIA_DURATION, fileInfo_.duration);
     values.Put(PhotoColumn::PHOTO_ORIENTATION, fileInfo_.orientation);
+    if (fileInfo_.width <= 0 || fileInfo_.height <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [FileParser] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            fileInfo_.fileId, fileInfo_.width, fileInfo_.height);
+    }
     values.Put(PhotoColumn::PHOTO_HEIGHT, fileInfo_.height);
     values.Put(PhotoColumn::PHOTO_WIDTH, fileInfo_.width);
     double aspectRatio = MediaFileUtils::CalculateAspectRatio(fileInfo_.height, fileInfo_.width);
