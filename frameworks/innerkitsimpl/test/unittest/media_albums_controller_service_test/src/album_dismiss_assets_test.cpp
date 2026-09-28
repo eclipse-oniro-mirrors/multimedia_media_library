@@ -365,11 +365,11 @@ HWTEST_F(AlbumDismissAssetsTest, DismissHiddenAsset_CountUnchanged_001, TestSize
     ASSERT_TRUE(reqBody.Marshalling(data));
 
     auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
-    ASSERT_EQ(service->DismissAssets(data, reply), E_OK);
+    ASSERT_EQ(service->DismissAssets(data, reply), 1);
 
     IPC::MediaRespVo<MediaEmptyObjVo> resp;
     ASSERT_TRUE(resp.Unmarshalling(reply));
-    ASSERT_GT(resp.GetErrCode(), 0);
+    ASSERT_EQ(resp.GetErrCode(), 1);
     EXPECT_EQ(GetAnalysisAlbumCount(albumId), 10);
 }
 
