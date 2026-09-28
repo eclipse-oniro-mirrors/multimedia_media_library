@@ -36,6 +36,7 @@ std::vector<PhotoErrorCount> DfxPhotoErrorProcessor::GetPhotoErrorBatches(int32_
     int32_t lastFileId = 0;
     bool completed = false;
     while (MedialibrarySubscriber::IsCurrentStatusOn()) {
+        int64_t batchStartTime = MediaFileUtils::UTCTimeMilliSeconds();
         auto rows = dao_.QueryBatch(lastFileId, scanBatchSize);
         if (rows.empty()) {
             completed = true;
@@ -47,8 +48,9 @@ std::vector<PhotoErrorCount> DfxPhotoErrorProcessor::GetPhotoErrorBatches(int32_
             CHECK_AND_CONTINUE(type != static_cast<int32_t>(PhotoErrorType::CONSISTENT));
             typeToCount[type]++;
         }
-        MEDIA_INFO_LOG("Batch: lastFileId: %{public}d, typeToCount: %{public}zu, batches: %{public}zu, timeCost: "
-            "%{public}" PRId64, lastFileId, typeToCount.size(), batches.size(), endTime - startTime);
+        int64_t batchEndTime = MediaFileUtils::UTCTimeMilliSeconds();
+        MEDIA_INFO_LOG("Batch: lastFileId: %{public}d, typeToCount: %{public}zu, rows: %{public}zu, timeCost: "
+            "%{public}" PRId64, lastFileId, typeToCount.size(), rows.size(), batchEndTime - batchStartTime);
     }
     CHECK_AND_RETURN_RET_LOG(completed, {},
         "Scan interrupted, discard partial stat. lastFileId=%{public}d", lastFileId);
