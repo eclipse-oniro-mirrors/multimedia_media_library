@@ -651,8 +651,8 @@ AlbumMediaStatisticInfo GalleryMediaCountStatistic::GetSdCardStatInfo()
 
 AlbumMediaStatisticInfo GalleryMediaCountStatistic::GetDuplicateStatInfo()
 {
-    int32_t duplicateDataCount;
-    int32_t duplicateDataTotal;
+    int32_t duplicateDataCount = 0;
+    int32_t duplicateDataTotal = 0;
     BackupDatabaseUtils::QueryGalleryDuplicateDataCount(this->galleryRdb_, duplicateDataCount, duplicateDataTotal);
     AlbumMediaStatisticInfo info;
     info.sceneCode = this->sceneCode_;
