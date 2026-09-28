@@ -429,6 +429,7 @@ std::unordered_set<int32_t> WaterMarkClone::QueryExistingDestFileIds(const std::
 
 bool WaterMarkClone::UpdateDestWaterMarkFileId(int32_t oldFileId, int32_t newFileId)
 {
+    CHECK_AND_RETURN_RET_LOG(destRdb_ != nullptr, false, "destRdb_ is nullptr");
     int32_t errCode = E_ERR;
     TransactionOperations trans{ __func__ };
     trans.SetBackupRdbStore(destRdb_);

@@ -148,7 +148,8 @@ std::string PhotosRestore::FindPackageName(const FileInfo &fileInfo)
 {
     PhotoAlbumDao::PhotoAlbumRowData albumInfo = this->FindAlbumInfo(fileInfo);
     CHECK_AND_PRINT_LOG(!albumInfo.lPath.empty(), "Can not find PhotoAlbum. fileInfo.lPath= %{public}s,"
-        " fileInfo.sourcePath= %{public}s", fileInfo.lPath.c_str(), fileInfo.sourcePath.c_str());
+        " fileInfo.sourcePath= %{public}s", MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(),
+        MediaFileUtils::DesensitizePath(fileInfo.sourcePath).c_str());
     return albumInfo.albumName;
 }
 

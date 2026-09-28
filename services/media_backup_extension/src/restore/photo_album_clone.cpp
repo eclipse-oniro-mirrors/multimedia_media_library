@@ -114,11 +114,11 @@ void PhotoAlbumClone::TRACE_LOG(const std::string &tableName, vector<AlbumInfo> 
         albumInfo.albumSubType = %{public}d, \
         albumInfo.lPath = %{public}s",
             tableName.c_str(),
-            albumInfo.albumName.c_str(),
-            albumInfo.albumBundleName.c_str(),
+            MediaFileUtils::DesensitizeName(albumInfo.albumName).c_str(),
+            MediaFileUtils::DesensitizeName(albumInfo.albumBundleName).c_str(),
             static_cast<int32_t>(albumInfo.albumType),
             static_cast<int32_t>(albumInfo.albumSubType),
-            albumInfo.lPath.c_str());
+            MediaFileUtils::DesensitizePath(albumInfo.lPath).c_str());
     }
     // fetch all albums from mediaLibraryRdb
     std::vector<PhotoAlbumDao::PhotoAlbumRowData> targetAlbumInfos = this->photoAlbumDao_.GetPhotoAlbums();
