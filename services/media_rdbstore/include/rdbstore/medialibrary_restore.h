@@ -39,7 +39,7 @@ public:
     std::atomic<bool> isBackuping_{false};
     std::mutex mutex_;
     std::condition_variable cv_;
-    bool isRestoring_{false};
+    std::atomic<bool> isRestoring_{false};
     bool isDoingBackup_{false};
 private:
 #ifdef CLOUD_SYNC_MANAGER
