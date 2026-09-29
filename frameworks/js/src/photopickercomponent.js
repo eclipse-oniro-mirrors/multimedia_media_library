@@ -143,6 +143,8 @@ export class PhotoPickerComponent extends ViewPU {
         this.onExceedMaxSelected = void 0;
         this.onCurrentAlbumDeleted = void 0;
         this.onVideoPlayStateChanged = void 0;
+        this.onRecommendedLabelClicked = void 0;
+        this.onPickerStateChanged = void 0;
         this.onMovingPhotoBadgeStateChanged = void 0;
         this.badgeConfig = void 0;
         this.batchBadgeConfigSize = 1000;
@@ -184,6 +186,8 @@ export class PhotoPickerComponent extends ViewPU {
         void 0 !== e.onPinchGridSwitched && (this.onPinchGridSwitched = e.onPinchGridSwitched);
         void 0 !== e.onPhotoBrowserChangeStart && (this.onPhotoBrowserChangeStart = e.onPhotoBrowserChangeStart);
         void 0 !== e.onError && (this.onError = e.onError);
+        void 0 !== e.onRecommendedLabelClicked && (this.onRecommendedLabelClicked = e.onRecommendedLabelClicked);
+        void 0 !== e.onPickerStateChanged && (this.onPickerStateChanged = e.onPickerStateChanged);
         this.__pickerController.set(e.pickerController);
         if (this.badgeConfig && this.badgeConfig.uris !== undefined) {
             console.log('badgeConfig.uris.length:' + this.badgeConfig.uris.length);
@@ -302,8 +306,16 @@ export class PhotoPickerComponent extends ViewPU {
     }
 
     handleAnotherOnChanges(o) {
-        if(null == o ? void 0 : o?.has('COMPLETED')) {
+        if (null == o ? void 0 : o?.has('COMPLETED')) {
             this.onComplete(o);
+        } else if (null == o ? void 0 : o?.has('ENTER_SEARCH')) {
+            this.proxy.send({ 'enterSearch': ''});
+        } else if (null == o ? void 0 : o?.has('EXIT_SEARCH')) {
+            this.proxy.send({ 'exitSearch': ''});
+        } else if (null == o ? void 0 : o?.has('BACK_IN_SEARCH')) {
+            this.proxy.send({ 'goBackInSearch': ''});
+        } else if (null == o ? void 0 : o?.has('SEARCH')) {
+            this.proxy.send({ 'searchInfo': o.get('SEARCH')});
         } else {
             console.info('PhotoPickerComponent onChanged: other case');
         }
@@ -493,6 +505,8 @@ export class PhotoPickerComponent extends ViewPU {
                     maxVideoSelectNumber: null === (P = this.pickerOptions) || void 0 === P ? void 0 : P.maxVideoSelectNumber,
                     isOnItemClickedSet: !!this.onItemClicked,
                     isOnItemClickedNotifySet: !!this.onItemClickedNotify,
+                    isOnRecommendedLabelClickedSet: !!this.onRecommendedLabelClicked,
+                    isOnPickerStateChangedSet: !!this.onPickerStateChanged,
                     isPreviewForSingleSelectionSupported: null === (_ = this.pickerOptions) || void 0 === _ ? void 0 : _.isPreviewForSingleSelectionSupported,
                     singleSelectionMode: null === (_ = this.pickerOptions) || void 0 === _ ? void 0 : _.singleSelectionMode,
                     isSlidingSelectionSupported: null === (b = this.pickerOptions) || void 0 === b ? void 0 : b.isSlidingSelectionSupported,
@@ -661,6 +675,22 @@ export class PhotoPickerComponent extends ViewPU {
         } else if ('onGridLevelChanged' === o) {
             if (this.onPinchGridSwitched) {
                 this.onPinchGridSwitched(e.gridLevel);
+            }
+        } else if ('onRecommendedLabelClicked' === o) {
+            if (this.onRecommendedLabelClicked) {
+                if (e.text) {
+                    this.onRecommendedLabelClicked(e.text);
+                } else {
+                    let smartLabel = new this.RecommendedLabel();
+                    smartLabel.id = e.id;
+                    smartLabel.name = e.name;
+                    smartLabel.thumbnail = e.thumbnail;
+                    this.onRecommendedLabelClicked(smartLabel);
+                }
+            }
+        } else if ('onPickerStateChanged' === o) {
+            if (this.onPickerStateChanged) {
+                this.onPickerStateChanged(e.pickerState);
             }
         } else {
             console.info('PhotoPickerComponent onReceive: other case');
@@ -1291,6 +1321,25 @@ let PickerController = class {
         encryptedData = encryptedData.replace(/"displayName":"([^"]|\")*"/g, '"displayName":"******"');
         return encryptedData;
     }
+
+    async enterSearch() {
+        this.data = new Map([['ENTER_SEARCH', '']]);
+    }
+
+    async exitSearch() {
+        this.data = new Map([['EXIT_SEARCH', '']]);
+    }
+
+    async goBackInSearch() {
+        this.data = new Map([['BACK_IN_SEARCH', '']]);
+    }
+
+    async search(searchInfo) {
+        if (!searchInfo) {
+            return;
+        }
+        this.data = new Map([['SEARCH', searchInfo]]);
+    }
 };
 PickerController = __decorate([Observed], PickerController);
 
@@ -1327,6 +1376,15 @@ export class CompletedResult {
 
 export class PickerError {
 
+}
+
+export class SearchInfo{
+}
+
+export class SmartEntity{
+}
+
+export class RecommendedLabel{
 }
 
 class PhotoBrowserRangeInfo {
@@ -1471,8 +1529,14 @@ export var MovingPhotoBadgeStateType;
     e[e.DELETE_DATA = 2] = 'MOVING_PHOTO_DISABLED';
 }(MovingPhotoBadgeStateType || (MovingPhotoBadgeStateType = {}));
 
+export var PickerState;
+!function(e) {
+    e[e.DEFAULT = 0] = 'DEFAULT';
+    e[e.SEARCH = 1] = 'SEARCH';
+}(PickerState || (PickerState = {}));
+
 export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, PhotoBrowserInfo, AnimatorParams,
     MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, PhotoBrowserRange, PhotoBrowserUIElement,
     VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType, BadgeConfig, UpdatablePickerConfigs, MovingPhotoBadgeStateType, 
-    PickerError, CompletedResult };
+    PickerError, CompletedResult, SearchInfo, SmartEntity, RecommendedLabel, PickerState };
 
