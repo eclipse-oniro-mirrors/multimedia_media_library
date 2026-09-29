@@ -309,6 +309,10 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
 {
     values.PutString(PhotoColumn::PHOTO_MEDIA_SUFFIX, ScannerUtils::GetFileExtension(metadata.GetFileName()));
     values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, metadata.GetMusicMasterMode());
+    if (metadata.GetFileWidth() <= 0 || metadata.GetFileHeight() <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [ScannerDb] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            metadata.GetFileId(), metadata.GetFileWidth(), metadata.GetFileHeight());
+    }
     values.PutInt(PhotoColumn::PHOTO_HEIGHT, metadata.GetFileHeight());
     values.PutInt(PhotoColumn::PHOTO_WIDTH, metadata.GetFileWidth());
     double aspectRatio =

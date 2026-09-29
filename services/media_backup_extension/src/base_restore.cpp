@@ -784,6 +784,10 @@ void BaseRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::ValuesBuck
     }
     InsertDateTime(value, fileInfo);
     value.PutLong(MediaColumn::MEDIA_TIME_PENDING, 0);
+    if (data->GetFileWidth() <= 0 || data->GetFileHeight() <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [BaseRestore] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            data->GetFileId(), data->GetFileWidth(), data->GetFileHeight());
+    }
     value.PutInt(PhotoColumn::PHOTO_HEIGHT, data->GetFileHeight());
     value.PutInt(PhotoColumn::PHOTO_WIDTH, data->GetFileWidth());
     value.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, data->GetFileAspectRatio());

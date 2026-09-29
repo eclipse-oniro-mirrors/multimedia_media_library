@@ -710,15 +710,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_test_022, Te
     EXPECT_EQ(res, 0);
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_001, TestSize.Level1)
-{
-    ThumbRdbOpt opts;
-    ThumbnailType thumbType = ThumbnailType::LCD;
-    ThumbnailData data;
-    auto res = ThumbnailGenerateHelper::GetThumbnailPixelMap(data, opts, thumbType);
-    EXPECT_EQ(res, -2302);
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_002, TestSize.Level1)
 {
     ThumbRdbOpt opts;

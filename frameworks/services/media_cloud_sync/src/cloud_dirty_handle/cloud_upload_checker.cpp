@@ -153,7 +153,8 @@ void CloudUploadChecker::FillDbHeightAndWidth(const CheckedPhotoInfo &photoInfo,
     values.PutInt(PhotoColumn::PHOTO_HEIGHT, height);
     values.PutInt(PhotoColumn::PHOTO_WIDTH, width);
 
-    MEDIA_INFO_LOG("height: %{public}d, width: %{public}d, aspectRatio: %{public}lf", height, width, aspectRatio);
+    MEDIA_INFO_LOG("WritePhotoSize [CloudUploadChecker] id: %{public}d height: %{public}d, "
+        "width: %{public}d, aspectRatio: %{public}lf", photoInfo.fileId, height, width, aspectRatio);
 }
 
 bool CloudUploadChecker::RepairPhotoByLcdUpdateDbColumn(const CheckedPhotoInfo &photoInfo)
