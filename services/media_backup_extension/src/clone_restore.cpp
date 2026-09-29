@@ -956,7 +956,7 @@ void CloneRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int64_t &fi
     vector<std::string> moveFailedData;
     for (size_t i = 0; i < fileInfos.size(); i++) {
         if (fileInfos[i].needMergeThumbnail) {
-            MergeDuplicateThumbnail(fileInfos[i]);
+            MergeCloudDuplicateThumbnail(fileInfos[i]);
             continue;
         }
         if (!MediaFileUtils::IsFileExists(fileInfos[i].filePath) ||
@@ -3626,12 +3626,9 @@ void CloneRestore::HandleLakeDuplicateMigration(FileInfo &fileInfo, const Photos
         fileInfo.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
     bool dstIsMovingPhoto = rowData.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         rowData.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
-    bool srcInsideLake = FileAdapter::IsLakeFile(fileInfo);
-    bool dstInsideLake = !rowData.storagePath.empty();
-    if ((srcIsMovingPhoto && dstInsideLake) || (srcInsideLake && dstIsMovingPhoto)) {
-        MEDIA_INFO_LOG("skip sross-lake moving photo, srcIsMovingPhoto = %{public}d, "
-            "dstIsMovingPhoto = %{public}d, srcInsideLake = %{public}d, dstInsideLake = %{public}d",
-            srcIsMovingPhoto, dstIsMovingPhoto, srcInsideLake, dstInsideLake);
+    if (srcIsMovingPhoto != dstIsMovingPhoto) {
+        MEDIA_INFO_LOG("skip migration due to moving photo mismatch, srcIsMovingPhoto = %{public}d, "
+            "dstIsMovingPhoto = %{public}d", srcIsMovingPhoto, dstIsMovingPhoto);
         fileInfo.needMove = false;
         fileInfo.needStoreAtStoragePath = false;
         fileInfo.needUpdatePositionToLocalAndCloud = false;
