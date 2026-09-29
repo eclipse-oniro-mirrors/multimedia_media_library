@@ -28,10 +28,15 @@
 #include "medialibrary_notify.h"
 #include "media_file_utils.h"
 #include "thumbnail_service.h"
+#include "medialibrary_tracer.h"
+#include "photo_album_column.h"
 
 using namespace std;
 
 namespace OHOS::Media {
+
+KeydMutex<string> FileScanner::keydMutexByPath_;
+
 // LCOV_EXCL_START
 FileScanner::FileScanner(ScanMode scanMode) : scanMode_(scanMode)
 {
@@ -50,6 +55,24 @@ int32_t FileScanner::Run(vector<MediaNotifyInfo> fileInfos)
         return a.afterPath > b.afterPath;
     });
 
+    // 使用排序后的path去重后用于获取锁
+    vector<string> uniquePaths;
+    uniquePaths.reserve(fileInfos.size());
+    for (const auto& fileInfo : fileInfos) {
+        uniquePaths.push_back(fileInfo.afterPath);
+    }
+    uniquePaths.erase(std::unique(uniquePaths.begin(), uniquePaths.end()), uniquePaths.end());
+    vector<shared_ptr<mutex>> pathMutexes;
+    pathMutexes.reserve(uniquePaths.size());
+    for (const string& path : uniquePaths) {
+        pathMutexes.push_back(keydMutexByPath_.Get(path));
+    }
+    vector<unique_lock<mutex>> pathGuards;
+    pathGuards.reserve(pathMutexes.size());
+    for (auto& mutexSharedPtr : pathMutexes) {
+        pathGuards.emplace_back(*mutexSharedPtr);
+    }
+
     for (auto &fileInfo : fileInfos) {
         auto afterPath = fileInfo.afterPath;
         MEDIA_WARN_LOG("afterPath: %{private}s", afterPath.c_str());
@@ -66,6 +89,8 @@ int32_t FileScanner::Run(vector<MediaNotifyInfo> fileInfos)
 
 void FileScanner::RefreshUpdateAssetInfo(FileParser &fileParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::RefreshUpdateAssetInfo");
     auto fileInfo = fileParser.GetFileInfo();
     fileParser.UpdateAssetInfo();
     albumIds_.push_back(to_string(fileInfo.ownerAlbumId));
@@ -79,6 +104,8 @@ void FileScanner::RefreshUpdateAssetInfo(FileParser &fileParser)
 
 void FileScanner::RefreshUpdateAssetAlbumInfo(MediaNotifyInfo &notifyFileInfo, FileParser &fileParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::RefreshUpdateAssetAlbumInfo");
     if (!CheckUpdateFolderParserInfo(notifyFileInfo)) {
         RefreshAssetInfoForSkipFile(fileParser, FileUpdateType::UPDATE_ALBUM);
         MEDIA_WARN_LOG("skip file: %{private}s", notifyFileInfo.afterPath.c_str());
@@ -101,6 +128,8 @@ void FileScanner::RefreshUpdateAssetAlbumInfo(MediaNotifyInfo &notifyFileInfo, F
 
 void FileScanner::GetInsertAssetInfo(MediaNotifyInfo &fileInfo, FileParser &fileParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::GetInsertAssetInfo");
     if (!CheckUpdateFolderParserInfo(fileInfo)) {
         MEDIA_WARN_LOG("skip file: %{private}s", fileInfo.afterPath.c_str());
         return;
@@ -160,6 +189,8 @@ string FileScanner::GetFolder(string file)
 
 void FileScanner::RefreshInsertAssetInfo()
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::RefreshInsertAssetInfo");
     if (insertFileInfos_.empty()) {
         MEDIA_INFO_LOG("no insert assets");
         return;
@@ -198,6 +229,14 @@ void FileScanner::UpdateAlbum()
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is null.");
     MediaLibraryRdbUtils::UpdateCommonAlbumInternal(rdbStore, albumIds_, true, true);
     MediaLibraryRdbUtils::UpdateCommonAlbumHiddenState(rdbStore, albumIds_);
+
+    // 补充相册通知
+    auto watch = MediaLibraryNotify::GetInstance();
+    for (const auto& albumId : albumIds_) {
+        CHECK_AND_BREAK_ERR_LOG(watch != nullptr, "watch is nullptr");
+        watch->Notify(MediaFileUtils::GetUriByExtrConditions(PhotoAlbumColumns::ALBUM_URI_PREFIX, albumId),
+            NotifyType::NOTIFY_UPDATE);
+    }
     albumIds_.clear();
 
     // 文件扫描触发的场景需要更新的系统相册

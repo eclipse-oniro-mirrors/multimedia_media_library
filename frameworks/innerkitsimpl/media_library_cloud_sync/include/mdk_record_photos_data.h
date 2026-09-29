@@ -24,6 +24,8 @@
 #include "mdk_database.h"
 #include "mdk_record_reader.h"
 #include "cloud_media_define.h"
+#include "mdk_scadetail.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT MDKRecordPhotosData {
@@ -32,6 +34,7 @@ private:  // data member
     std::map<std::string, MDKRecordField> fields_;
     std::map<std::string, MDKRecordField> properties_;
     std::map<std::string, MDKRecordField> attributes_;
+    std::vector<MDKRecordField> scaDetailList_;
 
 private:  // composited class
     MDKRecordReader recordReader_;
@@ -131,6 +134,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetVideoMode(const int32_t videoMode);
     std::optional<std::string> GetFrontCamera() const;
     MDKRecordPhotosData &SetFrontCamera(const std::string &frontCamera);
+    std::optional<std::string> GetXtStyleTemplateName() const;
+    MDKRecordPhotosData &SetXtStyleTemplateName(const std::string &frontCamera);
     std::optional<int64_t> GetEditTime() const;
     MDKRecordPhotosData &SetEditTime(const int64_t editTime);
     std::optional<int32_t> GetOriginalSubType() const;
@@ -145,6 +150,10 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetMovingPhotoEffectMode(const int32_t movingPhotoEffectMode);
     std::optional<int32_t> GetSupportedWatermarkType() const;
     MDKRecordPhotosData &SetSupportedWatermarkType(const int32_t supportedWatermarkType);
+    std::optional<int32_t> GetMusicMasterMode() const;
+    MDKRecordPhotosData &SetMusicMasterMode(const int32_t musicMasterMode);
+    std::optional<int32_t> GetIsStylePhoto() const;
+    MDKRecordPhotosData &SetIsStylePhoto(const int32_t isStylePhoto);
     std::optional<int32_t> GetStrongAssociation() const;
     MDKRecordPhotosData &SetStrongAssociation(const int32_t strongAssociation);
     std::optional<int32_t> GetCloudFileId() const;
@@ -169,16 +178,37 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetEditedTimeMs(int64_t editedTimeMs);
     std::optional<std::string> GetEditDataCamera() const;
     MDKRecordPhotosData &SetEditDataCamera(const std::string &editDataCamera);
+    std::optional<int32_t> GetSupportedDeferredEffects() const;
+    MDKRecordPhotosData &SetSupportedDeferredEffects(const int32_t supportedDeferredEffects);
+    std::optional<int32_t> GetDeferredEffectsStatus() const;
+    MDKRecordPhotosData &SetDeferredEffectsStatus(const int32_t deferredEffectStatus);
     std::optional<int32_t> GetFileSourceType() const;
     MDKRecordPhotosData &SetFileSourceType(int32_t fileSourceType);
     std::optional<std::string> GetStoragePath() const;
     MDKRecordPhotosData &SetStoragePath(const std::string &storagePath);
+    std::optional<int32_t> GetEditDataExist() const;
+    MDKRecordPhotosData &SetEditDataExist(const int32_t editDataExist);
+    std::optional<int32_t> GetCompressionQuality() const;
+    MDKRecordPhotosData &SetCompressionQuality(const int32_t compressionQuality);
     std::optional<std::string> GetUniqueId() const;
     MDKRecordPhotosData &SetUniqueId(const std::string &uniqueId);
     std::optional<std::string> GetPackageName() const;
     MDKRecordPhotosData &SetPackageName(const std::string &packageName);
     std::optional<int32_t> GetPhotoRiskStatus() const;
     MDKRecordPhotosData &SetPhotoRiskStatus(const int32_t photoRiskStatus);
+    std::optional<int32_t> GetPhotoIsShared() const;
+    MDKRecordPhotosData &SetPhotoIsShared(const int32_t isShared);
+    std::optional<std::string> GetPhotoShareOwnerInfo() const;
+    MDKRecordPhotosData &SetPhotoShareOwnerInfo(const std::string &shareOwnerInfo);
+    std::optional<std::string> GetShareAlbumOwner() const;
+    MDKRecordPhotosData &SetShareAlbumOwner(const std::string &shareAlbumOwner);
+    std::optional<int64_t> GetPhotoShareDateDay() const;
+    MDKRecordPhotosData &SetPhotoShareDateDay(const int64_t shareDateDay);
+    std::optional<int64_t> GetPhotoShareGroup() const;
+    MDKRecordPhotosData &SetPhotoShareGroup(const int64_t shareGroup);
+    void GetScadetailList(std::vector<ScaDetailVo> &scaDetailList);
+    std::string GetMediaCreatedId() const;
+    std::string GetCurrentUserId() const;
     std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
     std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
 
@@ -221,6 +251,7 @@ private:
     const std::string FILE_EDIT_DATA = "editData";
     const std::string FILE_MIME_TYPE = "mimeType";
     const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
+    const std::string VIDEO_MODE = "video_mode";
     const std::string KEY_EDITED_TIME_MS = "editedTime_ms";
     const std::string KEY_LCD_SIZE = "lcd_size";
     const std::string KEY_THUMB_SIZE = "thumb_size";
@@ -236,6 +267,8 @@ private:
     const std::string KEY_RECYCLED_TIME = "recycledTime";
     const std::string KEY_FAVORITE = "favorite";
     const std::string KEY_DESCRIPTION = "description";
+    const std::string KEY_MEDIA_CREATE_ID = "mediaCreateId";
+    const std::string KEY_SCA_DETAIL = "scaDetail";
     const std::string KEY_SOURCE_PATH = "sourcePath";
     const std::string KEY_SOURCE_FILE_NAME = "sourceFileName";
     const std::string KEY_FIRST_UPDATE_TIME = "first_update_time";

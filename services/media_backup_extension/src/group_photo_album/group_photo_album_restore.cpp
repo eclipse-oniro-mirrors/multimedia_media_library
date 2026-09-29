@@ -98,13 +98,15 @@ bool CloneGroupPhotoAlbum::GetFileIdsByGroupTag(CloneGroupPhotoAlbum::GroupAlbum
         tagIdVector.insert(tagIdVector.end(), tagIt.second.begin(), tagIt.second.end());
         querySql += firstSql;
     }
+    querySql +=
+        " AND EXISTS (SELECT 1 FROM Photos WHERE file_id = tab_analysis_image_face.file_id AND media_type != 2) ";
     querySql += groupSql;
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaLibraryRdb_, querySql, tagIdVector);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Query resultSql is null.");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         info.fileIdVec.emplace_back(std::to_string(GetInt32Val(MediaColumn::MEDIA_ID, resultSet)));
     }
-    info.fileIdCount = info.fileIdVec.size();
+    info.fileIdCount = static_cast<int32_t>(info.fileIdVec.size());
     resultSet->Close();
     CHECK_AND_RETURN_RET_LOG(info.fileIdCount > 0, false, "mediaLibraryRdb do not find any fileId.");
     return true;
@@ -213,7 +215,7 @@ void CloneGroupPhotoAlbum::ModifyGroupVersion(const std::map<int32_t, std::vecto
     bool isFirst = true;
     for (const auto& album : groupPhotoMap) {
         string fileIds = BackupDatabaseUtils::JoinValues(album.second, ",");
-        currentBatchSize += album.second.size();
+        currentBatchSize += static_cast<int32_t>(album.second.size());
         if (!isFirst) {
             updateSql += ",";
         }
@@ -236,7 +238,6 @@ void CloneGroupPhotoAlbum::ModifyGroupVersion(const std::map<int32_t, std::vecto
 void CloneGroupPhotoAlbum::InsertAnalysisPhotoMap(const std::map<int32_t, std::vector<string>> &groupPhotoMap)
 {
     std::string baseSql = "INSERT OR REPLACE INTO AnalysisPhotoMap (map_album, map_asset) VALUES ";
-
     int32_t currentBatchSize = 0;
     string sql = baseSql;
     bool isFirst = true;
@@ -252,7 +253,7 @@ void CloneGroupPhotoAlbum::InsertAnalysisPhotoMap(const std::map<int32_t, std::v
         }
         sql += valueStr + ")";
         isFirst = false;
-        currentBatchSize += albumIdIt.second.size();
+        currentBatchSize += static_cast<int32_t>(albumIdIt.second.size());
         if (currentBatchSize >= BATCH_SIZE) {
             int32_t ret = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, sql);
             CHECK_AND_RETURN_LOG(ret >= 0, "execute insert AnalysisPhotoMap failed, ret=%{public}d", ret);
@@ -348,7 +349,7 @@ void CloneGroupPhotoAlbum::RestoreGroupPhotoAlbum(const std::unordered_map<int32
             std::to_string(partOne).c_str(), std::to_string(shouldEndTime).c_str(), (partOne - start));
         result = GetGroupPhotoAlbumInfo(offset, retSize);
         offset = groupAlbumMaxId_;
-        count += result.size();
+        count += static_cast<int32_t>(result.size());
         firstBatch = false;
         CHECK_AND_CONTINUE_ERR_LOG(result.size() != 0, "Query resultSql is null.");
         std::vector<NativeRdb::ValuesBucket> values;

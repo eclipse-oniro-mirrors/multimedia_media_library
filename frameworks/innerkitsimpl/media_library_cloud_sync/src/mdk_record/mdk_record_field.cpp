@@ -81,6 +81,14 @@ MDKRecordField::MDKRecordField(MDKReference &val) : type_(MDKRecordFieldType::FI
 {
     value_ = val;
 }
+MDKRecordField::MDKRecordField(MDKParticipant &val) : type_(MDKRecordFieldType::FIELD_TYPE_PARTICIPANT)
+{
+    value_ = val;
+}
+MDKRecordField::MDKRecordField(MDKScadetail &val) : type_(MDKRecordFieldType::FIELD_TYPE_SCADETAIL)
+{
+    value_ = val;
+}
 MDKRecordField &MDKRecordField::operator=(const MDKRecordField &recordField)
 {
     if (this == &recordField) {
@@ -186,6 +194,22 @@ MDKLocalErrorCode MDKRecordField::GetReference(MDKReference &val) const
     val = std::get<MDKReference>(value_);
     return MDKLocalErrorCode::NO_ERROR;
 }
+MDKLocalErrorCode MDKRecordField::GetParticipant(MDKParticipant &val) const
+{
+    if (type_ != MDKRecordFieldType::FIELD_TYPE_PARTICIPANT) {
+        return MDKLocalErrorCode::DATA_TYPE_ERROR;
+    }
+    val = std::get<MDKParticipant>(value_);
+    return MDKLocalErrorCode::NO_ERROR;
+}
+MDKLocalErrorCode MDKRecordField::GetScadetail(MDKScadetail &val) const
+{
+    if (type_ != MDKRecordFieldType::FIELD_TYPE_SCADETAIL) {
+        return MDKLocalErrorCode::DATA_TYPE_ERROR;
+    }
+    val = std::get<MDKScadetail>(value_);
+    return MDKLocalErrorCode::NO_ERROR;
+}
 
 Json::Value MDKRecordField::FieldListToJsonValue()
 {
@@ -237,6 +261,92 @@ Json::Value MDKRecordField::FieldReferenceToJsonValue()
     return jvReference;
 }
 
+static void SetParticipantRole(const MDKParticipant &p, Json::Value &jvParticipant)
+{
+    //RoleType映射
+    switch (p.role) {
+        case MDKRoleType::ROLE_OWNER:
+            jvParticipant["role"] = MDKPermissionConst::OWNER;
+            break;
+        case MDKRoleType::ROLE_WRITER:
+            jvParticipant["role"] = MDKPermissionConst::WRITER;
+            break;
+        case MDKRoleType::ROLE_READER:
+            jvParticipant["role"] = MDKPermissionConst::READER;
+            break;
+        case MDKRoleType::ROLE_NONE:
+            break;
+    }
+    return;
+}
+
+static void SetParticipantType(const MDKParticipant &p, Json::Value &jvParticipant)
+{
+    // MDKUserType映射
+    switch (p.type) {
+        case MDKUserType::TYPE_USER:
+            jvParticipant["type"] = MDKPermissionConst::USER;
+            break;
+        case MDKUserType::TYPE_ANYONE:
+            jvParticipant["type"] = MDKPermissionConst::ANY_ONE;
+            break;
+        case MDKUserType::TYPE_NONE:
+            break;
+    }
+    return;
+}
+
+
+Json::Value MDKRecordField::FieldParticipantToJsonValue()
+{
+    MDKParticipant p = std::get<MDKParticipant>(value_);
+    Json::Value jvParticipant;
+    jvParticipant["userId"] = p.userId;
+    SetParticipantRole(p, jvParticipant);
+    SetParticipantType(p, jvParticipant);
+    // MDKCategoryType映射
+    switch (p.category) {
+        case MDKCategoryType::CLOUD_PHOTO:
+            jvParticipant["category"] = MDKPermissionConst::CLOUD_PHOTO_PERMISSION;
+            break;
+        default:
+            break;
+    }
+    jvParticipant["userAccount"] = p.userAccount;
+    jvParticipant["displayName"] = p.displayName;
+    jvParticipant["profilePhotoLink"] = p.profilePhotoLink;
+    jvParticipant["accountType"] = static_cast<int>(p.accountType);
+    jvParticipant["status"] = static_cast<int>(p.status);
+    jvParticipant["id"] = p.id;
+    // properties 映射
+    Json::Value jvProperties(Json::objectValue);
+    for (const auto& prop : p.properties) {
+        jvProperties[prop.first] = prop.second;
+    }
+    jvParticipant["properties"] = jvProperties;
+    jvParticipant["createdTime"] = p.createdTime;
+    jvParticipant["modifiedTime"] = p.modifiedTime;
+    if (!p.expirationTime.empty()) {
+        jvParticipant["expirationTime"] = p.expirationTime;
+    }
+    return jvParticipant;
+}
+Json::Value MDKRecordField::FieldScadetailToJsonValue()
+{
+    MDKScadetail scadetail = std::get<MDKScadetail>(value_);
+    Json::Value jvScadetail;
+    jvScadetail["usage"] = scadetail.usage;
+    jvScadetail["scaState"] = scadetail.scaState;
+    jvScadetail["scaRank"] = scadetail.scaRank;
+    jvScadetail["scaVersion"] = scadetail.scaVersion;
+    Json::Value jvAttributes(Json::objectValue);
+    for (const auto &pair: scadetail.scaAttributes) {
+        jvAttributes[pair.first] = pair.second;
+    }
+    jvScadetail["scaAttributes"] = jvAttributes;
+    jvScadetail["riskResult"] = scadetail.riskResult;
+    return jvScadetail;
+}
 Json::Value MDKRecordField::ToJsonValue()
 {
     Json::Value jvData;
@@ -279,6 +389,14 @@ Json::Value MDKRecordField::ToJsonValue()
         }
         case MDKRecordFieldType::FIELD_TYPE_REFERENCE: {
             jvData = FieldReferenceToJsonValue();
+            break;
+        }
+        case MDKRecordFieldType::FIELD_TYPE_PARTICIPANT: {
+            jvData = FieldParticipantToJsonValue();
+            break;
+        }
+        case MDKRecordFieldType::FIELD_TYPE_SCADETAIL: {
+            jvData = FieldScadetailToJsonValue();
             break;
         }
         default:
@@ -404,6 +522,99 @@ bool MDKRecordField::ParseReferenceFromJson(const Json::Value &jvData)
     return true;
 }
 
+static MDKRoleType StringToRoleType(const std::string& roleStr)
+{
+    if (roleStr == MDKPermissionConst::OWNER) {
+        return MDKRoleType::ROLE_OWNER;
+    } else if (roleStr == MDKPermissionConst::WRITER) {
+        return MDKRoleType::ROLE_WRITER;
+    } else if (roleStr == MDKPermissionConst::READER) {
+        return MDKRoleType::ROLE_READER;
+    }
+    return MDKRoleType::ROLE_WRITER;
+}
+
+static MDKAccountType StringToAccountType(const std::string& accountTypeStr)
+{
+    if (accountTypeStr == MDKPermissionConst::EMAIL_ACCOUNT) {
+        return MDKAccountType::TYPE_DEFAULT;
+    } else if (accountTypeStr == MDKPermissionConst::EMAIL_ACCOUNT) {
+        return MDKAccountType::TYPE_EMAIL;
+    } else if (accountTypeStr == MDKPermissionConst::PHONE_ACCOUNT) {
+        return MDKAccountType::TYPE_PHONE;
+    }
+    return MDKAccountType::TYPE_DEFAULT;
+}
+
+static MDKUserType StringToMDKUserType(const std::string&typeStr)
+{
+    if (typeStr == MDKPermissionConst::USER) {
+        return MDKUserType::TYPE_USER;
+    } else if (typeStr == MDKPermissionConst::ANY_ONE) {
+        return MDKUserType::TYPE_ANYONE;
+    }
+    return MDKUserType::TYPE_USER;
+}
+
+bool MDKRecordField::ParseParticipantFromJson(const Json::Value &jvData)
+{
+    if (!jvData.isObject()) {
+        return false;
+    }
+    MDKParticipant participant;
+    participant.userId = JsonHelper::GetStringFromJson(jvData, "userId");
+    std::string roleStr = JsonHelper::GetStringFromJson(jvData, "role");
+    participant.role = StringToRoleType(roleStr);
+    std::string typeStr = JsonHelper::GetStringFromJson(jvData, "type");
+    participant.type = StringToMDKUserType(typeStr);
+    participant.userAccount = JsonHelper::GetStringFromJson(jvData, "userAccount");
+    std::string accountType = JsonHelper::GetStringFromJson(jvData, "accountType");
+    participant.accountType = StringToAccountType(accountType);
+    participant.displayName = JsonHelper::GetStringFromJson(jvData, "displayName");
+    participant.profilePhotoLink = JsonHelper::GetStringFromJson(jvData, "profilePhotoLink");
+    participant.status = static_cast<MDKShareStatus>(JsonHelper::GetIntFromJson(jvData, "status"));
+    participant.id = JsonHelper::GetStringFromJson(jvData, "id");
+    //解析 properties
+    if (jvData.isMember("properties") && jvData["properties"].isObject()) {
+        const Json::Value& jvProperties = jvData["properties"];
+        for (const auto& key : jvProperties.getMemberNames()) {
+            participant.properties[key] = JsonHelper::GetStringFromJson(jvProperties, key);
+        }
+    }
+    participant.createdTime = JsonHelper::GetStringFromJson(jvData, "createdTime");
+    participant.modifiedTime = JsonHelper::GetStringFromJson(jvData, "modifiedTime");
+    participant.expirationTime = JsonHelper::GetStringFromJson(jvData, "expirationTime");
+    std::string categoryStr = JsonHelper::GetStringFromJson(jvData, "category");
+    if (categoryStr == MDKPermissionConst::CLOUD_PHOTO_PERMISSION) {
+        participant.category = MDKCategoryType::CLOUD_PHOTO;
+    }
+    value_ = participant;
+    return true;
+}
+
+bool MDKRecordField::ParseScadetailFromJson(const Json::Value &jvData)
+{
+    if (!jvData.isObject()) {
+        return false;
+    }
+    MDKScadetail scadetail;
+    scadetail.usage = JsonHelper::GetStringFromJson(jvData, "usage");
+    scadetail.scaState = JsonHelper::GetIntFromJson(jvData, "scaState");
+    scadetail.scaRank = JsonHelper::GetIntFromJson(jvData, "scaRank");
+    scadetail.scaVersion = JsonHelper::GetInt64FromJson(jvData, "scaVersion");
+    Json::Value jvAttributes;
+    if (jvData.isObject() && jvData.isMember("scaAttributes") && jvData["scaAttributes"].isObject()) {
+        jvAttributes = jvData["scaAttributes"];
+    }
+    std::vector<std::string> memberNames = jvAttributes.getMemberNames();
+    for (auto &key : memberNames) {
+        scadetail.scaAttributes[key] = JsonHelper::GetStringFromJson(jvAttributes, key);
+    }
+    scadetail.riskResult = JsonHelper::GetInt64FromJson(jvData, "riskResult");
+    value_ = scadetail;
+    return true;
+}
+
 bool MDKRecordField::ParseFromJsonValue(const MDKSchemaField &schemaField, const Json::Value &jvData)
 {
     bool ret = true;
@@ -437,6 +648,12 @@ bool MDKRecordField::ParseFromJsonValue(const MDKSchemaField &schemaField, const
             break;
         case MDKRecordFieldType::FIELD_TYPE_REFERENCE:
             ret = ParseReferenceFromJson(jvData);
+            break;
+        case MDKRecordFieldType::FIELD_TYPE_PARTICIPANT:
+            ret = ParseParticipantFromJson(jvData);
+            break;
+        case MDKRecordFieldType::FIELD_TYPE_SCADETAIL:
+            ret = ParseScadetailFromJson(jvData);
             break;
         default: {
             ret = false;

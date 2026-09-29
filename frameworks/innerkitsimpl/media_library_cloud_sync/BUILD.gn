@@ -19,6 +19,8 @@ config("media_library_cloud_sync_config") {
 }
 
 ohos_shared_library("media_library_cloud_sync") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   sources = [
@@ -39,6 +41,7 @@ ohos_shared_library("media_library_cloud_sync") {
     "./src/mdk_record_photos_data.cpp",
     "./src/mdk_record_reader.cpp",
     "./src/processor/cloud_media_data_client_handler_processor.cpp",
+    "./src/processor/cloud_media_photo_handler_processor.cpp",
     "./src/utils/cloud_media_client_utils.cpp",
     "./src/utils/cloud_media_path_utils.cpp",
   ]
@@ -79,13 +82,6 @@ ohos_shared_library("media_library_cloud_sync") {
   include_dirs += include_media_cloud_sync_data
   include_dirs += include_common_utils_dirs
 
-  source_ipc_client = [
-    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
-  ]
-
-  sources += source_ipc_client
-
   if (!media_library_cloud_sync_enable) {
     sources = []
     include_dirs = []
@@ -97,7 +93,7 @@ ohos_shared_library("media_library_cloud_sync") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -120,6 +116,7 @@ ohos_shared_library("media_library_cloud_sync") {
     "data_share:datashare_consumer",
     "dfs_service:cloudfile_kit",
     "dfs_service:libdistributedfileutils_lite",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
@@ -128,9 +125,11 @@ ohos_shared_library("media_library_cloud_sync") {
     "ipc:ipc_napi",
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
+    "node:node_header_notice",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
+    "window_manager:libwmutil",
   ]
 
   ldflags = [ "-Wl,--gc-sections" ]
@@ -151,7 +150,6 @@ ohos_shared_library("media_library_cloud_sync") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

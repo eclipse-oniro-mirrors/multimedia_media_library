@@ -35,6 +35,7 @@
 using namespace std;
 namespace OHOS::Media {
 constexpr int64_t INVALID_SIZE = 0;
+const string POSITION_CLOUD_FLAG = "2";
 // LCOV_EXCL_START
 shared_ptr<FileAsset> MediaLibraryPtpOperations::FetchOneFileAssetFromResultSet(
     const shared_ptr<NativeRdb::ResultSet> &resultSet, const vector<string> &columns)
@@ -409,6 +410,10 @@ int32_t MediaLibraryPtpOperations::DeletePtpAlbum(NativeRdb::RdbPredicates &pred
     queryPredicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
     NativeRdb::RdbPredicates deletePhotoPredicates(PhotoColumn::PHOTOS_TABLE);
     deletePhotoPredicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
+    deletePhotoPredicates.NotEqualTo(PhotoColumn::PHOTO_POSITION, POSITION_CLOUD_FLAG);
+    deletePhotoPredicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, "0");
+    deletePhotoPredicates.EqualTo(MediaColumn::MEDIA_HIDDEN, "0");
+    deletePhotoPredicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, std::to_string(false));
     std::vector<std::string> photosCloumns = {PhotoColumn::PHOTO_POSITION};
     auto photosResultSet = rdbStore->Query(deletePhotoPredicates, photosCloumns);
     CHECK_AND_RETURN_RET_LOG(photosResultSet != nullptr, E_ERR, "photosResultSet is nullptr");

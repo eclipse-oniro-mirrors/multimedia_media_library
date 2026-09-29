@@ -51,6 +51,7 @@ ohos_unittest("media_lake_file_monitor_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/lake/src/media_delete_lake_dir_processor.cpp",
   ]
   media_file_scan_common_source = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_audit_reporter.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_dfx_collector.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_scene_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_status_helper.cpp",
@@ -64,8 +65,11 @@ ohos_unittest("media_lake_file_monitor_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/global_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/album_dao.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/photo_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/lake_scan_rule_config.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/dir_scan_anomaly_helper.cpp",
   ]
   media_file_monitor_source = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/common/src/file_monitor_wrapper.cpp",
@@ -93,7 +97,6 @@ ohos_unittest("media_lake_file_monitor_test") {
     "./src/media_lake_clone_event_manager_test.cpp",
     "./src/media_lake_monitor_rdb_utils_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
@@ -109,6 +112,7 @@ ohos_unittest("media_lake_file_monitor_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
  
   external_deps = [
@@ -157,7 +161,6 @@ ohos_unittest("media_lake_file_monitor_test") {
     "libfuse:libfuse",
     "libxml2:libxml2",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account

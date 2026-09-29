@@ -414,6 +414,10 @@ bool HeightWidthCorrectOperation::UpdatePhotoHeightWidth(const CheckPhotoInfo &p
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, photoInfo.fileId);
     ValuesBucket values;
+    if (width <= 0 || height <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [HeightWidthCorrect] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            photoInfo.fileId, width, height);
+    }
     values.PutInt(PhotoColumn::PHOTO_HEIGHT, height);
     values.PutInt(PhotoColumn::PHOTO_WIDTH, width);
     double aspectRatio =

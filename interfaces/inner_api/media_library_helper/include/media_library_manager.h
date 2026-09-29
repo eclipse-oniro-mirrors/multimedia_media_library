@@ -23,6 +23,7 @@
 #include "unique_fd.h"
 #include "media_library_extend_manager.h"
 #include "userfile_manager_types.h"
+#include <mutex>
 
 namespace OHOS {
 namespace Media {
@@ -40,6 +41,7 @@ class FetchResult;
 enum class CloudMediaRetainType : int32_t {
     RETAIN_FORCE = 0,
     HDC_RETAIN_FORCE,
+    SHARE_RETAIN_FORCE,
 };
 // LCOV_EXCL_START
 class MediaLibraryManager {
@@ -132,6 +134,18 @@ public:
      * @version 1.0
      */
     EXPORT std::unordered_map<std::string, std::string> GetUrisByOldUris(std::vector<std::string> uris);
+
+    /**
+     * @brief Query new uri by old uri from tab_cloned_old_photos table
+     *
+     * @param oldUris old uris
+     * @param clonedUris map of old uris to new uris
+     * @return errorcode
+     * @since 1.0
+     * @version 1.0
+     */
+    EXPORT int32_t GetClonedAssetUris(const std::vector<std::string> &oldUris,
+        std::map<std::string, std::string> &clonedUris);
 
     /**
      * @brief Make a query from database
@@ -461,6 +475,29 @@ public:
      */
     EXPORT int32_t UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback = nullptr);
 
+    /**
+     * @brief UpdateAssetVisitCount
+     * @param dataShareHelper datasharehelper example
+     * @param fileIdStr file id to string
+     */
+    EXPORT static void UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper,
+        const string &fileIdStr);
+
+    /**
+     * @brief BatchUpdateMetaDataModified
+     * @param fileIds file ids
+     */
+    EXPORT void BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
+
+    /**
+     * @brief SetPhotoCritical
+     * @param fileId file id
+     * @param photoRiskStatus photo risk status, 0:unidentified, 1:approved, 2:suspicious, 3:rejected
+     * @param isCritical whether the photo is critical, 0:not critical, 1:critical.
+     * @return Returns E_OK on success, error code on failure
+     */
+    EXPORT int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
+
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);
     static int OpenThumbnail(std::string &uriStr, const std::string &path, const Size &size, bool isAstc);
@@ -468,10 +505,13 @@ private:
     static unique_ptr<PixelMap> DecodeThumbnail(UniqueFd& uniqueFd, const Size& size, DecodeDynamicRange dynamicRange);
     static unique_ptr<PixelMap> GetPixelMapWithoutDecode(UniqueFd &uniqueFd, const Size& size);
     static unique_ptr<PixelMap> DecodeAstc(UniqueFd &uniqueFd);
-    static bool CheckIsCloudFile(const std::string &sandboxPath);
+    shared_ptr<DataShare::DataShareHelper> GetDataShareHelper();
 
     static shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
     static sptr<IRemoteObject> token_;
+    static int32_t userId_;
+    static shared_ptr<DataShare::DataShareHelper> currentDataShareHelper_;
+    std::mutex mutex_;
 };
 } // namespace Media
 } // namespace OHOS

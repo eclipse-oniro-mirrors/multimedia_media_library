@@ -19,6 +19,8 @@ config("media_cloud_sync_data_config") {
 }
 
 ohos_shared_library("media_cloud_sync_data") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   include_dirs = [
@@ -71,6 +73,9 @@ ohos_shared_library("media_cloud_sync_data") {
     "./src/vo/update_thm_status_vo.cpp",
     "./src/vo/report_failure_vo.cpp",
     "./src/vo/clean_attachment_vo.cpp",
+    "./src/vo/share_member_data_vo.cpp",
+    "./src/vo/share_album_detail_vo.cpp",
+    "./src/vo/sca_detail_vo.cpp",
   ]
 
   include_media_ipc_common = [
@@ -83,8 +88,13 @@ ohos_shared_library("media_cloud_sync_data") {
     "${MEDIALIB_UTILS_PATH}/include",
   ]
 
+  include_helper_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+  ]
+
   include_dirs += include_utils_dirs
   include_dirs += include_media_ipc_common
+  include_dirs += include_helper_dirs
 
   if (!media_library_cloud_sync_enable) {
     sources = []
@@ -96,7 +106,7 @@ ohos_shared_library("media_cloud_sync_data") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -126,7 +136,6 @@ ohos_shared_library("media_cloud_sync_data") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

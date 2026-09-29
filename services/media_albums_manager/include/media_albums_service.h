@@ -59,6 +59,12 @@
 #include "analysis_album_get_attribute_dto.h"
 #include "album_change_set_hidden_attribute_dto.h"
 #include "album_change_set_album_name_by_file_dto.h"
+#include "default_cover_order_info.h"
+#include "set_share_album_name_vo.h"
+#include "delete_share_album_vo.h"
+#include "add_share_member_vo.h"
+#include "delete_share_member_vo.h"
+#include "delete_member_share_album_vo.h"
 
 namespace OHOS::Media {
 class MediaAlbumsService {
@@ -98,9 +104,19 @@ public:
     int32_t GetAnalysisAlbumAttribute(const AnalysisAlbumGetAttributeDto &dto,
         std::vector<std::unordered_map<std::string, std::string>> &queryResults);
     void ReportFirstDbStatus();
-    void ReportCloneDbStatus();
     int32_t AlbumChangeSetHiddenAttribute(const AlbumChangeSetHiddenAttributeDto &dto);
     int32_t AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAlbumNameByFileDto &dto);
+    int32_t ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+        bool disable, bool isAsyncRefreshAlbum);
+    int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+        bool disable, bool isAsyncRefreshAlbum);
+    void ReportCloneDbStatus(int32_t reverseCloneStatus);
+    int32_t SetShareAlbumName(const SetShareAlbumNameReqBody &reqBody);
+    int32_t DeleteSharePhotoAlbums(const std::string &owner, const std::vector<int32_t> &albumIds);
+    int32_t AddShareMember(const AddShareMemberReqBody &reqBody);
+    int32_t UpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody);
+    int32_t DeleteShareMember(const DeleteShareMemberReqBody &reqBody);
+    int32_t DeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

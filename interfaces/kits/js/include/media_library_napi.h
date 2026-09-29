@@ -41,6 +41,7 @@
 #include "medialibrary_notify_new_observer.h"
 #include "report_event.h"
 #include "clone_to_album_context.h"
+#include "default_cover_order_info.h"
 
 #include "task_signal_napi.h"
 namespace OHOS {
@@ -66,6 +67,11 @@ enum ListenerType {
     DEVICE_LISTENER,
     REMOTEFILE_LISTENER,
     ALBUM_LISTENER
+};
+
+enum OrderType {
+    DESC = 0,
+    ASC = 1
 };
 
 enum ReplaceSelectionMode {
@@ -255,6 +261,7 @@ public:
     int32_t GetUserId();
     void SetUserId(const int32_t &userId);
     static int32_t AssignRequestId();
+    static bool ProcessAssetMemberKey(napi_env env, napi_value members, std::string &inputKey, FileAssetNapi *obj);
 
     EXPORT MediaLibraryNapi();
     EXPORT ~MediaLibraryNapi();
@@ -357,6 +364,7 @@ private:
     EXPORT static napi_value PhotoAccessCheckPhotoUrisReadPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperCreatePhotoAsset(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessCreatePhotoAsset(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessGetPhotoAssetsForQuery(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperAgentCreateAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperAgentCreateAssetsWithMode(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGrantPhotoUriPermission(napi_env env, napi_callback_info info);
@@ -389,6 +397,8 @@ private:
     EXPORT static napi_value PhotoAccessStartAssetAnalysis(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStartActiveAnalysis(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStopActiveAnalysis(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessInvokeAnalysisTool(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessCancelAnalysisTool(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetPhotoAlbumsWithoutSubtype(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetPhotoAlbumOrder(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessSetPhotoAlbumOrder(napi_env env, napi_callback_info info);
@@ -403,6 +413,8 @@ private:
     EXPORT static napi_value GetAssetCompatibleUris(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStartDeepOptimizeSpace(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStopDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessModifyAlbumDefaultCoverOrder(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessModifyHiddenAlbumDefaultCoverOrder(napi_env env, napi_callback_info info);
     
     EXPORT static napi_value SetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value PahGetHiddenAlbums(napi_env env, napi_callback_info info);
@@ -416,6 +428,10 @@ private:
     EXPORT static napi_value SinglePhotoAlbumUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AnalysisPhotoAccessUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AnalysisAlbumAccessUnregisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessSharePhotoRegisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessSharePhotoUnregisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessShareAlbumRegisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessShareAlbumUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AvailabilityRegisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AvailabilityUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value QueryMediaDataReady(napi_env env, napi_callback_info info);
@@ -423,6 +439,7 @@ private:
     EXPORT static napi_value JSCloneToAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSCloneToDir(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSCloneAssetsByPath(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSCloneWithShareAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value MoveAssetsToDir(napi_env env, napi_callback_info info);
     EXPORT static napi_value MoveAssetsByPath(napi_env env, napi_callback_info info);
 
@@ -433,11 +450,13 @@ private:
     EXPORT static napi_value CreateAlbumAttributeEnum(napi_env env);
     EXPORT static napi_value CreateAlbumOperationTypeEnum(napi_env env);
     EXPORT static napi_value CreateAnalysisTypeEnum(napi_env env);
+    EXPORT static napi_value CreateAnalysisToolTypeEnum(napi_env env);
     EXPORT static napi_value CreateRequestPhotoTypeEnum(napi_env env);
     EXPORT static napi_value CreateResourceTypeEnum(napi_env env);
     EXPORT static napi_value CreateAuthorizationModeEnum(napi_env env);
     EXPORT static napi_value CreateHighlightAlbumInfoTypeEnum(napi_env env);
     EXPORT static napi_value CreateHighlightUserActionTypeEnum(napi_env env);
+    EXPORT static napi_value CreateShareMemberStatusEnum(napi_env env);
     EXPORT static napi_value CreateHighlightAlbumChangeAttributeEnum(napi_env env);
     EXPORT static napi_value CreateMovingPhotoEffectModeEnum(napi_env env);
     EXPORT static napi_value CreateImageFileTypeEnum(napi_env env);
@@ -468,6 +487,9 @@ private:
 
     EXPORT static napi_value PhotoAccessAcquireDebugDatabase(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessReleaseDebugDatabase(napi_env env, napi_callback_info info);
+    EXPORT static napi_value CanPerformDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value GetDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessTransAssetToCompatibleAsset(napi_env env, napi_callback_info info);
 
     int32_t GetListenerType(const std::string &str) const;
     void RegisterChange(napi_env env, const std::string &type, ChangeListenerNapi &listObj);
@@ -547,9 +569,11 @@ private:
     static thread_local napi_ref sDeliveryModeEnumRef_;
     static thread_local napi_ref sSourceModeEnumRef_;
     static thread_local napi_ref sCompatibleModeEnumRef_;
+    static thread_local napi_ref sAnalysisToolTypeEnumRef_;
     static thread_local napi_ref sPreferredCompatibleModeEnumRef_;
     static thread_local napi_ref sHighlightAlbumInfoType_;
     static thread_local napi_ref sHighlightUserActionType_;
+    static thread_local napi_ref sShareMemberStatusEnumRef_;
     static thread_local napi_ref sHighlightAlbumChangeAttributeEnumRef_;
     static thread_local napi_ref sMovingPhotoEffectModeEnumRef_;
     static thread_local napi_ref sImageFileTypeEnumEnumRef_;
@@ -599,6 +623,7 @@ struct PhotoAssetInfo {
     int32_t height;
     std::string uri;
     int32_t fileId;
+    std::string shootingModeTag;
 };
 
 constexpr int32_t DEFAULT_PRIVATEALBUMTYPE = 3;
@@ -698,6 +723,8 @@ struct MediaLibraryAsyncContext : public NapiError {
     int32_t photoIndex = -1;
     std::string strParam;
     bool boolResult = false;
+    uint32_t length = 0;
+    vector<map<string, std::variant<int32_t, int64_t, std::string, double>>> valuesBucketvector;
     bool supportedHighResolution = false;
     bool isRealTimeThumb = true;
     std::string path;
@@ -707,11 +734,15 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::shared_ptr<ActiveAnalysisJsCallbackHolder> activeAnalysisCallbackHolder;
     std::shared_ptr<DeepOptimizeSpaceJsCallbackHolder> deepOptimizeSpaceCallbackHolder;
     bool hasDeepOptimizeSpaceCallback = false;
+    int32_t analysisToolType = 0;
+    std::string analysisToolParam;
+    std::string analysisToolTaskId;
     std::vector<std::string> checkPhotoPermissionUris;
     mutable std::mutex uriPermissionStateMapMutex;
     std::unordered_map<std::string, int32_t> uriPermissionStateMap;
     ChangeListenerNapi* availabilityListObj = nullptr;
     std::vector<PhotoAssetInfo> photoAssetInfos;
+    std::vector<shared_ptr<FileAsset>> transAssetPtrs;
     int32_t compatibleFlags = 0;
     CloneToAlbumContext cloneCtx;
     std::string targetDir;
@@ -721,6 +752,11 @@ struct MediaLibraryAsyncContext : public NapiError {
     int32_t mode;
     std::atomic<bool> isCancelled{false};
     napi_ref taskSignalRef;
+    std::vector<DefaultCoverOrderInfo> coverOrderInfos;
+    bool disableModification = false;
+    bool isAsyncRefreshAlbum = false;
+    bool canDeepOptimize = false;
+    int64_t lcdOptimizableSize = 0;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

@@ -40,6 +40,8 @@ struct CloneToAlbumContext {
     int32_t mode {0};
     std::string targetDir;
     int32_t requestId {0};
+    std::string owner;
+    int64_t shareGroup {0};
 };
 
 } // namespace Media

@@ -49,7 +49,6 @@ string MediaLibraryDataManagerUtils::GetOperationType(const string &uri)
     if (found != string::npos) {
         oprn = uri.substr(found + 1);
     }
-
     return oprn;
 }
 

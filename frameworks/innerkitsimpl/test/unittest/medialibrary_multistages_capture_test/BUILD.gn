@@ -40,6 +40,7 @@ ohos_unittest("medialibrary_multistages_capture_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -64,7 +65,6 @@ ohos_unittest("medialibrary_multistages_capture_test") {
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "googletest:gtest_main",
     "googletest:gmock_main",

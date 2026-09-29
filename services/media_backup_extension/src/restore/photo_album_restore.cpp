@@ -19,6 +19,7 @@
 #include <unordered_set>
 
 #include "photo_album_restore.h"
+#include "album_plugin_base.h"
 #include "media_log.h"
 #include "rdb_store.h"
 #include "rdb_errno.h"

@@ -30,6 +30,7 @@
 #include "media_file_utils.h"
 #include "moving_photo_file_utils.h"
 #include "photo_file_utils.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media::CloudSync {
 const std::string CloudAlbumDataConvert::recordType_ = "album";
@@ -241,6 +242,7 @@ std::shared_ptr<MDKRecord> CloudAlbumDataConvert::ConvertToMdkRecord(const Cloud
         CHECK_AND_RETURN_RET_LOG(HandleAlbumId(data, upLoadRecord) == E_OK, nullptr, "HandleAlbumId failed");
         CHECK_AND_RETURN_RET_LOG(HandleRecordId(record, upLoadRecord) == E_OK, nullptr, "HandleRecordId failed");
         CHECK_AND_RETURN_RET_LOG(HandlePath(data, upLoadRecord) == E_OK, nullptr, "HandlePath failed");
+        CHECK_AND_RETURN_RET_LOG(ValidateLocalPath(record, data) == E_OK, nullptr, "ValidateLocalPath failed");
     } else {
         int32_t ret = FillRecordId(record, upLoadRecord);
         if (ret != E_OK) {
@@ -253,6 +255,7 @@ std::shared_ptr<MDKRecord> CloudAlbumDataConvert::ConvertToMdkRecord(const Cloud
     /* set data */
     ConvertToDoubleScreenshot(record, data);
     record->SetRecordData(data);
+    record->SetOwnerId(upLoadRecord.shareAlbumOwner);
 
     return record;
 }
@@ -332,5 +335,46 @@ std::string CloudAlbumDataConvert::SanitizeAlbumName(const std::string &albumNam
     }
     size_t last = name.find_last_not_of(' ');
     return name.substr(first, last - first + 1);
+}
+
+int32_t CloudAlbumDataConvert::ValidateLocalPath(
+    std::shared_ptr<MDKRecord> record, std::map<std::string, MDKRecordField> &data)
+{
+    CHECK_AND_RETURN_RET_WARN_LOG(record != nullptr, E_MEDIA_CLOUD_ARGS_INVAILD, "record is nullptr");
+    std::string lPath;
+    const std::string recordId = record->GetRecordId();
+    if (data.find("localPath") == data.end() || data.at("localPath").GetString(lPath) != MDKLocalErrorCode::NO_ERROR) {
+        MEDIA_ERR_LOG("ValidateLocalPath lpath error, recordId: %{public}s", recordId.c_str());
+        return E_MEDIA_CLOUD_ARGS_INVAILD;
+    }
+    const bool isValid = MediaStringUtils::StartsWith(lPath, "/");
+    CHECK_AND_RETURN_RET_LOG(isValid, E_MEDIA_CLOUD_ARGS_INVAILD,
+        "ValidateLocalPath lpath is invalid, lpath: %{public}s, recordId: %{public}s",
+        MediaFileUtils::DesensitizePath(lPath).c_str(), recordId.c_str());
+    return E_OK;
+}
+
+void CloudAlbumDataConvert::ConvertAttributesHashMap(MDKRecordAlbumData &data,
+    OnFetchRecordsAlbumReqBody::AlbumReqData &albumData)
+{
+    std::optional<std::string> valueStrOp;
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_STRING_FROM_CLOUD) {
+        valueStrOp = data.GetAttributeFieldValue(fieldName);
+        CHECK_AND_CONTINUE(valueStrOp.has_value());
+        albumData.stringfields[fieldName] = valueStrOp.value();
+    }
+    return;
+}
+
+void CloudAlbumDataConvert::ConvertInt64FieldsHashMap(MDKRecordAlbumData &data,
+    OnFetchRecordsAlbumReqBody::AlbumReqData &albumData)
+{
+    std::optional<int64_t> valueLongOp;
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_INT64_FROM_CLOUD) {
+        valueLongOp = data.GetAttributeFieldLongValue(fieldName);
+        CHECK_AND_CONTINUE(valueLongOp.has_value());
+        albumData.int64fields[fieldName] = valueLongOp.value();
+    }
+    return;
 }
 }  // namespace OHOS::Media::CloudSync

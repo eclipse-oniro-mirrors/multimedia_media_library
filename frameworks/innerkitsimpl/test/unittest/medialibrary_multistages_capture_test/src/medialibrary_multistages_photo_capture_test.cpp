@@ -57,6 +57,7 @@
 #undef protected
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "fetch_result.h"
 
 using namespace std;
 using namespace OHOS;

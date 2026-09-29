@@ -156,6 +156,8 @@ public:
     EXPORT static int32_t EntryInsert(AclXattrEntry& entry, const std::string& path, const char* aclAttrName);
     EXPORT static int32_t RecursiveEnableAcl(const std::string& path, const char* aclAttrName,
         const uint16_t& permission, uint32_t groupId);
+    EXPORT static int32_t RecursiveEnableAclExcludeDir(const std::string& path, const char* aclAttrName,
+        const uint16_t& permission, uint32_t groupId, const std::string& excludeDir);
     EXPORT static int32_t EnableAcl(const std::string& path, const char* aclAttrName,
         const uint16_t& permission, uint32_t groupId);
     EXPORT static std::string ParseAclEntriesToString(const AclXattrHeader &head,

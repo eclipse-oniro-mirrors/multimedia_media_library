@@ -31,6 +31,9 @@
 #include "ipc_skeleton.h"
 #include "permission_utils.h"
 
+#include <cerrno>
+#include <sys/stat.h>
+
 using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::RdbDataShareAdapter;
@@ -43,7 +46,10 @@ namespace Media {
 const std::string MEDIA_LIBRARY_STARTUP_PARAM_PREFIX = "multimedia.medialibrary.startup.";
 constexpr uint32_t BASE_USER_RANGE = 200000;
 const int32_t ARG_COUNT = 2;
+const int32_t MAP_CODE_PARAM = 3;
 constexpr int STORAGE_MANAGER_MANAGER_ID = 5003;
+constexpr int32_t MILLIS_PER_SEC = 1000;
+constexpr int32_t MILLIS_FIVE_SECONDS = 5 * 1000;
 static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
 const std::unordered_set<OperationObject> OPERATION_OBJECT_SET = {
     OperationObject::UFM_PHOTO,
@@ -54,7 +60,36 @@ const std::unordered_set<OperationObject> OPERATION_OBJECT_SET = {
 const std::unordered_set<OperationType> OPERATION_TYPE_SET = {
     OperationType::QUERY,
 };
+const std::string REVERSE_CLONE_RESTORE_MARKER_XML = std::string(CONST_MEDIA_DB_DIR) +
+    "/rdb/media_library_reverse_restore_marker.xml";
+constexpr int64_t MARKER_MILLISECONDS_PER_SECOND = 1000;
+constexpr int64_t MARKER_NANOSECONDS_PER_MILLISECOND = 1000000;
 // LCOV_EXCL_START
+bool GetReverseRestoreMarkerTime(int64_t &recordTimeMilliseconds)
+{
+    MEDIA_INFO_LOG("query reverse clone restore marker xml, path=%{public}s",
+        REVERSE_CLONE_RESTORE_MARKER_XML.c_str());
+    struct stat statInfo {};
+    if (stat(REVERSE_CLONE_RESTORE_MARKER_XML.c_str(), &statInfo) != 0) {
+        int32_t err = errno;
+        if (err == ENOENT) {
+            MEDIA_DEBUG_LOG("reverse clone restore marker file does not exist, path=%{public}s",
+                REVERSE_CLONE_RESTORE_MARKER_XML.c_str());
+        } else {
+            MEDIA_WARN_LOG("stat reverse clone restore marker file failed, err=%{public}d, path=%{public}s",
+                err, REVERSE_CLONE_RESTORE_MARKER_XML.c_str());
+        }
+        return false;
+    }
+    recordTimeMilliseconds = static_cast<int64_t>(statInfo.st_mtim.tv_sec) * MARKER_MILLISECONDS_PER_SECOND +
+        static_cast<int64_t>(statInfo.st_mtim.tv_nsec) / MARKER_NANOSECONDS_PER_MILLISECOND;
+    MEDIA_INFO_LOG("reverse clone restore marker time queried, timeMs=%{public}lld",
+        static_cast<long long>(recordTimeMilliseconds));
+    CHECK_AND_RETURN_RET_LOG(recordTimeMilliseconds > 0, false,
+        "reverse clone marker time invalid, timeMs=%{public}lld", static_cast<long long>(recordTimeMilliseconds));
+    return true;
+}
+
 std::string GetTableNameFromOprnObject(const OperationObject& object)
 {
     CHECK_AND_RETURN_RET(object != OperationObject::PAH_MAP, PhotoColumn::PHOTOS_TABLE);
@@ -112,6 +147,11 @@ const std::string MediaAssetRdbStore::PhotoAlbumNotifyFunc(const std::vector<std
     return "";
 }
 
+const std::string MediaAssetRdbStore::PhotoMapCodeFunc(const std::vector<std::string> &args)
+{
+    return "";
+}
+
 MediaAssetRdbStore::MediaAssetRdbStore()
 {
     MEDIA_INFO_LOG("init visitor rdb");
@@ -139,6 +179,11 @@ bool ConnectMediaLibrary()
 int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
 {
     std::unique_lock<std::mutex> lock(mutex_);
+    return OpenRdbStore(isIgnoreSELinux);
+}
+
+int32_t MediaAssetRdbStore::OpenRdbStore(bool isIgnoreSELinux)
+{
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, NativeRdb::E_ERROR, "fail to acquire application Context");
     uid_t uid = getuid() / BASE_USER_RANGE;
@@ -160,26 +205,64 @@ int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
     }
     string dbPath = databaseDir.append("/").append(name);
     int32_t errCode = 0;
-    NativeRdb::RdbStoreConfig config {""};
-    config.SetName(name);
-    config.SetVisitorDir(dbPath);
-    config.SetBundleName(context->GetBundleName());
-    config.SetArea(context->GetArea());
-    config.SetSecurityLevel(SecurityLevel::S3);
-    config.SetRoleType(RoleType::VISITOR);
-    config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
-    config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
-    config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
-    config.SetCollatorLocales("zh_CN");
+    config_.SetName(name);
+    config_.SetVisitorDir(dbPath);
+    config_.SetBundleName(context->GetBundleName());
+    config_.SetArea(context->GetArea());
+    config_.SetSecurityLevel(SecurityLevel::S3);
+    config_.SetRoleType(RoleType::VISITOR);
+    config_.SetReadOnly(true);
+    config_.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
+    config_.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
+    config_.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+    config_.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
+    config_.SetCollatorLocales("zh_CN");
 
     MediaLibraryAssetCallBack rdbDataCallBack;
-    rdbStore_ = RdbHelper::GetRdbStore(config, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
+    rdbStore_ = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
     if (rdbStore_ == nullptr || errCode != NativeRdb::E_OK) {
         MEDIA_WARN_LOG("Failed to get visitor RdbStore, errCode: %{public}d", errCode);
         rdbStore_ = nullptr;
         return errCode;
     }
+    openedRdbTimeMs_ = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("visitor rdb opened, openedRdbTimeMs=%{public}lld", static_cast<long long>(openedRdbTimeMs_));
     return NativeRdb::E_OK;
+}
+
+static void CloseRdbStore(std::shared_ptr<NativeRdb::RdbStore> &store, const NativeRdb::RdbStoreConfig& config,
+    int32_t timeOut = MILLIS_PER_SEC)
+{
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("store is nullptr");
+        return;
+    }
+    NativeRdb::RdbStore::ReleaseOption option;
+    option.waitTime = std::max(MILLIS_PER_SEC, timeOut);
+    option.clearMetadata = false;
+    int32_t ret = store->Release(option);
+    if (ret == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("CloseRdbStore: Release succeeded");
+    } else {
+        MEDIA_ERR_LOG("CloseRdbStore: Release failed, ret=%{public}d", ret);
+    }
+    std::atomic_store(&store, std::shared_ptr<NativeRdb::RdbStore>());
+    NativeRdb::RdbHelper::ClearStoreCache(config);
+}
+
+std::shared_ptr<NativeRdb::RdbStore> MediaAssetRdbStore::GetRdbStoreForQuery(bool isIgnoreSELinux)
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    int64_t markerTime = 0;
+    if (rdbStore_ != nullptr && GetReverseRestoreMarkerTime(markerTime) &&
+        markerTime > openedRdbTimeMs_) {
+        MEDIA_INFO_LOG("reverse restore marker newer than visitor rdb, openedRdbTimeMs=%{public}lld, "
+            "markerTimeMs=%{public}lld", static_cast<long long>(openedRdbTimeMs_), static_cast<long long>(markerTime));
+        // 5s内链接未释放完毕，也要清理缓存
+        CloseRdbStore(rdbStore_, config_, MILLIS_FIVE_SECONDS);
+    }
+    CHECK_AND_RETURN_RET(rdbStore_ != nullptr || OpenRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, nullptr);
+    return rdbStore_;
 }
 
 void AddVirtualColumnsOfDateType(vector<string>& columns)
@@ -311,14 +394,16 @@ int32_t GetInt32Val(const string& column, std::shared_ptr<NativeRdb::AbsSharedRe
     return value;
 }
 
-bool MediaAssetRdbStore::IsQueryGroupPhotoAlbumAssets(const string &albumId)
+bool MediaAssetRdbStore::IsQueryGroupPhotoAlbumAssets(const shared_ptr<NativeRdb::RdbStore> &rdbStore,
+    const string &albumId)
 {
     bool cond = (albumId.empty() || !IsNumber(albumId));
     CHECK_AND_RETURN_RET(!cond, false);
+    CHECK_AND_RETURN_RET(rdbStore != nullptr, false);
     RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
     vector<string> columns = {PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE};
-    auto resultSet = rdbStore_->Query(predicates, columns);
+    auto resultSet = rdbStore->Query(predicates, columns);
     if (resultSet == nullptr) {
         return false;
     }
@@ -336,10 +421,8 @@ bool MediaAssetRdbStore::IsQueryAccessibleViaSandBox(Uri& uri, OperationObject& 
     const DataShare::DataSharePredicates& predicates, bool isIgnoreSELinux)
 {
     CHECK_AND_RETURN_RET(access(CONST_MEDIA_DB_DIR, E_OK) == 0, false);
-    if (rdbStore_ == nullptr) {
-        CHECK_AND_RETURN_RET_LOG(TryGetRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, false,
-            "fail to acquire rdb when query");
-    }
+    auto rdbStore = GetRdbStoreForQuery(isIgnoreSELinux);
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "fail to acquire rdb when query");
 
     object = GetOprnObjectFromUri(uri);
     CHECK_AND_RETURN_RET(OPERATION_OBJECT_SET.count(object) != 0, false);
@@ -352,7 +435,7 @@ bool MediaAssetRdbStore::IsQueryAccessibleViaSandBox(Uri& uri, OperationObject& 
     auto whereArgs = rdbPredicates.GetWhereArgs();
     if (!whereArgs.empty()) {
         string albumId = whereArgs[0];
-        CHECK_AND_RETURN_RET(!IsQueryGroupPhotoAlbumAssets(albumId), false);
+        CHECK_AND_RETURN_RET(!IsQueryGroupPhotoAlbumAssets(rdbStore, albumId), false);
     }
     return true;
 }
@@ -374,7 +457,8 @@ static void PrintPredicatesInfo(const NativeRdb::RdbPredicates& predicates, cons
 std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryRdb(
     const DataShare::DataSharePredicates& predicates, std::vector<std::string>& columns, OperationObject& object)
 {
-    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, nullptr, "fail to acquire rdb when query");
+    auto rdbStore = GetRdbStoreForQuery();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nullptr, "fail to acquire rdb when query");
     std::string tableName = GetTableNameFromOprnObject(object);
     NativeRdb::RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, tableName);
     AddVirtualColumnsOfDateType(const_cast<vector<string> &>(columns));
@@ -386,7 +470,7 @@ std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryRdb(
     PrintPredicatesInfo(rdbPredicates, columns);
     MediaLibraryTracer tracer;
     tracer.Start("MediaAssetRdbStore::QueryRdb QueryByStep");
-    auto resultSet = rdbStore_->QueryByStep(rdbPredicates, columns, false);
+    auto resultSet = rdbStore->QueryByStep(rdbPredicates, columns, false);
     tracer.Finish();
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "fail to acquire result from visitor query");
     return resultSet;
@@ -394,21 +478,15 @@ std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryRdb(
 
 std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryByStep(const std::string &sql)
 {
-    if (rdbStore_ == nullptr) {
-        if (TryGetRdbStore(false) != NativeRdb::E_OK) {
-            return nullptr;
-        }
-    }
-    return rdbStore_->QueryByStep(sql);
+    auto rdbStore = GetRdbStoreForQuery();
+    CHECK_AND_RETURN_RET(rdbStore != nullptr, nullptr);
+    return rdbStore->QueryByStep(sql);
 }
 
 bool MediaAssetRdbStore::IsSupportSharedAssetQuery(Uri& uri, OperationObject& object, bool isIgnoreSELinux)
 {
     CHECK_AND_RETURN_RET(access(CONST_MEDIA_DB_DIR, E_OK) == 0, false);
-    if (rdbStore_ == nullptr) {
-        CHECK_AND_RETURN_RET_LOG(TryGetRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, false,
-            "fail to acquire rdb when query");
-    }
+    CHECK_AND_RETURN_RET_LOG(GetRdbStoreForQuery(isIgnoreSELinux) != nullptr, false, "fail to acquire rdb when query");
 
     OperationType type = GetOprnTypeFromUri(uri);
     CHECK_AND_RETURN_RET(OPERATION_TYPE_SET.count(type) != 0, false);
@@ -420,7 +498,8 @@ int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaAssetRdbStore::QueryTimeIdBatch");
-    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, NativeRdb::E_DB_NOT_EXIST, "rdbStore_ is nullptr when query");
+    auto rdbStore = GetRdbStoreForQuery();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, NativeRdb::E_DB_NOT_EXIST, "rdbStore is nullptr when query");
     DataShare::DataSharePredicates predicates;
     predicates.And()->OrderByDesc(MediaColumn::MEDIA_DATE_TAKEN)
                     ->Limit(count, start)
@@ -434,7 +513,7 @@ int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::
     std::vector<std::string> columns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_DATE_TAKEN};
     NativeRdb::RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
     AddQueryFilter(rdbPredicates);
-    auto resultSet = rdbStore_->Query(rdbPredicates, columns);
+    auto resultSet = rdbStore->Query(rdbPredicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, NativeRdb::E_ERROR, "fail to acquire result from visitor query");
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {

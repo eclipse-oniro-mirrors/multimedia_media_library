@@ -19,6 +19,7 @@ config("media_capi_config") {
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
     "${MEDIALIB_ROOT_PATH}/frameworks/native/c_api/common",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 
   cflags = [
@@ -39,11 +40,13 @@ config("media_capi_config") {
 config("media_capi_public_config") {
   include_dirs = [
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
-    "${MEDIALIB_ROOT_PATH}/frameworks/native/capi/common",
+    "${MEDIALIB_ROOT_PATH}/frameworks/native/c_api/common",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 }
 
 ohos_shared_library("native_media_asset_manager") {
+  stack_protector_ret = true
   install_enable = true
 
   if (!media_library_link_opt) {
@@ -54,7 +57,6 @@ ohos_shared_library("native_media_asset_manager") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -77,12 +79,14 @@ ohos_shared_library("native_media_asset_manager") {
   public_configs = [ ":media_capi_public_config" ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "image_framework:ohimage",
     "napi:ace_napi",
+    "node:node_header_notice",
     "resource_management:librawfile",
     "ipc:ipc_core",
     "ipc:ipc_single",

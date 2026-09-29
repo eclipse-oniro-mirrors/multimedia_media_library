@@ -82,24 +82,26 @@ void DeferredVideoProcessingAdapter::EndSynchronize()
 #endif
 }
 
-void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::string &srcPath,
+void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::vector<std::string> &srcPath,
     const std::string &sharedTemp1Path, const std::string &sharedTemp2Path)
 {
 #ifdef ABILITY_CAMERA_SUPPORT
     MEDIA_INFO_LOG("SingleSrcFd, videoId: %{public}s", videoId.c_str());
     CHECK_AND_RETURN_LOG(deferredVideoProcSession_ != nullptr,
         "AddVideo deferredVideoProcSession_ is nullptr");
+    CHECK_AND_RETURN_LOG(srcPath.size() >= 2, "srcPath size is invalid"); // 2 edit and photo org path
     deferredVideoProcSession_->AddVideo(videoId, srcPath, sharedTemp1Path, sharedTemp2Path);
 #endif
 }
 
-void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::string &srcPath,
+void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::vector<std::string> &srcPath,
     const std::string &sharedTemp1Path, const std::string &sharedTemp2Path, const std::string &moviePath)
 {
 #ifdef ABILITY_CAMERA_SUPPORT
     MEDIA_INFO_LOG("DoubleSrcFd, videoId: %{public}s", videoId.c_str());
     CHECK_AND_RETURN_LOG(deferredVideoProcSession_ != nullptr,
         "AddVideo deferredVideoProcSession_ is nullptr");
+    CHECK_AND_RETURN_LOG(srcPath.size() >= 2, "srcPath size is invalid"); // 2 edit and photo org path
     deferredVideoProcSession_->AddVideo(videoId, srcPath, sharedTemp1Path, sharedTemp2Path, moviePath);
 #endif
 }

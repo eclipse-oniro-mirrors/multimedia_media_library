@@ -23,6 +23,7 @@ config("media_library_manager_config") {
 }
 
 ohos_shared_library("media_library_manager") {
+  stack_protector_ret = true
   install_enable = true
 
   sources = [
@@ -44,7 +45,9 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/include"
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/include",
+
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 
   user_ipc_client_include_dirs = [
@@ -83,9 +86,12 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/close_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_single_photo_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_uris_by_old_uris_inner_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_composite_auxiliary_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/retain_cloud_media_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/trash_photos_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/batch_update_metadata_modified_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/set_photo_critical_vo.cpp",
   ]
 
   include_dirs += user_ipc_client_include_dirs
@@ -97,7 +103,7 @@ ohos_shared_library("media_library_manager") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -120,6 +126,10 @@ ohos_shared_library("media_library_manager") {
     "image_framework:image_native",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
+    "node:node_header_notice",
+    "os_account:os_account_innerkits",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
   ]
@@ -142,7 +152,6 @@ ohos_shared_library("media_library_manager") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -165,6 +174,8 @@ ohos_shared_library("media_library_manager") {
 }
 
 ohos_shared_library("media_library_extend_manager") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   sources = [ "./media_library_extend_manager.cpp" ]
@@ -211,16 +222,20 @@ ohos_shared_library("media_library_extend_manager") {
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "kv_store:distributeddata_inner",
     "os_account:os_account_innerkits",
+    "relational_store:native_rdb",
     "samgr:samgr_proxy",
     "ipc:ipc_core",
   ]
@@ -243,7 +258,6 @@ ohos_shared_library("media_library_extend_manager") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -255,6 +269,8 @@ ohos_shared_library("media_library_extend_manager") {
 }
 
 ohos_shared_library("media_library_custom_restore") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   sources = [
@@ -306,10 +322,11 @@ ohos_shared_library("media_library_custom_restore") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
@@ -317,6 +334,7 @@ ohos_shared_library("media_library_custom_restore") {
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
     "samgr:samgr_proxy",
   ]
 
@@ -338,7 +356,6 @@ ohos_shared_library("media_library_custom_restore") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

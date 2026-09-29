@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "album_plugin_base.h"
+
 namespace OHOS::Media {
 namespace AlbumPlugin {
 struct AlbumPluginRowData {
@@ -30,27 +32,6 @@ struct AlbumPluginRowData {
     std::string dual_album_name;
     int priority = 1;
 };
-const int CHAR_LOWCASE_H = 104;
-const int CHAR_UPPERCASE_H = 72;
-const int CHAR_LOWCASE_U = 117;
-const int CHAR_LOWCASE_A = 97;
-const int CHAR_LOWCASE_W = 119;
-const int CHAR_LOWCASE_E = 101;
-const int CHAR_LOWCASE_I = 105;
-const std::string BRAND_NAME = std::string() + static_cast<char>(CHAR_LOWCASE_H) + static_cast<char>(CHAR_LOWCASE_U) +
-    static_cast<char>(CHAR_LOWCASE_A) + static_cast<char>(CHAR_LOWCASE_W) +
-    static_cast<char>(CHAR_LOWCASE_E) + static_cast<char>(CHAR_LOWCASE_I);
-const std::string BRAND_NAME_UPPER_FIRST = std::string() + static_cast<char>(CHAR_UPPERCASE_H) +
-    static_cast<char>(CHAR_LOWCASE_U) + static_cast<char>(CHAR_LOWCASE_A) +
-    static_cast<char>(CHAR_LOWCASE_W) + static_cast<char>(CHAR_LOWCASE_E) +
-    static_cast<char>(CHAR_LOWCASE_I);
-const std::string LPATH_SCREEN_SHOTS = "/Pictures/Screenshots";
-const std::string LPATH_SCREEN_RECORDS = "/Pictures/Screenrecords";
-const std::string LPATH_HIDDEN_ALBUM = "/Pictures/hiddenAlbum";
-const std::string LPATH_RECOVER = "/Pictures/Recover";
-const std::string LPATH_CAMERA = "/DCIM/Camera";
-const std::string BUNDLE_NAME_SCREEN_RECORDS = "com." + BRAND_NAME + ".hmos.screenrecorder";
-const std::string ALBUM_NAME_SCREEN_RECORDS = "屏幕录制";
 const std::vector<AlbumPluginRowData> ALBUM_PLUGIN_DATA = {
     {"/DCIM/Camera", "相机", "Camera", "com.ohos.camera", "default-album-1", ".Camera"}, // com.ohos.camera为开源相机包名
     {"/Pictures/Screenrecords", ALBUM_NAME_SCREEN_RECORDS, "Screenrecorder",

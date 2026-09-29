@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 
 #include "lcd_aging_utils.h"
+#include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -343,6 +344,7 @@ int32_t LcdAgingDao::QueryAgingLcdDataByFileIds(const std::vector<int64_t> &file
             AND P.position = 2 \
             AND P.is_favorite = 0 \
             AND (P.thumb_status & 1) = 0 \
+            AND P." + PhotoColumn::PHOTO_IS_SHARED + " = 0 \
             AND NOT EXISTS (SELECT 1 FROM ExcludeFileId WHERE file_id = P.file_id);";
 
     auto resultSet = rdbStore->QuerySql(querySql);

@@ -27,7 +27,7 @@ namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
 class EXPORT CloudMediaPhotoServiceProcessor {
 public:
-    std::vector<PhotosDto> GetPhotosDtos(const std::vector<PhotosPo> &photosPos);
+    int32_t GetPhotosDtos(const std::vector<PhotosPo> &photosPos, std::vector<PhotosDto> &photoDtoList);
 
 private:
     PhotosDto Parse(const PhotosPo &photosPo);

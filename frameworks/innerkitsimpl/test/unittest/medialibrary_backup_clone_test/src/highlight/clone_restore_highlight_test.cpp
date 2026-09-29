@@ -27,6 +27,7 @@
 #include "backup_const.h"
 #include "clone_restore_cv_analysis.h"
 #include "clone_restore_highlight.h"
+#include "play_info_mapper.h"
 #include "clone_restore.h"
 #include "media_column.h"
 #include "media_log.h"
@@ -201,44 +202,6 @@ void InsertIntoHighlightAlbumInfo(CloneRestoreHighlight::HighlightAlbumInfo &hig
     highlightAlbumInfo.clusterSubType = "cluster_sub_type_data";
     highlightAlbumInfo.clusterCondition = "cluster_condition_data";
     highlightAlbumInfo.highlightVersion = TEST_NUM;
-}
-
-HWTEST_F(CloneRestoreHighlightTest, clone_restore_highlight_restore_albums_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("clone_restore_highlight_restore_albums_test_001 start");
-    CloneHighlightSource cloneHighlightSource;
-    vector<string> tableList = { PhotoColumn::PHOTOS_TABLE, ANALYSIS_ALBUM_TABLE, ANALYSIS_PHOTO_MAP_TABLE,
-        HIGHLIGHT_ALBUM_TABLE, HIGHLIGHT_COVER_INFO_TABLE, HIGHLIGHT_PLAY_INFO_TABLE };
-    Init(cloneHighlightSource, TEST_BACKUP_DB_PATH, tableList);
-    ASSERT_NE(newRdbStore, nullptr);
-    ASSERT_NE(cloneHighlightSource.cloneStorePtr_, nullptr);
-    // Harden UT against occasional table creation misses in source/target DB.
-    ExecuteRdbSqls(newRdbStore->GetRaw(), createTableSqlLists);
-    ExecuteRdbSqls(cloneHighlightSource.cloneStorePtr_, createTableSqlLists);
-    CloneRestoreHighlight::InitInfo initInfo = {
-        CLONE_RESTORE_ID, "", newRdbStore->GetRaw(), cloneHighlightSource.cloneStorePtr_, "", PHOTO_INFO_MAP
-    };
-    cloneRestoreHighlight->Init(initInfo);
-    cloneRestoreHighlight->Preprocess();
-    if (!cloneRestoreHighlight->isCloneHighlight_) {
-        MEDIA_WARN_LOG("Preprocess failed once, recreate tables and retry.");
-        ExecuteRdbSqls(newRdbStore->GetRaw(), createTableSqlLists);
-        ExecuteRdbSqls(cloneHighlightSource.cloneStorePtr_, createTableSqlLists);
-        cloneRestoreHighlight->Preprocess();
-    }
-    EXPECT_TRUE(cloneRestoreHighlight->isCloneHighlight_);
-    cloneRestoreHighlight->RestoreAlbums();
-    EXPECT_EQ(cloneRestoreHighlight->isMapOrder_, true);
-    string analysisCondition = "album_name = 'test_highlight_album'";
-    int32_t analysisCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), ANALYSIS_ALBUM_TABLE, analysisCondition);
-    EXPECT_EQ(analysisCount, 2);
-    int32_t highlightCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), HIGHLIGHT_ALBUM_TABLE, NONE_CONDITION);
-    EXPECT_EQ(highlightCount, 1);
-    int32_t coverCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), HIGHLIGHT_COVER_INFO_TABLE, NONE_CONDITION);
-    EXPECT_EQ(coverCount, 0);
-    int32_t playCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), HIGHLIGHT_PLAY_INFO_TABLE, NONE_CONDITION);
-    EXPECT_EQ(playCount, 1);
-    ClearCloneSource(cloneHighlightSource, TEST_BACKUP_DB_PATH);
 }
 
 HWTEST_F(CloneRestoreHighlightTest, clone_restore_highlight_restore_maps_test_001, TestSize.Level1)
@@ -707,10 +670,12 @@ HWTEST_F(CloneRestoreHighlightTest, clone_restore_cv_analysis_test_006, TestSize
     std::string oldEffectVideoUri1 = newPlayInfo1["effectline"]["effectline"][1]["effectVideoUri"];
     EXPECT_TRUE(MediaStringUtils::StartsWith(oldEffectVideoUri0, PHOTO_URI_PREFIX));
     EXPECT_TRUE(MediaStringUtils::StartsWith(oldEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
-    cloneRestoreCVAnalysis->ParseEffectline(newPlayInfo1, restoreHighlight);
+    std::string playInfoStr1 = newPlayInfo1.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    std::string mapped1 = cloneRestoreCVAnalysis->ParsePlayInfo(playInfoStr1, restoreHighlight);
+    nlohmann::json newPlayInfo1Mapped = nlohmann::json::parse(mapped1, nullptr, false);
     MEDIA_INFO_LOG("newPlayInfo1: %{public}s",
-        newPlayInfo1.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace).c_str());
-    std::string newEffectVideoUri1 = newPlayInfo1["effectline"]["effectline"][1]["effectVideoUri"];
+        newPlayInfo1Mapped.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace).c_str());
+    std::string newEffectVideoUri1 = newPlayInfo1Mapped["effectline"]["effectline"][1]["effectVideoUri"];
     // invalid effectVideoUri
     EXPECT_FALSE(MediaStringUtils::StartsWith(newEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
 
@@ -725,8 +690,9 @@ HWTEST_F(CloneRestoreHighlightTest, clone_restore_cv_analysis_test_006, TestSize
         ]
     })";
     nlohmann::json newPlayInfo2 = nlohmann::json::parse(oldPlayInfo2, nullptr, false);
-    cloneRestoreCVAnalysis->ParseTimeline(newPlayInfo2, restoreHighlight);
-    cloneRestoreCVAnalysis->ParseEffectline(newPlayInfo2, restoreHighlight);
+    std::string playInfoStr2 = newPlayInfo2.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    std::string mapped2 = cloneRestoreCVAnalysis->ParsePlayInfo(playInfoStr2, restoreHighlight);
+    newPlayInfo2 = nlohmann::json::parse(mapped2, nullptr, false);
     EXPECT_TRUE(newPlayInfo2["effectline"]["effectline"][0].contains("fileId"));
     EXPECT_TRUE(newPlayInfo2["effectline"]["effectline"][0].contains("fileUri"));
 

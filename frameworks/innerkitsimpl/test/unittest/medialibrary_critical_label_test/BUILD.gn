@@ -58,6 +58,7 @@ deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
 ]
 
 external_deps = [
@@ -81,7 +82,6 @@ external_deps = [
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

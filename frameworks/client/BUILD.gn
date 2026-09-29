@@ -14,18 +14,37 @@
 import("//build/ohos.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
 
+config("media_library_client_config") {
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/callback",
+  ]
+}
+
 ohos_shared_library("media_library_client") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
+
+  public_configs = [ ":media_library_client_config" ]
 
   include_dirs = [
     "./include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/callback",
   ]
 
   sources = [
@@ -33,23 +52,37 @@ ohos_shared_library("media_library_client") {
     "${MEDIALIB_CLIENT_PATH}/src/media_datashare_client.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_common_client.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_client_utils.cpp",
+    "${MEDIALIB_CLIENT_PATH}/src/media_asset_rdbstore.cpp",
+    "${MEDIALIB_IPC_COMMON}/src/utils/unified_ipc_client.cpp",
+    "${MEDIALIB_IPC_COMMON}/src/utils/media_itypes_utils.cpp",
   ]
 
-  deps = [ 
+  deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_base:zuri",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:abilitykit_native",
     "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:napi_base_context",
+    "access_token:libaccesstoken_sdk",
+    "access_token:el5_filekey_manager_sdk",
+    "access_token:libprivacy_sdk",
+    "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_single",
+    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "kv_store:distributeddata_inner",
     "relational_store:native_rdb",
@@ -63,9 +96,13 @@ ohos_shared_library("media_library_client") {
     "-fdata-sections",
     "-ffunction-sections",
     "-Os",
+    "-fvisibility=hidden",
   ]
 
-  cflags_cc = [ "-Os" ]
+  cflags_cc = [
+    "-Os",
+    "-fvisibility=hidden",
+  ]
 
   if (!media_library_link_opt) {
     sanitize = {
@@ -75,7 +112,6 @@ ohos_shared_library("media_library_client") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

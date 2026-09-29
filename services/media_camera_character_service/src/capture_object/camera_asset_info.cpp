@@ -18,8 +18,10 @@
 #include <sstream>
 
 #include "camera_asset_info.h"
+#include "camera_character_types.h"
 #include "media_log.h"
 #include "medialibrary_type_const.h"
+#include "nlohmann/json.hpp"
 #include "userfile_manager_types.h"
 
 using namespace std;
@@ -40,6 +42,8 @@ CameraAssetInfo::CameraAssetInfo(const FileAsset& fileAsset)
     }
 
     subtype_ = fileAsset.GetPhotoSubType();
+    compressionQuality_ = fileAsset.GetCompressionQuality();
+    ParseToC2PAConfigInfo(fileAsset.GetC2paConfigInfo(), c2paConfigInfo_);
     MEDIA_INFO_LOG("construct CameraAssetInfo: %{public}s.", ToString().c_str());
 }
 
@@ -165,6 +169,33 @@ void CameraAssetInfo::SetTakeEffectStatus(const TakeEffectStatus& takeEffectStat
     takeEffectStatus_ = takeEffectStatus;
 }
 
+const C2PAConfigInfo& CameraAssetInfo::GetC2PAConfigInfo() const
+{
+    return c2paConfigInfo_;
+}
+
+void CameraAssetInfo::SetC2PAConfigInfo(const C2PAConfigInfo& c2paConfigInfo)
+{
+    c2paConfigInfo_ = c2paConfigInfo;
+}
+
+void CameraAssetInfo::ParseToC2PAConfigInfo(const std::string& c2paInfo, C2PAConfigInfo& c2paConfigInfo)
+{
+    CHECK_AND_RETURN_LOG(!c2paInfo.empty(), "[c2pa] c2paInfo is empty.");
+    CHECK_AND_RETURN_LOG(nlohmann::json::accept(c2paInfo), "[c2pa] Invalid JSON format:%{public}s", c2paInfo.c_str());
+
+    nlohmann::json json = nlohmann::json::parse(c2paInfo);
+    if (json.contains(ENABLE_C2PA) && json[ENABLE_C2PA].is_number()) {
+        c2paConfigInfo.enableC2PA = (json[ENABLE_C2PA].get<int>() != 0);
+    }
+    if (json.contains(AUTHOR_ID) && json[AUTHOR_ID].is_string()) {
+        c2paConfigInfo.authorId = json[AUTHOR_ID].get<std::string>();
+    }
+    if (json.contains(AUTHOR_NAME) && json[AUTHOR_NAME].is_string()) {
+        c2paConfigInfo.authorName = json[AUTHOR_NAME].get<std::string>();
+    }
+}
+
 bool CameraAssetInfo::IsLifeFinished() const
 {
     if (activeType_ == CameraInfoActiveType::FirstStage) {
@@ -189,6 +220,16 @@ void CameraAssetInfo::SetSecondStageFinished(bool isSecondStageFinished)
     isSecondStageFinished_ = isSecondStageFinished;
 }
 
+int32_t CameraAssetInfo::GetCompressionQuality() const
+{
+    return compressionQuality_;
+}
+
+void CameraAssetInfo::SetCompressionQuality(const int32_t &compressionQuality)
+{
+    compressionQuality_ = compressionQuality;
+}
+
 std::string CameraAssetInfo::ToString() const
 {
     std::stringstream ss;
@@ -197,7 +238,11 @@ std::string CameraAssetInfo::ToString() const
        << "\"photoId\": \"" << photoId_ << "\", "
        << "\"mimeType\": \"" << mimeType_ << "\", "
        << "\"subtype\": \"" << std::to_string(subtype_) << "\", "
-       << "\"burstCoverLevel\": \"" << std::to_string(burstCoverLevel_)
+       << "\"burstCoverLevel\": \"" << std::to_string(burstCoverLevel_) << "\", "
+       << "\"compressionQuality\": \"" << compressionQuality_ << "\", "
+       << "\"enableC2PA\": \"" << (c2paConfigInfo_.enableC2PA ? "true" : "false") << "\", "
+       << "\"authorId\": \"" << c2paConfigInfo_.authorId << "\", "
+       << "\"authorName\": \"" << c2paConfigInfo_.authorName << "\""
        << "}";
     return ss.str();
 }

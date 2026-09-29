@@ -94,28 +94,6 @@ HWTEST_F(CloudMediaContorllerProcessorTest, CloudMediaAlbumControllerProcessor_C
     EXPECT_EQ(photoAlbumDto.serverErrorCode, recordVo.serverErrorCode);
 }
 
-HWTEST_F(CloudMediaContorllerProcessorTest, DataControllerProcessor_ConvertPhotosVoToPhotosDto_Test_001,
-         TestSize.Level1)
-{
-    CloudMediaDataControllerProcessor processor;
-    CloudFileDataVo dataVo;
-    PhotosVo photosVo;
-    photosVo.cloudId = "test1";
-    photosVo.size = 10;
-    photosVo.path = "test2";
-    photosVo.fileName = "test3";
-    photosVo.type = 1;
-    photosVo.attachment["test4"] = dataVo;
-
-    PhotosDto photosDto = processor.ConvertPhotosVoToPhotosDto(photosVo);
-    EXPECT_EQ(photosDto.cloudId, photosVo.cloudId);
-    EXPECT_EQ(photosDto.size, photosVo.size);
-    EXPECT_EQ(photosDto.data, photosVo.path);
-    EXPECT_EQ(photosDto.displayName, photosVo.fileName);
-    EXPECT_EQ(photosDto.mediaType, photosVo.type);
-    EXPECT_EQ(photosDto.attachment.size(), photosVo.attachment.size());
-}
-
 HWTEST_F(CloudMediaContorllerProcessorTest, DataControllerProcessor_ConvertPhotosDtoToPhotosVo_Test_001,
          TestSize.Level1)
 {

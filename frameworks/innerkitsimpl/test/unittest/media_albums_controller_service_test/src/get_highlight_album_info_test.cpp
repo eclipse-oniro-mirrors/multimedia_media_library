@@ -37,6 +37,7 @@
 #include "result_set_utils.h"
 #include "get_highlight_album_info_vo.h"
 #include "query_result_vo.h"
+#include "photo_album_column.h"
  
 namespace OHOS::Media {
 using namespace std;

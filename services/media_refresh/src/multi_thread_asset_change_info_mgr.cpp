@@ -45,14 +45,17 @@ bool MultiThreadAssetChangeInfoMgr::CheckInsertBeforeInfo(PhotoAssetChangeInfo& 
     return true;
 }
 
-bool MultiThreadAssetChangeInfoMgr::CheckInsertAfterInfo(PhotoAssetChangeInfo& info, bool isAdd)
+bool MultiThreadAssetChangeInfoMgr::CheckInsertAfterInfo(PhotoAssetChangeInfo& info, bool isAdd,
+    int fileIdBeforeRemove)
 {
     std::lock_guard<std::mutex> lock(changeDataMutex_);
-    auto iter = assetChangeDataMap_.find(info.fileId_);
+    int fileId = info.fileId_ == INVALID_INT32_VALUE && fileIdBeforeRemove != INVALID_INT32_VALUE ?
+        fileIdBeforeRemove : info.fileId_;
+    auto iter = assetChangeDataMap_.find(fileId);
     if (iter == assetChangeDataMap_.end()) {
         // isAdd场景下找不到为正常逻辑，不需要打印
         if (!isAdd) {
-            MEDIA_DEBUG_LOG("no fileId[%{public}d]", info.fileId_);
+            MEDIA_DEBUG_LOG("no fileId[%{public}d]", fileId);
         }
         return false;
     }
@@ -67,7 +70,7 @@ bool MultiThreadAssetChangeInfoMgr::CheckInsertAfterInfo(PhotoAssetChangeInfo& i
     }
     if (!multiThreadChangeData.isMultiOperation_) {
         assetChangeDataMap_.erase(iter);
-        MEDIA_DEBUG_LOG("no multi thread, remove fieldId[%{public}d]", info.fileId_);
+        MEDIA_DEBUG_LOG("no multi thread, remove fieldId[%{public}d]", fileId);
         return false;
     }
     multiThreadChangeData.infoAfter_ = info;

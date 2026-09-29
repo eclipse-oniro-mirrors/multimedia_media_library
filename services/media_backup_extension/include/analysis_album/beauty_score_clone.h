@@ -17,6 +17,7 @@
 #define BEAUTY_SCORE_CLONE_H
 
 #include <string>
+#include "field_config/clone_field_writer.h"
 #include <vector>
 #include <optional>
 #include <type_traits>
@@ -26,33 +27,11 @@
 
 #include "backup_const.h"
 #include "rdb_store.h"
+#include "beauty_score_clone_base.h"
 
 
 namespace OHOS {
 namespace Media {
-struct BeautyScoreTbl {
-    std::optional<int32_t> id;
-    std::optional<int32_t> fileId;
-    std::optional<int32_t> aestheticsScore;
-    std::optional<std::string> aestheticsVersion;
-    std::optional<double> prob;
-    std::optional<std::string> analysisVersion;
-    std::optional<int32_t> selectedFlag;
-    std::optional<std::string> selectedAlgoVersion;
-    std::optional<int32_t> selectedStatus;
-    std::optional<int32_t> negativeFlag;
-    std::optional<std::string> negativeAlgoVersion;
-    std::optional<std::string> aestheticsAllVersion;
-    std::optional<int32_t> aestheticsScoreAll;
-    std::optional<int32_t> isFilteredHard;
-    std::optional<double> clarityScoreAll;
-    std::optional<double> saturationScoreAll;
-    std::optional<double> luminanceScoreAll;
-    std::optional<double> semanticsScore;
-    std::optional<int32_t> isBlackWhiteStripe;
-    std::optional<int32_t> isBlurry;
-    std::optional<int32_t> isMosaic;
-};
 
 class BeautyScoreClone {
 public:
@@ -64,6 +43,7 @@ public:
         std::unordered_map<int32_t, uint32_t>* scoreMaskMap = nullptr);
 
     bool CloneBeautyScoreInfo();
+    bool ReverseCloneBeautyScoreInfo();
 
     int64_t GetMigratedScoreCount() const { return migrateScoreNum_; }
     int64_t GetMigratedFileCount() const { return migrateScoreFileNumber_; }
@@ -77,6 +57,8 @@ private:
     std::vector<BeautyScoreTbl> QueryBeautyScoreTbl(const std::string &fileIdClause,
         const std::vector<std::string> &commonColumns);
     void ParseBeautyScoreResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
+        BeautyScoreTbl& beautyScoreTbl);
+    void ParseVlmFieldsFromResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
         BeautyScoreTbl& beautyScoreTbl);
     std::vector<BeautyScoreTbl> ProcessBeautyScoreTbls(
         const std::vector<BeautyScoreTbl>& beautyScoreTbls);
@@ -105,22 +87,23 @@ private:
     void UpdateAnalysisTotalTblBeautyScoreAll(std::shared_ptr<NativeRdb::RdbStore> newRdbStore,
         std::shared_ptr<NativeRdb::RdbStore> oldRdbStore, const std::vector<int32_t>& fileIdNew,
         const std::vector<int32_t>& fileIdOld);
+    void MergeAnalysisTotalAestheticsVlm(const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
+        const std::shared_ptr<NativeRdb::RdbStore>& destRdb, const std::vector<int32_t>& sourceFileIds);
+    void UpdateTotalColumnInBatches(const std::shared_ptr<NativeRdb::RdbStore>& rdbStore,
+        const std::string& columnName, int32_t value, const std::vector<int32_t>& fileIds);
+
+    bool QueryAndInsertSourceBeautyScores();
+    void ReverseUpdateTotalScoresBatch(const std::vector<int32_t>& batchIds);
+    std::vector<int32_t> QuerySourceFileIds();
+    bool InsertNewDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
+    int32_t BatchUpdateWithRetry(const std::string& tableName,
+        const std::vector<std::pair<NativeRdb::ValuesBucket, std::string>>& updates);
 
     template<typename T>
     void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
         const std::optional<T>& optionalValue)
     {
-        if (optionalValue.has_value()) {
-            if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-                values.PutInt(columnName, optionalValue.value());
-            } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-                values.PutLong(columnName, optionalValue.value());
-            } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-                values.PutString(columnName, optionalValue.value());
-            } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-                values.PutDouble(columnName, optionalValue.value());
-            }
-        }
+        CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
     }
 
     template<typename T, typename U>
@@ -144,11 +127,7 @@ template<typename T, typename U>
 void BeautyScoreClone::PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const U& defaultValue)
 {
-    if (optionalValue.has_value()) {
-        PutIfPresent(values, columnName, optionalValue);
-    } else {
-        PutIfPresent(values, columnName, std::optional<U>(defaultValue));
-    }
+    CloneFieldWriter::PutWithDefault<T, U>(values, columnName, optionalValue, defaultValue);
 }
 } // namespace Media
 } // namespace OHOS

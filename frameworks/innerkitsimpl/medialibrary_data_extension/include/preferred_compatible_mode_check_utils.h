@@ -27,7 +27,16 @@ namespace Media {
 
 #define EXPORT __attribute__ ((visibility ("default")))
 
-const int32_t HIGH_PIXEL_SIZE = 9 * 1024 * 12 * 1024;
+const int64_t HIGH_PIXEL_SIZE = 9 * 1024 * 12 * 1024;
+const int64_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
+const int64_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
+const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
+const int32_t HIGH_PIXEL_SCALE = 2;
+
+inline bool IsHighPixel(int32_t width, int32_t height)
+{
+    return (static_cast<int64_t>(width) * static_cast<int64_t>(height)) >= HIGH_PIXEL_SIZE;
+}
 
 enum class TranscodeMode {
     DEFAULT = 0,
@@ -51,6 +60,8 @@ struct CompatibleInfo {
 class PreferredCompatibleModeCheckUtils {
 public:
     static TranscodeMode CheckTranscodeMode(CompatibleInfo compatibleInfo, bool isHighPixel, bool isHeifFile);
+    static bool IsHighPixelPicture(int32_t width, int32_t height);
+    static bool GetDesireSize(int32_t &width, int32_t &height);
 };
 
 } // namespace Media

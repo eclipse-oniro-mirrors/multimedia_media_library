@@ -16,6 +16,7 @@
 
 #include "file_const.h"
 #include "file_scan_utils.h"
+#include "media_log_utils.h"
 #include "lake_folder_parser.h"
 
 using namespace std;
@@ -33,9 +34,9 @@ LakeFolderParser::LakeFolderParser(const std::string& path, ScanMode type)
 bool LakeFolderParser::IsFolderSkip()
 {
     for (std::string blackPath : AlbumGreyList::LAKE_ALBUM_BLACKLIST) {
-        if (StartsWithIgnoreCase(commonAlbumInfo_.lpath, blackPath)) {
+        if (FileScanUtils::IsPathUnderRoot(commonAlbumInfo_.lpath, blackPath)) {
             MEDIA_INFO_LOG("The converted lpath is in the blacklist, lpath is: %{public}s",
-                FileScanUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
+                MediaLogUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
             return true;
         }
     }
@@ -59,7 +60,7 @@ int32_t LakeFolderParser::GetConvertedLpath(const std::string &data, std::string
         return E_OK;
     }
     MEDIA_INFO_LOG("Scan get converted lake lpath failed from data: %{public}s",
-        FileScanUtils::GarbleFilePath(data).c_str());
+        MediaLogUtils::GarbleFilePath(data).c_str());
     return E_ERR;
 }
 // LCOV_EXCL_STOP

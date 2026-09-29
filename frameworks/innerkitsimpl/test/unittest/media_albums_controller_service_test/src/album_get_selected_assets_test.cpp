@@ -33,6 +33,7 @@
 #include "vision_db_sqls.h"
 #include "medialibrary_data_manager.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

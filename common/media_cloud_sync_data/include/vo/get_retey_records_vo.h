@@ -18,15 +18,34 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <sstream>
 
 #include "i_media_parcelable.h"
+#include "cloud_file_data_vo.h"
 #include "cloud_media_define.h"
 
 namespace OHOS::Media::CloudSync {
+class EXPORT GetRetryRecordsDataVo : public IPC::IMediaParcelable {
+public:
+    GetRetryRecordsDataVo() = default;
+    virtual ~GetRetryRecordsDataVo() = default;
+
+public:
+    std::string cloudId;
+    std::string shareAlbumOwner;
+
+public:  // functions of Parcelable.
+    bool Unmarshalling(MessageParcel &parcel) override;
+    bool Marshalling(MessageParcel &parcel) const override;
+
+public:  // basic functions
+    std::string ToString() const;
+};
+
 class EXPORT GetRetryRecordsRespBody : public IPC::IMediaParcelable {
 public:
-    std::vector<std::string> cloudIds;
+    std::unordered_map<std::string, GetRetryRecordsDataVo> retryDataList;
 
 public:  // functions of Parcelable.
     virtual ~GetRetryRecordsRespBody() = default;

@@ -133,6 +133,9 @@ public:
     EXPORT void SetVisitCount(int32_t visitCount);
     EXPORT int32_t GetLcdVisitCount() const;
     EXPORT void SetLcdVisitCount(int32_t lcdVisitCount);
+    EXPORT int32_t GetCompressionQuality() const;
+    EXPORT void SetCompressionQuality(int32_t compressionQuality);
+
     EXPORT bool IsFavorite() const;
     EXPORT void SetFavorite(bool isFavorite);
     EXPORT bool IsRecentShow() const;
@@ -200,8 +203,14 @@ public:
     EXPORT const std::string &GetFrontCamera() const;
     EXPORT void SetFrontCamera(const std::string &frontCamera);
 
+    EXPORT const std::string &GetXtStyleTemplateName() const;
+    EXPORT void SetXtStyleTemplateName(const std::string &xtStyleTemplateName);
+
     EXPORT const std::string &GetUserComment() const;
     EXPORT void SetUserComment(const std::string &userComment);
+
+    EXPORT const std::string &GetShootingModeTag() const;
+    EXPORT void SetShootingModeTag(const std::string &shootingModeTag);
 
     EXPORT const std::string &GetFilePath() const;
     EXPORT void SetFilePath(const std::string &filePath);
@@ -284,6 +293,9 @@ public:
     EXPORT int32_t GetExistCompatibleDuplicate() const;
     EXPORT void SetExistCompatibleDuplicate(int32_t existCompatibleDuplicate);
 
+    EXPORT int32_t GetEditDataExist() const;
+    EXPORT void SetEditDataExist(int32_t editDataExist);
+
     EXPORT void SetStageVideoTaskStatus(int32_t stageVideoTaskStatus);
     EXPORT int32_t GetStageVideoTaskStatus() const;
 
@@ -313,6 +325,21 @@ public:
 
     EXPORT int64_t GetAttachmentSize() const;
     EXPORT void SetAttachmentSize(int64_t attachmentSize);
+
+    EXPORT int32_t GetMusicMasterMode() const;
+    EXPORT void SetMusicMasterMode(int32_t mode);
+
+    EXPORT void SetThumbStatus(int32_t thumbstatus);
+    EXPORT int32_t GetThumbStatus() const;
+ 
+    EXPORT void SetLcdFileSize(int32_t lcdFileSize);
+    EXPORT int32_t GetLcdFileSize() const;
+
+    EXPORT void SetC2paConfigInfo(const std::string &c2paConfigInfo);
+    EXPORT const std::string &GetC2paConfigInfo() const;
+
+    EXPORT void SetIsShared(int32_t isShared);
+    EXPORT int32_t GetIsShared() const;
 
 private:
     int32_t userId_ = -1;

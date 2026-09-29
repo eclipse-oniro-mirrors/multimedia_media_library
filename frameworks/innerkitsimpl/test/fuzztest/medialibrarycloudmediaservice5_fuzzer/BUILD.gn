@@ -34,6 +34,7 @@ ohos_fuzztest("MediaLibraryCloudMediaService5FuzzTest") {
     "${MEDIALIB_CLOUD_SYNC_CLIENT}:media_library_cloud_sync",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -53,7 +54,6 @@ ohos_fuzztest("MediaLibraryCloudMediaService5FuzzTest") {
     "image_framework:image_native",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",
     "relational_store:native_rdb",

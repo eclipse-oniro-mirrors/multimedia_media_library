@@ -104,20 +104,20 @@ int32_t CheckDataOverflow(uint32_t readOffset, uint32_t pictureSize, uint32_t ms
         munmap(addr, msgLen);
         return E_NO_SUCH_FILE;
     }
- 
+
     if (readOffset >= msgLen) {
         MEDIA_ERR_LOG("PictureHandlerClient::ReadPicture readOffset overflow msgLen ");
         munmap(addr, msgLen);
         return E_ERR;
     }
- 
+
     // 检查pictureSize是否会超出缓冲区范围
     if (pictureSize > (msgLen - readOffset)) {
         MEDIA_ERR_LOG("PictureHandlerClient::ReadPicture pictureSize invalid: %{public}u", pictureSize);
         munmap(addr, msgLen);
         return E_ERR;
     }
- 
+
     return E_OK;
 }
 
@@ -171,7 +171,8 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
         return E_ERR;
     }
     readoffset += UINT32_LEN;
-
+    MEDIA_DEBUG_LOG("PictureHandlerClient::ReadPicture auxiliaryPictureSize: %{public}d",
+        auxiliaryPictureSize);
     uint8_t *pictureParcelData = static_cast<uint8_t *>(malloc(dataSize));
     if (pictureParcelData == nullptr) {
         munmap(addr, msgLen);
@@ -187,6 +188,7 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
     if (!pictureParcel.ParseFrom(reinterpret_cast<uintptr_t>(pictureParcelData), dataSize)) {
         MEDIA_ERR_LOG("pictureParcel parse failed!");
         free(pictureParcelData);
+        munmap(addr, msgLen);
         return E_ERR;
     }
     isHighQuality = pictureParcel.ReadBool();
@@ -377,6 +379,7 @@ bool PictureHandlerClient::ReadSurfaceBuffer(MessageParcel &data, std::unique_pt
         return false;
     }
     sptr<SurfaceBuffer> surfaceBuffer = SurfaceBuffer::Create();
+    CHECK_AND_RETURN_RET(surfaceBuffer != nullptr, false);
     ReadBufferHandle(data, surfaceBuffer, fileId);
     void* nativeBuffer = surfaceBuffer.GetRefPtr();
     OHOS::RefBase *ref = reinterpret_cast<OHOS::RefBase *>(nativeBuffer);

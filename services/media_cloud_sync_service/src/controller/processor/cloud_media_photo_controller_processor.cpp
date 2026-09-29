@@ -49,6 +49,8 @@ std::vector<PhotosVo> CloudMediaPhotoControllerProcessor::SetFdirtyDataVoFromDto
         fdirtyDataVo.uniqueId = fdirtyDataDto.uniqueId;
         fdirtyDataVo.packageName = fdirtyDataDto.packageName;
         fdirtyDataVo.photoRiskStatus = fdirtyDataDto.photoRiskStatus;
+        fdirtyDataVo.isShared = fdirtyDataDto.isShared;
+        fdirtyDataVo.shareAlbumOwner = fdirtyDataDto.shareAlbumOwner;
         fdirtyDataVo.localPath = fdirtyDataDto.localPath;
         fdirtyDataVo.attributesMediaType = fdirtyDataDto.attributesMediaType;
         for (auto &nodePair : fdirtyDataDto.attachment) {
@@ -82,6 +84,8 @@ std::vector<PhotosVo> CloudMediaPhotoControllerProcessor::SetNewDataVoFromDto(st
         newDataVo.uniqueId = newDataDto.uniqueId;
         newDataVo.packageName = newDataDto.packageName;
         newDataVo.photoRiskStatus = newDataDto.photoRiskStatus;
+        newDataVo.isShared = newDataDto.isShared;
+        newDataVo.shareAlbumOwner = newDataDto.shareAlbumOwner;
         for (auto &nodePair : newDataDto.attachment) {
             CloudFileDataVo fileData;
             fileData.fileName = nodePair.second.fileName;
@@ -114,6 +118,7 @@ std::unordered_map<std::string, CheckData> CloudMediaPhotoControllerProcessor::G
         checkData.thmStatus = photosDto.thumbStatus;
         checkData.fileSourceType = photosDto.fileSourceType;
         checkData.storagePath = photosDto.storagePath;
+        checkData.shareAlbumOwner = photosDto.shareAlbumOwner;
         for (auto &[key, value] : photosDto.attachment) {
             CloudFileDataVo vo;
             vo.fileName = value.fileName;
@@ -125,6 +130,19 @@ std::unordered_map<std::string, CheckData> CloudMediaPhotoControllerProcessor::G
         MEDIA_DEBUG_LOG("CloudMediaDataControllerProcessor CheckData: %{public}s", checkData.ToString().c_str());
     }
     return checkDataList;
+}
+
+int32_t CloudMediaPhotoControllerProcessor::ConvertFromPhotosDtoToRetryRecordsRespBody(
+    const std::vector<PhotosDto> &photosDtoVec, GetRetryRecordsRespBody &respBody)
+{
+    for (const auto &photosDto : photosDtoVec) {
+        GetRetryRecordsDataVo retryData;
+        retryData.cloudId = photosDto.cloudId;
+        retryData.shareAlbumOwner = photosDto.shareAlbumOwner;
+        respBody.retryDataList[retryData.cloudId] = retryData;
+        MEDIA_DEBUG_LOG("CloudMediaPhotoControllerProcessor RetryCheckData: %{public}s", retryData.ToString().c_str());
+    }
+    return E_OK;
 }
 
 bool CloudMediaPhotoControllerProcessor::GetBasicInfo(const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo)
@@ -162,12 +180,17 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.hdrMode = record.hdrMode.value_or(0);
     photosVo.videoMode = record.videoMode.value_or(-1);
     photosVo.frontCamera = record.frontCamera.value_or("");
+    photosVo.xtStyleTemplateName = record.xtStyleTemplateName.value_or("-1");
     photosVo.originalSubtype = record.originalSubtype.value_or(0);
     photosVo.coverPosition = record.coverPosition.value_or(0);
     photosVo.isRectificationCover = record.isRectificationCover.value_or(0);
     photosVo.exifRotate = record.exifRotate.value_or(0);
     photosVo.movingPhotoEffectMode = record.movingPhotoEffectMode.value_or(0);
     photosVo.supportedWatermarkType = record.supportedWatermarkType.value_or(0);
+    photosVo.musicMasterMode = record.musicMasterMode.value_or(0);
+    photosVo.isStylePhoto = record.isStylePhoto.value_or(0);
+    photosVo.supportedDeferredEffects = record.supportedDeferredEffects.value_or(0);
+    photosVo.deferredEffectStatus = record.deferredEffectStatus.value_or(-1);
     photosVo.strongAssociation = record.strongAssociation.value_or(0);
     photosVo.fileId = record.fileId.value_or(0);
     photosVo.data = record.data.value_or("");
@@ -177,6 +200,13 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.uniqueId = record.uniqueId.value_or("");
     photosVo.packageName = record.packageName.value_or("");
     photosVo.photoRiskStatus = record.photoRiskStatus.value_or(0);
+    photosVo.compressionQuality = record.compressionQuality.value_or(-1);
+    photosVo.isShared = record.isShared.value_or(0);
+    photosVo.shareOwnerInfo = record.shareOwnerInfo.value_or("");
+    photosVo.shareAlbumOwner = record.shareAlbumOwner.value_or("");
+    photosVo.shareDateDay = record.shareDateDay.value_or(0);
+    photosVo.shareGroup = record.shareGroup.value_or(0);
+    photosVo.editDataExist = record.editDataExist.value_or(0);
     return true;
 }
 
@@ -244,6 +274,18 @@ bool CloudMediaPhotoControllerProcessor::GetBasicInfo(const OnFetchPhotosVo &pho
     return true;
 }
 
+void CloudMediaPhotoControllerProcessor::GetScadetailInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
+{
+    data.currentUserId = photosVo.sharePhotoDetail.currentUserId;
+    data.mediaCreateId = photosVo.sharePhotoDetail.mediaCreateId;
+    for (const auto &scaDetailVo : photosVo.sharePhotoDetail.scaDetailList) {
+        ScaDetailDataDto scaDetail;
+        scaDetail.usage = scaDetailVo.usage;
+        scaDetail.riskResult = scaDetailVo.riskResult;
+        data.scaDetailDataList.emplace_back(scaDetail);
+    }
+}
+
 bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data)
 {
     data.attributesFileId = photosVo.fileId;
@@ -268,18 +310,30 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.attributesHdrMode = photosVo.hdrMode;
     data.attributesVideoMode = photosVo.videoMode;
     data.attributesFrontCamera = photosVo.frontCamera;
+    data.attributesXtStyleTemplateName = photosVo.xtStyleTemplateName;
     data.attributesMovingPhotoEffectMode = photosVo.movingPhotoEffectMode;
     data.attributesCoverPosition = photosVo.coverPosition;
     data.attributesIsRectificationCover = photosVo.isRectificationCover;
     data.exifRotate = photosVo.exifRotate;
     data.attributesEditDataCamera = photosVo.editDataCamera;
     data.attributesSupportedWatermarkType = photosVo.supportedWatermarkType;
+    data.attributesMusicMasterMode = photosVo.musicMasterMode;
+    data.attributesIsStylePhoto = photosVo.isStylePhoto;
+    data.supportedDeferredEffects = photosVo.supportedDeferredEffects;
+    data.deferredEffectsStatus = photosVo.deferredEffectStatus;
     data.attributesStrongAssociation = photosVo.strongAssociation;
     data.attributesUniqueId = photosVo.uniqueId;
     data.attributesPackageName = photosVo.packageName;
     // Safe Album: risk status for children's watch
     data.attributesRiskStatus = photosVo.photoRiskStatus;
+    data.attributesIsShared = photosVo.isShared;
+    data.attributesShareOwnerInfo = photosVo.shareOwnerInfo;
+    data.attributesShareAlbumOwner = photosVo.shareAlbumOwner;
+    data.attributesShareDateDay = photosVo.shareDateDay;
+    data.attributesShareGroup = photosVo.shareGroup;
     data.attributesIsCritical = photosVo.isCritical;
+    data.compressionQuality = photosVo.compressionQuality;
+    data.editDataExist = photosVo.editDataExist;
     return true;
 }
 
@@ -325,6 +379,7 @@ CloudMediaPullDataDto CloudMediaPhotoControllerProcessor::ConvertToCloudMediaPul
     this->GetAlbumInfo(photosVo, data);
     this->GetAttributesHashMap(photosVo, data);
     this->GetInt64FieldsHashMap(photosVo, data);
+    this->GetScadetailInfo(photosVo, data);
     return data;
 }
 
@@ -436,9 +491,12 @@ bool CloudMediaPhotoControllerProcessor::HandleUserComment(const PhotosPo &recor
 bool CloudMediaPhotoControllerProcessor::GetInt64FieldsHashMap(
     const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo)
 {
+    PhotosPo photosInfo = record;
+    PhotosPoWriter writer = PhotosPoWriter(photosInfo);
+    std::unordered_map<std::string, std::string> stringfieldsMap = writer.ToMap(false);
     for (const auto &fieldName : PHOTOS_SYNC_COLUMN_INT64) {
-        auto it = record.attributes.find(fieldName);
-        CHECK_AND_CONTINUE(it != record.attributes.end());
+        auto it = stringfieldsMap.find(fieldName);
+        CHECK_AND_CONTINUE(it != stringfieldsMap.end());
         int64_t value = 0;
         auto [ptr, ec] = std::from_chars(it->second.data(), it->second.data() + it->second.size(), value);
         CHECK_AND_CONTINUE(ec == std::errc() && ptr == it->second.data() + it->second.size());

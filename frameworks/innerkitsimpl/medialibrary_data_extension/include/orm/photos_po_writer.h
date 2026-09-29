@@ -96,7 +96,11 @@ private:
             {&PhotosPoWriter::GetShootingModeTag, &PhotosPoWriter::SetShootingModeTag}},
         {PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE,
             {&PhotosPoWriter::GetDynamicRangType, &PhotosPoWriter::SetDynamicRangType}},
+        {PhotoColumn::PHOTO_VIDEO_MODE,
+            {&PhotosPoWriter::GetVideoMode, &PhotosPoWriter::SetVideoMode}},
         {PhotoColumn::PHOTO_FRONT_CAMERA, {&PhotosPoWriter::GetFrontCamera, &PhotosPoWriter::SetFrontCamera}},
+        {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME,
+            {&PhotosPoWriter::GetXtStyleTemplateName, &PhotosPoWriter::SetXtStyleTemplateName}},
         {PhotoColumn::PHOTO_DETAIL_TIME, {&PhotosPoWriter::GetDetailTime, &PhotosPoWriter::SetDetailTime}},
         {PhotoColumn::PHOTO_EDIT_TIME, {&PhotosPoWriter::GetEditTime, &PhotosPoWriter::SetEditTime}},
         {PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
@@ -113,6 +117,9 @@ private:
         {PhotoColumn::PHOTO_SOURCE_PATH, {&PhotosPoWriter::GetSourcePath, &PhotosPoWriter::SetSourcePath}},
         {PhotoColumn::SUPPORTED_WATERMARK_TYPE,
             {&PhotosPoWriter::GetSupportedWatermarkType, &PhotosPoWriter::SetSupportedWatermarkType}},
+        {PhotoColumn::MUSIC_MASTER_MODE,
+            {&PhotosPoWriter::GetMusicMasterMode, &PhotosPoWriter::SetMusicMasterMode}},
+        {PhotoColumn::IS_STYLE_PHOTO, {&PhotosPoWriter::GetIsStylePhoto, &PhotosPoWriter::SetIsStylePhoto}},
         {PhotoColumn::PHOTO_STRONG_ASSOCIATION,
             {&PhotosPoWriter::GetStrongAssociation, &PhotosPoWriter::SetStrongAssociation}},
         {MediaColumn::MEDIA_ID, {&PhotosPoWriter::GetMediaId, &PhotosPoWriter::SetMediaId}},
@@ -122,12 +129,32 @@ private:
         {PhotoColumn::PHOTO_CLOUD_VERSION, {&PhotosPoWriter::GetCloudVersion, &PhotosPoWriter::SetCloudVersion}},
         {PhotoColumn::PHOTO_LCD_SIZE, {&PhotosPoWriter::GetLcdSize, &PhotosPoWriter::SetLcdSize}},
         {PhotoColumn::PHOTO_THUMB_SIZE, {&PhotosPoWriter::GetThumbSize, &PhotosPoWriter::SetThumbSize}},
+        {PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, {&PhotosPoWriter::GetSupportedDeferredEffects,
+            &PhotosPoWriter::SetSupportedDeferredEffects}},
+        {PhotoColumn::DEFERRED_EFFECT_STATUS, {&PhotosPoWriter::GetDeferredEffectsStatus,
+            &PhotosPoWriter::SetDeferredEffectsStatus}},
         {MediaColumn::MEDIA_PACKAGE_NAME, {&PhotosPoWriter::GetPackageName, &PhotosPoWriter::SetPackageName}},
         {PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE,
             {&PhotosPoWriter::GetSouthDeviceType, &PhotosPoWriter::SetSouthDeviceType}},
         {PhotoColumn::UNIQUE_ID, {&PhotosPoWriter::GetUniqueId, &PhotosPoWriter::SetUniqueId}},
         {PhotoColumn::PHOTO_RISK_STATUS, {&PhotosPoWriter::GetPhotoRiskStatus, &PhotosPoWriter::SetPhotoRiskStatus}},
         {PhotoColumn::LOCAL_ASSET_SIZE, {&PhotosPoWriter::GetLocalAssetSize, &PhotosPoWriter::SetLocalAssetSize}},
+        {PhotoColumn::COMPRESSION_QUALITY,
+            {&PhotosPoWriter::GetCompressionQuality, &PhotosPoWriter::SetCompressionQuality}},
+        {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            {&PhotosPoWriter::GetLivePhoto4dStatus, &PhotosPoWriter::SetLivePhoto4dStatus}},
+        {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+            {&PhotosPoWriter::GetLivePhoto4DPair, &PhotosPoWriter::SetLivePhoto4DPair}},
+        {PhotoColumn::PHOTO_IS_SHARED, {&PhotosPoWriter::GetPhotoIsShared, &PhotosPoWriter::SetPhotoIsShared}},
+        {PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+            {&PhotosPoWriter::GetPhotoShareOwnerInfo, &PhotosPoWriter::SetPhotoShareOwnerInfo}},
+        {PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
+            {&PhotosPoWriter::GetShareAlbumOwner, &PhotosPoWriter::SetShareAlbumOwner}},
+        {PhotoColumn::PHOTO_SHARE_DATE_DAY,
+            {&PhotosPoWriter::GetPhotoShareDateDay, &PhotosPoWriter::SetPhotoShareDateDay}},
+        {PhotoColumn::PHOTO_SHARE_GROUP, {&PhotosPoWriter::GetPhotoShareGroup, &PhotosPoWriter::SetPhotoShareGroup}},
+        {PhotoColumn::PHOTO_EDIT_DATA_EXIST,
+            {&PhotosPoWriter::GetEditDataExist, &PhotosPoWriter::SetEditDataExist}},
     };
     const std::map<std::string, GetSetNode> EXTRA_HANDLERS = {
         {"album_cloud_id", {&PhotosPoWriter::GetAlbumCloudId, &PhotosPoWriter::SetAlbumCloudId}},
@@ -206,8 +233,12 @@ private:
     bool GetShootingModeTag(std::string &val);
     void SetDynamicRangType(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetDynamicRangType(std::string &val);
+    void SetVideoMode(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetVideoMode(std::string &val);
     void SetFrontCamera(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetFrontCamera(std::string &val);
+    void SetXtStyleTemplateName(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetXtStyleTemplateName(std::string &val);
     void SetDetailTime(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetDetailTime(std::string &val);
     void SetEditTime(std::variant<int32_t, int64_t, double, std::string> &val);
@@ -227,9 +258,13 @@ private:
     void SetOriginalAssetCloudId(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetOriginalAssetCloudId(std::string &val);
     void SetSourcePath(std::variant<int32_t, int64_t, double, std::string> &val);
+    void SetMusicMasterMode(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetMusicMasterMode(std::string &val);
     bool GetSourcePath(std::string &val);
     void SetSupportedWatermarkType(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetSupportedWatermarkType(std::string &val);
+    void SetIsStylePhoto(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetIsStylePhoto(std::string &val);
     void SetStrongAssociation(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetStrongAssociation(std::string &val);
     void SetMediaId(std::variant<int32_t, int64_t, double, std::string> &val);
@@ -250,7 +285,13 @@ private:
     bool GetLcdSize(std::string &val);
     void SetThumbSize(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetThumbSize(std::string &val);
+    void SetSupportedDeferredEffects(std::variant<int32_t, int64_t, double, std::string> &val);
+    void SetDeferredEffectsStatus(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetSupportedDeferredEffects(std::string &val);
+    bool GetDeferredEffectsStatus(std::string &val);
     std::string GetStringValByPrecision(const double doubleVal, const int32_t precision);
+    void SetEditDataExist(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetEditDataExist(std::string &val);
     bool GetPackageName(std::string &val);
     void SetPackageName(std::variant<int32_t, int64_t, double, std::string> &val);
     void SetSouthDeviceType(std::variant<int32_t, int64_t, double, std::string> &val);
@@ -263,6 +304,22 @@ private:
     bool GetLcdFileSize(std::string &val);
     void SetLocalAssetSize(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetLocalAssetSize(std::string &val);
+    void SetCompressionQuality(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetCompressionQuality(std::string &val);
+    bool GetLivePhoto4dStatus(std::string &val);
+    void SetLivePhoto4dStatus(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetLivePhoto4DPair(std::string &val);
+    void SetLivePhoto4DPair(std::variant<int32_t, int64_t, double, std::string> &val);
+    void SetShareAlbumOwner(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetShareAlbumOwner(std::string &val);
+    bool GetPhotoIsShared(std::string &val);
+    void SetPhotoIsShared(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetPhotoShareOwnerInfo(std::string &val);
+    void SetPhotoShareOwnerInfo(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetPhotoShareDateDay(std::string &val);
+    void SetPhotoShareDateDay(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetPhotoShareGroup(std::string &val);
+    void SetPhotoShareGroup(std::variant<int32_t, int64_t, double, std::string> &val);
 };
 }  // namespace OHOS::Media::ORM
 #endif  // OHOS_MEDIA_ORM_PHOTOS_PO_WRITER_H

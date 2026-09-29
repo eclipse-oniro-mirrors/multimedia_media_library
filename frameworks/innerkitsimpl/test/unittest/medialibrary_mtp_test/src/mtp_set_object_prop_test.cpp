@@ -119,10 +119,10 @@ HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_calculateSize_test_001, TestSize.
     shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
     auto mtpStorageManager = MtpStorageManager::GetInstance();
     SetObjectPropValueData setObjectPropValueData(context);
-    uint32_t ret = setObjectPropValueData.CalculateSize();
-    EXPECT_EQ(ret, MTP_INVALID_OBJECTHANDLE_CODE);
     auto storage = make_shared<Storage>();
     mtpStorageManager->AddStorage(storage);
+    uint32_t ret = setObjectPropValueData.CalculateSize();
+    EXPECT_EQ(ret, MTP_INVALID_OBJECTHANDLE_CODE);
     setObjectPropValueData.SetResult(0);
     ret = setObjectPropValueData.CalculateSize();
     EXPECT_EQ(ret, MTP_SUCCESS);

@@ -15,6 +15,8 @@
 
 #include "media_map_const_utils.h"
 
+#include "userfile_manager_types.h"
+
 namespace OHOS::Media {
 static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_MIME_TYPE_MAP = {
     { "application/epub+zip", { "epub" } },
@@ -116,6 +118,7 @@ static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_MIM
     { "image/x-xbitmap", { "xbm" } },
     { "image/x-xpixmap", { "xpm" } },
     { "image/x-xwindowdump", { "xwd" } },
+    { "image/mpo", { "mpo" } },
     { "video/3gpp2", { "3gpp2", "3gp2", "3g2" } },
     { "video/3gpp", { "3gpp", "3gp" } },
     { "video/mp4", { "m4v", "f4v", "mp4v", "mpeg4", "mp4" } },
@@ -146,6 +149,11 @@ static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_MIM
     { "video/x-ms-wmx", { "wmx" } },
     { "video/x-ms-wvx", { "wvx" } },
     { "video/x-sgi-movie", { "movie" } },
+    { "video/mpg4", { "mpg4" } },
+    { "video/rm", { "rm" } },
+    { "video/rv", { "rv" } },
+    { "video/divx", { "divx" } },
+    { "video/m4u", { "m4u" } },
     { "text/comma-separated-values", { "csv" } },
     { "text/plain", { "diff", "po", "txt" } },
     { "text/rtf", { "rtf" } },
@@ -166,4 +174,26 @@ const std::unordered_map<std::string, std::vector<std::string>>& MediaMapConstUt
     return MEDIA_MIME_TYPE_MAP;
 }
 
+const std::string MediaMapConstUtils::MediaTypeToString(const int32_t mediaType)
+{
+    static const std::unordered_map<int32_t, std::string> mediaTypeMap = {
+        { MediaType::MEDIA_TYPE_FILE, "FILE" },
+        { MediaType::MEDIA_TYPE_IMAGE, "IMAGE" },
+        { MediaType::MEDIA_TYPE_VIDEO, "VIDEO" },
+        { MediaType::MEDIA_TYPE_AUDIO, "AUDIO" },
+        { MediaType::MEDIA_TYPE_MEDIA, "MEDIA" },
+        { MediaType::MEDIA_TYPE_ALBUM_LIST, "ALBUM_LIST" },
+        { MediaType::MEDIA_TYPE_ALBUM_LIST_INFO, "ALBUM_LIST_INFO" },
+        { MediaType::MEDIA_TYPE_ALBUM, "ALBUM" },
+        { MediaType::MEDIA_TYPE_SMARTALBUM, "SMARTALBUM" },
+        { MediaType::MEDIA_TYPE_DEVICE, "DEVICE" },
+        { MediaType::MEDIA_TYPE_REMOTEFILE, "REMOTEFILE" },
+        { MediaType::MEDIA_TYPE_NOFILE, "NOFILE" },
+        { MediaType::MEDIA_TYPE_PHOTO, "PHOTO" },
+        { MediaType::MEDIA_TYPE_ALL, "ALL" },
+        { MediaType::MEDIA_TYPE_DEFAULT, "DEFAULT" },
+    };
+    auto it = mediaTypeMap.find(mediaType);
+    return it == mediaTypeMap.end() ? "UNKNOWN" : it->second;
+}
 } // namespace OHOS::Media

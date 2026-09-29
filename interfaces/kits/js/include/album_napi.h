@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "ability.h"
-#include "ability_loader.h"
 #include "abs_shared_result_set.h"
 #include "album_asset.h"
 #include "data_ability_helper.h"
@@ -113,6 +112,7 @@ struct AlbumNapiAsyncContext : public NapiError {
     std::unique_ptr<FetchResult<FileAsset>> fetchResult;
     std::string networkId;
     std::string uri;
+    std::map<std::string, std::string> uriMap;
 
     size_t argc;
     napi_value argv[NAPI_ARGC_MAX];

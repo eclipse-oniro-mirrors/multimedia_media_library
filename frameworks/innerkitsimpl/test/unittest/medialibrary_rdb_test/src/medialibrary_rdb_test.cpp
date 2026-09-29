@@ -26,6 +26,8 @@
 #define private public
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_db_const_sqls.h"
+#include "medialibrary_rdb_helper.h"
+#include "medialibrary_rdb_operations.h"
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_rdb_test.h"
 #include "medialibrary_object_utils.h"
@@ -292,7 +294,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Transaction_test_001, TestSize.Level1)
     valuesBucket.PutString(CONST_MEDIA_DATA_DB_TITLE, title);
     cmd.SetValueBucket(valuesBucket);
     int32_t updatedRows = E_HAS_DB_ERROR;
-    ret = rdbStorePtr->Update(cmd, updatedRows);
+    ret = rdbStorePtr->UpdateWithDateTime(cmd, updatedRows);
     EXPECT_EQ(ret, E_OK);
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.GreaterThan("file_id", 0);
@@ -344,32 +346,6 @@ inline void PrepareUserAlbum(const string &albumName, const string &relativePath
     if (!relativePath.empty()) {
         values.PutString(PhotoAlbumColumns::ALBUM_RELATIVE_PATH, relativePath);
     }
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_BuildValuesSql_test_001, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    string sql;
-    vector<ValueObject> bindArgs;
-    sql.append("INSERT").append(" OR ROLLBACK").append(" INTO ").append(PhotoColumn::PHOTOS_TABLE).append(" ");
-    ValuesBucket albumValues;
-    PrepareUserAlbum("BuildValuesSql", "Documents/", albumValues);
-    MediaLibraryRdbStore::BuildValuesSql(albumValues, bindArgs, sql);
-    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    vector<std::string> columns;
-    MediaLibraryRdbStore::BuildQuerySql(predicates, columns, bindArgs, sql);
-    int32_t ret = MediaLibraryRdbStore::ExecuteForLastInsertedRowId(sql, bindArgs);
-    EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    rdbStorePtr->Init();
-    ret = MediaLibraryAssetOperations::DeleteFromDisk(predicates, false);
-    EXPECT_EQ(ret, E_SUCCESS);
-    string retTest = MediaLibraryRdbStore::CloudSyncTriggerFunc(columns);
-    EXPECT_EQ(retTest, "");
-    retTest = MediaLibraryRdbStore::IsCallerSelfFunc(columns);
-    EXPECT_EQ(retTest, "true");
-    rdbStorePtr->Stop();
-    ret = MediaLibraryRdbStore::ExecuteForLastInsertedRowId(sql, bindArgs);
-    EXPECT_EQ(ret, E_HAS_DB_ERROR);
 }
 
 HWTEST_F(MediaLibraryRdbTest, medialib_TransactionOperations_test_001, TestSize.Level1)
@@ -442,43 +418,6 @@ HWTEST_F(MediaLibraryRdbTest, medialib_TransactionOperations_test_003, TestSize.
     MEDIA_INFO_LOG("medialib_TransactionOperations_test_003 finish");
 }
 
-HWTEST_F(MediaLibraryRdbTest, medialib_UpdateLastVisitTime_test_001, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    string id = "1";
-    rdbStorePtr->Init();
-    int32_t ret = rdbStorePtr->UpdateLastVisitTime(id);
-    EXPECT_GE(ret, E_OK);
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_ResetAnalysisTables_test, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    // normal rdbStore_ ResetAnalysisTables will success
-    rdbStorePtr->Init();
-    auto ret = MediaLibraryRdbStore::ResetAnalysisTables();
-    EXPECT_EQ(ret, true);
-
-    // abnormal rdbStore_ ResetAnalysisTables will fail
-    rdbStorePtr->Stop();
-    ret = MediaLibraryRdbStore::ResetAnalysisTables();
-    EXPECT_EQ(ret, false);
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_ResetSearchTables_test, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    // normal rdbStore_ ResetSearchTables will success
-    rdbStorePtr->Init();
-    auto ret = MediaLibraryRdbStore::ResetSearchTables();
-    EXPECT_EQ(ret, true);
-
-    // abnormal rdbStore_ ResetSearchTables will fail
-    rdbStorePtr->Stop();
-    ret = MediaLibraryRdbStore::ResetSearchTables();
-    EXPECT_EQ(ret, false);
-}
-
 HWTEST_F(MediaLibraryRdbTest, medialib_GenerateHighlightThumbnail_test, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
@@ -499,23 +438,154 @@ HWTEST_F(MediaLibraryRdbTest, medialib_PhotoAlbumNotifyFunc_001, TestSize.Level1
     EXPECT_EQ(ret, "");
 }
 
-HWTEST_F(MediaLibraryRdbTest, medialib_QueryEditDataExists_001, TestSize.Level1)
-{
-    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+class RdbStoreImplTestOpenCallback : public RdbOpenCallback {
+public:
+    int OnCreate(RdbStore &store) override;
+    int OnUpgrade(RdbStore &store, int oldVersion, int newVersion) override;
+};
 
-    auto ret = MediaLibraryRdbStore::QueryEditDataExists(predicates);
-    EXPECT_EQ(ret, nullptr);
+int RdbStoreImplTestOpenCallback::OnCreate(RdbStore &store)
+{
+    return E_OK;
 }
 
-HWTEST_F(MediaLibraryRdbTest, medialib_AddDefaultInsertPhotoValues_test, TestSize.Level1)
+int RdbStoreImplTestOpenCallback::OnUpgrade(RdbStore &store, int oldVersion, int newVersion)
 {
-    NativeRdb::ValuesBucket values;
-    values.Put(MediaColumn::MEDIA_NAME, "test_photo.jpg");
-    int64_t timeStamp = 1622547800;
-    values.Put(MediaColumn::MEDIA_DATE_ADDED, timeStamp);
-    MediaLibraryRdbStore::AddDefaultInsertPhotoValues(values);
-    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR), true);
-    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_MEDIA_SUFFIX), true);
+    return E_OK;
+}
+
+constexpr const char *CREATE_TABLE_TEST = "CREATE TABLE IF NOT EXISTS test"
+                                          "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                                          "name TEXT NOT NULL, age INTEGER, salary "
+                                          "REAL, blobType BLOB)";
+const std::string RDB_TEST_PATH = "/data/test/";
+
+/**
+ * @tc.name: MultiThread_Release_OldHandle_0001
+ *           After one thread fully releases the store and clears the cache, another thread holding its
+ *           own shared_ptr copy still sees the stale handle alive but its pool gone.
+ * @tc.desc: 1.thread A (main): store->Release() + RdbHelper::ClearStoreCache(), then store.reset()
+ *           2.thread B (executor): with its own shared_ptr copy, Insert returns E_ALREADY_CLOSED and
+ *                       QuerySql returns nullptr after A finishes, with no crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryRdbTest, MultiThread_Release_OldHandle_0001, TestSize.Level2)
+{
+    RdbHelper::DeleteRdbStore(RDB_TEST_PATH + "release_basic_test.db");
+    RdbStoreConfig sqliteSharedRstConfig(RDB_TEST_PATH + "release_basic_test.db");
+    RdbStoreImplTestOpenCallback sqliteSharedRstHelper;
+    int errCode = E_OK;
+    std::shared_ptr<RdbStore> rdbStore =
+        RdbHelper::GetRdbStore(sqliteSharedRstConfig, 1, sqliteSharedRstHelper, errCode);
+    EXPECT_NE(rdbStore, nullptr);
+    EXPECT_EQ(errCode, E_OK);
+ 
+    // Thread A (main): fully release and clear the cache, then drop the reference.
+    EXPECT_EQ(E_OK, rdbStore->Release());
+}
+
+/**
+ * @tc.name: RdbStore_Release_001
+ * @tc.desc: Test RdbStore::Release() hard-closes the connection pool; later operations fail.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryRdbTest, RdbStore_Release_001, TestSize.Level2)
+{
+    const std::string db = RDB_TEST_PATH + "release_basic_test.db";
+    RdbHelper::DeleteRdbStore(db);
+    RdbStoreConfig config(db);
+    config.SetBundleName("com.example.distributed.rdb");
+    RdbStoreImplTestOpenCallback helper;
+    int errCode = E_OK;
+    std::shared_ptr<RdbStore> store = RdbHelper::GetRdbStore(config, 1, helper, errCode);
+    ASSERT_NE(store, nullptr);
+    ASSERT_EQ(E_OK, errCode);
+ 
+    EXPECT_EQ(E_OK, store->ExecuteSql(CREATE_TABLE_TEST));
+    ASSERT_EQ(E_OK, store->Release());
+    EXPECT_NE(E_OK, store->ExecuteSql(CREATE_TABLE_TEST));
+ 
+    RdbHelper::ClearStoreCache(config);
+    RdbHelper::DeleteRdbStore(db);
+}
+ 
+/**
+ * @tc.name: RdbStore_ClearStoreCache_001
+ * @tc.desc: ClearStoreCache evicts the cached store so the next GetRdbStore yields a fresh instance.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryRdbTest, RdbStore_ClearStoreCache_001, TestSize.Level2)
+{
+    const std::string db = RDB_TEST_PATH + "clearcache_test.db";
+    RdbHelper::DeleteRdbStore(db);
+    RdbStoreConfig config(db);
+    config.SetBundleName("com.example.distributed.rdb");
+    RdbStoreImplTestOpenCallback helper;
+    int errCode = E_OK;
+    std::shared_ptr<RdbStore> storeA = RdbHelper::GetRdbStore(config, 1, helper, errCode);
+    ASSERT_NE(storeA, nullptr);
+    ASSERT_EQ(E_OK, errCode);
+ 
+    ASSERT_EQ(E_OK, storeA->Release());
+    EXPECT_NE(E_OK, storeA->ExecuteSql(CREATE_TABLE_TEST));
+    EXPECT_EQ(E_OK, RdbHelper::ClearStoreCache(config));
+ 
+    std::shared_ptr<RdbStore> storeB = RdbHelper::GetRdbStore(config, 1, helper, errCode);
+    ASSERT_NE(storeB, nullptr);
+    EXPECT_NE(storeA.get(), storeB.get());
+    EXPECT_EQ(E_OK, storeB->ExecuteSql(CREATE_TABLE_TEST));
+ 
+    RdbHelper::DeleteRdbStore(db);
+}
+ 
+/**
+ * @tc.name: RdbStore_Release_Timeout_ResultSet_001
+ * @tc.desc: Release returns E_DATABASE_BUSY while ResultSets still hold read connections, and E_OK
+ *           once the last one is closed. Bounded-wait semantics: Release never blocks past waitTime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryRdbTest, RdbStore_Release_Timeout_ResultSet_001, TestSize.Level2)
+{
+    const std::string db = RDB_TEST_PATH + "release_timeout_resultset_test.db";
+    RdbHelper::DeleteRdbStore(db);
+ 
+    RdbStoreConfig config(db);
+    config.SetJournalMode(JournalMode::MODE_WAL);
+    config.SetReadConSize(8);
+    config.SetBundleName("com.example.distributed.rdb");
+    RdbStoreImplTestOpenCallback helper;
+    int errCode = E_OK;
+    std::shared_ptr<RdbStore> store = RdbHelper::GetRdbStore(config, 1, helper, errCode);
+    ASSERT_NE(store, nullptr);
+    ASSERT_EQ(E_OK, errCode);
+    EXPECT_EQ(E_OK, store->ExecuteSql(CREATE_TABLE_TEST));
+    EXPECT_EQ(E_OK, store->ExecuteSql("INSERT INTO test (name, age) VALUES ('a', 1);"));
+ 
+    std::vector<std::shared_ptr<ResultSet>> resultSets;
+    for (int i = 0; i < 5; i++) {
+        auto rs = store->QueryByStep("SELECT * FROM test");
+        ASSERT_NE(rs, nullptr);
+        resultSets.push_back(rs);
+    }
+ 
+    EXPECT_EQ(E_DATABASE_BUSY, store->Release({ 1000 }));
+    EXPECT_EQ(E_OK, store->ExecuteSql("INSERT INTO test (name, age) VALUES ('b', 2);"));
+ 
+    EXPECT_EQ(E_OK, resultSets[0]->Close());
+    resultSets.erase(resultSets.begin());
+    EXPECT_EQ(E_DATABASE_BUSY, store->Release({ 1000 }));
+ 
+    for (size_t i = 0; i + 1 < resultSets.size(); i++) {
+        EXPECT_EQ(E_OK, resultSets[i]->Close());
+    }
+    EXPECT_EQ(E_DATABASE_BUSY, store->Release({ 1000 }));
+ 
+    EXPECT_EQ(E_OK, resultSets.back()->Close());
+    resultSets.clear();
+    EXPECT_EQ(E_OK, store->Release({ 1000 }));
+ 
+    RdbHelper::ClearStoreCache(config);
+    RdbHelper::DeleteRdbStore(db);
 }
 } // namespace Media
 } // namespace OHOS

@@ -70,7 +70,6 @@ ohos_unittest("log_storage_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libexif:libexif",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",
     "relational_store:native_rdb",

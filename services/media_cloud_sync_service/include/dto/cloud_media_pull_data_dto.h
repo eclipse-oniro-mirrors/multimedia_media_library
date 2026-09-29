@@ -23,6 +23,7 @@
 #include "cloud_media_define.h"
 #include "photo_album_po.h"
 #include "photos_po.h"
+#include "photo_album_dto.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
@@ -74,6 +75,7 @@ public:
     int32_t attributesHdrMode{-1};                /* hdr_mode */
     int32_t attributesVideoMode{-1};              /* video_mode */
     std::string attributesFrontCamera;            /* front_camera */
+    std::string attributesXtStyleTemplateName;    /* xt_style_template_name */
     int64_t attributesEditTime{-1};               /* edit_time */
     int32_t attributesOriginalSubtype{-1};        /* original_subtype */
     int64_t attributesCoverPosition{-1};          /* cover_position */
@@ -81,6 +83,9 @@ public:
     int32_t exifRotate{-1};                       /* exif_rotate*/
     int32_t attributesMovingPhotoEffectMode{-1};  /* moving_photo_effect_mode */
     int32_t attributesSupportedWatermarkType{-1}; /* supported_watermark_type */
+    int32_t attributesMusicMasterMode{0};         /* music_master_mode */
+    int32_t attributesIsStylePhoto{-1};           /* is_style_photo */
+    int32_t supportedDeferredEffects{-1};         /* supported_deferred_effects */
     int32_t attributesStrongAssociation{-1};      /* strong_association */
     int32_t attributesFileId{-1};                 /* file_id */
     std::string attributesCloudId;                /* cloud_id */
@@ -99,6 +104,15 @@ public:
     // Safe Album: critical type for children's watch
     int32_t attributesRiskStatus{0};              /* photo_risk_status */
     int32_t attributesIsCritical{0};              /* is_critical */
+    int32_t attributesIsShared{0};                /* is_shared */
+    std::string attributesShareOwnerInfo;         /* share_owner_info */
+    std::string attributesShareAlbumOwner;        /* share_album_owner */
+    int64_t attributesShareDateDay{0};            /* share_date_day */
+    int64_t attributesShareGroup{0};              /* share_group */
+    // Shared Album Risk Control
+    std::vector<ScaDetailDataDto> scaDetailDataList;
+    std::string currentUserId;                    /* 当前用户ID，用于角色判定 */
+    std::string mediaCreateId;                    /* 资产创建者ID */
 
     // "properties"
     bool hasProperties{false};
@@ -131,6 +145,8 @@ public:
     std::string localDisplayName;
     std::map<std::string, std::string> stringfields;
     std::map<std::string, int64_t> int64fields;
+    int32_t compressionQuality{-1}; /* compression_quality */
+    int32_t editDataExist{-1};
 
 public:  // basic function
     std::string ToString() const;

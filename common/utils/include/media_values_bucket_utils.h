@@ -16,55 +16,61 @@
 #ifndef COMMON_UTILS_MEDIA_VALUES_BUCKET_UTILS_H_
 #define COMMON_UTILS_MEDIA_VALUES_BUCKET_UTILS_H_
 
-#include <errno.h>
 #include <string>
 
 #include "values_bucket.h"
 
-#include "medialibrary_errno.h"
-
 namespace OHOS::Media {
-#define EXPORT __attribute__ ((visibility ("default")))
-
 /**
  * media valuesbucket utils
  */
 class MediaValuesBucketUtils {
 public:
-    EXPORT MediaValuesBucketUtils();
-    EXPORT ~MediaValuesBucketUtils();
-    EXPORT inline static int32_t GetString(const NativeRdb::ValuesBucket &values, const std::string &key,
+    MediaValuesBucketUtils();
+    ~MediaValuesBucketUtils();
+    inline static bool GetString(const NativeRdb::ValuesBucket &values, const std::string &key,
         std::string &value)
     {
         NativeRdb::ValueObject valueObject;
         if (values.GetObject(key, valueObject)) {
             valueObject.GetString(value);
         } else {
-            return -EINVAL;
+            return false;
         }
-        return E_OK;
+        return true;
     }
 
-    EXPORT inline static int32_t GetInt(const NativeRdb::ValuesBucket &values, const std::string &key, int32_t &value)
+    inline static bool GetInt(const NativeRdb::ValuesBucket &values, const std::string &key, int32_t &value)
     {
         NativeRdb::ValueObject valueObject;
         if (values.GetObject(key, valueObject)) {
             valueObject.GetInt(value);
         } else {
-            return -EINVAL;
+            return false;
         }
-        return E_OK;
+        return true;
     }
 
-    EXPORT inline static int32_t GetLong(const NativeRdb::ValuesBucket &values, const std::string &key, int64_t &value)
+    inline static bool GetLong(const NativeRdb::ValuesBucket &values, const std::string &key, int64_t &value)
     {
         NativeRdb::ValueObject valueObject;
         if (values.GetObject(key, valueObject)) {
             valueObject.GetLong(value);
         } else {
-            return -EINVAL;
+            return false;
         }
-        return E_OK;
+        return true;
+    }
+
+    inline static bool GetBool(const NativeRdb::ValuesBucket &values, const std::string &key, bool &value)
+    {
+        NativeRdb::ValueObject valueObject;
+        if (values.GetObject(key, valueObject)) {
+            valueObject.GetBool(value);
+        } else {
+            return false;
+        }
+        return true;
     }
 };
 } // namespace OHOS::Media

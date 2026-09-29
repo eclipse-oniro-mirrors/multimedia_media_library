@@ -135,7 +135,6 @@ private:
             photo_quality, \
             thumbType, \
             gallery_media.albumId, \
-            local_media_id, \
             uniqueId, \
             hdc_unique_id, \
             resolution, \
@@ -153,7 +152,7 @@ private:
             ON gallery_media.albumId=gallery_album.albumId \
             LEFT JOIN relative_album \
             ON gallery_media.relative_bucket_id = relative_album.relativeBucketId \
-        WHERE _id > ? AND (local_media_id != -1) AND \
+        WHERE _id >= ? AND (local_media_id != -1) AND \
             (relative_bucket_id IS NULL OR \
                 relative_bucket_id NOT IN ( \
                     SELECT DISTINCT relative_bucket_id \
@@ -200,7 +199,6 @@ private:
             photo_quality, \
             thumbType, \
             gallery_media.albumId, \
-            local_media_id, \
             uniqueId, \
             hdc_unique_id, \
             resolution, \
@@ -218,7 +216,7 @@ private:
             ON gallery_media.albumId=gallery_album.albumId \
             LEFT JOIN relative_album \
             ON gallery_media.relative_bucket_id = relative_album.relativeBucketId \
-        WHERE _id > ? AND (local_media_id == -1) AND COALESCE(uniqueId,'') <> '' AND \
+        WHERE _id >= ? AND (local_media_id == -1) AND COALESCE(uniqueId,'') <> '' AND \
             (relative_bucket_id IS NULL OR \
                 relative_bucket_id NOT IN ( \
                     SELECT DISTINCT relative_bucket_id \
@@ -265,7 +263,6 @@ private:
             photo_quality, \
             thumbType, \
             gallery_media.albumId, \
-            local_media_id, \
             uniqueId, \
             hdc_unique_id, \
             resolution, \

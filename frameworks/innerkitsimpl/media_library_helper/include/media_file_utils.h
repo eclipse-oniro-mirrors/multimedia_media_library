@@ -85,6 +85,15 @@ EXPORT const std::unordered_set<int32_t> PORTRAIT_PAGE_MODE = {
     PortraitPages::UNFAVORITE_PAGE
 };
 
+struct TmpCompatibleDupInfo {
+    int32_t width{0};
+    int32_t height{0};
+    int32_t quality{90};
+    int32_t quickCopy{0};
+ 
+    TmpCompatibleDupInfo() = default;
+};
+
 /**
  * @brief Utility class for file operations
  *
@@ -94,6 +103,7 @@ EXPORT const std::unordered_set<int32_t> PORTRAIT_PAGE_MODE = {
 class MediaFileUtils {
 public:
     EXPORT static bool IsFileExists(const std::string &fileName);
+    EXPORT static bool IsFileExistsWithExtRetry(const std::string &fileName);
     EXPORT static bool IsFileValid(const std::string &fileName);
     EXPORT static bool IsDirEmpty(const std::string &path);
     EXPORT static bool CreateFile(const std::string &filePath);
@@ -106,15 +116,24 @@ public:
     EXPORT static bool IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr = nullptr);
     EXPORT static bool MoveFile(const std::string &oldPath, const std::string &newPath,
         bool isSupportCrossPolicy = false);
+    EXPORT static bool MoveFileWithExtRetry(const std::string &srcPath, const std::string &destPath);
+    EXPORT static int32_t OpenFileWithExtRetry(const std::string &filePath, std::string &absFilePath);
     EXPORT static bool CopyDirAndDelSrc(const std::string &srcPath, const std::string &destPath,
         unsigned short curRecursionDepth = 0);
-    EXPORT static bool CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile);
-    EXPORT static bool CopyFileUtil(const std::string &filePath, const std::string &newPath);
+    EXPORT static bool CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile,
+        bool skipCheckPermit = false);
+    EXPORT static bool CopyFileUtil(const std::string &filePath, const std::string &newPath,
+        bool skipCheckPermit = false);
     EXPORT static int32_t SegmentedCopyFileUtile(const std::string &filePath, const std::string &newPath,
         std::function<void(uint64_t)> progressCallback, const std::string &requestId);
     EXPORT static bool CopyFileSafe(const std::string &filePath, const std::string &newPath);
+    EXPORT static bool CopyFileSafeWithExtRetry(const std::string &filePath, const std::string &newPath,
+        bool retryExtOnSrcPath);
     EXPORT static bool WriteStrToFile(const std::string &filePath, const std::string &str);
+    EXPORT static std::string SwapExtensionInPath(const std::string &filePath, const std::string &fromExt,
+        const std::string &toExt);
     EXPORT static bool ReadStrFromFile(const std::string &filePath, std::string &fileContent);
+    EXPORT static bool ReadStrFromFileWithExtRetry(const std::string &filePath, std::string &fileContent);
     EXPORT static bool CopyFile(int32_t rfd, int32_t wfd);
     EXPORT static bool RenameDir(const std::string &oldPath, const std::string &newPath);
     EXPORT static bool CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr = nullptr);
@@ -142,6 +161,8 @@ public:
     EXPORT static std::string UpdatePath(const std::string &path, const std::string &uri);
     EXPORT static MediaType GetMediaType(const std::string &filePath);
     EXPORT static MediaType GetMediaTypeNotSupported(const std::string &filePath);
+    // 判断文件名后缀是否属于支持编解码的图片/视频扩展名集合
+    EXPORT static bool IsSupportedMediaExtension(const std::string &displayName);
     EXPORT static std::string SplitByChar(const std::string &str, const char split);
     EXPORT static std::string GetExtensionFromPath(const std::string &path);
     EXPORT static int32_t OpenFile(const std::string &path, const std::string &mode,
@@ -170,6 +191,7 @@ public:
     EXPORT static std::string GetHighlightVideoPath(const std::string &uri);
     EXPORT static std::string GetTableNameByDisplayName(const std::string &displayName);
     EXPORT static bool GetDateModified(const std::string &path, int64_t &dateModified);
+    EXPORT static std::string RemoveExtension(const std::string &path);
 #ifdef MEDIALIBRARY_COMPATIBILITY
     EXPORT static std::string GetTableFromVirtualUri(const std::string &uri);
 #endif
@@ -213,6 +235,7 @@ public:
     EXPORT static bool IsCalledBySelf();
     EXPORT static std::vector<std::string> GetAllTypes(const int32_t extension);
     EXPORT static bool IsValidInteger(const std::string &value);
+    EXPORT static bool IsParamNullish(void *env, void *arg);
     EXPORT static int32_t CreateAssetRealName(
         int32_t fileId, int32_t mediaType, const std::string &extension, std::string &name);
     EXPORT static int64_t GetTotalSize();
@@ -226,7 +249,7 @@ public:
     EXPORT static std::string GetReplacedPathByPrefix(const std::string srcPrefix, const std::string dstPrefix,
         const std::string &path);
     EXPORT static bool ConvertFormatCopy(const std::string &srcFile, const std::string &dstFile,
-        const std::string &extension, int32_t width = 0, int32_t height = 0);
+        const std::string &extension, TmpCompatibleDupInfo info = TmpCompatibleDupInfo());
     EXPORT static bool ConvertFormatExtraDataDirectory(const std::string &srcDir, const std::string &dstDir,
         const std::string &extension);
     EXPORT static int64_t GetFileModificationTime(const std::string &path);
@@ -239,6 +262,7 @@ public:
     EXPORT static double CalculateAspectRatio(int32_t height, int32_t width);
     EXPORT static std::string GetLocalPath(const std::string &path);
     EXPORT static bool CheckLivePhoto4dStatus(int32_t livePhoto4dStatus);
+    EXPORT static bool IsLivePhoto4dEffect(int32_t livePhoto4dStatus);
     EXPORT static bool IsValidUuid(const std::string& uuidStr);
     static int32_t FindNormalPhotoAttachments(const std::string &localPath, std::vector<std::string> &localPathList);
     EXPORT static void GetFolderListUnderPath(const std::filesystem::path &path, std::vector<std::string> &folders);

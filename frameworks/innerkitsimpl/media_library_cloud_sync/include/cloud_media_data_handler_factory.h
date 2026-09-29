@@ -19,6 +19,8 @@
 #include <map>
 #include <vector>
 
+#include "cloud_share_album_define.h"
+#include "cloud_media_client_utils.h"
 #include "i_cloud_media_data_handler.h"
 #include "cloud_media_album_handler.h"
 #include "cloud_media_photo_handler.h"
@@ -36,7 +38,7 @@ public:  // constructor
 
 public:
     std::shared_ptr<ICloudMediaDataHandler> GetDataHandler(const std::string &tableName,
-        const int32_t cloudType, const int32_t userId)
+        const int32_t cloudType, const int32_t userId, int32_t sceneType = 0)
     {
         std::shared_ptr<ICloudMediaDataHandler> handler = nullptr;
         auto iter = this->DATA_HANDLER.find(tableName);
@@ -46,7 +48,18 @@ public:
         CHECK_AND_RETURN_RET_LOG(handler != nullptr, handler, "handler is null");
         handler->SetCloudType(cloudType);
         handler->SetUserId(userId);
+        handler->SetSceneType(sceneType);
         return handler;
+    }
+
+    static bool IsPhotoAlbum(const std::string &tableName)
+    {
+        return tableName == "PhotoAlbum";
+    }
+
+    static bool IsPhoto(const std::string &tableName)
+    {
+        return tableName == "Photos";
     }
 };
 }  // namespace OHOS::Media::CloudSync

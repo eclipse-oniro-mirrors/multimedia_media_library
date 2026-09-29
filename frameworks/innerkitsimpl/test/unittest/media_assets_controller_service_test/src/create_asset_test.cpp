@@ -66,7 +66,7 @@ static bool CheckAsset(int32_t assetId)
     if (resultSet != nullptr) {
         resultSet->GetRowCount(count);
         while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-            int32_t albumId = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_OWNER_ALBUM_ID);
+            int32_t albumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
             MEDIA_INFO_LOG("assetId:%{public}d albumId:%{public}d", assetId, albumId);
         }
         resultSet->Close();
@@ -87,9 +87,9 @@ static bool CheckAssetStorageInfo(int32_t assetId, const std::string &ownerAlbum
         return false;
     }
 
-    string actualAlbumId = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_OWNER_ALBUM_ID);
-    string actualStoragePath = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_STORAGE_PATH);
-    int32_t actualFileSourceType = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+    string actualAlbumId = GetStringVal(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
+    string actualStoragePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    int32_t actualFileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
     resultSet->Close();
     return actualAlbumId == ownerAlbumId && actualStoragePath == storagePath && actualFileSourceType == fileSourceType;
 }
@@ -167,10 +167,10 @@ static int32_t GetAlbumId(const std::string &albumName)
 
     int32_t retId = 0;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t albumId = MediaLibraryRdbStore::GetInt(resultSet, PhotoAlbumColumns::ALBUM_ID);
-        string name = MediaLibraryRdbStore::GetString(resultSet, PhotoAlbumColumns::ALBUM_NAME);
-        int32_t albumType = MediaLibraryRdbStore::GetInt(resultSet, PhotoAlbumColumns::ALBUM_TYPE);
-        int32_t albumSubType = MediaLibraryRdbStore::GetInt(resultSet, PhotoAlbumColumns::ALBUM_SUBTYPE);
+        int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        string name = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
+        int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, resultSet);
+        int32_t albumSubType = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
         MEDIA_INFO_LOG("albumId:%{public}d, albumName:%{public}s, albumType:%{public}d, albumSubType:%{public}d",
             albumId, name.c_str(), albumType, albumSubType);
         if (name == albumName) {
@@ -643,7 +643,7 @@ bool CheckNeedThumbnail(int32_t assetId, int32_t expectedValue)
     }
     int32_t needThumbnail = -1;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        needThumbnail = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_NEED_THUMBNAIL);
+        needThumbnail = GetInt32Val(PhotoColumn::PHOTO_NEED_THUMBNAIL, resultSet);
     }
     resultSet->Close();
     MEDIA_INFO_LOG("assetId:%{public}d needThumbnail:%{public}d expected:%{public}d",

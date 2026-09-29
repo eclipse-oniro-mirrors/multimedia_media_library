@@ -48,11 +48,16 @@
 #include "delete_photos_completed_vo.h"
 #include "trash_photos_vo.h"
 #include "rdb_utils.h"
+#include "result_set_utils.h"
 #include "submit_cache_vo.h"
 #include "save_camera_photo_vo.h"
 #include "add_image_vo.h"
 #include <charconv>
 #include "moving_photo_file_utils.h"
+#include "media_library_error_code.h"
+#include "validate_latest_pair_vo.h"
+#include "media_asset_rdbstore.h"
+#include "userfilemgr_uri.h"
 
 namespace OHOS::Media {
 namespace {
@@ -84,6 +89,8 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetEffectMode)},
     ani_native_function {"setEditData", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetEditData)},
+    ani_native_function {"setCameraEditData", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetCameraEditData)},
     ani_native_function {"setLocation", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetLocation)},
     ani_native_function {"setTitle", nullptr,
@@ -108,6 +115,8 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetHiddenAttribute)},
     ani_native_function {"setTitleByFile", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetTitleByFile)},
+    ani_native_function {"setLivePhoto4dStatus", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetLivePhoto4dStatus)},
 };
 
 std::array staticMethods = {
@@ -173,13 +182,29 @@ static const std::string TYPE_PHOTOS = "1";
 
 int32_t MediaDataSource::ReadData(const shared_ptr<AVSharedMemory> &mem, uint32_t length)
 {
-    CHECK_COND_RET(mem != nullptr, SOURCE_ERROR_EOF, "mem is nullptr");
+    if (mem == nullptr || mem->GetBase() == nullptr) {
+        ANI_ERR_LOG("mem or mem->GetBase() is nullptr");
+        return SOURCE_ERROR_IO;
+    }
+
     if (readPos_ >= size_) {
         ANI_ERR_LOG("Failed to check read position");
         return SOURCE_ERROR_EOF;
     }
 
-    if (memcpy_s(mem->GetBase(), mem->GetSize(), (char*)buffer_ + readPos_, length) != E_OK) {
+    uint64_t newPos = static_cast<uint64_t>(readPos_) + static_cast<uint64_t>(length);
+    if (newPos > static_cast<uint64_t>(size_)) {
+        ANI_ERR_LOG("Source buffer overflow, readPos_=%{public}" PRId64 ", length=%{public}u, size_=%{public}" PRId64,
+            readPos_, length, size_);
+        return SOURCE_ERROR_EOF;
+    }
+
+    if (static_cast<size_t>(mem->GetSize()) < length) {
+        ANI_ERR_LOG("mem buffer size %{public}d is less than required %{public}u", mem->GetSize(), length);
+        return SOURCE_ERROR_IO;
+    }
+
+    if (memcpy_s(mem->GetBase(), mem->GetSize(), static_cast<const char*>(buffer_) + readPos_, length) != E_OK) {
         ANI_ERR_LOG("Failed to copy buffer to mem");
         return SOURCE_ERROR_IO;
     }
@@ -595,7 +620,8 @@ bool MediaAssetChangeRequestAni::CheckMovingPhotoWriteOperation()
     return addResourceTimes == 2 && isImageExist && isVideoExist; // must add resource 2 times with image and video
 }
 
-bool MediaAssetChangeRequestAni::CheckChangeOperations(ani_env *env)
+bool MediaAssetChangeRequestAni::CheckChangeOperations(ani_env *env,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &context)
 {
     if (assetChangeOperations_.empty()) {
         AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "None request to apply");
@@ -604,10 +630,12 @@ bool MediaAssetChangeRequestAni::CheckChangeOperations(ani_env *env)
 
     bool isCreateFromScratch = Contains(AssetChangeOperation::CREATE_FROM_SCRATCH);
     bool isCreateFromUri = Contains(AssetChangeOperation::CREATE_FROM_URI);
-    bool containsEdit = Contains(AssetChangeOperation::SET_EDIT_DATA);
+    bool containsEdit = Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     bool containsGetHandler = Contains(AssetChangeOperation::GET_WRITE_CACHE_HANDLER);
     bool containsAddResource = Contains(AssetChangeOperation::ADD_RESOURCE);
     bool isSaveCameraPhoto = Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO);
+    context->isCameraEditData = Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     if ((isCreateFromScratch || containsEdit) && !containsGetHandler && !containsAddResource && !isSaveCameraPhoto) {
         AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Cannot create or edit asset without data to write");
         return false;
@@ -1076,6 +1104,22 @@ static void DeleteAssetsComplete(ani_env *env, std::unique_ptr<MediaAssetChangeR
     context.reset();
 }
 
+static bool HasSharedAssetInDeleteUris(const std::vector<std::string>& uris)
+{
+    vector<string> fileIds;
+    for (const auto& uri : uris) {
+        string fileId = MediaFileUtils::GetIdFromUri(uri);
+        if (!fileId.empty()) {
+            fileIds.push_back(fileId);
+        }
+    }
+    if (fileIds.empty()) {
+        return false;
+    }
+
+    return !fileIds.empty() && MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds);
+}
+
 bool PrepareAssetDeletion(ani_env *env, const std::vector<std::string>& uris,
     MediaAssetChangeRequestAniContext& context)
 {
@@ -1097,27 +1141,26 @@ bool PrepareAssetDeletion(ani_env *env, const std::vector<std::string>& uris,
     return true;
 }
 
-ani_object MediaAssetChangeRequestAni::DeleteAssets(ani_env *env, [[maybe_unused]] ani_class clazz,
-    ani_object context, ani_object assets)
+static bool CheckSharedAssetForDelete(ani_env *env, const std::vector<std::string>& uris)
 {
-    ANI_CHECK_RETURN_RET_LOG(env != nullptr, nullptr, "env is null");
-    auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
-    ANI_CHECK_RETURN_RET_LOG(aniContext != nullptr, nullptr, "aniContext is null");
-    std::vector<std::string> uris;
-    CHECK_COND(env, MediaAssetChangeRequestAni::InitUserFileClient(env, context), JS_INNER_FAIL);
-    CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAssets(env, assets, uris) == ANI_OK, "Failed to parse args");
-    CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "Failed to check empty array");
-    if (!PrepareAssetDeletion(env, uris, *aniContext)) {
-        return nullptr;
+    if (!HasSharedAssetInDeleteUris(uris)) {
+        return true;
     }
+    AniError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for assets in shared albums");
+    return false;
+}
 
-    // Delete assets
-    if (MediaLibraryAniUtils::IsSystemApp()) {
-        DeleteAssetsExecute(env, aniContext);
-        DeleteAssetsComplete(env, aniContext);
-        return ReturnAniUndefined(env);
-    }
+static ani_object DeleteAssetsForSystemApp(ani_env *env,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &aniContext)
+{
+    DeleteAssetsExecute(env, aniContext);
+    DeleteAssetsComplete(env, aniContext);
+    return ReturnAniUndefined(env);
+}
 
+static ani_object DeleteAssetsByModalUIExtension(ani_env *env, ani_object context,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &aniContext)
+{
 #ifdef HAS_ACE_ENGINE_PART
     // Deletion control by ui extension
     CHECK_COND(env, HasWritePermission(), OHOS_PERMISSION_DENIED_CODE);
@@ -1156,6 +1199,29 @@ ani_object MediaAssetChangeRequestAni::DeleteAssets(ani_env *env, [[maybe_unused
 #endif
 }
 
+ani_object MediaAssetChangeRequestAni::DeleteAssets(ani_env *env, [[maybe_unused]] ani_class clazz,
+    ani_object context, ani_object assets)
+{
+    ANI_CHECK_RETURN_RET_LOG(env != nullptr, nullptr, "env is null");
+    auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
+    ANI_CHECK_RETURN_RET_LOG(aniContext != nullptr, nullptr, "aniContext is null");
+    std::vector<std::string> uris;
+    CHECK_COND(env, MediaAssetChangeRequestAni::InitUserFileClient(env, context), JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAssets(env, assets, uris) == ANI_OK, "Failed to parse args");
+    CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "Failed to check empty array");
+    if (!CheckSharedAssetForDelete(env, uris)) {
+        return nullptr;
+    }
+    if (!PrepareAssetDeletion(env, uris, *aniContext)) {
+        return nullptr;
+    }
+
+    if (MediaLibraryAniUtils::IsSystemApp()) {
+        return DeleteAssetsForSystemApp(env, aniContext);
+    }
+    return DeleteAssetsByModalUIExtension(env, context, aniContext);
+}
+
 ani_object MediaAssetChangeRequestAni::SetEditData(ani_env *env, ani_object aniObject, ani_object editData)
 {
     if (!MediaLibraryAniUtils::IsSystemApp()) {
@@ -1178,6 +1244,36 @@ ani_object MediaAssetChangeRequestAni::SetEditData(ani_env *env, ani_object aniO
     CHECK_COND_WITH_MESSAGE(env, !editDataInner->GetData().empty(), "Invalid data");
     changeRequest->editData_ = editDataInner;
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_EDIT_DATA);
+    if (changeRequest->Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO) &&
+        !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
+        changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
+    }
+    return ReturnAniUndefined(env);
+}
+
+ani_object MediaAssetChangeRequestAni::SetCameraEditData(ani_env *env, ani_object aniObject, ani_object editData)
+{
+    ANI_INFO_LOG("SetCameraEditData Start");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
+    CHECK_PARAMETER_WITH_MESSAGE(env, aniContext != nullptr, "aniContext is null");
+    aniContext->objectInfo = Unwrap(env, aniObject);
+    auto changeRequest = aniContext->objectInfo;
+    ANI_CHECK_RETURN_RET_LOG(changeRequest != nullptr, nullptr, "changeRequest is null");
+    MediaAssetEditDataAni* editDataAni = MediaAssetEditDataAni::Unwrap(env, editData);
+    CHECK_PARAMETER_WITH_MESSAGE(env, editDataAni != nullptr, "Failed to get MediaAssetChangeRequestAni object");
+
+    shared_ptr<MediaAssetEditData> editDataInner = editDataAni->GetMediaAssetEditData();
+    CHECK_PARAMETER_WITH_MESSAGE(env, editDataInner != nullptr, "editData is null");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editDataInner->GetCompatibleFormat().empty(), "Invalid compatibleFormat");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editDataInner->GetFormatVersion().empty(), "Invalid formatVersion");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editDataInner->GetData().empty(), "Invalid data");
+    changeRequest->editData_ = editDataInner;
+    changeRequest->RecordChangeOperation(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     if (changeRequest->Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
@@ -1266,8 +1362,14 @@ ani_object MediaAssetChangeRequestAni::AddMovingPhotoVideoResourceByFileUri(ani_
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
 
     CHECK_COND(env, ParseFileUri(env, fileUri, MediaType::MEDIA_TYPE_VIDEO, aniContext), OHOS_INVALID_PARAM_CODE);
-    if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(aniContext->realPath)) {
+    if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(aniContext->realPath, false)) {
         AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+        return nullptr;
+    }
+    int32_t duration = MovingPhotoFileUtils::GetMovingPhotoVideoDuration(aniContext->realPath);
+    if (!MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(duration)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
         return nullptr;
     }
     changeRequest->movingPhotoVideoRealPath_ = aniContext->realPath;
@@ -1297,7 +1399,8 @@ ani_object MediaAssetChangeRequestAni::AddMovingPhotoVideoResourceByArrayBuffer(
         "Failed to check size of data buffer");
     if (!CheckMovingPhotoVideo(changeRequest->movingPhotoVideoDataBuffer_,
         changeRequest->movingPhotoVideoBufferSize_)) {
-        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
         return nullptr;
     }
     changeRequest->movingPhotoVideoResourceMode_ = AddResourceMode::DATA_BUFFER;
@@ -1317,6 +1420,8 @@ ani_object MediaAssetChangeRequestAni::AddResourceByFileUri(ani_env *env, ani_ob
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueInt32(env, resourceTypeAni, resourceType) == ANI_OK,
@@ -1347,6 +1452,8 @@ ani_object MediaAssetChangeRequestAni::AddResourceByArrayBuffer(ani_env *env, an
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueInt32(env, resourceTypeAni, resourceType) == ANI_OK,
@@ -1381,6 +1488,8 @@ ani_object MediaAssetChangeRequestAni::AddResourceByPhotoProxy(ani_env *env, ani
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::NOT_SHARED),
+        "This operation is not supported for assets in shared albums");
 
     int32_t resourceType = static_cast<int32_t>(ResourceType::INVALID_RESOURCE);
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueInt32(env, resourceTypeAni, resourceType) == ANI_OK,
@@ -1511,9 +1620,9 @@ int32_t MediaAssetChangeRequestAni::CopyMovingPhotoVideo(const string &assetUri)
     string videoUri = assetUri;
     MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri uri(videoUri);
-    int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY);
+    int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITETRUNCATE);
     if (videoFd < 0) {
-        ANI_ERR_LOG("Failed to open video of moving photo with write-only mode");
+        ANI_ERR_LOG("Failed to open video of moving photo with write-truncate mode");
         return videoFd;
     }
 
@@ -1704,21 +1813,38 @@ int32_t MediaAssetChangeRequestAni::SubmitCacheWithoutCreation(std::string &uri,
     return UserFileClient::Insert(submitCacheUri, valuesBucket);
 }
 
-int32_t MediaAssetChangeRequestAni::SubmitCache(bool isCreation, bool isSetEffectMode,
-    bool isWriteGpsAdvanced, const int32_t userId)
+DataShare::DataShareValuesBucket MediaAssetChangeRequestAni::GetSubmitCacheValuesBucket(
+    SubmitCacheConfig submitCacheConfig)
+{
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
+    if (IsMovingPhoto()) {
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    if (submitCacheConfig.isSetEffectMode) {
+        valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    valuesBucket.Put(CONST_IS_CAMERA_EDIT_DATA, submitCacheConfig.isCameraEditData);
+    HandleValueBucketForSetLocation(fileAsset_, valuesBucket, submitCacheConfig.isWriteGpsAdvanced);
+    return valuesBucket;
+}
+
+int32_t MediaAssetChangeRequestAni::SubmitCache(SubmitCacheConfig submitCacheConfig)
 {
     CHECK_COND_RET(fileAsset_ != nullptr, E_FAIL, "Failed to check fileAsset_");
     CHECK_COND_RET(!cacheFileName_.empty() || !cacheMovingPhotoVideoName_.empty(), E_FAIL,
         "Failed to check cache file");
 
-    ANI_INFO_LOG("Check SubmitCache isWriteGpsAdvanced: %{public}d", isWriteGpsAdvanced);
+    ANI_INFO_LOG("Check SubmitCache isWriteGpsAdvanced: %{public}d", submitCacheConfig.isWriteGpsAdvanced);
 
     int32_t ret{E_FAIL};
     SubmitCacheReqBody reqBody;
-    reqBody.isWriteGpsAdvanced = isWriteGpsAdvanced;
+    reqBody.isWriteGpsAdvanced = submitCacheConfig.isWriteGpsAdvanced;
     SubmitCacheRespBody rspBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_SUBMIT_CACHE);
-    if (isCreation) {
+    if (submitCacheConfig.isCreation) {
         bool isValid = false;
         string displayName = creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
         CHECK_COND_RET(
@@ -1727,29 +1853,20 @@ int32_t MediaAssetChangeRequestAni::SubmitCache(bool isCreation, bool isSetEffec
         if (IsMovingPhoto()) {
             creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
-        HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, isWriteGpsAdvanced);
+        HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, submitCacheConfig.isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
-        ret = IPC::UserDefineIPCClient().SetUserId(userId).Call(businessCode, reqBody, rspBody);
+        ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).Call(businessCode, reqBody, rspBody);
     } else {
-        DataShare::DataShareValuesBucket valuesBucket;
-        valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
-        valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
+        DataShare::DataShareValuesBucket valuesBucket = GetSubmitCacheValuesBucket(submitCacheConfig);
         ret = PutMediaAssetEditData(valuesBucket);
         CHECK_COND_RET(ret == E_OK, ret, "Failed to put editData");
-        if (IsMovingPhoto()) {
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        if (isSetEffectMode) {
-            valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        HandleValueBucketForSetLocation(fileAsset_, valuesBucket, isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
         std::unordered_map<std::string, std::string> headerMap{
             {MediaColumn::MEDIA_ID, to_string(fileAsset_->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
-        ret = IPC::UserDefineIPCClient().SetUserId(userId).SetHeader(headerMap).Call(businessCode, reqBody, rspBody);
+        ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).SetHeader(headerMap).Call(businessCode,
+            reqBody, rspBody);
     }
-    if (rspBody.fileId > 0 && isCreation) {
+    if (rspBody.fileId > 0 && submitCacheConfig.isCreation) {
         SetNewFileAsset(rspBody.fileId, rspBody.outUri);
     }
     cacheFileName_.clear();
@@ -1769,7 +1886,13 @@ static bool SubmitCacheExecute(MediaAssetChangeRequestAniContext &context)
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_RET(fileAsset != nullptr, false, "Failed to get fileAsset");
     bool isWriteGpsAdvanced = changeRequest->GetIsWriteGpsAdvanced();
-    int32_t ret = changeRequest->SubmitCache(isCreation, isSetEffectMode, isWriteGpsAdvanced, fileAsset->GetUserId());
+    SubmitCacheConfig submitCacheConfig;
+    submitCacheConfig.isCreation = isCreation;
+    submitCacheConfig.isSetEffectMode = isSetEffectMode;
+    submitCacheConfig.isWriteGpsAdvanced = isWriteGpsAdvanced;
+    submitCacheConfig.userId = fileAsset->GetUserId();
+    submitCacheConfig.isCameraEditData = context.isCameraEditData;
+    int32_t ret = changeRequest->SubmitCache(submitCacheConfig);
     if (ret < 0) {
         context.SaveError(ret);
         ANI_ERR_LOG("Failed to write cache, ret: %{public}d", ret);
@@ -2485,6 +2608,7 @@ static bool AddFiltersExecute(MediaAssetChangeRequestAniContext &context)
 
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset->GetId());
+    valuesBucket.Put(CONST_IS_CAMERA_EDIT_DATA, context.isCameraEditData);
     int ret = changeRequest->PutMediaAssetEditData(valuesBucket);
     CHECK_COND_RET(ret == E_OK, false, "Failed to put editData");
     AssetChangeReqBody reqBody;
@@ -2496,6 +2620,136 @@ static bool AddFiltersExecute(MediaAssetChangeRequestAniContext &context)
     if (ret < 0) {
         context.SaveError(ret);
         ANI_ERR_LOG("Failed to add filters, ret: %{public}d", ret);
+        return false;
+    }
+    return true;
+}
+
+static int32_t ValidateLatestPairAssetExistsIPC(const string &uniqueId, int32_t userId, bool &assetExists)
+{
+    ValidateLatestPairReqBody reqBody;
+    ValidateLatestPairRespBody respBody;
+    reqBody.uniqueId = uniqueId;
+    uint32_t businessCode = static_cast<uint32_t>(
+        MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR);
+    std::unordered_map<std::string, std::string> headerMap{
+        {PhotoColumn::UNIQUE_ID, uniqueId}, {URI_TYPE, TYPE_PHOTOS}};
+    int32_t err = IPC::UserDefineIPCClient().SetUserId(userId).SetHeader(headerMap).Call(businessCode,
+        reqBody, respBody);
+    if (err != E_OK) {
+        ANI_ERR_LOG("ValidateLatestPair IPC failed, err:%{public}d", err);
+        return E_ERR;
+    }
+    assetExists = respBody.assetExists;
+    return E_OK;
+}
+
+static bool ValidateLatestPairAssetExists(const string &latestPair, int32_t userId = -1)
+{
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(PhotoColumn::UNIQUE_ID, latestPair);
+    std::vector<std::string> columns { MediaColumn::MEDIA_ID };
+    Uri uri(CONST_PAH_QUERY_PHOTO);
+    OperationObject object = OperationObject::UNKNOWN_OBJECT;
+    if (!MediaAssetRdbStore::GetInstance()->IsQueryAccessibleViaSandBox(uri, object, predicates) || userId != -1) {
+        bool assetExists = false;
+        int32_t ret = ValidateLatestPairAssetExistsIPC(latestPair, userId, assetExists);
+        return ret == E_OK && assetExists;
+    }
+    int errCode = 0;
+    auto resultSet = UserFileClient::Query(uri, predicates, columns, errCode, userId);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
+        ANI_ERR_LOG("ValidateLatestPair: asset not found for uniqueId");
+        return false;
+    }
+    return true;
+}
+
+static bool CheckLivePhoto4dEffectParams(ani_env *env, FileAsset *fileAsset,
+    bool containsAddResource, int32_t subtype)
+{
+    if (!containsAddResource || subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:set asset to live photo 4d, must be combined with the add moving photo");
+        return false;
+    }
+    string latestPair = fileAsset->GetLivePhoto4dLatestPair();
+    if (latestPair.empty()) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair cannot be empty when setting effect type");
+        return false;
+    }
+    if (!MediaFileUtils::IsValidUuid(latestPair)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair is not a valid uuid");
+        return false;
+    }
+    int32_t userId = fileAsset->GetUserId();
+    if (!ValidateLatestPairAssetExists(latestPair, userId)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair must have corresponding asset");
+        return false;
+    }
+    return true;
+}
+
+bool MediaAssetChangeRequestAni::CheckSetLivePhoto4dStatus(ani_env *env)
+{
+    if (!Contains(AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS)) {
+        return true;
+    }
+    auto fileAsset = GetFileAssetInstance();
+    if (fileAsset == nullptr) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "fileAsset is null");
+        return false;
+    }
+    int32_t livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    if (!MediaFileUtils::CheckLivePhoto4dStatus(livePhoto4dStatus)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "livePhoto4d:invalid live photo 4d status");
+        return false;
+    }
+    if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus)) {
+        bool containsAddResource = Contains(AssetChangeOperation::ADD_RESOURCE);
+        int32_t subtype = 0;
+        bool isValid = false;
+        if (containsAddResource) {
+            subtype = creationValuesBucket_.Get(PhotoColumn::PHOTO_SUBTYPE, isValid);
+        }
+        return CheckLivePhoto4dEffectParams(env, fileAsset.get(), containsAddResource, subtype);
+    }
+    string latestPair = fileAsset->GetLivePhoto4dLatestPair();
+    if (!latestPair.empty()) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair must be empty when setting non-effect type");
+        return false;
+    }
+    return true;
+}
+
+static bool SetLivePhoto4dStatusExecute(MediaAssetChangeRequestAniContext &context)
+{
+    ANI_INFO_LOG("livePhoto4d:enter SetLivePhoto4dStatusExecute");
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "livePhoto4d:changeRequest is nullptr");
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND_RET(fileAsset != nullptr, false, "livePhoto4d:fileAsset is nullptr");
+    AssetChangeReqBody reqBody;
+    reqBody.fileId = fileAsset->GetId();
+    reqBody.livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    reqBody.livePhoto4dLatestPair = fileAsset->GetLivePhoto4dLatestPair();
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_LIVEPHOTO_4D_STATUS);
+    std::unordered_map<std::string, std::string> headerMap{
+        {MediaColumn::MEDIA_ID, to_string(fileAsset->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
+    int32_t changedRows =
+        IPC::UserDefineIPCClient().SetUserId(context.userId_).SetHeader(headerMap).Call(businessCode, reqBody);
+    if (changedRows < 0) {
+        if (changedRows == -1) {
+            context.error = OHOS_INVALID_PARAM_CODE;
+        } else {
+            context.error = JS_E_INNER_FAIL;
+        }
+        ANI_ERR_LOG("livePhoto4d:Failed to update livephoto_4d_status of asset, err: %{public}d", changedRows);
         return false;
     }
     return true;
@@ -2520,6 +2774,7 @@ static const unordered_map<AssetChangeOperation, bool (*)(MediaAssetChangeReques
     { AssetChangeOperation::ADD_FILTERS, AddFiltersExecute },
     { AssetChangeOperation::SET_HIDDEN_ATTRIBUTE, SetHiddenAttributeExecute },
     { AssetChangeOperation::SET_DISPLAY_NAME_BY_FILE, SetDisplayNameByFileExecute },
+    { AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS, SetLivePhoto4dStatusExecute },
 };
 
 static void ApplyAssetChangeRequestExecute(std::unique_ptr<MediaAssetChangeRequestAniContext> &context)
@@ -2550,7 +2805,8 @@ static void ApplyAssetChangeRequestExecute(std::unique_ptr<MediaAssetChangeReque
             valid = iter->second(*context);
             tracer.Finish();
         } else if (changeOperation == AssetChangeOperation::CREATE_FROM_SCRATCH ||
-                   changeOperation == AssetChangeOperation::SET_EDIT_DATA) {
+            changeOperation == AssetChangeOperation::SET_EDIT_DATA ||
+            changeOperation == AssetChangeOperation::SET_CAMERA_EDIT_DATA) {
             // Perform CREATE_FROM_SCRATCH and SET_EDIT_DATA during GET_WRITE_CACHE_HANDLER or ADD_RESOURCE.
             valid = true;
         } else {
@@ -2573,8 +2829,10 @@ ani_status MediaAssetChangeRequestAni::ApplyChanges(ani_env *env)
     CHECK_COND_WITH_RET_MESSAGE(env, aniContext != nullptr, ANI_INVALID_ARGS, "aniContext is nullptr");
     aniContext->objectInfo = this;
     CHECK_COND_WITH_RET_MESSAGE(env, aniContext->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
-    CHECK_COND_WITH_RET_MESSAGE(env, CheckChangeOperations(env), ANI_INVALID_ARGS,
+    CHECK_COND_WITH_RET_MESSAGE(env, CheckChangeOperations(env, aniContext), ANI_INVALID_ARGS,
         "Failed to check asset change request operations");
+    CHECK_COND_WITH_RET_MESSAGE(env, CheckSetLivePhoto4dStatus(env), ANI_INVALID_ARGS,
+        "Failed to check asset set live photo 4d status request operations");
     aniContext->assetChangeOperations = assetChangeOperations_;
     aniContext->addResourceTypes = addResourceTypes_;
     assetChangeOperations_.clear();
@@ -2625,7 +2883,8 @@ ani_object MediaAssetChangeRequestAni::SaveCameraPhoto(ani_env *env, ani_object 
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
 
-    if (changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) &&
+    if ((changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        changeRequest->Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA)) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
     }
@@ -2648,7 +2907,8 @@ ani_object MediaAssetChangeRequestAni::SaveCameraPhotoByImageFileType(ani_env *e
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
 
-    if (changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) &&
+    if ((changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        changeRequest->Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA)) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
     }
@@ -2973,11 +3233,6 @@ ani_object MediaAssetChangeRequestAni::DeleteAssetsPermanentlyWithUri(ani_env *e
 
 ani_object MediaAssetChangeRequestAni::SetFavorite(ani_env *env, ani_object object, ani_boolean favoriteState)
 {
-    if (!MediaLibraryAniUtils::IsSystemApp()) {
-        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return nullptr;
-    }
-
     auto context = make_unique<MediaAssetChangeRequestAniContext>();
     CHECK_COND_WITH_MESSAGE(env, context != nullptr, "Failed to create asyncContext");
     bool isFavorite = static_cast<bool>(favoriteState);
@@ -2985,6 +3240,10 @@ ani_object MediaAssetChangeRequestAni::SetFavorite(ani_env *env, ani_object obje
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    if (changeRequest->GetFileAssetInstance()->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        AniError::ThrowError(env, JS_INNER_FAIL, "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
     changeRequest->GetFileAssetInstance()->SetFavorite(isFavorite);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_FAVORITE);
     return ReturnAniUndefined(env);
@@ -3004,8 +3263,32 @@ ani_object MediaAssetChangeRequestAni::SetHidden(ani_env *env, ani_object object
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetHidden(isHidden);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_HIDDEN);
+    return ReturnAniUndefined(env);
+}
+
+ani_object MediaAssetChangeRequestAni::SetLivePhoto4dStatus(
+    ani_env *env, ani_object object, ani_int livePhoto4dStatus, ani_string livePhoto4dLatestPair)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ReturnAniUndefined(env);
+    }
+    auto changeRequest = MediaAssetChangeRequestAni::Unwrap(env, object);
+    CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    fileAsset->SetLivePhoto4dStatus(static_cast<int32_t>(livePhoto4dStatus));
+    std::string latestPair;
+    MediaLibraryAniUtils::GetString(env, livePhoto4dLatestPair, latestPair);
+    if (!latestPair.empty()) {
+        fileAsset->SetLivePhoto4dLatestPair(latestPair);
+    }
+    changeRequest->RecordChangeOperation(AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS);
     return ReturnAniUndefined(env);
 }
 
@@ -3072,6 +3355,9 @@ ani_object MediaAssetChangeRequestAni::SetUserComment(ani_env *env, ani_object o
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetUserComment(userCommentValue);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_USER_COMMENT);
     return ReturnAniUndefined(env);
@@ -3097,6 +3383,9 @@ ani_object MediaAssetChangeRequestAni::SetLocation(ani_env *env, ani_object obje
     auto changeRequest = context->objectInfo;
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env,
+        changeRequest->GetFileAssetInstance()->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     changeRequest->GetFileAssetInstance()->SetLongitude(longitudeValue);
     changeRequest->GetFileAssetInstance()->SetLatitude(latitudeValue);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_LOCATION);
@@ -3117,6 +3406,8 @@ ani_object MediaAssetChangeRequestAni::SetTitle(ani_env *env, ani_object object,
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is nullptr");
+    CHECK_COND_WITH_MESSAGE(env, fileAsset->GetIsShared() != static_cast<int32_t>(PhotoSharedType::SHARED),
+        "This operation is not supported for assets in shared albums");
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title_str + "." + extension;
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK, "Invalid title");

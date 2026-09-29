@@ -28,13 +28,16 @@
 #include "media_column.h"
 #include "download_thumbnail_query_dto.h"
 #include "cloud_lake_info.h"
+#include "cloud_media_define.h"
+#include "lcd_file_info_dto.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
-class CloudMediaDownloadDao {
+class EXPORT CloudMediaDownloadDao {
 public:
     int32_t GetDownloadThmNum(const int32_t type, int32_t &totalNum);
     int32_t GetDownloadThms(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosPo> &photos);
+    int32_t GetDownloadThmsShare(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosPo> &photos);
     int32_t GetDownloadAsset(const std::vector<int32_t> &fileIds, std::vector<PhotosPo> &photos);
     int32_t UpdateDownloadThm(const std::vector<std::string> &cloudIds);
     int32_t UpdateDownloadLcd(const std::vector<std::string> &cloudIds);
@@ -48,9 +51,13 @@ public:
     int32_t UpdateDownloadAsset(const OnDownloadAssetData &assetData,
         const CloudMediaScanService::ScanResult& scanResult);
     int32_t CleanAttachmentByCloudId(const std::vector<std::string> &cloudIdList);
+    int32_t UpdateLcdFileSize(const std::vector<std::string> &cloudIds);
+    int32_t UpdateLcdFileSizeAndLcdSize(const std::vector<std::string> &cloudIds);
+    int32_t HandleExtraDataVersion(const CloudMediaScanService::ScanResult &scanResult,
+        NativeRdb::ValuesBucket &values, const std::optional<PhotosPo> &localPhotosPoOp);
 
 private:
-    NativeRdb::AbsRdbPredicates GetDownloadThmsConditions(const int32_t type);
+    NativeRdb::RdbPredicates GetDownloadThmsConditions(const int32_t type);
     int32_t GetFileIdFromUri(const std::string &uri, int32_t &fileUniqueId);
     void FillHdrModeInfo(NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult,
         const std::optional<PhotosPo> &localPhotosPoOp);
@@ -58,6 +65,7 @@ private:
         bool isNeedUpdate);
     void FillScanedHeightWidth(NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult);
     int32_t HandleAdditionalFileInfo(const OnDownloadAssetData &assetData, NativeRdb::ValuesBucket &values);
+    int32_t QueryLcdFileInfoByCloudIds(const std::vector<std::string> &cloudIds, std::vector<LcdFileInfoDto> &result);
 
 private:
     const std::vector<std::string> DOWNLOAD_THUMBNAIL_COLUMNS = {
@@ -65,13 +73,14 @@ private:
         MediaColumn::MEDIA_FILE_PATH,
         MediaColumn::MEDIA_SIZE,
         MediaColumn::MEDIA_TYPE,
-        PhotoColumn::PHOTO_CLOUD_ID,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_CLOUD_ID,
         PhotoColumn::PHOTO_THUMB_STATUS,
         PhotoColumn::PHOTO_ORIENTATION,
         PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
         PhotoColumn::PHOTO_STORAGE_PATH,
-        MediaColumn::MEDIA_HIDDEN,
+        PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_HIDDEN,
         MediaColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
     };
     const std::vector<std::string> COLUMNS_DOWNLOAD_ASSET_QUERY_BY_FILE_ID = {
         PhotoColumn::MEDIA_ID,
@@ -88,6 +97,7 @@ private:
         PhotoColumn::PHOTO_SUBTYPE,
         MediaColumn::MEDIA_HIDDEN,
         MediaColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
     };
     const uint32_t THM_TO_DOWNLOAD_MASK = 0x2;
     const uint32_t LCD_TO_DOWNLOAD_MASK = 0x1;

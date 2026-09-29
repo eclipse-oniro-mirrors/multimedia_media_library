@@ -25,6 +25,7 @@
 namespace OHOS::Media {
 enum class ActiveAnalysisCallbackCode : uint32_t {
     ON_ANALYSIS_FINISHED = 0,
+    ON_TOOL_FINISHED = 1,
 };
 
 class ActiveAnalysisCallbackResult {
@@ -38,7 +39,36 @@ public:
 
     bool Unmarshalling(MessageParcel &parcel)
     {
-        result = parcel.ReadInt32();
+        if (!parcel.ReadInt32(result)) {
+            return false;
+        }
+        return true;
+    }
+};
+
+class AnalysisToolCallbackResult {
+public:
+    int32_t code = 0;
+    std::string result;
+
+    bool Marshalling(MessageParcel &parcel) const
+    {
+        if (!parcel.WriteInt32(code)) {
+            return false;
+        }
+        if (!parcel.WriteString(result)) {
+            return false;
+        }
+        return true;
+    }
+    bool Unmarshalling(MessageParcel &parcel)
+    {
+        if (!parcel.ReadInt32(code)) {
+            return false;
+        }
+        if (!parcel.ReadString(result)) {
+            return false;
+        }
         return true;
     }
 };
@@ -48,6 +78,7 @@ public:
     DECLARE_INTERFACE_DESCRIPTOR(u"OHOS.Media.ActiveAnalysisCallback");
 
     virtual int32_t OnAnalysisFinished(const ActiveAnalysisCallbackResult &result) = 0;
+    virtual int32_t OnToolFinished(const AnalysisToolCallbackResult &result) = 0;
 };
 
 class ActiveAnalysisCallbackProxy : public IRemoteProxy<IActiveAnalysisCallback> {
@@ -76,6 +107,25 @@ public:
             data, reply, option);
     }
 
+    int32_t OnToolFinished(const AnalysisToolCallbackResult &result) override
+    {
+        MessageParcel data;
+        MessageParcel reply;
+        MessageOption option(MessageOption::TF_ASYNC);
+        if (!data.WriteInterfaceToken(GetDescriptor())) {
+            return IPC_STUB_INVALID_DATA_ERR;
+        }
+        if (!result.Marshalling(data)) {
+            return IPC_STUB_INVALID_DATA_ERR;
+        }
+        auto remote = Remote();
+        if (remote == nullptr) {
+            return IPC_STUB_INVALID_DATA_ERR;
+        }
+        return remote->SendRequest(static_cast<uint32_t>(ActiveAnalysisCallbackCode::ON_TOOL_FINISHED),
+            data, reply, option);
+    }
+
 private:
     static inline BrokerDelegator<ActiveAnalysisCallbackProxy> delegator_;
 };
@@ -88,15 +138,31 @@ public:
             return ERR_UNKNOWN_TRANSACTION;
         }
 
-        if (code != static_cast<uint32_t>(ActiveAnalysisCallbackCode::ON_ANALYSIS_FINISHED)) {
-            return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
+        if (code == static_cast<uint32_t>(ActiveAnalysisCallbackCode::ON_ANALYSIS_FINISHED)) {
+            ActiveAnalysisCallbackResult result;
+            if (!result.Unmarshalling(data)) {
+                return IPC_STUB_INVALID_DATA_ERR;
+            }
+            return OnAnalysisFinished(result);
         }
+        if (code == static_cast<uint32_t>(ActiveAnalysisCallbackCode::ON_TOOL_FINISHED)) {
+            AnalysisToolCallbackResult result;
+            if (!result.Unmarshalling(data)) {
+                return IPC_STUB_INVALID_DATA_ERR;
+            }
+            return OnToolFinished(result);
+        }
+        return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
+    }
 
-        ActiveAnalysisCallbackResult result;
-        if (!result.Unmarshalling(data)) {
-            return IPC_STUB_INVALID_DATA_ERR;
-        }
-        return OnAnalysisFinished(result);
+    int32_t OnAnalysisFinished(const ActiveAnalysisCallbackResult &result) override
+    {
+        return IPC_STUB_INVALID_DATA_ERR;
+    }
+
+    int32_t OnToolFinished(const AnalysisToolCallbackResult &result) override
+    {
+        return IPC_STUB_INVALID_DATA_ERR;
     }
 };
 } // namespace OHOS::Media

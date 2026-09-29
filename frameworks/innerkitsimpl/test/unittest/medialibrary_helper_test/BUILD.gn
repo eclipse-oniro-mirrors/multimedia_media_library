@@ -44,10 +44,12 @@ ohos_unittest("media_library_helper_test") {
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/album_asset_test.cpp",
+    "./src/c2pa_utils_test.cpp",
     "./src/dir_asset_test.cpp",
     "./src/exif_rotate_utils_test.cpp",
     "./src/fetch_result_test.cpp",
     "./src/file_asset_test.cpp",
+    "./src/keyd_mutex_test.cpp",
     "./src/media_asset_rdbstore_test.cpp",
     "./src/media_column_test.cpp",
     "./src/media_file_uri_test.cpp",
@@ -77,6 +79,7 @@ ohos_unittest("media_library_helper_test") {
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_camera_helper:media_library_camera_helper",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",
   ]
 
@@ -93,8 +96,10 @@ ohos_unittest("media_library_helper_test") {
     "hilog:libhilog",
     "image_framework:image_native",
     "ipc:ipc_single",
+    "libuv:uv",
     "media_foundation:media_foundation",
     "napi:ace_napi",
+    "node:node_header_notice",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

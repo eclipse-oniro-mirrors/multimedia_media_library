@@ -18,6 +18,7 @@
 #include <fstream>
 
 #include "lcd_aging_manager.h"
+#include "lcd_aging_dao.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_worker.h"
 #include "media_column.h"
@@ -37,6 +38,7 @@
 #include "values_bucket.h"
 #include "vision_db_sqls.h"
 #include "story_db_sqls.h"
+#include "lcd_aging_service.h"
 
 using namespace std;
 using namespace OHOS;
@@ -83,6 +85,7 @@ struct PhotoTestData {
     int32_t thumbStatus = 0;
     int64_t dateTrashed = 0;
     int64_t realLcdVisitTime = DATE_TAKEN_TEST_VALUE - THIRTY_DAYS_MS;
+    int32_t isShared = 0;
 };
 
 static void InitRdbStore()
@@ -164,6 +167,7 @@ static int32_t InsertPhotoData(int64_t &testId, const PhotoTestData &data)
     values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, data.thumbStatus);
     values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, data.dateTrashed);
     values.PutLong(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, data.realLcdVisitTime);
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, data.isShared);
     return g_rdbStore->Insert(testId, PhotoColumn::PHOTOS_TABLE, values);
 }
 
@@ -807,34 +811,32 @@ HWTEST_F(MediaLibraryLcdAgingTest, GetNeedAgingLcdSize_SingleRecord_test_002, Te
     DeletePhotoDataById(testId);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ZeroTaskSize_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_EmptyDb_test_001, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("ExecuteAgingLoop_ZeroTaskSize_test_001: test with taskSize=0, not enter while loop, returns E_ERR");
+    MEDIA_INFO_LOG("ExecuteAgingLoop_EmptyDb_test_001: test with empty db");
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
-    const int64_t taskSize = 0;
 
     manager.totalAgingLcdNumber_ = 0;
     manager.hasAgingLcdNumber_ = 0;
 
-    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+    int32_t ret = manager.ExecuteAgingLoop(shouldStop);
 
-    EXPECT_EQ(ret, E_ERR);
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_SmallTaskSize_test_003, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_SmallTotal_test_003, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("ExecuteAgingLoop_SmallTaskSize_test_003: test with small positive taskSize");
+    MEDIA_INFO_LOG("ExecuteAgingLoop_SmallTotal_test_003: test with small totalAgingLcdNumber");
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
-    const int64_t taskSize = 10;
 
     manager.totalAgingLcdNumber_ = 10;
     manager.hasAgingLcdNumber_ = 0;
 
-    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+    int32_t ret = manager.ExecuteAgingLoop(shouldStop);
 
-    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ShouldStopImmediate_test_004, TestSize.Level1)
@@ -842,14 +844,13 @@ HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ShouldStopImmediate_test_004
     MEDIA_INFO_LOG("ExecuteAgingLoop_ShouldStopImmediate_test_004: test with shouldStop=true");
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(true);
-    const int64_t taskSize = 100;
 
     manager.totalAgingLcdNumber_ = 100;
     manager.hasAgingLcdNumber_ = 0;
 
-    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+    int32_t ret = manager.ExecuteAgingLoop(shouldStop);
 
-    EXPECT_TRUE(ret == E_AGING_STOP);
+    EXPECT_EQ(ret, E_AGING_STOP);
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_NoTrashedData_test_001, TestSize.Level1)
@@ -1397,20 +1398,11 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_006, Test
     std::atomic<bool> shouldStop(false);
 
     system::SetParameter(TEST_CLONE_STATE, "1");
-    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
-    EXPECT_EQ(ret, E_AGING_INTERRUPT);
-    system::SetParameter(TEST_CLONE_STATE, "0");
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_007, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_007: clone flag causes interrupt");
-    auto& manager = LcdAgingManager::GetInstance();
-    std::atomic<bool> shouldStop(false);
-
     system::SetParameter(TEST_CLONE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
+
+    system::SetParameter(TEST_CLONE_STATE, "0");
     system::SetParameter(TEST_CLONE_FLAG, "0");
 }
 
@@ -1472,5 +1464,1065 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_StopDeepOptimizeSpace_test_00
     worker.shouldStop_.store(false);
 }
 
+HWTEST_F(MediaLibraryLcdAgingTest, CheckLcdAgingTargetReached_EmptyDb_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckLcdAgingTargetReached_EmptyDb_test_001: empty db, LCD count below threshold");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    int32_t excessSize = 0;
+    int32_t ret = manager.CheckLcdAgingTargetReached(excessSize);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, CheckLcdAgingTargetReached_SingleRecord_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckLcdAgingTargetReached_SingleRecord_test_002: single record below threshold");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    int32_t excessSize = 0;
+    ret = manager.CheckLcdAgingTargetReached(excessSize);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, CheckLcdAgingTargetReached_LocalPosition_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckLcdAgingTargetReached_LocalPosition_test_003: position=1, not counted in LCD");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    PhotoTestData data;
+    data.position = 1;
+    int64_t testId;
+    int32_t ret = InsertPhotoData(testId, data);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    int32_t excessSize = 0;
+    ret = manager.CheckLcdAgingTargetReached(excessSize);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_CappedAt99_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_CappedAt99_test_001: progress capped at 99 when would exceed");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 100;
+    manager.hasAgingLcdNumber_ = 100;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 99);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_CappedAt99_NearTotal_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_CappedAt99_NearTotal_test_002: progress 99 when 99/100 aged");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 100;
+    manager.hasAgingLcdNumber_ = 99;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 99);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_NoRegression_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_NoRegression_test_003: progress never regresses");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 200;
+    manager.hasAgingLcdNumber_ = 100;
+    manager.lastAgingProgress_ = 60;
+
+    manager.HandleAgingProgress();
+
+    uint32_t progress = manager.lastAgingProgress_;
+    EXPECT_GE(progress, 60);
+    EXPECT_LE(progress, 99);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_LowProgress_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_LowProgress_test_004: normal low progress not capped");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 1000;
+    manager.hasAgingLcdNumber_ = 50;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 5);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_ZeroTotal_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_ZeroTotal_test_005: totalAgingLcdNumber=0, early return");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 0;
+    manager.hasAgingLcdNumber_ = 50;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 0);
+}
+
+static int32_t InsertLcdPhotoData(int64_t &testId, int32_t position, int64_t lcdFileSize = 0,
+    int64_t dateTaken = DATE_TAKEN_TEST_VALUE, int64_t realLcdVisitTime = DATE_TAKEN_TEST_VALUE)
+{
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, 0);
+    values.PutLong(MediaColumn::MEDIA_DATE_TAKEN, dateTaken);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, position);
+    values.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, 0);
+    values.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, 0);
+    values.PutLong(MediaColumn::MEDIA_TIME_PENDING, 0);
+    values.PutInt(PhotoColumn::PHOTO_IS_TEMP, 0);
+    values.PutInt(MediaColumn::MEDIA_IS_FAV, 0);
+    values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, 0);
+    values.PutInt(MediaColumn::MEDIA_DATE_TRASHED, 0);
+    values.PutInt(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, realLcdVisitTime);
+    values.PutInt(PhotoColumn::PHOTO_LCD_FILE_SIZE, lcdFileSize);
+    values.PutInt(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE));
+    values.PutInt(PhotoColumn::PHOTO_ORIENTATION, 0);
+    values.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, static_cast<int32_t>(ExifRotateType::TOP_LEFT));
+    values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_READY, 1);
+    values.PutLong(MediaColumn::MEDIA_DATE_MODIFIED, DATE_TAKEN_TEST_VALUE);
+    return g_rdbStore->Insert(testId, PhotoColumn::PHOTOS_TABLE, values);
+}
+
+static int32_t InsertMultipleLcdPhotos(vector<int64_t> &testIds, int32_t count, int32_t position = 2,
+    int64_t lcdFileSize = 0, int32_t daysOffset = 0)
+{
+    for (int32_t i = 0; i < count; i++) {
+        int64_t testId;
+        int64_t dateTaken = DATE_TAKEN_TEST_VALUE - daysOffset * 24 * 60 * 60 * 1000 + i;
+        int64_t realLcdVisitTime = dateTaken;
+        int32_t ret = InsertLcdPhotoData(testId, position, lcdFileSize, dateTaken, realLcdVisitTime);
+        if (ret != NativeRdb::E_OK) {
+            return ret;
+        }
+        testIds.push_back(testId);
+    }
+    return NativeRdb::E_OK;
+}
+
+static void SetupLcdEnvironment()
+{
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
+    system::SetParameter(TEST_CLONE_STATE, "0");
+    system::SetParameter(TEST_CLONE_FLAG, "0");
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(false);
+    auto& worker = LcdAgingWorker::GetInstance();
+    worker.isThreadRunning_.store(false);
+    worker.shouldStop_.store(false);
+}
+
+static void CleanupLcdEnvironment(const vector<int64_t> &testIds)
+{
+    for (auto testId : testIds) {
+        DeletePhotoDataById(testId);
+    }
+    SetupLcdEnvironment();
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_LcdCountLessThanMin_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_LcdCountLessThanMin_test_001");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_IsCloning_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_IsCloning_test_002");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_IsRestoring_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_IsRestoring_test_003");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_IsCleaning_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_IsCleaning_test_004");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& worker = LcdAgingWorker::GetInstance();
+    worker.isThreadRunning_.store(true);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    worker.isThreadRunning_.store(false);
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_IsMarking_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_IsMarking_test_005");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(true);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(false);
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_HasReleasable_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_HasReleasable_test_006");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_MultipleConditions_test_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_MultipleConditions_test_007");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(true);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(false);
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_BoundaryCount_test_008, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_BoundaryCount_test_008");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_HighCount_test_009, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_HighCount_test_009");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 60000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_NoLcd_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_NoLcd_test_001");
+    SetupLcdEnvironment();
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    int32_t ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(space, 0);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_BelowThreshold_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_BelowThreshold_test_002");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 39999, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_ExceedThreshold_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_ExceedThreshold_test_003");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 40001, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_OldPhotos_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_OldPhotos_test_005");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 45000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_MixedPhotos_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_MixedPhotos_test_006");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 25000, 2, 102400, 0);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    vector<int64_t> oldTestIds;
+    ret = InsertMultipleLcdPhotos(oldTestIds, 20000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    testIds.insert(testIds.end(), oldTestIds.begin(), oldTestIds.end());
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_LargeFileSize_test_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_LargeFileSize_test_007");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 45000, 2, 2 * 1024 * 1024, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_ZeroFileSize_test_008, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_ZeroFileSize_test_008");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 45000, 2, 0, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_LargeScale_test_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_LargeScale_test_010");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_Empty_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_Empty_test_003");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 0);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_CleanFlagSet_test_013, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_CleanFlagSet_test_013");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET clean_flag = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_SyncStatusNotZero_test_014, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_SyncStatusNotZero_test_014");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET sync_status = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_IsFavoriteSet_test_015, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_IsFavoriteSet_test_015");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET is_favorite = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_ThumbStatusSet_test_016, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_ThumbStatusSet_test_016");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET thumb_status = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_MixedPositions_test_017, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_MixedPositions_test_017");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 16666, 1, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    vector<int64_t> testIds2;
+    ret = InsertMultipleLcdPhotos(testIds2, 16667, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    vector<int64_t> testIds3;
+    ret = InsertMultipleLcdPhotos(testIds3, 16667, 3, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    testIds.insert(testIds.end(), testIds2.begin(), testIds2.end());
+    testIds.insert(testIds.end(), testIds3.begin(), testIds3.end());
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_JustAboveMin_test_018, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_JustAboveMin_test_018");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50001, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(result);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_AllFlagsSet_test_020, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_AllFlagsSet_test_020");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(true);
+    auto& worker = LcdAgingWorker::GetInstance();
+    worker.isThreadRunning_.store(true);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool result = false;
+    ret = service.HandleCanPerformDeepOptimizeSpace(result);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(result);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
+    LcdAgingService::GetInstance().SetMarkingLcdStatus(false);
+    worker.isThreadRunning_.store(false);
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_JustAboveThreshold_test_013, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_JustAboveThreshold_test_013");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 40001, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_JustBelowThreshold_test_014, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_JustBelowThreshold_test_014");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 39999, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(space, 0);
+    
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_VaryingFileSizes_test_016, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_VaryingFileSizes_test_016");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    for (int32_t i = 0; i < 45000; i++) {
+        int64_t testId;
+        int64_t fileSize = (i % 20) * 102400;
+        int64_t dateTaken = DATE_TAKEN_TEST_VALUE - (THIRTY_DAYS_MS * 31 / 30) + i;
+        int32_t ret = InsertLcdPhotoData(testId, 2, fileSize, dateTaken, dateTaken);
+        ASSERT_EQ(ret, NativeRdb::E_OK);
+        testIds.push_back(testId);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    int32_t ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+    
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_MixedPositions_test_017, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_MixedPositions_test_017");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 15000, 1, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    vector<int64_t> testIds2;
+    ret = InsertMultipleLcdPhotos(testIds2, 15000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    vector<int64_t> testIds3;
+    ret = InsertMultipleLcdPhotos(testIds3, 15000, 3, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    testIds.insert(testIds.end(), testIds2.begin(), testIds2.end());
+    testIds.insert(testIds.end(), testIds3.begin(), testIds3.end());
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_31Days_test_019, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_31Days_test_019");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 45000, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_GetDeepOptimizableSpace_VeryOldPhotos_test_020, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_GetDeepOptimizableSpace_VeryOldPhotos_test_020");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 45000, 2, 102400, 365);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    int64_t space = 0;
+    ret = service.HandleGetDeepOptimizableSpace(space);
+
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(space, 0);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_Exactly30Days_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_Exactly30Days_test_005");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 30);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_LcdUsingStatusSet_test_009, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_LcdUsingStatusSet_test_009");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoExtColumn::PHOTOS_EXT_TABLE +
+            " SET lcd_using_status = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_IsTempSet_test_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_IsTempSet_test_010");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET is_temp = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_TimePendingSet_test_011, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_TimePendingSet_test_011");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET time_pending = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_SyncStatusNotZero_test_012, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_SyncStatusNotZero_test_012");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET sync_status = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_CleanFlagSet_test_013, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_CleanFlagSet_test_013");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET clean_flag = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_IsFavoriteSet_test_014, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_IsFavoriteSet_test_014");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET is_favorite = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_HasReleasableLcdImages_ThumbStatusBitSet_test_015, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingService_HasReleasableLcdImages_ThumbStatusBitSet_test_015");
+    SetupLcdEnvironment();
+
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultipleLcdPhotos(testIds, 100, 2, 102400, 31);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    for (auto testId : testIds) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+            " SET thumb_status = 1 WHERE file_id = " + to_string(testId);
+        g_rdbStore->ExecuteSql(updateSql);
+    }
+
+    auto& service = LcdAgingService::GetInstance();
+    bool hasReleasable = service.HasReleasableLcdImages();
+
+    EXPECT_FALSE(hasReleasable);
+
+    CleanupLcdEnvironment(testIds);
+}
+
+// 用例说明：共享资产被 QueryAgingLcdDataByFileIds 过滤
+// 覆盖场景：fileIds 混合共享与非共享资产
+// 业务验证：共享 fileId 不出现在查询结果，非共享正常返回
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingDao_QueryAgingLcdDataByFileIds_SharedAsset_test_001, TestSize.Level1)
+{
+    PhotoTestData sharedData;
+    sharedData.isShared = 1;
+    int64_t sharedId;
+    ASSERT_EQ(InsertPhotoData(sharedId, sharedData), NativeRdb::E_OK);
+
+    PhotoTestData normalData;
+    int64_t normalId;
+    ASSERT_EQ(InsertPhotoData(normalId, normalData), NativeRdb::E_OK);
+
+    LcdAgingDao dao;
+    vector<int64_t> fileIds = { sharedId, normalId };
+    vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    int32_t ret = dao.QueryAgingLcdDataByFileIds(fileIds, lcdAgingFileInfoList);
+    EXPECT_EQ(ret, E_OK);
+
+    bool hasShared = false;
+    bool hasNormal = false;
+    for (const auto& info : lcdAgingFileInfoList) {
+        if (info.fileId == sharedId) {
+            hasShared = true;
+        }
+        if (info.fileId == normalId) {
+            hasNormal = true;
+        }
+    }
+    EXPECT_FALSE(hasShared);
+    EXPECT_TRUE(hasNormal);
+
+    DeletePhotoDataById(sharedId);
+    DeletePhotoDataById(normalId);
+}
 } // namespace Media
 } // namespace OHOS

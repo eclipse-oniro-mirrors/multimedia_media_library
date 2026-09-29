@@ -25,6 +25,7 @@
 #include "media_asset_change_request_napi.h"
 #include "media_assets_change_request_napi.h"
 #include "media_album_change_request_napi.h"
+#include "media_share_album_change_request_napi.h"
 #include "media_asset_manager_napi.h"
 #include "media_device_column.h"
 #include "media_file_uri.h"
@@ -51,6 +52,11 @@
 #include "photo_album_napi.h"
 #include "parameters.h"
 #include "js_interface_helper.h"
+#include "user_define_ipc_client.h"
+#include "medialibrary_business_code.h"
+#include "get_assets_vo.h"
+#include "get_albums_by_ids_vo.h"
+#include "result_set_utils.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -70,6 +76,7 @@ static const std::unordered_map<int32_t, std::string> NEED_COMPATIBLE_COLUMN_MAP
 static const uint8_t BINARY_FEATURE_END_FLAG = 0x01;
 static const int32_t MIN_REQUIRED_PARAMS_1 = 1;
 static const int32_t MIN_REQUIRED_PARAMS_2 = 2;
+static const int32_t SHARED_ASSET_FLAG = 1;
 using json = nlohmann::json;
 napi_value MediaLibraryNapiUtils::NapiDefineClass(napi_env env, napi_value exports, const NapiClassInfo &info)
 {
@@ -188,6 +195,23 @@ napi_status MediaLibraryNapiUtils::GetParamStringWithLength(napi_env env, napi_v
 napi_status MediaLibraryNapiUtils::GetParamStringPathMax(napi_env env, napi_value arg, string &result)
 {
     CHECK_STATUS_RET(GetParamStr(env, arg, PATH_MAX, result), "Failed to get string parameter");
+    return napi_ok;
+}
+
+napi_status MediaLibraryNapiUtils::GetParamStringStrict(napi_env env, napi_value arg, size_t maxLen, string &result)
+{
+    napi_valuetype valueType = napi_undefined;
+    CHECK_STATUS_RET(napi_typeof(env, arg, &valueType), "Failed to get type");
+    CHECK_COND_RET(valueType == napi_string, napi_string_expected, "Type is not as expected string");
+    size_t actualLen = 0;
+    CHECK_STATUS_RET(napi_get_value_string_utf8(env, arg, nullptr, 0, &actualLen),
+        "Failed to get string length");
+    CHECK_COND_RET(actualLen <= maxLen, napi_string_expected, "String exceeds max length");
+    unique_ptr<char[]> buffer = make_unique<char[]>(actualLen + 1);
+    CHECK_COND_RET(buffer != nullptr, napi_invalid_arg, "Failed to alloc buffer for parameter");
+    CHECK_STATUS_RET(napi_get_value_string_utf8(env, arg, buffer.get(), actualLen + 1, &actualLen),
+        "Failed to get string value");
+    result = string(buffer.get());
     return napi_ok;
 }
 
@@ -400,6 +424,7 @@ static void HandleSpecialPredicateProcessUri(AsyncContext &context, const FetchO
     }
     context->networkId = fileUri.GetNetworkId();
     string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
+    context->uriMap[fileUri.GetFileId()] = uri;
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 
@@ -583,7 +608,6 @@ bool MediaLibraryNapiUtils::IsPredicateValid(shared_ptr<DataShareAbsPredicates> 
     const FetchOptionType &fetchOptType)
 {
     constexpr int32_t FIELD_IDX = 0;
-    PrintPredicateSafe(predicate);
     auto &items = predicate->GetOperationList();
     for (auto &item : items) {
         if (API23_PLUS_OPERATIONS.find(static_cast<DataShare::OperationType>(item.operation)) ==
@@ -642,8 +666,11 @@ napi_status MediaLibraryNapiUtils::GetPredicate(napi_env env, const napi_value a
             return napi_invalid_arg;
         }
         shared_ptr<DataShareAbsPredicates> predicate = jsProxy->GetInstance();
-        CHECK_COND_RET(IsPredicateValid(predicate, fetchOptType), napi_invalid_arg,
-            "IsPredicateValid: invalid predicate");
+        if (!IsPredicateValid(predicate, fetchOptType)) {
+            PrintPredicateSafe(predicate);
+            NAPI_ERR_LOG("IsPredicateValid: invalid predicate");
+            return napi_invalid_arg;
+        }
         CHECK_COND_RET(HandleSpecialPredicate(context, predicate, fetchOptType, move(operations)) == TRUE,
             napi_invalid_arg, "invalid predicate");
         CHECK_COND_RET(GetLocationPredicate(context, predicate) == TRUE, napi_invalid_arg, "invalid predicate");
@@ -970,6 +997,9 @@ static int32_t TransCommonErrorCode(int error)
         case E_SCENE_HAS_CANCEL:
             return JS_E_PARAM_INVALID;
 
+        case E_SHARE_ALBUM_INVALID_ID_ARG:
+            return MEDIA_LIBRARY_INVALID_PARAMETER_ERROR;
+        case E_SET_SHARE_ALBUM_NAME_DB_FAIL:
         case E_INNER_CONVERT_FORMAT:
         case E_INNER_FAIL:
         case E_OPR_DEBUG_DB_FAIL:
@@ -980,6 +1010,10 @@ static int32_t TransCommonErrorCode(int error)
         case E_OPERATION_NOT_SUPPORT:
             return JS_E_OPR_TYPE_NOT_SUPPORT;
 
+        case E_SHARE_ALBUM_NOT_SUPPORT_PARAM_INVALID:
+            return JS_ERR_PARAMETER_INVALID;
+        case E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR:
+            return OHOS_INVALID_PARAM_CODE;
         default:
             return JS_INNER_FAIL;
     }
@@ -1048,13 +1082,43 @@ void MediaLibraryNapiUtils::HandleError(
     NAPI_ERR_LOG("Error: %{public}s, js errcode:%{public}d ", errMsg.c_str(), originalError);
 }
 
+void MediaLibraryNapiUtils::HandleErrorWithIntCode(
+    napi_env env, napi_value &errorObj, const AsyncErrorInfo &errInfo)
+{
+    if (errInfo.error == ERR_DEFAULT) {
+        return;
+    }
+
+    string errMsg = errInfo.errorMsg;
+    int error = errInfo.error;
+    int originalError = error;
+    if (errMsg.empty()) {
+        errMsg = "System inner fail";
+        if (jsErrMap.count(error) > 0) {
+            errMsg = jsErrMap.at(error);
+        } else {
+            error = JS_INNER_FAIL;
+            if (errInfo.realErr != 0 && jsErrMap.count(errInfo.realErr) > 0) {
+                errMsg = jsErrMap.at(errInfo.realErr);
+            }
+        }
+    }
+    CreateNapiErrorObject(env, errorObj, error, errMsg, true);
+    errMsg = errInfo.apiName + " " + errMsg;
+    NAPI_ERR_LOG("Error: %{public}s, js errcode:%{public}d ", errMsg.c_str(), originalError);
+}
+
 void MediaLibraryNapiUtils::CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
-    const string errMsg)
+    const string errMsg, bool isIntCode)
 {
     napi_status statusError;
     napi_value napiErrorCode = nullptr;
     napi_value napiErrorMsg = nullptr;
-    statusError = napi_create_string_utf8(env, to_string(errCode).c_str(), NAPI_AUTO_LENGTH, &napiErrorCode);
+    if (isIntCode) {
+        statusError = napi_create_int32(env, errCode, &napiErrorCode);
+    } else {
+        statusError = napi_create_string_utf8(env, to_string(errCode).c_str(), NAPI_AUTO_LENGTH, &napiErrorCode);
+    }
     if (statusError == napi_ok) {
         statusError = napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &napiErrorMsg);
         if (statusError == napi_ok) {
@@ -1525,6 +1589,16 @@ static int32_t GetCloudEnhancementPredicates(DataSharePredicates &predicates, co
     return E_SUCCESS;
 }
 
+static int32_t GetLivePhoto4DPredicates(DataSharePredicates &predicates, const bool hiddenOnly)
+{
+    predicates.BeginWrap();
+    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    predicates.EqualTo(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+    predicates.EndWrap();
+    return E_SUCCESS;
+}
+
 int32_t MediaLibraryNapiUtils::GetSourceAlbumPredicates(const int32_t albumId, DataSharePredicates &predicates,
     const bool hiddenOnly)
 {
@@ -1561,6 +1635,9 @@ int32_t MediaLibraryNapiUtils::GetSystemAlbumPredicates(const PhotoAlbumSubType 
         }
         case PhotoAlbumSubType::CLOUD_ENHANCEMENT: {
             return GetCloudEnhancementPredicates(predicates, hiddenOnly);
+        }
+        case PhotoAlbumSubType::LIVEPHOTO_4D: {
+            return GetLivePhoto4DPredicates(predicates, hiddenOnly);
         }
         default: {
             NAPI_ERR_LOG("Unsupported photo album subtype: %{public}d", subType);
@@ -2616,6 +2693,141 @@ int MediaLibraryNapiUtils::ParseNextRowAlbumObject(std::shared_ptr<RowObject>& r
     return 0;
 }
 
+bool MediaLibraryNapiUtils::ParseFileIdFromPredicates(const DataShare::DataSharePredicates &predicates, string &fileId)
+{
+    // parse fileId from operationList
+    constexpr int32_t FIELD_IDX = 0;
+    constexpr int32_t VALUE_IDX = 1;
+    constexpr int32_t OPERATION_SIZE = 2;
+    auto operationItems = predicates.GetOperationList();
+    for (DataShare::OperationItem item : operationItems) {
+        if (item.singleParams.size() < OPERATION_SIZE) {
+            continue;
+        }
+        if (!IsNumber(static_cast<string>(item.GetSingle(VALUE_IDX)))) {
+            continue;
+        }
+        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MediaColumn::MEDIA_ID) {
+            fileId = static_cast<string>(item.GetSingle(VALUE_IDX));
+            return true;
+        }
+    }
+
+    // parse fileId from whereClause
+    const string &clause = predicates.GetWhereClause();
+    const vector<string> &values = predicates.GetWhereArgs();
+    size_t pos = clause.find(MediaColumn::MEDIA_ID);
+    if (pos == string::npos) {
+        MEDIA_ERR_LOG("whereClause not include fileId");
+        return false;
+    }
+    size_t argIndex = 0;
+    constexpr char placeholder = '?';
+    for (size_t i = 0; i < pos; ++i) {
+        if (clause[i] == placeholder) {
+            ++argIndex;
+        }
+    }
+
+    CHECK_AND_RETURN_RET_LOG(argIndex < values.size(), false, "argIndex should less than values size");
+    fileId = values[argIndex];
+    CHECK_AND_RETURN_RET_LOG(IsNumber(fileId), false,
+        "whereArgs fileId=%{public}s is not num", fileId.c_str());
+    return true;
+}
+
+bool MediaLibraryNapiUtils::HasSharedAlbumAsset(const std::vector<std::string>& fileIds)
+{
+    if (fileIds.empty()) {
+        return false;
+    }
+    GetAssetsReqBody reqBody;
+    reqBody.predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    reqBody.columns = { PhotoColumn::PHOTO_IS_SHARED };
+    GetAssetsRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret != E_OK) {
+        NAPI_ERR_LOG("IPC get assets failed, ret: %{public}d", ret);
+        return false;
+    }
+    auto resultSet = respBody.resultSet;
+    if (resultSet == nullptr) {
+        NAPI_ERR_LOG("IPC get assets resultSet is nullptr");
+        return false;
+    }
+    bool hasSharedAsset = false;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
+            resultSet, TYPE_INT32));
+        if (isShared == SHARED_ASSET_FLAG) {
+            hasSharedAsset = true;
+            break;
+        }
+    }
+    resultSet->Close();
+    return hasSharedAsset;
+}
+
+bool MediaLibraryNapiUtils::HasSharedAlbum(const std::vector<std::string>& albumIds)
+{
+    if (albumIds.empty()) {
+        return false;
+    }
+    GetAlbumsByIdsReqBody reqBody;
+    reqBody.predicates.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
+    reqBody.columns = { PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE };
+    GetAlbumsByIdsRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret != E_OK) {
+        NAPI_ERR_LOG("IPC get albums failed, ret: %{public}d", ret);
+        return false;
+    }
+    auto resultSet = respBody.resultSet;
+    if (resultSet == nullptr) {
+        NAPI_ERR_LOG("IPC get albums resultSet is nullptr");
+        return false;
+    }
+    bool hasSharedAlbum = false;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_TYPE,
+            resultSet, TYPE_INT32));
+        int32_t albumSubType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_SUBTYPE,
+            resultSet, TYPE_INT32));
+        if (albumType == static_cast<int32_t>(PhotoAlbumType::SHARE) &&
+            albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC)) {
+            hasSharedAlbum = true;
+            break;
+        }
+    }
+    resultSet->Close();
+    return hasSharedAlbum;
+}
+
+void MediaLibraryNapiUtils::ExtractFileIdsFromUris(const std::vector<std::string>& uriArray,
+    std::vector<std::string>& fileIdArray)
+{
+    for (const auto& uri : uriArray) {
+        MediaFileUri fileUri(uri);
+        if (!fileUri.IsApi10()) {
+            fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
+        }
+        string fileId = fileUri.GetFileId();
+        if (fileId.empty()) {
+            NAPI_ERR_LOG("Invalid fileId extracted from uri: %{public}s", uri.c_str());
+            continue;
+        }
+        int32_t value = 0;
+        auto [ptr, ec] = std::from_chars(fileId.data(), fileId.data() + fileId.size(), value);
+        if (ec != std::errc{} || ptr != fileId.data() + fileId.size() || value <= 0) {
+            NAPI_ERR_LOG("Invalid fileId extracted from uri: %{public}s", uri.c_str());
+            continue;
+        }
+        fileIdArray.push_back(fileId);
+    }
+}
+
 template <class AsyncContext>
 napi_status MediaLibraryNapiUtils::ParsePredicates(napi_env env, const napi_value arg,
     AsyncContext &context, const FetchOptionType &fetchOptType)
@@ -2784,8 +2996,16 @@ template napi_status MediaLibraryNapiUtils::AsyncContextGetArgs<unique_ptr<Cloud
     napi_env env, napi_callback_info info, unique_ptr<CloudMediaAssetAsyncContext>& asyncContext,
     const size_t minArgs, const size_t maxArgs);
 
+template napi_status MediaLibraryNapiUtils::AsyncContextGetArgs<unique_ptr<MediaShareAlbumChangeRequestAsyncContext>>(
+    napi_env env, napi_callback_info info, unique_ptr<MediaShareAlbumChangeRequestAsyncContext>& asyncContext,
+    const size_t minArgs, const size_t maxArgs);
+
 template napi_value MediaLibraryNapiUtils::NapiCreateAsyncWork<MediaLibraryAsyncContext>(napi_env env,
     unique_ptr<MediaLibraryAsyncContext> &asyncContext, const string &resourceName,
+    void (*execute)(napi_env, void *), void (*complete)(napi_env, napi_status, void *));
+
+template napi_value MediaLibraryNapiUtils::NapiCreateAsyncWork<MediaShareAlbumChangeRequestAsyncContext>(napi_env env,
+    unique_ptr<MediaShareAlbumChangeRequestAsyncContext> &asyncContext, const string &resourceName,
     void (*execute)(napi_env, void *), void (*complete)(napi_env, napi_status, void *));
 
 template napi_value MediaLibraryNapiUtils::NapiCreateAsyncWork<FileAssetAsyncContext>(napi_env env,
@@ -2883,6 +3103,9 @@ template napi_status MediaLibraryNapiUtils::ParsePredicates<unique_ptr<MediaLibr
 
 template void MediaLibraryNapiUtils::DeleteAsyncContextWithRef<MediaAlbumChangeRequestAsyncContext*>(
     napi_env env, MediaAlbumChangeRequestAsyncContext*& context);
+
+template void MediaLibraryNapiUtils::DeleteAsyncContextWithRef<MediaShareAlbumChangeRequestAsyncContext*>(
+    napi_env env, MediaShareAlbumChangeRequestAsyncContext*& context);
 
 template void MediaLibraryNapiUtils::DeleteAsyncContextWithRef<MediaAssetChangeRequestAsyncContext*>(
     napi_env env, MediaAssetChangeRequestAsyncContext*& context);

@@ -100,7 +100,7 @@ int32_t CloudFileDataConvert::GetFileSize(const std::string &path, const std::st
             err,
             "get thumb size failed errno : " + std::to_string(errno) + ", path " +
                 ReportUtils::GetAnonyString(thumbnailPath)});
-        MEDIA_INFO_LOG("get thumb size failed errno :%{public}d, %{public}s", errno,
+        MEDIA_DEBUG_LOG("get thumb size failed errno :%{public}d, %{public}s", errno,
             MediaFileUtils::DesensitizePath(thumbnailPath).c_str());
     } else {
         fileSize = fileStat.st_size;
@@ -218,12 +218,15 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_HDR_MODE] = MDKRecordField(upLoadRecord.hdrMode);
     map[PhotoColumn::PHOTO_VIDEO_MODE] = MDKRecordField(upLoadRecord.videoMode);
     map[PhotoColumn::PHOTO_FRONT_CAMERA] = MDKRecordField(upLoadRecord.frontCamera);
+    map[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = MDKRecordField(upLoadRecord.xtStyleTemplateName);
     map[PhotoColumn::PHOTO_EDIT_TIME] = MDKRecordField(upLoadRecord.editTime);
     map[PhotoColumn::PHOTO_ORIGINAL_SUBTYPE] = MDKRecordField(upLoadRecord.originalSubtype);
     map[PhotoColumn::PHOTO_COVER_POSITION] = MDKRecordField(upLoadRecord.coverPosition);
     map[PhotoColumn::PHOTO_IS_RECTIFICATION_COVER] = MDKRecordField(upLoadRecord.isRectificationCover);
     map[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = MDKRecordField(upLoadRecord.movingPhotoEffectMode);
     map[PhotoColumn::SUPPORTED_WATERMARK_TYPE] = MDKRecordField(upLoadRecord.supportedWatermarkType);
+    map[PhotoColumn::MUSIC_MASTER_MODE] = MDKRecordField(upLoadRecord.musicMasterMode);
+    map[PhotoColumn::IS_STYLE_PHOTO] = MDKRecordField(upLoadRecord.isStylePhoto);
     map[PhotoColumn::PHOTO_STRONG_ASSOCIATION] = MDKRecordField(upLoadRecord.strongAssociation);
     map[MediaColumn::MEDIA_ID] = MDKRecordField(upLoadRecord.fileId);
     map[PhotoColumn::MEDIA_FILE_PATH] = MDKRecordField(upLoadRecord.data);
@@ -233,13 +236,23 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = MDKRecordField(upLoadRecord.burstCoverLevel);
     map[PhotoColumn::PHOTO_BURST_KEY] = MDKRecordField(upLoadRecord.burstKey);
     map[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = MDKRecordField(upLoadRecord.ownerAlbumId);
+    map[PhotoColumn::SUPPORTED_DEFERRED_EFFECTS] = MDKRecordField(upLoadRecord.supportedDeferredEffects);
+    map[PhotoColumn::DEFERRED_EFFECT_STATUS] = MDKRecordField(upLoadRecord.deferredEffectStatus);
     map[FILE_FIX_VERSION] = MDKRecordField(0);
     map[KEY_EDITED_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
     // no need to upload file_source_type and storage_path.
     map[PhotoColumn::UNIQUE_ID] = MDKRecordField(upLoadRecord.uniqueId);
     map[MediaColumn::MEDIA_PACKAGE_NAME] = MDKRecordField(upLoadRecord.packageName);
     map[PhotoColumn::PHOTO_RISK_STATUS] = MDKRecordField(upLoadRecord.photoRiskStatus);
+    map[PhotoColumn::COMPRESSION_QUALITY] = MDKRecordField(upLoadRecord.compressionQuality);
+    map[PhotoColumn::PHOTO_IS_SHARED] = MDKRecordField(upLoadRecord.isShared);
+    map[PhotoColumn::PHOTO_SHARE_OWNER_INFO] = MDKRecordField(upLoadRecord.shareOwnerInfo);
+    map[PhotoColumn::PHOTO_SHARE_ALBUM_OWNER] = MDKRecordField(upLoadRecord.shareAlbumOwner);
+    map[PhotoColumn::PHOTO_SHARE_DATE_DAY] = MDKRecordField(upLoadRecord.shareDateDay);
+    map[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(upLoadRecord.shareGroup);
+    map[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = MDKRecordField(upLoadRecord.editDataExist);
     HandleAttributesHashMap(map, upLoadRecord);
+    HandleInt64FieldsHashMap(map, upLoadRecord);
     int32_t ret = HandleThumbSize(map, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleThumbSize err: %{public}d", ret);
     ret = HandleLcdSize(map, upLoadRecord);
@@ -785,6 +798,7 @@ int32_t CloudFileDataConvert::ConvertToMdkRecord(const CloudMdkRecordPhotosVo &u
         record.SetNewCreate(true);
     }
     record.SetRecordId(upLoadRecord.cloudId);
+    record.SetOwnerId(upLoadRecord.shareAlbumOwner);
     if (type_ == CloudOperationType::FILE_DELETE) {
         return E_OK;
     }
@@ -969,6 +983,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.editedTimeMs = data.GetEditedTimeMs().value_or(0L);
     onFetchPhotoVo.fixVersion = data.GetFixVersion().value_or(-1);
     onFetchPhotoVo.frontCamera = data.GetFrontCamera().value_or("");
+    onFetchPhotoVo.xtStyleTemplateName = data.GetXtStyleTemplateName().value_or("-1");
     onFetchPhotoVo.editDataCamera = data.GetEditDataCamera().value_or("");
     onFetchPhotoVo.title = data.GetTitle().value_or("");
     onFetchPhotoVo.mediaType = data.GetMediaType().value_or(-1);
@@ -994,11 +1009,18 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.isRectificationCover = data.GetIsRectificationCover().value_or(0);
     onFetchPhotoVo.exifRotate = data.GetExifRotate().value_or(0);
     onFetchPhotoVo.supportedWatermarkType = data.GetSupportedWatermarkType().value_or(0);
+    onFetchPhotoVo.musicMasterMode = data.GetMusicMasterMode().value_or(0);
     onFetchPhotoVo.strongAssociation = data.GetStrongAssociation().value_or(0);
+    onFetchPhotoVo.supportedDeferredEffects = data.GetSupportedDeferredEffects().value_or(0);
+    onFetchPhotoVo.deferredEffectStatus = data.GetDeferredEffectsStatus().value_or(-1);
     // no need to fetch file_source_type and storage_path from cloud.
     onFetchPhotoVo.uniqueId = data.GetUniqueId().value_or("");
     onFetchPhotoVo.packageName = data.GetPackageName().value_or("");
     onFetchPhotoVo.photoRiskStatus = data.GetPhotoRiskStatus().value_or(0);
+    onFetchPhotoVo.compressionQuality = data.GetCompressionQuality().value_or(-1);
+    onFetchPhotoVo.editDataExist = data.GetEditDataExist().value_or(0);
+    ConvertShareAlbumInfoToVo(data, onFetchPhotoVo);
+    ConvertScaDetailToVo(data, onFetchPhotoVo);
 }
 
 void CloudFileDataConvert::ConvertSourceAlbumIds(const MDKRecord &mdkRecord, OnFetchPhotosVo &onFetchPhotoVo)
@@ -1054,6 +1076,7 @@ int32_t CloudFileDataConvert::ConverMDKRecordToOnFetchPhotosVo(
     ConvertAttributes(photosData, onFetchPhotoVo);
     ConvertProperties(photosData, onFetchPhotoVo);
     ConvertAttributesHashMap(photosData, onFetchPhotoVo);
+    ConvertInt64FieldsHashMap(photosData, onFetchPhotoVo);
     return E_OK;
 }
 
@@ -1134,5 +1157,21 @@ std::string CloudFileDataConvert::GetContentRelatedLog(const CloudMdkRecordPhoto
     log << "isGraffiti: " << isGraffiti << ", ";
     log << "data: " << MediaFileUtils::DesensitizePath(upLoadRecord.data.c_str());
     return log.str();
+}
+
+void CloudFileDataConvert::ConvertShareAlbumInfoToVo(const MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
+{
+    onFetchPhotoVo.isShared = data.GetPhotoIsShared().value_or(0);
+    onFetchPhotoVo.shareOwnerInfo = data.GetPhotoShareOwnerInfo().value_or("");
+    onFetchPhotoVo.shareAlbumOwner = data.GetShareAlbumOwner().value_or("");
+    onFetchPhotoVo.shareDateDay = data.GetPhotoShareDateDay().value_or(0L);
+    onFetchPhotoVo.shareGroup = data.GetPhotoShareGroup().value_or(0L);
+}
+
+void CloudFileDataConvert::ConvertScaDetailToVo(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
+{
+    onFetchPhotoVo.sharePhotoDetail.currentUserId = data.GetCurrentUserId();
+    onFetchPhotoVo.sharePhotoDetail.mediaCreateId = data.GetMediaCreatedId();
+    data.GetScadetailList(onFetchPhotoVo.sharePhotoDetail.scaDetailList);
 }
 } // namespace OHOS::Media::CloudSync

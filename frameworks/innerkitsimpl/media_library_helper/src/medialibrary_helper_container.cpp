@@ -16,8 +16,15 @@
 
 #include "medialibrary_helper_container.h"
 
+#include "base_data_uri.h"
+#include "media_uri_utils.h"
+#include "media_account_utils.h"
+#include "media_log.h"
+
 namespace OHOS {
 namespace Media {
+
+
 std::shared_ptr<MediaLibraryHelperContainer> MediaLibraryHelperContainer::instance_ = nullptr;
 std::mutex MediaLibraryHelperContainer::mutex_;
 std::shared_ptr<DataShare::DataShareHelper> MediaLibraryHelperContainer::dataShareHelper_ = nullptr;
@@ -46,9 +53,48 @@ void MediaLibraryHelperContainer::SetDataShareHelper(const std::shared_ptr<DataS
     dataShareHelper_ = helper;
 }
 
+std::shared_ptr<DataShare::DataShareHelper> MediaLibraryHelperContainer::CreateHelperFromSa()
+{
+    auto remoteObj = MediaAccountUtils::GetSaToken();
+    if (remoteObj == nullptr) {
+        MEDIA_ERR_LOG("CreateHelperFromSa: GetSaToken failed");
+        return nullptr;
+    }
+    int32_t activeUserId = MediaAccountUtils::GetCurrentAccountId();
+    Uri uri = Uri(MEDIALIBRARY_DATA_URI);
+    std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUserId).ToString();
+    auto helper = DataShare::DataShareHelper::Creator(remoteObj, multiUri);
+    if (helper == nullptr) {
+        MEDIA_ERR_LOG("CreateHelperFromSa: DataShareHelper Creator failed, retrying");
+        helper = DataShare::DataShareHelper::Creator(remoteObj, multiUri);
+    }
+    return helper;
+}
+
 std::shared_ptr<DataShare::DataShareHelper> MediaLibraryHelperContainer::GetDataShareHelper()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (dataShareHelper_ != nullptr) {
+        return dataShareHelper_;
+    }
+    // Not initialized by client — create with SA token + current user
+    dataShareHelper_ = CreateHelperFromSa();
+    if (dataShareHelper_ == nullptr) {
+        MEDIA_ERR_LOG("GetDataShareHelper: failed to create helper from SA token");
+    }
     return dataShareHelper_;
+}
+
+void MediaLibraryHelperContainer::SetDataShareHelperForUser(int32_t userId,
+    const std::shared_ptr<DataShare::DataShareHelper> &helper)
+{
+    userDataShareHelperMap_.EnsureInsert(userId, helper);
+}
+
+std::shared_ptr<DataShare::DataShareHelper> MediaLibraryHelperContainer::GetDataShareHelperForUser(
+    int32_t userId)
+{
+    return userDataShareHelperMap_.ReadVal(userId);
 }
 } // namespace Media
 } // namespace OHOS

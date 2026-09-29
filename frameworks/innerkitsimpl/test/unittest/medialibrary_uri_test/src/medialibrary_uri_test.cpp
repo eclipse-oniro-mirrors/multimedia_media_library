@@ -41,16 +41,6 @@ void MediaLibraryUriTest::SetUp() {}
 
 void MediaLibraryUriTest::TearDown(void) {}
 
-HWTEST_F(MediaLibraryUriTest, medialib_ParseFileUri_test_001, TestSize.Level1)
-{
-    string uriString = "";
-    string outFileId = "";
-    string outNetworkId = "";
-    string outTableName = "";
-    bool ret = ThumbnailUriUtils::ParseFileUri(uriString, outFileId, outNetworkId, outTableName);
-    EXPECT_EQ(ret, true);
-}
-
 HWTEST_F(MediaLibraryUriTest, medialib_ParseThumbnailInfo_test_001, TestSize.Level1)
 {
     string uriString;

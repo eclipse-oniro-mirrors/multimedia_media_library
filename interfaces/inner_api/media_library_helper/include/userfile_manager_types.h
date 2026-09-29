@@ -119,7 +119,8 @@ enum PhotoAlbumType : int32_t {
     USER = 0,
     SYSTEM = 1024,
     SOURCE = 2048,
-    SMART = 4096
+    SMART = 4096,
+    SHARE = 8192
 };
 
 enum PhotoAlbumSubType : int32_t {
@@ -134,7 +135,8 @@ enum PhotoAlbumSubType : int32_t {
     CAMERA,
     IMAGE,
     CLOUD_ENHANCEMENT,
-    SYSTEM_END = CLOUD_ENHANCEMENT,
+    LIVEPHOTO_4D,
+    SYSTEM_END = LIVEPHOTO_4D,
     SOURCE_START = 2049,
     SOURCE_GENERIC = SOURCE_START,
     SOURCE_GENERIC_FROM_FILE_MANAGER = 2050,
@@ -150,6 +152,7 @@ enum PhotoAlbumSubType : int32_t {
     HIGHLIGHT_SUGGESTIONS,
     PET = 4106,
     ANALYSIS_END = PET,
+    SHARE_GENERIC = 8193,
     ANY = std::numeric_limits<int32_t>::max()
 };
 
@@ -168,6 +171,7 @@ enum class PhotoSubType : int32_t {
     CINEMATIC_VIDEO,
     SLOW_MOTION_VIDEO,
     SPATIAL_3DGS = 7,
+    CINEMATIC_VIDEO_V2 = 8, // V2电影模式（包含希区柯克等特性）
     SUBTYPE_END
 };
 
@@ -340,6 +344,26 @@ enum ThumbnailVisibility: int32_t {
     VISIBLE = 1
 };
 
+// 共享相册类型，对应 PhotoAlbum 表 share_type 字段
+// 0: 普通相册，1: 双-共享相册/儿童手表共享相册，2: 单-共享相册
+enum PhotoAlbumShareType : int32_t {
+    SHARE_TYPE_NONEALBUM = 0,
+    SHARE_TYPE_CHILDWATCH = 1,
+    SHARE_TYPE_SHAREALBUM = 2,
+};
+
+enum ShareMemberStatus : int32_t {
+    INVITING = 0,
+    ACCEPTED = 1,
+    DECLINED = 2,
+    REQUESTING = 3
+};
+
+// 资产is_shared状态
+enum class PhotoSharedType : int32_t {
+    NOT_SHARED = 0,
+    SHARED = 1
+};
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H

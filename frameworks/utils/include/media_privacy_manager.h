@@ -36,7 +36,7 @@ public:
         const std::string &appId, const std::string &clientBundle, const int32_t &uid, const uint32_t &tokenId);
     EXPORT virtual ~MediaPrivacyManager();
     int32_t GetPrivacyRanges();
-    EXPORT int32_t Open();
+    EXPORT int32_t Open(bool isCloseMovingPhotoStatusSharing = false);
 
 private:
     std::string path_;

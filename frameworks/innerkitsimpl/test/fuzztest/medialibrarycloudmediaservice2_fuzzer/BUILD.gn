@@ -70,6 +70,7 @@ ohos_fuzztest("MediaLibraryCloudMediaService2FuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   if (media_library_lake_enable) {
@@ -111,7 +112,6 @@ ohos_fuzztest("MediaLibraryCloudMediaService2FuzzTest") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "player_framework:media_client",

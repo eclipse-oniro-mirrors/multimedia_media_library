@@ -226,6 +226,22 @@ static std::shared_ptr<DataShareResultSet> QueryPhotoAsset(int32_t fileId)
     return resultSet;
 }
 
+static std::string QueryPhotoStringColumn(int32_t fileId, const std::string &column)
+{
+    DataSharePredicates predicates;
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    std::string uriStr = CONST_URI_QUERY_PHOTO;
+    MediaUriUtils::AppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
+    Uri queryFileUri(uriStr);
+    std::vector<std::string> columns = { column };
+    auto resultSet = sDataShareHelper_->Query(queryFileUri, predicates, columns);
+    if (resultSet == nullptr || resultSet->GoToNextRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("query column %{public}s of file %{public}d failed", column.c_str(), fileId);
+        return "";
+    }
+    return GetStringVal(column, resultSet);
+}
+
 static void SetBuffer(sptr<PhotoProxyTest> &photoProxy)
 {
     int32_t bytesPerPixel = BYTES_PER_PIXEL;
@@ -1960,50 +1976,6 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test501, Te
 }
 
 /**
- * @tc.name: PhotoAssetProxy_GetVideoFd_test001
- * @tc.desc: [动态照片视频]
- */
-HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_GetVideoFd_test001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter PhotoAssetProxy_GetVideoFd_test001");
-
-    PhotoAssetProxyCallerInfo callerInfo = {
-        .callingUid = 0,
-        .userId = 0,
-    };
-    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::MOVING_PHOTO);
-    ASSERT_NE(photoAssetProxy, nullptr);
-
-    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
-    ASSERT_NE(photoProxyTest, nullptr);
-    photoProxyTest->photoFormat_ = PhotoFormat::YUV;
-    photoProxyTest->extension_ = "jpg";
-    photoProxyTest->stageVideoTaskStatus_ = 1;
-    photoProxyTest->photoQuality_ = PhotoQuality::LOW;
-    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
-
-    auto resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // 初始值
-    EXPECT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
-    EXPECT_EQ(GetInt64Val(PhotoColumn::PHOTO_META_DATE_MODIFIED, resultSet), 0);
-
-    int32_t fd = photoAssetProxy->GetVideoFd(VideoType::ORIGIN_VIDEO);
-
-    EXPECT_EQ(fd > 0, true);
-
-    resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // GetVideoFd 符合预期(字段)
-    EXPECT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
-    EXPECT_EQ(GetInt64Val(PhotoColumn::PHOTO_META_DATE_MODIFIED, resultSet) > 0, false);
-
-    close(fd);
-}
-
-/**
  * @tc.name: PhotoAssetProxy_GetVideoFd_test101
  * @tc.desc: [录像]
  *           [1] time_pending: -1 -> -2
@@ -2135,140 +2107,6 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_GetVideoFd_test202, TestS
 }
 
 /**
- * @tc.name: PhotoAssetProxy_NotifyVideoSaveFinished_test001
- * @tc.desc: [动态照片视频]
- *           [1] size: null -> >0
- *           [2] date_modified: null -> 时间戳
- *           [3] time_pending: -2 -> 0
- *           [4] stage_video_task_status: 1 -> 2
- */
-HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_NotifyVideoSaveFinished_test001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter PhotoAssetProxy_NotifyVideoSaveFinished_test001");
-
-    PhotoAssetProxyCallerInfo callerInfo = {
-        .callingUid = 0,
-        .userId = 0,
-    };
-    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::MOVING_PHOTO);
-    ASSERT_NE(photoAssetProxy, nullptr);
-
-    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
-    ASSERT_NE(photoProxyTest, nullptr);
-    photoProxyTest->photoFormat_ = PhotoFormat::YUV;
-    photoProxyTest->extension_ = "jpg";
-    photoProxyTest->stageVideoTaskStatus_ = 1;
-    photoProxyTest->photoQuality_ = PhotoQuality::LOW;
-    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
-
-    auto resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // 初始值
-    EXPECT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    EXPECT_EQ(GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet), 0);
-    EXPECT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
-    EXPECT_EQ(GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet),
-        static_cast<int32_t>(StageVideoTaskStatus::NEED_TO_STAGE));
-
-    int32_t fd = photoAssetProxy->GetVideoFd(VideoType::ORIGIN_VIDEO);
-    write(fd, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    close(fd);
-    photoAssetProxy->NotifyVideoSaveFinished(VideoType::ORIGIN_VIDEO);
-
-    resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // NotifyVideoSaveFinished 符合预期(字段)
-}
-
-/**
- * @tc.name: PhotoAssetProxy_NotifyVideoSaveFinished_test101
- * @tc.desc: [录像]
- *           [1] size: null -> 时间戳
- *           [2] date_modified: null -> 时间戳
- *           [3] time_pending: -2 -> 0
- */
-HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_NotifyVideoSaveFinished_test101, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter PhotoAssetProxy_NotifyVideoSaveFinished_test101");
-
-    PhotoAssetProxyCallerInfo callerInfo = {
-        .callingUid = 0,
-        .userId = 0,
-    };
-    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
-    ASSERT_NE(photoAssetProxy, nullptr);
-
-    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
-    ASSERT_NE(photoProxyTest, nullptr);
-    photoProxyTest->photoFormat_ = PhotoFormat::YUV;
-    photoProxyTest->extension_ = "jpg";
-    photoProxyTest->stageVideoTaskStatus_ = 1;
-    photoProxyTest->extension_ = "mp4";
-    photoProxyTest->photoQuality_ = PhotoQuality::LOW;
-    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
-
-    auto resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // 初始值
-    EXPECT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    EXPECT_EQ(GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet), 0);
-    EXPECT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
-
-    int32_t fd = photoAssetProxy->GetVideoFd(VideoType::ORIGIN_VIDEO);
-    write(fd, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    close(fd);
-    photoAssetProxy->NotifyVideoSaveFinished(VideoType::ORIGIN_VIDEO);
-
-    resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // NotifyVideoSaveFinished 符合预期(字段)
-}
-
-/**
- * @tc.name: PhotoAssetProxy_NotifyVideoSaveFinished_test201
- * @tc.desc: [电影模式]
- */
-HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_NotifyVideoSaveFinished_test201, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter PhotoAssetProxy_NotifyVideoSaveFinished_test201");
-
-    PhotoAssetProxyCallerInfo callerInfo = {
-        .callingUid = 0,
-        .userId = 0,
-    };
-    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::CINEMATIC_VIDEO);
-    ASSERT_NE(photoAssetProxy, nullptr);
-
-    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
-    ASSERT_NE(photoProxyTest, nullptr);
-    photoProxyTest->extension_ = "mp4";
-    photoProxyTest->photoQuality_ = PhotoQuality::LOW;
-    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
-
-    auto resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // 初始值
-    EXPECT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    EXPECT_EQ(GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet), 0);
-    EXPECT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
-
-    int32_t fd = photoAssetProxy->GetVideoFd(VideoType::EFFECT_VIDEO);
-    write(fd, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    close(fd);
-    photoAssetProxy->NotifyVideoSaveFinished(VideoType::EFFECT_VIDEO);
-
-    resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
-    ASSERT_NE(resultSet, nullptr);
-    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
-    // NotifyVideoSaveFinished 符合预期(字段)
-}
-
-/**
  * @tc.name: PhotoAssetProxy_NotifyVideoSaveFinished_test202
  * @tc.desc: [电影模式: 源文件(editdata)]
  *           [1] size: null -> >0
@@ -2353,6 +2191,150 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_test001,
     // value符合预期
     EXPECT_EQ(GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet2), 1);
     EXPECT_EQ(GetStringVal(PhotoColumn::PHOTO_ID, resultSet2), photoId);
+}
+
+/**
+ * @tc.name: PhotoAssetProxy_AddVideo_V2ShootingMode_test001
+ * @tc.desc: [录像-电影模式V2] shootingMode=24(CINEMATIC_SHOOTING_MODE)时,
+ *           应写入CINEMATIC_VIDEO_V2子类型、LOW质量以及shooting_mode/tag
+ */
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddVideo_V2ShootingMode_test001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter PhotoAssetProxy_AddVideo_V2ShootingMode_test001");
+    constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
+    ASSERT_NE(photoProxyTest, nullptr);
+    photoProxyTest->extension_ = "mp4";
+    photoProxyTest->photoQuality_ = PhotoQuality::HIGH;
+    photoProxyTest->shootingMode_ = CINEMATIC_SHOOTING_MODE;
+    photoProxyTest->shootingVersion_ = "2.0";
+    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
+    EXPECT_FALSE(photoAssetProxy->GetPhotoAssetUri().empty());
+
+    auto resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
+    ASSERT_NE(resultSet, nullptr);
+    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
+    // 电影模式V2: subtype=CINEMATIC_VIDEO_V2, quality=LOW
+    EXPECT_EQ(GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet),
+        static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+    EXPECT_EQ(GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet), static_cast<int32_t>(PhotoQuality::LOW));
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE),
+        to_string(CINEMATIC_SHOOTING_MODE));
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE_TAG), "2.0");
+    MEDIA_INFO_LOG("exit PhotoAssetProxy_AddVideo_V2ShootingMode_test001");
+}
+
+/**
+ * @tc.name: PhotoAssetProxy_AddVideo_NonV2ShootingMode_test001
+ * @tc.desc: [录像-普通模式] shootingMode非24时, 应保持原逻辑仅写quality, 不写shooting_mode/tag
+ */
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddVideo_NonV2ShootingMode_test001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter PhotoAssetProxy_AddVideo_NonV2ShootingMode_test001");
+    constexpr int32_t NORMAL_SHOOTING_MODE = 0;
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
+    ASSERT_NE(photoProxyTest, nullptr);
+    photoProxyTest->extension_ = "mp4";
+    photoProxyTest->photoQuality_ = PhotoQuality::HIGH;
+    photoProxyTest->shootingMode_ = NORMAL_SHOOTING_MODE;
+    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
+    EXPECT_FALSE(photoAssetProxy->GetPhotoAssetUri().empty());
+
+    auto resultSet = QueryPhotoAsset(photoAssetProxy->fileId_);
+    ASSERT_NE(resultSet, nullptr);
+    EXPECT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
+    // 普通录像(shootingMode非24): 不应写成CINEMATIC_VIDEO_V2, quality来自proxy
+    EXPECT_NE(GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet),
+        static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+    EXPECT_EQ(GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet), static_cast<int32_t>(PhotoQuality::HIGH));
+    MEDIA_INFO_LOG("exit PhotoAssetProxy_AddVideo_NonV2ShootingMode_test001");
+}
+
+/**
+ * @tc.name: PhotoAssetProxy_UpdatePhotoProxy_V2Version_test001
+ * @tc.desc: [录像-电影模式V2] UpdatePhotoProxy时shootingVersion非空, 应更新shooting_mode/tag字段
+ */
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_V2Version_test001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter PhotoAssetProxy_UpdatePhotoProxy_V2Version_test001");
+    constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
+    ASSERT_NE(photoProxyTest, nullptr);
+    photoProxyTest->extension_ = "mp4";
+    photoProxyTest->photoQuality_ = PhotoQuality::HIGH;
+    photoProxyTest->photoId_ = "";
+    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
+
+    sptr<PhotoProxyTest> photoProxyTest2 = new(std::nothrow) PhotoProxyTest();
+    ASSERT_NE(photoProxyTest2, nullptr);
+    photoProxyTest2->shootingMode_ = CINEMATIC_SHOOTING_MODE;
+    photoProxyTest2->shootingVersion_ = "2.0";
+    photoAssetProxy->UpdatePhotoProxy((sptr<PhotoProxy>&)photoProxyTest2);
+
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE),
+        to_string(CINEMATIC_SHOOTING_MODE));
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE_TAG), "2.0");
+    MEDIA_INFO_LOG("exit PhotoAssetProxy_UpdatePhotoProxy_V2Version_test001");
+}
+
+/**
+ * @tc.name: PhotoAssetProxy_UpdatePhotoProxy_EmptyVersion_test001
+ * @tc.desc: [录像] UpdatePhotoProxy时shootingVersion为空, 走else分支不应覆盖已有shooting_mode/tag
+ */
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_EmptyVersion_test001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter PhotoAssetProxy_UpdatePhotoProxy_EmptyVersion_test001");
+    constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    // 首次Add已写入shooting_mode/tag
+    sptr<PhotoProxyTest> photoProxyTest = new(std::nothrow) PhotoProxyTest();
+    ASSERT_NE(photoProxyTest, nullptr);
+    photoProxyTest->extension_ = "mp4";
+    photoProxyTest->photoQuality_ = PhotoQuality::HIGH;
+    photoProxyTest->photoId_ = "";
+    photoProxyTest->shootingMode_ = CINEMATIC_SHOOTING_MODE;
+    photoProxyTest->shootingVersion_ = "pre-version";
+    photoAssetProxy->AddPhotoProxy((sptr<PhotoProxy>&)photoProxyTest);
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE_TAG), "pre-version");
+
+    // 第二次Update为空版本, 不应覆盖已有字段
+    sptr<PhotoProxyTest> photoProxyTest2 = new(std::nothrow) PhotoProxyTest();
+    ASSERT_NE(photoProxyTest2, nullptr);
+    photoProxyTest2->shootingMode_ = CINEMATIC_SHOOTING_MODE;
+    photoProxyTest2->shootingVersion_ = "";
+    photoAssetProxy->UpdatePhotoProxy((sptr<PhotoProxy>&)photoProxyTest2);
+
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE_TAG), "pre-version");
+    EXPECT_EQ(QueryPhotoStringColumn(photoAssetProxy->fileId_, PhotoColumn::PHOTO_SHOOTING_MODE),
+        to_string(CINEMATIC_SHOOTING_MODE));
+    MEDIA_INFO_LOG("exit PhotoAssetProxy_UpdatePhotoProxy_EmptyVersion_test001");
 }
 } // namespace Media
 } // namespace OHOS

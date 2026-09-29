@@ -36,8 +36,6 @@ using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::DataShare;
 
-constexpr double DOUBLE_EPSILON = 1e-15;
-
 MediaScannerDb::MediaScannerDb() {}
 
 unique_ptr<MediaScannerDb> MediaScannerDb::GetDatabaseInstance()
@@ -70,8 +68,13 @@ static inline void SetRemainFileMetadataApi9(const Metadata &metadata, ValuesBuc
     values.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, metadata.GetAlbumName());
     values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, metadata.GetParentId());
     values.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, metadata.GetParentId());
-    values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-    values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+    if (metadata.HasLatitude() && metadata.HasLongitude()) {
+        values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
+        values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+    } else {
+        values.PutNull(CONST_MEDIA_DATA_DB_LATITUDE);
+        values.PutNull(CONST_MEDIA_DATA_DB_LONGITUDE);
+    }
 }
 
 static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket &values, MediaType mediaType,
@@ -85,8 +88,13 @@ static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket 
             values.PutInt(CONST_MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
             values.PutInt(CONST_MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
             values.PutInt(CONST_MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
-            values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-            values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+            if (metadata.HasLatitude() && metadata.HasLongitude()) {
+                values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
+                values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+            } else {
+                values.PutNull(CONST_MEDIA_DATA_DB_LATITUDE);
+                values.PutNull(CONST_MEDIA_DATA_DB_LONGITUDE);
+            }
             SetVirtualPath(metadata, values);
             if (metadata.GetPhotoSubType() != 0) {
                 values.PutInt(PhotoColumn::PHOTO_SUBTYPE, metadata.GetPhotoSubType());
@@ -172,26 +180,44 @@ static void HandleDetailTimeAndYearMonthDay(const Metadata &metadata, ValuesBuck
 
 static void HandleSetLivePhoto4dStatus(const Metadata &metadata, ValuesBucket &outValues)
 {
-    int64_t coverposition = metadata.GetCoverPosition();
     string filePath = metadata.GetFilePath();
     string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
-    // 如果修改封面针
+    if (extraDataPath.empty()) {
+        MEDIA_INFO_LOG("livephoto4d:get extraDataPath failed");
+        return;
+    }
+
     uint32_t version = 0;
     MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, version);
-    if (version != LIVE_PHOTO_4D_VERSION && coverposition > 0) {
-        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-        CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdbStore.");
-        int32_t fileId = metadata.GetFileId();
-        string sql = " SELECT " + PhotoColumn::PHOTO_SUBTYPE + "," + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
-            " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::PHOTO_SUBTYPE + " = 3 AND " +
-            PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
-        shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
-        CHECK_AND_RETURN_LOG(resultSet != nullptr, "livePhoto4d:failed to query photo.");
-        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-            outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-                static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
-        }
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdbStore.");
+    int32_t fileId = metadata.GetFileId();
+    string sql = " SELECT " + PhotoColumn::PHOTO_EDIT_TIME + "," + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
+        " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " +
+        PhotoColumn::MEDIA_TYPE + " = " + to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) + " AND " +
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS + " < " +
+        to_string(static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) + " AND " +
+        PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "livephoto4d:failed to query photo.");
+    if (resultSet->GoToNextRow() != NativeRdb::E_OK) {
+        return;
     }
+
+    if (version == LIVE_PHOTO_4D_VERSION) {
+        MEDIA_INFO_LOG("livephoto4d:set to LIVEPHOTO_4D, fileId:%{public}d", fileId);
+        outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+        return;
+    }
+
+    int64_t editTime = GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet);
+    CHECK_AND_RETURN_INFO_LOG(editTime != 0,
+        "livephoto4d:non-v8 non-edited asset, return, fileId:%{public}d", fileId);
+
+    MEDIA_INFO_LOG("livephoto4d:reset status to 0, fileId:%{public}d", fileId);
+    outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
 }
 
 static void SetValuesFromMetaDataApi9(const Metadata &metadata, ValuesBucket &values, bool isInsert,
@@ -257,10 +283,36 @@ static void HandleMovingPhoto(const Metadata &metadata, ValuesBucket &values)
     HandleMovingPhotoDirty(metadata, values);
 }
 
+// 电影模式V2资产的shooting_mode相关字段由相机侧写入（AddPhotoProxy/UpdatePhotoProxy），
+// 扫描器解析视频元数据为空时会覆盖，因此对V2资产跳过这两个字段的更新
+// 注意：values.Delete仅从本次UPDATE的SET子句移除该列，不修改数据库已有值
+static bool IsCinematicVideoV2Asset(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, int32_t fileId)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr when query subtype");
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    std::vector<std::string> columns = { PhotoColumn::PHOTO_SUBTYPE };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "query subtype failed, fileId: %{public}d", fileId);
+    bool isCinematicVideoV2 = false;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        isCinematicVideoV2 = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet) ==
+            static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
+    }
+    resultSet->Close();
+
+    return isCinematicVideoV2;
+}
+
 static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, ValuesBucket &values, bool isInsert,
     bool skipPhoto)
 {
     values.PutString(PhotoColumn::PHOTO_MEDIA_SUFFIX, ScannerUtils::GetFileExtension(metadata.GetFileName()));
+    values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, metadata.GetMusicMasterMode());
+    if (metadata.GetFileWidth() <= 0 || metadata.GetFileHeight() <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [ScannerDb] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            metadata.GetFileId(), metadata.GetFileWidth(), metadata.GetFileHeight());
+    }
     values.PutInt(PhotoColumn::PHOTO_HEIGHT, metadata.GetFileHeight());
     values.PutInt(PhotoColumn::PHOTO_WIDTH, metadata.GetFileWidth());
     double aspectRatio =
@@ -268,7 +320,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     values.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
     values.PutInt(PhotoColumn::PHOTO_ORIENTATION, metadata.GetOrientation());
     values.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, metadata.GetExifRotate());
-    if (fabs(metadata.GetLongitude()) > DOUBLE_EPSILON || fabs(metadata.GetLatitude()) > DOUBLE_EPSILON) {
+    if (metadata.HasLongitude() && metadata.HasLatitude()) {
         values.PutDouble(PhotoColumn::PHOTO_LONGITUDE, metadata.GetLongitude());
         values.PutDouble(PhotoColumn::PHOTO_LATITUDE, metadata.GetLatitude());
     } else {
@@ -286,6 +338,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     values.PutInt(PhotoColumn::PHOTO_HDR_MODE, metadata.GetHdrMode());
     values.PutLong(PhotoColumn::PHOTO_COVER_POSITION, metadata.GetCoverPosition());
     values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, metadata.GetFrontCamera());
+    values.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, metadata.GetXtStyleTemplateName());
     values.PutString(PhotoColumn::PHOTO_DETAIL_TIME, metadata.GetDetailTime());
     values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutString(PhotoColumn::MEDIA_MIME_TYPE, metadata.GetFileMimeType());
@@ -490,6 +543,14 @@ string MediaScannerDb::UpdateMetadata(const Metadata &metadata, string &tableNam
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, "", "rdbStore is nullptr");
+
+    if (tableName == PhotoColumn::PHOTOS_TABLE && IsCinematicVideoV2Asset(rdbStore, metadata.GetFileId())) {
+        // 电影模式V2的shooting_mode由相机侧写入，扫描器解析视频元数据为空时会覆盖，跳过这两个字段
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE);
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+        MEDIA_INFO_LOG("skip update shooting mode fields for cinematic video v2, fileId: %{public}d",
+            metadata.GetFileId());
+    }
 
     int32_t result = -1;
     if (refresh != nullptr && tableName == PhotoColumn::PHOTOS_TABLE) {
@@ -1102,6 +1163,7 @@ void MediaScannerDb::UpdateAlbumInfo(const std::vector<std::string> &subtypes,
         to_string(PhotoAlbumSubType::SCREENSHOT),
         to_string(PhotoAlbumSubType::FAVORITE),
         to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+        to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
     });
 }
 

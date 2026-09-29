@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <iterator>
+#include <set>
 
 #include "media_file_uri.h"
 #include "media_file_utils.h"
@@ -792,6 +793,39 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideoDuratio
     EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(11000), false);
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckDurationFalse_ValidExtension_Test_001,
+    TestSize.Level1)
+{
+    string dirPath = "/data/test/mp4_check_duration_dir";
+    string filePath = dirPath + "/VID_test.mp4";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
+    EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath, false), true);
+    MediaFileUtils::DeleteDir(dirPath);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckDurationTrue_ValidExtension_Test_001,
+    TestSize.Level1)
+{
+    string dirPath = "/data/test/mp4_check_duration_dir";
+    string filePath = dirPath + "/VID_test.mp4";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
+    EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath), false);
+    MediaFileUtils::DeleteDir(dirPath);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckDurationFalse_InvalidExtension_Test_001,
+    TestSize.Level1)
+{
+    string dirPath = "/data/test/mp4_check_duration_dir";
+    string filePath = dirPath + "/VID_test.avi";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
+    EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath, false), false);
+    MediaFileUtils::DeleteDir(dirPath);
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoEffectMode_Test_001, TestSize.Level1)
 {
     EXPECT_EQ(MediaFileUtils::CheckMovingPhotoEffectMode(-10), false);
@@ -882,6 +916,48 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_Test_002, TestSize.Level1)
     const string uri3 = "";
     auto res3 = MediaFileUtils::GetHighlightPath(uri3);
     EXPECT_EQ(res3, "");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetHighlightPath_PathTraversal_Test_001, TestSize.Level1)
+{
+    const string uri = "datashare:///media/highlight/cover/../../../etc/passwd";
+    auto res = MediaFileUtils::GetHighlightPath(uri);
+    EXPECT_EQ(res, "");
+
+    const string uri2 = "datashare:///media/../etc/passwd";
+    auto res2 = MediaFileUtils::GetHighlightPath(uri2);
+    EXPECT_EQ(res2, "");
+
+    const string uri3 = "file://media/../../../etc/passwd";
+    auto res3 = MediaFileUtils::GetHighlightPath(uri3);
+    EXPECT_EQ(res3, "");
+
+    const string uri4 = "datashare:///media/highlight/cover/..%2F..%2Fetc%2Fpasswd";
+    auto res4 = MediaFileUtils::GetHighlightPath(uri4);
+    EXPECT_EQ(res4, "");
+
+    const string uri5 = "datashare:///media/highlight/cover/valid/path";
+    auto res5 = MediaFileUtils::GetHighlightPath(uri5);
+    EXPECT_EQ(res5, "/storage/cloud/files/highlight/cover/valid/path");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetHighlightVideoPath_PathTraversal_Test_001, TestSize.Level1)
+{
+    const string uri = "datashare:///media/highlight/video/../../../etc/passwd";
+    auto res = MediaFileUtils::GetHighlightVideoPath(uri);
+    EXPECT_EQ(res, "");
+
+    const string uri2 = "datashare:///media/../etc/passwd";
+    auto res2 = MediaFileUtils::GetHighlightVideoPath(uri2);
+    EXPECT_EQ(res2, "");
+
+    const string uri3 = "file://media/../../../etc/passwd";
+    auto res3 = MediaFileUtils::GetHighlightVideoPath(uri3);
+    EXPECT_EQ(res3, "");
+
+    const string uri4 = "datashare:///media/highlight/video/valid/path";
+    auto res4 = MediaFileUtils::GetHighlightVideoPath(uri4);
+    EXPECT_EQ(res4, "/storage/cloud/files/highlight/video/valid/path");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_Test_003, TestSize.Level1)
@@ -2115,6 +2191,974 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_003, TestSi
     EXPECT_EQ(matchedSize, 0);
 
     EXPECT_EQ(MediaFileUtils::DeleteDir(rootPath), true);
+}
+
+/**
+ * @tc.name: SwapExtensionInPath_JpgToHeic
+ * @tc.desc: 验证SwapExtensionInPath将路径中的.jpg替换为.heic
+ *           [覆盖分支] rfind定位到.jpg并replace为.heic
+ *           [触发条件] 输入含.jpg的editData路径，fromExt=".jpg"，toExt=".heic"
+ *           [业务验证] 返回路径中.jpg被替换为.heic，其他部分不变
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_SwapExtensionInPath_Test_001, TestSize.Level1)
+{
+    string path = "/storage/cloud/files/.editData/Photo/X/IMG_123_456.jpg/editdata_camera";
+    string result = MediaFileUtils::SwapExtensionInPath(path, ".jpg", ".heic");
+    EXPECT_EQ(result, "/storage/cloud/files/.editData/Photo/X/IMG_123_456.heic/editdata_camera");
+}
+
+/**
+ * @tc.name: SwapExtensionInPath_HeicToJpg
+ * @tc.desc: 验证SwapExtensionInPath将路径中的.heic替换为.jpg
+ *           [覆盖分支] rfind定位到.heic并replace为.jpg
+ *           [触发条件] 输入含.heic的editData路径，fromExt=".heic"，toExt=".jpg"
+ *           [业务验证] 返回路径中.heic被替换为.jpg
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_SwapExtensionInPath_Test_002, TestSize.Level1)
+{
+    string path = "/storage/cloud/files/.editData/Photo/X/IMG_123_456.heic/editdata_camera";
+    string result = MediaFileUtils::SwapExtensionInPath(path, ".heic", ".jpg");
+    EXPECT_EQ(result, "/storage/cloud/files/.editData/Photo/X/IMG_123_456.jpg/editdata_camera");
+}
+
+/**
+ * @tc.name: SwapExtensionInPath_NoMatch
+ * @tc.desc: 验证SwapExtensionInPath在路径不含目标扩展名时返回原路径不变
+ *           [覆盖分支] rfind返回npos，不执行replace
+ *           [触发条件] 输入含.png的路径，fromExt=".jpg"，toExt=".heic"
+ *           [业务验证] 返回路径与输入完全一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_SwapExtensionInPath_Test_003, TestSize.Level1)
+{
+    string path = "/storage/cloud/files/.editData/Photo/X/IMG_123_456.png/editdata_camera";
+    string result = MediaFileUtils::SwapExtensionInPath(path, ".jpg", ".heic");
+    EXPECT_EQ(result, path);
+}
+
+/**
+ * @tc.name: SwapExtensionInPath_MultipleOccurrence
+ * @tc.desc: 验证SwapExtensionInPath只替换最后一个匹配的扩展名(rfind而非find)
+ *           [覆盖分支] rfind定位最后一个.jpg，前面的.jpg不被替换
+ *           [触发条件] 输入含两个.jpg的路径(.jpg_thumbnail.jpg)
+ *           [业务验证] 只有最后一个.jpg被替换为.heic
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_SwapExtensionInPath_Test_004, TestSize.Level1)
+{
+    string path = "/data/test/IMG_123.jpg_thumbnail.jpg";
+    string result = MediaFileUtils::SwapExtensionInPath(path, ".jpg", ".heic");
+    EXPECT_EQ(result, "/data/test/IMG_123.jpg_thumbnail.heic");
+}
+
+/**
+ * @tc.name: SwapExtensionInPath_EditDataSourceMp4
+ * @tc.desc: 验证SwapExtensionInPath在editData source.mp4路径中只替换目录部分的扩展名
+ *           [覆盖分支] rfind定位目录中的.jpg，source.mp4后缀不受影响
+ *           [触发条件] 输入含.jpg/source.mp4的editData路径
+ *           [业务验证] 返回.heic/source.mp4，.mp4部分不变
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_SwapExtensionInPath_Test_005, TestSize.Level1)
+{
+    string path = "/storage/cloud/files/.editData/Photo/X/IMG_123_456.jpg/source.mp4";
+    string result = MediaFileUtils::SwapExtensionInPath(path, ".jpg", ".heic");
+    EXPECT_EQ(result, "/storage/cloud/files/.editData/Photo/X/IMG_123_456.heic/source.mp4");
+}
+
+/**
+ * @tc.name: ReadStrFromFileWithExtRetry_FallbackJpgToHeic
+ * @tc.desc: 验证并发rename后ReadStrFromFileWithExtRetry通过fallback成功读取文件内容
+ *           [覆盖分支] 原路径(.heic)读取失败，fallback swap .heic->.jpg后读取成功
+ *           [触发条件] 创建.jpg目录下文件写入内容，用.heic路径调用ReadStrFromFileWithExtRetry
+ *           [业务验证] 函数返回true，读取内容与写入内容一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_Test_001, TestSize.Level1)
+{
+    string jpgDir = "/data/test/IMG_0001.jpg";
+    string heicDir = "/data/test/IMG_0001.heic";
+    string jpgPath = jpgDir + "/editdata_camera";
+    string heicPath = heicDir + "/editdata_camera";
+    string testContent = "test_edit_data_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(jpgPath), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgPath, testContent), true);
+
+    string fileContent;
+    string inputPath = heicDir + "/editdata_camera";
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFileWithExtRetry(inputPath, fileContent), true);
+    EXPECT_EQ(fileContent, testContent);
+
+    MediaFileUtils::DeleteDir("/data/test/IMG_0001.jpg");
+    MediaFileUtils::DeleteDir("/data/test/IMG_0001.heic");
+}
+
+/**
+ * @tc.name: ReadStrFromFileWithExtRetry_FallbackHeicToJpg
+ * @tc.desc: 验证反向并发rename场景下fallback成功读取
+ *           [覆盖分支] 原路径(.jpg)读取失败，fallback swap .jpg->.heic后读取成功
+ *           [触发条件] 创建.heic目录下文件写入内容，用.jpg路径调用ReadStrFromFileWithExtRetry
+ *           [业务验证] 函数返回true，读取内容与写入内容一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_Test_002, TestSize.Level1)
+{
+    string heicDir = "/data/test/IMG_0002.heic";
+    string jpgDir = "/data/test/IMG_0002.jpg";
+    string heicPath = heicDir + "/editdata_camera";
+    string jpgPath = jpgDir + "/editdata_camera";
+    string testContent = "test_edit_data_heic_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(heicPath), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicPath, testContent), true);
+
+    string fileContent;
+    string inputPath = jpgDir + "/editdata_camera";
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFileWithExtRetry(inputPath, fileContent), true);
+    EXPECT_EQ(fileContent, testContent);
+
+    MediaFileUtils::DeleteDir("/data/test/IMG_0002.heic");
+    MediaFileUtils::DeleteDir("/data/test/IMG_0002.jpg");
+}
+
+/**
+ * @tc.name: ReadStrFromFileWithExtRetry_BothFail
+ * @tc.desc: 验证路径不含.jpg/.heic且文件不存在时两轮尝试均失败
+ *           [覆盖分支] 原路径失败且fallback路径无扩展名可swap，最终返回false
+ *           [触发条件] 输入不含.jpg/.heic的不存在路径
+ *           [业务验证] 函数返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_Test_003, TestSize.Level1)
+{
+    string fileContent;
+    string inputPath = "/data/test/extretry_read_nonexist/noext/editdata_camera";
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFileWithExtRetry(inputPath, fileContent), false);
+}
+
+/**
+ * @tc.name: ReadStrFromFileWithExtRetry_NormalSuccess
+ * @tc.desc: 验证正常路径下直接读取成功，不走fallback
+ *           [覆盖分支] 原路径(.jpg)文件存在，ReadStrFromFile直接成功
+ *           [触发条件] 创建.jpg文件并写入内容，用.jpg路径调用
+ *           [业务验证] 函数返回true，内容一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_Test_004, TestSize.Level1)
+{
+    string jpgDir = "/data/test/IMG_0003.jpg";
+    string jpgPath = jpgDir + "/editdata_camera";
+    string testContent = "normal_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(jpgPath), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgPath, testContent), true);
+
+    string fileContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFileWithExtRetry(jpgPath, fileContent), true);
+    EXPECT_EQ(fileContent, testContent);
+
+    MediaFileUtils::DeleteDir("/data/test/IMG_0003.jpg");
+}
+
+/**
+ * @tc.name: ReadStrFromFileWithExtRetry_NoRetryWhenFallbackPathNotExist
+ * @tc.desc: 验证filePath不存在且fallbackPath也不存在时不触发ExtRetry fallback，
+ *           IsFileExists(fallbackPath)前置条件避免误触发
+ *           [覆盖分支] errno==ENOENT但IsFileExists(fallbackPath)为false，
+ *           跳过fallback分支直接返回false
+ *           [触发条件] filePath含.jpg不存在，fallbackPath含.heic也不存在
+ *           [业务验证] 函数返回false，不进入fallback
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_Test_005, TestSize.Level1)
+{
+    string nonExistJpgPath = "/data/test/read_noretry_src.jpg/editdata_camera";
+
+    string fileContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFileWithExtRetry(nonExistJpgPath, fileContent), false);
+}
+
+/**
+ * @tc.name: CopyFileSafeWithExtRetry_FallbackNewPathHeicToJpg
+ * @tc.desc: 验证并发rename后CopyFileSafeWithExtRetry自行处理fallback，完整CopyFileSafe流程成功
+ *           [覆盖分支] retryExtOnSrcPath=false，errno==ENOENT且IsFileExists(filePath)为true，
+ *           第一次CopyFileUtil+rename失败，fallback swap newPath .heic->.jpg后第二次完整流程成功
+ *           [触发条件] 创建.jpg目录作为目标目录，用.heic newPath调用，retryExtOnSrcPath=false
+ *           [业务验证] 复制成功，目标文件内容与源文件一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Test_001, TestSize.Level1)
+{
+    string srcDir = "/data/test/extretry_copysafe_src";
+    string jpgDir = "/data/test/IMG_0004.jpg";
+    string srcFile = srcDir + "/video.mp4";
+    string jpgDstDir = jpgDir + "/source.mp4";
+    string testContent = "safecopy_content_data";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+
+    string heicDstDir = "/data/test/IMG_0004.heic/source.mp4";
+    EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(srcFile, heicDstDir, false), true);
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(jpgDstDir, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir(srcDir);
+    MediaFileUtils::DeleteDir(jpgDir);
+    MediaFileUtils::DeleteDir("/data/test/IMG_0004.heic");
+}
+
+/**
+ * @tc.name: CopyFileSafeWithExtRetry_FallbackFilePathJpgToHeic
+ * @tc.desc: 验证并发rename后CopyFileSafeWithExtRetry自行处理fallback，完整CopyFileSafe流程成功
+ *           [覆盖分支] retryExtOnSrcPath=true，errno==ENOENT且IsFileExists(fallbackFilePath)为true，
+ *           第一次CopyFileUtil失败(PathToRealPath(filePath)失败)，fallback swap filePath .jpg->.heic后成功
+ *           [触发条件] 创建.heic源文件，用.jpg filePath调用，retryExtOnSrcPath=true
+ *           [业务验证] 复制成功，目标文件内容与源文件一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Test_002, TestSize.Level1)
+{
+    string heicDir = "/data/test/IMG_0005.heic";
+    string dstDir = "/data/test/extretry_copysafe_dst2";
+    string heicFile = heicDir + "/video.mp4";
+    string dstFile = dstDir + "/source.mp4";
+    string testContent = "safecopy_heic_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(heicFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dstDir), true);
+
+    string jpgFile = "/data/test/IMG_0005.jpg/video.mp4";
+    EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(jpgFile, dstFile, true), true);
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(dstFile, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir(heicDir);
+    MediaFileUtils::DeleteDir(dstDir);
+    MediaFileUtils::DeleteDir("/data/test/IMG_0005.jpg");
+}
+
+/**
+ * @tc.name: CopyFileSafeWithExtRetry_NormalSuccess
+ * @tc.desc: 验证正常路径下CopyFileSafeWithExtRetry直接成功，不走fallback
+ *           [覆盖分支] 原路径文件均存在，CopyFileSafe直接成功
+ *           [触发条件] 创建有效的源文件和目标目录
+ *           [业务验证] 复制成功，内容一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Test_003, TestSize.Level1)
+{
+    string srcFile = "/data/test/extretry_copysafe_normal_src/video.mp4";
+    string dstFile = "/data/test/extretry_copysafe_normal_dst/source.mp4";
+    string testContent = "safecopy_normal_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/extretry_copysafe_normal_src"), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/extretry_copysafe_normal_dst"), true);
+
+    EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(srcFile, dstFile, false), true);
+
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(dstFile, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir("/data/test/extretry_copysafe_normal_src");
+    MediaFileUtils::DeleteDir("/data/test/extretry_copysafe_normal_dst");
+}
+
+/**
+ * @tc.name: CopyFileSafeWithExtRetry_NoRetryWhenSrcNotExist
+ * @tc.desc: 验证filePath不存在时不触发ExtRetry fallback，IsFileExists(filePath)前置条件避免误触发
+ *           [覆盖分支] retryExtOnSrcPath=false，errno==ENOENT但IsFileExists(filePath)为false，
+ *           跳过fallback分支直接返回false
+ *           [触发条件] filePath不存在，newPath含.heic且其父目录存在，调用CopyFileSafeWithExtRetry
+ *           [业务验证] 函数返回false，不进入fallback
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Test_004, TestSize.Level1)
+{
+    string nonExistSrc = "/data/test/copysafe_noretry_src/video.mp4";
+    string heicDstDir = "/data/test/copysafe_noretry_dst.heic";
+    string heicDstFile = heicDstDir + "/source.mp4";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDstDir), true);
+
+    EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(nonExistSrc, heicDstFile, false), false);
+
+    MediaFileUtils::DeleteDir(heicDstDir);
+}
+
+/**
+ * @tc.name: CopyFileSafeWithExtRetry_NoRetryWhenFallbackSrcNotExist
+ * @tc.desc: 验证fallbackFilePath不存在时不触发ExtRetry fallback，
+ *           IsFileExists(fallbackFilePath)前置条件避免retryExtOnSrcPath=true时误触发
+ *           [覆盖分支] retryExtOnSrcPath=true，errno==ENOENT但IsFileExists(fallbackFilePath)为false，
+ *           跳过fallback分支直接返回false
+ *           [触发条件] filePath含.jpg不存在，fallbackFilePath含.heic也不存在，newPath有效
+ *           [业务验证] 函数返回false，不进入fallback
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Test_005, TestSize.Level1)
+{
+    string nonExistJpgSrc = "/data/test/copysafe_noretry_src.jpg/video.mp4";
+    string dstDir = "/data/test/copysafe_noretry_dst3";
+    string dstFile = dstDir + "/source.mp4";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dstDir), true);
+
+    EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(nonExistJpgSrc, dstFile, true), false);
+
+    MediaFileUtils::DeleteDir(dstDir);
+}
+
+/**
+ * @tc.name: MoveFileWithExtRetry_FallbackDestHeicToJpg
+ * @tc.desc: 验证并发rename后MoveFileWithExtRetry通过fallback destPath成功移动文件
+ *           [覆盖分支] 原destPath(.heic)父目录不存在导致errno==ENOENT，
+ *           fallback swap destPath .heic->.jpg后MoveFile成功
+ *           [触发条件] 创建.jpg目录作为目标目录，用.heic destPath调用MoveFileWithExtRetry
+ *           [业务验证] 移动成功，目标文件内容与源文件一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_001, TestSize.Level1)
+{
+    string jpgDir = "/data/test/IMG_0006.jpg";
+    string srcDir = "/data/test/move_extretry_src";
+    string srcFile = srcDir + "/video.mp4";
+    string jpgDestFile = jpgDir + "/source.mp4";
+    string testContent = "move_test_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+
+    string heicDestFile = "/data/test/IMG_0006.heic/source.mp4";
+    EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(srcFile, heicDestFile), true);
+
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(jpgDestFile, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir(srcDir);
+    MediaFileUtils::DeleteDir(jpgDir);
+    MediaFileUtils::DeleteDir("/data/test/IMG_0006.heic");
+}
+
+/**
+ * @tc.name: MoveFileWithExtRetry_FallbackDestJpgToHeic
+ * @tc.desc: 验证反向并发rename场景下fallback成功移动
+ *           [覆盖分支] 原destPath(.jpg)父目录不存在导致errno==ENOENT，
+ *           fallback swap destPath .jpg->.heic后MoveFile成功
+ *           [触发条件] 创建.heic目录，用.jpg destPath调用MoveFileWithExtRetry
+ *           [业务验证] 移动成功，内容一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_002, TestSize.Level1)
+{
+    string heicDir = "/data/test/IMG_0007.heic";
+    string srcDir = "/data/test/move_extretry_src2";
+    string srcFile = srcDir + "/video.mp4";
+    string heicDestFile = heicDir + "/source.mp4";
+    string testContent = "move_heic_test_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+
+    string jpgDestFile = "/data/test/IMG_0007.jpg/source.mp4";
+    EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(srcFile, jpgDestFile), true);
+
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(heicDestFile, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir(srcDir);
+    MediaFileUtils::DeleteDir(heicDir);
+    MediaFileUtils::DeleteDir("/data/test/IMG_0007.jpg");
+}
+
+/**
+ * @tc.name: MoveFileWithExtRetry_NormalSuccess
+ * @tc.desc: 验证正常路径下MoveFileWithExtRetry直接成功，不走fallback
+ *           [覆盖分支] 原路径均有效，MoveFile直接成功，不触发ENOENT
+ *           [触发条件] 创建有效源文件和目标目录
+ *           [业务验证] 移动成功，内容一致
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_003, TestSize.Level1)
+{
+    string srcDir = "/data/test/move_extretry_normal_src";
+    string srcFile = srcDir + "/video.mp4";
+    string dstDir = "/data/test/move_extretry_normal_dst";
+    string dstFile = dstDir + "/source.mp4";
+    string testContent = "move_normal_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dstDir), true);
+
+    EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(srcFile, dstFile), true);
+
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(dstFile, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir(srcDir);
+    MediaFileUtils::DeleteDir(dstDir);
+}
+
+/**
+ * @tc.name: MoveFileWithExtRetry_NoRetryWhenSrcNotExist
+ * @tc.desc: 验证srcPath不存在时不触发ExtRetry fallback，避免误触发
+ *           [覆盖分支] MoveFile因!IsFileExists(srcPath)返回false且errno==ENOENT，
+ *           IsFileExists(srcPath)前置条件不满足，跳过fallback分支
+ *           [触发条件] srcPath不存在，destPath父目录含.heic扩展名，调用MoveFileWithExtRetry
+ *           [业务验证] 函数返回false，不进入fallback（无fallback日志）
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_004, TestSize.Level1)
+{
+    string heicDstDir = "/data/test/move_noretry_heic_dst";
+    string heicDstFile = heicDstDir + "/source.mp4";
+    string nonExistSrcFile = "/data/test/move_noretry_nonexist_src/video.mp4";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDstDir), true);
+
+    EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(nonExistSrcFile, heicDstFile), false);
+
+    MediaFileUtils::DeleteDir(heicDstDir);
+}
+
+/**
+ * @tc.name: OpenFileWithExtRetry_FallbackHeicToJpg
+ * @tc.desc: 验证并发rename后OpenFileWithExtRetry通过fallback成功打开文件
+ *           [覆盖分支] 原filePath(.heic)PathToRealPath失败，
+ *           fallback swap .heic->.jpg后PathToRealPath+open成功
+ *           [触发条件] 创建.jpg目录下文件，用.heic路径调用OpenFileWithExtRetry
+ *           [业务验证] 返回fd>=0，absFilePath指向.jpg版本的realpath
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_001, TestSize.Level1)
+{
+    string jpgDir = "/data/test/IMG_0008.jpg";
+    string jpgFile = jpgDir + "/source.mp4";
+    string testContent = "open_test_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(jpgFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgFile, testContent), true);
+
+    string heicDir = "/data/test/IMG_0008.heic";
+    string heicFile = heicDir + "/source.mp4";
+    string absFilePath;
+    int32_t fd = MediaFileUtils::OpenFileWithExtRetry(heicFile, absFilePath);
+    EXPECT_GE(fd, 0);
+    EXPECT_NE(absFilePath.find("IMG_0008.jpg"), string::npos);
+    close(fd);
+
+    MediaFileUtils::DeleteDir(jpgDir);
+    MediaFileUtils::DeleteDir(heicDir);
+}
+
+/**
+ * @tc.name: OpenFileWithExtRetry_FallbackJpgToHeic
+ * @tc.desc: 验证反向并发rename场景下fallback成功打开
+ *           [覆盖分支] 原filePath(.jpg)失败，fallback swap .jpg->.heic成功
+ *           [触发条件] 创建.heic目录下文件，用.jpg路径调用
+ *           [业务验证] 返回fd>=0，absFilePath指向.heic版本
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_002, TestSize.Level1)
+{
+    string heicDir = "/data/test/IMG_0009.heic";
+    string heicFile = heicDir + "/source.mp4";
+    string testContent = "open_heic_test_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(heicFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicFile, testContent), true);
+
+    string jpgDir = "/data/test/IMG_0009.jpg";
+    string jpgFile = jpgDir + "/source.mp4";
+    string absFilePath;
+    int32_t fd = MediaFileUtils::OpenFileWithExtRetry(jpgFile, absFilePath);
+    EXPECT_GE(fd, 0);
+    EXPECT_NE(absFilePath.find("IMG_0009.heic"), string::npos);
+    close(fd);
+
+    MediaFileUtils::DeleteDir(heicDir);
+    MediaFileUtils::DeleteDir(jpgDir);
+}
+
+/**
+ * @tc.name: OpenFileWithExtRetry_BothFail
+ * @tc.desc: 验证文件不存在时两轮尝试均失败，返回-1
+ *           [覆盖分支] 原路径PathToRealPath失败，fallback路径也失败
+ *           [触发条件] 输入不存在文件路径
+ *           [业务验证] 返回fd=-1
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_003, TestSize.Level1)
+{
+    string absFilePath;
+    int32_t fd = MediaFileUtils::OpenFileWithExtRetry("/data/test/nonexist_file.mp4", absFilePath);
+    EXPECT_EQ(fd, -1);
+}
+
+/**
+ * @tc.name: OpenFileWithExtRetry_NormalSuccess
+ * @tc.desc: 验证正常路径下直接PathToRealPath+open成功，不走fallback
+ *           [覆盖分支] 原路径PathToRealPath成功且open返回有效fd
+ *           [触发条件] 创建有效文件并用正确路径调用
+ *           [业务验证] 返回fd>=0，absFilePath为文件realpath
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_004, TestSize.Level1)
+{
+    string srcDir = "/data/test/open_extretry_normal";
+    string srcFile = srcDir + "/source.mp4";
+    string testContent = "open_normal_content";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
+
+    string absFilePath;
+    int32_t fd = MediaFileUtils::OpenFileWithExtRetry(srcFile, absFilePath);
+    EXPECT_GE(fd, 0);
+    EXPECT_NE(absFilePath.find("open_extretry_normal"), string::npos);
+    close(fd);
+
+    MediaFileUtils::DeleteDir(srcDir);
+}
+
+/**
+ * @tc.name: OpenFileWithExtRetry_NoRetryWhenFallbackPathNotExist
+ * @tc.desc: 验证filePath不存在且fallbackPath也不存在时不触发ExtRetry fallback，
+ *           IsFileExists(fallbackPath)前置条件避免误触发
+ *           [覆盖分支] errno==ENOENT但IsFileExists(fallbackPath)为false，
+ *           跳过fallback分支直接返回fd=-1
+ *           [触发条件] filePath含.jpg不存在，fallbackPath含.heic也不存在
+ *           [业务验证] 函数返回-1，不进入fallback
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_005, TestSize.Level1)
+{
+    string nonExistJpgPath = "/data/test/open_noretry_src.jpg/source.mp4";
+
+    string absFilePath;
+    int32_t fd = MediaFileUtils::OpenFileWithExtRetry(nonExistJpgPath, absFilePath);
+    EXPECT_EQ(fd, -1);
+}
+
+/**
+ * @tc.name: IsFileExistsWithExtRetry_NormalExists
+ * @tc.desc: 验证文件存在于原路径时直接返回true，不触发fallback
+ *           [覆盖分支] 原路径IsFileExists返回true，直接返回true
+ *           [触发条件] 创建.jpg目录下文件，用.jpg路径调用IsFileExistsWithExtRetry
+ *           [业务验证] 函数返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Test_001, TestSize.Level1)
+{
+    string jpgDir = "/data/test/IMG_0012.jpg";
+    string jpgFile = jpgDir + "/editdata_camera";
+    string testContent = "isfileexists_normal";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(jpgFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgFile, testContent), true);
+
+    EXPECT_EQ(MediaFileUtils::IsFileExistsWithExtRetry(jpgFile), true);
+
+    MediaFileUtils::DeleteDir(jpgDir);
+}
+
+/**
+ * @tc.name: IsFileExistsWithExtRetry_FallbackExists
+ * @tc.desc: 验证并发rename后fallback路径存在时返回true
+ *           [覆盖分支] 原路径IsFileExists返回false，SwapExtensionInPath .heic→.jpg后IsFileExists返回true
+ *           [触发条件] 创建.jpg目录下文件，用.heic路径调用IsFileExistsWithExtRetry
+ *           [业务验证] 函数返回true（fallback成功）
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Test_002, TestSize.Level1)
+{
+    string jpgDir = "/data/test/IMG_0012.jpg";
+    string jpgFile = jpgDir + "/editdata_camera";
+    string heicDir = "/data/test/IMG_0012.heic";
+    string heicFile = heicDir + "/editdata_camera";
+    string testContent = "isfileexists_fallback";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(jpgFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgFile, testContent), true);
+
+    EXPECT_EQ(MediaFileUtils::IsFileExistsWithExtRetry(heicFile), true);
+
+    MediaFileUtils::DeleteDir(jpgDir);
+}
+
+/**
+ * @tc.name: IsFileExistsWithExtRetry_BothNotExist
+ * @tc.desc: 验证原路径和fallback路径均不存在时返回false
+ *           [覆盖分支] 原路径IsFileExists返回false，SwapExtensionInPath .jpg→.heic后IsFileExists也返回false
+ *           [触发条件] 路径含.jpg但文件不存在且.heic fallback也不存在
+ *           [业务验证] 函数返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Test_003, TestSize.Level1)
+{
+    string nonExistJpgFile = "/data/test/IMG_nonexist.jpg/editdata_camera";
+
+    EXPECT_EQ(MediaFileUtils::IsFileExistsWithExtRetry(nonExistJpgFile), false);
+}
+
+/**
+ * @tc.name: IsFileExistsWithExtRetry_NoExtension
+ * @tc.desc: 验证路径不含.jpg/.heic时SwapExtensionInPath无法swap，返回false
+ *           [覆盖分支] 路径不含.jpg/.heic，rfind均返回npos，fallbackPath为空，
+ *           跳过fallback分支直接返回IsFileExists(原路径)=false
+ *           [触发条件] 输入不含扩展名的路径
+ *           [业务验证] 函数返回false，不触发fallback
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Test_004, TestSize.Level1)
+{
+    string noExtPath = "/data/test/noext_dir/editdata_camera";
+
+    EXPECT_EQ(MediaFileUtils::IsFileExistsWithExtRetry(noExtPath), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_001, TestSize.Level1)
+{
+    // 正常正整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("123"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_002, TestSize.Level1)
+{
+    // 正常负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-123"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_003, TestSize.Level1)
+{
+    // 零
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("0"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_004, TestSize.Level1)
+{
+    // 边界值 - 最大正整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("2147483647"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_005, TestSize.Level1)
+{
+    // 边界值 - 最小负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483648"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_006, TestSize.Level1)
+{
+    // 空字符串
+    EXPECT_EQ(MediaFileUtils::IsValidInteger(""), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_007, TestSize.Level1)
+{
+    // 只有负号
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_008, TestSize.Level1)
+{
+    // 非数字字符 截断
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("12a3"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_009, TestSize.Level1)
+{
+    // 超出范围 - 大于最大正整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("2147483648"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_010, TestSize.Level1)
+{
+    // 超出范围 - 小于最小负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483649"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_011, TestSize.Level1)
+{
+    // 小数 - 截断
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("1.00000"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_012, TestSize.Level1)
+{
+    // 负小数 - 截断
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-1.00000"), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_001
+ * @tc.desc: 验证status小于下界时CheckLivePhoto4dStatus返回false
+ *           [覆盖分支] livePhoto4dStatus < TYPE_UNIDENTIFIED
+ *           [触发条件] 传入-1
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(-1), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_002
+ * @tc.desc: 验证status等于下界时CheckLivePhoto4dStatus返回true
+ *           [覆盖分支] livePhoto4dStatus == TYPE_UNIDENTIFIED(0)
+ *           [触发条件] 传入0
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_002, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_003
+ * @tc.desc: 验证status等于上界时CheckLivePhoto4dStatus返回true
+ *           [覆盖分支] livePhoto4dStatus == TYPE_GRAMMY(9)
+ *           [触发条件] 传入9
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_003, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_004
+ * @tc.desc: 验证status大于上界时CheckLivePhoto4dStatus返回false
+ *           [覆盖分支] livePhoto4dStatus > TYPE_GRAMMY
+ *           [触发条件] 传入10
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_004, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(10), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_CheckLivePhoto4dStatus_Test_005
+ * @tc.desc: 验证中间值(1-8)时CheckLivePhoto4dStatus返回true
+ *           [覆盖分支] TYPE_UNSUPPORTED(1)~TYPE_HITCHCOCK(8)
+ *           [触发条件] 依次传入1,2,3,5,6,7,8
+ *           [业务验证] 全部返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckLivePhoto4dStatus_Test_005, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_SUPPORTED)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UP_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_ZOOM_OUT)), true);
+    EXPECT_EQ(MediaFileUtils::CheckLivePhoto4dStatus(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_HITCHCOCK)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_001
+ * @tc.desc: 验证UNIDENTIFIED(0)不是效果模式
+ *           [覆盖分支] livePhoto4dStatus < TYPE_LIVEPHOTO_4D
+ *           [触发条件] 传入0
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED)), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_002
+ * @tc.desc: 验证USED(3)不是效果模式
+ *           [覆盖分支] livePhoto4dStatus == TYPE_USED，刚低于下界
+ *           [触发条件] 传入3
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_002, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED)), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_003
+ * @tc.desc: 验证LIVEPHOTO_4D(4)是效果模式
+ *           [覆盖分支] livePhoto4dStatus == TYPE_LIVEPHOTO_4D(4)，下界
+ *           [触发条件] 传入4
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_003, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_004
+ * @tc.desc: 验证GRAMMY(9)是效果模式
+ *           [覆盖分支] livePhoto4dStatus == TYPE_GRAMMY(9)，上界
+ *           [触发条件] 传入9
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_004, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_005
+ * @tc.desc: 验证大于上界不是效果模式
+ *           [覆盖分支] livePhoto4dStatus > TYPE_GRAMMY
+ *           [触发条件] 传入10
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_005, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(10), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsLivePhoto4dEffect_Test_006
+ * @tc.desc: 验证中间效果模式值(5-8)全部是效果模式
+ *           [覆盖分支] TYPE_LEFT_ROTATE(5)~TYPE_HITCHCOCK(8)
+ *           [触发条件] 依次传入5,6,7,8
+ *           [业务验证] 全部返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsLivePhoto4dEffect_Test_006, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UP_ROTATE)), true);
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_ZOOM_OUT)), true);
+    EXPECT_EQ(MediaFileUtils::IsLivePhoto4dEffect(
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_HITCHCOCK)), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_001
+ * @tc.desc: 验证空字符串不是合法UUID
+ *           [覆盖分支] uuidStr.empty()为true
+ *           [触发条件] 传入空字符串
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid(""), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_002
+ * @tc.desc: 验证DB默认值"-1"不是合法UUID
+ *           [覆盖分支] uuidStr == "-1"
+ *           [触发条件] 传入"-1"
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_002, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("-1"), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_003
+ * @tc.desc: 验证有效小写UUID是合法UUID
+ *           [覆盖分支] 正则匹配成功
+ *           [触发条件] 传入有效小写UUID格式字符串
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_003, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_004
+ * @tc.desc: 验证有效大写UUID是合法UUID（正则icase）
+ *           [覆盖分支] 大写字母正则匹配成功
+ *           [触发条件] 传入大写UUID格式字符串
+ *           [业务验证] 返回true
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_004, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D"), true);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_005
+ * @tc.desc: 验证非法格式字符串不是合法UUID
+ *           [覆盖分支] 正则匹配失败
+ *           [触发条件] 传入"not-a-uuid"
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_005, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("not-a-uuid"), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_006
+ * @tc.desc: 验证UUID尾部有多余字符时不是合法UUID
+ *           [覆盖分支] 正则匹配失败（多余字符）
+ *           [触发条件] 传入UUID+extra
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_006, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d-extra"), false);
+}
+
+/**
+ * @tc.name: MediaFileUtils_IsValidUuid_Test_007
+ * @tc.desc: 验证段缺失时不是合法UUID
+ *           [覆盖分支] 正则匹配失败（段缺失）
+ *           [触发条件] 传入不完整的UUID
+ *           [业务验证] 返回false
+ */
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidUuid_Test_007, TestSize.Level1)
+{
+    EXPECT_EQ(MediaFileUtils::IsValidUuid("a1b2c3d4-e5f6-4a7b"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GenerateUUID_Test_001, TestSize.Level1)
+{
+    std::string uuid = MediaFileUtils::GenerateUUID();
+    EXPECT_FALSE(uuid.empty());
+    EXPECT_EQ(uuid.length(), 36u);
+    EXPECT_EQ(uuid[8], '-');
+    EXPECT_EQ(uuid[13], '-');
+    EXPECT_EQ(uuid[18], '-');
+    EXPECT_EQ(uuid[23], '-');
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GenerateUUID_Test_002, TestSize.Level1)
+{
+    std::string uuid1 = MediaFileUtils::GenerateUUID();
+    std::string uuid2 = MediaFileUtils::GenerateUUID();
+    EXPECT_NE(uuid1, uuid2);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GenerateUUID_Test_003, TestSize.Level1)
+{
+    const int32_t uuidCount = 100;
+    std::set<std::string> uuidSet;
+    for (int32_t i = 0; i < uuidCount; i++) {
+        std::string uuid = MediaFileUtils::GenerateUUID();
+        uuidSet.insert(uuid);
+    }
+    EXPECT_EQ(uuidSet.size(), static_cast<size_t>(uuidCount));
 }
 } // namespace Media
 } // namespace OHOS

@@ -66,6 +66,7 @@ private:
     int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo);
     int32_t RecoverPackageName(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t MoveAssetFileFromMediaToFileManager(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
 
 private:
     MediaAssetsDao mediaAssetsDao_;

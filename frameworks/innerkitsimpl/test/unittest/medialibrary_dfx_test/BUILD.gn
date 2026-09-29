@@ -33,7 +33,9 @@ ohos_unittest("medialibrary_dfx_test") {
   cflags = [ "-fno-access-control" ]
 
   sources = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/hi_audit.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_storage_operation.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/zip_util.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_analyzer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_collector.cpp",
@@ -41,21 +43,32 @@ ohos_unittest("medialibrary_dfx_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_deprecated_perm_usage.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_moving_photo.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_photo_error_dao.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_photo_error_helper.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_photo_error_processor.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_system_photo_keys.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_timer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_worker.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/media_library_monitor.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/dfx_deprecated_perm_usage_test.cpp",
     "./src/dfx_moving_photo_test.cpp",
+    "./src/dfx_photo_error_helper_test.cpp",
+    "./src/dfx_photo_error_open_test.cpp",
+    "./src/dfx_photo_error_processor_test.cpp",
+    "./src/media_library_monitor_test.cpp",
     "./src/medialibrary_dfx_test.cpp",
     "./src/medialibrary_dfx_patch_test.cpp",
+    "./src/medialibrary_dfx_timer_test.cpp",
     "./src/mock_medialibrary_subscriber.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -82,7 +95,6 @@ ohos_unittest("medialibrary_dfx_test") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "preferences:native_preferences",
     "relational_store:native_rdb",

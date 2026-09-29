@@ -26,6 +26,7 @@
 #include "lake_folder_parser.h"
 #endif
 #include "file_manager_scan_rule_config.h"
+#include "file_scan_utils.h"
 #include "lake_scan_rule_config.h"
 #include "medialibrary_db_const.h"
 #include "media_file_notify_info.h"
@@ -35,10 +36,10 @@
 namespace OHOS::Media::CheckSceneHelper {
 CheckScene ResolveSceneByPath(const std::string &path)
 {
-    if (MediaStringUtils::StartsWith(path, std::string(LAKE_ROOT_PATH))) {
+    if (FileScanUtils::IsPathUnderRoot(path, std::string(LAKE_ROOT_PATH))) {
         return CheckScene::LAKE;
     }
-    if (MediaStringUtils::StartsWith(path, std::string(FILE_MANAGER_ROOT_PATH))) {
+    if (FileScanUtils::IsPathUnderRoot(path, std::string(FILE_MANAGER_ROOT_PATH))) {
         return CheckScene::FILE_MANAGER;
     }
     return CheckScene::UNKNOWN;

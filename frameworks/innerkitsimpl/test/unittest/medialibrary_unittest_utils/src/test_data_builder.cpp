@@ -95,6 +95,11 @@ int32_t TestDataBuilder::CreateAlbum(TestAlbumType albumType, const std::string&
             albumData.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
             albumData.albumLpath = "/FromDocs/" + albumName;
             break;
+        case TestAlbumType::SHARE_ALBUM:
+            albumData.albumType = static_cast<int32_t>(PhotoAlbumType::SHARE);
+            albumData.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC);
+            albumData.albumLpath = "/Pictures/" + albumName;
+            break;
         default:
             MEDIA_ERR_LOG("Invalid album type");
             return E_INVALID_VALUES;
@@ -132,6 +137,7 @@ valuesBucket.PutInt(PhotoColumn::PHOTO_HEIGHT, static_cast<int32_t>(DEFAULT_PHOT
     valuesBucket.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, assetData.fileSourceType);
     valuesBucket.PutString(PhotoColumn::PHOTO_STORAGE_PATH, assetData.storagePath);
     valuesBucket.PutInt(PhotoColumn::PHOTO_FILE_HIDDEN, static_cast<int32_t>(0));
+    valuesBucket.PutInt(PhotoColumn::PHOTO_IS_SHARED, assetData.isShared);
 
     int64_t rowId = -1;
     int32_t ret = rdbStore_->Insert(rowId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
@@ -161,6 +167,25 @@ int32_t TestDataBuilder::CreateAssetWithStoragePath(int32_t albumId, const std::
         static_cast<int32_t>(FileSourceType::MEDIA) :
         static_cast<int32_t>(FileSourceType::FILE_MANAGER);
     assetData.storagePath = storagePath;
+    
+    return InsertAsset(assetData);
+}
+
+int32_t TestDataBuilder::CreateSharedAlbum(const std::string& albumName)
+{
+    return CreateAlbum(TestAlbumType::SHARE_ALBUM, albumName);
+}
+
+int32_t TestDataBuilder::CreateSharedAsset(int32_t albumId, const std::string& displayName)
+{
+    TestAssetData assetData;
+    assetData.assetId = nextAssetId_++;
+    assetData.filePath = "/storage/media/local/files/Photo/" + std::to_string(assetData.assetId) +
+        "_" + displayName + ".jpg";
+    assetData.displayName = displayName;
+    assetData.ownerAlbumId = albumId;
+    assetData.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA);
+    assetData.isShared = static_cast<int32_t>(PhotoSharedType::SHARED);
     
     return InsertAsset(assetData);
 }

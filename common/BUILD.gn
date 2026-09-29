@@ -15,6 +15,8 @@ import("//build/ohos.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
 
 ohos_shared_library("media_library_common") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   include_dirs = [
@@ -24,6 +26,7 @@ ohos_shared_library("media_library_common") {
   ]
 
   sources = [
+    "${MEDIALIB_COMMON_PATH}/utils/src/media_log_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_map_const_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_string_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_uri_utils.cpp",
@@ -50,7 +53,6 @@ ohos_shared_library("media_library_common") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

@@ -26,6 +26,7 @@
 #include "media_file_utils.h"
 #include "result_set_utils.h"
 #include "userfile_client.h"
+#include "userfilemgr_uri.h"
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 #include "media_enhance_constants_c_api.h"
 #include "media_enhance_handles.h"
@@ -523,6 +524,12 @@ void CloudEnhancementAni::PrioritizeCloudEnhancementTask(ani_env *env, ani_objec
     }
     CHECK_IF_EQUAL(ParseArgPrioritize(env, aniObject, photoAsset, aniContext) == true,
         "Failed to parse args");
+    std::vector<std::string> fileIds = { std::to_string(aniContext->fileId) };
+    if (MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return;
+    }
     PrioritizeCloudEnhancementTaskExecute(aniContext);
     CommonComplete(env, aniContext);
 }
@@ -797,6 +804,9 @@ ani_object CloudEnhancementAni::QueryCloudEnhancementTaskState(ani_env *env, ani
     CHECK_COND(env, CloudEnhancementAni::InitUserFileClient(env, aniObject), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(
         env, aniObject, photoAsset, aniContext), "Failed to parse args");
+    std::vector<std::string> fileIds = { std::to_string(aniContext->fileId) };
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
 
     QueryCloudEnhancementTaskStateExecute(aniContext);
     return QueryCloudEnhancementTaskStateComplete(env, aniContext);
@@ -938,6 +948,9 @@ ani_object CloudEnhancementAni::GetCloudEnhancementPair(ani_env *env, ani_object
 
     CHECK_COND(env, CloudEnhancementAni::InitUserFileClient(env, aniObject), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(env, aniObject, asset, aniContext) == true, "Failed to parse args");
+    std::vector<std::string> fileIds = { std::to_string(aniContext->fileId) };
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     GetCloudEnhancementPairExecute(env, aniContext);
     return GetCloudEnhancementPairComplete(env, aniContext);
 }

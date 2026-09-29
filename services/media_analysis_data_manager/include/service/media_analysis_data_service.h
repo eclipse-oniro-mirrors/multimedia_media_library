@@ -26,6 +26,10 @@
 #include "start_asset_analysis_vo.h"
 #include "stop_active_analysis_dto.h"
 #include "stop_active_analysis_vo.h"
+#include "invoke_analysis_tool_dto.h"
+#include "invoke_analysis_tool_vo.h"
+#include "cancel_analysis_tool_dto.h"
+#include "cancel_analysis_tool_vo.h"
 #include "change_request_set_order_position_dto.h"
 #include "get_order_position_dto.h"
 #include "get_order_position_vo.h"
@@ -55,6 +59,8 @@ public:
     int32_t StartAssetAnalysis(const StartAssetAnalysisDto &dto, StartAssetAnalysisRespBody &respBody);
     int32_t StartActiveAnalysis(const StartActiveAnalysisDto &dto, StartActiveAnalysisRespBody &respBody);
     int32_t StopActiveAnalysis(const StopActiveAnalysisDto &dto, StopActiveAnalysisRespBody &respBody);
+    int32_t InvokeAnalysisTool(const InvokeAnalysisToolDto &dto, InvokeAnalysisToolRespBody &respBody);
+    int32_t CancelAnalysisTool(const CancelAnalysisToolDto &dto, CancelAnalysisToolRespBody &respBody);
     int32_t SetOrderPosition(ChangeRequestSetOrderPositionDto &setOrderPositionDto);
     int32_t GetOrderPosition(const GetOrderPositionDto& getOrderPositionDto, GetOrderPositionRespBody& resp);
     int32_t SetPortraitRelationship(const int32_t albumId, const std::string& relationship, const int32_t isMe);

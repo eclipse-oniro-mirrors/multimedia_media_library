@@ -83,6 +83,11 @@ public:
     int32_t isCritical;
     std::string localPath;
     int32_t hidden;
+    int32_t isShared;
+    std::string shareOwnerInfo;
+    int64_t shareDateDay;
+    int64_t shareGroup;
+    std::string shareAlbumOwner;
     std::map<std::string, CloudFileDataDto> attachment;
     std::optional<ORM::PhotosPo> localInfoOp;
 
@@ -111,6 +116,7 @@ struct DownloadAssetData {
     int32_t hidden;
     int64_t dateTrashed;
     int32_t subtype;
+    std::string shareAlbumOwner;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_PHOTOS_DTO_H

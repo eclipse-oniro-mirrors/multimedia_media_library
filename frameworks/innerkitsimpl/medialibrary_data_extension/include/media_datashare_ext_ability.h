@@ -245,11 +245,14 @@ public:
     EXPORT Uri DenormalizeUri(const Uri &uri) override;
     EXPORT void InitPermissionHandler();
     EXPORT int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    EXPORT static bool InvokeReverseCloneRestoreResume();
 
 private:
     int CheckPermissionForOpenFile(const Uri &uri, Media::MediaLibraryCommand &command, std::string &unifyMode);
     void OnStartSub(const AAFwk::Want &want);
-
+    static Media::MediaLibraryCommand CreateOpenFileCommand(const Uri &uri);
+    static void SetOperationObjectFromUri(Media::MediaLibraryCommand &command);
+    static void HandleHmdfsCachePersist(int32_t fd, Media::MediaLibraryCommand &command);
 private:
     Runtime &runtime_;
     std::shared_ptr<Media::AbsPermissionHandler> permissionHandler_ = nullptr;

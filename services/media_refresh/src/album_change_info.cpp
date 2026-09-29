@@ -21,6 +21,7 @@
 #include "result_set_utils.h"
 #include "media_file_utils.h"
 #include "accurate_debug_log.h"
+#include "photo_album.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -51,7 +52,15 @@ const map<std::string, ResultSetDataType> AlbumChangeInfo::albumInfoColumnTypes_
     { PhotoAlbumColumns::ORDER_SECTION, TYPE_INT32},
     { PhotoAlbumColumns::ALBUM_CLOUD_ID, TYPE_STRING },
     { PhotoAlbumColumns::ALBUM_IS_LOCAL, TYPE_INT32 },
-    { PhotoAlbumColumns::ALBUM_HIDDEN, TYPE_INT32 }
+    { PhotoAlbumColumns::ALBUM_HIDDEN, TYPE_INT32 },
+    { PhotoAlbumColumns::COVER_ORDER_KEY, TYPE_STRING },
+    { PhotoAlbumColumns::COVER_ORDER_SUBKEY, TYPE_STRING },
+    { PhotoAlbumColumns::COVER_ORDER_TYPE, TYPE_INT32 },
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY, TYPE_STRING },
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY, TYPE_STRING },
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE, TYPE_INT32 },
+    { PhotoAlbumColumns::SHARE_RISK_STATUS, TYPE_INT32 },
+    { PhotoAlbumColumns::SHARE_RISK_TYPE, TYPE_STRING },
 };
 
 const map<std::string, ResultSetDataType> AlbumChangeInfo::analysisAlbumInfoColumnTypes_ = {
@@ -89,6 +98,14 @@ const std::vector<std::string>& AlbumChangeInfo::GetAlbumInfoColumns()
 const std::vector<std::string>& AlbumChangeInfo::GetAnalysisAlbumInfoColumns()
 {
     return analysisAlbumInfoColumns_;
+}
+
+void AlbumChangeInfo::SetPhotoAlbumExecute(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    SetPhotoAlbumHidden(albumChangeInfo, resultSet);
+    SetPhotoAlbumForCoverOrder(albumChangeInfo, resultSet);
+    SetPhotoAlbumForShareAlbum(albumChangeInfo, resultSet);
 }
 
 vector<AlbumChangeInfo> AlbumChangeInfo::GetInfoFromResult(const shared_ptr<NativeRdb::ResultSet> &resultSet)
@@ -137,7 +154,7 @@ vector<AlbumChangeInfo> AlbumChangeInfo::GetInfoFromResult(const shared_ptr<Nati
             resultSet, GetDataType(PhotoAlbumColumns::ALBUM_CLOUD_ID)));
         albumChangeInfo.isLocal_ = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_IS_LOCAL,
             resultSet, GetDataType(PhotoAlbumColumns::ALBUM_IS_LOCAL)));
-        SetPhotoAlbumHidden(albumChangeInfo, resultSet);
+        SetPhotoAlbumExecute(albumChangeInfo, resultSet);
         albumChangeInfos.push_back(albumChangeInfo);
     }
 
@@ -180,6 +197,28 @@ void AlbumChangeInfo::SetPhotoAlbumHidden(AlbumChangeInfo &albumChangeInfo,
         resultSet, GetDataType(PhotoAlbumColumns::ALBUM_HIDDEN)));
 }
 
+void AlbumChangeInfo::SetPhotoAlbumForCoverOrder(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    albumChangeInfo.coverOrderKey_ = get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_ORDER_KEY,
+        resultSet, GetDataType(PhotoAlbumColumns::COVER_ORDER_KEY)));
+    albumChangeInfo.coverOrderSubKey_ = get<string>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_ORDER_SUBKEY,
+        resultSet, GetDataType(PhotoAlbumColumns::COVER_ORDER_SUBKEY)));
+    albumChangeInfo.coverOrderType_ = get<int32_t>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_ORDER_TYPE,
+        resultSet, GetDataType(PhotoAlbumColumns::COVER_ORDER_TYPE)));
+    albumChangeInfo.hiddenCoverOrderKey_ = get<string>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY,
+        resultSet, GetDataType(PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY)));
+    albumChangeInfo.hiddenCoverOrderSubKey_ = get<string>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY,
+        resultSet, GetDataType(PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY)));
+    albumChangeInfo.hiddenCoverOrderType_ = get<int32_t>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE,
+        resultSet, GetDataType(PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE)));
+}
+
 string AlbumChangeInfo::ToString(bool isDetail) const
 {
     stringstream ss;
@@ -194,6 +233,8 @@ string AlbumChangeInfo::ToString(bool isDetail) const
         ss << ", dirty_: " << dirty_ << ", coverUriSource_: " << coverUriSource_;
         ss << ", albumsOrder_: " << albumsOrder_ << ", orderSection_: " << orderSection_ << ", lpath_: " << lpath_;
         ss << ", isLocal_: " << isLocal_ << ", cloudId_: " << cloudId_ << ", hidden_: " << hidden_;
+        // 共享相册字段
+        ss << ", shareRiskStatus_: " << shareRiskStatus_ << ", shareRiskType_: " << shareRiskType_;
         if (isCoverChange_) {
             ss << ", cover info: " << coverInfo_.ToString().c_str();
         }
@@ -331,6 +372,10 @@ bool AlbumChangeInfo::Marshalling(Parcel &parcel, bool isSystem) const
         ret = ret && parcel.WriteInt32(orderSection_);
         ret = ret && parcel.WriteInt32(albumsOrder_);
         ret = ret && parcel.WriteString(lpath_);
+        if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumType_),
+            static_cast<PhotoAlbumSubType>(albumSubType_))) {
+            ret = ret && parcel.WriteInt32(shareRiskStatus_);
+        }
     }
     ret = ret && parcel.WriteInt32(albumId_);
     return ret;
@@ -377,6 +422,10 @@ bool AlbumChangeInfo::ReadFromParcel(Parcel &parcel)
         ret = ret && parcel.ReadInt32(orderSection_);
         ret = ret && parcel.ReadInt32(albumsOrder_);
         ret = ret && parcel.ReadString(lpath_);
+        if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumType_),
+            static_cast<PhotoAlbumSubType>(albumSubType_))) {
+            ret = ret && parcel.ReadInt32(shareRiskStatus_);
+        }
     }
     ret = ret && parcel.ReadInt32(albumId_);
     return ret;
@@ -412,7 +461,6 @@ string AlbumChangeInfo::GetAlbumDiff(const AlbumChangeInfo &album, const AlbumCh
     GET_ALBUM_DIFF(videoCount_);
     GET_ALBUM_DIFF(albumType_);
     GET_ALBUM_DIFF(albumSubType_);
-    GET_ALBUM_DIFF(albumName_);
     GET_ALBUM_DIFF(albumUri_);
     GET_ALBUM_DIFF(count_);
     GET_ALBUM_DIFF(hiddenCount_);
@@ -425,6 +473,13 @@ string AlbumChangeInfo::GetAlbumDiff(const AlbumChangeInfo &album, const AlbumCh
     GET_ALBUM_DIFF(albumsOrder_);
     GET_ALBUM_DIFF(orderSection_);
     GET_ALBUM_DIFF(hidden_);
+    GET_ALBUM_DIFF(shareRiskStatus_);
+    GET_ALBUM_DIFF(shareRiskType_);
+
+    if (album.albumName_ != compare.albumName_) {
+        ss << "albumName_: " << MediaFileUtils::DesensitizeName(album.albumName_) << " -> ";
+        ss << MediaFileUtils::DesensitizeName(compare.albumName_) << ", ";
+    }
 
     if (album.coverUri_ != compare.coverUri_) {
         ss << "coverUri_: " << MediaFileUtils::DesensitizeUri(album.coverUri_) << " -> ";
@@ -547,6 +602,14 @@ string AnalysisAlbumRefreshInfo::ToString() const
         << MediaFileUtils::DesensitizeUri(refreshCover_) << ", album timestamp: "
         << albumRefreshTimestamp_.ToString();
     return ss.str();
+}
+void AlbumChangeInfo::SetPhotoAlbumForShareAlbum(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    albumChangeInfo.shareRiskStatus_ = get<int32_t>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_RISK_STATUS, resultSet, GetDataType(PhotoAlbumColumns::SHARE_RISK_STATUS)));
+    albumChangeInfo.shareRiskType_ = get<string>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_RISK_TYPE, resultSet, GetDataType(PhotoAlbumColumns::SHARE_RISK_TYPE)));
 }
 
 } // namespace Media

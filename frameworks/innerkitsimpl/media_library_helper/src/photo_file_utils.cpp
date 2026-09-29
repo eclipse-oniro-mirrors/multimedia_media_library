@@ -29,6 +29,7 @@
 #include "medialibrary_type_const.h"
 #include "media_path_utils.h"
 #include "media_string_utils.h"
+#include "media_time_utils.h"
 
 using namespace std;
 
@@ -53,6 +54,7 @@ bool PhotoFileUtils::HasSource(bool hasEditDataCamera,
 {
     return hasEditDataCamera || editTime > 0 ||
             (subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) ||
+            (subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) ||
             (subtype == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO) && editDataExist == EDIT_DATA_EXIST) ||
             (effectMode > static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT) &&
              effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY));
@@ -257,6 +259,38 @@ DateParts PhotoFileUtils::ConstructDateAddedDateParts(int64_t dateAdded)
     const auto [dateYear, dateMonth, dateDay] = PhotoFileUtils::ExtractYearMonthDay(dateAddedDateInfo);
     DateParts dateParts = {dateYear, dateMonth, dateDay};
     return dateParts;
+}
+
+static bool IsAllDigits(const std::string &str)
+{
+    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+}
+
+bool PhotoFileUtils::ValidateDateAddedYearMonthDay(const string &dateAddedYear,
+    const string &dateAddedMonth, const string &dateAddedDay, int64_t dateAdded)
+{
+    constexpr size_t yearLength = 4;
+    constexpr size_t monthLength = 6;
+    constexpr size_t dayLength = 8;
+    if (dateAddedYear.empty() || dateAddedMonth.empty() || dateAddedDay.empty()) {
+        return false;
+    }
+    if (!IsAllDigits(dateAddedYear) || !IsAllDigits(dateAddedMonth) || !IsAllDigits(dateAddedDay)) {
+        return false;
+    }
+    if (dateAddedYear.size() != yearLength || dateAddedMonth.size() != monthLength ||
+        dateAddedDay.size() != dayLength) {
+        return false;
+    }
+    constexpr size_t dayMonthSize = 2;
+    int year = std::stoi(dateAddedDay.substr(0, yearLength));
+    int month = std::stoi(dateAddedDay.substr(yearLength, dayMonthSize));
+    int day = std::stoi(dateAddedDay.substr(monthLength, dayMonthSize));
+    if (std::stoi(dateAddedYear) != year || std::stoi(dateAddedMonth.substr(0, yearLength)) != year ||
+        std::stoi(dateAddedMonth.substr(yearLength, dayMonthSize)) != month) {
+        return false;
+    }
+    return MediaTimeUtils::IsPlausibleDateTime(year, month, day, dateAdded);
 }
 
 std::string PhotoFileUtils::GetLocalLcdPath(const std::string &photoPath)

@@ -22,6 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "itypes_util.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool CloudMdkRecordPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
@@ -53,7 +54,9 @@ bool CloudMdkRecordPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(exifRotate), false, "exifRotate");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(strongAssociation), false, "strongAssociation");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(compressionQuality), false, "compressionQuality");
     return true;
 }
 bool CloudMdkRecordPhotosVo::MarshallingAttributesInfo(MessageParcel &parcel) const
@@ -91,6 +94,11 @@ bool CloudMdkRecordPhotosVo::MarshallingAttributesInfo(MessageParcel &parcel) co
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(packageName), false, "packageName");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(photoRiskStatus), false, "photoRiskStatus");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(shareAlbumOwner), false, "shareAlbumOwner");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(int64fields, parcel), false, "int64fields");
     return true;
@@ -124,7 +132,9 @@ bool CloudMdkRecordPhotosVo::ReadBasicInfo(Parcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(exifRotate), false, "exifRotate");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(strongAssociation), false, "strongAssociation");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(compressionQuality), false, "compressionQuality");
     return true;
 }
 bool CloudMdkRecordPhotosVo::ReadAttributesInfo(MessageParcel &parcel)
@@ -162,6 +172,11 @@ bool CloudMdkRecordPhotosVo::ReadAttributesInfo(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(packageName), false, "packageName");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(photoRiskStatus), false, "photoRiskStatus");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(shareAlbumOwner), false, "shareAlbumOwner");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(int64fields, parcel), false, "int64fields");
     return true;
@@ -187,7 +202,7 @@ bool CloudMdkRecordPhotosVo::Unmarshalling(MessageParcel &parcel)
 void CloudMdkRecordPhotosVo::GetAlbumInfo(std::stringstream &ss) const
 {
     ss << "\"albumCloudId\": \"" << albumCloudId << "\","
-       << "\"albumLPath\": \"" << albumLPath << "\"";
+       << "\"albumLPath\": \"" << MediaFileUtils::DesensitizePath(albumLPath) << "\"";
 }
 
 void CloudMdkRecordPhotosVo::GetBasicInfo(std::stringstream &ss) const
@@ -247,8 +262,10 @@ void CloudMdkRecordPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"exifRotate\": " << exifRotate << ","
        << "\"movingPhotoEffectMode\": " << movingPhotoEffectMode << ","
        << "\"supportedWatermarkType\": " << supportedWatermarkType << ","
+        << "\"musicMasterMode\": " << musicMasterMode << ","
+
        << "\"strongAssociation\": " << strongAssociation << ","
-       << "\"data\": \"" << data << "\","
+       << "\"data\": \"" << MediaFileUtils::DesensitizePath(data) << "\","
        << "\"latitude_has_value\": " << (latitude != 0) << ","
        << "\"longitude_has_value\": " << (longitude != 0) << ","
        << "\"height\": " << height << ","
@@ -258,7 +275,13 @@ void CloudMdkRecordPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"mimeType\": " << mimeType << ","
        << "\"uniqueId\": " << uniqueId << ","
        << "\"packageName\": " << packageName << ","
-       << "\"photoRiskStatus\": " << photoRiskStatus << ",";
+       << "\"photoRiskStatus\": " << photoRiskStatus << ","
+       << "\"compressionQuality\": " << compressionQuality << ","
+       << "\"isShared\": " << isShared << ","
+       << "\"shareOwnerInfo\": \"" << shareOwnerInfo << "\","
+       << "\"shareDateDay\": " << shareDateDay << ","
+       << "\"shareGroup\": " << shareGroup << ","
+       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\",";
 }
 
 void CloudMdkRecordPhotosVo::GetRemoveAlbumInfo(std::stringstream &ss) const

@@ -67,6 +67,7 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -107,7 +108,6 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libexif:libexif",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",
@@ -179,6 +179,7 @@ ohos_unittest("medialibrary_cloud_enhancement_get_pair_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -219,7 +220,6 @@ ohos_unittest("medialibrary_cloud_enhancement_get_pair_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libexif:libexif",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",
     "relational_store:native_rdb",

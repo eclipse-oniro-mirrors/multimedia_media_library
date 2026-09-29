@@ -38,7 +38,9 @@ string GetClientAppId()
 bool IsMediatoolOperation(MediaLibraryCommand &cmd)
 {
     return cmd.GetOprnObject() == OperationObject::TOOL_PHOTO || cmd.GetOprnObject() == OperationObject::TOOL_AUDIO ||
-        cmd.GetOprnObject() == OperationObject::TOOL_ALBUM || cmd.GetOprnType() == Media::OperationType::DELETE_TOOL;
+        cmd.GetOprnObject() == OperationObject::TOOL_ALBUM || cmd.GetOprnType() == Media::OperationType::DELETE_TOOL ||
+        (cmd.GetOprnObject() == OperationObject::MISCELLANEOUS &&
+        cmd.GetOprnType() == Media::OperationType::QUERY_ACTIVE_USER_ID);
 }
 
 static bool IsHdcShellMediatoolCommand(MediaLibraryCommand &cmd, const std::string &openFileMode)
@@ -50,7 +52,8 @@ static bool IsHdcShellMediatoolCommand(MediaLibraryCommand &cmd, const std::stri
         (cmd.GetOprnType() == Media::OperationType::DELETE &&
         cmd.GetOprnObject() == OperationObject::FILESYSTEM_AUDIO) ||
         (cmd.GetOprnType() == Media::OperationType::OPEN && openFileMode.find('w') == string::npos) ||
-        cmd.GetOprnType() == Media::OperationType::LS_MEDIA_FILES;
+        cmd.GetOprnType() == Media::OperationType::LS_MEDIA_FILES ||
+        cmd.GetOprnType() == Media::OperationType::QUERY_ACTIVE_USER_ID;
 }
 
 bool IsDeveloperMediaTool(MediaLibraryCommand &cmd, const std::string &openFileMode)

@@ -24,6 +24,8 @@ config("media_library_camera_config") {
 }
 
 ohos_shared_library("media_library_camera_helper") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   include_dirs = [
@@ -59,9 +61,6 @@ ohos_shared_library("media_library_camera_helper") {
     "./src/media_library_camera_manager.cpp",
     "./src/media_low_quality_memory_callback.cpp",
     "./src/media_photo_asset_proxy.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/base_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/mimetype_utils.cpp",
   ]
 
   inner_ipc_sources = [
@@ -82,7 +81,8 @@ ohos_shared_library("media_library_camera_helper") {
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
   ]
 
   public_configs = [ ":media_library_camera_config" ]
@@ -100,21 +100,27 @@ ohos_shared_library("media_library_camera_helper") {
   ldflags = [
     "-Wl,--gc-sections",
     "-fPIE",
+    "-Wl,-Bsymbolic",
   ]
 
   cflags_cc = [ "-Os" ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_runtime:ability_connect_callback_stub",
     "ability_runtime:app_context",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_consumer",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
   ]
 
   defines = []
@@ -128,7 +134,6 @@ ohos_shared_library("media_library_camera_helper") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

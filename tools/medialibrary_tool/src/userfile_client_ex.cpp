@@ -220,11 +220,6 @@ int32_t UserFileClientEx::Init()
     return Media::E_OK;
 }
 
-void UserFileClientEx::Clear()
-{
-    UserFileClient::Clear();
-}
-
 static string GetFileExtension(const string& pathOrDisplayName)
 {
     if (!pathOrDisplayName.empty()) {

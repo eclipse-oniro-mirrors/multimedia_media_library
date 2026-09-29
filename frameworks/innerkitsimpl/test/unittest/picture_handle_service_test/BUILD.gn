@@ -21,7 +21,7 @@ group("unittest") {
 }
 
 ohos_unittest("picture_handle_service_test") {
-  module_out_path = "media_library/picture_handle_service"
+  module_out_path = "media_library/media_library_asset"
 
   include_dirs = [
     "./include",
@@ -40,6 +40,7 @@ ohos_unittest("picture_handle_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -61,6 +62,8 @@ ohos_unittest("picture_handle_service_test") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "image_framework:image_native",
+    "graphic_surface:surface",
+    "graphic_2d:color_manager",
   ]
 
   sanitize = {

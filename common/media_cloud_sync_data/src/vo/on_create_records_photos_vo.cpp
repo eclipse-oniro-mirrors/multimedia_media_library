@@ -22,6 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 
@@ -96,7 +97,7 @@ std::string OnCreateRecord::ToString() const
        << "\"version\": " << version << ","
        << "\"serverErrorCode\": " << serverErrorCode << ","
        << "\"isSuccess\": \"" << isSuccess << "\","
-       << "\"livePhotoCachePath\": \"" << livePhotoCachePath << "\","
+       << "\"livePhotoCachePath\": \"" << MediaFileUtils::DesensitizePath(livePhotoCachePath) << "\","
        << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
        << "\"errorDetails\": [";
     for (uint32_t i = 0; i < errorDetails.size(); ++i) {

@@ -22,6 +22,9 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_related_system_state_manager.h"
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+#include "critical_label_task_queue.h"
+#endif
 
 using namespace std;
 using namespace OHOS::NetManagerStandard;
@@ -58,6 +61,12 @@ int32_t NetConnectObserver::NetCapabilitiesChange(sptr<NetHandle> &netHandle, co
         SetNetConnStatus(NetConnStatus::NO_NETWORK);
         CloudMediaAssetManager::GetInstance().PauseDownloadCloudAsset(CloudMediaTaskPauseCause::NETWORK_FLOW_LIMIT);
     }
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+        auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+        if (criticalLabelTaskQueue != nullptr) {
+            criticalLabelTaskQueue->NotifyThread();
+        }
+#endif
     return E_OK;
 }
 

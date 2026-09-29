@@ -45,6 +45,10 @@
 #include "refresh_business_name.h"
 #include "multistages_video_capture_manager.h"
 #include "medialibrary_tracer.h"
+#include "media_file_access_utils.h"
+#include "file_manager_scanner.h"
+#include "file_scan_utils.h"
+#include "global_scanner.h"
 // LCOV_EXCL_START
 using namespace std;
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
@@ -137,7 +141,8 @@ static void RemoveVideo(int32_t stageVideoTaskStatus, const string &photoId)
 }
 
 int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEnhancementFileInfo> info,
-    CloudEnhancementThreadTask& task, shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh)
+    CloudEnhancementThreadTask& task, shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+    std::shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     CHECK_AND_RETURN_RET(CheckAddrAndBytes(task) == E_OK, E_ERR);
     CHECK_AND_RETURN_RET_LOG(info, E_FAIL, "cloud enhancement file info is empty");
@@ -146,22 +151,25 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckDisplayName(info->displayName) == E_OK,
         E_ERR, "display name not valid");
 
-    string editDataDirPath = MediaEditUtils::GetEditDataDir(info->filePath);
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(info->filePath);
     string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(info->filePath);
     string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(info->filePath);
 
-    if (!MediaFileUtils::IsDirExists(editDataDirPath)) {
-        if (!MediaFileUtils::CreateDirectory(editDataDirPath)) {
-            MEDIA_ERR_LOG("Create directory %{public}s failed", editDataDirPath.c_str());
-            return E_FAIL;
-        }
+    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::CheckAndCreateEditDataDir(info->filePath), E_ERR, "create dir failed");
+
+    int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+    string primarySourcePath = MediaFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : info->filePath;
+    string effectPhotoPath = info->filePath;
+    if (sourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
+        sourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
+        std::string storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+        primarySourcePath = MediaFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : storagePath;
+        effectPhotoPath = storagePath;
     }
 
-    string primarySourcePath = MediaFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : info->filePath;
-    MEDIA_INFO_LOG("Save cloud enhancement image, path: %{public}s", primarySourcePath.c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(primarySourcePath, editDataSourceBackPath), E_ERR,
-        "Fail to move %{public}s to %{public}s", primarySourcePath.c_str(), editDataSourceBackPath.c_str());
+    MEDIA_INFO_LOG("Save cloud enhancement image, path: %{private}s", primarySourcePath.c_str());
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(primarySourcePath, editDataSourceBackPath), E_ERR,
+        "Fail to move %{private}s to %{private}s", primarySourcePath.c_str(), editDataSourceBackPath.c_str());
     int32_t ret = FileUtils::SaveImage(primarySourcePath, (void*)(buffer.get()), static_cast<size_t>(task.bytes));
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "save cloud enhancement photo failed. ret=%{public}d, errno=%{public}d",
         ret, errno);
@@ -183,14 +191,10 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
             info->filePath, editDataCameraPath, mimeType);
         MEDIA_INFO_LOG("save cloud enhancement photo with editDataCamera, ret: %{public}d", ret);
         CHECK_AND_EXECUTE(ret == E_OK, CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafe(editDataSourcePath,
-            info->filePath), E_ERR, "Fail to copy editdata_source to file_path"));
+            effectPhotoPath), E_ERR, "Fail to copy editdata_source to file_path"));
     }
 
-    int err = UpdateCloudEnhancementPhotoInfo(info->fileId, assetRefresh);
-    CHECK_AND_PRINT_LOG(err == E_OK, "fail to update composite enhancement photo info");
-
-    MediaLibraryObjectUtils::ScanFileSyncWithoutAlbumUpdate(
-        info->filePath, to_string(info->fileId), MediaLibraryApi::API_10);
+    ProcessCloudEnhancementPhotoUpdate(info->fileId, assetRefresh, sourceType, info->filePath);
     return info->fileId;
 }
 
@@ -276,23 +280,18 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(shared_
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(info->filePath);
     CHECK_AND_RETURN_RET_LOG(!videoPath.empty(), E_ERR, "Can not get video path, fileid: %{public}d", info->fileId);
 
-    string editDataDirPath = MediaEditUtils::GetEditDataDir(info->filePath);
     string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(info->filePath);
     string editVideoDataSourcePath = MediaFileUtils::GetMovingPhotoVideoPath(editDataSourcePath);
     string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(info->filePath);
     string editVideoDataSourceBackPath = MediaFileUtils::GetMovingPhotoVideoPath(editDataSourceBackPath);
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(info->filePath);
-    if (!MediaFileUtils::IsDirExists(editDataDirPath)) {
-        if (!MediaFileUtils::CreateDirectory(editDataDirPath)) {
-            MEDIA_ERR_LOG("Failed to create editData directory, path: %{private}s", editDataDirPath.c_str());
-            return E_ERR;
-        }
-    }
+    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::CheckAndCreateEditDataDir(info->filePath), E_ERR,
+        "create edit data failed");
 
     string primarySourcePath = MediaFileUtils::IsFileExists(editDataCameraPath) ? editVideoDataSourcePath : videoPath;
     MEDIA_INFO_LOG("Save cloud enhancement video, path: %{private}s", primarySourcePath.c_str());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(primarySourcePath, editVideoDataSourceBackPath), E_ERR,
-        "Fail to move %{private}s to %{private}s", primarySourcePath.c_str(), editVideoDataSourceBackPath.c_str());
+        "Fail to move %{public}s to %{public}s", primarySourcePath.c_str(), editVideoDataSourceBackPath.c_str());
     int32_t ret = SaveVideo(primarySourcePath, (void*)(buffer.get()), static_cast<size_t>(task.videoBytes));
     if (ret != E_OK) {
         MEDIA_INFO_LOG("save cloud enhancement video failed. ret=%{public}d, errno=%{public}d", ret, errno);
@@ -399,8 +398,235 @@ void EnhancementServiceCallback::OnServiceReconnected()
     EnhancementManager::GetInstance().Init();
 }
 
+static shared_ptr<CloudEnhancementFileInfo> BuildEnhancementFileInfo(std::shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK, nullptr,
+        "no need build enhancement data.");
+    int32_t hidden = GetInt32Val(MediaColumn::MEDIA_HIDDEN, resultSet);
+    int32_t sourceSubtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    string sourceDisplayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+    int32_t sourceFileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+    string sourceFilePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    return make_shared<CloudEnhancementFileInfo>(
+        sourceFileId, sourceFilePath, sourceDisplayName, sourceSubtype, hidden);
+}
+
+void EnhancementServiceCallback::ProcessCloudEnhancementPhotoUpdate(int32_t fileId,
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+    int32_t sourceType, const std::string& effectPhotoPath)
+{
+    int err = UpdateCloudEnhancementPhotoInfo(fileId, assetRefresh);
+    CHECK_AND_PRINT_LOG(err == E_OK, "fail to update composite enhancement photo info");
+
+    if (sourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
+        sourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
+        std::vector<MediaNotifyInfo> notifyInfos;
+        MediaNotifyInfo notifyInfo;
+        notifyInfo.afterPath = effectPhotoPath;
+        notifyInfo.objType = FileNotifyObjectType::FILE;
+        notifyInfo.optType = FileNotifyOperationType::MOD;
+        notifyInfos.emplace_back(notifyInfo);
+
+        FileManagerScanner scanner;
+        scanner.Run(notifyInfos);
+    } else {
+        MediaLibraryObjectUtils::ScanFileSyncWithoutAlbumUpdate(
+            effectPhotoPath, to_string(fileId), MediaLibraryApi::API_10);
+    }
+}
+
+int32_t EnhancementServiceCallback::HandleMediaPhotoEnhancement(CloudEnhancementThreadTask& task,
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh, std::shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK, E_ERR,
+        "no media photo data.");
+    // save 120 per
+    shared_ptr<CloudEnhancementFileInfo> info = BuildEnhancementFileInfo(resultSet);
+    int32_t newFileId = SaveCloudEnhancementPhoto(info, task, assetRefresh, resultSet);
+    CHECK_AND_RETURN_RET_LOG(newFileId > 0, E_ERR, "invalid file id");
+    int32_t movingEnhanceType = GetInt32Val(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, resultSet);
+    if (movingEnhanceType == BOTH) {
+        MediaLibraryTracer tracer;
+        tracer.Start("EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo");
+        int32_t successSave = SaveCloudEnhancementMovingPhotoVideo(info, task, assetRefresh);
+        CHECK_AND_RETURN_RET_LOG(successSave > 0, E_ERR, "invalid video id");
+        int32_t stageVideoTaskStatus = GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet);
+        string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        RemoveVideo(stageVideoTaskStatus, photoId);
+        tracer.Finish();
+    }
+    return E_OK;
+}
+
+int32_t EnhancementServiceCallback::PreparePathsAndConvert(
+    std::shared_ptr<NativeRdb::ResultSet>& resultSet, LivePhotoPaths& paths, int64_t& coverPosition)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("EnhancementServiceCallback::PreparePathsAndConvert");
+    paths.filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    paths.tempVideoPath = MediaEditUtils::GetEnhancementTempMovingPhotoVideoPath(paths.filePath);
+    paths.tempImagePath = MediaEditUtils::GetEnhancementTempLivePhotoImagePath(paths.filePath);
+    paths.extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(paths.filePath);
+    paths.extraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(paths.filePath);
+    paths.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    paths.editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(paths.filePath);
+    paths.editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(paths.filePath);
+    paths.editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(paths.filePath);
+
+    MEDIA_INFO_LOG("save file manager or lake live photo, filePath:%{private}s", paths.filePath.c_str());
+    if (!MediaFileUtils::IsFileExists(paths.extraPathDir) && !MediaFileUtils::CreateDirectory(paths.extraPathDir)) {
+        MEDIA_WARN_LOG("Failed to create local extra data dir");
+        return E_ERR;
+    }
+
+    int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(
+        paths.storagePath, paths.tempImagePath, paths.tempVideoPath, paths.extraDataPath);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "convert to moving photo failed");
+
+    ret = MovingPhotoFileUtils::GetCoverPositionFromExtraData(
+        paths.tempVideoPath, paths.extraDataPath, coverPosition);
+    if (ret != E_OK) {
+        MEDIA_INFO_LOG("Failed to get cover position, use default 0, ret:%{public}d", ret);
+        coverPosition = 0;
+    }
+    return E_OK;
+}
+
+int32_t EnhancementServiceCallback::ProcessImageEnhancement(
+    CloudEnhancementThreadTask& task, const LivePhotoPaths& paths, int32_t fileId)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("EnhancementServiceCallback::ProcessImageEnhancement");
+    std::string primaryPath = MediaFileUtils::IsFileExists(paths.editDataSourcePath) ?
+        paths.editDataSourcePath : paths.tempImagePath;
+    MEDIA_INFO_LOG("Save file manager live photo enhancement, path: %{private}s", primaryPath.c_str());
+
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(primaryPath, paths.editDataSourceBackPath), E_ERR,
+        "Fail to move %{private}s to %{private}s", primaryPath.c_str(), paths.editDataSourceBackPath.c_str());
+
+    std::unique_ptr<uint8_t[]> photoBuffer(task.addr);
+    task.addr = nullptr;
+    int32_t ret = FileUtils::SaveImage(primaryPath, photoBuffer.get(), static_cast<size_t>(task.bytes));
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
+        "save cloud enhancement photo to primaryPath failed. ret=%{public}d, errno=%{public}d", ret, errno);
+
+    if (MediaFileUtils::IsFileExists(paths.editDataSourcePath)) {
+        ret = FileUtils::SaveImage(paths.tempImagePath, photoBuffer.get(), static_cast<size_t>(task.bytes));
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
+            "save cloud enhancement temp photo failed. ret=%{public}d, errno=%{public}d", ret, errno);
+    }
+
+    if (MediaFileUtils::IsFileExists(paths.editDataCameraPath)) {
+        std::shared_ptr<Picture> picture =
+            EnhancementCompositePhotoManager::GetInstance().DecodePictureFromSourcePath(paths.filePath);
+        ret = EnhancementCompositePhotoManager::GetInstance().AddFilters(
+            paths.filePath, paths.tempImagePath, paths.editDataCameraPath, fileId, picture);
+        MEDIA_INFO_LOG("save cloud enhancement photo with editDataCamera, ret: %{public}d", ret);
+        CHECK_AND_EXECUTE(ret == E_OK, CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafe(
+            paths.editDataSourcePath, primaryPath), E_ERR, "Fail to copy editdata_source to file_path"));
+    }
+    return E_OK;
+}
+
+int32_t EnhancementServiceCallback::AssembleAndSaveFinalLivePhoto(
+    const LivePhotoPaths& paths, int32_t fileId, int64_t coverPosition)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("EnhancementServiceCallback::AssembleAndSaveFinalLivePhoto");
+    string livePhotoTempDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(paths.filePath);
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(livePhotoTempDir),
+        E_ERR, "Cannot create dir %{private}s, errno %{public}d", livePhotoTempDir.c_str(), errno);
+
+    string fileName = MediaFileUtils::GetFileName(paths.filePath);
+    string livePhotoTempPath = livePhotoTempDir + "/livePhoto_temp_" + fileName;
+
+    int32_t ret = MovingPhotoFileUtils::ConvertToLivePhotoTargetPath(
+        paths.tempImagePath, paths.tempVideoPath, paths.extraDataPath, coverPosition, livePhotoTempPath);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
+        "convert to live photo target path failed.livePhotoTempPath:%{private}s", livePhotoTempPath.c_str());
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(livePhotoTempPath, paths.storagePath), E_ERR,
+        "Fail to move %{private}s to %{private}s", livePhotoTempPath.c_str(), paths.storagePath.c_str());
+
+    CHECK_AND_PRINT_INFO_LOG(MediaFileUtils::DeleteFile(livePhotoTempPath), "delete livePhotoTempPath fail.");
+    CHECK_AND_PRINT_INFO_LOG(MediaFileUtils::DeleteFile(paths.tempVideoPath), "delete tempVideoPath fail.");
+    CHECK_AND_PRINT_INFO_LOG(MediaFileUtils::DeleteFile(paths.tempImagePath), "delete tempImagePath fail.");
+    return E_OK;
+}
+
+int32_t EnhancementServiceCallback::SaveFileManagerOrHoLakeLivePhotoEnhancement(
+    CloudEnhancementThreadTask& task,
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
+    std::shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK, E_ERR,
+        "no live photo data.");
+    CHECK_AND_RETURN_RET(CheckAddrAndBytes(task) == E_OK, E_ERR);
+
+    LivePhotoPaths paths;
+    int64_t coverPosition = 0;
+    int32_t ret = PreparePathsAndConvert(resultSet, paths, coverPosition);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "prepare paths and convert failed");
+
+    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::CheckAndCreateEditDataDir(paths.filePath), E_ERR,
+        "create edit data failed");
+
+    int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+    ret = ProcessImageEnhancement(task, paths, fileId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "process image enhancement failed");
+
+    int32_t movingEnhanceType = GetInt32Val(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, resultSet);
+    if (movingEnhanceType == BOTH) {
+        MediaLibraryTracer tracer;
+        tracer.Start("EnhancementServiceCallback::HandlerEnhancementVideo");
+        CHECK_AND_RETURN_RET(CheckVideoAddrAndBytes(task) == E_OK, E_ERR);
+        int32_t stageVideoTaskStatus = GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet);
+        std::unique_ptr<uint8_t[]> videoBuffer(task.videoAddr);
+        task.videoAddr = nullptr;
+        string editVideoDataSourcePath = MediaFileUtils::GetMovingPhotoVideoPath(paths.editDataSourcePath);
+        string primarySourcePath = MediaFileUtils::IsFileExists(paths.editDataCameraPath) ?
+            editVideoDataSourcePath : paths.tempVideoPath;
+        ret = SaveVideo(primarySourcePath, videoBuffer.get(), static_cast<size_t>(task.videoBytes));
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
+            "save cloud enhancement video failed. ret=%{public}d, errno=%{public}d", ret, errno);
+        string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        int err = UpdateCloudEnhancementMovingPhotoInfo(fileId, assetRefresh);
+        CHECK_AND_PRINT_LOG(err == E_OK, "fail to update composite enhancement photo info");
+        RemoveVideo(stageVideoTaskStatus, photoId);
+        tracer.Finish();
+    }
+
+    ret = AssembleAndSaveFinalLivePhoto(paths, fileId, coverPosition);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "assemble and save final live photo failed");
+    int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+    ProcessCloudEnhancementPhotoUpdate(fileId, assetRefresh, sourceType, paths.storagePath);
+    return E_OK;
+}
+
+int32_t EnhancementServiceCallback::HandleFileManagerOrHoLakeEnhancement(CloudEnhancementThreadTask& task,
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh, std::shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("EnhancementServiceCallback::HandleFileManagerOrHoLakeEnhancement");
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK, E_ERR,
+        "no file manager or lake photo data.");
+    int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+    int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+    bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
+    string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckDisplayName(displayName) == E_OK,
+        E_ERR, "display name not valid");
+    if (isMovingPhoto) {
+        return SaveFileManagerOrHoLakeLivePhotoEnhancement(task, assetRefresh, resultSet);
+    }
+    shared_ptr<CloudEnhancementFileInfo> info = BuildEnhancementFileInfo(resultSet);
+    return SaveCloudEnhancementPhoto(info, task, assetRefresh, resultSet);
+}
+
 void EnhancementServiceCallback::DealWithSuccessedTask(CloudEnhancementThreadTask& task)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("EnhancementServiceCallback::DealWithSuccessedTask");
     string taskId = task.taskId;
     MEDIA_INFO_LOG("DealWithSuccessedTask start, photo_id: %{public}s", taskId.c_str());
     // query 100 per
@@ -413,42 +639,37 @@ void EnhancementServiceCallback::DealWithSuccessedTask(CloudEnhancementThreadTas
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(servicePredicates, columns);
     CHECK_AND_RETURN_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == E_OK,
         "enhancement callback error: query result set is empty");
-    int32_t sourceFileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-    string sourceFilePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-    string sourceDisplayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-    int32_t hidden = GetInt32Val(MediaColumn::MEDIA_HIDDEN, resultSet);
-    int32_t sourceSubtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
     int32_t sourceCEAvailable = GetInt32Val(PhotoColumn::PHOTO_CE_AVAILABLE, resultSet);
-    int32_t movingEnhanceType = GetInt32Val(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, resultSet);
-    int32_t stageVideoTaskStatus = GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet);
-    string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+    int32_t sourceFileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     CHECK_AND_PRINT_LOG((sourceCEAvailable == static_cast<int32_t>(CloudEnhancementAvailableType::PROCESSING_MANUAL) ||
         sourceCEAvailable == static_cast<int32_t>(CloudEnhancementAvailableType::PROCESSING_AUTO)),
         "enhancement callback error: db CE_AVAILABLE status not processing, file_id: %{public}d", sourceFileId);
-    // save 120 per
-    shared_ptr<CloudEnhancementFileInfo> info = make_shared<CloudEnhancementFileInfo>(sourceFileId,
-        sourceFilePath, sourceDisplayName, sourceSubtype, hidden);
-    resultSet->Close();
+    int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
     auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
         AccurateRefresh::DEAL_WITH_SUCCESSED_BUSSINESS_NAME);
-    int32_t newFileId = SaveCloudEnhancementPhoto(info, task, assetRefresh);
-    CHECK_AND_RETURN_LOG(newFileId > 0, "invalid file id");
-    if (movingEnhanceType == BOTH) {
-        int32_t successSave = SaveCloudEnhancementMovingPhotoVideo(info, task, assetRefresh);
-        CHECK_AND_RETURN_LOG(successSave > 0, "invalid video id");
-        RemoveVideo(stageVideoTaskStatus, photoId);
+    if (sourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
+        sourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
+        CHECK_AND_RETURN_LOG(HandleFileManagerOrHoLakeEnhancement(task, assetRefresh, resultSet) >= E_OK,
+            "save file manager or lake photo enhancement failed");
+    } else {
+        CHECK_AND_RETURN_LOG(HandleMediaPhotoEnhancement(task, assetRefresh, resultSet) == E_OK,
+            "save medial photo enhancement failed");
     }
     assetRefresh->RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
 
-    int32_t taskType = EnhancementTaskManager::QueryTaskTypeByPhotoId(taskId);
-    EnhancementTaskManager::RemoveEnhancementTask(taskId);
-    CloudEnhancementGetCount::GetInstance().Report("SuccessType", taskId, taskType, movingEnhanceType);
+    int32_t taskType = EnhancementTaskManager::QueryTaskTypeByPhotoId(task.taskId);
+    EnhancementTaskManager::RemoveEnhancementTask(task.taskId);
+    int32_t movingEnhanceType = GetInt32Val(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, resultSet);
+    CloudEnhancementGetCount::GetInstance().Report("SuccessType", task.taskId, taskType, movingEnhanceType);
+    string sourceDisplayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+    string sourceFilePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
     string fileUri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX, to_string(sourceFileId),
         MediaFileUtils::GetExtraUri(sourceDisplayName, sourceFilePath));
     auto watch = MediaLibraryNotify::GetInstance();
     if (watch != nullptr) {
         watch->Notify(fileUri, NotifyType::NOTIFY_UPDATE);
     }
+    resultSet->Close();
     assetRefresh->Notify();
     MEDIA_INFO_LOG("DealWithSuccessedTask success, photo_id: %{public}s", taskId.c_str());
 }

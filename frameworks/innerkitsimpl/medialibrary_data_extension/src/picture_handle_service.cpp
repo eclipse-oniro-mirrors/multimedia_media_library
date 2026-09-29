@@ -22,6 +22,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include "color_space.h"
 #include "ashmem.h"
 #include "exif_metadata.h"
 #include "image_type.h"
@@ -324,6 +325,7 @@ bool PictureHandlerService::WriteMaintenanceData(MessageParcel &data, std::share
     data.WriteBool(hasMaintenanceData);
     CHECK_AND_RETURN_RET(hasMaintenanceData, true);
     BufferHandle *handle = surfaceBuffer->GetBufferHandle();
+    CHECK_AND_RETURN_RET(handle != nullptr, true);
     return WriteBufferHandler(data, *handle, fileId);
 }
 

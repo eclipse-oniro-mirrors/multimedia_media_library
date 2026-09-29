@@ -26,6 +26,7 @@
 #include "close_session_data.h"
 #include "media_log.h"
 #include "media_mtp_utils.h"
+#include "medialibrary_db_const.h"
 
 #define private public
 #include "mtp_data_utils.h"

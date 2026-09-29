@@ -23,9 +23,43 @@
 #include "cloud_error_detail_vo.h"
 #include "medialibrary_errno.h"
 #include "photo_album_po.h"
+#include "share_album_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
+
+class ShareMemberDataDto {
+public:
+    std::string userId;
+    int32_t status = 0;
+
+public:
+    virtual ~ShareMemberDataDto() = default;
+    std::string ToString() const;
+};
+
+class ScaDetailDataDto {
+public:
+    std::string usage; // 风控对应的类型
+    int32_t riskResult{0};
+
+public:
+    virtual ~ScaDetailDataDto() = default;
+
+    std::string ToString() const;
+};
+
+class ShareAlbumDetailDto {
+public:
+    std::vector<ShareMemberDataDto> shareMemberDataList;
+    std::vector<ScaDetailDataDto> scaDetailDataList;
+
+public:
+    virtual ~ShareAlbumDetailDto() = default;
+
+    std::string ToString() const;
+};
+
 class EXPORT PhotoAlbumDto {
 public:
     int32_t albumId;
@@ -48,6 +82,9 @@ public:
     std::string uniqueId;
     int32_t sceneId;
     int32_t shareType;
+    int32_t shareRiskStatus;
+    std::string shareAlbumOwner;
+    std::optional<ShareAlbumDetailDto> shareAlbumDetailDtoOp;
     int32_t serverErrorCode;
     ErrorType errorType;
     std::vector<CloudErrorDetail> errorDetails;

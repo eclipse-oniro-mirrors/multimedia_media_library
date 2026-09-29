@@ -37,6 +37,8 @@
 #include "media_file_uri.h"
 #include "vision_photo_map_column.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
+#include "rdb_predicates.h"
 
 namespace OHOS::Media {
 using namespace std;

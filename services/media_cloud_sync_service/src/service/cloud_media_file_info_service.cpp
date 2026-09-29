@@ -243,8 +243,7 @@ bool CloudMediaFileInfoService::IsAlbumOrSourcePathNotChanged(CloudMediaPullData
 
 bool CloudMediaFileInfoService::IsPhotoAlbumNotChanged(const CloudMediaPullDataDto &pullData, PhotosPo &photoInfo) const
 {
-    CHECK_AND_EXECUTE(
-        photoInfo.albumInfoOp.has_value(),
+    CHECK_AND_EXECUTE(photoInfo.albumInfoOp.has_value(),
         this->commonDao_.QueryPhotoAlbumByAlbumId(photoInfo.ownerAlbumId.value_or(0), photoInfo.albumInfoOp));
     CHECK_AND_RETURN_RET_LOG(photoInfo.albumInfoOp.has_value(), false, "photoInfo.albumInfoOp has no value");
 
@@ -273,7 +272,7 @@ void CloudMediaFileInfoService::FixFileInfo(CloudMediaPullDataDto &pullData)
     const int32_t fileSourceTypeAfter = pullData.attributesFileSourceType;
     const std::string storagePathAfter = pullData.attributesStoragePath;
 
-    MEDIA_INFO_LOG("FixFileInfo completed, cloud: %{public}s, "
+    MEDIA_INFO_LOG("FixFileInfo completed. cloudId: %{public}s, "
                    "fileSourceType: %{public}d -> %{public}d, storagePath: %{public}s -> %{public}s",
         pullData.cloudId.c_str(),
         fileSourceTypeBefore,

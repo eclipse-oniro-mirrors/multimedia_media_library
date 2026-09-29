@@ -28,6 +28,7 @@
 #include "media_file_utils.h"
 #include "medialibrary_appstate_observer.h"
 #include "datashare_predicates_objects.h"
+#include "media_values_bucket_utils.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -67,7 +68,7 @@ int32_t MediaLibraryAppUriPermissionOperations::HandleInsertOperation(MediaLibra
     MEDIA_INFO_LOG("insert appUriPermission begin");
     // permissionType from param
     int permissionTypeParam = -1;
-    if (!GetIntFromValuesBucket(cmd.GetValueBucket(), AppUriPermissionColumn::PERMISSION_TYPE,
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), AppUriPermissionColumn::PERMISSION_TYPE,
         permissionTypeParam)) {
         return ERROR;
     }
@@ -76,7 +77,7 @@ int32_t MediaLibraryAppUriPermissionOperations::HandleInsertOperation(MediaLibra
     }
     // parse fileId
     int fileId = -1;
-    if (!GetIntFromValuesBucket(cmd.GetValueBucket(), AppUriPermissionColumn::FILE_ID, fileId)) {
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), AppUriPermissionColumn::FILE_ID, fileId)) {
         return ERROR;
     }
     if (!IsPhotoExist(fileId)) {
@@ -229,14 +230,14 @@ std::shared_ptr<OHOS::NativeRdb::ResultSet> MediaLibraryAppUriPermissionOperatio
     }
     // parse fileId
     int fileId = -1;
-    if (!GetIntFromValuesBucket(valueBucket, AppUriPermissionColumn::FILE_ID, fileId)) {
+    if (!MediaValuesBucketUtils::GetInt(valueBucket, AppUriPermissionColumn::FILE_ID, fileId)) {
         resultFlag = ERROR;
         return nullptr;
     }
 
     // parse uriType
     int uriType = -1;
-    if (!GetIntFromValuesBucket(valueBucket, AppUriPermissionColumn::URI_TYPE, uriType)) {
+    if (!MediaValuesBucketUtils::GetInt(valueBucket, AppUriPermissionColumn::URI_TYPE, uriType)) {
         resultFlag = ERROR;
         return nullptr;
     }
@@ -256,19 +257,6 @@ std::shared_ptr<OHOS::NativeRdb::ResultSet> MediaLibraryAppUriPermissionOperatio
     return resultSet;
 }
 
-bool MediaLibraryAppUriPermissionOperations::GetIntFromValuesBucket(
-    OHOS::NativeRdb::ValuesBucket &valueBucket, const std::string &column, int &result)
-{
-    ValueObject valueObject;
-    bool ret = valueBucket.GetObject(column, valueObject);
-    if (!ret) {
-        MEDIA_ERR_LOG("valueBucket param without %{public}s", column.c_str());
-        return false;
-    }
-    result = valueObject;
-    return true;
-}
-
 int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<NativeRdb::ResultSet> &resultSetDB,
     int &permissionTypeParam, std::shared_ptr<TransactionOperations> trans)
 {
@@ -276,8 +264,7 @@ int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<Nati
         MEDIA_ERR_LOG("resultSetDB is null in UpdatePermissionType");
         return ERROR;
     }
-    int32_t permissionTypeDB =
-        MediaLibraryRdbStore::GetInt(resultSetDB, AppUriPermissionColumn::PERMISSION_TYPE);
+    int32_t permissionTypeDB = GetInt32Val(AppUriPermissionColumn::PERMISSION_TYPE, resultSetDB);
     if (!CanOverride(permissionTypeParam, permissionTypeDB)) {
         return ALREADY_EXIST;
     }
@@ -286,7 +273,7 @@ int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<Nati
     ValuesBucket updateVB;
     updateVB.PutInt(AppUriPermissionColumn::PERMISSION_TYPE, permissionTypeParam);
     updateVB.PutLong(AppUriPermissionColumn::DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    int32_t idDB = MediaLibraryRdbStore::GetInt(resultSetDB, AppUriPermissionColumn::ID);
+    int32_t idDB = GetInt32Val(AppUriPermissionColumn::ID, resultSetDB);
 
     RdbPredicates updateRdbPredicates(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
     updateRdbPredicates.EqualTo(AppUriPermissionColumn::ID, idDB);
@@ -294,7 +281,7 @@ int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<Nati
     if (trans == nullptr) {
         updateRows = MediaLibraryRdbStore::UpdateWithDateTime(updateVB, updateRdbPredicates);
     } else {
-        updateRows = trans->Update(updateVB, updateRdbPredicates);
+        updateRows = trans->UpdateWithDateTime(updateVB, updateRdbPredicates);
     }
     if (updateRows < 1) {
         MEDIA_ERR_LOG("upgrade permissionType error,idDB=%{public}d", idDB);

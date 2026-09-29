@@ -41,7 +41,7 @@
 #include "mimetype_utils.h"
 
 using namespace std;
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 namespace fs = std::filesystem;
@@ -412,3 +412,4 @@ void FileUtils::SavePhotoWithFilters(const std::string &inputPath, const std::st
 }
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP

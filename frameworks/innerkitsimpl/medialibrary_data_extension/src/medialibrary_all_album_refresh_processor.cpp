@@ -107,6 +107,9 @@ AlbumRefreshStatus GetNextRefreshStatus(AlbumRefreshStatus albumRefreshStatus)
         case AlbumRefreshStatus::SOURCE:
             return AlbumRefreshStatus::ANALYSIS;
         case AlbumRefreshStatus::ANALYSIS:
+            return AlbumRefreshStatus::SHARE;
+        // 共享相册全量刷新后回到初始状态
+        case AlbumRefreshStatus::SHARE:
             return AlbumRefreshStatus::NOT_START;
         default:
             return AlbumRefreshStatus::NOT_START;
@@ -171,6 +174,32 @@ int32_t GetSourceAlbumIds(int32_t currentAlbumId, vector<int32_t>& albumIds)
     return E_OK;
 }
 
+// 获取共享相册ID列表
+int32_t GetShareAlbumIds(int32_t currentAlbumId, vector<int32_t>& albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
+
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::SHARE))
+    ->And()
+    ->GreaterThan(PhotoAlbumColumns::ALBUM_ID, currentAlbumId)
+    ->OrderByAsc(PhotoAlbumColumns::ALBUM_ID);
+    vector<string> columns = { PhotoAlbumColumns::ALBUM_ID };
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Failed to query share album");
+
+    while (resultSet->GoToNextRow() == E_OK) {
+        int32_t albumId = GetAlbumId(resultSet);
+        if (albumId <= 0) {
+            MEDIA_WARN_LOG("Failed to GetAlbumId: %{public}d", albumId);
+            continue;
+        }
+        albumIds.push_back(albumId);
+    }
+    return E_OK;
+}
+
 int32_t GetAnalysisAlbumIds(int32_t currentAlbumId, vector<int32_t>& albumIds)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -205,6 +234,8 @@ int32_t GetAlbumIds(AlbumRefreshStatus albumRefreshStatus, int32_t currentAlbumI
             return GetSourceAlbumIds(currentAlbumId, albumIds);
         case AlbumRefreshStatus::ANALYSIS:
             return GetAnalysisAlbumIds(currentAlbumId, albumIds);
+        case AlbumRefreshStatus::SHARE:
+            return GetShareAlbumIds(currentAlbumId, albumIds);
         default:
             MEDIA_ERR_LOG("Failed to check album refresh status: %{public}d", static_cast<int32_t>(albumRefreshStatus));
             return E_ERR;
@@ -232,6 +263,10 @@ int32_t MediaLibraryAllAlbumRefreshProcessor::RefreshAlbums(AlbumRefreshStatus a
             MediaLibraryRdbUtils::UpdateSourceAlbumHiddenState(rdbStore, { to_string(albumId) });
         } else if (albumRefreshStatus == AlbumRefreshStatus::ANALYSIS) {
             MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, { to_string(albumId) });
+        // 共享相册全量刷新
+        } else if (albumRefreshStatus == AlbumRefreshStatus::SHARE) {
+            MediaLibraryRdbUtils::UpdateShareAlbumInternal(rdbStore, { to_string(albumId) }, false, false);
+            MediaLibraryRdbUtils::UpdateShareAlbumHiddenState(rdbStore, { to_string(albumId) });
         } else {
             MEDIA_WARN_LOG("Ignore to refresh album %{public}d id: %{public}d",
                 static_cast<int32_t>(albumRefreshStatus), albumId);

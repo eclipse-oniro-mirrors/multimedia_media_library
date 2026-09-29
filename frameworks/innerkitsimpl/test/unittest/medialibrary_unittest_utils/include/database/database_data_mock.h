@@ -29,6 +29,7 @@
 #include "table_writer.h"
 #include "medialibrary_errno.h"
 #include "photo_album_column.h"
+#include "medialibrary_db_const.h"
 
 namespace OHOS::Media::TestUtils {
 struct TableMockInfo {

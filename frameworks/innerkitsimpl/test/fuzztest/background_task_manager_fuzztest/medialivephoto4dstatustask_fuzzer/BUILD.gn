@@ -32,6 +32,7 @@ ohos_fuzztest("MediaLivePhoto4dStatusTaskFuzzTest") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -50,7 +51,6 @@ ohos_fuzztest("MediaLivePhoto4dStatusTaskFuzzTest") {
     "image_framework:image_native",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",

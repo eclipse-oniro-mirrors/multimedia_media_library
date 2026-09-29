@@ -54,7 +54,9 @@ void PhotosPo::GetPropertiesInfo(std::stringstream &ss) const
        << "\"dateMonth\": \"" << dateMonth.value_or("") << "\", "
        << "\"dateDay\": \"" << dateDay.value_or("") << "\", "
        << "\"detailTime\": \"" << detailTime.value_or("") << "\", "
-       << "\"editTime\": " << editTime.value_or(0) << ", ";
+       << "\"editTime\": " << editTime.value_or(0) << "\", "
+       << "\"editDataExist\": " << editDataExist.value_or(0) << ", "
+       << "\"compressionQuality\": " << compressionQuality.value_or(-1) << ", ";
 }
 
 void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
@@ -79,17 +81,27 @@ void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
        << "\"shootingMode\": \"" << shootingMode.value_or("") << "\", "
        << "\"shootingModeTag\": \"" << shootingModeTag.value_or("") << "\", "
        << "\"dynamicRangeType\": " << dynamicRangeType.value_or(0) << ", "
+       << "\"videoMode\": " << videoMode.value_or(-1) << ", "
        << "\"frontCamera\": \"" << frontCamera.value_or("") << "\", "
+       << "\"xtStyleTemplateName\": \"" << xtStyleTemplateName.value_or("-1") << "\", "
        << "\"coverPosition\": " << coverPosition.value_or(0) << ", "
        << "\"isRectificationCover\": " << isRectificationCover.value_or(0) << ", "
        << "\"movingPhotoEffectMode\": " << movingPhotoEffectMode.value_or(0) << ", "
        << "\"supportedWatermarkType\": " << supportedWatermarkType.value_or(0) << ", "
        << "\"isStylePhoto\": " << isStylePhoto.value_or(0) << ", "
        << "\"strongAssociation\": " << strongAssociation.value_or(0) << ", "
+       << "\"supportedDeferredEffects\": " << supportedDeferredEffects.value_or(0) << ", "
+       << "\"deferredEffectStatus\": " << deferredEffectStatus.value_or(-1) << ", "
        << "\"uniqueId\": " << uniqueId.value_or("") << ", "
        << "\"packageName\": " << packageName.value_or("") << ", "
        << "\"photoRiskStatus\": " << photoRiskStatus.value_or(0) << ", "
-       << "\"southDeviceType\": " << southDeviceType.value_or(0) << ", ";
+       << "\"southDeviceType\": " << southDeviceType.value_or(0) << ", "
+       << "\"isShared\": " << isShared.value_or(0) << ", "
+       << "\"shareOwnerInfo\": " << shareOwnerInfo.value_or("") << ", "
+       << "\"shareAlbumOwner\": " << shareAlbumOwner.value_or("") << ", "
+       << "\"shareDateDay\": " << shareDateDay.value_or(0) << ", "
+       << "\"shareGroup\": " << shareGroup.value_or(0) << ", "
+       << "\"musicMasterMode\": " << musicMasterMode.value_or(0) << ", ";
 }
 
 void PhotosPo::GetCloudInfo(std::stringstream &ss) const

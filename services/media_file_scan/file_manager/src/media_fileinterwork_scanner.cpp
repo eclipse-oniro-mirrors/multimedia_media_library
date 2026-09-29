@@ -44,6 +44,9 @@
 #include "media_file_uri.h"
 #include "moving_photo_file_utils.h"
 #include "media_fileinterwork_util.h"
+#include "consistency_check_manager.h"
+#include "opt_dao.h"
+#include "photo_dao.h"
 
 using namespace std;
 namespace OHOS::Media {
@@ -52,6 +55,8 @@ constexpr int32_t TASK_STATUS_IDLE = 0;
 constexpr int32_t TASK_STATUS_PHASE_ONE = 1;
 constexpr int32_t TASK_STATUS_PHASE_TWO = 2;
 constexpr int32_t TASK_STATUS_COMPLETED = 3;
+constexpr int32_t REPAIR_STATUS_IDLE = -1;
+constexpr int32_t REPAIR_STATUS_INIT = 0;
 
 constexpr int32_t MIN_FILE_SIZE = 1 * 1024;
 constexpr int32_t BATCH_INSERT_SIZE = 100;
@@ -59,17 +64,7 @@ constexpr int32_t MAX_TEMPERATURE = 37;
 constexpr int32_t OPT_INIT_STATUS = 0;
 constexpr int32_t OPT_FINISH_STATUS = 1;
 
-// 定义支持的图片和视频文件扩展名
-const std::vector<std::string> SUPPORTED_MEDIA_EXTENSIONS  = {
-    // photo
-    ".arw", ".avif", ".bm", ".bmp", ".cr2", ".cur", ".dng", ".gif", ".heic", ".heif", ".heics",
-    ".hif", ".ico", ".jpe", ".jpeg", ".jpg", ".mpo", ".nrw", ".pef", ".png", ".psd", ".raw", ".rw2",
-    ".srw", ".svg", ".tif", ".webp", ".raf", ".wbmp", ".m4u", ".m4v", ".mov", ".m", ".raf", ".wbmp",
-    // video
-    ".m4u", ".m4v", ".mov", ".mp4", ".mpe", ".mpeg", ".mpg4", ".mkv", ".webm", ".3gpp", ".asf",
-    ".asx", ".avi", ".flv", ".3g2", ".wmv", ".rm", ".3gp", ".mpg", ".rv", ".ts", ".divx", ".f4v",
-    ".3gpp2", "rmvb"
-};
+constexpr int32_t REPAIR_BATCH_SIZE = 100;
 
 // 跳过的文件目录
 const std::vector<std::string> SKIP_SCAN_DIR = {
@@ -95,6 +90,16 @@ bool MediaFileInterworkScanner::CheckSystemConditions()
     return MedialibrarySubscriber::IsCurrentStatusOn();
 }
 
+void MediaFileInterworkScanner::SetStopFlag(bool flag)
+{
+    stopFlag_.store(flag);
+}
+
+bool MediaFileInterworkScanner::GetStopFlag()
+{
+    return stopFlag_.load();
+}
+
 int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::vector<std::string> &files)
 {
     DIR *dir = opendir(path.c_str());
@@ -109,7 +114,7 @@ int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::v
     }
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (entry->d_name[0] == '.') {
             continue;
         }
         std::string fullPath = path + "/" + entry->d_name;
@@ -119,7 +124,7 @@ int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::v
             continue;
         }
         if (S_ISDIR(statInfo.st_mode)) {
-            if (ShouldSkipDirectory(fullPath)) {
+            if (ShouldSkipDirectory(fullPath) || MediaFileInterworkUtil::IsDownloadTrashDir(fullPath)) {
                 MEDIA_INFO_LOG("invalid dir %{public}s", DfxUtils::GetSafePath(fullPath).c_str());
                 continue;
             }
@@ -130,7 +135,7 @@ int32_t MediaFileInterworkScanner::ScanDirectory(const std::string &path, std::v
             }
         } else if (S_ISREG(statInfo.st_mode)) {
             if (IsImageOrVideoFile(fullPath) && statInfo.st_size >= MIN_FILE_SIZE &&
-                IsValidFileName(entry->d_name)) {
+                IsValidFileName(entry->d_name) && !MediaFileInterworkUtil::IsDownloadTrashDir(fullPath)) {
                 files.push_back(fullPath);
             } else {
                 MEDIA_INFO_LOG("invalid file %{public}s", DfxUtils::GetSafePath(fullPath).c_str());
@@ -145,7 +150,8 @@ int32_t MediaFileInterworkScanner::ExecutePhaseOne()
 {
     MEDIA_INFO_LOG("ExecutePhaseOne started");
     std::vector<std::string> allFiles;
-    int32_t ret = ScanDirectory(MediaFileInterworkColumn::FILE_ROOT_DIR, allFiles);
+    int32_t ret = ScanDirectory(
+        MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::DOWNLOAD_DIR, allFiles);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "ScanDirectory failed, ret = %{public}d", ret);
     MEDIA_INFO_LOG("Found %{public}zu files to process", allFiles.size());
     std::vector<std::string> batch;
@@ -180,24 +186,19 @@ int32_t MediaFileInterworkScanner::ExecutePhaseTwo()
 
     ret = MediaFileInterworkUtil::SetScannerTaskStatus(TASK_STATUS_COMPLETED);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SetScannerTaskStatus failed, ret = %{public}d", ret);
+    MediaFileInterworkUtil::ReportFileManagerFirstLoad();
     MEDIA_INFO_LOG("ExecutePhaseTwo completed successfully");
     return E_OK;
 }
 
 bool MediaFileInterworkScanner::IsImageOrVideoFile(const std::string &filePath)
 {
-    size_t pos = filePath.find_last_of('.');
-    CHECK_AND_RETURN_RET_LOG(pos != std::string::npos, false, "Invalid file path: %{public}s", filePath.c_str());
-    std::string extension = filePath.substr(pos);
-    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-    return std::find(SUPPORTED_MEDIA_EXTENSIONS.begin(), SUPPORTED_MEDIA_EXTENSIONS.end(),
-        extension) != SUPPORTED_MEDIA_EXTENSIONS.end();
+    return MediaFileUtils::IsSupportedMediaExtension(filePath);
 }
 
 bool MediaFileInterworkScanner::IsValidFileName(const std::string& fileName)
 {
-    // 定义正则表达式，匹配包含特殊字符的文件名
-    std::regex pattern(R"(\.\.|\[|\])");
+    std::regex pattern(R"(\?|\[|\]|［|］)");
     return !std::regex_search(fileName, pattern);
 }
 
@@ -216,32 +217,24 @@ int32_t MediaFileInterworkScanner::InsertFileBatch(const std::vector<std::string
     CHECK_AND_RETURN_RET_LOG(!files.empty(), E_OK, "files is empty");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
+    OptDao optDao(rdbStore);
     int32_t successCount = 0;
     int32_t skipCount = 0;
     int32_t failCount = 0;
     for (const auto& filePath : files) {
-        NativeRdb::RdbPredicates predicates(MediaFileInterworkColumn::OPT_TABLE_NAME);
-        predicates.EqualTo(MediaFileInterworkColumn::AFTER_PATH_COLUMN, filePath);
-        predicates.EqualTo(MediaFileInterworkColumn::OPT_STATUS_COLUMN, 0);
-        auto resultSet = rdbStore->Query(predicates, {});
-        if (resultSet == nullptr) {
+        bool exists = false;
+        int32_t queryRet = optDao.QueryOptExisting(filePath, exists);
+        if (queryRet != E_OK) {
             MEDIA_ERR_LOG("Query check failed for: %{public}s", DfxUtils::GetSafePath(filePath).c_str());
             skipCount++;
             continue;
         }
-        if (resultSet->GoToNextRow() == E_OK) {
+        if (exists) {
             MEDIA_WARN_LOG("already exist %{public}s", DfxUtils::GetSafePath(filePath).c_str());
             skipCount++;
-            resultSet->Close();
             continue;
         }
-        resultSet->Close();
-        string insertSql = "INSERT INTO " + std::string(MediaFileInterworkColumn::OPT_TABLE_NAME) +
-            " (" + std::string(MediaFileInterworkColumn::AFTER_PATH_COLUMN) + ", " +
-            std::string(MediaFileInterworkColumn::OPT_COLUMN) + ", " +
-            std::string(MediaFileInterworkColumn::OPT_STATUS_COLUMN) + ") VALUES (?, 0, 0)";
-        int64_t rowId = 0;
-        int32_t ret = rdbStore->ExecuteSql(insertSql, {filePath});
+        int32_t ret = optDao.InsertOpt(filePath);
         if (ret != NativeRdb::E_OK) {
             MEDIA_ERR_LOG("Insert failed for: %{public}s, ret = %{public}d",
                 DfxUtils::GetSafePath(filePath).c_str(), ret);
@@ -259,17 +252,7 @@ int32_t MediaFileInterworkScanner::InsertFileBatch(const std::vector<std::string
 int32_t MediaFileInterworkScanner::CleanTabFileOptTable()
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
-
-    std::string deleteSql = "DELETE FROM " + std::string(MediaFileInterworkColumn::OPT_TABLE_NAME);
-    int32_t ret = rdbStore->ExecuteSql(deleteSql);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("CleanTabFileOptTable failed, ret = %{public}d", ret);
-        return E_HAS_DB_ERROR;
-    }
-
-    MEDIA_INFO_LOG("Cleaned tab_file_opt table successfully");
-    return E_OK;
+    return OptDao(rdbStore).DeleteAllOpt();
 }
 
 int32_t MediaFileInterworkScanner::GetFileMetadata(std::unique_ptr<Metadata> &data)
@@ -294,7 +277,7 @@ int32_t MediaFileInterworkScanner::GetFileMetadata(std::unique_ptr<Metadata> &da
     return E_OK;
 }
 
-int32_t MediaFileInterworkScanner::FillMetadata(const FileInfo &fileInfo, std::unique_ptr<Metadata> &data)
+int32_t MediaFileInterworkScanner::FillMetadata(const RestoreFileInfo &fileInfo, std::unique_ptr<Metadata> &data)
 {
     data->SetFilePath(fileInfo.originFilePath);
     data->SetFileName(fileInfo.fileName);
@@ -314,7 +297,7 @@ int32_t MediaFileInterworkScanner::FillMetadata(const FileInfo &fileInfo, std::u
 }
 
 void MediaFileInterworkScanner::SetTimeInfo(
-    const std::unique_ptr<Metadata> &data, FileInfo &info, NativeRdb::ValuesBucket &value)
+    const std::unique_ptr<Metadata> &data, RestoreFileInfo &info, NativeRdb::ValuesBucket &value)
 {
     int64_t dateAdded =
         PhotoFileUtils::NormalizeTimestamp(data->GetFileDateAdded(), MediaFileUtils::UTCTimeMilliSeconds());
@@ -346,7 +329,7 @@ void MediaFileInterworkScanner::SetTimeInfo(
     value.Put(PhotoColumn::PHOTO_DATE_DAY, dateDay);
 }
 
-static void FillFileInfo(FileInfo& fileInfo, const std::unique_ptr<Metadata>& data)
+static void FillFileInfo(RestoreFileInfo& fileInfo, const std::unique_ptr<Metadata>& data)
 {
     fileInfo.size = data->GetFileSize();
     fileInfo.orientation = data->GetOrientation();
@@ -358,9 +341,21 @@ static void FillFileInfo(FileInfo& fileInfo, const std::unique_ptr<Metadata>& da
         data->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)) {
         fileInfo.subtype = data->GetPhotoSubType();
     }
+    if (fileInfo.isLivePhoto) {
+        int64_t coverPosition = 0;
+        int32_t duration = 0;
+        int32_t err = MovingPhotoFileUtils::GetLivePhotoCoverPositionAndDuration(fileInfo.originFilePath,
+            coverPosition, duration);
+        if (err == E_OK) {
+            data->SetCoverPosition(coverPosition);
+            data->SetFileDuration(duration);
+        } else {
+            MEDIA_ERR_LOG("failed to get cover position");
+        }
+    }
 }
 
-NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(FileInfo &fileInfo)
+NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(RestoreFileInfo &fileInfo)
 {
     NativeRdb::ValuesBucket value;
     value.PutString(PhotoColumn::PHOTO_STORAGE_PATH, fileInfo.originFilePath);
@@ -378,6 +373,7 @@ NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(FileInfo &file
     FillFileInfo(fileInfo, data);
     value.PutInt(PhotoColumn::PHOTO_SUBTYPE, fileInfo.subtype);
     value.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
+    value.PutInt(PhotoColumn::PHOTO_COVER_POSITION, data->GetCoverPosition());
     value.PutInt(PhotoColumn::PHOTO_ORIENTATION, data->GetOrientation());
     value.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, data->GetExifRotate());
     value.PutString(MediaColumn::MEDIA_MIME_TYPE, data->GetFileMimeType());
@@ -386,6 +382,10 @@ NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(FileInfo &file
     value.PutLong(MediaColumn::MEDIA_SIZE, data->GetFileSize());
     value.PutInt(MediaColumn::MEDIA_DURATION, data->GetFileDuration());
     value.PutLong(MediaColumn::MEDIA_TIME_PENDING, -1);
+    if (data->GetFileWidth() <= 0 || data->GetFileHeight() <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [FileInterworkScanner] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            data->GetFileId(), data->GetFileWidth(), data->GetFileHeight());
+    }
     value.PutInt(PhotoColumn::PHOTO_HEIGHT, data->GetFileHeight());
     value.PutInt(PhotoColumn::PHOTO_WIDTH, data->GetFileWidth());
     value.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, data->GetFileAspectRatio());
@@ -420,10 +420,10 @@ int32_t MediaFileInterworkScanner::UpdateUniqueNumber(UniqueNumber &uniqueNumber
     return E_OK;
 }
 
-vector<FileInfo> MediaFileInterworkScanner::SetDestinationPath(
-    vector<FileInfo> &restoreFiles, UniqueNumber &uniqueNumber)
+vector<RestoreFileInfo> MediaFileInterworkScanner::SetDestinationPath(
+    vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber)
 {
-    vector<FileInfo> newRestoreFiles;
+    vector<RestoreFileInfo> newRestoreFiles;
     for (auto &fileInfo : restoreFiles) {
         string mediaDirPath = "Photo/";
         int32_t mediaType = fileInfo.mediaType;
@@ -464,17 +464,17 @@ vector<FileInfo> MediaFileInterworkScanner::SetDestinationPath(
     return newRestoreFiles;
 }
 
-vector<FileInfo> MediaFileInterworkScanner::GetFileInfos(
+vector<RestoreFileInfo> MediaFileInterworkScanner::GetFileInfos(
     const vector<string> &filePathVector, UniqueNumber &uniqueNumber)
 {
-    vector<FileInfo> restoreFiles;
+    vector<RestoreFileInfo> restoreFiles;
     for (const auto &filePath : filePathVector) {
         if (!MediaFileUtils::IsFileExists(filePath)) {
             MEDIA_ERR_LOG("File [%{public}s] not exist, skip restore.",
                 MediaFileUtils::DesensitizePath(filePath).c_str());
             continue;
         }
-        FileInfo fileInfo;
+        RestoreFileInfo fileInfo;
         fileInfo.fileName = MediaFileUtils::GetFileName(filePath);
         fileInfo.displayName = fileInfo.fileName;
         fileInfo.originFilePath = filePath;
@@ -503,34 +503,19 @@ vector<FileInfo> MediaFileInterworkScanner::GetFileInfos(
     return restoreFiles;
 }
 
-std::vector<string> MediaFileInterworkScanner::GetPhotosNotExists(
-    const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const std::vector<string> &files)
+std::vector<string> MediaFileInterworkScanner::GetPhotosNotExists(const std::vector<string> &files)
 {
-    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(PhotoColumn::PHOTO_STORAGE_PATH, files);
-    std::vector<std::string> columns = {
-        PhotoColumn::PHOTO_STORAGE_PATH
-    };
-    
     std::vector<string> filesPath = files;
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, filesPath, "query failed");
-    while (resultSet->GoToNextRow() == E_OK) {
-        string storagePath;
-        int32_t result = resultSet->GetString(0, storagePath);
-        if (result == E_OK) {
-            filesPath.erase(std::remove(filesPath.begin(), filesPath.end(), storagePath), filesPath.end());
-        } else {
-            MEDIA_WARN_LOG("Get storagePath fail: %{public}d", result);
-        }
+    auto existingPaths = PhotoDao().QueryPhotoPathsByStoragePaths(files);
+    for (const auto& path : existingPaths) {
+        filesPath.erase(std::remove(filesPath.begin(), filesPath.end(), path), filesPath.end());
     }
-    resultSet->Close();
     return filesPath;
 }
 
-int32_t MediaFileInterworkScanner::SetRestoreFileAlbumId(std::vector<FileInfo> &destRestoreFiles)
+int32_t MediaFileInterworkScanner::SetRestoreFileAlbumId(std::vector<RestoreFileInfo> &destRestoreFiles)
 {
-    for (FileInfo &fileInfo : destRestoreFiles) {
+    for (RestoreFileInfo &fileInfo : destRestoreFiles) {
         string albumPath = MediaFileUtils::GetParentPath(fileInfo.originFilePath);
         string lPath;
         int32_t ret = MediaFileInterworkUtil::GetFileAlbumLPath(albumPath, lPath);
@@ -561,7 +546,7 @@ static void NotifyAnalysisAlbum(const vector<string>& changedAlbumIds)
     }
 }
 
-static void UpdateAndNotifyShootingModeAlbumIfNeeded(const vector<FileInfo>& fileInfos)
+static void UpdateAndNotifyShootingModeAlbumIfNeeded(const vector<RestoreFileInfo>& fileInfos)
 {
     set<ShootingModeAlbumType> albumTypesSet;
     for (const auto &fileInfo : fileInfos) {
@@ -588,7 +573,7 @@ static void UpdateAndNotifyShootingModeAlbumIfNeeded(const vector<FileInfo>& fil
     }
 }
 
-int32_t MediaFileInterworkScanner::BatchUpdateTimePending(const vector<FileInfo> &restoreFiles,
+int32_t MediaFileInterworkScanner::BatchUpdateTimePending(const vector<RestoreFileInfo> &restoreFiles,
     AccurateRefresh::AssetAccurateRefresh &assetRefresh)
 {
     // 构建包含所有文件路径的参数列表
@@ -617,20 +602,20 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
         return E_OK;
     }
     MEDIA_INFO_LOG("HandlePhotosRestore filessize: %{public}zu", files.size());
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
-    std::vector<string> filesToInsert = GetPhotosNotExists(rdbStore, files);
+    std::vector<string> filesToInsert = GetPhotosNotExists(files);
     UniqueNumber uniqueNumber;
-    vector<FileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
+    vector<RestoreFileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
     CHECK_AND_RETURN_RET_INFO_LOG(!restoreFiles.empty(), E_OK, "no need to restore");
     int32_t errCode = UpdateUniqueNumber(uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "UpdateUniqueNumber failed. errCode: %{public}d", errCode);
 
-    vector<FileInfo> destRestoreFiles = SetDestinationPath(restoreFiles, uniqueNumber);
+    vector<RestoreFileInfo> destRestoreFiles = SetDestinationPath(restoreFiles, uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(destRestoreFiles.size() > 0, E_ERR, "restore file number is zero.");
     CHECK_AND_RETURN_RET_LOG(SetRestoreFileAlbumId(destRestoreFiles) == E_OK, E_ERR, "get album failed");
     int32_t result = BatchInsert(destRestoreFiles);
     CHECK_AND_RETURN_RET_LOG(result == E_OK, result, "BatchInsert photos failed");
+    MediaFileInterworkUtil::AddImageAndVideoCount(uniqueNumber.imageTotalNumber, uniqueNumber.videoTotalNumber);
+    MediaFileInterworkUtil::AddAlbumCount(static_cast<int32_t>(albumCache_.size()));
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::SCAN_FILE_BUSSINESS_NAME);
     errCode = BatchUpdateTimePending(destRestoreFiles, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "BatchUpdateTimePending failed. errCode: %{public}d", errCode);
@@ -641,7 +626,7 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     return E_OK;
 }
 
-int32_t MediaFileInterworkScanner::BatchInsert(std::vector<FileInfo> &files)
+int32_t MediaFileInterworkScanner::BatchInsert(std::vector<RestoreFileInfo> &files)
 {
     std::vector<NativeRdb::ValuesBucket> values;
     for (auto& fileInfo : files) {
@@ -672,24 +657,13 @@ int32_t MediaFileInterworkScanner::BatchInsert(std::vector<FileInfo> &files)
 std::shared_ptr<NativeRdb::ResultSet> MediaFileInterworkScanner::GetOptFile(
     const std::shared_ptr<MediaLibraryRdbStore> rdbStore)
 {
-    NativeRdb::RdbPredicates predicates(MediaFileInterworkColumn::OPT_TABLE_NAME);
-    predicates.EqualTo(MediaFileInterworkColumn::OPT_STATUS_COLUMN, OPT_INIT_STATUS);
-    predicates.Limit(BATCH_INSERT_SIZE);
-    std::vector<std::string> columns = {
-        MediaFileInterworkColumn::AFTER_PATH_COLUMN,
-    };
-    return rdbStore->Query(predicates, columns);
+    return OptDao(rdbStore).QueryOptByStatus(OPT_INIT_STATUS, BATCH_INSERT_SIZE);
 }
 
 int32_t MediaFileInterworkScanner::UpdateOptStatus(
     const std::shared_ptr<MediaLibraryRdbStore> rdbStore, std::vector<string> fileBatch)
 {
-    NativeRdb::RdbPredicates predicates(MediaFileInterworkColumn::OPT_TABLE_NAME);
-    predicates.In(MediaFileInterworkColumn::AFTER_PATH_COLUMN, fileBatch);
-    NativeRdb::ValuesBucket values;
-    values.PutInt(MediaFileInterworkColumn::OPT_STATUS_COLUMN, OPT_FINISH_STATUS);
-    int32_t changeRow = 0;
-    return rdbStore->Update(changeRow, values, predicates);
+    return OptDao(rdbStore).UpdateOptStatusByPaths(fileBatch, OPT_FINISH_STATUS);
 }
 
 int32_t MediaFileInterworkScanner::ProcessPhaseTwoRecords()
@@ -741,21 +715,26 @@ int32_t MediaFileInterworkScanner::ProcessPhaseTwoRecords()
 void MediaFileInterworkScanner::ScanFileManager()
 {
     MEDIA_INFO_LOG("ScanFileManager");
+    InitRepairStatus();
     int32_t status = MediaFileInterworkUtil::GetScannerTaskStatus();
     CHECK_AND_RETURN_LOG(status != TASK_STATUS_COMPLETED, "already storage in");
     CHECK_AND_RETURN_LOG(!isAsyncTaskRunning_.exchange(true), "Scanning, wait");
     if (status == TASK_STATUS_IDLE) {
         status = TASK_STATUS_PHASE_ONE;
         MediaFileInterworkUtil::SetScannerTaskStatus(status);
+        MediaFileInterworkUtil::SetLoadFirstTime();
     }
+    SetStopFlag(false);
     taskThread_ = std::thread([this, status]() {
         std::lock_guard<std::mutex> lock(asyncTaskMutex_);
+        ConsistencyCheckManager::GetInstance().DisableCheck();
         bool goAhead = false;
         if (status == TASK_STATUS_PHASE_ONE) {
             MEDIA_INFO_LOG("Starting Phase One");
+            ConsistencyCheckManager::GetInstance().DisableCheck();
             int32_t ret = ExecutePhaseOne();
             CHECK_AND_PRINT_LOG(ret == E_OK, "Phase One failed, ret = %{public}d", ret);
-            goAhead = true;
+            goAhead = (ret == E_OK);
         }
         if (status == TASK_STATUS_PHASE_TWO || goAhead) {
             MEDIA_INFO_LOG("Starting Phase Two");
@@ -765,9 +744,108 @@ void MediaFileInterworkScanner::ScanFileManager()
         if (status == TASK_STATUS_COMPLETED) {
             MEDIA_INFO_LOG("Task already completed or in invalid state: %{public}d", status);
         }
+        ConsistencyCheckManager::GetInstance().EnableCheck();
         albumCache_.clear();
         isAsyncTaskRunning_.store(false);
     });
     taskThread_.detach();
+}
+
+void MediaFileInterworkScanner::InitRepairStatus()
+{
+    int32_t lastFileId = 0;
+    int32_t ret = MediaFileInterworkUtil::GetRepairProgress(lastFileId);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetRepairProgress failed, ret = %{public}d", ret);
+        return;
+    }
+    if (lastFileId == REPAIR_STATUS_IDLE) {
+        MediaFileInterworkUtil::SaveRepairProgress(REPAIR_STATUS_INIT);
+        MediaFileInterworkUtil::SetScannerTaskStatus(TASK_STATUS_PHASE_ONE);
+        MEDIA_INFO_LOG("Init repair status, set REPAIR_LAST_FILE_ID_KEY = 0");
+    }
+}
+
+int32_t MediaFileInterworkScanner::RepairDateAdded()
+{
+    MEDIA_INFO_LOG("RepairDateAdded started");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
+    int32_t lastFileId = 0;
+    int32_t ret = MediaFileInterworkUtil::GetRepairProgress(lastFileId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetRepairProgress failed, ret = %{public}d", ret);
+    int32_t processedCount = 0;
+    while (true) {
+        CHECK_AND_RETURN_RET_LOG(!GetStopFlag(), E_ERR, "System conditions not met, pausing task");
+        NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(PhotoColumn::PHOTO_POSITION, 1);
+        predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
+        predicates.GreaterThan(MediaColumn::MEDIA_ID, lastFileId);
+        predicates.Limit(REPAIR_BATCH_SIZE);
+        std::vector<std::string> columns = {
+            MediaColumn::MEDIA_ID,
+            PhotoColumn::PHOTO_STORAGE_PATH
+        };
+        auto resultSet = rdbStore->Query(predicates, columns);
+        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Query for repair failed");
+        std::map<int32_t, std::string> fileIdAndPaths;
+        int32_t maxFileId = lastFileId;
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t fileId = 0;
+            std::string path;
+            if (resultSet->GetInt(0, fileId) != NativeRdb::E_OK ||
+                resultSet->GetString(1, path) != NativeRdb::E_OK) {
+                continue;
+            }
+            maxFileId = std::max(maxFileId, fileId);
+            fileIdAndPaths[fileId] = path;
+        }
+        resultSet->Close();
+        if (fileIdAndPaths.empty()) {
+            MEDIA_INFO_LOG("No more records to repair, processedCount = %{public}d", processedCount);
+            break;
+        }
+        int32_t batchProcessed = 0;
+        ret = RepairDateAddedBatch(fileIdAndPaths, batchProcessed);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RepairDateAddedBatch failed, ret = %{public}d", ret);
+        processedCount += batchProcessed;
+        ret = MediaFileInterworkUtil::SaveRepairProgress(maxFileId);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SaveRepairProgress failed, ret = %{public}d", ret);
+        lastFileId = maxFileId;
+    }
+    MEDIA_INFO_LOG("RepairDateAdded completed, total processedCount = %{public}d", processedCount);
+    return E_OK;
+}
+
+int32_t MediaFileInterworkScanner::RepairDateAddedBatch(const std::map<int32_t, std::string> &fileIdAndPaths,
+    int32_t &processedCount)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
+    processedCount = 0;
+    for (const auto &[fileId, path] : fileIdAndPaths) {
+        int64_t dateAdded = 0;
+        int64_t dateModified = 0;
+        struct stat statInfo {};
+        if (lstat(path.c_str(), &statInfo) == 0) {
+            dateModified = MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim);
+            dateAdded = MediaFileUtils::Timespec2Millisecond(statInfo.st_atim);
+        }
+        dateModified = PhotoFileUtils::NormalizeTimestamp(dateModified, MediaFileUtils::UTCTimeMilliSeconds());
+        dateAdded = PhotoFileUtils::NormalizeTimestamp(dateAdded, dateModified);
+        NativeRdb::ValuesBucket values;
+        values.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+        values.PutLong(MediaColumn::MEDIA_DATE_MODIFIED, dateModified);
+        NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+        int32_t changeRows = 0;
+        int32_t ret = rdbStore->Update(changeRows, values, predicates);
+        if (ret == E_OK && changeRows > 0) {
+            processedCount++;
+        } else {
+            MEDIA_WARN_LOG("Failed to update file_id: %{public}d, ret = %{public}d", fileId, ret);
+        }
+    }
+    return E_OK;
 }
 } // namespace OHOS::Media

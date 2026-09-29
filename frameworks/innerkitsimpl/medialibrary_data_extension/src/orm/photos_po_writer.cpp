@@ -495,6 +495,20 @@ bool PhotosPoWriter::GetDynamicRangType(std::string &val)
     val = std::to_string(this->photosPo_.dynamicRangeType.value());
     return true;
 }
+
+void PhotosPoWriter::SetVideoMode(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.videoMode = std::get<int32_t>(val);
+}
+bool PhotosPoWriter::GetVideoMode(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.videoMode.has_value(), false);
+    val = std::to_string(this->photosPo_.videoMode.value());
+    return true;
+}
+
 void PhotosPoWriter::SetFrontCamera(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<std::string>(val);
@@ -507,6 +521,21 @@ bool PhotosPoWriter::GetFrontCamera(std::string &val)
     val = this->photosPo_.frontCamera.value();
     return true;
 }
+
+void PhotosPoWriter::SetXtStyleTemplateName(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.xtStyleTemplateName = std::get<std::string>(val);
+}
+
+bool PhotosPoWriter::GetXtStyleTemplateName(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.xtStyleTemplateName.has_value(), false);
+    val = this->photosPo_.xtStyleTemplateName.value();
+    return true;
+}
+
 void PhotosPoWriter::SetDetailTime(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<std::string>(val);
@@ -639,6 +668,31 @@ bool PhotosPoWriter::GetSupportedWatermarkType(std::string &val)
     val = std::to_string(this->photosPo_.supportedWatermarkType.value());
     return true;
 }
+
+void PhotosPoWriter::SetIsStylePhoto(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.isStylePhoto = std::get<int32_t>(val);
+}
+bool PhotosPoWriter::GetIsStylePhoto(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.isStylePhoto.has_value(), false);
+    val = std::to_string(this->photosPo_.isStylePhoto.value());
+    return true;
+}
+void PhotosPoWriter::SetMusicMasterMode(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.musicMasterMode = std::get<int32_t>(val);
+}
+bool PhotosPoWriter::GetMusicMasterMode(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.musicMasterMode.has_value(), false);
+    val = std::to_string(this->photosPo_.musicMasterMode.value());
+    return true;
+}
 void PhotosPoWriter::SetStrongAssociation(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<int32_t>(val);
@@ -760,12 +814,54 @@ bool PhotosPoWriter::GetThumbSize(std::string &val)
     return true;
 }
 
+void PhotosPoWriter::SetSupportedDeferredEffects(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.supportedDeferredEffects = std::get<int32_t>(val);
+}
+
+void PhotosPoWriter::SetDeferredEffectsStatus(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.deferredEffectStatus = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetSupportedDeferredEffects(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.supportedDeferredEffects.has_value(), false);
+    val = std::to_string(this->photosPo_.supportedDeferredEffects.value());
+    return true;
+}
+
+bool PhotosPoWriter::GetDeferredEffectsStatus(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.deferredEffectStatus.has_value(), false);
+    val = std::to_string(this->photosPo_.deferredEffectStatus.value());
+    return true;
+}
+
 std::string PhotosPoWriter::GetStringValByPrecision(const double doubleVal, const int32_t precision)
 {
     std::stringstream stream;
     stream.precision(precision);
     stream << doubleVal;
     return stream.str();
+}
+
+void PhotosPoWriter::SetEditDataExist(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.editDataExist = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetEditDataExist(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.editDataExist.has_value(), false);
+    val = std::to_string(this->photosPo_.editDataExist.value());
+    return true;
 }
 
 bool PhotosPoWriter::GetPackageName(std::string &val)
@@ -855,5 +951,117 @@ bool PhotosPoWriter::GetLocalAssetSize(std::string &val)
     CHECK_AND_RETURN_RET(photosPo_.localAssetSize.has_value(), false);
     val = std::to_string(this->photosPo_.localAssetSize.value());
     return true;
+}
+
+void PhotosPoWriter::SetCompressionQuality(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.compressionQuality = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetCompressionQuality(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.compressionQuality.has_value(), false);
+    val = std::to_string(this->photosPo_.compressionQuality.value());
+    return true;
+}
+
+bool PhotosPoWriter::GetPhotoIsShared(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.isShared.has_value(), false);
+    val = std::to_string(this->photosPo_.isShared.value());
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoIsShared(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.isShared = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetPhotoShareOwnerInfo(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareOwnerInfo.has_value(), false);
+    val = this->photosPo_.shareOwnerInfo.value();
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoShareOwnerInfo(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareOwnerInfo = std::get<std::string>(val);
+}
+
+bool PhotosPoWriter::GetPhotoShareDateDay(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareDateDay.has_value(), false);
+    val = std::to_string(this->photosPo_.shareDateDay.value());
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoShareDateDay(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int64_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareDateDay = std::get<int64_t>(val);
+}
+
+bool PhotosPoWriter::GetPhotoShareGroup(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareGroup.has_value(), false);
+    val = std::to_string(this->photosPo_.shareGroup.value());
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoShareGroup(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int64_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareGroup = std::get<int64_t>(val);
+}
+
+void PhotosPoWriter::SetShareAlbumOwner(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareAlbumOwner = std::get<std::string>(val);
+}
+
+bool PhotosPoWriter::GetShareAlbumOwner(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareAlbumOwner.has_value(), false);
+    val = this->photosPo_.shareAlbumOwner.value();
+    return true;
+}
+
+bool PhotosPoWriter::GetLivePhoto4dStatus(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.livePhoto4dStatus.has_value(), false);
+    val = std::to_string(this->photosPo_.livePhoto4dStatus.value());
+    return true;
+}
+
+void PhotosPoWriter::SetLivePhoto4dStatus(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.livePhoto4dStatus = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetLivePhoto4DPair(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.livePhoto4DPair.has_value(), false);
+    val = this->photosPo_.livePhoto4DPair.value();
+    return true;
+}
+
+void PhotosPoWriter::SetLivePhoto4DPair(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.livePhoto4DPair = std::get<std::string>(val);
 }
 }  // namespace OHOS::Media::ORM

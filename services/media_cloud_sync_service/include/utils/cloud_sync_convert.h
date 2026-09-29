@@ -21,6 +21,7 @@
 
 #include "values_bucket.h"
 #include "cloud_media_pull_data_dto.h"
+#include "photo_album_dto.h"
 
 namespace OHOS::Media::CloudSync {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -51,6 +52,7 @@ public:
     static int32_t CompensateAttHdrMode(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttVideoMode(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttFrontCamera(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttXtStyleTemplateName(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttEditTime(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttOriginalSubtype(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttCoverPosition(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
@@ -61,6 +63,10 @@ public:
     static int32_t CompensateAttSupportedWatermarkType(
         const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttStrongAssociation(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateIsStylePhoto(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateSupportedDeferredEffects(const CloudMediaPullDataDto &data,
+        NativeRdb::ValuesBucket &values);
+    static int32_t CompensateDeferredEffectsStatus(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateDateAddedYearMonthDay(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateUniqueId(const CloudMediaPullDataDto &data,
         NativeRdb::ValuesBucket &values);
@@ -70,6 +76,10 @@ public:
     // Safe Album: critical type for children's watch
     static int32_t CompensateAttRiskStatus(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttIsCritical(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAssetShareRisk(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static void CompensateAlbumShareRisk(const PhotoAlbumDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateEditDataExist(const CloudMediaPullDataDto &data,
+        NativeRdb::ValuesBucket &values);
 
     // properties
     static int32_t CompensatePropTitle(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
@@ -99,11 +109,21 @@ public:
     static void HandleDateAddedYearMonthDay(int64_t originalDateAdded, int64_t dateAdded,
         NativeRdb::ValuesBucket &values);
     static int32_t CompensatePhotoLcdSize(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateCompressionQuality(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t HandleLivePhoto4dStatus(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateLivePhoto4DPair(const CloudMediaPullDataDto &data,
+        NativeRdb::ValuesBucket &values);
+    static int32_t HandleMusicMasterModeStatus(
+        const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
 
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateInt64FieldsHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static void CompensateFileInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttIsShared(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareOwnerInfo(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareAlbumOwner(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareDateDay(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareGroup(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
 };
 
 }  // namespace OHOS::Media::CloudSync

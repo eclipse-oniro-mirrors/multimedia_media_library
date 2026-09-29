@@ -32,6 +32,17 @@ const std::string SEMANTICS_SCORE = "semantics_score";
 const std::string IS_BLACK_WHITE_STRIPE = "is_black_white_stripe";
 const std::string IS_BLURRY = "is_blurry";
 const std::string IS_MOSAIC = "is_mosaic";
+const std::string NARRATIVE_TAGS = "narrative_tags";
+const std::string NARRATIVE_SCORE = "narrative_score";
+const std::string PORTRAIT_TAGS = "portrait_tags";
+const std::string PORTRAIT_SCORE = "portrait_score";
+const std::string COMPOSITION_TAGS = "composition_tags";
+const std::string COMPOSITION_SCORE = "composition_score";
+const std::string QUALITY_TAGS = "quality_tags";
+const std::string QUALITY_SCORE = "quality_score";
+const std::string AESTHETICS_CAPTION = "caption";
+const std::string VLM_SCORE = "vlm_score";
+const std::string AESTHETICS_VLM_VERSION = "aesthetics_vlm_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_AESTHETICS_SCORE_COLUMN_H

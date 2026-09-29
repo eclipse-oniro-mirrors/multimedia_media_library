@@ -62,6 +62,7 @@ enum class AssetChangeOperation {
     SET_MOVING_PHOTO_VERSION,
     SET_HIDDEN_ATTRIBUTE,
     SET_DISPLAY_NAME_BY_FILE,
+    SET_CAMERA_EDIT_DATA
 };
 
 enum class AddResourceMode {
@@ -88,6 +89,14 @@ private:
     void* buffer_;
     int64_t size_;
     int64_t readPos_;
+};
+
+struct SubmitCacheConfig {
+    bool isCreation;
+    bool isSetEffectMode;
+    bool isWriteGpsAdvanced;
+    int32_t userId {-1};
+    bool isCameraEditData {false};
 };
 
 class MediaAssetChangeRequestNapi : public MediaChangeRequestNapi {
@@ -117,7 +126,8 @@ public:
     uint32_t FetchAddCacheFileId();
     void SetCacheFileName(std::string& fileName);
     void SetCacheMovingPhotoVideoName(std::string& fileName);
-    int32_t SubmitCache(bool isCreation, bool isSetEffectMode, bool isWriteGpsAdvanced, const int32_t userId = -1);
+    DataShare::DataShareValuesBucket GetSubmitCacheValueBucket(SubmitCacheConfig submitCacheConfig);
+    int32_t SubmitCache(SubmitCacheConfig submitCacheConfig);
     int32_t SubmitCacheForPicker(bool isCreation, const int32_t userId = -1);
     int32_t CopyToMediaLibrary(bool isCreation, AddResourceMode mode);
     int32_t CreateAssetBySecurityComponent(std::string& assetUri);
@@ -148,6 +158,7 @@ private:
     EXPORT static napi_value CreateAssetRequestFromRealPath(napi_env env, const std::string& realPath);
     EXPORT static napi_value JSDeleteAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetEditData(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSSetCameraEditData(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetFavorite(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetTitle(napi_env env, napi_callback_info info);
@@ -179,7 +190,7 @@ private:
     EXPORT static napi_value JSSetHiddenAttribute(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetTitleByFile(napi_env env, napi_callback_info info);
 
-    bool CheckChangeOperations(napi_env env);
+    bool CheckChangeOperations(napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context);
     bool CheckMovingPhotoWriteOperation();
     bool CheckEffectModeWriteOperation();
     int32_t CopyFileToMediaLibrary(const UniqueFd& destFd, bool isMovingPhotoVideo = false);
@@ -187,6 +198,8 @@ private:
     int32_t CopyMovingPhotoVideo(const std::string& assetUri);
     void SetNewFileAsset(int32_t id, const std::string& uri);
     bool CheckSetLivePhoto4dStatus(napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context);
+    static napi_value ParseAddResourceValue(napi_env env,
+        unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, const std::shared_ptr<FileAsset>& fileAsset);
 
     static thread_local napi_ref constructor_;
     static std::atomic<uint32_t> cacheFileId_;
@@ -231,6 +244,7 @@ struct MediaAssetChangeRequestAsyncContext : public NapiError {
     std::string realPath;
     int32_t fd;
     int32_t userId_ = -1;
+    bool isCameraEditData {false};
 };
 } // namespace Media
 } // namespace OHOS

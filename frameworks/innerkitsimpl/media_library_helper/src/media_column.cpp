@@ -55,7 +55,7 @@ const std::set<std::string> MediaColumn::MEDIA_COLUMNS = {
     MEDIA_DATE_DELETED, MEDIA_HIDDEN, MEDIA_PARENT_ID, MEDIA_RELATIVE_PATH, MEDIA_VIRTUAL_PATH
 };
 const std::set<std::string> MediaColumn::DEFAULT_FETCH_COLUMNS = {
-    MEDIA_ID, MEDIA_FILE_PATH, MEDIA_NAME, MEDIA_TYPE
+    MEDIA_ID, MEDIA_FILE_PATH, MEDIA_NAME, MEDIA_TYPE,
 };
 
 const std::string PhotoColumn::PHOTO_DIRTY = "dirty";
@@ -130,6 +130,7 @@ const std::string PhotoColumn::PHOTO_IS_CRITICAL =  "is_critical";
 const std::string PhotoColumn::PHOTO_CRITICAL_TYPE =  "critical_type";  // abandoned
 const std::string PhotoColumn::PHOTO_RISK_STATUS =  "photo_risk_status";
 const std::string PhotoColumn::PHOTO_IS_RECENT_SHOW = "is_recent_show";
+const std::string PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME = "xt_style_template_name";
 const std::string PhotoColumn::PHOTO_HAS_APPLINK = "has_applink";
 const std::string PhotoColumn::PHOTO_APPLINK = "applink";
 const std::string PhotoColumn::PHOTO_CHANGE_TIME = "change_time";
@@ -148,6 +149,7 @@ const std::string PhotoColumn::DEFERRED_EFFECT_STATUS = "deferred_effect_status"
 const std::string PhotoColumn::PHOTO_FILE_INODE = "inode";
 const std::string PhotoColumn::PHOTO_STORAGE_PATH = "storage_path";
 
+const std::string PhotoColumn::IS_STYLE_PHOTO = "is_style_photo";
 const std::string PhotoColumn::PHOTO_CLOUD_ID_INDEX = "cloud_id_index";
 const std::string PhotoColumn::PHOTO_DATE_YEAR_INDEX = "date_year_index";
 const std::string PhotoColumn::PHOTO_DATE_MONTH_INDEX = "date_month_index";
@@ -235,11 +237,25 @@ const std::string PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR = "livephot
 const std::string PhotoColumn::LOCAL_ASSET_SIZE = "local_asset_size";
 const std::string PhotoColumn::PHOTO_NEED_THUMBNAIL = "need_thumbnail";
 const std::string PhotoColumn::ATTACHMENT_SIZE = "attachment_size";
+const std::string PhotoColumn::COMPRESSION_QUALITY = "compression_quality";
+const std::string PhotoColumn::MUSIC_MASTER_MODE = "music_master_mode";
 
+const std::string PhotoColumn::C2PA_CONFIG_INFO = "c2pa_config_info";
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
+const std::string PhotoColumn::PHOTO_LCD_FILE_SIZE = "lcd_file_size";
+
+const std::string PhotoColumn::PHOTO_IS_SHARED = "is_shared";
+const std::string PhotoColumn::PHOTO_SHARE_OWNER_INFO = "share_owner_info";
+const std::string PhotoColumn::PHOTO_SHARE_ALBUM_OWNER = "share_album_owner";
+const std::string PhotoColumn::PHOTO_VISIBILITY = "photo_visibility";
+const std::string PhotoColumn::PHOTO_SHARE_RISK_STATUS = "share_risk_status";
+const std::string PhotoColumn::PHOTO_SHARE_RISK_TYPE = "share_risk_type";
+const std::string PhotoColumn::PHOTO_SHARE_DATE_DAY = "share_date_day";
+const std::string PhotoColumn::PHOTO_SHARE_GROUP = "share_group";
+
 
 const std::set<std::string> PhotoColumn::DEFAULT_FETCH_COLUMNS = {
-    PHOTO_SUBTYPE, PHOTO_BURST_KEY,
+    PHOTO_SUBTYPE, PHOTO_BURST_KEY, PHOTO_TRANS_CODE_FILE_SIZE, PHOTO_SHOOTING_MODE_TAG,
 };
 
 const std::string PhotoColumn::CLONE_FILE_INFO_PATH = "path";
@@ -259,6 +275,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_CE_AVAILABLE, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::SUPPORTED_WATERMARK_TYPE,
     PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_IS_AUTO,
     PhotoColumn::PHOTO_MEDIA_SUFFIX, PhotoColumn::PHOTO_IS_RECENT_SHOW, PhotoColumn::PHOTO_IS_RECTIFICATION_COVER,
+    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME,
     PhotoColumn::PHOTO_EXIF_ROTATE, PhotoColumn::PHOTO_HAS_APPLINK, PhotoColumn::PHOTO_APPLINK,
     PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
     PhotoColumn::PHOTO_HDR_MODE,
@@ -268,6 +285,11 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::UNIQUE_ID, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::LOCAL_ASSET_SIZE,
     PhotoColumn::PHOTO_FILE_HIDDEN, PhotoColumn::PHOTO_NEED_THUMBNAIL, PhotoColumn::ATTACHMENT_SIZE,
+    PhotoColumn::PHOTO_LCD_FILE_SIZE, PhotoColumn::COMPRESSION_QUALITY, PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+    PhotoColumn::PHOTO_TRANSCODE_TIME, PhotoColumn::PHOTO_IS_SHARED, PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+    PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, PhotoColumn::PHOTO_VISIBILITY, PhotoColumn::PHOTO_SHARE_RISK_STATUS,
+    PhotoColumn::PHOTO_SHARE_RISK_TYPE, PhotoColumn::PHOTO_SHARE_DATE_DAY, PhotoColumn::PHOTO_SHARE_GROUP,
+    PhotoColumn::C2PA_CONFIG_INFO, PhotoColumn::MUSIC_MASTER_MODE,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)

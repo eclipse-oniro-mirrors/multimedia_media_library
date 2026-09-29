@@ -60,11 +60,9 @@ public:
     static std::string GetMovingPhotoExtraDataDir(const std::string &localPath);
     static std::string GetMovingPhotoExtraDataPath(const std::string &localPath);
     static std::string GetMovingPhotoVideoPath(const std::string &localPath);
-    static std::string GetMovingPhotoTmpPath(const std::string &localPath);
     static std::string GetSourceMovingPhotoImagePath(const std::string& photoPath);
     static std::string GetSourceMovingPhotoVideoPath(const std::string& photoPath);
     static bool IsMovingPhoto(const PhotosPo &photosPo);
-    static bool IsMovingPhoto(const CloudMediaPullDataDto &pullData);
     static bool IsGraffiti(const PhotosPo &photosPo);
     static bool IsLivePhoto(const PhotosPo &photosPo);
     static bool IsUserAlbumPath(const std::string &lpath);
@@ -79,6 +77,7 @@ public:
         const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
     static bool IsLivePhotoWithMetaData(const PhotosPo &photosPo);
     static bool IsMediaFile(const std::string &filePath);
+    static bool IsCloudStd(const CloudMediaPullDataDto &pullData, const PhotosPo &photoinfo);
     static int32_t MoveLivePhoto(const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
 
     template <typename T>
@@ -88,6 +87,8 @@ public:
         CHECK_AND_RETURN_RET_LOG(iter != map.end(), T(), "GetMapValue failed, key: %{public}s not found", key.c_str());
         return iter->second;
     }
+private:
+    static int32_t FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, const CloudMediaPullDataDto &pullData);
 };
 } // namespace OHOS::Media::CloudSync
 #endif // OHOS_CLOUD_MEDIA_SYNC_UTILS_H

@@ -156,7 +156,7 @@ static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 const std::string DEFAULT_DEVICE_ID = "device_id";
 const std::string CONFIG_INFO_INVALID_KEY = "invalid_key";
 const std::string CONFIG_INFO_INVALID_VALUE = "invalid_value";
-const std::string CONFIG_DB_DIRECTOYR = "/storage/media/local/files/.backup/restore/storage/emulated/0";
+const std::string CONFIG_DB_DIRECTORY = "/storage/media/local/files/.backup/restore/storage/emulated/0";
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static unique_ptr<CloneRestore> restoreService = nullptr;

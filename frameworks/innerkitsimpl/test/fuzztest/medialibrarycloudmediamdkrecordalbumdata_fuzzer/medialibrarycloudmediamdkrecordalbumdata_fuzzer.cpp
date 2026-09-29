@@ -61,7 +61,6 @@ static void MdkRecordAlbumDataFuzzer()
     albumData.GetLogicType();
     albumData.SetIsLogic(provider->ConsumeBool());
     albumData.IsLogic();
-    albumData.SetType(provider->ConsumeBytesAsString(NAME_LEN));
     albumData.GetType();
     albumData.SetLocalLanguage(provider->ConsumeBytesAsString(NAME_LEN));
     albumData.GetLocalLanguage();

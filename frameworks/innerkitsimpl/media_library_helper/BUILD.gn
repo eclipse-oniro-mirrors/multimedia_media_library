@@ -29,6 +29,8 @@ config("media_library_config") {
 }
 
 ohos_shared_library("media_library") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   include_dirs = [
@@ -65,6 +67,8 @@ ohos_shared_library("media_library") {
     "src/album_order.cpp",
     "src/album_scan_info_column.cpp",
     "src/base_column.cpp",
+    "src/c2pa_utils.cpp",
+    "src/cover_record_columns.cpp",
     "src/custom_records_column.cpp",
     "src/download_resources_column.cpp",
     "src/dir_asset.cpp",
@@ -75,7 +79,7 @@ ohos_shared_library("media_library") {
     "src/media_app_uri_permission_column.cpp",
     "src/media_app_uri_sensitive_column.cpp",
     "src/media_asset_edit_data.cpp",
-    "src/media_asset_rdbstore.cpp",
+    "src/media_account_utils.cpp",
     "src/media_change_effect.cpp",
     "src/media_column.cpp",
     "src/media_config_info_column.cpp",
@@ -98,11 +102,15 @@ ohos_shared_library("media_library") {
     "src/photo_file_utils.cpp",
     "src/media_edit_utils.cpp",
     "src/photo_map_column.cpp",
+    "src/photo_map_code_column.cpp",
     "src/photo_query_filter.cpp",
+    "src/share_member_column.cpp",
     "src/shooting_mode_column.cpp",
     "src/smart_album_asset.cpp",
     "src/media_audio_column.cpp",
     "src/media_fileinterwork_column.cpp",
+    "src/media_result_type_map_utils.cpp",
+    "src/media_operation_log_column.cpp",
     "src/media_compatible_info_column.cpp",
     "src/notification_helper.cpp",
     "src/persist_permission_column.cpp",
@@ -111,6 +119,7 @@ ohos_shared_library("media_library") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore_manager.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/preferred_compatible_mode_check_utils.cpp",
   ]
 
   public_configs = [ ":media_library_config" ]
@@ -127,7 +136,6 @@ ohos_shared_library("media_library") {
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [
@@ -140,6 +148,7 @@ ohos_shared_library("media_library") {
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",
     "bounds_checking_function:libsec_shared",
+    "bundle_framework:appexecfwk_core",
     "app_file_service:sandbox_helper_native",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
@@ -155,7 +164,9 @@ ohos_shared_library("media_library") {
     "kv_store:distributeddata_inner",
     "libexif:libexif",
     "media_foundation:media_foundation",
+    "os_account:os_account_innerkits",
     "player_framework:media_client",
+    "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
@@ -174,6 +185,12 @@ ohos_shared_library("media_library") {
     external_deps += [ "media_foundation:histreamer_plugin_base" ]
   }
 
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.tee_trusted_service_client) &&
+      global_parts_info.tee_trusted_service_client) {
+    defines += [ "C2PA_SUPPORT" ]
+  }
+
   if (!media_library_link_opt) {
     sanitize = {
       cfi = true
@@ -182,7 +199,6 @@ ohos_shared_library("media_library") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

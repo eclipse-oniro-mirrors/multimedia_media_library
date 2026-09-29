@@ -30,6 +30,9 @@ struct DeferredPictureInfo {
     std::string editData;
     std::string mimeType;       // 二阶段编码格式
     int32_t orientation{0};     // 二阶段旋转角度
+    bool enableC2PA{false};
+    std::string authorId;
+    std::string authorName;
 };
 
 class MediaLibraryCameraManager {

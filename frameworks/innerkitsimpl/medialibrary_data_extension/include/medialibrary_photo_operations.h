@@ -27,15 +27,17 @@
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_command.h"
 #include "picture.h"
-#include "asset_accurate_refresh.h"
 #include "rdb_predicates.h"
+#include "asset_accurate_refresh.h"
 #include "medialibrary_rdbstore.h"
 #include "camera_character_types.h"
 #include "multistages_capture_dfx_capture_fault.h"
 #include "multistages_capture_dfx_capture_times.h"
 #include "multistages_capture_dfx_save_camera_photo.h"
 #include "medialibrary_async_worker.h"
-// LCOV_EXCL_START
+#include "datashare_predicates.h"
+//LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
 struct PhotoExtInfo {
@@ -116,6 +118,7 @@ public:
     EXPORT static int32_t Open(MediaLibraryCommand &cmd, const std::string &mode);
     EXPORT static int32_t OpenAssetCompress(MediaLibraryCommand &cmd, std::string &tlvPath, const int32_t &version,
         int32_t &fd);
+    EXPORT static bool CheckPermissionToOpenHiddenFileAsset(const std::shared_ptr<FileAsset> &fileAsset);
     EXPORT static int32_t Close(MediaLibraryCommand &cmd);
     EXPORT static int32_t SubmitCache(MediaLibraryCommand &cmd);
     EXPORT static int32_t SubmitExistFileDBRecord(MediaLibraryCommand& cmd);
@@ -129,7 +132,10 @@ public:
         const uint8_t *addr, const long bytes);
     EXPORT static void StoreThumbnailSize(const std::string& photoId, const std::string& photoPath);
     EXPORT static void StoreThumbnailSizeAndTime(const std::string& photoId, const std::string& photoPath);
-    EXPORT static void StoreThumbnailAndEditSize(const std::string& photoId, const std::string& photoPath);
+    EXPORT static void StoreThumbnailAndEditSize(const std::string& photoId, const std::string& photoPath,
+        EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
+    EXPORT static void StorePhotoExtWithLcdStatus(const std::string& photoId, const std::string& photoPath,
+        int32_t lcdUsingStatus);
     EXPORT static bool HasDroppedThumbnailSize(const std::string& photoId);
     EXPORT static bool BatchDropThumbnailSize(const std::vector<std::string>& photoIds);
     EXPORT static int32_t ScanFileWithoutAlbumUpdate(MediaLibraryCommand &cmd);
@@ -188,15 +194,18 @@ public:
         const std::string &fileId, std::string &filePath);
     EXPORT static void Update500EditDataSize(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         std::string startFileId, bool &hasMore);
-    EXPORT static int32_t CalSingleEditDataSize(const std::string &fileId);
+    EXPORT static int32_t CalSingleEditDataSize(const std::string &fileId,
+        EditAndAttachmentUpdateType type = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
 
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> HandleIndexOfUri(MediaLibraryCommand &cmd,
         NativeRdb::RdbPredicates &predicates, const std::string &photoId, const std::string &albumId);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> HandleAnalysisIndex(MediaLibraryCommand &cmd,
         const std::string &photoId, const std::string &albumId);
+    EXPORT static int32_t SlowMotionMove(int32_t id);
     EXPORT static int32_t SetLivePhoto4dStatus(const int32_t fileId, const int32_t livePhoto4dStatus,
         const std::string &livePhoto4dLatestPair);
     EXPORT static int32_t SetExtraDataVersion(const int32_t fileId, const uint32_t version);
+    EXPORT static int32_t RevertLivePhoto4dStatus(const std::shared_ptr<FileAsset> &fileAsset);
     EXPORT static int32_t SubmitExistFileDBRecordExecute(MediaLibraryCommand &cmd,
         const std::shared_ptr<FileAsset> &fileAsset, const std::string &cachePath);
     EXPORT static int32_t ApplyEditEffectToFile(int32_t curBucketNum, const std::string &fileName);
@@ -206,6 +215,9 @@ public:
     EXPORT static int32_t NotifyAssetSended(const std::string &uri,
         ServiceShareType shareType = ServiceShareType::ASSET_LEVEL);
     EXPORT static void BatchStoreThumbnailSize(const std::vector<std::pair<std::string, std::string>>& photoIdPathList);
+    EXPORT static int32_t FilterSharedAssets(std::vector<std::string> &fileIds, bool excludeShared);
+    EXPORT static void HandleIllegalKey(DataShare::DataSharePredicates &predicates);
+
 private:
     static int32_t HandleAssetRenameAndMove(MediaLibraryCommand &cmd, std::shared_ptr<FileAsset> fileAsset,
         bool isNameChanged, AccurateRefresh::AccurateRefreshBase &baseRefresh);
@@ -249,6 +261,8 @@ private:
     static int32_t SaveCameraPhotoWithFilters(MediaLibraryCommand& cmd, const shared_ptr<FileAsset>& fileAsset);
     static int32_t SubmitEditCacheExecute(MediaLibraryCommand &cmd,
         const std::shared_ptr<FileAsset> &fileAsset, const std::string &cachePath, bool isWriteGpsAdvanced);
+    static int32_t SubmitSlowMotionExecute(const shared_ptr<FileAsset>& fileAsset,
+        MoveCacheFileInfo& moveCacheFileInfo);
     static int32_t UpdateAssetPathInSubmitExistFile(int32_t fileId, std::string &path);
     static int32_t SubmitCacheExecute(MediaLibraryCommand &cmd,
         const std::shared_ptr<FileAsset> &fileAsset, const std::string &cachePath);
@@ -348,6 +362,9 @@ private:
     static int32_t RevertFiltersWithEditData(const std::shared_ptr<FileAsset> &fileAsset,
         const std::string &path, const std::string &sourcePath, const std::string &editDataCameraPath);
     static int32_t RevertLivePhotoAsset(const string &realPath, const string &imagePath,
+        const string &sourceImagePath, const string &sourceVideoPath);
+    static int32_t HandleRevertLivePhotoAsset(const std::shared_ptr<FileAsset> &fileAsset,
+        const string &realPath, const string &imagePath,
         const string &sourceImagePath, const string &sourceVideoPath);
     static bool AddFiltersForPipeline(MediaLibraryCommand& cmd);
     static bool SafeAccumulateSize(int64_t add, int64_t &acc);

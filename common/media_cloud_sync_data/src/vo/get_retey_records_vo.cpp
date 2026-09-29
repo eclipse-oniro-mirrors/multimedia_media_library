@@ -21,24 +21,55 @@
 
 #include "media_itypes_utils.h"
 #include "media_log.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
+bool GetRetryRecordsDataVo::Unmarshalling(MessageParcel &parcel)
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->cloudId), false, "cloudId");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    return true;
+}
+
+bool GetRetryRecordsDataVo::Marshalling(MessageParcel &parcel) const
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->cloudId), false, "cloudId");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    return true;
+}
+
+std::string GetRetryRecordsDataVo::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"cloudId\": \"" << this->cloudId << "\","
+       << "\"shareAlbumOwner\": \"" << this->shareAlbumOwner << "\""
+       << "}";
+    return ss.str();
+}
+
 bool GetRetryRecordsRespBody::Unmarshalling(MessageParcel &parcel)
 {
-    CHECK_AND_RETURN_RET_LOG(
-        IPC::ITypeMediaUtil::Unmarshalling<std::string>(this->cloudIds, parcel), false, "cloudIds");
-    return true;
+    bool ret = IPC::ITypeMediaUtil::Unmarshalling<std::string, GetRetryRecordsDataVo>(this->retryDataList, parcel);
+    CHECK_AND_RETURN_RET_LOG(ret, false, "retryDataList");
+    return ret;
 }
 
 bool GetRetryRecordsRespBody::Marshalling(MessageParcel &parcel) const
 {
-    CHECK_AND_RETURN_RET_LOG(IPC::ITypeMediaUtil::Marshalling<std::string>(this->cloudIds, parcel), false, "cloudIds");
-    return true;
+    bool ret = IPC::ITypeMediaUtil::Marshalling<std::string, GetRetryRecordsDataVo>(this->retryDataList, parcel);
+    CHECK_AND_RETURN_RET_LOG(ret, false, "retryDataList");
+    return ret;
 }
 
 std::string GetRetryRecordsRespBody::ToString() const
 {
     std::stringstream ss;
+    ss << "[";
+    for (const auto &entry : this->retryDataList) {
+        ss << "{\"" << entry.first << "\":" << entry.second.ToString() << "}, ";
+    }
+    ss << "]";
     return ss.str();
 }
 }  // namespace OHOS::Media::CloudSync

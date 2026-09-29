@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <string>
 #include <thread>
+#include <vector>
 #include <fuzzer/FuzzedDataProvider.h>
 #include "ability_context_impl.h"
 #include "media_log.h"
@@ -101,7 +102,10 @@ static void MultistagesCaptureDeferredVideoProcAdapterTest()
     }
     deferredProcSession->BeginSynchronize();
     std::string videoId = provider->ConsumeBytesAsString(NUM_BYTES);
-    std::string srcPath = "/data/service/el2/100/hmdfs/account/files/Photo/4/VID_1778744376_004.mp4";
+    std::string srcPath1 =
+        "/data/service/el2/100/hmdfs/account/files/.editData/Photo/4/VID_1778744376_004.mp4/source.mp4";
+    std::string srcPath2 = "/data/service/el2/100/hmdfs/account/files/Photo/4/VID_1778744376_004.mp4";
+    std::vector<std::string> srcPath = {srcPath1, srcPath2};
     std::string tmp1Path = "/data/service/el2/100/hmdfs/account/files/cameraCache/temp/VID_1778744376_004_tmp1.mp4";
     std::string tmp2Path = "/data/service/el2/100/hmdfs/account/files/cameraCache/temp/VID_1778744376_004_tmp2.mp4";
     deferredProcSession->AddVideo(videoId, srcPath, tmp1Path, tmp2Path);

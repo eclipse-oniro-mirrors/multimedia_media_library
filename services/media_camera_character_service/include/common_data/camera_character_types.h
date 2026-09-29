@@ -25,6 +25,9 @@ namespace OHOS {
 namespace Media {
 const std::string CAMERA_PIPELINE_TYPE = "CameraPipelineType";
 const std::string EDIT_DATA = "edit_data";
+const std::string ENABLE_C2PA = "enableC2PA";
+const std::string AUTHOR_ID = "authorId";
+const std::string AUTHOR_NAME = "authorName";
 
 enum class CameraPipelineType : int32_t {
     UNDEFINED = 0,

@@ -1,0 +1,105 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+group("unittest") {
+  testonly = true
+
+  deps = [ ":media_share_album_lite_test" ]
+}
+
+ohos_unittest("media_share_album_lite_test") {
+  cflags = [
+    "-std=c++17",
+    "-fno-rtti",
+    "-fno-exceptions",
+    "-Wall",
+    "-fno-common",
+    "-fstack-protector-strong",
+    "-Wshadow",
+    "-FPIC",
+    "-FS",
+    "-O2",
+    "-D_FORTIFY_SOURCE=2",
+    "-Wformat=2",
+    "-Wfloat-equal",
+    "-Wdate-time",
+    "-Werror",
+    "-Wimplicit-fallthrough",
+    "-Wsign-compare",
+    "-Dprivate=public",
+    "-Dprotected=public",
+    "-fno-access-control",
+  ]
+
+  module_out_path = "media_library/media_library_asset"
+
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_INNERKITS_PATH}/media_share_album_lite/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm/po",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_share_album_lite/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/include/dao",
+    "../medialibrary_unittest_utils/include",
+    "../medialibrary_unittest_utils/include/database",
+  ]
+
+  include_share_album_lite_data = [ "${MEDIALIB_SHARE_ALBUM_DATA}/include" ]
+  include_dirs += include_share_album_lite_data
+
+  sources = [
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
+    "./src/media_share_photo_data_client_test.cpp",
+  ]
+
+  deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_INNERKITS_PATH}/media_share_album_lite:media_share_album_lite",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_SHARE_ALBUM_DATA}:media_share_album_lite_data",
+  ]
+
+  external_deps = [
+    "ability_runtime:abilitykit_native",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken_shared",
+    "access_token:libtokensetproc_shared",
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "ipc:ipc_single",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+  ]
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  resource_config_file =
+      "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
+}

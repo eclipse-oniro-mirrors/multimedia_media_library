@@ -39,10 +39,8 @@ int32_t CloudMediaAlbumControllerService::OnFetchRecords(MessageParcel &data, Me
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret),
         "OnFetchRecords Read Req Error");
-    if (req.albums.empty()) {
-        MEDIA_ERR_LOG("OnFetchRecords Param Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, resp);
-    }
+    CHECK_AND_RETURN_RET_LOG(!req.albums.empty(), IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret),
+        "OnFetchRecords Param Error");
     MEDIA_INFO_LOG("OnFetchRecords, size: %{public}zu, data: %{public}s", req.albums.size(), req.ToString().c_str());
     std::vector<PhotoAlbumDto> albumDtoList;
     for (const auto &album : req.albums) {
@@ -65,11 +63,18 @@ int32_t CloudMediaAlbumControllerService::OnFetchRecords(MessageParcel &data, Me
         albumDto.uniqueId = album.uniqueId;
         albumDto.sceneId = album.sceneId;
         albumDto.shareType = album.shareType;
+        albumDto.shareAlbumOwner = album.shareAlbumOwner;
+        this->processor_.ConvertShareAlbumDetailFromVoToDto(album.shareAlbumDetailVoOp, albumDto.shareAlbumDetailDtoOp);
         albumDtoList.emplace_back(albumDto);
         MEDIA_DEBUG_LOG("OnFetchRecords albumDto: %{public}s", albumDto.ToString().c_str());
         MEDIA_DEBUG_LOG("OnFetchRecords album: %{public}s", album.ToString().c_str());
     }
-    ret = this->albumService_.OnFetchRecords(albumDtoList, resp);
+    MEDIA_INFO_LOG("Album OnFetchRecords: sceneType: %{public}d", CloudMediaContext::GetInstance().GetSceneType());
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->albumService_.OnFetchRecords(albumDtoList, resp);
+    } else {
+        ret = this->shareAlbumService_.OnFetchRecords(albumDtoList, resp.stats, resp.failedRecords);
+    }
     MEDIA_INFO_LOG("OnFetchRecords Resp: %{public}s", resp.ToString().c_str());
     return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
 }
@@ -242,8 +247,13 @@ int32_t CloudMediaAlbumControllerService::OnCompletePull(MessageParcel &data, Me
     optRet.cloudId = reqBody.cloudId;
     optRet.errorCode = reqBody.errorCode;
     optRet.errorMsg = reqBody.errorMsg;
-    MEDIA_INFO_LOG("album OnCompletePull: %{public}s", reqBody.ToString().c_str());
-    ret = this->albumService_.OnCompletePull(optRet);
+    MEDIA_INFO_LOG("Album OnCompletePull: %{public}s, sceneType: %{public}d",
+        reqBody.ToString().c_str(), CloudMediaContext::GetInstance().GetSceneType());
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->albumService_.OnCompletePull(optRet);
+    } else {
+        ret = this->shareAlbumService_.OnCompletePull(optRet);
+    }
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 

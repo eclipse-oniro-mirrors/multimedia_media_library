@@ -22,6 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "itypes_util.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnFetchPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
@@ -69,6 +70,7 @@ bool OnFetchPhotosVo::MarshallingAttributesInfo(Parcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->videoMode), false, "videoMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->strongAssociation), false, "strongAssociation");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->fixVersion), false, "fixVersion");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->version), false, "version");
@@ -91,6 +93,9 @@ bool OnFetchPhotosVo::MarshallingAttributesInfo(Parcel &parcel) const
     // Safe Album: risk status for children's watch
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->photoRiskStatus), false, "photoRiskStatus");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->isCritical), false, "isCritical");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->compressionQuality), false, "compressionQuality");
+
+    CHECK_AND_RETURN_RET_LOG(WriteShareAlbumInfo(parcel), false, "WriteShareAlbumInfo");
     return true;
 }
 
@@ -139,6 +144,7 @@ bool OnFetchPhotosVo::ReadAttributesInfo(Parcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->videoMode), false, "videoMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->strongAssociation), false, "strongAssociation");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->fixVersion), false, "fixVersion");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->version), false, "version");
@@ -161,6 +167,9 @@ bool OnFetchPhotosVo::ReadAttributesInfo(Parcel &parcel)
     // Safe Album: risk status for children's watch
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->photoRiskStatus), false, "photoRiskStatus");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->isCritical), false, "isCritical");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->compressionQuality), false, "compressionQuality");
+
+    CHECK_AND_RETURN_RET_LOG(ReadShareAlbumInfo(parcel), false, "ReadShareAlbuminfo");
     return true;
 }
 
@@ -176,6 +185,7 @@ bool OnFetchPhotosVo::Unmarshalling(MessageParcel &parcel)
         IPC::ITypeMediaUtil::Unmarshalling<std::string>(this->sourceAlbumIds, parcel), false, "sourceAlbumIds");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(int64fields, parcel), false, "int64fields");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetail.Unmarshalling(parcel), false, "sharePhotoDetail");
     return true;
 }
 
@@ -191,6 +201,7 @@ bool OnFetchPhotosVo::Marshalling(MessageParcel &parcel) const
         IPC::ITypeMediaUtil::Marshalling<std::string>(this->sourceAlbumIds, parcel), false, "sourceAlbumIds");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(int64fields, parcel), false, "int64fields");
+    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetail.Marshalling(parcel), false, "sharePhotoDetail");
     return true;
 }
 
@@ -254,7 +265,8 @@ void OnFetchPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"uniqueId\": \"" << uniqueId << "\","
        << "\"packageName\": \"" << packageName << "\","
        << "\"photoRiskStatus\": \"" << photoRiskStatus << "\","
-       << "\"isCritical\": \"" << isCritical << "\",";
+       << "\"isCritical\": \"" << isCritical << "\","
+       << "\"compressionQuality\": \"" << compressionQuality << "\"";
     return;
 }
 
@@ -292,5 +304,25 @@ void OnFetchPhotosVo::GetAttributesHashMap(std::stringstream &ss) const
     }
     ss << "}";
     return;
+}
+
+bool OnFetchPhotosVo::WriteShareAlbumInfo(OHOS::Parcel &parcel) const
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    return true;
+}
+
+bool OnFetchPhotosVo::ReadShareAlbumInfo(OHOS::Parcel &parcel)
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    return true;
 }
 }  // namespace OHOS::Media::CloudSync

@@ -121,6 +121,13 @@ public:
     EXPORT static bool IsAnalysisAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType);
     EXPORT static bool CheckOrderStyleType(const OrderStyleType orderStyle);
     EXPORT static bool IsUserPhotoAlbumByType(const PhotoAlbumType albumType);
+    EXPORT static std::vector<std::string> GetUserAlbumSubtypes();
+    EXPORT static std::vector<std::string> GetSourceAlbumSubtypes();
+    EXPORT static std::vector<std::string> GetUserAndSourceAlbumSubtypes();
+    EXPORT static bool IsUserAlbumSubtype(const PhotoAlbumSubType subtype);
+    EXPORT static bool IsSourceAlbumSubtype(const PhotoAlbumSubType subtype);
+    EXPORT static bool IsUserOrSourceAlbumSubtype(const PhotoAlbumSubType subtype);
+    EXPORT static bool IsShareAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType);
 
     EXPORT void SetUserId(int32_t userId);
     EXPORT int32_t GetUserId();
@@ -142,6 +149,10 @@ public:
 
     EXPORT void SetShareType(const int32_t shareType);
     EXPORT int32_t GetShareType() const;
+
+    EXPORT void SetShareAlbumOwner(const std::string &shareAlbumOwner);
+    EXPORT const std::string& GetShareAlbumOwner() const;
+
 private:
     int32_t albumId_;
     PhotoAlbumType type_;
@@ -178,6 +189,7 @@ private:
     std::string cloudId_;
     int32_t sceneId_ = 0;
     int32_t shareType_ = 0;
+    std::string shareAlbumOwner_;
 };
 } // namespace Media
 } // namespace OHOS

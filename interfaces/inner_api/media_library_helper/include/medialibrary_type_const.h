@@ -196,7 +196,8 @@ enum ResultSetDataType {
 
 enum class CleanType : int32_t {
     TYPE_NOT_CLEAN = 0,
-    TYPE_NEED_CLEAN
+    TYPE_NEED_CLEAN,
+    TYPE_OFFLINE_CLEAN = 2,  // For file manager offline cleanup use
 };
 
 enum class CloudType : int32_t {
@@ -237,11 +238,18 @@ enum class BatchDownloadAutoPauseReasonType : int32_t {
 };
 
 enum class LivePhoto4dStatusType : int32_t {
+    TYPE_MIN_VALUE = 0,
     TYPE_UNIDENTIFIED = 0,
     TYPE_UNSUPPORTED,
     TYPE_SUPPORTED,
     TYPE_USED,
-    TYPE_LIVEPHOTO_4D
+    TYPE_LIVEPHOTO_4D,
+    TYPE_LEFT_ROTATE,
+    TYPE_UP_ROTATE,
+    TYPE_ZOOM_OUT,
+    TYPE_HITCHCOCK,
+    TYPE_GRAMMY,
+    TYPE_MAX_VALUE = TYPE_GRAMMY,
 };
 
 struct ColumnSchema {
@@ -307,7 +315,6 @@ const std::string ROOT_MEDIA_CAMERA_CACHE_DIR = "/storage/cloud/files/cameraCach
 const std::string PHYSICAL_PATH_PREFIX = "/data/service/el2/";
 const std::string PHYSICAL_PATH_SUFFIX = "/hmdfs/account/files/";
 const std::string MEDIA_CAMERA_CACHE_TMP_DIR = "cameraCache/temp";
-const std::string MEDIA_PHOTO_DIR_REAL_PATH = "Photo";
 const std::string MEDIA_EDITDATA_DIR_REAL_PATH = ".editData/";
 
 const std::string META_RECOVERY_PHOTO_RELATIVE_PATH = "/Photo/";
@@ -322,8 +329,6 @@ const int32_t KEY_FRAME_THM = 2;
 const int32_t KEY_FRAME_THM_ASTC = 3;
 const std::string HIGHLIGHT_CONFIG = "/data/storage/el2/base/preferences/highlight.xml";
 const std::string HIGHLIGHT_DIRECTORY_SIZE = "highlight_directory_size";
-
-const std::string SKIPLIST_FILE_PATH = "/data/SkipScanFile.txt";
 
 const std::string DOCS_PATH = "Docs/";
 const int CAMERA_DIRECTORY_TYPE_VALUES = DIR_CAMERA;
@@ -372,6 +377,8 @@ const std::string FAVOURTIE_ALBUM_NAME_VALUES = "FavoritAlbum";
 static constexpr int UNCREATE_FILE_TIMEPENDING = -1;
 static constexpr int UNCLOSE_FILE_TIMEPENDING = -2;
 static constexpr int UNOPEN_FILE_COMPONENT_TIMEPENDING = -3;
+static constexpr int TIME_PENDING_OFFLINE_CLEANUP = -4;  // For file manager offline cleanup use
+static constexpr int TIME_PENDING_HIDE_IN_PROGRESS = -5;  // For lake file hide use
 
 const int32_t DEFAULT_FILE_ID = 0;
 const int32_t DEFAULT_SHARE_COUNT = 0;

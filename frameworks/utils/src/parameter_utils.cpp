@@ -26,6 +26,9 @@
 #include "media_file_uri.h"
 #include "medialibrary_common_utils.h"
 #include "post_event_utils.h"
+#include "medialibrary_bundle_manager.h"
+#include "datashare_predicates_verify.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace Media {
@@ -258,6 +261,7 @@ int32_t ParameterUtils::CheckDeletePhotosCompleted(const std::vector<std::string
 {
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), -EINVAL, "fileIds is empty");
     auto size = fileIds.size();
+    MEDIA_INFO_LOG("The count of fileIds is %{public}zu", fileIds.size());
     CHECK_AND_RETURN_RET_LOG(size <= MAX_DELETE_PHOTOS_COMPLETED_SIZE, -EINVAL, "Invalid fileIds size");
 
     return E_OK;
@@ -376,11 +380,11 @@ int32_t ParameterUtils::CheckCompositeDisplayMode(const AssetChangeReqBody &reqB
     return E_OK;
 }
 
-int32_t ParameterUtils::CheckWhereClause(const std::string &whereClause)
+int32_t ParameterUtils::CheckWhereClause(const std::string &whereClause, bool isSA)
 {
     int32_t ret = E_OK;
     MEDIA_DEBUG_LOG("CheckWhereClause start");
-    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause)) {
+    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause, isSA)) {
         ret = E_INVALID_VALUES;
         MEDIA_ERR_LOG("illegal query whereClause input %{private}s", whereClause.c_str());
         VariantMap map = {
@@ -424,6 +428,56 @@ int32_t ParameterUtils::CheckCreateFileMgrAsset(const CreateFileMgrAssetReqBody 
     CHECK_AND_RETURN_RET_LOG(!reqBody.displayName.empty(), -EINVAL, "Invalid displayName");
     CHECK_AND_RETURN_RET_LOG(!reqBody.ownerAlbumId.empty(), -EINVAL, "Invalid ownerAlbumId");
     return E_OK;
+}
+
+static int32_t CheckShareMemberBase(int32_t albumId, const std::string &owner, const std::string &member)
+{
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "albumId is invalid");
+    CHECK_AND_RETURN_RET_LOG(!owner.empty(), -EINVAL, "owner is empty");
+    CHECK_AND_RETURN_RET_LOG(!member.empty(), -EINVAL, "member is empty");
+    return E_OK;
+}
+
+int32_t ParameterUtils::CheckAddShareMember(const AddShareMemberReqBody &reqBody)
+{
+    return CheckShareMemberBase(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t ParameterUtils::CheckUpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody)
+{
+    return CheckShareMemberBase(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t ParameterUtils::CheckDeleteShareMember(const DeleteShareMemberReqBody &reqBody)
+{
+    return CheckShareMemberBase(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t ParameterUtils::CheckDeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody)
+{
+    CHECK_AND_RETURN_RET_LOG(!reqBody.owner.empty(), -EINVAL, "owner is empty");
+    CHECK_AND_RETURN_RET_LOG(!reqBody.albumIds.empty(), -EINVAL, "albumIds is empty");
+    for (const auto &albumId : reqBody.albumIds) {
+        CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "invalid albumId: %{public}d", albumId);
+    }
+    return E_OK;
+}
+
+int32_t ParameterUtils::HandleIllegalKey(const DataShare::DataSharePredicates &predicates)
+{
+    if (PermissionUtils::IsSystemApp() || PermissionUtils::IsNativeSAApp()) {
+        MEDIA_INFO_LOG("system app or SA, skipped judge");
+        return E_OK;
+    }
+    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    DataSharePredicatesVerify predicatesVerify;
+    auto [predicatesType, errCode] = predicatesVerify.VerifyPredicates(predicates);
+    if (errCode != E_OK) {
+        int32_t callingUid = IPCSkeleton::GetCallingUid();
+        MEDIA_WARN_LOG("callingUid: %{public}d, predicates:%{public}d invalid, err:%{public}d",
+            callingUid, predicatesType, errCode);
+    }
+    return errCode;
 }
 }  // namespace Media
 }  // namespace OHOS

@@ -70,6 +70,7 @@ config("napi_config") {
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
@@ -187,13 +188,13 @@ config("public_napi_config") {
 }
 
 ohos_shared_library("medialibrary_nutils") {
+  stack_protector_ret = true
   public_configs = [ ":public_napi_config" ]
   configs = [ ":napi_config" ]
   sources = [
     "${MEDIALIB_INNERIMPL_PATH}/camera/src/media_asset_manager_adapter.cpp",
     "${MEDIALIB_INNERIMPL_PATH}/camera/src/picture_handle_client.cpp",
     "${MEDIALIB_INNERIMPL_PATH}/notification/src/medialibrary_notify_user_define_observer.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/preferred_compatible_mode_check_utils.cpp",
     "${MEDIALIB_JS_PATH}/src/active_analysis_error_utils.cpp",
     "${MEDIALIB_JS_PATH}/src/active_analysis_napi_callback.cpp",
@@ -215,6 +216,7 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_JS_PATH}/src/file_asset_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/highlight_album_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/media_album_change_request_napi.cpp",
+    "${MEDIALIB_JS_PATH}/src/media_share_album_change_request_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/media_asset_change_request_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/media_asset_data_handler.cpp",
     "${MEDIALIB_JS_PATH}/src/media_asset_edit_data_napi.cpp",
@@ -245,11 +247,11 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_JS_PATH}/src/task_signal_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/thumbnail_manager.cpp",
     "${MEDIALIB_JS_PATH}/src/transfer_utils.cpp",
-    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src//utils/media_notification_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/data/user_define_notify_info.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/progress_callback_notify/progress_observer_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_system_photo_keys.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
     "${MEDIALIB_UTILS_PATH}/src/media_change_request_utils.cpp",
   ]
@@ -259,6 +261,9 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/form_info_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_tmp_compatible_dup_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/slow_motion_transcode_progress_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/slow_motion_transcode_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_slow_motion_transcode_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/clone_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/convert_format_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_vo.cpp",
@@ -290,6 +295,7 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_cloud_enhancement_task_state_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_media_data_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_composite_auxiliary_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/adapted_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/log_cinematic_access_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_batch_download_cloud_resources_vo.cpp",
@@ -309,6 +315,10 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_to_dir_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_cancel_task_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/deep_optimize_space_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_deep_optimize_space_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_deep_optimizable_space_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/generate_unique_id_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/validate_latest_pair_vo.cpp",
   ]
 
   media_analysis_data_vo_source = [
@@ -335,6 +345,8 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_highlight_album_info_vo.cpp",
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/prepare_lcd_vo.cpp",
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/remove_cloud_lcd_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/invoke_analysis_tool_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/cancel_analysis_tool_vo.cpp",
   ]
 
   media_album_service_vo_source = [
@@ -372,6 +384,13 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_default_cover_uri_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/check_db_availability_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/analysis_album_get_attribute_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/modify_album_default_cover_order_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/set_share_album_name_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_share_album_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/add_share_member_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_share_member_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_member_share_album_vo.cpp",
   ]
 
   media_camera_character_service_vo_source = [
@@ -386,13 +405,14 @@ ohos_shared_library("medialibrary_nutils") {
   sources += media_analysis_data_vo_source
 
   deps = [
-    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
     "ability_runtime:ability_context_native",
@@ -417,10 +437,13 @@ ohos_shared_library("medialibrary_nutils") {
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "i18n:intl_util",
+    "icu:shared_icuuc",
     "image_framework:image",
     "image_framework:image_native",
     "init:libbegetutil",
@@ -431,8 +454,9 @@ ohos_shared_library("medialibrary_nutils") {
     "kv_store:distributeddata_inner",
     "libexif:libexif",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
+    "node:node_header_notice",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
@@ -459,7 +483,6 @@ ohos_shared_library("medialibrary_nutils") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -510,6 +533,7 @@ ohos_shared_library("medialibrary_nutils") {
 }
 
 ohos_shared_library("medialibrary") {
+  stack_protector_ret = true
   configs = [
     ":public_napi_config",
     ":napi_config",
@@ -534,15 +558,20 @@ ohos_shared_library("medialibrary") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_base_context",
     "ability_runtime:napi_common",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
+    "node:node_header_notice",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "window_manager:libwmutil",
   ]
 
   defines = []
@@ -562,7 +591,6 @@ ohos_shared_library("medialibrary") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -586,6 +614,7 @@ ohos_shared_library("medialibrary") {
 }
 
 ohos_shared_library("userfilemanager") {
+  stack_protector_ret = true
   configs = [
     ":public_napi_config",
     ":napi_config",
@@ -607,15 +636,20 @@ ohos_shared_library("userfilemanager") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_base_context",
     "ability_runtime:napi_common",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
+    "node:node_header_notice",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "window_manager:libwmutil",
   ]
 
   defines = []
@@ -631,7 +665,6 @@ ohos_shared_library("userfilemanager") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -664,6 +697,7 @@ ohos_abc("photoaccesshelper") {
 }
 
 ohos_shared_library("photoaccesshelpernative") {
+  stack_protector_ret = true
   configs = [
     ":public_napi_config",
     ":napi_config_photoaccesshelpernative",
@@ -685,17 +719,22 @@ ohos_shared_library("photoaccesshelpernative") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_base_context",
     "ability_runtime:napi_common",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_blkid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
+    "node:node_header_notice",
     "player_framework:media_client",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "window_manager:libwmutil",
   ]
 
   defines = []
@@ -711,7 +750,6 @@ ohos_shared_library("photoaccesshelpernative") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -758,13 +796,16 @@ gen_js_obj("photopickercomponent_abc") {
 }
 
 ohos_shared_library("photopickercomponent") {
+  stack_protector_ret = true
   sources = [ "${MEDIALIB_JS_PATH}/src/photopickercomponent.cpp" ]
 
   deps = [ ":photopickercomponent_abc" ]
 
   external_deps = [
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (!media_library_link_opt) {
@@ -775,7 +816,6 @@ ohos_shared_library("photopickercomponent") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -808,13 +848,16 @@ gen_js_obj("albumpickercomponent_abc") {
 }
 
 ohos_shared_library("albumpickercomponent") {
+  stack_protector_ret = true
   sources = [ "${MEDIALIB_JS_PATH}/src/albumpickercomponent.cpp" ]
 
   deps = [ ":albumpickercomponent_abc" ]
 
   external_deps = [
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (!media_library_link_opt) {
@@ -825,7 +868,6 @@ ohos_shared_library("albumpickercomponent") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -858,13 +900,16 @@ gen_js_obj("recentphotocomponent_abc") {
 }
 
 ohos_shared_library("recentphotocomponent") {
+  stack_protector_ret = true
   sources = [ "${MEDIALIB_JS_PATH}/src/recentphotocomponent.cpp" ]
 
   deps = [ ":recentphotocomponent_abc" ]
 
   external_deps = [
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (!media_library_link_opt) {
@@ -875,7 +920,6 @@ ohos_shared_library("recentphotocomponent") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 
@@ -885,6 +929,7 @@ ohos_shared_library("recentphotocomponent") {
 }
 
 ohos_shared_library("sendablephotoaccesshelper") {
+  stack_protector_ret = true
   include_dirs = [
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
@@ -894,6 +939,11 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/sendable",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
@@ -919,12 +969,14 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "${MEDIALIB_JS_PATH}/src/sendable/sendable_photo_access_helper_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/sendable/sendable_photo_album_napi.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/compatible_info_vo.cpp",
   ]
 
   deps = [
     ":medialibrary_nutils",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -944,6 +996,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "common_event_service:cesfwk_innerkits",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "i18n:intl_util",
@@ -955,9 +1008,11 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "ipc:ipc_single",
     "ipc:rpc",
     "ipc:ipc_napi",
+    "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
+    "node:node_header_notice",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "qos_manager:qos",
   ]
@@ -975,7 +1030,6 @@ ohos_shared_library("sendablephotoaccesshelper") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

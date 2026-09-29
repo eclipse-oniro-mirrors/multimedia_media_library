@@ -19,7 +19,6 @@
 #include <sstream>
 
 #include "album_accurate_refresh.h"
-#include "album_plugin_config.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "userfile_manager_types.h"
@@ -30,6 +29,7 @@
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "photo_file_utils.h"
+#include "album_plugin_base.h"
 
 namespace OHOS::Media {
 using MediaData = PhotoOwnerAlbumIdOperation::MediaData;
@@ -133,7 +133,8 @@ std::vector<std::string> PhotoOwnerAlbumIdOperation::GetFileIdsWithoutAlbum(
         sourcePath = GetStringVal("source_path", resultSet);
         mediaType = GetInt32Val("media_type", resultSet);
         lPath = this->ParseSourcePathToLPath(sourcePath);
-        containsScreenVideo = containsScreenVideo || (mediaType == MEDIA_TYPE_VIDEO && lPath == LPATH_SCREEN_SHOTS);
+        containsScreenVideo = containsScreenVideo ||
+            (mediaType == MEDIA_TYPE_VIDEO && lPath == AlbumPlugin::LPATH_SCREEN_SHOTS);
         result.emplace_back(fileId);
     }
     return result;
@@ -160,7 +161,8 @@ std::vector<std::string> PhotoOwnerAlbumIdOperation::GetFileIdsWithAlbum(
         fileId = GetStringVal("file_id", resultSet);
         mediaType = GetInt32Val("media_type", resultSet);
         lPath = GetStringVal("lpath", resultSet);
-        containsScreenVideo = containsScreenVideo || (mediaType == MEDIA_TYPE_VIDEO && lPath == LPATH_SCREEN_SHOTS);
+        containsScreenVideo = containsScreenVideo ||
+            (mediaType == MEDIA_TYPE_VIDEO && lPath == AlbumPlugin::LPATH_SCREEN_SHOTS);
         result.emplace_back(fileId);
     }
     return result;
@@ -364,20 +366,27 @@ MediaData PhotoOwnerAlbumIdOperation::GetPhotoAlbum(const std::string &lPath)
  */
 std::string PhotoOwnerAlbumIdOperation::ParseSourcePathToLPath(const std::string &sourcePath)
 {
-    size_t start_pos = sourcePath.find(GALLERT_ROOT_PATH);
-    size_t end_pos = sourcePath.find_last_of("/");
-
-    std::string result = "/Pictures/其它";
-    if (start_pos != std::string::npos && end_pos != std::string::npos) {
-        start_pos += GALLERT_ROOT_PATH.length();
-        result = sourcePath.substr(start_pos, end_pos - start_pos);
-        start_pos = result.find_first_of("/");
-        if (start_pos != std::string::npos) {
-            result = result.substr(start_pos);
-        } else {
-            result = FILE_SEPARATOR;
-        }
+    size_t rootPos = sourcePath.find(GALLERY_ROOT_PATH);
+    size_t lastSlashPos = sourcePath.find_last_of("/");
+    if (rootPos == std::string::npos || lastSlashPos == std::string::npos) {
+        MEDIA_ERR_LOG("Media_Operation: root path not found or no slash in sourcePath.");
+        return LPATH_DEFAULT_OTHER;
     }
+
+    size_t offset = rootPos + GALLERY_ROOT_PATH.length();
+    if (offset >= lastSlashPos || lastSlashPos - offset <= 1) {
+        MEDIA_ERR_LOG("Media_Operation: offset >= lastSlashPos or path too short, offset: %{public}zu, "
+            "lastSlashPos: %{public}zu.", offset, lastSlashPos);
+        return LPATH_DEFAULT_OTHER;
+    }
+
+    std::string segment = sourcePath.substr(offset, lastSlashPos - offset);
+    size_t firstSlashPos = segment.find_first_of("/");
+    if (firstSlashPos == std::string::npos) {
+        MEDIA_ERR_LOG("Media_Operation: no slash found in segment after root path.");
+        return LPATH_DEFAULT_OTHER;
+    }
+    std::string result = segment.substr(firstSlashPos);
     result = result == AlbumPlugin::LPATH_HIDDEN_ALBUM ? AlbumPlugin::LPATH_RECOVER : result;
     return result;
 }
@@ -387,20 +396,9 @@ std::string PhotoOwnerAlbumIdOperation::ParseSourcePathToLPath(const std::string
  */
 MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(const std::string &lPath)
 {
-    int32_t albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
-    int32_t albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC);
-
-    std::string target = "/Pictures/Users/";
-    std::transform(target.begin(), target.end(), target.begin(), ::tolower);
-    std::string lPathLower = lPath;
-    std::transform(lPathLower.begin(), lPathLower.end(), lPathLower.begin(), ::tolower);
-    if (lPathLower.find(target) == 0) {
-        albumType = static_cast<int32_t>(PhotoAlbumType::USER);
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
-    }
-    if (PhotoFileUtils::CheckFileManagerLPath(lPath)) {
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
-    }
+    int32_t albumType = -1;
+    int32_t albumSubType = -1;
+    GetAlbumTypeAndSubType(lPath, albumType, albumSubType);
     return this->BuildAlbumInfoByLPath(lPath, albumType, albumSubType);
 }
 
@@ -457,10 +455,11 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(
     albumInfo.albumType = albumTypeTmp;
     albumInfo.albumSubType = albumSubTypeTmp;
     albumInfo.priority = 1;
+    albumInfo.uniqueId = MediaFileUtils::GenerateUUID();
     return albumInfo;
 }
 
-int32_t PhotoOwnerAlbumIdOperation::CreateAlbums(const std::unordered_set<std::string> &lPathSet)
+int32_t PhotoOwnerAlbumIdOperation::CreateAlbums(const std::unordered_set<std::string> &lPathSet, bool isHidden)
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoOwnerAlbumIdOperation::CreateAlbums");
@@ -470,6 +469,7 @@ int32_t PhotoOwnerAlbumIdOperation::CreateAlbums(const std::unordered_set<std::s
     // create album for each node.key (lPath)
     for (const auto &lPath : lPathSet) {
         albumInfo = this->BuildAlbumInfoByLPath(lPath);
+        albumInfo.hidden = isHidden ? 1 : 0;
         err = this->CreateAlbum(albumInfo);
         conn = err != E_OK;
         CHECK_AND_RETURN_RET_LOG(!conn,
@@ -493,7 +493,9 @@ int32_t PhotoOwnerAlbumIdOperation::CreateAlbum(const MediaData &albumInfo)
         albumInfo.albumName,
         albumInfo.bundleName,
         albumInfo.lPath,
-        albumInfo.priority};
+        albumInfo.priority,
+        albumInfo.hidden,
+        albumInfo.uniqueId};
     int32_t err = albumRefresh.ExecuteSql(sql, params, AccurateRefresh::RdbOperation::RDB_OPERATION_ADD);
     bool conn = err != AccurateRefresh::ACCURATE_REFRESH_RET_OK;
     CHECK_AND_RETURN_RET_LOG(!conn,
@@ -592,11 +594,11 @@ int32_t PhotoOwnerAlbumIdOperation::FixScreenVideoRelation()
     CHECK_AND_RETURN_RET(!conn, E_OK);
 
     MEDIA_INFO_LOG("Media_Operation: Need to fix screen video relation. size: %{public}zu.", fileIds.size());
-    int32_t err = this->CreateAlbums({LPATH_SCREEN_RECORDS});
+    int32_t err = this->CreateAlbums({AlbumPlugin::LPATH_SCREEN_RECORDS});
     conn = err != E_OK;
     CHECK_AND_RETURN_RET_LOG(!conn, err, "Media_Operation: CreateAlbums failed, err: %{public}d.", err);
 
-    MediaData albumInfo = this->GetPhotoAlbum(LPATH_SCREEN_RECORDS);
+    MediaData albumInfo = this->GetPhotoAlbum(AlbumPlugin::LPATH_SCREEN_RECORDS);
     conn = albumInfo.albumId.empty();
     CHECK_AND_RETURN_RET_LOG(!conn, E_ERR, "Media_Operation: albumInfo is empty.");
 
@@ -619,7 +621,7 @@ int32_t PhotoOwnerAlbumIdOperation::GetPhotoAlbumId(const std::string &lPath)
     return GetInt32Val("album_id", resultSet);
 }
 
-int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &sourcePath)
+int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &sourcePath, bool isHidden)
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath");
@@ -627,11 +629,39 @@ int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &so
     std::string lPath = this->ParseSourcePathToLPath(sourcePath);
 
     std::unordered_set<std::string> lPathSet = { lPath };
-    int32_t err = this->CreateAlbums(lPathSet);
+    int32_t err = this->CreateAlbums(lPathSet, isHidden);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR, "Media_Operation: CreateAlbums failed, err: %{public}d.", err);
     int32_t albumId = this->GetPhotoAlbumId(lPath);
     CHECK_AND_RETURN_RET_LOG(albumId > 0, E_ERR, "Media_Operation: failed to get albumInfo.");
     MEDIA_INFO_LOG("Media_Operation: success to build and get album, albumId: %{public}d", albumId);
     return albumId;
+}
+
+void PhotoOwnerAlbumIdOperation::GetAlbumTypeAndSubType(const std::string &lPath, int32_t &albumType,
+    int32_t &albumSubType)
+{
+    albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
+    albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC);
+    std::string target = "/Pictures/Users/";
+    std::transform(target.begin(), target.end(), target.begin(), ::tolower);
+    std::string lPathLower = lPath;
+    std::transform(lPathLower.begin(), lPathLower.end(), lPathLower.begin(), ::tolower);
+    if (lPathLower.find(target) == 0) {
+        albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+    }
+    if (PhotoFileUtils::CheckFileManagerLPath(lPath)) {
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
+    }
+}
+
+int32_t PhotoOwnerAlbumIdOperation::CreateAlbumAndGetId(const MediaData &albumInfo)
+{
+    CHECK_AND_RETURN_RET_LOG(!albumInfo.lPath.empty(), E_ERR, "Media_Operation: album lPath is empty.");
+    int32_t err = this->CreateAlbum(albumInfo);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR,
+        "Media_Operation: CreateAlbum failed, err: %{public}d, albumInfo: %{public}s.",
+        err, this->ToString(albumInfo).c_str());
+    return this->GetPhotoAlbumId(albumInfo.lPath);
 }
 }  // namespace OHOS::Media

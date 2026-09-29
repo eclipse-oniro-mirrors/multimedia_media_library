@@ -120,14 +120,11 @@ static void ThumbnailGenerateHelperTestPart1()
 {
     Media::ThumbRdbOpt opts = FuzzThumbRdbOpt(true);
     Media::ThumbnailGenerateHelper::CreateThumbnailFileScaned(opts, provider->ConsumeBool());
-    Media::ThumbnailGenerateHelper::CreateThumbnailBackground(opts);
-    Media::ThumbnailGenerateHelper::CreateAstcBackground(opts);
     Media::ThumbnailGenerateHelper::CreateAstcCloudDownload(opts, provider->ConsumeBool());
     Media::ThumbnailGenerateHelper::CreateAstcMthAndYear(opts);
     Media::ThumbnailGenerateHelper::RegenerateThumbnailFromCloud(opts);
     Media::ThumbnailGenerateHelper::RepairExifRotateBackground(opts);
     RdbPredicates predicates(PHOTOS_TABLE);
-    Media::ThumbnailGenerateHelper::CreateLcdBackground(opts);
     Media::ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
     int32_t outLcdCount;
     Media::ThumbnailGenerateHelper::GetLcdCount(opts, outLcdCount);

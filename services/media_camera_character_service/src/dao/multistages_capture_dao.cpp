@@ -111,6 +111,7 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::QueryForOnProcess(
         MediaColumn::MEDIA_DATE_TRASHED,    // 一阶段删除, 影响二阶段
         PhotoColumn::PHOTO_EDIT_TIME,       // 一阶段编辑, 影响二阶段
         PhotoColumn::PHOTO_ORIENTATION,     // 旋转角度(YUV需要)
+        PhotoColumn::C2PA_CONFIG_INFO,
     };
 
     // 1.获取数据
@@ -279,6 +280,8 @@ std::vector<std::shared_ptr<FileAsset>> MultiStagesCaptureDao::QueryForSessionSy
         MediaColumn::MEDIA_OWNER_PACKAGE,
         MediaColumn::MEDIA_DATE_TRASHED,
         PhotoColumn::PHOTO_DEFERRED_PROC_TYPE,
+        PhotoColumn::COMPRESSION_QUALITY,
+        PhotoColumn::C2PA_CONFIG_INFO,
     };
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
@@ -306,6 +309,7 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::QueryForDeferredPictureInfo(in
     const std::vector<std::string> QUERY_COLUMNS_FOR_DEFERRED_PICTURE_INFO = {
         MediaColumn::MEDIA_MIME_TYPE,
         PhotoColumn::PHOTO_ORIENTATION,
+        PhotoColumn::C2PA_CONFIG_INFO,
     };
 
     // 1.获取数据
@@ -335,6 +339,8 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByFileId(int32_
         MediaColumn::MEDIA_TYPE,
         MediaColumn::MEDIA_MIME_TYPE,
         PhotoColumn::PHOTO_SUBTYPE,
+        PhotoColumn::COMPRESSION_QUALITY,
+        PhotoColumn::C2PA_CONFIG_INFO,
     };
 
     // 1.获取数据
@@ -363,6 +369,8 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByPhotoId(const
         MediaColumn::MEDIA_TYPE,
         MediaColumn::MEDIA_MIME_TYPE,
         PhotoColumn::PHOTO_SUBTYPE,
+        PhotoColumn::COMPRESSION_QUALITY,
+        PhotoColumn::C2PA_CONFIG_INFO,
     };
 
     // 1.获取数据

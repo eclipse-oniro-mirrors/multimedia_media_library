@@ -17,11 +17,15 @@
 
 #include "cloud_media_album_controller_processor.h"
 
+#include <charconv>
+
 #include "media_log.h"
 #include "cloud_file_data_vo.h"
 #include "cloud_file_data_dto.h"
 #include "photos_vo.h"
 #include "photos_dto.h"
+#include "photo_album_po_writer.h"
+#include "cloud_media_sync_const.h"
 
 namespace OHOS::Media::CloudSync {
 CloudMdkRecordPhotoAlbumVo CloudMediaAlbumControllerProcessor::ConvertRecordPoToVo(PhotoAlbumPo record)
@@ -40,12 +44,17 @@ CloudMdkRecordPhotoAlbumVo CloudMediaAlbumControllerProcessor::ConvertRecordPoTo
     recordVo.coverUriSource = record.coverUriSource.value_or(0);
     recordVo.coverCloudId = record.coverCloudId.value_or("");
     recordVo.uniqueId = record.uniqueId.value_or("");
+    recordVo.shareAlbumOwner = record.shareAlbumOwner.value_or("");
     /* album_plugin columns */
     recordVo.albumPluginCloudId = record.albumPluginCloudId.value_or("");
     recordVo.albumNameEn = record.albumNameEn.value_or("");
     recordVo.dualAlbumName = record.dualAlbumName.value_or("");
     recordVo.priority = record.priority.value_or(0);
     recordVo.isInWhiteList = record.isInWhiteList.value_or(false);
+    
+    GetAttributesHashMap(record, recordVo);
+    GetInt64FieldsHashMap(record, recordVo);
+    
     return recordVo;
 }
 
@@ -72,5 +81,77 @@ PhotoAlbumDto CloudMediaAlbumControllerProcessor::ConvertToPhotoAlbumDto(
     record.serverErrorCode = recordVo.serverErrorCode;
     record.errorDetails = recordVo.errorDetails;
     return record;
+}
+
+void CloudMediaAlbumControllerProcessor::ConvertShareMemberDataFromVoToDto (
+    const std::vector<ShareMemberDataVo> &shareMemberDataVoList,
+    std::vector<ShareMemberDataDto> &shareMemberDataDtoList)
+{
+    for (const auto &shareMemberDatavo : shareMemberDataVoList) {
+        ShareMemberDataDto shareMemberDataDto;
+        shareMemberDataDto.userId = shareMemberDatavo.userId;
+        shareMemberDataDto.status = shareMemberDatavo.status;
+        shareMemberDataDtoList.push_back(shareMemberDataDto);
+    }
+}
+
+void CloudMediaAlbumControllerProcessor::ConvertShareDetailDataFromVoToDto(
+    const std::vector<ScaDetailVo> &scaDetailVoList,
+    std::vector<ScaDetailDataDto> &scaDetailDataDtoList)
+{
+    for (const auto &scaDetailVo : scaDetailVoList) {
+        ScaDetailDataDto scaDetailDataDto;
+        scaDetailDataDto.usage = scaDetailVo.usage;
+        scaDetailDataDto.riskResult = scaDetailVo.riskResult;
+        scaDetailDataDtoList.push_back(scaDetailDataDto);
+    }
+}
+
+void CloudMediaAlbumControllerProcessor::ConvertShareAlbumDetailFromVoToDto(
+    const std::optional<ShareAlbumDetailVo> &shareAlbumDetailVoOp,
+    std::optional<ShareAlbumDetailDto> &shareAlbumDetailDtoOp)
+{
+    CHECK_AND_RETURN(shareAlbumDetailVoOp.has_value());
+    const ShareAlbumDetailVo &shareAlbumDetailVo = shareAlbumDetailVoOp.value();
+
+    shareAlbumDetailDtoOp = ShareAlbumDetailDto();
+    ShareAlbumDetailDto &shareAlbumDetailDto = shareAlbumDetailDtoOp.value();
+
+    this->ConvertShareMemberDataFromVoToDto(
+        shareAlbumDetailVo.shareMemberData, shareAlbumDetailDto.shareMemberDataList);
+
+    this->ConvertShareDetailDataFromVoToDto(
+        shareAlbumDetailVo.scaDetailList, shareAlbumDetailDto.scaDetailDataList);
+}
+
+bool CloudMediaAlbumControllerProcessor::GetAttributesHashMap(
+    const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo)
+{
+    PhotoAlbumPo albumInfo = record;
+    PhotoAlbumPoWriter writer = PhotoAlbumPoWriter(albumInfo);
+    std::unordered_map<std::string, std::string> stringfieldsMap = writer.ToMap(false);
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_STRING_TO_CLOUD) {
+        auto it = stringfieldsMap.find(fieldName);
+        CHECK_AND_CONTINUE(it != stringfieldsMap.end());
+        albumVo.stringfields[fieldName] = it->second;
+    }
+    return true;
+}
+
+bool CloudMediaAlbumControllerProcessor::GetInt64FieldsHashMap(
+    const PhotoAlbumPo &record, CloudMdkRecordPhotoAlbumVo &albumVo)
+{
+    PhotoAlbumPo albumInfo = record;
+    PhotoAlbumPoWriter writer = PhotoAlbumPoWriter(albumInfo);
+    std::unordered_map<std::string, std::string> stringfieldsMap = writer.ToMap(false);
+    for (const auto &fieldName : ALBUM_SYNC_COLUMN_INT64_TO_CLOUD) {
+        auto it = stringfieldsMap.find(fieldName);
+        CHECK_AND_CONTINUE(it != stringfieldsMap.end());
+        int64_t value = 0;
+        auto [ptr, ec] = std::from_chars(it->second.data(), it->second.data() + it->second.size(), value);
+        CHECK_AND_CONTINUE(ec == std::errc() && ptr == it->second.data() + it->second.size());
+        albumVo.int64fields[fieldName] = value;
+    }
+    return true;
 }
 }  // namespace OHOS::Media::CloudSync

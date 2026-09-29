@@ -130,7 +130,12 @@ void ShootingModeAlbum::GetCinematicVideoAlbumPredicates(T& predicates, const bo
     PhotoQueryFilter::Config config {};
     config.hiddenConfig = hiddenState ? PhotoQueryFilter::ConfigType::INCLUDE : PhotoQueryFilter::ConfigType::EXCLUDE;
     PhotoQueryFilter::ModifyPredicate(config, predicates);
+    // V1 和 V2 电影模式统一归入同一相册
+    predicates.BeginWrap();
     predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO));
+    predicates.Or();
+    predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
+    predicates.EndWrap();
 }
 
 template <class T>
@@ -151,33 +156,35 @@ void ShootingModeAlbum::GetShootingModeAlbumPredicates(const ShootingModeAlbumTy
     switch (type) {
         case ShootingModeAlbumType::MOVING_PICTURE: {
             GetMovingPhotoAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::BURST_MODE_ALBUM: {
             GetBurstModeAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::FRONT_CAMERA_ALBUM: {
             GetFrontCameraAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::RAW_IMAGE_ALBUM: {
             GetRAWImageAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::MP4_3DGS_ALBUM: {
             Get3DGSAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         case ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM: {
             GetCinematicVideoAlbumPredicates(predicates, hiddenState);
-            return;
+            break;
         }
         default: {
             GetGeneralShootingModeAlbumPredicates(type, predicates, hiddenState);
-            return;
+            break;
         }
     }
+    // 拍摄模式分析相册不统计共享资产，过滤 is_shared = 0
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
 }
 
 bool ShootingModeAlbum::AlbumNameToShootingModeAlbumType(const std::string& albumName,
@@ -241,6 +248,11 @@ vector<ShootingModeAlbumType> ShootingModeAlbum::GetShootingModeAlbumOfAsset(int
     }
     if (photoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
         result.push_back(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM);
+    }
+    if (photoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {  // V2电影模式
+        // V2也归入电影模式相册（不区分具体是普通电影还是希区柯克）
+        result.push_back(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM);
+        MEDIA_DEBUG_LOG("CINEMATIC_VIDEO_V2 asset added to CINEMATIC_VIDEO_ALBUM");
     }
     if (mimetype == "image/x-adobe-dng") {
         result.push_back(ShootingModeAlbumType::RAW_IMAGE_ALBUM);

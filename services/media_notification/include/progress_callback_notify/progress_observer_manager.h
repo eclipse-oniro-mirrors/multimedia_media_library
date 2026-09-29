@@ -35,7 +35,8 @@ class DataAbilityObserverStub;
 namespace OHOS {
 namespace Media {
 namespace Notification {
-class ProgressObserverManager {
+#define EXPORT __attribute__ ((visibility ("default")))
+class EXPORT ProgressObserverManager {
 public:
     static ProgressObserverManager &GetInstance();
     

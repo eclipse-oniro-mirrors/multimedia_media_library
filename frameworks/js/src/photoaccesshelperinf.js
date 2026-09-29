@@ -46,11 +46,13 @@ const PARAMETERS_VALIDATE_FAILED_MESSAGE =
 '  2. The elements of the array can only be \'image/heic\' or \'image/jpeg\',' +
 '  and the array length cannot be greater than two for supportedMimeType;';
 const GET_BUNDLE_INFO_FAIL = 'Failed to get bundle info';
+const GET_APP_NAME_FAIL = 'Failed to get BundleInfo. The \'abilities\' configuration in module.json5' + 
+' is missing required field \'icon\' or \'label\'.';
 
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 
 const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
-const DELAY_MILLSECONDS = 33;
+const RECENT_PHOTO_INFO_DELAY_TIME = 70;
 const RETRY_COUNTER = 10;
 const RPC_TOKEN_RECENT_PHOTO_INFO = 'rpcRecentPhotoInfoServiceAbility';
 const RPC_MSGID_RECENT_PHOTO_INFO = 1;
@@ -204,7 +206,7 @@ async function createPhotoDeleteRequestParamsOk(uriList, asyncCallback) {
       return photoAccessHelper.createDeleteRequest(getContext(this), appName, uriList, result => {
         if (result.result === REQUEST_CODE_SUCCESS) {
           asyncCallback();
-        } else if (result.result == PERMISSION_DENIED) {
+        } else if (result.result === PERMISSION_DENIED) {
           asyncCallback(new BusinessError(ERROR_MSG_USER_DENY));
         } else {
           asyncCallback(new BusinessError(ERROR_MSG_INNER_FAIL, result.result));
@@ -215,7 +217,7 @@ async function createPhotoDeleteRequestParamsOk(uriList, asyncCallback) {
         photoAccessHelper.createDeleteRequest(getContext(this), appName, uriList, result => {
           if (result.result === REQUEST_CODE_SUCCESS) {
             resolve();
-          } else if (result.result == PERMISSION_DENIED) {
+          } else if (result.result === PERMISSION_DENIED) {
             reject(new BusinessError(ERROR_MSG_USER_DENY));
           } else {
             reject(new BusinessError(ERROR_MSG_INNER_FAIL, result.result));
@@ -320,20 +322,25 @@ function checkConfirmBoxParams(srcFileUris, photoCreationConfigs, isImageFullyDi
 }
 
 function getBundleInfo() {
-  let flags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_ABILITY | // for appName
-    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE | // for appName
-    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_SIGNATURE_INFO | // for appId
-    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION; // for appInfo
-  let bundleInfo = bundleManager.getBundleInfoForSelfSync(flags);
-  if (((bundleInfo === undefined) || (bundleInfo.name === undefined)) ||
-      ((bundleInfo.hapModulesInfo === undefined) || (bundleInfo.hapModulesInfo.length === 0)) ||
-      ((bundleInfo.signatureInfo === undefined) || (bundleInfo.signatureInfo.appId === undefined)) ||
-    ((bundleInfo.appInfo === undefined) || (bundleInfo.appInfo.labelId === 0))) {
-    console.error('photoAccessHelper failed to get bundle info.');
+  try {
+      let flags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_ABILITY | // for appName
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE | // for appName
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_SIGNATURE_INFO | // for appId
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION; // for appInfo
+    let bundleInfo = bundleManager.getBundleInfoForSelfSync(flags);
+    if (((bundleInfo === undefined) || (bundleInfo.name === undefined)) ||
+        ((bundleInfo.hapModulesInfo === undefined) || (bundleInfo.hapModulesInfo.length === 0)) ||
+        ((bundleInfo.signatureInfo === undefined) || (bundleInfo.signatureInfo.appId === undefined)) ||
+        ((bundleInfo.appInfo === undefined) || (bundleInfo.appInfo.labelId === 0))) {
+      console.error('photoAccessHelper failed to get bundle info.');
+      return undefined;
+    }
+
+    return bundleInfo;
+  } catch (error) {
+    console.info(`getBundleInfo failed, error code: ${error.code}, message: ${error.message}`);
     return undefined;
   }
-
-  return bundleInfo;
 }
 
 function showAssetsCreationDialogResult(result, reject, resolve) {
@@ -353,6 +360,16 @@ function showAssetsCreationDialogResult(result, reject, resolve) {
   resolve(result.data);
 }
 
+async function getAppNameFromModelName(modelName, labelId) {
+  try {
+    let appName = await gContext.createModuleContext(modelName).resourceManager.getStringValue(labelId);
+    return appName;
+  } catch (error) {
+    console.info(`getAppNameFromModelName fail, error code: ${error.code}, message: ${error.message}`);
+    return undefined;
+  }
+}
+
 async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfigs, isImageFullyDisplayed = false) {
   let bundleInfo = getBundleInfo();
   if (bundleInfo === undefined) {
@@ -368,7 +385,7 @@ async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfig
   console.info('photoAccessHelper appId is ' + appId + '.');
 
   let labelId = bundleInfo.appInfo.labelId;
-  console.info('photoAccessHelper labelId is ' + appId + '.');
+  console.info('photoAccessHelper labelId is ' + labelId + '.');
   let appName = '';
 
   try {
@@ -379,7 +396,12 @@ async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfig
       }
     }
     console.info('photoAccessHelper modeleName is ' + modeleName + '.');
-    appName = await gContext.createModuleContext(modeleName).resourceManager.getStringValue(labelId);
+    appName = await getAppNameFromModelName(modeleName, labelId);
+    if (appName === undefined) {
+      return new Promise((resolve, reject) => {
+        reject(new BusinessError(GET_APP_NAME_FAIL, ERR_CODE_OHOS_PARAMERTER_INVALID));
+      });
+    }
     console.info('photoAccessHelper appName is ' + appName + '.');
     // only promise type
     return new Promise((resolve, reject) => {
@@ -593,8 +615,8 @@ function getPhotoPickerComponentDefaultAlbumName() {
   }
 }
 
-async function delayFunc() {
-  return new Promise(resolve => setTimeout(resolve, DELAY_MILLSECONDS));
+async function delayFunc(time) {
+  return new Promise(resolve => setTimeout(resolve, time));
 }
 
 function convertMIMETypeToFilterType(e) {
@@ -688,12 +710,9 @@ async function rpcGetRecentPhotoInfoGetProxy() {
   try {
     let connectId = context.connectServiceExtensionAbility(want, connect);
     let retryConter = RETRY_COUNTER;
-    while (proxy === undefined) {
+    while (proxy === undefined && retryConter > 0) {
       retryConter -= 1;
-      if (retryConter < 0) {
-        break;
-      }
-      await delayFunc();
+      await delayFunc(RECENT_PHOTO_INFO_DELAY_TIME);
     }
   } catch (error) {
     console.error('rpcGetRecentPhotoInfo Error: ' + error);
@@ -736,7 +755,7 @@ async function rpcGetRecentPhotoInfo(recentPhotoOption) {
 async function getRecentPhotoInfoOk(recentPhotoOption) {
   try {
     console.info('getRecentPhotoInfoOk enter');
-    let photoInfo = rpcGetRecentPhotoInfo(recentPhotoOption);
+    const photoInfo = await rpcGetRecentPhotoInfo(recentPhotoOption);
     if (!photoInfo) {
       photoInfo = { dateTaken: -1, identifier: '-1' };
     }
@@ -744,9 +763,7 @@ async function getRecentPhotoInfoOk(recentPhotoOption) {
       photoInfo.identifier = '0';
     }
     console.info('recentPhotoInfo result: ' + photoInfo.identifier);
-    return new Promise((resolve, reject) => {
-      resolve(photoInfo);
-    });
+    return photoInfo;
   } catch (error) {
     return errorResult(new BusinessError(ERROR_MSG_INNER_FAIL, error.code), null);
   }
@@ -903,7 +920,10 @@ const RecommendationType = {
   LANDSCAPE: 16,
 
   // Indicates that GAUSSIAN_SPLAT_3D photos can be recommended
-  GAUSSIAN_SPLAT_3D: 17
+  GAUSSIAN_SPLAT_3D: 17,
+
+  // Indicates that featured single pet photos can be recommended
+  FEATURED_SINGLE_PET: 18
 };
 
 const PhotoViewMIMETypes = {
@@ -950,14 +970,14 @@ const OperationType = {
   END_WRAP : 12,
   BETWEEN : 13,
   NOT_BETWEEN : 14
-}
+};
 
 const ValidSupportedMimeType = {
   
   JPEG: 'image/jpeg',
   
   HEIF: 'image/heic'
-}
+};
 
 const PickerFilterPhotoKeys = {
   
@@ -1004,7 +1024,7 @@ const PickerFilterPhotoKeys = {
   ASPECT_RATIO: 'aspect_ratio',
 
   DATE_TAKEN_MS: 'date_taken_ms',
-}
+};
 
 const PhotoSource = {
   ALL: 0,
@@ -1083,13 +1103,13 @@ const PHOTO_VIEW_MIME_TYPE_MAP = new Map([
 
 const GridPinchModeType = {
   FULL_FUNCTION_GRID: 0,
-}
+};
  	 
 const GridLevel = {
   SPACIOUS: 0,
   STANDARD: 1,
   COMPACT: 2,
-}
+};
 
 function checkArguments(args) {
   let checkArgumentsResult = undefined;
@@ -1174,6 +1194,29 @@ function parsePhotoPickerSelectOption(args) {
   }
 
   return config;
+}
+
+function checkCarDeviceUnsupportedOptions(args) {
+  let option = args.length > ARGS_ZERO && typeof args[ARGS_ZERO] === 'object' ? args[ARGS_ZERO] : null;
+  if (!option) {
+    return;
+  }
+  if (deviceinfo.deviceType !== 'car') {
+    return;
+  } 
+  const unsupportedParams = ['isSearchSupported', 'isEditSupported', 'recommendationOptions'];
+  for (const paramName of unsupportedParams) {
+    console.log(`[picker] checkCarDeviceUnsupportedOptions: ${paramName}, ${option[paramName]}`);
+    if (option[paramName] !== undefined) {
+      console.error(`[picker] config: Car unsupported param: ${paramName}. ` +
+        `The device does not support the following APIs: ${unsupportedParams.join(', ')}`);
+      break;
+    }
+  }
+  // 车机强制默认关闭搜索和编辑
+  option.isSearchSupported = false;
+  option.isEditSupported = false;
+  option.recommendationOptions = {};
 }
 
 function parseAutoPlayScenes(autoPlayScenes) {
@@ -1288,7 +1331,8 @@ async function photoPickerSelect(...args) {
     console.log('[picker] Invalid argument');
     throw checkArgsResult;
   }
-
+  // car 不支持搜索、编辑、推荐功能
+  checkCarDeviceUnsupportedOptions(args);
   const config = parsePhotoPickerSelectOption(args);
   console.log('[picker] config: ' + encrypt(JSON.stringify(config)));
   if (config.parameters.userId && config.parameters.userId > 0) {
@@ -1532,6 +1576,7 @@ export default {
   AlbumOperationType: photoAccessHelper.AlbumOperationType,
   HiddenPhotosDisplayMode: photoAccessHelper.HiddenPhotosDisplayMode,
   AnalysisType: photoAccessHelper.AnalysisType,
+  AnalysisToolType: photoAccessHelper.AnalysisToolType,
   HighlightAlbumInfoType: photoAccessHelper.HighlightAlbumInfoType,
   HighlightUserActionType: photoAccessHelper.HighlightUserActionType,
   HighlightAlbumChangeAttribute: photoAccessHelper.HighlightAlbumChangeAttribute,
@@ -1565,6 +1610,7 @@ export default {
   MediaAlbumChangeRequest: photoAccessHelper.MediaAlbumChangeRequest,
   MediaAnalysisAlbumChangeRequest: photoAccessHelper.MediaAnalysisAlbumChangeRequest,
   MediaHighlightAlbumChangeRequest: photoAccessHelper.MediaHighlightAlbumChangeRequest,
+  MediaShareAlbumChangeRequest: photoAccessHelper.MediaShareAlbumChangeRequest,
   MediaAssetManager: photoAccessHelper.MediaAssetManager,
   MovingPhoto: photoAccessHelper.MovingPhoto,
   MovingPhotoEffectMode: photoAccessHelper.MovingPhotoEffectMode,
@@ -1609,5 +1655,6 @@ export default {
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState,
   TaskSignal: photoAccessHelper.TaskSignal,
   DeepOptimizeState: photoAccessHelper.DeepOptimizeState,
-  PickerColorMode: PickerColorMode
+  PickerColorMode: PickerColorMode,
+  ShareMemberStatus: photoAccessHelper.ShareMemberStatus,
 };

@@ -90,7 +90,7 @@ VideoModeInfo MediaVideoModeTask::QueryFiles(std::shared_ptr<MediaLibraryRdbStor
                           " AND media_type = 2 AND file_id BETWEEN " +
                           std::to_string(startFileId) + " AND " + std::to_string(startFileId + batchSize);
     updateVideoModeSql += " AND position != " + std::to_string(static_cast<int32_t>(PhotoPositionType::CLOUD));
-    MEDIA_INFO_LOG("HandleMediaFileManagerVideoMode sql = %{public}s", updateVideoModeSql.c_str());
+    MEDIA_DEBUG_LOG("HandleMediaFileManagerVideoMode sql = %{public}s", updateVideoModeSql.c_str());
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(updateVideoModeSql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, {}, "Failed to query batch selected files!");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -110,7 +110,7 @@ void MediaVideoModeTask::UpdateVideoMode(std::shared_ptr<MediaLibraryRdbStore> &
     for (size_t i = 0; i < videoModeInfo.fileIds.size(); ++i) {
         const int32_t fileId = videoModeInfo.fileIds[i];          // 第 i 个 fileId
         const std::string filePath = videoModeInfo.filePaths[i];  // 对应第 i 个 path
-        MEDIA_INFO_LOG("UpdateVideoMode fileId = %{public}d, filePath = %{public}s",
+        MEDIA_DEBUG_LOG("UpdateVideoMode fileId = %{public}d, filePath = %{public}s",
             fileId,
             MediaFileUtils::DesensitizePath(filePath).c_str());
         unique_ptr<Metadata> videoModeData = make_unique<Metadata>();
@@ -132,7 +132,7 @@ void MediaVideoModeTask::UpdateVideoMode(std::shared_ptr<MediaLibraryRdbStore> &
             continue;
         }
         int32_t videoMode = videoModeData->GetVideoMode();
-        MEDIA_INFO_LOG("HandleMediaFileManagerVideoMode videoMode=%{public}d", videoMode);
+        MEDIA_DEBUG_LOG("HandleMediaFileManagerVideoMode videoMode=%{public}d", videoMode);
         if (videoMode == static_cast<int32_t>(VideoMode::LOG_VIDEO)) {
             logFileIds.push_back(std::to_string(fileId));
         }
@@ -155,7 +155,7 @@ void MediaVideoModeTask::HandleMediaFileManagerVideoMode()
     CHECK_AND_RETURN_LOG(currStartFileId != prefsNullErrCode, "prefs is nullptr");
     int32_t startFileId = currStartFileId == defaultValueZero ? 1 : currStartFileId;
     while (startFileId <= maxFileId) {
-        MEDIA_INFO_LOG("kaishi houtai up");
+        MEDIA_DEBUG_LOG("kaishi houtai up");
         if (!this->Accept()) {
             MEDIA_ERR_LOG("FileManagerVideoMode check condition failed End");
             SetBatchStatus(startFileId);

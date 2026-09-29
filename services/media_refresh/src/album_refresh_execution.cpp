@@ -19,10 +19,12 @@
 
 #include "album_refresh_execution.h"
 #include "owner_album_info_calculation.h"
+#include "share_album_info_calculation.h"
 #include "cloud_enhancement_asset_helper.h"
 #include "favorite_asset_helper.h"
 #include "hidden_asset_helper.h"
 #include "image_asset_helper.h"
+#include "live_photo_4d_asset_helper.h"
 #include "trash_asset_helper.h"
 #include "video_asset_helper.h"
 #include "medialibrary_rdb_utils.h"
@@ -36,13 +38,30 @@
 #include "dfx_refresh_manager.h"
 #include "dfx_refresh_hander.h"
 #include "media_values_bucket_utils.h"
+#include "photo_album.h"
+#include "result_set_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
+using namespace OHOS::Media;
 
 namespace OHOS {
 namespace Media::AccurateRefresh {
-
+namespace {
+const std::unordered_map<std::string, std::string> validOrderKeys = {
+    {CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_NAME},
+    {CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_NAME},
+    {CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_DATE_TAKEN},
+    {CONST_MEDIA_DATA_DB_SIZE, CONST_MEDIA_DATA_DB_NAME}
+};
+const std::unordered_map<std::string, std::string> validHiddenOrderKeys = {
+    {CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_NAME},
+    {CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_NAME},
+    {CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_DATE_TAKEN},
+    {CONST_MEDIA_DATA_DB_SIZE, CONST_MEDIA_DATA_DB_NAME},
+    {"hidden_time", CONST_MEDIA_DATA_DB_NAME}
+};
+}
 mutex AlbumRefreshExecution::albumRefreshMtx_;
 
 std::unordered_map<PhotoAlbumSubType, SystemAlbumInfoCalculation>
@@ -65,7 +84,11 @@ std::unordered_map<PhotoAlbumSubType, SystemAlbumInfoCalculation>
     { PhotoAlbumSubType::CLOUD_ENHANCEMENT, { CloudEnhancementAssetHelper::IsAsset,
         CloudEnhancementAssetHelper::IsVideoAsset, CloudEnhancementAssetHelper::IsHiddenAsset,
         CloudEnhancementAssetHelper::IsNewerAsset, CloudEnhancementAssetHelper::IsNewerHiddenAsset,
-        PhotoAlbumSubType::CLOUD_ENHANCEMENT }}
+        PhotoAlbumSubType::CLOUD_ENHANCEMENT }},
+    { PhotoAlbumSubType::LIVEPHOTO_4D, { LivePhoto4DAssetHelper::IsAsset,
+        LivePhoto4DAssetHelper::IsVideoAsset, LivePhoto4DAssetHelper::IsHiddenAsset,
+        LivePhoto4DAssetHelper::IsNewerAsset, LivePhoto4DAssetHelper::IsNewerHiddenAsset,
+        PhotoAlbumSubType::LIVEPHOTO_4D }},
 };
 
 std::unordered_map<int32_t, SystemAlbumInfoCalculation> AlbumRefreshExecution::systemAlbumCalculations_;
@@ -128,7 +151,13 @@ int32_t AlbumRefreshExecution::CalRefreshInfos(const vector<PhotoAssetChangeData
             }
         }
     }
-
+    // 计算共享相册增量刷新信息
+    {
+        MediaLibraryTracer tracer;
+        tracer.Start("AlbumRefreshExecution::CalRefreshInfos share album");
+        shareAlbumRefreshInfos_ = ShareAlbumInfoCalculation::CalShareAlbumRefreshInfo(assetChangeDatas);
+        albumRefreshInfos_.insert(shareAlbumRefreshInfos_.begin(), shareAlbumRefreshInfos_.end());
+    }
     return ACCURATE_REFRESH_RET_OK;
 }
 
@@ -270,9 +299,13 @@ int32_t AlbumRefreshExecution::GetUpdateValues(ValuesBucket &values, const Album
     data.coverDateTime = albumInfo.coverDateTime_;
     data.coverUriSource = albumInfo.coverUriSource_;
     data.hiddenCoverDateTime = albumInfo.hiddenCoverDateTime_;
-    if (!isHidden && (subtype == PhotoAlbumSubType::USER_GENERIC ||
-        (subtype >= PhotoAlbumSubType::SOURCE_START && subtype <= PhotoAlbumSubType::SOURCE_END))
-        && isRefreshWithDateModified_) {
+    data.coverOrderKey = albumInfo.coverOrderKey_;
+    data.coverOrderSubKey = albumInfo.coverOrderSubKey_;
+    data.coverOrderType = albumInfo.coverOrderType_;
+    data.hiddenCoverOrderKey = albumInfo.hiddenCoverOrderKey_;
+    data.hiddenCoverOrderSubKey = albumInfo.hiddenCoverOrderSubKey_;
+    data.hiddenCoverOrderType = albumInfo.hiddenCoverOrderType_;
+    if (!isHidden && PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype) && isRefreshWithDateModified_) {
         data.shouldUpdateDateModified = true; // 非隐藏全量刷新时，说明相册封面有变化，需要设置
     }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -286,9 +319,8 @@ int32_t AlbumRefreshExecution::GetUpdateValues(ValuesBucket &values, const Album
 void AlbumRefreshExecution::CheckUpdateValues(const AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo,
     ValuesBucket &values)
 {
-    if ((albumInfo.albumSubType_ == PhotoAlbumSubType::USER_GENERIC ||
-        albumInfo.albumSubType_ == PhotoAlbumSubType::SOURCE_GENERIC) && refreshInfo.assetModifiedCnt_ > 0 &&
-        isRefreshWithDateModified_) {
+    if (PhotoAlbum::IsUserOrSourceAlbumSubtype(static_cast<PhotoAlbumSubType>(albumInfo.albumSubType_)) &&
+        refreshInfo.assetModifiedCnt_ > 0 && isRefreshWithDateModified_) {
         values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
         ACCURATE_DEBUG("album date modified.");
     }
@@ -313,8 +345,13 @@ int32_t AlbumRefreshExecution::SetForceSelectCoverValues(ValuesBucket &values, c
     data.coverDateTime = albumInfo.coverDateTime_;
     data.coverUriSource = albumInfo.coverUriSource_;
     data.hiddenCoverDateTime = albumInfo.hiddenCoverDateTime_;
-    if (!isHidden && (subtype == PhotoAlbumSubType::USER_GENERIC ||
-        subtype == PhotoAlbumSubType::SOURCE_GENERIC) && isRefreshWithDateModified_) {
+    data.coverOrderKey = albumInfo.coverOrderKey_;
+    data.coverOrderSubKey = albumInfo.coverOrderSubKey_;
+    data.coverOrderType = albumInfo.coverOrderType_;
+    data.hiddenCoverOrderKey = albumInfo.hiddenCoverOrderKey_;
+    data.hiddenCoverOrderSubKey = albumInfo.hiddenCoverOrderSubKey_;
+    data.hiddenCoverOrderType = albumInfo.hiddenCoverOrderType_;
+    if (!isHidden && PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype) && isRefreshWithDateModified_) {
         data.shouldUpdateDateModified = true; // 非隐藏全量刷新时，说明相册封面有变化，需要设置
     }
     int32_t ret = MediaLibraryRdbUtils::SetUpdateCoverValues(data, values, isHidden);
@@ -594,12 +631,138 @@ bool AlbumRefreshExecution::CalCoverSetCover(AlbumChangeInfo &albumInfo, const A
     return true;
 }
 
+/*
+ * 共享相册封面排序辅助函数
+ * 排序规则：share_group DESC + date_taken DESC + display_name DESC + fileId DESC
+ * INVALID_INT64_VALUE 视为 0（最小值），与 SQL COALESCE(share_group, 0) 保持一致
+ */
+static bool IsNewerByShareGroup(const AccurateRefresh::PhotoAssetChangeInfo &newAsset,
+    const AccurateRefresh::PhotoAssetChangeInfo &currentAsset)
+{
+    int64_t newGroup = (newAsset.shareGroup_ != INVALID_INT64_VALUE) ? newAsset.shareGroup_ : 0;
+    int64_t curGroup = (currentAsset.shareGroup_ != INVALID_INT64_VALUE) ? currentAsset.shareGroup_ : 0;
+    if (newGroup != curGroup) {
+        return newGroup > curGroup;
+    }
+    if (newAsset.dateTakenMs_ != currentAsset.dateTakenMs_) {
+        return newAsset.dateTakenMs_ > currentAsset.dateTakenMs_;
+    }
+    if (newAsset.displayName_ != currentAsset.displayName_) {
+        return newAsset.displayName_ > currentAsset.displayName_;
+    }
+    return false;
+}
+
+static bool RefreshByCoverOrder(const AlbumRefreshInfo &refreshInfo, AlbumChangeInfo &albumInfo,
+    int32_t currentFileId, int64_t coverDateTime)
+{
+    CHECK_AND_RETURN_RET_INFO_LOG(validOrderKeys.count(albumInfo.coverOrderKey_) > 0, false,
+        "[fm] no valid order set[%{public}d]", albumInfo.albumId_);
+
+    auto isNewer = refreshInfo.deltaAddCover_.fileId_ > currentFileId;
+    auto compare = [&isNewer, &albumInfo](int64_t before, int64_t after, const std::string &beforeSub,
+        const std::string &afterSub) -> std::pair<bool, bool> {
+            return { before == INVALID_INT64_VALUE, albumInfo.coverOrderType_ == 0 ?
+                (before == after ? (beforeSub == afterSub ? isNewer : beforeSub < afterSub) : before < after) :
+                (before == after ? (beforeSub == afterSub ? isNewer : beforeSub > afterSub) : before > after) };
+    };
+
+    auto compareName = [&isNewer, &albumInfo](const std::string &before, const std::string &after,
+        int64_t beforeSub, int64_t afterSub) -> std::pair<bool, bool> {
+            return { before == EMPTY_STR, albumInfo.coverOrderType_ == 0 ?
+                (before == after ? (beforeSub == afterSub ? isNewer : beforeSub < afterSub) : before < after) :
+                (before == after ? (beforeSub == afterSub ? isNewer : beforeSub > afterSub) : before > after) };
+    };
+
+    // 是否强制刷新，本次是否需要刷新
+    std::pair<bool, bool> result = { false, false };
+    const auto &current = albumInfo.coverInfo_;
+    const auto &refresh = refreshInfo.deltaAddCover_;
+    if (albumInfo.coverOrderKey_ == CONST_MEDIA_DATA_DB_DATE_TAKEN) {
+        result = compare(current.dateTakenMs_, refresh.dateTakenMs_, current.displayName_, refresh.displayName_);
+    } else if (albumInfo.coverOrderKey_ == CONST_MEDIA_DATA_DB_SIZE) {
+        result = compare(current.size_, refresh.size_, current.displayName_, refresh.displayName_);
+    } else if (albumInfo.coverOrderKey_ == CONST_MEDIA_DATA_DB_DATE_ADDED) {
+        result = compare(current.dateAddedMs_, refresh.dateAddedMs_, current.displayName_, refresh.displayName_);
+    } else {
+        result = compareName(current.displayName_, refresh.displayName_, current.dateTakenMs_, refresh.dateTakenMs_);
+    }
+
+    if (result.first) {
+        albumInfo.needForceSelectCover = true;
+        albumInfo.coverUri_ = EMPTY_STR;
+        albumInfo.coverDateTime_ = INVALID_INT64_VALUE;
+        return true;
+    }
+    if (result.second) {
+        albumInfo.coverInfo_ = refreshInfo.deltaAddCover_;
+        albumInfo.coverDateTime_ = coverDateTime;
+        albumInfo.coverUri_ = refreshInfo.deltaAddCover_.uri_;
+    }
+    return true;
+}
+
+static bool RefreshByCoverOrderHidden(const AlbumRefreshInfo &refreshInfo, AlbumChangeInfo &albumInfo,
+    int32_t currentFileId)
+{
+    CHECK_AND_RETURN_RET_INFO_LOG(validHiddenOrderKeys.count(albumInfo.hiddenCoverOrderKey_) > 0, false,
+        "[fm] no valid hidden order set[%{public}d]", albumInfo.albumId_);
+
+    auto isNewer = refreshInfo.deltaAddHiddenCover_.fileId_ > currentFileId;
+    auto compare = [&isNewer, &albumInfo](int64_t before, int64_t after, const std::string &beforeSub,
+        const std::string &afterSub) -> std::pair<bool, bool> {
+            return { before == INVALID_INT64_VALUE, albumInfo.hiddenCoverOrderType_ == 0 ?
+                (before == after ? (beforeSub == afterSub ? isNewer : beforeSub < afterSub) : before < after) :
+                (before == after ? (beforeSub == afterSub ? isNewer : beforeSub > afterSub) : before > after) };
+    };
+    auto compareName = [&isNewer, &albumInfo](const std::string &before, const std::string &after,
+    int64_t beforeSub, int64_t afterSub) -> std::pair<bool, bool> {
+        return { before == EMPTY_STR, albumInfo.hiddenCoverOrderType_ == 0 ?
+            (before == after ? (beforeSub == afterSub ? isNewer : beforeSub < afterSub) : before < after) :
+            (before == after ? (beforeSub == afterSub ? isNewer : beforeSub > afterSub) : before > after) };
+    };
+
+    // 是否强制刷新，本次是否需要刷新
+    std::pair<bool, bool> result = { false, false };
+    const auto &current = albumInfo.hiddenCoverInfo_;
+    const auto &refresh = refreshInfo.deltaAddHiddenCover_;
+    if (albumInfo.hiddenCoverOrderKey_ == CONST_MEDIA_DATA_DB_DATE_TAKEN) {
+        result = compare(current.dateTakenMs_, refresh.dateTakenMs_, current.displayName_, refresh.displayName_);
+    } else if (albumInfo.hiddenCoverOrderKey_ == CONST_MEDIA_DATA_DB_SIZE) {
+        result = compare(current.size_, refresh.size_, current.displayName_, refresh.displayName_);
+    } else if (albumInfo.hiddenCoverOrderKey_ == CONST_MEDIA_DATA_DB_DATE_ADDED) {
+        result = compare(current.dateAddedMs_, refresh.dateAddedMs_, current.displayName_, refresh.displayName_);
+    } else if (albumInfo.hiddenCoverOrderKey_ == CONST_MEDIA_DATA_DB_NAME) {
+        result = compareName(current.displayName_, refresh.displayName_, current.dateTakenMs_, refresh.dateTakenMs_);
+    } else {
+        result = compare(current.hiddenTime_, refresh.hiddenTime_, current.displayName_, refresh.displayName_);
+    }
+
+    if (result.first) {
+        albumInfo.needForceSelectHiddenCover = true;
+        albumInfo.hiddenCoverUri_ = EMPTY_STR;
+        albumInfo.hiddenCoverDateTime_ = INVALID_INT64_VALUE;
+        return true;
+    }
+    if (result.second) {
+        albumInfo.hiddenCoverInfo_ = refreshInfo.deltaAddHiddenCover_;
+        albumInfo.hiddenCoverDateTime_ = refreshInfo.deltaAddHiddenCover_.hiddenTime_;
+        albumInfo.hiddenCoverUri_ = refreshInfo.deltaAddHiddenCover_.uri_;
+    }
+    return true;
+}
+
 bool AlbumRefreshExecution::CalAlbumCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo,
     int32_t subType)
 {
     if (CalCoverSetCover(albumInfo, refreshInfo)) {
         return false;
     }
+
+    if (subType == static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC)) {
+        return CalShareAlbumCover(albumInfo, refreshInfo);
+    }
+
     bool isRefreshAlbum = false;
     // 系统相册、用户、来源资产对比默认为date_taken
     auto dateTimeForAddCover = refreshInfo.deltaAddCover_.dateTakenMs_;
@@ -615,6 +778,7 @@ bool AlbumRefreshExecution::CalAlbumCover(AlbumChangeInfo &albumInfo, const Albu
     // 普通cover 更新
     auto coverFileId = MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(albumInfo.coverUri_);
     if (IsValidCover(refreshInfo.deltaAddCover_) && refreshInfo.removeFileIds.size() == 0) { // 新增场景
+        CHECK_AND_RETURN_RET(!RefreshByCoverOrder(refreshInfo, albumInfo, coverFileId, dateTimeForAddCover), true);
         bool isRefresh = dateTimeForAddCover > albumInfo.coverDateTime_ ||
             (dateTimeForAddCover == albumInfo.coverDateTime_ && refreshInfo.deltaAddCover_.fileId_ > coverFileId);
         if (isRefresh) {
@@ -645,6 +809,51 @@ bool AlbumRefreshExecution::CalAlbumCover(AlbumChangeInfo &albumInfo, const Albu
         ACCURATE_ERR("Abnormal[%{public}d], forceSelectCover, addCover: %{public}s, remove size: %{public}zu",
             albumInfo.albumId_, refreshInfo.deltaAddCover_.ToString().c_str(),
             refreshInfo.removeFileIds.size());
+    } else {
+        CHECK_AND_RETURN_RET(!RefreshByCoverOrder(refreshInfo, albumInfo, coverFileId, dateTimeForAddCover), true);
+    }
+    return isRefreshAlbum;
+}
+
+/*
+ * 共享相册封面计算独立函数
+ * 排序规则：share_group DESC + date_taken DESC（与普通相册的 date_taken DESC 不同）
+ * 处理新增/删除/异常三种场景，参照 CalAlbumCover 的逻辑。
+ */
+bool AlbumRefreshExecution::CalShareAlbumCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo)
+{
+    bool isRefreshAlbum = false;
+    auto coverFileId = MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(albumInfo.coverUri_);
+
+    if (IsValidCover(refreshInfo.deltaAddCover_) && refreshInfo.removeFileIds.size() == 0) {
+        if (coverFileId > 0 && !IsValidCover(albumInfo.coverInfo_)) {
+            albumInfo.coverInfo_ = albumRefresh_.GetPhotoAssetInfo(coverFileId);
+        }
+        bool isRefresh = IsNewerByShareGroup(refreshInfo.deltaAddCover_, albumInfo.coverInfo_);
+        if (isRefresh) {
+            albumInfo.coverInfo_ = refreshInfo.deltaAddCover_;
+            albumInfo.coverDateTime_ = refreshInfo.deltaAddCover_.dateTakenMs_;
+            albumInfo.coverUri_ = refreshInfo.deltaAddCover_.uri_;
+            isRefreshAlbum = true;
+        }
+        ACCURATE_DEBUG("Add share[%{public}d], refresh[%{public}d], cover id: %{public}d, addCover id: %{public}d",
+            albumInfo.albumId_, isRefresh, albumInfo.coverInfo_.fileId_, refreshInfo.deltaAddCover_.fileId_);
+    } else if (!IsValidCover(refreshInfo.deltaAddCover_) && refreshInfo.removeFileIds.size() > 0) {
+        bool isForceRefresh = refreshInfo.removeFileIds.find(coverFileId) != refreshInfo.removeFileIds.end();
+        if (coverFileId <= 0 || isForceRefresh) {
+            albumInfo.needForceSelectCover = true;
+            isRefreshAlbum = true;
+            ClearAlbumCoverInfo(albumInfo);
+        }
+        ACCURATE_DEBUG("Del share[%{public}d], forceSelectCover[%{public}d], coverFileId[%{public}d]",
+            albumInfo.albumId_, isForceRefresh, coverFileId);
+    } else if (IsValidCover(refreshInfo.deltaAddCover_) && refreshInfo.removeFileIds.size() > 0) {
+        albumInfo.needForceSelectCover = true;
+        isRefreshAlbum = true;
+        ClearAlbumCoverInfo(albumInfo);
+        ACCURATE_DEBUG("Abnormal share[%{public}d], forceSelectCover, addCover: %{public}s, remove size: %{public}zu",
+            albumInfo.albumId_, refreshInfo.deltaAddCover_.ToString().c_str(),
+            refreshInfo.removeFileIds.size());
     }
     return isRefreshAlbum;
 }
@@ -654,6 +863,7 @@ bool AlbumRefreshExecution::CalAlbumHiddenCover(AlbumChangeInfo &albumInfo, cons
     bool isRefreshHiddenAlbum = false;
     auto coverFileId = MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(albumInfo.hiddenCoverUri_);
     if (IsValidCover(refreshInfo.deltaAddHiddenCover_) && refreshInfo.removeHiddenFileIds.size() == 0) {
+        CHECK_AND_RETURN_RET(!RefreshByCoverOrderHidden(refreshInfo, albumInfo, coverFileId), true);
         // 新增场景
         bool isRefresh = refreshInfo.deltaAddHiddenCover_.hiddenTime_ > albumInfo.hiddenCoverDateTime_ ||
             (refreshInfo.deltaAddHiddenCover_.hiddenTime_ == albumInfo.hiddenCoverDateTime_ &&
@@ -686,6 +896,8 @@ bool AlbumRefreshExecution::CalAlbumHiddenCover(AlbumChangeInfo &albumInfo, cons
         ACCURATE_DEBUG("Abnormal hidden[%{public}d], forceSelectCover: %{public}s, add/remove[%{public}s/%{public}zu]",
             albumInfo.albumId_, albumInfo.ToString().c_str(), refreshInfo.deltaAddHiddenCover_.ToString().c_str(),
             refreshInfo.removeHiddenFileIds.size());
+    } else {
+        CHECK_AND_RETURN_RET(!RefreshByCoverOrderHidden(refreshInfo, albumInfo, coverFileId), true);
     }
     return isRefreshHiddenAlbum;
 }
@@ -746,7 +958,8 @@ void AlbumRefreshExecution::CheckNotifyOldNotification(NotifyAlbumType notifyAlb
         (albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::FAVORITE) ||
         albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::VIDEO) ||
         albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::IMAGE) ||
-        albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::CLOUD_ENHANCEMENT));
+        albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::CLOUD_ENHANCEMENT) ||
+        albumInfo.albumSubType_ == static_cast<int32_t>(PhotoAlbumSubType::LIVEPHOTO_4D));
 
     bool needUserNotify = notifyAlbumType & NotifyAlbumType::USER_ALBUM;
     bool isUserAlbum = albumInfo.albumType_ == static_cast<int32_t>(PhotoAlbumType::USER) &&
@@ -789,6 +1002,9 @@ int32_t AlbumRefreshExecution::RefreshAllAlbum(std::unordered_set<int32_t> album
     MediaLibraryRdbUtils::UpdateCommonAlbumInternal(rdbStore, albumIdList, (notifyAlbumType & USER_ALBUM) ||
         (notifyAlbumType & SOURCE_ALBUM), isRefreshWithDateModified);
     MediaLibraryRdbUtils::UpdateCommonAlbumHiddenState(rdbStore, albumIdList);
+    MediaLibraryRdbUtils::UpdateShareAlbumInternal(rdbStore, albumIdList,
+        false, isRefreshWithDateModified);
+    MediaLibraryRdbUtils::UpdateShareAlbumHiddenState(rdbStore, albumIdList);
     return ACCURATE_REFRESH_RET_OK;
 }
 

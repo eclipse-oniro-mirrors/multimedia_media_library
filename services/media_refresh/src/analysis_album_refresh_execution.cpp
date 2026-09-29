@@ -110,6 +110,13 @@ void AnalysisAlbumRefreshExecution::PrepareAffectedAssets(const vector<PhotoAsse
 {
     AlbumIdSet fileIdSet;
     for (const auto &assetChangeData : assetChangeDatas) {
+        // 共享资产（is_shared == 1）不参与智慧相册刷新
+        // 删除场景下 infoAfterChange_ 被置为默认空对象（isShared_ = 0），
+        // 需回退看删除前的 infoBeforeChange_.isShared_ 真实值；其余场景看变更后状态
+        bool isSharedAsset = (assetChangeData.operation_ == RDB_OPERATION_REMOVE) ?
+            (assetChangeData.infoBeforeChange_.isShared_ == 1) :
+            (assetChangeData.infoAfterChange_.isShared_ == 1);
+        CHECK_AND_CONTINUE(!isSharedAsset);
         // 轮询读取所有资产对应fileId，准备查询数据库
         int32_t fileId = assetChangeData.GetFileId();
         CHECK_AND_CONTINUE(fileId != INVALID_INT32_VALUE);
@@ -253,7 +260,7 @@ void AnalysisAlbumRefreshExecution::ProcessCoverChanges()
 
     // Step 6-2：其它相册计算封面
     for (auto &[albumId, actx] : albumCtxMap_) {
-        CHECK_AND_CONTINUE_INFO_LOG(actx.refreshInfo.HasValidRefreshInfo(),
+        CHECK_AND_CONTINUE_DEBUG_LOG(actx.refreshInfo.HasValidRefreshInfo(),
             "No need to process cover albumId: %{public}d", actx.baseInfo.albumId);
 
         bool isPortrait =
@@ -457,8 +464,8 @@ void AnalysisAlbumRefreshExecution::PreparePhotoChangeForNotify(vector<PhotoAsse
 
         bool hasValidAnalysisAlbumChange = !data.infoBeforeChange_.albumChangeInfos_.empty() ||
             !data.infoAfterChange_.albumChangeInfos_.empty();
-        bool hasValidAsset = AlbumAssetHelper::IsCommonSystemAsset(data.infoBeforeChange_, false) ||
-            AlbumAssetHelper::IsCommonSystemAsset(data.infoAfterChange_, false);
+        bool hasValidAsset = AlbumAssetHelper::IsCommonSystemAsset(data.infoBeforeChange_, false, 0) ||
+            AlbumAssetHelper::IsCommonSystemAsset(data.infoAfterChange_, false, 0);
         if (hasValidAnalysisAlbumChange && hasValidAsset) {
             preparedAssetChangeDatas.emplace_back(data);
         }
@@ -509,7 +516,7 @@ AlbumChangeInfo AnalysisAlbumRefreshExecution::GenerateAlbumChangeInfoBeforeChan
 AlbumChangeInfo AnalysisAlbumRefreshExecution::GenerateAlbumChangeInfoAfterChange(int32_t albumId)
 {
     AlbumChangeInfo info;
-    CHECK_AND_RETURN_RET_LOG(CheckAlbumNotifyStatus(albumId), info, "Check failed");
+    CHECK_AND_RETURN_RET_DEBUG_LOG(CheckAlbumNotifyStatus(albumId), info, "Check failed");
 
     auto &ctx = albumCtxMap_[albumId];
     UpdateAlbumData &baseInfo = ctx.baseInfo;
@@ -532,7 +539,7 @@ bool AnalysisAlbumRefreshExecution::CheckAlbumNotifyStatus(int32_t albumId)
         "No valid album detail recorded, albumId: %{public}d", albumId);
 
     auto notifyMapIter = albumNotifyCtxMap_.find(albumId);
-    CHECK_AND_RETURN_RET_LOG(notifyMapIter != albumNotifyCtxMap_.end(), false,
+    CHECK_AND_RETURN_RET_DEBUG_LOG(notifyMapIter != albumNotifyCtxMap_.end(), false,
         "No valid notify detail recorded, albumId: %{public}d", albumId);
 
     CHECK_AND_RETURN_RET_LOG(notifyMapIter->second.needNotify, false,
@@ -562,7 +569,7 @@ void AnalysisAlbumRefreshExecution::ProcessAlbumForNotify(int32_t albumId, vecto
         "No valid album detail recorded, albumId: %{public}d", albumId);
 
     auto notifyMapIter = albumNotifyCtxMap_.find(albumId);
-    CHECK_AND_RETURN_INFO_LOG(notifyMapIter != albumNotifyCtxMap_.end(),
+    CHECK_AND_RETURN_DEBUG_LOG(notifyMapIter != albumNotifyCtxMap_.end(),
         "No valid notify detail recorded, albumId: %{public}d", albumId);
 
     CHECK_AND_RETURN(!notifyMapIter->second.hasNotified);

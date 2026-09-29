@@ -42,6 +42,24 @@ constexpr int32_t YES = 1;
 constexpr int32_t NO = 0;
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 
+static void FilterOutSharedAssets(std::vector<std::shared_ptr<FileAsset>>& fileAssets)
+{
+    fileAssets.erase(
+        std::remove_if(fileAssets.begin(), fileAssets.end(),
+            [](const auto& asset) {
+                if (asset == nullptr) {
+                    return true;
+                }
+                bool isShared = asset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED);
+                if (isShared) {
+                    NAPI_INFO_LOG("Skip shared album asset, fileId=%{public}d", asset->GetId());
+                }
+                return isShared;
+            }),
+        fileAssets.end()
+    );
+}
+
 napi_value MediaAssetsChangeRequestNapi::Init(napi_env env, napi_value exports)
 {
     NapiClassInfo info = { .name = MEDIA_ASSETS_CHANGE_REQUEST_CLASS,
@@ -88,11 +106,6 @@ static napi_value GetAssetArray(napi_env env, napi_value arg, vector<shared_ptr<
 
 napi_value MediaAssetsChangeRequestNapi::Constructor(napi_env env, napi_callback_info info)
 {
-    if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "The constructor can be called only by system apps");
-        return nullptr;
-    }
-
     napi_value newTarget = nullptr;
     CHECK_ARGS(env, napi_get_new_target(env, info, &newTarget), JS_INNER_FAIL);
     CHECK_COND_RET(newTarget != nullptr, nullptr, "Failed to check new.target");
@@ -186,11 +199,6 @@ bool MediaAssetsChangeRequestNapi::CheckChangeOperations(napi_env env)
 
 napi_value MediaAssetsChangeRequestNapi::JSSetFavorite(napi_env env, napi_callback_info info)
 {
-    if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return nullptr;
-    }
-
     auto asyncContext = make_unique<MediaAssetsChangeRequestAsyncContext>();
     bool isFavorite;
     CHECK_COND_WITH_MESSAGE(env,
@@ -200,6 +208,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetFavorite(napi_env env, napi_callba
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isFavorite_ = isFavorite;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetFavorite(isFavorite);
     }
@@ -223,6 +232,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetHidden(napi_env env, napi_callback
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isHidden_ = isHidden;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetHidden(isHidden);
     }
@@ -247,6 +257,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetUserComment(napi_env env, napi_cal
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->userComment_ = userComment;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetUserComment(userComment);
     }
@@ -270,6 +281,7 @@ napi_value MediaAssetsChangeRequestNapi::JSSetIsRecentShow(napi_env env, napi_ca
 
     auto changeRequest = asyncContext->objectInfo;
     changeRequest->isRecentShow_ = isRecentShow;
+    FilterOutSharedAssets(changeRequest->fileAssets_);
     for (const auto& fileAsset : changeRequest->fileAssets_) {
         fileAsset->SetRecentShow(isRecentShow);
     }
@@ -331,13 +343,15 @@ static bool SetAssetsPropertyExecute(MediaAssetsChangeRequestAsyncContext& conte
     DataShare::DataSharePredicates predicates;
     DataShare::DataShareValuesBucket valuesBucket;
     auto changeRequest = context.objectInfo;
-    predicates.In(PhotoColumn::MEDIA_ID, changeRequest->GetFileAssetUriArray());
     switch (changeOperation) {
-        case AssetsChangeOperation::BATCH_SET_FAVORITE:
+        case AssetsChangeOperation::BATCH_SET_FAVORITE: {
             uri = CONST_PAH_BATCH_UPDATE_FAVORITE;
             valuesBucket.Put(PhotoColumn::MEDIA_IS_FAV, changeRequest->GetFavoriteStatus() ? YES : NO);
+            vector<string> uris = changeRequest->GetFileAssetUriArray();
+            predicates.In(PhotoColumn::MEDIA_ID, uris);
             NAPI_INFO_LOG("Batch set favorite: %{public}d", changeRequest->GetFavoriteStatus() ? YES : NO);
             break;
+        }
         case AssetsChangeOperation::BATCH_SET_HIDDEN:
             uri = CONST_PAH_HIDE_PHOTOS;
             valuesBucket.Put(PhotoColumn::MEDIA_HIDDEN, changeRequest->GetHiddenStatus() ? YES : NO);
@@ -425,6 +439,13 @@ napi_value MediaAssetsChangeRequestNapi::ApplyChanges(napi_env env, napi_callbac
         MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, asyncContext, minArgs, maxArgs) == napi_ok,
         "Failed to get args");
     asyncContext->objectInfo = this;
+    for (const auto& fileAsset : fileAssets_) {
+        if (fileAsset != nullptr && fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            NapiError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT,
+                "This operation is not supported for assets in shared albums");
+            return nullptr;
+        }
+    }
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,
         &asyncContext->objectInfoRef) == napi_ok, "Failed to create objectInfo reference");
     CHECK_COND_WITH_MESSAGE(env, CheckChangeOperations(env), "Failed to check assets change request operations");

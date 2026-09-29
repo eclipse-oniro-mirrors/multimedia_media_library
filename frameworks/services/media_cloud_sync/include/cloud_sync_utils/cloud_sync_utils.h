@@ -16,6 +16,8 @@
 #ifndef OHOS_CLOUD_SYNC_UTILS_H
 #define OHOS_CLOUD_SYNC_UTILS_H
 
+#include <string>
+
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -26,6 +28,8 @@ public:
     static bool IsUnlimitedTrafficStatusOn();
     EXPORT static bool IsCloudSyncSwitchOn();
     static bool IsCloudDataAgingPolicyOn();
+    static bool IsSwitchOn(const std::string &bundleName);
+    static bool IsSharedAlbumCloudSyncSwitchOn();
 };
 } // namespace Media
 } // namespace OHOS

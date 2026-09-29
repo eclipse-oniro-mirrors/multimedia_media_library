@@ -63,6 +63,7 @@ public:
     std::optional<int32_t> hdrMode;                   // PhotoColumn::PHOTO_HDR_MODE;
     std::optional<int32_t> videoMode;                 // PhotoColumn::PHOTO_VIDEO_MODE;
     std::optional<std::string> frontCamera;           // PhotoColumn::PHOTO_FRONT_CAMERA;
+    std::optional<std::string> xtStyleTemplateName;   // PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME;
     std::optional<std::string> detailTime;            // PhotoColumn::PHOTO_DETAIL_TIME;
     std::optional<int64_t> editTime;                  // PhotoColumn::PHOTO_EDIT_TIME;
     std::optional<int32_t> originalSubtype;           // PhotoColumn::PHOTO_ORIGINAL_SUBTYPE;
@@ -74,6 +75,7 @@ public:
     std::optional<std::string> originalAssetCloudId;  // PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID;
     std::optional<std::string> sourcePath;            // PhotoColumn::PHOTO_SOURCE_PATH;
     std::optional<int32_t> supportedWatermarkType;    // PhotoColumn::SUPPORTED_WATERMARK_TYPE;
+    std::optional<int32_t> musicMasterMode;           // PhotoColumn::MUSIC_MASTER_MODE;
     std::optional<int32_t> isStylePhoto;              // PhotoColumn::IS_STYLE_PHOTO;
     std::optional<int32_t> strongAssociation;         // PhotoColumn::PHOTO_STRONG_ASSOCIATION;
     std::optional<int32_t> dirty;                     // PhotoColumn::PHOTO_DIRTY
@@ -82,10 +84,13 @@ public:
     std::optional<int64_t> baseVersion;               // PhotoColumn::PHOTO_CLOUD_VERSION
     std::optional<std::string> recordType;            // PhotoColumn::PHOTO_CLOUD_ID
     std::optional<std::string> recordId;              // PhotoColumn::PHOTO_CLOUD_ID
+    std::optional<int32_t> supportedDeferredEffects;              // PhotoColumn::SUPPORTED_DEFERRED_EFFECTS
+    std::optional<int32_t> deferredEffectStatus;              // PhotoColumn::DEFERRED_EFFECT_STATUS
     std::optional<bool> isNew;
     std::optional<int64_t> lcdVisitTime;              // PhotoColumn::PHOTO_LCD_VISIT_TIME
     std::optional<int64_t> thumbnailReady;            // PhotoColumn::PHOTO_THUMBNAIL_READY
     std::optional<int64_t> timePending;               // PhotoColumn::MEDIA_TIME_PENDING
+    std::optional<int32_t> editDataExist;             // PhotoColumn::PHOTO_EDIT_DATA_EXIST
     std::optional<int32_t> fileSourceType;            // PhotoColumn::PHOTO_FILE_SOURCE_TYPE
     std::optional<std::string> storagePath;           // PhotoColumn::PHOTO_STORAGE_PATH
     std::optional<std::string> lcdSize;               // PhotoColumn::PHOTO_LCD_SIZE
@@ -96,6 +101,14 @@ public:
     std::optional<int32_t> southDeviceType;           // PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE
     std::optional<int32_t> lcdFileSize;
     std::optional<int64_t> localAssetSize;            // PhotoColumn::LOCAL_ASSET_SIZE;
+    std::optional<int32_t> compressionQuality;        // PhotoColumn::COMPRESSION_QUALITY;
+    std::optional<int32_t> livePhoto4dStatus;            // PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS
+    std::optional<std::string> livePhoto4DPair;           // PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR
+    std::optional<int32_t> isShared;             // PhotoColumn::PHOTO_IS_SHARED
+    std::optional<std::string> shareOwnerInfo;   // PhotoColumn::PHOTO_SHARE_OWNER_INFO
+    std::optional<std::string> shareAlbumOwner;        // PhotoColumn::PHOTO_SHARE_ALBUM_OWNER;
+    std::optional<int64_t> shareDateDay;         // PhotoColumn::PHOTO_SHARE_DATE_DAY
+    std::optional<int64_t> shareGroup;           // PhotoColumn::PHOTO_SHARE_GROUP
 
     /* keep cloud_id at the last; so RecordToValueBucket can skip it*/
     std::optional<int32_t> fileId;       //  MediaColumn::MEDIA_ID;
@@ -104,6 +117,9 @@ public:
     /* Photo Album */
     std::optional<std::string> albumCloudId;  // SetSourceAlbum()函数相关
     std::optional<std::string> albumLPath;
+
+    /* exit transcode file */
+    std::optional<int32_t> exitTranscodeFile;
 
     /* Photo Map */
     std::vector<std::string> removeAlbumCloudId;

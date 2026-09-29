@@ -20,6 +20,7 @@
 #include "cloud_media_album_controller_service.h"
 #include "cloud_media_photo_controller_service.h"
 #include "cloud_media_download_controller_service.h"
+#include "media_share_photo_data_controller_service.h"
 #endif
 #include "media_assets_controller_service.h"
 #include "media_albums_controller_service.h"
@@ -38,6 +39,7 @@ MediaControllerServiceFactory::MediaControllerServiceFactory()
         std::make_shared<CloudSync::CloudMediaAlbumControllerService>(),
         std::make_shared<CloudSync::CloudMediaPhotoControllerService>(),
         std::make_shared<CloudSync::CloudMediaDownloadControllerService>(),
+        std::make_shared<ShareAlbum::MediaSharePhotoDataControllerService>(),
         #endif
         std::make_shared<MediaAssetsControllerService>(),
         std::make_shared<MediaAlbumsControllerService>(),

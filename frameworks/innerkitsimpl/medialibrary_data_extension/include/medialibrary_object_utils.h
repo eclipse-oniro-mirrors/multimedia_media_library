@@ -94,6 +94,7 @@ public:
         const string &path = "");
     static void TryUpdateAnalysisProp(const std::string str);
     EXPORT static void ClearBufferFdMap(const int32_t &fileId);
+    static void HandlePrivateAsset(const shared_ptr<FileAsset>& fileAsset, const std::string &type);
 
 private:
     static int32_t DeleteEmptyDirsRecursively(int32_t dirId);

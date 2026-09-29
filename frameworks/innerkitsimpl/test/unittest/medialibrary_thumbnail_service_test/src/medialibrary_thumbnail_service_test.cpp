@@ -22,6 +22,7 @@
 #include "ithumbnail_helper.h"
 #include "thumbnail_generate_helper.h"
 #include "thumbnail_restore_manager.h"
+#include "background_generate_manager.h"
 #undef private
 #include "media_file_utils.h"
 #include "medialibrary_db_const_sqls.h"
@@ -32,6 +33,7 @@
 #include "thumbnail_generate_worker_manager.h"
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "cloud_dentry_helper.h"
 
 using namespace std;
 using namespace OHOS;
@@ -708,15 +710,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_test_022, Te
     EXPECT_EQ(res, 0);
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_001, TestSize.Level1)
-{
-    ThumbRdbOpt opts;
-    ThumbnailType thumbType = ThumbnailType::LCD;
-    ThumbnailData data;
-    auto res = ThumbnailGenerateHelper::GetThumbnailPixelMap(data, opts, thumbType);
-    EXPECT_EQ(res, -2302);
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_002, TestSize.Level1)
 {
     ThumbRdbOpt opts;
@@ -749,12 +742,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, GenerateHighlightThumbnailBackground_
 {
     shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
     auto res = serverTest->GenerateHighlightThumbnailBackground();
-    EXPECT_EQ(res, E_OK);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, LocalThumbnailGeneration_test_001, TestSize.Level1)
-{
-    auto res = serverTest->LocalThumbnailGeneration();
     EXPECT_EQ(res, E_OK);
 }
 
@@ -1479,19 +1466,429 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_restore_manager_test_007, T
     thumbnailRestoreManager.Reset();
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_CreateAstcBackground_test_001, TestSize.Level1)
+/**
+ * 用例说明：验证NeedCreateDentry方法处理空路径时返回false
+ * 覆盖场景：传入空字符串作为文件路径
+ * 覆盖分支点：filePath.empty() == true
+ * 触发条件：传入空字符串
+ * 业务验证：函数应返回false，不创建dentry
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, NeedCreateDentry_test_001, TestSize.Level1)
 {
-    ThumbRdbOpt opts;
-    auto res = ThumbnailGenerateHelper::CreateAstcBackground(opts);
-    EXPECT_EQ(res, E_ERR);
+    MEDIA_INFO_LOG("Begin NeedCreateDentry_test_001");
+    std::string emptyPath = "";
+    bool result = CloudDentryHelper::NeedCreateDentry(emptyPath);
+    EXPECT_EQ(result, false);
+    MEDIA_INFO_LOG("End NeedCreateDentry_test_001");
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_CreateAstcBackground_test_002, TestSize.Level1)
+/**
+ * 用例说明：验证NeedCreateDentry方法处理已存在路径时返回false
+ * 覆盖场景：传入系统中已存在的文件路径
+ * 覆盖分支点：access返回0（文件存在）
+ * 触发条件：传入存在的系统路径如"/etc/passwd"
+ * 业务验证：函数应返回false，无需创建dentry
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, NeedCreateDentry_test_002, TestSize.Level1)
 {
-    ThumbRdbOpt opts;
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
-    auto res = ThumbnailGenerateHelper::CreateAstcBackground(opts);
-    EXPECT_EQ(res, E_ERR);
+    MEDIA_INFO_LOG("Begin NeedCreateDentry_test_002");
+    std::string existingPath = "/etc/passwd";
+    bool result = CloudDentryHelper::NeedCreateDentry(existingPath);
+    EXPECT_EQ(result, false);
+    MEDIA_INFO_LOG("End NeedCreateDentry_test_002");
 }
+
+/**
+ * 用例说明：验证NeedCreateDentry方法处理不存在路径时返回true
+ * 覆盖场景：传入系统中不存在的文件路径
+ * 覆盖分支点：access返回非0（文件不存在）
+ * 触发条件：传入不存在的路径
+ * 业务验证：函数应返回true，需要创建dentry
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, NeedCreateDentry_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin NeedCreateDentry_test_003");
+    std::string nonExistingPath = "/storage/cloud/files/test/nonexistent/file.jpg";
+    bool result = CloudDentryHelper::NeedCreateDentry(nonExistingPath);
+    EXPECT_EQ(result, true);
+    MEDIA_INFO_LOG("End NeedCreateDentry_test_003");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法处理无效路径格式
+ * 覆盖场景：传入不以CLOUD_FILES_PREFIX开头的路径
+ * 覆盖分支点：路径不以CLOUD_FILES_PREFIX开头
+ * 触发条件：传入错误格式的路径如"/local/path/file.jpg"
+ * 业务验证：函数应返回E_ERR错误码
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_001");
+    std::string fileId = "test_file_001";
+    std::string invalidPath = "/local/path/file.jpg";
+    ThumbnailType thumbType = ThumbnailType::THUMB;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, invalidPath, thumbType);
+    EXPECT_EQ(result, E_ERR);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_001");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法处理已存在的dentry
+ * 覆盖场景：传入已存在的dentry路径
+ * 覆盖分支点：NeedCreateDentry返回false
+ * 触发条件：传入系统中已存在的路径
+ * 业务验证：函数应返回E_OK，无需重复创建
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_002");
+    std::string fileId = "test_file_002";
+    std::string existingPath = "/storage/cloud/files/test/existing.jpg";
+    ThumbnailType thumbType = ThumbnailType::THUMB;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, existingPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_002");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法创建LCD类型缩略图
+ * 覆盖场景：传入ThumbnailType::LCD类型
+ * 覆盖分支点：thumbType == LCD
+ * 触发条件：传入ThumbnailType::LCD和有效路径
+ * 业务验证：函数应正确处理LCD类型，返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_003");
+    std::string fileId = "test_file_003";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+    ThumbnailType thumbType = ThumbnailType::LCD;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, validPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_003");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法创建THUMB_EX类型缩略图
+ * 覆盖场景：传入ThumbnailType::THUMB_EX类型
+ * 覆盖分支点：thumbType == THUMB_EX
+ * 触发条件：传入ThumbnailType::THUMB_EX和有效路径
+ * 业务验证：函数应正确处理THUMB_EX类型，返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_004");
+    std::string fileId = "test_file_004";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+    ThumbnailType thumbType = ThumbnailType::THUMB_EX;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, validPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_004");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法创建LCD_EX类型缩略图
+ * 覆盖场景：传入ThumbnailType::LCD_EX类型
+ * 覆盖分支点：thumbType == LCD_EX
+ * 触发条件：传入ThumbnailType::LCD_EX和有效路径
+ * 业务验证：函数应正确处理LCD_EX类型，返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_005");
+    std::string fileId = "test_file_005";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+    ThumbnailType thumbType = ThumbnailType::LCD_EX;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, validPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_005");
+}
+
+/**
+ * 用例说明：验证CreateDentryForOrigin方法处理无效路径格式
+ * 覆盖场景：传入不以CLOUD_FILES_PREFIX开头的路径
+ * 覆盖分支点：路径不以CLOUD_FILES_PREFIX开头
+ * 触发条件：传入错误格式的路径如"/local/path/file.jpg"
+ * 业务验证：函数应返回E_ERR错误码
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForOrigin_test_001");
+    std::string fileId = "test_file_origin_001";
+    std::string invalidPath = "/local/path/file.jpg";
+
+    int32_t result = CloudDentryHelper::CreateDentryForOrigin(fileId, invalidPath);
+    EXPECT_EQ(result, E_ERR);
+    MEDIA_INFO_LOG("End CreateDentryForOrigin_test_001");
+}
+
+/**
+ * 用例说明：验证CreateDentryForOrigin方法处理已存在的dentry
+ * 覆盖场景：传入已存在的dentry路径
+ * 覆盖分支点：NeedCreateDentry返回false
+ * 触发条件：传入系统中已存在的路径
+ * 业务验证：函数应返回E_OK，无需重复创建
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForOrigin_test_002");
+    std::string fileId = "test_file_origin_002";
+    std::string existingPath = "/storage/cloud/files/test/existing.jpg";
+
+    int32_t result = CloudDentryHelper::CreateDentryForOrigin(fileId, existingPath);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForOrigin_test_002");
+}
+
+/**
+ * 用例说明：验证CreateDentryForOrigin方法处理有效路径
+ * 覆盖场景：传入有效的云文件路径
+ * 覆盖分支点：NeedCreateDentry返回true（路径不存在）
+ * 触发条件：传入有效格式的路径但文件不存在
+ * 业务验证：函数应返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForOrigin_test_003");
+    std::string fileId = "test_file_origin_003";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+
+    int32_t result = CloudDentryHelper::CreateDentryForOrigin(fileId, validPath);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForOrigin_test_003");
+}
+
+//查询函数 LIMIT 验证
+static constexpr int32_t BG_QUERY_BATCH = 1000;
+
+static void CreatePhotosTableForLimitTest()
+{
+    const string createSql =
+        "CREATE TABLE IF NOT EXISTS Photos ("
+        "file_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "data TEXT,"
+        "media_type INTEGER DEFAULT 1,"
+        "date_modified INTEGER DEFAULT 0,"
+        "data_taken INTEGER DEFAULT 0,"
+        "display_name TEXT DEFAULT '',"
+        "position INTEGER DEFAULT 1,"
+        "orientation INTEGER DEFAULT 0,"
+        "exif_rotate INTEGER DEFAULT 0,"
+        "time_pending INTEGER DEFAULT 0,"
+        "date_trashed INTEGER DEFAULT 0,"
+        "last_visit_time INTEGER DEFAULT 0,"
+        "lcd_visit_time INTEGER DEFAULT 0,"
+        "sync_status INTEGER DEFAULT 0,"
+        "clean_flag INTEGER DEFAULT 0,"
+        "is_temp INTEGER DEFAULT 0,"
+        "thumbnail_ready INTEGER DEFAULT 0,"
+        "thumb_status INTEGER DEFAULT 0);";
+    storePtr->ExecuteSql(createSql);
+}
+
+static void InsertPhotoForLimitTest(int32_t count)
+{
+    storePtr->ExecuteSql("DELETE FROM Photos;");
+    for (int32_t i = 0; i < count; i++) {
+        string path = "/test/path_" + to_string(i) + ".jpg";
+        string sql = "INSERT INTO Photos (data, media_type, data_taken) VALUES ('"
+            + path + "', 1, " + to_string(i) + ");";
+        storePtr->ExecuteSql(sql);
+    }
+}
+
+//2500条数据，LIMIT 1000 应返回1000条
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoThumbnailInfos_limit_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoThumbnailInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), BG_QUERY_BATCH);
+}
+
+//500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoThumbnailInfos_limit_002, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoThumbnailInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 500);
+}
+
+//2500条数据，不传LIMIT
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoThumbnailInfos_limit_003, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoThumbnailInfos(opts, infos, err, 0);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 2500);
+}
+
+//2500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoLcdInfos_limit_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoLcdInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), BG_QUERY_BATCH);
+}
+
+//500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoLcdInfos_limit_002, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoLcdInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 500);
+}
+
+//2500条数据，不传LIMIT
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoLcdInfos_limit_003, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoLcdInfos(opts, infos, err, 0);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 2500);
+}
+
+//2500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoAstcInfos_limit_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoAstcInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), BG_QUERY_BATCH);
+}
+
+//500条数据，LIMIT 1000
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoAstcInfos_limit_002, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoAstcInfos(opts, infos, err, BG_QUERY_BATCH);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 500);
+}
+
+//2500条数据，不传LIMIT
+HWTEST_F(MediaLibraryThumbnailServiceTest, QueryNoAstcInfos_limit_003, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+    CreatePhotosTableForLimitTest();
+    InsertPhotoForLimitTest(2500);
+    ThumbRdbOpt opts;
+    opts.store = storePtr;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    bool ret = ThumbnailUtils::QueryNoAstcInfos(opts, infos, err, 0);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(static_cast<int>(infos.size()), 2500);
+}
+
+//多次中断验证-中断后重新启动，多次反复不崩溃
+HWTEST_F(MediaLibraryThumbnailServiceTest, MultipleInterrupt_service_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+
+    shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
+    shared_ptr<OHOS::AbilityRuntime::Context> context;
+    serverTest->Init(storePtr, context);
+
+    for (int round = 0; round < 3; round++) {
+        serverTest->GenerateThumbnailBackground();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        serverTest->InterruptBgworker();
+        ASSERT_NE(serverTest->bgGenerateManager_, nullptr);
+        EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+    }
+
+    serverTest->ReleaseService();
+}
+
+//中断后再启动不挂起：快速Start-Interrupt 序列不死锁
+HWTEST_F(MediaLibraryThumbnailServiceTest, BatchQueryInterrupt_no_deadlock_001, TestSize.Level1)
+{
+    ASSERT_NE(storePtr, nullptr);
+
+    shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
+    shared_ptr<OHOS::AbilityRuntime::Context> context;
+    serverTest->Init(storePtr, context);
+
+    serverTest->GenerateThumbnailBackground();
+    serverTest->InterruptBgworker();
+    EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+
+    serverTest->GenerateThumbnailBackground();
+    serverTest->InterruptBgworker();
+    EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+    
+    serverTest->GenerateThumbnailBackground();
+    serverTest->InterruptBgworker();
+    EXPECT_FALSE(serverTest->bgGenerateManager_->running_.load());
+    
+    serverTest->ReleaseService();
+}
+
 } // namespace Media
 } // namespace OHOS

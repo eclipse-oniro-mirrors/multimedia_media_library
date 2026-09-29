@@ -329,10 +329,35 @@ bool HasValidMoveAssetChangeData(const PhotoAssetChangeData *changeData)
         changeData->assetBeforeChange != nullptr && changeData->assetAfterChange != nullptr;
 }
 
+int32_t ParseAlbumIdFromUri(const std::string &albumUri)
+{
+    if (albumUri.empty()) {
+        return AccurateRefresh::INVALID_INT32_VALUE;
+    }
+    int32_t albumId = ExtractIntIdFromUri(albumUri);
+    return (albumId > E_OK) ? albumId : AccurateRefresh::INVALID_INT32_VALUE;
+}
+
+int32_t GetAlbumIdFromNotifyInfo(const std::shared_ptr<AlbumChangeInfo> &info)
+{
+    if (info == nullptr) {
+        return AccurateRefresh::INVALID_INT32_VALUE;
+    }
+    return ParseAlbumIdFromUri(info->albumUri_);
+}
+
+int32_t GetOwnerAlbumIdFromNotifyInfo(const std::shared_ptr<PhotoAssetChangeInfo> &info)
+{
+    if (info == nullptr) {
+        return AccurateRefresh::INVALID_INT32_VALUE;
+    }
+    return ParseAlbumIdFromUri(info->ownerAlbumUri_);
+}
+
 void ExpectMoveAssetOwnerAlbumIds(const PhotoAssetChangeData &changeData, const MoveAssetPayloadExpect &expect)
 {
-    int32_t beforeOwnerAlbumId = changeData.assetBeforeChange->ownerAlbumId_;
-    int32_t afterOwnerAlbumId = changeData.assetAfterChange->ownerAlbumId_;
+    int32_t beforeOwnerAlbumId = GetOwnerAlbumIdFromNotifyInfo(changeData.assetBeforeChange);
+    int32_t afterOwnerAlbumId = GetOwnerAlbumIdFromNotifyInfo(changeData.assetAfterChange);
     if (beforeOwnerAlbumId > E_OK) {
         EXPECT_EQ(beforeOwnerAlbumId, expect.sourceAlbumId);
     } else {
@@ -387,7 +412,7 @@ const AlbumChangeData *FindAlbumChangeDataById(const AlbumChangeInfos &infos, in
         auto info = (changeData.albumAfterChange != nullptr)
             ? changeData.albumAfterChange
             : changeData.albumBeforeChange;
-        if (info != nullptr && info->albumId_ == albumId) {
+        if (info != nullptr && GetAlbumIdFromNotifyInfo(info) == albumId) {
             return &changeData;
         }
     }
@@ -456,7 +481,7 @@ bool WaitForAlbumChangeByTypeAndId(SyncPhotoAlbumChangeCallback &callback, int32
             auto info = (changeData.albumAfterChange != nullptr)
                 ? changeData.albumAfterChange
                 : changeData.albumBeforeChange;
-            if (info != nullptr && info->albumId_ == args.expectedAlbumId) {
+            if (info != nullptr && GetAlbumIdFromNotifyInfo(info) == args.expectedAlbumId) {
                 return true;
             }
         }
@@ -509,16 +534,18 @@ size_t LogAndSummarizeAlbumNotifications(const std::vector<AlbumChangeInfos> &al
                 continue;
             }
             ++notifyCount;
-            notifiedAlbums[info->albumId_] = { info->albumType_, info->albumSubType_ };
+            int32_t albumId = GetAlbumIdFromNotifyInfo(info);
+            if (albumId > E_OK) {
+                notifiedAlbums[albumId] = { info->albumType_, info->albumSubType_ };
+            }
             GTEST_LOG_(INFO) << "  change[" << j << "] notifyType=" << static_cast<int32_t>(infos.type)
-                << " albumId=" << info->albumId_
+                << " albumUri=" << info->albumUri_
                 << " albumType=" << info->albumType_
                 << " albumSubType=" << info->albumSubType_;
         }
     }
     for (const auto &item : notifiedAlbums) {
-        GTEST_LOG_(INFO) << "Album notified summary: albumId=" << item.first
-            << " albumType=" << item.second.first
+        GTEST_LOG_(INFO) << "Album notified summary: albumType=" << item.second.first
             << " albumSubType=" << item.second.second;
     }
     return notifyCount;
@@ -559,16 +586,12 @@ void LogAssetChangeInfoDetail(const std::string &tag, const std::shared_ptr<Phot
         << ", uri=" << info->uri_
         << ", displayName=" << info->displayName_
         << ", mediaType=" << info->mediaType_
-        << ", subType=" << info->subType_
-        << ", ownerAlbumId=" << info->ownerAlbumId_
         << ", ownerAlbumUri=" << info->ownerAlbumUri_
         << ", size=" << info->size_
         << ", dateAddedMs=" << info->dateAddedMs_
         << ", dateModifiedMs=" << info->dateModifiedMs_
         << ", isFavorite=" << info->isFavorite_
-        << ", isHidden=" << info->isHidden_
-        << ", dirty=" << info->dirty_
-        << ", path=" << info->path_;
+        << ", isHidden=" << info->isHidden_;
 }
 
 void CreateBatchTestAlbums(MediaLibraryManager &manager, int32_t batchCount, std::vector<int32_t> &albumIds)
@@ -611,7 +634,11 @@ bool CollectRemovedAlbumFlags(const std::vector<AlbumChangeInfos> &allInfos, siz
             if (info == nullptr) {
                 continue;
             }
-            auto iter = removedAlbumFlags.find(info->albumId_);
+            int32_t albumId = GetAlbumIdFromNotifyInfo(info);
+            if (albumId <= E_OK) {
+                continue;
+            }
+            auto iter = removedAlbumFlags.find(albumId);
             if (iter != removedAlbumFlags.end()) {
                 iter->second = true;
             }
@@ -634,8 +661,9 @@ void MarkRemovedAssetFlag(const PhotoAssetChangeData &changeData,
         return;
     }
     iter->second = true;
-    if (info->ownerAlbumId_ > E_OK && expectedAlbumId > E_OK) {
-        EXPECT_EQ(info->ownerAlbumId_, expectedAlbumId);
+    int32_t ownerAlbumId = GetOwnerAlbumIdFromNotifyInfo(info);
+    if (ownerAlbumId > E_OK && expectedAlbumId > E_OK) {
+        EXPECT_EQ(ownerAlbumId, expectedAlbumId);
     }
 }
 
@@ -1171,7 +1199,8 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_049, TestSize.
     ASSERT_EQ(infos.albumChangeDatas.size(), 1);
     EXPECT_EQ(infos.albumChangeDatas[0].albumBeforeChange, nullptr);
     ASSERT_NE(infos.albumChangeDatas[0].albumAfterChange, nullptr);
-    EXPECT_EQ(infos.albumChangeDatas[0].albumAfterChange->albumId_, albumId);
+    int32_t notifiedAlbumId = ParseAlbumIdFromUri(infos.albumChangeDatas[0].albumAfterChange->albumUri_);
+    EXPECT_EQ(notifiedAlbumId, albumId);
     EXPECT_FALSE(infos.albumChangeDatas[0].albumAfterChange->albumUri_.empty());
     EXPECT_EQ(infos.albumChangeDatas[0].albumAfterChange->albumUri_, createdAlbumUri);
 
@@ -1306,7 +1335,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_052, TestSize.
             }
             ++notifiedAlbumCount;
             GTEST_LOG_(INFO) << "Album notified: notifyType=" << static_cast<int32_t>(infos.type)
-                << ", albumId=" << info->albumId_
+                << ", albumUri=" << info->albumUri_
                 << ", albumType=" << info->albumType_
                 << ", albumSubType=" << info->albumSubType_;
         }

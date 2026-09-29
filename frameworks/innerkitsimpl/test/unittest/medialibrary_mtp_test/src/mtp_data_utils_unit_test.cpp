@@ -35,6 +35,7 @@
 #include "album_operation_uri.h"
 #include "medialibrary_mock_tocken.h"
 #include "mtp_manager.h"
+#include "medialibrary_db_const.h"
 
 using namespace std;
 using namespace testing::ext;

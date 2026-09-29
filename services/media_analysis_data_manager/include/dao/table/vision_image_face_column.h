@@ -58,6 +58,9 @@ const std::string SIMPLE_FACE_SCORE = "face_score";
 const std::string SIMPLE_FACE_SCORE_VERSION = "face_score_version";
 const std::string PERSONALIZATION_SCORE = "personalization_score";
 const std::string PERSONALIZATION_SCORE_VERSION = "personalization_score_version";
+const std::string FACIAL_EXPRESSION_SCORE = "facial_expression_score";
+const std::string FACIAL_EXPRESSION_DETAIL = "facial_expression_detail";
+const std::string FACIAL_EXPRESSION_VERSION = "facial_expression_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_IMAGE_FACE_COLUMN_H

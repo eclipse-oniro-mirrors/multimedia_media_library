@@ -689,9 +689,12 @@ static int32_t RequestContentToArrayBuffer(ani_env *env, MovingPhotoAsyncContext
 
 static bool IsValidResourceType(int32_t resourceType)
 {
-    return (resourceType == static_cast<int>(ResourceType::IMAGE_RESOURCE) ||
-        resourceType == static_cast<int>(ResourceType::VIDEO_RESOURCE) ||
-        resourceType == static_cast<int>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE));
+    return resourceType == static_cast<int32_t>(ResourceType::IMAGE_RESOURCE) ||
+           resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE) ||
+           (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) &&
+               MediaLibraryAniUtils::IsSystemApp()) ||
+           (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_METADATA) &&
+               MediaLibraryAniUtils::IsSystemApp());
 }
 
 static int32_t QueryPhotoPositionIPCExecute(const string &movingPhotoUri, int32_t userId, int32_t &position)
@@ -801,7 +804,7 @@ static ani_status ParseArgsByImageFileAndVideoFile(ani_env *env, ani_string imag
     return ANI_OK;
 }
 
-static ani_status ParseArgsByResourceTypeAndFile(ani_env *env, ani_enum_item resourceTypeAni, ani_string videoFileUri,
+static ani_status ParseArgsByResourceTypeAndFile(ani_env *env, ani_enum_item resourceTypeAni, ani_string fileUri,
     MovingPhotoAni* thisArg, std::unique_ptr<MovingPhotoAsyncContext>& context)
 {
     CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
@@ -817,14 +820,17 @@ static ani_status ParseArgsByResourceTypeAndFile(ani_env *env, ani_enum_item res
 
     CHECK_COND_WITH_RET_MESSAGE(env, IsValidResourceType(resourceType), ANI_INVALID_ARGS, "Invalid resource type");
     if (resourceType == static_cast<int>(ResourceType::IMAGE_RESOURCE)) {
-        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, videoFileUri,
+        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, fileUri,
             context->destImageUri) == ANI_OK, ANI_INVALID_ARGS, "Failed to get destImageUri");
     } else if (resourceType == static_cast<int>(ResourceType::VIDEO_RESOURCE)) {
-        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, videoFileUri,
+        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, fileUri,
             context->destVideoUri) == ANI_OK, ANI_INVALID_ARGS, "Failed to get destVideoUri");
-    } else {
-        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, videoFileUri,
+    } else if (resourceType == static_cast<int>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE)) {
+        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, fileUri,
             context->destLivePhotoUri) == ANI_OK, ANI_INVALID_ARGS, "Failed to get destLivePhotoUri");
+    } else {
+        CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, fileUri,
+            context->destMetadataUri) == ANI_OK, ANI_INVALID_ARGS, "Failed to get destMetadataUri");
     }
     context->resourceType = static_cast<ResourceType>(resourceType);
     return ANI_OK;

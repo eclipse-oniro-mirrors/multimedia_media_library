@@ -76,7 +76,7 @@ bool MediaLibraryPeriodWorker::StartTask(PeriodTaskType periodTaskType, PeriodEx
     task->second->isStop_.store(false);
     task->second->executor_ = periodExecute;
     task->second->data_ = data;
-    thread([this, periodTaskType]() { this->HandleTask(periodTaskType); }).detach();
+    thread([periodTaskType]() { MediaLibraryPeriodWorker::HandleTask(periodTaskType); }).detach();
     return true;
 }
 

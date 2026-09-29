@@ -83,6 +83,8 @@ HWTEST_F(DatabaseDataMockTest, DATABASE, TestSize.Level1)
     std::shared_ptr<NativeRdb::RdbStore> rdbStore = MediaLibraryDatabase().GetRdbStore(errorCode);
     EXPECT_EQ(errorCode, 0);
     ASSERT_NE(rdbStore, nullptr);
+    auto resultSet = rdbStore->QuerySql("SELECT 1");
+    ASSERT_NE(resultSet, nullptr);
 }
 
 HWTEST_F(DatabaseDataMockTest, DATABASE_DATA_MOCK, TestSize.Level1)
@@ -96,13 +98,17 @@ HWTEST_F(DatabaseDataMockTest, DATABASE_DATA_MOCK, TestSize.Level1)
     DatabaseDataMock dbDataMock;
     int32_t ret = dbDataMock.SetRdbStore(rdbStore).CheckPoint();
     EXPECT_EQ(ret, DatabaseDataMock::E_OK);
-    // Verify CheckPoint
-    EXPECT_GE(dbDataMock.GetMaxFileId(), 0);
-    EXPECT_GE(dbDataMock.GetMaxAlbumId(), 0);
-    EXPECT_GE(dbDataMock.GetMaxAnalysisId(), 0);
+        int64_t maxFileId = dbDataMock.GetMaxFileId();
+    int64_t maxAlbumId = dbDataMock.GetMaxAlbumId();
+    ASSERT_GE(maxFileId, 0);
+    ASSERT_GE(maxAlbumId, 0);
+    auto photoResultSet = rdbStore->QuerySql("SELECT COUNT(*) as cnt FROM Photos");
+    ASSERT_NE(photoResultSet, nullptr);
     // Test Mock Data
     ret = dbDataMock.MockData(DatabaseDataMockTest::GetTableMockInfoList());
     EXPECT_EQ(ret, DatabaseDataMock::E_OK);
+    auto mockResultSet = rdbStore->QuerySql("SELECT COUNT(*) as cnt FROM Photos");
+    ASSERT_NE(mockResultSet, nullptr);
     // Test Rollback
     ret = dbDataMock.Rollback();
     EXPECT_EQ(ret, DatabaseDataMock::E_OK);

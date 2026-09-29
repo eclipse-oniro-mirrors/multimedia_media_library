@@ -45,6 +45,7 @@ public:
     EXPORT static std::string GetAssetRealPath(const AssetOperationInfo &obj);
     EXPORT static std::string GetAssetRealPath(const std::string &path);
     EXPORT static std::string GetAssetRealPathById(const std::string &fileId);
+    EXPORT static std::string GetAssetRealPath(const std::shared_ptr<FileAsset> &fileAsset);
 
     /**
      * @brief Move asset, support cross policy move and same name rename.
@@ -67,8 +68,12 @@ public:
 
     EXPORT static int32_t HandleSameNameRename(const std::string &sameNamePath,
         std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
+    EXPORT static int32_t HandleSameNameRename(const std::string &sameNamePath,
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+        const std::function<bool(const std::string &)> &isPathOccupiedChecker);
     EXPORT static int32_t HandleBurstSameNameRename(const std::string &sameNamePath,
-        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+        const std::function<bool(const std::string &)> &isPathOccupiedChecker);
 
     EXPORT static bool IsDirectoryEmpty(const std::string& dirPath);
     EXPORT static void UpdateModifyTime(const std::string &path, int64_t localMtime);
@@ -77,8 +82,13 @@ public:
 
     EXPORT static MoveResult ProcessLivePhotoToMovingPhoto(const std::string &srcPath,
         const std::string &destPath, bool deleteSrc);
-    EXPORT static MoveResult ProcessMovingPhotoToLivePhoto(const std::string &srcPath,
-        const std::string &destPath, FileSourceType destSourceType, bool deleteSrc);
+    EXPORT static MoveResult ProcessMovingPhotoToLivePhoto(const std::string &srcPath, const std::string &destPath,
+        FileSourceType destSourceType, bool deleteSrc, std::shared_ptr<AssetAccurateRefresh> assetRefresh = nullptr);
+    EXPORT static std::string GetLivePhotoTempImage(const std::string &srcPath,
+        const std::string &dataPath, bool isDeleteTempVideo);
+
+    EXPORT static int32_t MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
+        bool deleteSrc = false);
 
 private:
     struct AssetPathConvertInfo {
@@ -87,6 +97,7 @@ private:
         FileSourceType sourceType {FileSourceType::MEDIA};
         PhotoSubType subType {PhotoSubType::DEFAULT};
         BurstCoverLevelType burstCoverLevel {BurstCoverLevelType::DEFAULT};
+        int32_t position {static_cast<int32_t>(PhotoPositionType::LOCAL)};
     };
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     static bool IsZeroBucketPath(const std::string &path);
@@ -94,9 +105,6 @@ private:
     static bool NeedConvertPath(const std::string& path);
 
     static bool NeedCheckSameNameRename(FileSourceType destSourceType);
-
-    static int32_t MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
-        bool deleteSrc = false);
 
     static MoveResult MoveNormalAsset(const AssetOperationInfo &srcObj, const std::string &destPath,
         FileSourceType destSourceType, bool deleteSrc = false, RenameMode needRename = RenameMode::RENAME);
@@ -109,6 +117,9 @@ private:
     static bool CheckBurstMemberDataExist(PhotoSubType subType, BurstCoverLevelType burstCoverLevel,
         const std::string &assetPath);
     static int32_t UpateMetaDataForRename(const AssetOperationInfo &srcObj, const MoveResult &result);
+    static int32_t HandleSameNameRenameImpl(const std::string &sameNamePath,
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+        const std::function<bool(const std::string &)> &isPathOccupiedChecker);
 };
 } // namespace OHOS::Media
 #endif // FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_FILE_ACCESS_UTILS_H_

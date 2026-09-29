@@ -62,7 +62,6 @@ public:
     EXPORT static void CancelAfterPacking(const std::string &tempOutputPath);
     EXPORT static int TrySaveFile(ThumbnailData &Data, ThumbnailType type);
     EXPORT static bool CacheLcdInfo(ThumbRdbOpt &opts, ThumbnailData &data);
-    EXPORT static void CacheInvalidLcdInfo(ThumbnailData &data);
     EXPORT static bool UpdateHighlightInfo(ThumbRdbOpt &opts, ThumbnailData &data, int &err);
     EXPORT static bool UpdateLcdReadyStatus(ThumbRdbOpt &opts, ThumbnailData &data, int &err, LcdReady status);
     EXPORT static bool DoUpdateAstcDateTaken(ThumbRdbOpt &opts, ThumbnailData &data);
@@ -72,15 +71,18 @@ public:
     EXPORT static bool QueryDistributeLcdCount(ThumbRdbOpt &opts, int &outLcdCount, int &err);
     EXPORT static bool QueryAgingLcdInfos(ThumbRdbOpt &opts, int LcdLimit,
         std::vector<ThumbnailData> &infos, int &err);
-    EXPORT static bool QueryNoLcdInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
+    EXPORT static bool QueryNoLcdInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
+        uint32_t limit = 0);
     EXPORT static bool QueryLocalNoLcdInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
-    EXPORT static bool QueryNoThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
+    EXPORT static bool QueryNoThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
+        uint32_t limit = 0);
     EXPORT static bool QueryUpgradeThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos,
         bool isWifiConnected, int &err);
     EXPORT static bool QueryNoAstcInfosRestored(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
         const int32_t &restoreAstcCount);
     EXPORT static bool QueryLocalNoThumbnailInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
-    EXPORT static bool QueryNoAstcInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
+    EXPORT static bool QueryNoAstcInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err,
+        uint32_t limit = 0);
     EXPORT static bool QueryNewThumbnailCount(ThumbRdbOpt &opts, const int64_t &time, int &count, int &err);
     EXPORT static bool QueryNoHighlightInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos, int &err);
     EXPORT static bool QueryNoHighlightPath(ThumbRdbOpt &opts, ThumbnailData &data, int &err);
@@ -125,6 +127,8 @@ public:
     EXPORT static void PostProcPictureSource(ThumbnailData &data);
     EXPORT static bool GetLocalThmSize(const ThumbnailData &data, Size& size);
     EXPORT static int32_t QueryRegenerateAstcInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos);
+    EXPORT static size_t CalcLcdFileSize(const std::string &lcdExPath, const std::string &lcdPath);
+    EXPORT static bool CalcLcdSize(const std::string &lcdPath, std::string &lcdSizeStr);
 
 private:
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryThumbnailSet(ThumbRdbOpt &opts);

@@ -30,9 +30,9 @@ bool ChangeRequestSetUploadStatusReqBody::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET(status, status);
     status = IPC::ITypeMediaUtil::UnmarshalStrVec(this->albumIds, parcel);
     CHECK_AND_RETURN_RET(status, status);
-    IPC::ITypeMediaUtil::Unmarshalling<int32_t>(this->photoAlbumTypes, parcel);
+    status = IPC::ITypeMediaUtil::Unmarshalling<int32_t>(this->photoAlbumTypes, parcel);
     CHECK_AND_RETURN_RET(status, status);
-    IPC::ITypeMediaUtil::Unmarshalling<int32_t>(this->photoAlbumSubtypes, parcel);
+    status = IPC::ITypeMediaUtil::Unmarshalling<int32_t>(this->photoAlbumSubtypes, parcel);
     CHECK_AND_RETURN_RET(status, status);
     return true;
 }

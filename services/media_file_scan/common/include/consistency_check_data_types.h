@@ -21,7 +21,6 @@ namespace OHOS::Media::ConsistencyCheck {
 struct ScenarioProgress {
     int32_t lastFileId {0};
     int32_t lastAlbumId {0};
-    int64_t lastCheckTimeInMs {0};
     std::string ToString() const;
 };
 
@@ -49,6 +48,7 @@ struct DfxStats {
 struct AlbumRecord {
     int32_t albumId {-1};
     int32_t albumSubtype {-1};
+    int32_t hasPhoto {0};
     std::string lpath;
     std::string ToString() const;
 };

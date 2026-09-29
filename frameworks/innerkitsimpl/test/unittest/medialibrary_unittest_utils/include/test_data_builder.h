@@ -27,7 +27,8 @@ namespace OHOS::Media {
 enum class TestAlbumType {
     USER_ALBUM,
     SOURCE_ALBUM,
-    FILE_MANAGER_ALBUM
+    FILE_MANAGER_ALBUM,
+    SHARE_ALBUM
 };
 
 struct TestAlbumData {
@@ -45,6 +46,7 @@ struct TestAssetData {
     int32_t ownerAlbumId = 0;
     int32_t fileSourceType = 0;
     std::string storagePath;
+    int32_t isShared = 0;
 };
 
 class TestDataBuilder {
@@ -58,6 +60,8 @@ public:
     int32_t CreateAsset(int32_t albumId, const std::string& displayName);
     int32_t CreateAssetWithStoragePath(int32_t albumId, const std::string& displayName,
         const std::string& storagePath);
+    int32_t CreateSharedAlbum(const std::string& albumName);
+    int32_t CreateSharedAsset(int32_t albumId, const std::string& displayName);
 
     void ClearAllTables();
     void ClearPhotosTable();

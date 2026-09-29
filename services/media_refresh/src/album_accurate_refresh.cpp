@@ -18,6 +18,7 @@
 
 #ifndef MEDIA_REFRESH_TEST
     #include "cloud_sync_helper.h"
+    #include "hi_audit.h"
 #endif
 
 #include "medialibrary_errno.h"
@@ -26,6 +27,7 @@
 #include "accurate_debug_log.h"
 #include "medialibrary_tracer.h"
 #include "dfx_refresh_hander.h"
+#include "rdb_table_strategy_manager.h"
 #include "result_set_utils.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_unistore_manager.h"
@@ -101,6 +103,11 @@ int32_t AlbumAccurateRefresh::NotifyAddAlbums(const vector<string> &albumIdsStr)
     return Notify(dataManager_.GetAlbumDatasFromAddAlbum(albumIdsStr));
 }
 
+int32_t AlbumAccurateRefresh::NotifyShareAlbumUpdateForMemberChange(const std::vector<int32_t> &albumIds)
+{
+    return Notify(dataManager_.GetAlbumDatasForUpdateNoChange(albumIds));
+}
+
 int32_t AlbumAccurateRefresh::UpdateModifiedDatasInner(const std::vector<int> &albumIds, RdbOperation operation,
     PendingInfo pendingInfo)
 {
@@ -127,6 +134,11 @@ int32_t AlbumAccurateRefresh::UpdateModifiedDatas()
 unordered_map<int32_t, AlbumChangeInfo> AlbumAccurateRefresh::GetInitAlbumInfos()
 {
     return dataManager_.GetInitAlbumInfos();
+}
+
+PhotoAssetChangeInfo AlbumAccurateRefresh::GetPhotoAssetInfo(int32_t fileId)
+{
+    return dataManager_.GetPhotoAssetInfo(fileId);
 }
 
 string AlbumAccurateRefresh::GetReturningKeyName()
@@ -163,7 +175,10 @@ int32_t AlbumAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket&)> upda
     MediaLibraryTracer tracer;
     tracer.Start("AlbumAccurateRefresh::DeleteCommon");
     ValuesBucket valuesBucket;
-    valuesBucket.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    RdbTableStrategyManager::GetInstance().ExtendDeleteValues(PhotoAlbumColumns::TABLE, valuesBucket, config);
     auto ret = updateExe(valuesBucket);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Delete failed, ret = %{public}d", ret);
@@ -173,6 +188,7 @@ int32_t AlbumAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket&)> upda
     #ifndef MEDIA_REFRESH_TEST
         if (!trans_) {
             CloudSyncHelper::GetInstance()->StartSync(); // 事务场景不需要执行
+            HiAudit::GetInstance().WriteForTriggerSync("ALBUM_REFRESH", "success");
             ACCURATE_DEBUG("Delete update done, start sync.");
         }
     #endif

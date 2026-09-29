@@ -53,7 +53,9 @@ MediaChangeInfo NotificationDistribution::FilterNotifyInfoByPermission(
          notifyUriType == NotifyUriType::SINGLE_PHOTO_URI ||
          notifyUriType == NotifyUriType::SINGLE_PHOTO_ALBUM_URI ||
          notifyUriType == NotifyUriType::ANALYSIS_PHOTO_URI ||
-         notifyUriType == NotifyUriType::ANALYSIS_ALBUM_URI) &&
+         notifyUriType == NotifyUriType::ANALYSIS_ALBUM_URI ||
+         notifyUriType == NotifyUriType::SHARE_PHOTO_URI ||
+         notifyUriType == NotifyUriType::SHARE_PHOTO_ALBUM_URI) &&
          changeUri == notifyUriType) {
         return changeInfo;
     }
@@ -128,7 +130,6 @@ int32_t NotificationDistribution::ProcessMediaChangeInfos(
         filteredInfo.isSystem = observerInfo.isSystem;
         shared_ptr<MediaChangeInfo> sharedChangeInfo = make_shared<MediaChangeInfo>(filteredInfo);
         int32_t ret = NotificationUtils::SendNotification(observerInfo.observer, sharedChangeInfo);
-        CHECK_AND_RETURN_RET_LOG(ret != E_OK, ret, "CallbackProcessing fail err:%{public}d", ret);
         MEDIA_INFO_LOG("CallbackProcessing ret:%{public}d", ret);
     }
     return E_OK;

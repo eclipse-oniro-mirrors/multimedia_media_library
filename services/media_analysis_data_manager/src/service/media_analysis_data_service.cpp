@@ -19,6 +19,7 @@
  
 #include "analysis_album_accurate_refresh.h"
 #include "active_analysis_manager.h"
+#include "analysis_tool_manager.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "rdb_utils.h"
@@ -82,6 +83,7 @@
 
  
 namespace OHOS::Media::AnalysisData {
+constexpr int32_t SHARED_ASSET_FLAG = 1;
 using namespace std;
 MediaAnalysisDataService &MediaAnalysisDataService::GetInstance()
 {
@@ -241,6 +243,22 @@ int32_t MediaAnalysisDataService::StartAssetAnalysis(const StartAssetAnalysisDto
     Uri uri(dto.uri);
     MediaLibraryCommand cmd(uri);
     cmd.SetDataSharePred(dto.predicates);
+    NativeRdb::RdbPredicates rdbPredicate =
+        RdbDataShareAdapter::RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    do {
+        CHECK_AND_BREAK(rdbPredicate.GetWhereArgs().size() != 0);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
+            if (isShared == SHARED_ASSET_FLAG) {
+                MEDIA_ERR_LOG("StartAssetAnalysis does not support shared album asset");
+                return E_OPERATION_NOT_SUPPORT;
+            }
+        }
+        resultSet->Close();
+    } while (false);
     auto resultSet = MediaLibraryVisionOperations::HandleForegroundAnalysisOperation(cmd);
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
@@ -250,6 +268,30 @@ int32_t MediaAnalysisDataService::StartAssetAnalysis(const StartAssetAnalysisDto
 int32_t MediaAnalysisDataService::StartActiveAnalysis(const StartActiveAnalysisDto &dto,
     StartActiveAnalysisRespBody &respBody)
 {
+    do {
+        if (dto.fileIds.empty()) {
+            break;
+        }
+        NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+        rdbPredicate.In(PhotoColumn::MEDIA_ID, dto.fileIds);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+        if (resultSet == nullptr) {
+            break;
+        }
+        int32_t isShared = 0;
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
+            if (isShared == SHARED_ASSET_FLAG) {
+                break;
+            }
+        }
+        resultSet->Close();
+        if (isShared == SHARED_ASSET_FLAG) {
+            MEDIA_ERR_LOG("StartActiveAnalysis does not support shared album asset");
+            return E_OPERATION_NOT_SUPPORT;
+        }
+    } while (false);
     int32_t resultCode = E_OK;
     sptr<IRemoteObject> saRemote;
     int32_t ret = ActiveAnalysisManager::GetInstance().SubmitTask(dto, resultCode, saRemote);
@@ -261,8 +303,46 @@ int32_t MediaAnalysisDataService::StartActiveAnalysis(const StartActiveAnalysisD
 int32_t MediaAnalysisDataService::StopActiveAnalysis(const StopActiveAnalysisDto &dto,
     StopActiveAnalysisRespBody &respBody)
 {
+    do {
+        CHECK_AND_BREAK(!dto.fileIds.empty());
+        NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+        rdbPredicate.In(PhotoColumn::MEDIA_ID, dto.fileIds);
+        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
+        auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
+            if (isShared == SHARED_ASSET_FLAG) {
+                MEDIA_ERR_LOG("StopActiveAnalysis does not support shared album asset");
+                return E_OPERATION_NOT_SUPPORT;
+            }
+        }
+        resultSet->Close();
+    } while (false);
     int32_t resultCode = E_OK;
     int32_t ret = ActiveAnalysisManager::GetInstance().CancelTask(dto, resultCode);
+    respBody.result = resultCode;
+    return ret;
+}
+
+int32_t MediaAnalysisDataService::InvokeAnalysisTool(const InvokeAnalysisToolDto &dto,
+    InvokeAnalysisToolRespBody &respBody)
+{
+    int32_t resultCode = E_OK;
+    sptr<IRemoteObject> saRemote;
+    std::string taskId;
+    int32_t ret = AnalysisToolManager::GetInstance().SubmitTask(dto, resultCode, saRemote, taskId);
+    respBody.result = resultCode;
+    respBody.taskId = taskId;
+    respBody.saRemote = saRemote;
+    return ret;
+}
+
+int32_t MediaAnalysisDataService::CancelAnalysisTool(const CancelAnalysisToolDto &dto,
+    CancelAnalysisToolRespBody &respBody)
+{
+    int32_t resultCode = E_OK;
+    int32_t ret = AnalysisToolManager::GetInstance().CancelTask(dto, resultCode);
     respBody.result = resultCode;
     return ret;
 }
@@ -658,6 +738,7 @@ int32_t MediaAnalysisDataService::PrepareLcd(const std::vector<int64_t> &fileIds
         for (auto fileId : fileIds) {
             results[fileId] = static_cast<int32_t>(PrepareLcdResult::GENERATE_FAILURE);
         }
+        this->lcdAgingDao_.InsertFailedPhotosExt(results);
         return E_ERR;
     }
     std::vector<int64_t> needDownloadFileIds;
@@ -669,6 +750,8 @@ int32_t MediaAnalysisDataService::PrepareLcd(const std::vector<int64_t> &fileIds
     if (!needDownloadFileIds.empty()) {
         successCount += this->lcdAgingDao_.ProcessNeedDownloadFiles(needDownloadFileIds, netBearerBitmap, results);
     }
+    this->lcdAgingDao_.InsertFailedPhotosExt(results);
+
     if (successCount == static_cast<int32_t>(fileIds.size())) {
         return 0;
     } else if (successCount > 0) {

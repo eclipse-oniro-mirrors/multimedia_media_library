@@ -63,6 +63,8 @@
 #include "request_edit_data_vo.h"
 #include "get_edit_data_dto.h"
 #include "get_edit_data_vo.h"
+#include "query_composite_auxiliary_image_vo.h"
+#include "query_composite_auxiliary_image_dto.h"
 #include "start_asset_change_scan_dto.h"
 #include "get_cloud_enhancement_pair_dto.h"
 #include "get_cloud_enhancement_pair_vo.h"
@@ -71,6 +73,8 @@
 #include "get_uri_from_filepath_vo.h"
 #include "heif_transcoding_check_vo.h"
 #include "start_batch_download_cloud_resources_vo.h"
+#include "slow_motion_transcode_vo.h"
+#include "slow_motion_transcode_progress_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
@@ -92,6 +96,7 @@
 #include "album_change_set_album_name_by_file_dto.h"
 #include "asset_cancel_task_dto.h"
 #include "file_management_utils.h"
+#include "generate_unique_id_vo.h"
 
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -170,6 +175,9 @@ public:
     std::shared_ptr<DataShare::DataShareResultSet> ConvertFormat(const ConvertFormatDto &convertFormatDto);
     bool CheckMimeType(const int32_t fileId);
     int32_t CreateTmpCompatibleDup(const CreateTmpCompatibleDupDto &createTmpCompatibleDupDto);
+    int32_t SlowMotionTranscode(const SlowMotionTranscodeReqBody &transcodeReq, SlowMotionTranscodeRespBody &resp);
+    int32_t SlowMotionTranscodeProgress(const std::string &requestId, SlowMotionTranscodeProgressRespBody &resp);
+    int32_t CancelSlowMotionTranscode(const std::string &requestId);
     int32_t GetResultSetFromDb(const GetResultSetFromDbDto &getResultSetFromDbDto, GetResultSetFromDbRespBody &resp);
     int32_t GetResultSetFromPhotosExtend(const std::string &value, std::vector<std::string> &columns,
         GetResultSetFromPhotosExtendRespBody &resp);
@@ -180,6 +188,7 @@ public:
     int32_t CheckPhotoUriPermissionInner(CheckUriPermissionInnerDto& checkUriPermissionInnerDto);
     int32_t CloseAsset(const CloseAssetReqBody &req);
     int32_t GetUrisByOldUrisInner(GetUrisByOldUrisInnerDto& getUrisByOldUrisInnerDto);
+    int32_t GetClonedAssetUrisInner(GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto);
     int32_t Restore(const RestoreDto &dto);
     int32_t AsyncRestore(const RestoreDto &dto);
     int32_t StopRestore(const std::string &keyPath);
@@ -189,6 +198,8 @@ public:
     int32_t RetainCloudMediaAsset(CloudMediaRetainType retainType = CloudMediaRetainType::RETAIN_FORCE);
     int32_t IsEdited(const IsEditedDto &dto, IsEditedRespBody &respBody);
     int32_t RequestEditData(const RequestEditDataDto &dto, RequestEditDataRespBody &respBody);
+    EXPORT int32_t QueryCompositeAuxiliaryImage(const QueryCompositeAuxiliaryImageDto &dto,
+        QueryCompositeAuxiliaryImageRespBody &respBody);
     int32_t GetEditData(const GetEditDataDto &dto, GetEditDataRespBody &respBody);
     int32_t GetCloudMediaAssetStatus(std::string &status);
     int32_t StartBatchDownloadCloudResources(StartBatchDownloadCloudResourcesReqBody &reqBody,
@@ -237,12 +248,17 @@ public:
     int32_t CancelTask(const int32_t &requestId);
     bool EarseTaskCancelFlag(const int32_t &requestId);
     bool RegisterTaskCancelFlag(int32_t requestId, std::shared_ptr<std::atomic<bool>> cancelFlag);
-    int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
+int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
         std::map<int32_t, FileAssetsInfo> &recordedInfos, ChangeRequestMoveAssetsByPathDto &dto);
     int32_t CreateFileManagerAsset(CreateAssetDto& dto);
+    int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
+    int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
+    int32_t GenerateUniqueId(int32_t fileId, GenerateUniqueIdRespBody &respBody);
+    int32_t ValidateLatestPair(const std::string &uniqueId, bool &assetExists);
 
-private:
+ private:
     int32_t SubmitMetadataChanged(const int32_t fileId);
+    int32_t ValidateClonedUris(const GetUrisByOldUrisInnerDto &getClonedAssetUrisInnerDto);
     MediaAssetsRdbOperations rdbOperation_;
     std::mutex progressMutex_;
 };

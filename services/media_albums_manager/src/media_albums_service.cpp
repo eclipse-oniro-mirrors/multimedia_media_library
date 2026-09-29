@@ -20,6 +20,7 @@
 #include <string>
 #include <map>
 #include <sys/stat.h>
+#include <cerrno>
 
 #include "analysis_album_attribute_dispatcher.h"
 #include "analysis_album_attribute_request_utils.h"
@@ -27,12 +28,14 @@
 #include "media_albums_rdb_operations.h"
 #include "media_cloud_permission_check.h"
 #include "media_log.h"
+#include "media_library_error_code.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_rdbstore.h"
 #include "photo_album_column.h"
 #include "media_file_utils.h"
+#include "hi_audit.h"
 #include "result_set_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
@@ -61,6 +64,9 @@
 #include "medialibrary_notify_new.h"
 #include "medialibrary_restore.h"
 #include "parameters.h"
+#include "singleton.h"
+#include "app_mgr_client.h"
+#include "cloud_media_retain_smart_data.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -93,11 +99,55 @@ MediaAlbumsService &MediaAlbumsService::GetInstance()
     return service;
 }
 
+int32_t CheckNoShareAlbumInDeleteList(const std::vector<std::string> &albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
+
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
+    vector<string> columns = {PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_TYPE,
+        PhotoAlbumColumns::ALBUM_SUBTYPE};
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "query resultSet is nullptr");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_TYPE,
+            resultSet, TYPE_INT32));
+        int32_t albumSubType = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_SUBTYPE,
+            resultSet, TYPE_INT32));
+        if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumType),
+            static_cast<PhotoAlbumSubType>(albumSubType))) {
+            MEDIA_ERR_LOG("DeletePhotoAlbums contains share album, albumType=%{public}d, "
+                "albumSubType=%{public}d", albumType, albumSubType);
+            resultSet->Close();
+            return E_INVALID_VALUES;
+        }
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 int32_t MediaAlbumsService::DeletePhotoAlbums(const std::vector<std::string> &albumIds)
 {
+    int32_t ret = CheckNoShareAlbumInDeleteList(albumIds);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("DeletePhotoAlbums reject share album, ret=%{public}d", ret);
+        return E_SHARE_ALBUM_NOT_SUPPORT_PARAM_INVALID;
+    }
     NativeRdb::RdbPredicates rdbPredicate(PhotoAlbumColumns::TABLE);
     rdbPredicate.In(PhotoAlbumColumns::ALBUM_ID, albumIds);
     return MediaLibraryAlbumOperations::DeletePhotoAlbum(rdbPredicate);
+}
+
+int32_t MediaAlbumsService::SetShareAlbumName(const SetShareAlbumNameReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::SetShareAlbumName(reqBody.albumId, reqBody.owner, reqBody.albumName);
+}
+
+int32_t MediaAlbumsService::DeleteSharePhotoAlbums(const std::string &owner, const std::vector<int32_t> &albumIds)
+{
+    return MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(owner, albumIds);
 }
 
 int32_t MediaAlbumsService::CreatePhotoAlbum(const std::string& albumName)
@@ -178,7 +228,7 @@ int32_t MediaAlbumsService::GetAnalysisAlbumAttribute(const AnalysisAlbumGetAttr
     vector<std::unordered_map<std::string, std::string>> &queryResults)
 {
     auto photoAlbum = BuildAnalysisAlbumTarget(dto);
-    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "failed to build analysis album target");
+    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INNER_FAIL, "failed to build analysis album target");
     std::vector<std::string> attrs = dto.attrs;
     return AnalysisAlbumAttributeDispatcher::GetAttributeExecute(photoAlbum, attrs, queryResults);
 }
@@ -747,6 +797,8 @@ int32_t MediaAlbumsService::SmartMoveAssets(ChangeRequestMoveAssetsDto &smartMov
     string albumId = to_string(smartMoveAssetsDto.albumId);
     string targetAlbumId = to_string(smartMoveAssetsDto.targetAlbumId);
     int32_t ret = PhotoMapOperations::SmartMoveAssets(albumId, targetAlbumId, assets);
+    HiAudit::GetInstance().WriteForMove("SMART_MOVE", ret == E_OK ? "success" : "fail",
+        static_cast<uint32_t>(assets.size()), albumId, targetAlbumId, "");
     return ret;
 }
 
@@ -787,6 +839,9 @@ int32_t MediaAlbumsService::MoveAssets(ChangeRequestMoveAssetsDto &moveAssetsDto
         moveAssetsDto.targetAlbumCount = albumCount;
     }
     resultSet->Close();
+    HiAudit::GetInstance().WriteForMove("MOVE", ret == E_OK ? "success" : "fail",
+        static_cast<uint32_t>(moveAssetsDto.assets.size()),
+        to_string(moveAssetsDto.albumId), to_string(moveAssetsDto.targetAlbumId), "");
     return ret;
 }
 
@@ -1050,14 +1105,45 @@ void MediaAlbumsService::ReportFirstDbStatus()
     }
 }
 
-void MediaAlbumsService::ReportCloneDbStatus()
+void MediaAlbumsService::ReportCloneDbStatus(int32_t reverseCloneStatus)
 {
-    std::string cloneFlagStr = OHOS::system::GetParameter("multimedia.medialibrary.cloneFlag", "0");
-    if (cloneFlagStr != "0") {
-        Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("unavailable",
-            "Database occupied by Clone application");
-    } else {
+    if (reverseCloneStatus <= 0) {
+        std::string cloneFlagStr = OHOS::system::GetParameter("multimedia.medialibrary.cloneFlag", "0");
+        if (cloneFlagStr != "0") {
+            Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("unavailable",
+                "Database occupied by Clone application");
+            return;
+        }
         Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("available", "");
+        return;
+    }
+    const int32_t REVERSE_CLOSE_DATABASE = 1;
+    const int32_t REVERSE_OPEN_DATABASE = 2;
+    const int32_t REVERSE_ROLLBACK_CLOSE_DATABASE = 3;
+    const int32_t REVERSE_ROLLBACK_OPEN_DATABASE = 4;
+    // 清理云切家XML
+    const std::string smartdataRetainPath = "/data/storage/el2/base/preferences/smartdata_retain.xml";
+    if (MediaFileUtils::IsFileExists(smartdataRetainPath)) {
+        if (MediaFileUtils::DeleteFile(smartdataRetainPath)) {
+            MEDIA_INFO_LOG("Media_Reverse_Restore: Successfully deleted smartdata_retain.xml");
+        } else {
+            MEDIA_WARN_LOG("Media_Reverse_Restore: Failed to delete smartdata_retain.xml");
+        }
+    }
+    if (reverseCloneStatus == REVERSE_CLOSE_DATABASE) {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: close database");
+        const int32_t CLOSE_TIME_OUT_MS = 2 * 60 * 1000;
+        MediaLibraryDataManager::GetInstance()->CloseRdbStore(true, CLOSE_TIME_OUT_MS);
+    } else if (reverseCloneStatus == REVERSE_OPEN_DATABASE) {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: open database");
+        MediaLibraryDataManager::GetInstance()->OpenRdbStore(true);
+    } else if (reverseCloneStatus == REVERSE_ROLLBACK_CLOSE_DATABASE) {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: rollback close database");
+        const int32_t ROLLBACK_CLOSE_TIME_OUT_MS = 2 * 60 * 60 * 1000;
+        MediaLibraryDataManager::GetInstance()->CloseRdbStore(false, ROLLBACK_CLOSE_TIME_OUT_MS);
+    } else if (reverseCloneStatus == REVERSE_ROLLBACK_OPEN_DATABASE) {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: rollback open database");
+        MediaLibraryDataManager::GetInstance()->OpenRdbStore(false);
     }
 }
 
@@ -1069,7 +1155,11 @@ int32_t MediaAlbumsService::AlbumChangeSetHiddenAttribute(const AlbumChangeSetHi
         (dto.albumType == PhotoAlbumType::SOURCE &&
             dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     CHECK_AND_RETURN_RET_LOG(valid, E_INVALID_VALUES, "Invalid albumType or albumSubType");
-    return MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(dto.albumId, dto.fileHidden, dto.inherited);
+    int32_t ret =
+        MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(dto.albumId, dto.fileHidden, dto.inherited);
+    HiAudit::GetInstance().WriteForHide("SET_HIDDEN_ATTR", ret == E_OK ? "success" : "fail",
+        1, to_string(dto.albumId), "");
+    return ret;
 }
 
 int32_t MediaAlbumsService::AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAlbumNameByFileDto &dto)
@@ -1087,5 +1177,43 @@ int32_t MediaAlbumsService::AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAl
     values.Put(PhotoAlbumColumns::ALBUM_NAME, dto.albumName);
     return MediaLibraryAlbumOperations::HandleSetAlbumNameRequest(values, predicates, true);
     return E_OK;
+}
+
+int32_t MediaAlbumsService::ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+    bool disable, bool isAsyncRefreshAlbum)
+{
+    MEDIA_INFO_LOG("ModifyAlbumDefaultCoverOrder start, disable: %{public}d, isAsyncRefreshAlbum: %{public}d",
+        disable, isAsyncRefreshAlbum);
+    return MediaLibraryAlbumOperations::ModifyAlbumDefaultCoverOrder(coverOrderInfos, disable, isAsyncRefreshAlbum);
+}
+
+int32_t MediaAlbumsService::ModifyHiddenAlbumDefaultCoverOrder(
+    const std::vector<DefaultCoverOrderInfo> &coverOrderInfos, bool disable, bool isAsyncRefreshAlbum)
+{
+    MEDIA_INFO_LOG("ModifyHiddenAlbumDefaultCoverOrder start, disable: %{public}d, isAsyncRefreshAlbum: %{public}d",
+        disable, isAsyncRefreshAlbum);
+    return MediaLibraryAlbumOperations::ModifyHiddenAlbumDefaultCoverOrder(coverOrderInfos,
+        disable, isAsyncRefreshAlbum);
+}
+
+int32_t MediaAlbumsService::AddShareMember(const AddShareMemberReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::AddShareMember(reqBody.albumId, reqBody.owner, reqBody.member, reqBody.status);
+}
+
+int32_t MediaAlbumsService::UpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::UpdateShareMemberStatus(reqBody.albumId, reqBody.owner,
+        reqBody.member, reqBody.status);
+}
+
+int32_t MediaAlbumsService::DeleteShareMember(const DeleteShareMemberReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::DeleteShareMember(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t MediaAlbumsService::DeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::DeleteMemberShareAlbum(reqBody.owner, reqBody.albumIds);
 }
 } // namespace OHOS::Media

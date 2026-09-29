@@ -17,7 +17,7 @@
 #include <sstream>
 
 #include "photo_album_po.h"
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "media_log.h"
 
 namespace OHOS::Media::ORM {

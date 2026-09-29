@@ -23,6 +23,7 @@
 #include "media_old_albums_column.h"
 #include "media_facard_photos_column.h"
 #include "medialibrary_db_const.h"
+#include "media_operation_log_column.h"
 #include "ptp_medialibrary_manager_uri.h"
 #include "delete_permanently_operations_uri.h"
 #include "search_column.h"
@@ -37,6 +38,7 @@
 #include "smart_album_column.h"
 #include "custom_record_uri.h"
 #include "media_audio_column.h"
+#include "cover_record_columns.h"
 
 namespace OHOS {
 namespace Media {
@@ -99,6 +101,8 @@ const std::map<std::string, OperationObject>& GetOprnObjMap()
         { CONST_ASSET_ALBUM_OPERATION, OperationObject::ASSET_ALBUM_OPERATION},
         { CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY, OperationObject::MOVING_PHOTO_VIDEO_READY },
         { CONST_PAH_MULTISTAGES_VIDEO, OperationObject::PAH_MULTISTAGES_VIDEO },
+        { CONST_TAB_OPERATION_LOG, OperationObject::TAB_OPERATION_LOG },
+        { CONST_TAB_COVER_RECORD, OperationObject::TAB_COVER_RECORD },
 
         // use in Vision
         { CONST_PAH_TAB_PHOTOS_EXT_OPERATE, OperationObject::TAB_PHOTOS_EXT_OPERATE },
@@ -254,8 +258,12 @@ const std::map<OperationObject, std::map<OperationType, std::string>>& GetTableN
         { { OperationType::UNKNOWN_TYPE, TabFaCardPhotosColumn::FACARD_PHOTOS_TABLE } }},
         { OperationObject::ASSET_ALBUM_OPERATION,
             { { OperationType::UNKNOWN_TYPE, PhotoColumn::TAB_ASSET_AND_ALBUM_OPERATION_TABLE } } },
+        { OperationObject::TAB_OPERATION_LOG,
+            { { OperationType::UNKNOWN_TYPE, TabOperationLogColumn::TABLE } }},
         { OperationObject::TAB_PHOTOS_EXT_OPERATE,
             { { OperationType::UNKNOWN_TYPE, PhotoExtColumn::PHOTOS_EXT_TABLE } } },
+        { OperationObject::TAB_COVER_RECORD,
+            { { OperationType::UNKNOWN_TYPE, CoverRecordColumns::COVER_RECORD_TABLE } }},
 
         // search
         { OperationObject::SEARCH_TOTAL, { { OperationType::UNKNOWN_TYPE, SEARCH_TOTAL_TABLE } } },
@@ -372,7 +380,6 @@ const std::map<std::string, OperationType>& GetOprnTypeMap()
         { CONST_OPRN_GENERATE_THUMBNAILS_RESTORE, OperationType::GENERATE_THUMBNAILS_RESTORE },
         { CONST_OPRN_RESTORE_INVALID_HDC_CLOUD_DATA_POS, OperationType::RESTORE_INVALID_HDC_CLOUD_DATA_POS },
         { CONST_OPRN_TOOL_QUERY_BY_DISPLAY_NAME, OperationType::TOOL_QUERY_BY_DISPLAY_NAME },
-        { CONST_OPRN_LOCAL_THUMBNAIL_GENERATION, OperationType::LOCAL_THUMBNAIL_GENERATION },
         { CONST_OPRN_ADD_LOWQUALITY_IMAGE, OperationType::ADD_LOWQUALITY_IMAGE },
         { CONST_OPRN_FINISH_REQUEST_PICTURE, OperationType::FINISH_REQUEST_PICTURE },
         { CONST_OPRN_SCAN_WITHOUT_ALBUM_UPDATE, OperationType::SCAN_WITHOUT_ALBUM_UPDATE },

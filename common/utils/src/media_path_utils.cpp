@@ -18,11 +18,13 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_string_utils.h"
+#include <sys/xattr.h>
 
 namespace OHOS::Media {
 const char DOT = '.';
 const std::string EMPTY_STRING = "";
 const std::string ROOT_MEDIA_DIR = "/storage/cloud/files/";
+const std::string ROOT_MEDIA_LOCAL_DIR = "/storage/media/local/files/";
 
 std::string MediaPathUtils::AppendUserId(const std::string& path, int32_t userId)
 {
@@ -35,7 +37,16 @@ std::string MediaPathUtils::AppendUserId(const std::string& path, int32_t userId
 
 bool MediaPathUtils::CheckPhotoPath(const std::string& photoPath)
 {
+    if (photoPath.find("..") != std::string::npos) {
+        MEDIA_ERR_LOG("Invalid photoPath with path traversal: %{private}s", photoPath.c_str());
+        return false;
+    }
     return photoPath.length() >= ROOT_MEDIA_DIR.length() && MediaStringUtils::StartsWith(photoPath, ROOT_MEDIA_DIR);
+}
+
+bool MediaPathUtils::CheckPathTraversal(const std::string& path)
+{
+    return path.find("..") != std::string::npos;
 }
 
 std::string MediaPathUtils::GetFileName(const std::string &filePath)
@@ -67,4 +78,24 @@ std::string MediaPathUtils::GetExtension(const std::string &path)
     return extension;
 }
 
+bool MediaPathUtils::CheckIsCloudFile(const std::string &sandboxPath)
+{
+    constexpr size_t MAX_ATTR_NAME = 64;
+    constexpr const char* CLOUD_LOCATION_ATTR = "user.cloud.location";
+    char cloudvalue[MAX_ATTR_NAME] = {'\0'};
+    auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
+    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
+    constexpr const char FILE_POSITION_CLOUD = '2';
+    return cloudvalue[0] == FILE_POSITION_CLOUD;
+}
+
+std::string MediaPathUtils::ConvertCloudPathToLocalPath(const std::string &cloudPath)
+{
+    CHECK_AND_RETURN_RET_LOG(!cloudPath.empty(), EMPTY_STRING, "cloudPath is empty");
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(cloudPath, ROOT_MEDIA_DIR), EMPTY_STRING,
+        "cloudPath %{public}s not start with %{public}s", cloudPath.c_str(), ROOT_MEDIA_DIR.c_str());
+    std::string localPath = cloudPath;
+    localPath.replace(0, ROOT_MEDIA_DIR.length(), ROOT_MEDIA_LOCAL_DIR);
+    return localPath;
+}
 } // namespace OHOS::Media

@@ -42,7 +42,6 @@
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaPhotoControllerService::OnFetchRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter CloudMediaPhotoControllerService::OnFetchRecords");
     OnFetchRecordsReqBody reqBody;
     OnFetchRecordsRespBody respBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -52,13 +51,31 @@ int32_t CloudMediaPhotoControllerService::OnFetchRecords(MessageParcel &data, Me
     }
     // 获取端云请求中传递过来的数据
     std::vector<OnFetchPhotosVo> onFetchPhotoDatas = reqBody.GetOnFetchPhotoData();
-    std::vector<std::string> cloudIds;
-    std::map<std::string, CloudMediaPullDataDto> cloudIdRelativeMap;
     std::vector<PhotosDto> newData;
     std::vector<PhotosDto> fdirtyData;
     std::vector<int32_t> stats{0, 0, 0, 0, 0};
     std::vector<std::string> failedRecords;
-    MEDIA_INFO_LOG("OnFetchRecords onFetchPhotoDatas size: %{public}zu", onFetchPhotoDatas.size());
+    MEDIA_INFO_LOG("OnFetchRecords onFetchPhotoDatas size: %{public}zu, sceneType: %{public}d",
+        onFetchPhotoDatas.size(), CloudMediaContext::GetInstance().GetSceneType());
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->OnFetchRecordsNormal(onFetchPhotoDatas, newData, fdirtyData, stats, failedRecords);
+    } else {
+        ret = this->OnFetchRecordsShare(onFetchPhotoDatas, newData, fdirtyData, stats, failedRecords);
+    }
+    respBody.stats = stats;
+    respBody.failedRecords = failedRecords;
+    respBody.newDatas = this->processor_.SetNewDataVoFromDto(newData);
+    respBody.fdirtyDatas = this->processor_.SetFdirtyDataVoFromDto(fdirtyData);
+    MEDIA_INFO_LOG("OnFetchRecords Resp: %{public}s, size:%{public}zu", respBody.ToString().c_str(), newData.size());
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
+}
+
+int32_t CloudMediaPhotoControllerService::OnFetchRecordsNormal(const std::vector<OnFetchPhotosVo> &onFetchPhotoDatas,
+    std::vector<PhotosDto> &newData, std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats,
+    std::vector<std::string> &failedRecords)
+{
+    std::vector<std::string> cloudIds;
+    std::map<std::string, CloudMediaPullDataDto> cloudIdRelativeMap;
     for (auto onFetchPhotoData : onFetchPhotoDatas) {
         cloudIds.emplace_back(onFetchPhotoData.cloudId);
         // 从vo对象转成数据库的dto对象 在dto中增加attributesFileSourceType 和 attributesStoragePath 两个属性
@@ -66,13 +83,19 @@ int32_t CloudMediaPhotoControllerService::OnFetchRecords(MessageParcel &data, Me
         cloudIdRelativeMap[onFetchPhotoData.cloudId] = pullData;
         MEDIA_DEBUG_LOG("OnFetchRecords CloudMediaPullData: %{public}s", pullData.ToString().c_str());
     }
-    ret = this->photosService_.OnFetchRecords(cloudIds, cloudIdRelativeMap, newData, fdirtyData, stats, failedRecords);
-    respBody.stats = stats;
-    respBody.failedRecords = failedRecords;
-    respBody.newDatas = this->processor_.SetNewDataVoFromDto(newData);
-    respBody.fdirtyDatas = this->processor_.SetFdirtyDataVoFromDto(fdirtyData);
-    MEDIA_INFO_LOG("OnFetchRecords Resp: %{public}s, size:%{public}zu", respBody.ToString().c_str(), newData.size());
-    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
+    return this->photosService_.OnFetchRecords(
+        cloudIds, cloudIdRelativeMap, newData, fdirtyData, stats, failedRecords);
+}
+
+int32_t CloudMediaPhotoControllerService::OnFetchRecordsShare(const std::vector<OnFetchPhotosVo> &onFetchPhotoDatas,
+    std::vector<PhotosDto> &newData, std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats,
+    std::vector<std::string> &failedRecords)
+{
+    std::vector<CloudMediaPullDataDto> pullDataList;
+    for (auto onFetchPhotoData : onFetchPhotoDatas) {
+        pullDataList.emplace_back(this->processor_.ConvertToCloudMediaPullData(onFetchPhotoData));
+    }
+    return this->sharePhotosService_.OnFetchRecords(pullDataList, newData, fdirtyData, stats, failedRecords);
 }
 
 int32_t CloudMediaPhotoControllerService::OnDentryFileInsert(MessageParcel &data, MessageParcel &reply)
@@ -87,19 +110,24 @@ int32_t CloudMediaPhotoControllerService::OnDentryFileInsert(MessageParcel &data
     std::vector<std::string> failedRecords;
     std::vector<OnFetchPhotosVo> onDentryRecords = reqBody.GetOnDentryFileRecord();
     std::vector<CloudMediaPullDataDto> pullDatas;
+    MEDIA_INFO_LOG("OnDentryFileInsert onDentryRecords size: %{public}zu, sceneType: %{public}d",
+        onDentryRecords.size(), CloudMediaContext::GetInstance().GetSceneType());
     for (auto onDentryRecord : onDentryRecords) {
         CloudMediaPullDataDto pullData = this->processor_.ConvertToCloudMediaPullData(onDentryRecord);
         pullDatas.emplace_back(pullData);
         MEDIA_DEBUG_LOG("OnDentryFileInsert PullData: %{public}s", pullData.ToString().c_str());
     }
-    ret = this->photosService_.OnDentryFileInsert(pullDatas, failedRecords);
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->photosService_.OnDentryFileInsert(pullDatas, failedRecords);
+    } else {
+        ret = this->sharePhotosService_.OnDentryFileInsert(pullDatas, failedRecords);
+    }
     respBody.failedRecords = failedRecords;
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 
 int32_t CloudMediaPhotoControllerService::GetCheckRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter CloudMediaPhotoControllerService::GetCheckRecords");
     GetCheckRecordsReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -260,7 +288,6 @@ int32_t CloudMediaPhotoControllerService::GetCopyRecords(MessageParcel &data, Me
 
 int32_t CloudMediaPhotoControllerService::OnCreateRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter OnCreateRecords");
     OnCreateRecordsPhotosReqBody req;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
     if (ret != E_OK) {
@@ -281,7 +308,6 @@ int32_t CloudMediaPhotoControllerService::OnCreateRecords(MessageParcel &data, M
 
 int32_t CloudMediaPhotoControllerService::OnMdirtyRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter OnMdirtyRecords");
     OnModifyRecordsPhotosReqBody req;
     FailedSizeResp resp;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
@@ -303,7 +329,6 @@ int32_t CloudMediaPhotoControllerService::OnMdirtyRecords(MessageParcel &data, M
 
 int32_t CloudMediaPhotoControllerService::OnFdirtyRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("OnFdirtyRecords enter");
     OnFileDirtyRecordsReqBody req;
     FailedSizeResp resp;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
@@ -326,7 +351,6 @@ int32_t CloudMediaPhotoControllerService::OnFdirtyRecords(MessageParcel &data, M
 
 int32_t CloudMediaPhotoControllerService::OnDeleteRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("CloudMediaPhotoControllerService::OnDeleteRecords");
     OnDeleteRecordsPhotosReqBody reqBody;
     OnDeleteRecordsPhotosRespBody resp;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -349,7 +373,6 @@ int32_t CloudMediaPhotoControllerService::OnDeleteRecords(MessageParcel &data, M
 
 int32_t CloudMediaPhotoControllerService::OnCopyRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter CloudMediaPhotoControllerService::OnCopyRecords");
     OnCopyRecordsPhotosReqBody req;
     FailedSizeResp resp;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
@@ -385,13 +408,16 @@ int32_t CloudMediaPhotoControllerService::OnCopyRecords(MessageParcel &data, Mes
 
 int32_t CloudMediaPhotoControllerService::GetRetryRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter GetRetryRecords");
+    std::vector<PhotosDto> photosDtoVec;
+    int32_t ret = this->photosService_.GetRetryRecords(photosDtoVec);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetRetryRecords, ret:%{public}d", ret);
     GetRetryRecordsRespBody respBody;
-    int32_t ret = this->photosService_.GetRetryRecords(respBody.cloudIds);
+    ret = this->processor_.ConvertFromPhotosDtoToRetryRecordsRespBody(photosDtoVec, respBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("GetRetryRecords ret error");
+        MEDIA_ERR_LOG("Failed to convert retry records, ret:%{public}d", ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+    MEDIA_DEBUG_LOG("GetRetryRecords RespBody: %{public}s", respBody.ToString().c_str());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 
@@ -438,7 +464,6 @@ int32_t CloudMediaPhotoControllerService::OnCompleteCheck(MessageParcel &data, M
 
 int32_t CloudMediaPhotoControllerService::ReportFailure(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter CloudMediaPhotoControllerService::ReportFailure");
     ReportFailureReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {

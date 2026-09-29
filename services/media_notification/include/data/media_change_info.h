@@ -72,6 +72,8 @@ enum NotifyUriType {
     USER_DEFINE_NOTIFY_URI,
     ANY,
     AVAILABILITY_URI,
+    SHARE_PHOTO_URI,
+    SHARE_PHOTO_ALBUM_URI,
 };
 
 class NotifyDetailInfo : public Parcelable {

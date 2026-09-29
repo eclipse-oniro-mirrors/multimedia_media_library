@@ -63,7 +63,7 @@ const std::string AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE =
     AppUriSensitiveColumn::DATE_MODIFIED + " BIGINT," + AppUriSensitiveColumn::IS_FORCE_SENSITIVE + " INT DEFAULT 0, " +
     AppUriSensitiveColumn::SOURCE_TOKENID + " BIGINT, " + AppUriSensitiveColumn::TARGET_TOKENID + " BIGINT)";
 
-const std::string AppUriSensitiveColumn::CREATE_URI_URITYPE_APPID_INDEX = BaseColumn::CreateIndex() +
+const std::string AppUriSensitiveColumn::CREATE_URI_URITYPE_APPID_INDEX = "CREATE INDEX IF NOT EXISTS " +
     AppUriSensitiveColumn::URI_URITYPE_APPID_INDEX + " ON " +
     AppUriSensitiveColumn::APP_URI_SENSITIVE_TABLE + " (" +
     AppUriSensitiveColumn::FILE_ID + " DESC," +

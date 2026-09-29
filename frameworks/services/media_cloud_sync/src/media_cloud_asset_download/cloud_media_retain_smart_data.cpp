@@ -31,6 +31,7 @@
 #include "sys_utils.h"
 #include "medialibrary_notify.h"
 #include "photo_album_column.h"
+#include "lcd_aging_service.h"
 
 // LCOV_EXCL_START
 namespace OHOS::Media {
@@ -396,10 +397,14 @@ int32_t DoUpdateSmartDataAlbum()
             return;
         }
         MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore);
-        auto watch = MediaLibraryNotify::GetInstance();
-        if (watch != nullptr) {
-            watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
+        
+        auto rawStore = MediaLibraryRdbStore::GetRawChecked();
+        if (rawStore != nullptr) {
+            LcdAgingService::GetInstance().MarkRecentLcdPhotos(rawStore);
+        } else {
+            MEDIA_ERR_LOG("rdbStore_ is null, skip MarkRecentLcdPhotos");
         }
+
         MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread end");
     }).detach();
 

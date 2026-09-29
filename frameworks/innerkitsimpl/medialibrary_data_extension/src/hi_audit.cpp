@@ -26,6 +26,7 @@
 
 #include "dfx_utils.h"
 #include "media_log.h"
+#include "media_map_const_utils.h"
 #include "zip_util.h"
 
 namespace OHOS::Media {
@@ -109,21 +110,31 @@ std::string HiAudit::GetFormattedTimestampEndWithMilli()
     return ss.str();
 }
 
-void HiAudit::Write(const AuditLog& auditLog)
+void HiAudit::Write(const AuditLog& auditLog, bool isPrintLog)
 {
-    MEDIA_INFO_LOG("write");
     std::lock_guard<std::mutex> lock(mutex_);
     if (writeLogSize_ == 0) {
         WriteToFile(auditLog.TitleString() + "\n");
     }
     std::string writeLog = GetFormattedTimestampEndWithMilli() + ", " +
         HIAUDIT_CONFIG.logName + ", NO, " + auditLog.ToString();
-    MEDIA_INFO_LOG("write %{public}s.", writeLog.c_str());
+    CHECK_AND_PRINT_INFO_LOG(!isPrintLog, "write %{public}s.", writeLog.c_str());
     if (writeLog.length() > HIAUDIT_CONFIG.logSize) {
         writeLog = writeLog.substr(0, HIAUDIT_CONFIG.logSize);
     }
     writeLog = writeLog + "\n";
     WriteToFile(writeLog);
+}
+
+void HiAudit::WriteForDelete(const int32_t deletedRows, const std::string &cloudId, const int32_t operationType,
+    const int32_t mediaType)
+{
+    AuditLog auditLog = {true, "CLOUD SYNC", "DELETE", "io", 1, "success", "ok"};
+    auditLog.size = deletedRows;
+    auditLog.id = cloudId;
+    auditLog.type = operationType;
+    auditLog.mediaType = MediaMapConstUtils::MediaTypeToString(mediaType);
+    Write(auditLog);
 }
 
 void HiAudit::GetWriteFilePath()
@@ -226,6 +237,86 @@ void HiAudit::WriteForCloudSyncAlbum(const std::string& albumName, const std::st
     auditLog.extend = bundleName;
     auditLog.type = albumType;
     auditLog.size = albumSubType;
+    Write(auditLog);
+}
+
+void HiAudit::WriteForAccountSwitch(const std::string& scenario, const std::string& status)
+{
+    AuditLog auditLog = { false, "DFX", "ACCOUNT_SWITCH", scenario, 1 };
+    auditLog.operationStatus = status;
+    Write(auditLog);
+}
+
+void HiAudit::WriteForSyncSwitch(int32_t switchStatus)
+{
+    AuditLog auditLog = { false, "DFX", "SYNC_SWITCH", "0", 1 };
+    if (switchStatus == 1) {
+        auditLog.operationStatus = "open";
+    } else if (switchStatus == 0) {
+        auditLog.operationStatus = "close";
+    } else {
+        auditLog.operationStatus = "hdc";
+    }
+    Write(auditLog);
+}
+
+void HiAudit::WriteForDataFusion(const std::string& operationScenario, const std::string& status,
+    uint32_t count, const std::string& extend)
+{
+    AuditLog auditLog = { false, "DFX", "DATA_FUSION", operationScenario, count };
+    auditLog.operationStatus = status;
+    auditLog.extend = extend;
+    Write(auditLog);
+}
+
+void HiAudit::WriteForTriggerSync(const std::string& scenario, const std::string& status)
+{
+    AuditLog auditLog = { false, "DFX", "TRIGGER_SYNC", scenario, 1 };
+    auditLog.operationStatus = status;
+    Write(auditLog);
+}
+
+void HiAudit::WriteForMove(const std::string& scenario, const std::string& status,
+    uint32_t count, const std::string& srcAlbumId, const std::string& dstAlbumId,
+    const std::string& dstAlbumName)
+{
+    AuditLog auditLog = { true, "USER BEHAVIOR", "MOVE", scenario, count };
+    auditLog.operationStatus = status;
+    auditLog.id = srcAlbumId;
+    auditLog.extend = dstAlbumId;
+    auditLog.albumName = DfxUtils::GetSafeAlbumName(dstAlbumName);
+    Write(auditLog);
+}
+
+void HiAudit::WriteForHide(const std::string& scenario, const std::string& status,
+    uint32_t count, const std::string& assetId, const std::string& albumName)
+{
+    AuditLog auditLog = { true, "USER BEHAVIOR", "HIDE", scenario, count };
+    auditLog.operationStatus = status;
+    auditLog.id = assetId;
+    auditLog.albumName = DfxUtils::GetSafeAlbumName(albumName);
+    Write(auditLog);
+}
+
+void HiAudit::WriteForRename(const std::string& scenario, const std::string& status,
+    const std::string& albumId, const std::string& oldAlbumName, const std::string& newAlbumName)
+{
+    AuditLog auditLog = { true, "USER BEHAVIOR", "RENAME", scenario, 1 };
+    auditLog.operationStatus = status;
+    auditLog.id = albumId;
+    auditLog.albumName = DfxUtils::GetSafeAlbumName(newAlbumName);
+    auditLog.extend = DfxUtils::GetSafeAlbumName(oldAlbumName);
+    Write(auditLog);
+}
+
+void HiAudit::WriteForCloudExit(const std::string& bundleName,
+    const int32_t retainType, const std::string& operationStatus)
+{
+    AuditLog auditLog = {true, "DFX", "CLOUD_EXIT", "0", 1};
+    auditLog.operationStatus = operationStatus;
+    auditLog.extend = "ForceRetainDownloadCloudMedia";
+    auditLog.id = bundleName;
+    auditLog.type = retainType;
     Write(auditLog);
 }
 }

@@ -74,6 +74,12 @@ struct UpdateAlbumData {
     int64_t hiddenCoverDateTime;
     std::string albumName;
     std::string groupTag;
+    std::string coverOrderKey;
+    std::string coverOrderSubKey;
+    int32_t coverOrderType;
+    std::string hiddenCoverOrderKey;
+    std::string hiddenCoverOrderSubKey;
+    int32_t hiddenCoverOrderType;
 };
 
 struct UpdateAllAlbumsData {
@@ -98,8 +104,17 @@ public:
     EXPORT static void UpdateCommonAlbumInternal(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<std::string> &albumIds = {}, bool shouldNotify = false,
         bool shouldUpdateDateModified = false);
+    // 共享相册全量刷新
+    EXPORT static void UpdateShareAlbumInternal(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::vector<std::string> &shareAlbumIds = {}, bool shouldNotify = false,
+        bool shouldUpdateDateModified = false);
     EXPORT static void UpdateAnalysisAlbumInternal(const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
         const std::vector<std::string> &userAlbumIds = {});
+
+    // update cover_uri of albums.
+    EXPORT static void UpdateCommonAlbumCover(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::vector<std::string> &albumIds = {}, bool shouldNotify = false,
+        bool shouldUpdateDateModified = false);
 
     // Update hidden_count, hidden_cover of albums.
     // If album id / subtype is specified, only update the specified album. Otherwise update all albums of the type.
@@ -111,6 +126,9 @@ public:
         const std::vector<std::string> &sourceAlbumIds = {});
     EXPORT static void UpdateCommonAlbumHiddenState(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<std::string> &albumIds = {});
+    // 共享相册隐藏信息刷新
+    EXPORT static void UpdateShareAlbumHiddenState(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::vector<std::string> &shareAlbumIds = {});
 
     // Update count, cover_uri, hidden_count, hidden_cover of albums.
     // Only update albums related with specified uri assets.
@@ -125,6 +143,10 @@ public:
         const std::vector<std::string> &uris, bool shouldNotify = false, bool shouldUpdateDateModified = false);
     static void UpdateCommonAlbumByUri(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<std::string> &uris, bool shouldNotify = false, bool shouldUpdateDateModified = false);
+    // 共享相册根据uri刷新
+    EXPORT static void UpdateShareAlbumByUri(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::vector<std::string> &uris, bool shouldNotify = false,
+        bool shouldUpdateDateModified = false);
     EXPORT static void UpdateAnalysisAlbumByUri(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<std::string> &uris);
     EXPORT static void UpdateAllAlbums(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
@@ -143,12 +165,11 @@ public:
         std::vector<UpdateAlbumData> &albumDatas,
         std::unordered_map<std::string, std::vector<int32_t>> &portraitGroupMap);
     EXPORT static void GetAlbumCountAndCoverPredicates(const UpdateAlbumData& albumInfo,
-        NativeRdb::RdbPredicates &predicates, const bool hiddenState, const bool isUpdateAlbum = false);
+        NativeRdb::RdbPredicates &predicates, const bool hiddenState, const bool isUpdateAlbum = false,
+        bool filterVisibility = false);
     EXPORT static void DetermineQueryOrder(NativeRdb::RdbPredicates& predicates, const UpdateAlbumData& data,
         bool hiddenState, std::vector<std::string>& columns);
     EXPORT static std::string GetCover(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
-
-    static void AddQueryFilter(NativeRdb::AbsRdbPredicates &predicates, bool isAlbumRefresh = false);
 
     EXPORT static void UpdateAnalysisAlbumByFile(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<std::string> &fileIds, const std::vector<int> &albumTypes);

@@ -27,6 +27,10 @@
 #include "start_asset_analysis_vo.h"
 #include "stop_active_analysis_dto.h"
 #include "stop_active_analysis_vo.h"
+#include "invoke_analysis_tool_dto.h"
+#include "invoke_analysis_tool_vo.h"
+#include "cancel_analysis_tool_dto.h"
+#include "cancel_analysis_tool_vo.h"
 #include "get_asset_analysis_data_vo.h"
 #include "get_asset_analysis_data_dto.h"
 #include "get_index_construct_progress_vo.h"
@@ -52,7 +56,7 @@
 #include "change_request_set_default_cover_uri_vo.h"
 #include "prepare_lcd_vo.h"
 #include "remove_cloud_lcd_vo.h"
- 
+// LCOV_EXCL_START
 namespace OHOS::Media::AnalysisData {
 using namespace std;
 bool MediaAnalysisDataControllerService::Accept(uint32_t code)
@@ -183,6 +187,48 @@ int32_t MediaAnalysisDataControllerService::StopActiveAnalysis(MessageParcel &da
     dto.fileIds = reqBody.fileIds;
     dto.param = reqBody.param;
     ret = MediaAnalysisDataService::GetInstance().StopActiveAnalysis(dto, respBody);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAnalysisDataControllerService::InvokeAnalysisTool(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_ERR_LOG("ControllerService InvokeAnalysisTool");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INVOKE_ANALYSIS_TOOL);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    InvokeAnalysisToolReqBody reqBody;
+    InvokeAnalysisToolRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("InvokeAnalysisTool read request error,, ret=%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    InvokeAnalysisToolDto dto;
+    dto.type = reqBody.type;
+    dto.param = reqBody.param;
+    dto.taskId = reqBody.taskId;
+    dto.callbackRemote = reqBody.callbackRemote;
+    ret = MediaAnalysisDataService::GetInstance().InvokeAnalysisTool(dto, respBody);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAnalysisDataControllerService::CancelAnalysisTool(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_ERR_LOG("ControllerService CancelAnalysisTool");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CANCEL_ANALYSIS_TOOL);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    CancelAnalysisToolReqBody reqBody;
+    CancelAnalysisToolRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CancelAnalysisTool read request error, ret=%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    CancelAnalysisToolDto dto;
+    dto.taskId = reqBody.taskId;
+    dto.param = reqBody.param;
+    ret = MediaAnalysisDataService::GetInstance().CancelAnalysisTool(dto, respBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 
@@ -536,6 +582,13 @@ int32_t MediaAnalysisDataControllerService::PlaceBefore(MessageParcel &data, Mes
         MEDIA_ERR_LOG("PlaceBefore Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
+    PhotoAlbumType albumType = GetPhotoAlbumType(reqBody.albumType);
+    PhotoAlbumSubType albumSubtype = GetPhotoAlbumSubType(reqBody.albumSubType);
+    if (PhotoAlbum::IsShareAlbum(albumType, albumSubtype)) {
+        MEDIA_ERR_LOG("PlaceBefore does not support share album, albumType=%{public}d, albumSubType=%{public}d",
+            reqBody.albumType, reqBody.albumSubType);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
 
     ChangeRequestPlaceBeforeDto dto;
     dto.FromVo(reqBody);
@@ -675,3 +728,4 @@ int32_t MediaAnalysisDataControllerService::RemoveCloudLcd(MessageParcel &data, 
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media::AnalysisData
+// LCOV_EXCL_STOP

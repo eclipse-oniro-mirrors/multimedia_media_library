@@ -82,9 +82,10 @@ void MediaOnNotifyUserDefineObserver::OnChange(const ChangeInfo &changeInfo)
         MEDIA_ERR_LOG("observerBody is nullptr.");
         return;
     }
+    auto observerBody = observerBody_;
     std::thread(
-        [this, callbackWrapper]() {
-            observerBody_->OnChange(callbackWrapper);
+        [observerBody, callbackWrapper]() {
+            observerBody->OnChange(callbackWrapper);
         }
     ).detach();
 }

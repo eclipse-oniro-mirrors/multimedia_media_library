@@ -66,7 +66,7 @@ static void ClearAssetsFile()
     auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "MediaLibraryRdbStore::Query failed");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        assetPath = MediaLibraryRdbStore::GetString(resultSet, columns.front());
+        assetPath = GetStringVal(columns.front(), resultSet);
         MEDIA_INFO_LOG("DeleteFile assetPath:%{public}s", assetPath.c_str());
         MediaFileUtils::DeleteFile(assetPath);
     }
@@ -132,7 +132,7 @@ static int32_t GetAssetId(const std::string &displayName)
     }
     int32_t assetId = 0;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        assetId = MediaLibraryRdbStore::GetInt(resultSet, MediaColumn::MEDIA_ID);
+        assetId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
         MEDIA_INFO_LOG("resultSet: assetId:%{public}d", assetId);
     }
     resultSet->Close();
@@ -152,7 +152,7 @@ static int32_t GetAssetIntColumn(int32_t fileId, const std::string &column)
 
     int32_t value = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        value = MediaLibraryRdbStore::GetInt(resultSet, column);
+        value = GetInt32Val(column, resultSet);
     }
 
     MEDIA_INFO_LOG("fileId:%{public}d column:%{public}s value:%{public}d", fileId, column.c_str(), value);

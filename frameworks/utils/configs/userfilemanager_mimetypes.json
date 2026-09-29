@@ -102,7 +102,8 @@
         "image/x-rgb" : [ "rgb" ],
         "image/x-xbitmap" : [ "xbm" ],
         "image/x-xpixmap" : [ "xpm" ],
-        "image/x-xwindowdump" : [ "xwd" ]
+        "image/x-xwindowdump" : [ "xwd" ],
+        "image/mpo" : [ "mpo" ]
     },
     "video" : {
         "video/3gpp2" : [ "3gpp2", "3gp2", "3g2" ],
@@ -134,7 +135,12 @@
         "video/x-ms-wmv" : [ "wmv" ],
         "video/x-ms-wmx" : [ "wmx" ],
         "video/x-ms-wvx" : [ "wvx" ],
-        "video/x-sgi-movie" : [ "movie" ]
+        "video/x-sgi-movie" : [ "movie" ],
+        "video/mpg4" : [ "mpg4" ],
+        "video/rm" : [ "rm" ],
+        "video/rv" : [ "rv" ],
+        "video/divx" : [ "divx" ],
+        "video/m4u" : [ "m4u" ]
     },
     "text" : {
         "text/comma-separated-values" : [ "csv" ],

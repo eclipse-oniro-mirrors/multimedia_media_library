@@ -28,6 +28,7 @@ public:
     PhotoAssetCopyOperation &SetTargetPhotoInfo(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     PhotoAssetCopyOperation &SetTargetAlbumId(const int32_t targetAlbumId);
     PhotoAssetCopyOperation &SetDisplayName(const std::string &displayName);
+    bool CheckDisplayNameRenamed();
     void CopyPhotoAsset(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, NativeRdb::ValuesBucket &values);
 
 private:

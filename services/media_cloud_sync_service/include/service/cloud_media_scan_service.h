@@ -47,6 +47,8 @@ public:
         double aspectRatio{-2};
         int32_t exifRotate{0};
         int64_t localAssetSize{0};
+        uint32_t extraDataVersion{0};
+        int32_t musicMasterMode{0};
 
     public:
         std::string ToString() const;

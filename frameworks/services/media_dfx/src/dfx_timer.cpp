@@ -237,6 +237,14 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_CHANGE_SET_ALBUM_NAME_BY_FILE), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_FILE_MANAGER_ASSET), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM), 200},
 };
 
 int64_t DfxTimer::GetOperationCodeTimeout(uint32_t operationCode)
@@ -259,10 +267,12 @@ DfxTimer::DfxTimer(int32_t object, int64_t timeOut, bool isReport)
     uid_ = -1;
 }
 
-DfxTimer::DfxTimer(int32_t type, int32_t object, int64_t timeOut, bool isReport)
+DfxTimer::DfxTimer(int32_t type, int32_t object, int64_t timeOut, bool isReport,
+    const std::string &detail)
 {
     type_ = type;
     object_ = object;
+    detail_ = detail;
     start_ = MediaFileUtils::UTCTimeMilliSeconds();
     timeOut_ = timeOut;
     isReport_ = isReport;
@@ -278,9 +288,13 @@ DfxTimer::~DfxTimer()
 
     timeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start_;
     if (!isReport_) {
-        if (timeCost_ > timeOut_)
+        if (timeCost_ > timeOut_) {
             MEDIA_WARN_LOG("timeout! type: %{public}d, object: %{public}d, cost %{public}lld ms",
                 type_, object_, (long long) (timeCost_));
+            if (type_ == RDB_QUERY) {
+                MEDIA_INFO_LOG("detail_ is: %{public}s", detail_.c_str());
+            }
+        }
         return;
     }
 

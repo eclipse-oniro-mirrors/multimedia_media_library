@@ -504,6 +504,7 @@ void MediaSyncObserver::GetAlbumIdList(std::set<int32_t> &albumIds)
     columns.push_back(PhotoAlbumColumns::ALBUM_ID);
     predicates.IsNotNull(CONST_MEDIA_DATA_DB_ALBUM_NAME);
     predicates.NotEqualTo(CONST_MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
+    predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
     predicates.BeginWrap();
     predicates.NotEqualTo(CONST_MEDIA_DATA_DB_IS_LOCAL, IS_LOCAL);
     predicates.Or();

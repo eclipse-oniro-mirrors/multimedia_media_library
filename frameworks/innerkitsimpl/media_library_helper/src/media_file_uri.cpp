@@ -18,13 +18,14 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_file_uri.h"
-#include "medialibrary_helper_container.h"
 #include "medialibrary_type_const.h"
 #include "photo_album_column.h"
 #include "string_ex.h"
 #include "userfilemgr_uri.h"
 #include "media_audio_column.h"
 #include "media_string_utils.h"
+#include "medialibrary_helper_container.h"
+#include "media_account_utils.h"
 
 using namespace std;
 namespace OHOS {
@@ -272,15 +273,12 @@ std::string MediaFileUri::GetTableName()
 
 std::string MediaFileUri::GetFilePath()
 {
-    /* get helper */
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-            MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
+    /* get helper from Container (auto-creates with SA token + current user if empty) */
+    auto dataShareHelper = MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
     if (dataShareHelper == nullptr) {
-        MEDIA_ERR_LOG("get data share helper err");
+        MEDIA_ERR_LOG("GetFilePath: get data share helper err");
         return "";
     }
-
-    DataShare::DatashareBusinessError error;
     const std::string uriString = ToString();
     std::string queryUri(CONST_UFM_QUERY_PHOTO);
     DataShare::DataSharePredicates predicates;
@@ -296,6 +294,7 @@ std::string MediaFileUri::GetFilePath()
     }
     Uri uri(queryUri);
     /* query and check */
+    DataShare::DatashareBusinessError error;
     auto resultSet = dataShareHelper->Query(uri, predicates, columns, &error);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, "", "Query failed, resultSet is nullptr.");
     int32_t ret = error.GetCode();
@@ -528,6 +527,9 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
             timeIdBatch.emplace_back(uri.substr(indexStart + string(CONST_ML_URI_TIME_ID).length(), timeIdLen));
         }
         if (indexEnd + string(CONST_ML_URI_OFFSET).length() <= uri.size()) {
+            if (!MediaFileUtils::IsValidInteger(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length()))) {
+                return;
+            }
             offset.emplace_back(stoi(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length())));
         }
     }
@@ -538,7 +540,8 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
     count = offset[1] - offset[0] + 1;
 }
 
-int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
+int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum,
+    AssetBucketType bucketType)
 {
     if (fileId < 0) {
         MEDIA_ERR_LOG("input fileId [%{public}d] is invalid", fileId);
@@ -557,6 +560,10 @@ int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
         bucketNum = start + fileIdRemainder;
     } else {
         bucketNum = (start - divider) + fileIdRemainder;
+    }
+
+    if (bucketType == AssetBucketType::SHARE_ALBUM) {
+        bucketNum += SHARE_ALBUM_BUCKET_OFFSET;
     }
     return E_OK;
 }

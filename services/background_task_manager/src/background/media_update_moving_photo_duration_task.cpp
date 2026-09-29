@@ -74,9 +74,11 @@ bool MediaUpdateMovingPhotoDurationTask::ParseUpdateFilesList(std::shared_ptr<Na
 {
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "UpdateMovingPhotoDuration resultSet is nullptr");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t fileId = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_ID, resultSet, TYPE_INT32));
+        int32_t fileId =
+            std::get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_ID, resultSet, TYPE_INT32));
         std::string filePath =
-            get<string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_FILE_PATH, resultSet, TYPE_STRING));
+            std::get<std::string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_FILE_PATH, resultSet,
+            TYPE_STRING));
         updateFilesList.emplace_back(UpdateDurationFileInfo{
             .id = fileId,
             .path = filePath

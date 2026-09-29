@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "ability.h"
-#include "ability_loader.h"
 #include "abs_shared_result_set.h"
 #include "data_ability_helper.h"
 #include "data_ability_predicates.h"
@@ -114,6 +113,7 @@ struct SmartAlbumNapiAsyncContext : public NapiError {
     std::vector<std::string> selectionArgs;
     std::string order;
     std::string uri;
+    std::map<std::string, std::string> uriMap;
     std::string networkId;
     std::unique_ptr<FetchResult<FileAsset>> fetchResult;
     std::vector<int32_t> assetIds;

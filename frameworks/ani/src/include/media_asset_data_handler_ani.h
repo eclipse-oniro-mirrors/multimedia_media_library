@@ -62,11 +62,16 @@ class AniMediaAssetDataHandler {
 public:
     AniMediaAssetDataHandler(ani_env *env, ani_ref dataHandler, ReturnDataType dataType, const std::string &uri,
         const std::string &destUri, SourceMode sourceMode);
+    ~AniMediaAssetDataHandler();
     void DeleteAniReference(ani_env *env);
     ReturnDataType GetReturnDataType();
     std::string GetRequestUri();
     std::string GetDestUri();
     SourceMode GetSourceMode();
+    bool IsCompositeAuxiliary();
+    void SetCompositeAuxiliary(bool isCompositeAuxiliary);
+    int GetCompositeFd();
+    void SetCompositeFd(int compositeFd);
     void SetNotifyMode(NotifyMode trigger);
     NotifyMode GetNotifyMode();
     void EtsOnDataPrepared(ani_env *env, ani_object exports, ani_object extraInfo);
@@ -92,6 +97,8 @@ private:
     ani_ref progressHandlerRef_ = nullptr;
     ThreadFunctionOnProgress threadsafeFunction_ = nullptr;
     std::string requestId_;
+    bool isCompositeAuxiliary_ = false;
+    int compositeFd_ = -1;
     static std::mutex dataHandlerRefMutex_;
 };
 } // namespace Media

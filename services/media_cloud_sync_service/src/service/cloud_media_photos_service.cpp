@@ -38,6 +38,7 @@
 #include "medialibrary_asset_operations.h"
 #include "scanner_utils.h"
 #include "medialibrary_notify.h"
+#include "hi_audit.h"
 #include "cloud_media_dao_const.h"
 #include "media_gallery_sync_notify.h"
 #include "cloud_media_sync_const.h"
@@ -50,7 +51,7 @@
 #include "file_scan_utils.h"
 #include "cloud_lake_file_handler.h"
 #endif
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "cloud_media_retain_smart_data.h"
 #include "cloud_media_context.h"
 #include "cloud_media_asset_retain_compare_dao.h"
@@ -92,7 +93,7 @@ int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, s
         return ret;
     }
     this->RefreshAnalysisAlbum(cloudId);
-    ret = this->photosDao_.DeleteLocalByCloudId(cloudId, photoRefresh);
+    ret = this->photosDao_.DeleteLocalByCloudId(data, photoRefresh);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("delete in rdb failed, ret:%{public}d", ret);
         ret = this->photosDao_.SetRetry(cloudId);
@@ -230,8 +231,6 @@ int32_t CloudMediaPhotosService::PullUpdate(CloudMediaPullDataDto &pullData, std
     }
     // Move to recycle bin or Move out of recycle bin.
     this->PullRecycleUpdate(pullData, photoRefresh);
-    // fix file info for pullData with the latest local data, in case PullRecycleUpdate modified the local data.
-    this->fileManagerService_.FixFileInfo(pullData);
     // UpdateRecordToDatabase更新成功，stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT]会增加
     int32_t updateCount = stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT];
     ret = this->photosDao_.UpdateRecordToDatabase(pullData, isLocal, mtimeChanged, refreshAlbums, stats, photoRefresh);
@@ -308,8 +307,6 @@ int32_t CloudMediaPhotosService::DoDataMerge(CloudMediaPullDataDto &pullData, co
     // fetch local data, to make sure the local data is consistent with the cloud data in the following merge process.
     CHECK_AND_EXECUTE(pullData.localPhotosPoOp.has_value(),
                       this->commonDao_.QueryPhotoByFilePath(localKeyData.filePath, pullData.localPhotosPoOp));
-    // fix file info for pullData with the latest local data.
-    this->fileManagerService_.FixFileInfo(pullData);
     int32_t ret = this->photosDao_.ConflictDataMerge(
         pullData, localKeyData.filePath, cloudStd, cloudMapIds, refreshAlbums, photoRefresh);
     if (ret != E_OK) {
@@ -324,9 +321,6 @@ int32_t CloudMediaPhotosService::DoDataMerge(CloudMediaPullDataDto &pullData, co
         MediaGallerySyncNotify::GetInstance().TryNotify(notifyUri,
             static_cast<ChangeType>(ExtraChangeType::PHOTO_TIME_UPDATE),
             to_string(pullData.attributesFileId));
-    }
-    if (cloudStd) { // 云信息覆盖本地信息，需要维护本地文件存储位置
-        this->fileManagerService_.RelocateFile(pullData);
     }
     return E_OK;
 }
@@ -367,6 +361,11 @@ int32_t CloudMediaPhotosService::PullRecordsDataMerge(std::vector<CloudMediaPull
     if (!refreshAlbums.empty()) {
         std::set<std::string>::iterator it = refreshAlbums.begin();
         mergeResult.refreshAlbumId = *it;
+    }
+    if (mergeResult.mergeCount > 0) {
+        std::string status = mergeResult.failCloudId.empty() ? "success" : "fail";
+        HiAudit::GetInstance().WriteForDataFusion(
+            "PULL_MERGE", status, mergeResult.mergeCount, mergeResult.failCloudId);
     }
     return E_OK;
 }
@@ -417,10 +416,6 @@ int32_t CloudMediaPhotosService::PullInsert(
 
     int32_t ret;
     std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
-    // fix file info for all pull data, to make sure the following process have the complete and correct file info.
-    std::for_each(allPullDatas.begin(), allPullDatas.end(), [this](CloudMediaPullDataDto &pullData) {
-        this->fileManagerService_.FixFileInfo(pullData);
-    });
     PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
 
     assetCompareDao_.SetRdbStore(MediaLibraryUnistoreManager::GetInstance().GetRdbStore());
@@ -471,7 +466,7 @@ void CloudMediaPhotosService::NotifyPhotoInserted(const std::vector<NativeRdb::V
                 continue;
             }
             obj.GetString(cloudId);
-            MEDIA_INFO_LOG("NotifyPhotoInserted CloudId %{public}s", cloudId.c_str());
+            MEDIA_DEBUG_LOG("NotifyPhotoInserted CloudId %{public}s", cloudId.c_str());
             MediaGallerySyncNotify::GetInstance().AddNotify(
                 PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX + cloudId, ChangeType::INSERT, cloudId);
             cloudIds.emplace(cloudId);
@@ -507,6 +502,20 @@ int32_t CloudMediaPhotosService::UpdateMetaStat(const std::vector<NativeRdb::Val
     return E_OK;
 }
 
+int32_t CloudMediaPhotosService::MergeOrCreateEntry(const std::vector<CloudMediaPullDataDto> &pullDatas,
+    std::set<std::string> &refreshAlbums, std::vector<PhotosDto> &newData, std::vector<int32_t> &stats,
+    std::vector<std::string> &failedRecords, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    CHECK_AND_RETURN_RET_INFO_LOG(!pullDatas.empty(), E_OK, "MergeOrCreateEntry No need to pull insert.");
+
+    int32_t ret;
+    std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
+    PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
+
+    ret = CreateEntry(allPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
+    return ret;
+}
+
 int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDataDto> &pullDatas,
     std::set<std::string> &refreshAlbums, std::vector<PhotosDto> &newData, std::vector<int32_t> &stats,
     std::vector<std::string> &failedRecords, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
@@ -520,18 +529,18 @@ int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDat
     uint64_t dataFail = 0;
     int32_t uniqueId = 0;
     int32_t ret;
-    std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
-    PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
-    ret = MediaLibraryAssetOperations::CreateAssetUniqueIds(MediaType::MEDIA_TYPE_IMAGE, allPullDatas.size(), uniqueId);
+
+    ret = MediaLibraryAssetOperations::CreateAssetUniqueIds(MediaType::MEDIA_TYPE_IMAGE, pullDatas.size(), uniqueId);
     if (ret != E_OK) {
         uniqueId = 0;
     }
-    for (auto insertData : allPullDatas) {
+    for (auto insertData : pullDatas) {
         MEDIA_DEBUG_LOG("CreateEntry insert of record %{public}s", insertData.cloudId.c_str());
         int32_t mediaType =
             (insertData.basicFileType == FILE_TYPE_VIDEO) ? MediaType::MEDIA_TYPE_VIDEO : MediaType::MEDIA_TYPE_IMAGE;
         std::string extension = ScannerUtils::GetFileExtension(insertData.basicFileName);
-        ret = MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, mediaType, extension, insertData.localPath);
+        ret = MediaLibraryAssetOperations::CreateAssetPathById(
+            uniqueId, mediaType, extension, insertData.localPath, this->GetBucketType());
         uniqueId++;
         if (ret != E_OK) {
             MEDIA_ERR_LOG("CreateEntry Generate File Path err %{public}d", ret);
@@ -559,7 +568,7 @@ int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDat
         MEDIA_DEBUG_LOG("CreateEntry NewData: %{public}s", dto.ToString().c_str());
         newData.emplace_back(dto);
     }
-    this->UpdateMetaStat(insertFiles, allPullDatas, dataFail);
+    this->UpdateMetaStat(insertFiles, pullDatas, dataFail);
     return E_OK;
 }
 
@@ -580,9 +589,8 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
     for (auto &cloudId : cloudIds) {
         CloudMediaPullDataDto pullData = cloudIdRelativeMap.at(cloudId);
         std::string dateAdded = pullData.localDateAdded;
-        // fix file info for each pullData, to make sure the following process have the complete and correct file info.
-        this->fileManagerService_.FixFileInfo(pullData);
-        MEDIA_INFO_LOG("pullData: %{public}s", pullData.ToString().c_str());
+        MEDIA_INFO_LOG("pullData: %{public}s, sceneType(normal): %{public}d", pullData.ToString().c_str(),
+            CloudMediaContext::GetInstance().GetSceneType());
         // 下行机已经有数据并且不是被删除
         if (pullData.localPath.empty() && !pullData.basicIsDelete) {
             insertPullDatas.emplace_back(pullData);
@@ -617,7 +625,7 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
         }
     }
     CloudMediaDfxService::UpdateMetaStat(INDEX_DL_META_ERROR_RDB, rdbFail);
-    ret = CreateEntry(insertPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
+    ret = MergeOrCreateEntry(insertPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
     photoRefresh->RefreshAlbumNoDateModified();
     photoRefresh->Notify();
     this->photosDao_.UpdateAnalysisAlbumsCountForCloud();
@@ -723,18 +731,19 @@ int32_t CloudMediaPhotosService::OnDentryFileInsert(
     return PullInsert(pullDatas, failedRecords);
 }
 
-int32_t CloudMediaPhotosService::GetRetryRecords(std::vector<std::string> &cloudIds)
+int32_t CloudMediaPhotosService::GetRetryRecords(std::vector<PhotosDto> &photoDtoList)
 {
-    int32_t ret = this->photosDao_.GetRetryRecords(cloudIds);
-    MEDIA_INFO_LOG("CloudMediaPhotosService::GetRetryRecords end, "
-                   "ret: %{public}d, size: %{public}zu",
-        ret,
-        cloudIds.size());
+    std::vector<PhotosPo> photosPos;
+    int32_t ret = this->photosDao_.GetRetryRecords(photosPos);
     if (ret != E_OK) {
         std::string errMsg = "gallery data syncer pull file err";
         REPORT_SYNC_FAULT({FaultScenario::CLOUD_SYNC_PULL, FaultType::QUERY_DATABASE, ret, errMsg});
+        return ret;
     }
-    return ret;
+    ret = this->processor_.GetPhotosDtos(photosPos, photoDtoList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to get photos dtos, ret:%{public}d", ret);
+    MEDIA_INFO_LOG("CloudMediaPhotosService::GetRetryRecords end, size: %{public}zu", photoDtoList.size());
+    return E_OK;
 }
 
 std::vector<PhotosDto> CloudMediaPhotosService::GetCheckRecords(const std::vector<std::string> &cloudIds)
@@ -742,7 +751,8 @@ std::vector<PhotosDto> CloudMediaPhotosService::GetCheckRecords(const std::vecto
     MEDIA_INFO_LOG("CloudMediaPhotosService::GetCheckRecords enter");
     // get & cache local photos data. cloudId -> photosDto
     std::vector<PhotosPo> photosPos = this->photosDao_.GetCheckRecords(cloudIds);
-    std::vector<PhotosDto> result = this->processor_.GetPhotosDtos(photosPos);
+    std::vector<PhotosDto> result;
+    this->processor_.GetPhotosDtos(photosPos, result);
     return result;
 }
 
@@ -1593,22 +1603,19 @@ int32_t CloudMediaPhotosService::HandleInvalidCloudResource(
 }
 
 int32_t CloudMediaPhotosService::PullUpdateEndWithNoFdirty(
-    CloudMediaPullDataDto &pullData, std::vector<PhotosDto> &fdirtyData)
+    const CloudMediaPullDataDto &pullData, std::vector<PhotosDto> &fdirtyData)
 {
-    int32_t ret = this->fileManagerService_.RelocateFile(pullData);
-    // 如果移动文件失败且已经被设置为纯云资产，则调用 ClearLocalData 清理本地数据，避免文件路径不一致导致的各种问题
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("Relocate file failed, cloudId: %{public}s, ret: %{public}d.", pullData.cloudId.c_str(), ret);
-        // reload local photo info after RelocateFile, to make sure the following process have the latest local data.
-        this->commonDao_.QueryPhotoByCloudId(pullData.cloudId, pullData.localPhotosPoOp);
-        this->ClearLocalData(pullData, fdirtyData);
-        return E_OK;
-    }
     // 处理元数据变更
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     CloudLakeFileHandler::HandleMetaChanged(pullData.localFileId);
 #endif
     return E_OK;
+}
+
+AssetBucketType CloudMediaPhotosService::GetBucketType()
+{
+    const bool isShared = CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE);
+    return isShared ? AssetBucketType::SHARE_ALBUM : AssetBucketType::NORMAL;
 }
 }  // namespace OHOS::Media::CloudSync
 // LCOV_EXCL_STOP

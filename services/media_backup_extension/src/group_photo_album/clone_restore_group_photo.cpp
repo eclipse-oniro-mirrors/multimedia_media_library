@@ -50,20 +50,24 @@ void CloneRestoreGroupPhoto::Init(int32_t sceneCode, const std::string &taskId, 
     MEDIA_INFO_LOG("isCloudRestoreSatisfied_ is %{public}d", (int)isCloudRestoreSatisfied_);
 }
 
-void CloneRestoreGroupPhoto::Restore(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+void CloneRestoreGroupPhoto::Restore(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isReverse)
 {
     CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr,
         "GroupPhotoRestore failed, rdbStore is nullptr");
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     photoInfoMap_ = photoInfoMap;
-    bool needCloneFlag = IsExistPortraitDataInOldDb();
-    CHECK_AND_RETURN_LOG(needCloneFlag,
-        "The old device does not have portrait album, so there is no need to clone the photo album to the new device");
-    int32_t ret = DeleteGroupPhotoAlbumInfoInNewDb();
-    CHECK_AND_RETURN_LOG(ret == E_OK, "fail to delete group photo album info in new db");
-    ret = RestoreGroupPhotoAlbumInfo();
+    int32_t ret = E_ERR;
+    if (!isReverse) {
+        bool needCloneFlag = IsExistPortraitDataInOldDb();
+        CHECK_AND_RETURN_LOG(needCloneFlag,
+            "The old device does not have portrait album, "
+            "so there is no need to clone the photo album to the new device");
+        ret = DeleteGroupPhotoAlbumInfoInNewDb();
+        CHECK_AND_RETURN_LOG(ret == E_OK, "fail to delete group photo album info in new db");
+    }
+    ret = RestoreGroupPhotoAlbumInfo(isReverse);
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to restore group photo album info");
-    BackupDatabaseUtils::UpdateFaceGroupTagsUnion(mediaLibraryRdb_);
+    BackupDatabaseUtils::UpdateFaceTagsUnion(mediaLibraryRdb_);
     ret = RestoreMaps();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to update analysis photo map status");
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
@@ -205,7 +209,8 @@ void CloneRestoreGroupPhoto::LogGroupPhotoCloneDfx()
         groupPhotoAlbumDfx_.size(), failedAlbums.size());
 }
 
-int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::string>& commonColumns)
+int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::string>& commonColumns,
+    bool isReverse)
 {
     int32_t rowCount = 0;
     int32_t offset = 0;
@@ -216,7 +221,8 @@ int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::s
         " WHERE ";
     std::string whereClause = "(" +
         SMARTALBUM_DB_ALBUM_TYPE + " = " + std::to_string(SMART) + " AND " +
-        "album_subtype" + " = " + std::to_string(GROUP_PHOTO) + ")";
+        "album_subtype" + " = " + std::to_string(GROUP_PHOTO) + " AND (" + ANALYSIS_COL_IS_REMOVED +
+        " != 1 OR " + ANALYSIS_COL_IS_REMOVED + " IS NULL))";
     AppendExtraWhereClause(whereClause);
     querySql += whereClause;
     GetMaxAlbumId();
@@ -229,7 +235,8 @@ int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::s
         while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
             AnalysisAlbumTbl groupPhotoAlbumTbl;
             ParseAlbumResultSet(resultSet, groupPhotoAlbumTbl);
-            groupPhotoAlbumTbl.albumIdNew = std::make_optional<int32_t>(++albumIdNow);
+            groupPhotoAlbumTbl.albumIdNew = isReverse ? groupPhotoAlbumTbl.albumIdOld :
+                std::make_optional<int32_t>(++albumIdNow);
             groupPhotoAlbumInfos_.emplace_back(groupPhotoAlbumTbl);
             if (groupPhotoAlbumTbl.tagId.has_value() && groupPhotoAlbumTbl.coverUri.has_value()) {
                 coverUriInfo_.emplace_back(groupPhotoAlbumTbl.tagId.value(),
@@ -269,14 +276,15 @@ int32_t CloneRestoreGroupPhoto::InsertGroupPhotoAlbum()
     return E_OK;
 }
 
-int32_t CloneRestoreGroupPhoto::RestoreGroupPhotoAlbumInfo()
+int32_t CloneRestoreGroupPhoto::RestoreGroupPhotoAlbumInfo(bool isReverse)
 {
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     RecordOldGroupPhotoAlbumDfx();
 
     std::string querySql =  "SELECT count(1) AS count FROM " + ANALYSIS_ALBUM_TABLE + " WHERE ";
     std::string whereClause = "(" + ANALYSIS_COL_ALBUM_TYPE + " = " + std::to_string(SMART) + " AND " +
-        ANALYSIS_COL_ALBUM_SUBTYPE + " = " + std::to_string(GROUP_PHOTO) + ")";
+        ANALYSIS_COL_ALBUM_SUBTYPE + " = " + std::to_string(GROUP_PHOTO) + " AND (" + ANALYSIS_COL_IS_REMOVED +
+        " != 1 OR " + ANALYSIS_COL_IS_REMOVED + " IS NULL))";
     AppendExtraWhereClause(whereClause);
     querySql += whereClause;
     int32_t totalNumber = BackupDatabaseUtils::QueryInt(mediaRdb_, querySql, CUSTOM_COUNT);
@@ -284,9 +292,9 @@ int32_t CloneRestoreGroupPhoto::RestoreGroupPhotoAlbumInfo()
 
     std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(mediaRdb_, mediaLibraryRdb_,
         ANALYSIS_ALBUM_TABLE);
-    std::vector<std::string> commonColumns = BackupDatabaseUtils::filterColumns(commonColumn,
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn,
         EXCLUDED_GROUP_PHOTO_COLUMNS);
-    int32_t ret = QueryGroupPhotoAlbumTbl(commonColumns);
+    int32_t ret = QueryGroupPhotoAlbumTbl(commonColumns, isReverse);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to query group photo record, ret is %{public}d", ret);
     ret = InsertGroupPhotoAlbum();
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to insert group photo record, ret is %{public}d", ret);
@@ -342,7 +350,7 @@ void CloneRestoreGroupPhoto::UpdateMapInsertValues(std::vector<NativeRdb::Values
 {
     const std::string QUERY_SQL = "SELECT map.rowid, map.* FROM AnalysisPhotoMap AS map "
         " INNER JOIN AnalysisAlbum AS a ON map.map_album = a.album_id "
-        " WHERE a.album_subtype = 4103 "
+        " WHERE a.album_subtype = 4103 AND (a.is_removed != 1 OR a.is_removed IS NULL) "
         " AND map.rowid > ? ORDER BY map.rowid LIMIT ? ";
     std::vector<NativeRdb::ValueObject> params = { lastIdOfMap_, PAGE_SIZE };
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, QUERY_SQL, params);
@@ -391,7 +399,7 @@ int32_t CloneRestoreGroupPhoto::RestoreMaps()
         RestoreMapsBatch();
     }
     int64_t endCloneTime = MediaFileUtils::UTCTimeMilliSeconds();
-    MEDIA_INFO_LOG("Restore maps timecost of group photo album is %{public}" PRId64 "ms",
+    MEDIA_DEBUG_LOG("Restore maps timecost of group photo album is %{public}" PRId64 "ms",
         endCloneTime - startCloneTime);
     return E_OK;
 }

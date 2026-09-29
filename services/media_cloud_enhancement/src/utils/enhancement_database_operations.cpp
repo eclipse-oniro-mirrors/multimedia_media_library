@@ -236,7 +236,7 @@ int64_t EnhancementDatabaseOperations::InsertCloudEnhancementPerm(int32_t source
     vector<string> columns = { AppUriPermissionColumn::APP_ID,
         AppUriPermissionColumn::URI_TYPE, AppUriPermissionColumn::DATE_MODIFIED,
         AppUriPermissionColumn::SOURCE_TOKENID, AppUriPermissionColumn::TARGET_TOKENID };
-    auto resultSet = MediaLibraryRdbStore::StepQueryWithoutCheck(queryPredicates, columns);
+    auto resultSet = MediaLibraryRdbStore::QueryByStepWithoutCount(queryPredicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
         E_HAS_DB_ERROR, "cannot get permission from origin photo: %{public}d", sourceFileId);
     string appId = GetStringVal(AppUriPermissionColumn::APP_ID, resultSet);
@@ -255,7 +255,7 @@ int64_t EnhancementDatabaseOperations::InsertCloudEnhancementPerm(int32_t source
     checkPredicates.EqualTo(AppUriPermissionColumn::DATE_MODIFIED, dateModified);
     checkPredicates.EqualTo(AppUriPermissionColumn::SOURCE_TOKENID, sourceTokenId);
     checkPredicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, targetTokenId);
-    resultSet = MediaLibraryRdbStore::StepQueryWithoutCheck(checkPredicates, columns);
+    resultSet = MediaLibraryRdbStore::QueryByStepWithoutCount(checkPredicates, columns);
     if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
         MEDIA_INFO_LOG("cloud enhancement permission record has already exists: %{public}d", targetFileId);
         return outRowId;
@@ -271,7 +271,7 @@ int64_t EnhancementDatabaseOperations::InsertCloudEnhancementPerm(int32_t source
     valueBucket.PutLong(AppUriPermissionColumn::SOURCE_TOKENID, sourceTokenId);
     valueBucket.PutLong(AppUriPermissionColumn::TARGET_TOKENID, targetTokenId);
 
-    int32_t errCode = MediaLibraryRdbStore::InsertInternal(outRowId,
+    int32_t errCode = MediaLibraryRdbStore::Insert(outRowId,
         AppUriPermissionColumn::APP_URI_PERMISSION_TABLE, valueBucket);
     CHECK_AND_PRINT_LOG(errCode == E_OK, "insert permission failed: %{public}d", errCode);
     MEDIA_INFO_LOG("Add permission for cloud enhancement photo success: %{public}d", targetFileId);

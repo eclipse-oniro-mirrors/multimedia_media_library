@@ -611,7 +611,7 @@ HWTEST_F(NotificationHelperTest, NotificationHelper_PhotoAlbum_SetGet_Test_004, 
     EXPECT_EQ(photoAlbum.GetShareType(), 400);
 }
 
-// ==================== RegisterPhotoAlbumCallback ====================
+// RegisterPhotoAlbumCallback
 
 /**
 * @tc.number    : NotificationHelper_RegisterPhotoAlbumCallback_test_001
@@ -669,7 +669,7 @@ HWTEST_F(NotificationHelperTest, NotificationHelper_RegisterPhotoAlbumCallback_t
     NotificationHelperApi::unRegisterPhotoAlbumCallback(callback2);
 }
 
-// ==================== unRegisterPhotoAlbumCallback ====================
+// unRegisterPhotoAlbumCallback
 
 /**
 * @tc.number    : NotificationHelper_unRegisterPhotoAlbumCallback_test_001
@@ -725,7 +725,7 @@ HWTEST_F(NotificationHelperTest, NotificationHelper_unRegisterPhotoAlbumCallback
     EXPECT_EQ(NotificationHelperApi::unRegisterPhotoAlbumCallback(callback), NOTIFY_ERR_UNREGISTER_REPEAT);
 }
 
-// ==================== PhotoAlbumChangeCallback OnChange ====================
+// PhotoAlbumChangeCallback OnChange
 
 /**
 * @tc.number    : NotificationHelper_Callback_OnChange_test_001
@@ -998,7 +998,7 @@ HWTEST_F(NotificationHelperTest, NotificationHelper_unRegister_expired_weak_test
     EXPECT_EQ(NotificationHelperApi::unRegisterPhotoAlbumCallback(keeper), NOTIFY_OK);
 }
 
-// ==================== PhotoAlbum scene_id / share_type ====================
+// PhotoAlbum scene_id / share_type
 
 /**
 * @tc.number    : NotificationHelper_PhotoAlbum_SetGet2_Test_002
@@ -1020,7 +1020,7 @@ HWTEST_F(NotificationHelperTest, NotificationHelper_PhotoAlbum_SetGet2_Test_001,
     EXPECT_EQ(photoAlbum.GetShareType(), 0);
 }
 
-// ==================== PhotoAlbum database ====================
+// PhotoAlbum database
 
 /**
 * @tc.number    : NotificationHelper_PhotoAlbum_Database_Test_001

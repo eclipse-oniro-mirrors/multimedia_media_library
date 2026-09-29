@@ -84,7 +84,7 @@ export class AlbumPickerComponent extends ViewPU {
     }
 
     get revokeIndex() { 
-        if(this.__revokeIndex.get() === undefined) {
+        if (this.__revokeIndex.get() === undefined) {
             this.__revokeIndex = new ObservedPropertySimplePU(0, this, 'revokeIndex');
         }
         return this.__revokeIndex.get(); 
@@ -110,12 +110,12 @@ export class AlbumPickerComponent extends ViewPU {
                     this.revokeIndex++;
                     this.isPickerKilled = false;
                 }
-            })
+            });
         }), Column);
         this.observeComponentCreation2(((e, o) => {
-            var n;
-            var m;
-            var i;
+            let n;
+            let m;
+            let i;
             SecurityUIExtensionComponent.create({
                 parameters: {
                     errorRevokeIndex: this.revokeIndex,

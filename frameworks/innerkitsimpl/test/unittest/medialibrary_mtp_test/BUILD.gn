@@ -58,6 +58,7 @@ if (media_library_feature_mtp) {
       "src/mtp_error_utils_test.cpp",
       "src/mtp_event_test.cpp",
       "src/mtp_file_observer_test.cpp",
+      "src/mtp_ipc_utils_test.cpp",
       "src/mtp_media_library_unit_test.cpp",
       "src/mtp_monitor_test.cpp",
       "src/mtp_operation_utils_unit_test.cpp",

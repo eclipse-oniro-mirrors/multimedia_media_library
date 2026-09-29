@@ -158,7 +158,6 @@ constexpr int32_t READY_TEMPERATURE_LEVEL = 4;
 constexpr int32_t EVEN_BASE_NUMBER = 2;
 constexpr int32_t LOCAL_GENERATION_BATTERY_CAPACITY = 10;
 
-constexpr uint32_t THUMBNAIL_QUERY_MAX = 2000;
 constexpr uint32_t THUMBNAIL_QUERY_MIN = 200;
 constexpr int64_t AV_FRAME_TIME = 0;
 constexpr int64_t MS_TRANSFER_US = 1000;
@@ -177,9 +176,8 @@ constexpr int32_t CLOUD_PHOTO_POSITION = 2;
 constexpr int32_t CLOUD_THUMB_STATUS_DOWNLOAD = 0;
 constexpr int32_t CLOUD_THUMBNAIL_DOWNLOAD_FINISH_NUMBER = 1000;
 
-constexpr int32_t THUMBNAIL_READY_FAILED = 2;
-
 constexpr int32_t THUMBNAIL_FREE_SIZE_LIMIT_1 = 1;
+constexpr int32_t THUMBNAIL_FREE_SIZE_LIMIT_5 = 5;
 constexpr int32_t THUMBNAIL_FREE_SIZE_LIMIT_10 = 10;
 
 // LCD that is over 2MB would not be uploaded
@@ -236,7 +234,9 @@ std::string GetGenThumbSceneName(const GenThumbScene &scene);
 
 static inline std::string GetThumbnailPath(const std::string &path, const std::string &key)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR ||
+        ("/" + path + "/").find("/../") != std::string::npos) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";
@@ -246,7 +246,9 @@ static inline std::string GetThumbnailPath(const std::string &path, const std::s
 static inline std::string GetThumbnailPathHighlight(const std::string &path, const std::string &key,
     const std::string &timeStamp)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR ||
+        ("/" + path + "/").find("/../") != std::string::npos) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";

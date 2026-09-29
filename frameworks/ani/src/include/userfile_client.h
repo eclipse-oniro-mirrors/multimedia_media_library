@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "ani_error.h"
+#include "ani_base_context.h"
 #include "datashare_helper.h"
 #include "rdb_store.h"
 #include "uri.h"
@@ -28,65 +29,184 @@
 #include "message_parcel.h"
 #include "bundle_mgr_interface.h"
 #include <mutex>
+#include "ability.h"
+
+#include "media_common_client.h"
+#include "media_client_utils.h"
 
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
+
+// UserFileClient is now a thin static wrapper around MediaCommonClient.
+// All DataShare operations are delegated to the unified MediaCommonClient singleton.
 class UserFileClient {
 public:
     EXPORT UserFileClient() {}
     EXPORT virtual ~UserFileClient() {}
-    EXPORT static bool IsValid(const int32_t userId = -1);
-    EXPORT static ani_status CheckIsStage(ani_env *env, ani_object object, bool &result);
-    EXPORT static sptr<IRemoteObject> ParseTokenInStageMode(ani_env *env, ani_object object);
 
-    EXPORT static void Init(const sptr<IRemoteObject> &token, bool isSetHelper = false, const int32_t userId = -1);
-    EXPORT static void Init(ani_env *env, ani_object object, const int32_t userId = -1);
+    EXPORT static bool IsValid(const int32_t userId = -1)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().IsValid(userId);
+    }
+
+    EXPORT static ani_status CheckIsStage(ani_env *env, ani_object object, bool &result)
+    {
+        // ANI only supports Stage mode
+        result = true;
+        return ANI_OK;
+    }
+
+    EXPORT static sptr<IRemoteObject> ParseTokenInStageMode(ani_env *env, ani_object object)
+    {
+        auto context = AbilityRuntime::GetStageModeContext(env, object);
+        if (context == nullptr) {
+            ANI_ERR_LOG("Failed to get native stage context instance");
+            return nullptr;
+        }
+        return context->GetToken();
+    }
+
+    EXPORT static void Init(const sptr<IRemoteObject> &token, bool isSetHelper = false,
+        const int32_t userId = -1)
+    {
+        auto &client = OHOS::Media::IPC::MediaCommonClient::GetInstance();
+        client.Init(token, userId);
+        client.SetUserId(userId);
+    }
+
+    EXPORT static void Init(ani_env *env, ani_object object, const int32_t userId = -1)
+    {
+        auto context = OHOS::AbilityRuntime::GetStageModeContext(reinterpret_cast<ani_env*>(env),
+        reinterpret_cast<ani_object>(object));
+        if (context == nullptr) {
+            ANI_ERR_LOG("ParseTokenFromAni: Failed to get native stage context instance");
+            return;
+        }
+        auto token = context->GetToken();
+        auto &client = OHOS::Media::IPC::MediaCommonClient::GetInstance();
+        client.Init(token, userId);
+        client.SetUserId(userId);
+    }
+
     EXPORT static std::shared_ptr<DataShare::DataShareResultSet> Query(Uri &uri,
         const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns,
-        int &errCode, const int32_t userId = -1);
-    EXPORT static int Insert(Uri &uri, const DataShare::DataShareValuesBucket &value, const int32_t userId = -1);
-    EXPORT static int InsertExt(Uri &uri, const DataShare::DataShareValuesBucket &value, std::string &result,
-        const int32_t userId = -1);
-    EXPORT static int BatchInsert(Uri &uri, const std::vector<DataShare::DataShareValuesBucket> &values);
-    EXPORT static int Delete(Uri &uri, const DataShare::DataSharePredicates &predicates);
-    EXPORT static void NotifyChange(const Uri &uri);
-    EXPORT static void RegisterObserver(const Uri &uri, const sptr<AAFwk::IDataAbilityObserver> &dataObserver);
-    EXPORT static void UnregisterObserver(const Uri &uri, const sptr<AAFwk::IDataAbilityObserver> &dataObserver);
-    EXPORT static int OpenFile(Uri &uri, const std::string &mode, const int32_t userId = -1);
+        int &errCode, const int32_t userId = -1)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().Query(
+            uri, predicates, columns, errCode, userId);
+    }
+
+    EXPORT static std::pair<bool, std::shared_ptr<DataShare::DataShareResultSet>> QueryAccessibleViaSandBox(
+        Uri &uri, const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns,
+        int &errCode, const int32_t userId)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().QueryAccessibleViaSandBox(
+            uri, predicates, columns, errCode, userId);
+    }
+
+    EXPORT static int Insert(Uri &uri, const DataShare::DataShareValuesBucket &value,
+        const int32_t userId = -1)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().Insert(uri, value, userId);
+    }
+
+    EXPORT static int InsertExt(Uri &uri, const DataShare::DataShareValuesBucket &value,
+        std::string &result, const int32_t userId = -1)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().InsertExt(uri, value, result, userId);
+    }
+
+    EXPORT static int BatchInsert(Uri &uri, const std::vector<DataShare::DataShareValuesBucket> &values)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().BatchInsert(uri, values);
+    }
+
+    EXPORT static int Delete(Uri &uri, const DataShare::DataSharePredicates &predicates)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().Delete(uri, predicates);
+    }
+
+    EXPORT static void NotifyChange(const Uri &uri)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().NotifyChange(uri);
+    }
+
+    EXPORT static void RegisterObserver(const Uri &uri,
+        const sptr<AAFwk::IDataAbilityObserver> &dataObserver)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().RegisterObserver(uri, dataObserver);
+    }
+
+    EXPORT static void UnregisterObserver(const Uri &uri,
+        const sptr<AAFwk::IDataAbilityObserver> &dataObserver)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().UnregisterObserver(uri, dataObserver);
+    }
+
+    EXPORT static int OpenFile(Uri &uri, const std::string &mode, const int32_t userId = -1)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().OpenFile(uri, mode, userId);
+    }
+
     EXPORT static int Update(Uri &uri, const DataShare::DataSharePredicates &predicates,
-        const DataShare::DataShareValuesBucket &value, const int32_t userId = -1);
+        const DataShare::DataShareValuesBucket &value, const int32_t userId = -1)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().Update(uri, predicates, value, userId);
+    }
+
     EXPORT static void RegisterObserverExt(const Uri &uri,
-        std::shared_ptr<DataShare::DataShareObserver> dataObserver, bool isDescendants);
+        std::shared_ptr<DataShare::DataShareObserver> dataObserver, bool isDescendants)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().RegisterObserverExt(
+            uri, std::move(dataObserver), isDescendants);
+    }
+
     EXPORT static void UnregisterObserverExt(const Uri &uri,
-        std::shared_ptr<DataShare::DataShareObserver> dataObserver);
-    EXPORT static void Clear();
+        std::shared_ptr<DataShare::DataShareObserver> dataObserver)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().UnregisterObserverExt(uri, std::move(dataObserver));
+    }
+
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryRdb(Uri &uri,
-        const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns);
-    EXPORT static std::string GetType(Uri &uri);
-    EXPORT static int32_t UserDefineFunc(const int32_t &userId, MessageParcel &data, MessageParcel &reply,
-        MessageOption &option);
-    EXPORT static int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
-    EXPORT static void SetUserId(const int32_t userId);
-    EXPORT static int32_t GetUserId();
-    EXPORT static std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelperByUser(const int32_t userId);
-    EXPORT static std::pair<bool, std::shared_ptr<DataShare::DataShareResultSet>> QueryAccessibleViaSandBox(Uri &uri,
-        const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns,
-        int &errCode, const int32_t userId);
-    EXPORT static std::string GetBundleName();
+        const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().QueryRdb(uri, predicates, columns);
+    }
+
+    EXPORT static std::string GetType(Uri &uri)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().GetType(uri);
+    }
+
+    EXPORT static void SetUserId(const int32_t userId)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().SetUserId(userId);
+    }
+
+    EXPORT static int32_t GetUserId()
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().GetUserId();
+    }
+
+    EXPORT static std::string GetBundleName()
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().GetBundleName();
+    }
+
     EXPORT static int32_t RegisterObserverExtProvider(const Uri &uri,
-        std::shared_ptr<DataShare::DataShareObserver> dataObserver, bool isDescendants);
+        std::shared_ptr<DataShare::DataShareObserver> dataObserver, bool isDescendants)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().RegisterObserverExtProvider(
+            uri, std::move(dataObserver), isDescendants);
+    }
+
     EXPORT static int32_t UnregisterObserverExtProvider(const Uri &uri,
-        std::shared_ptr<DataShare::DataShareObserver> dataObserver);
-private:
-    static std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelper(ani_env *env,
-        ani_object object, const int32_t userId);
-    static int32_t userId_;
-    static std::string bundleName_;
-    static SafeMap<int32_t, std::shared_ptr<DataShare::DataShareHelper>> dataShareHelperMap_;
-    static sptr<AppExecFwk::IBundleMgr> GetSysBundleManager();
-    static sptr<AppExecFwk::IBundleMgr> bundleMgr_;
-    static std::mutex bundleMgrMutex_;
+        std::shared_ptr<DataShare::DataShareObserver> dataObserver)
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().UnregisterObserverExtProvider(
+            uri, std::move(dataObserver));
+    }
 };
 } // namespace Media
 } // namespace OHOS

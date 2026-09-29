@@ -44,4 +44,5 @@ const std::string MediaFileInterworkColumn::VM_DOCS_DIR = "/.VMDocs";
 const std::string MediaFileInterworkColumn::OHPM_DIR = "/.ohpm";
 const std::string MediaFileInterworkColumn::PCE_ENGINE_DIR = "/PCEngine";
 const std::string MediaFileInterworkColumn::APPDATA_DIR = "/appdata";
+const std::string MediaFileInterworkColumn::DOWNLOAD_DIR = "/Download";
 } // namespace OHOS::Media

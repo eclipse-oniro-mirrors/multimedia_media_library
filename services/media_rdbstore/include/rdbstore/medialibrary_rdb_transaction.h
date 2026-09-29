@@ -59,41 +59,59 @@ public:
     EXPORT int32_t Rollback();
     EXPORT void SetBackupRdbStore(std::shared_ptr<OHOS::NativeRdb::RdbStore> rdbStore);
 
-    EXPORT int32_t ExecuteSql(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args = {});
-    EXPORT int32_t Execute(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args = {});
-    EXPORT int32_t ExecuteForLastInsertedRowId(const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &bindArgs);
+    // Insert
     EXPORT int32_t Insert(MediaLibraryCommand &cmd, int64_t &rowId);
     EXPORT int32_t Insert(int64_t &rowId, const std::string tableName, const NativeRdb::ValuesBucket &values);
+
+    // BatchInsert
+    EXPORT int32_t BatchInsert(MediaLibraryCommand &cmd, int64_t &outInsertNum,
+        const std::vector<NativeRdb::ValuesBucket> &values);
     EXPORT int32_t BatchInsert(int64_t &outRowId, const std::string &table,
         const std::vector<NativeRdb::ValuesBucket> &values);
     EXPORT int32_t BatchInsert(int64_t &changeRows, const std::string &table,
         const std::vector<NativeRdb::ValuesBucket> &values, NativeRdb::ConflictResolution resolution);
-    EXPORT int32_t BatchInsert(MediaLibraryCommand &cmd, int64_t &outInsertNum,
-        const std::vector<NativeRdb::ValuesBucket> &values);
-    EXPORT int32_t Update(NativeRdb::ValuesBucket &values, const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT int32_t Update(int32_t &changedRows, NativeRdb::ValuesBucket &values,
-        const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT int32_t Update(MediaLibraryCommand &cmd, int32_t &changedRows);
-    EXPORT int32_t Delete(MediaLibraryCommand &cmd, int32_t &deletedRows);
-
-    EXPORT std::pair<int32_t, NativeRdb::Results> BatchInsert(const std::string &table,
+    EXPORT std::pair<int32_t, NativeRdb::Results> BatchInsertWithReturn(const std::string &table,
         const std::vector<NativeRdb::ValuesBucket> &values, const std::string &returningField,
         NativeRdb::ConflictResolution resolution = NativeRdb::ConflictResolution::ON_CONFLICT_NONE);
-    EXPORT std::pair<int32_t, NativeRdb::Results> Update(const NativeRdb::ValuesBucket &values,
-        const NativeRdb::AbsRdbPredicates &predicates, const std::string &returningField);
-    EXPORT std::pair<int32_t, NativeRdb::Results> Delete(const NativeRdb::AbsRdbPredicates &predicates,
+
+    // Delete
+    EXPORT int32_t Delete(MediaLibraryCommand &cmd, int32_t &deletedRows);
+    EXPORT std::pair<int32_t, NativeRdb::Results> DeleteWithReturn(const NativeRdb::AbsRdbPredicates &predicates,
         const std::string &returningField);
-    EXPORT std::pair<int32_t, NativeRdb::Results> Execute(const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &args, const std::string &returningField);
+
+    // Update
+    EXPORT int32_t Update(MediaLibraryCommand &cmd, int32_t &changedRows);
+    EXPORT int32_t UpdateWithDateTime(NativeRdb::ValuesBucket &values, const NativeRdb::AbsRdbPredicates &predicates);
+    EXPORT int32_t Update(int32_t &changedRows, NativeRdb::ValuesBucket &values,
+        const NativeRdb::AbsRdbPredicates &predicates);
+    EXPORT std::pair<int32_t, NativeRdb::Results> UpdateWithReturn(const NativeRdb::ValuesBucket &values,
+        const NativeRdb::AbsRdbPredicates &predicates, const std::string &returningField);
+
+    // QueryByStep
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const NativeRdb::AbsRdbPredicates &predicates,
         const std::vector<std::string> &columns);
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const std::string &sql,
         const std::vector<NativeRdb::ValueObject> &args = {});
+
+    // ExecuteSql
+    EXPORT int32_t ExecuteSql(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args = {});
+    EXPORT int32_t ExecuteForLastInsertedRowId(const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &bindArgs);
+    EXPORT std::pair<int32_t, NativeRdb::Results> ExecuteWithReturn(const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &args, const std::string &returningField);
+    
     EXPORT bool GetIsOperate();
 
 private:
     void SetIsOperate(const std::pair<int32_t, NativeRdb::Results> &result);
+
+    // Insert
+    int32_t InsertInternal(int64_t &outRowId, const std::string &table, const NativeRdb::ValuesBucket &row);
+    // BatchInsert
+    int32_t BatchInsertInternal(int64_t &outRowId, const std::string &table,
+        const std::vector<NativeRdb::ValuesBucket> &values);
+    // Delete
+    int32_t DeleteInternal(const NativeRdb::AbsRdbPredicates &predicates, int32_t &deletedRows);
 
 private:
     std::shared_ptr<OHOS::NativeRdb::Transaction> transaction_ = nullptr;

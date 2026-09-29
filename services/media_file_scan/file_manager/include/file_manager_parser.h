@@ -16,6 +16,7 @@
 #ifndef FILE_MANAGER_PARSER_H
 #define FILE_MANAGER_PARSER_H
 
+#include "cloud_sync_manager.h"
 #include "file_parser.h"
 
 namespace OHOS::Media {
@@ -37,6 +38,12 @@ public:
     // FileManager新增多文件缩略图生成接口（支持功耗管控）
     static std::vector<std::string> GenerateThumbnailWithPowerControl(ScanMode scanMode,
         const std::vector<std::string> &inodes);
+    bool CheckTypeValidForFileManagerParser();
+
+    // 端云场景Dentry文件创建
+    static void BatchCreateDentryFiles(
+        const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryInfoList);
+    static void CreateDentryFilesByFileIds(const std::vector<std::string> &fileIds);
 
 private:
     void SetCloudPath() override;
@@ -44,6 +51,7 @@ private:
 
     FileUpdateType GetTrashAssetUpdateType();
     void HandleTrashedLocalAndCloudAsset(NativeRdb::AbsRdbPredicates &predicates);
+    void CreateDentryFileForCloudAsset(const FileParser::PhotosRowData &rowData);
 };
 } // namespace OHOS::Media
 #endif // FILE_MANAGER_PARSER_H

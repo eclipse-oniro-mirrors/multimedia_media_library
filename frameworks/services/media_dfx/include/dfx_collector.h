@@ -33,7 +33,7 @@ public:
     std::unordered_map<std::string, CommonBehavior> GetCommonBehavior();
     void AddCommonBahavior(std::string bundleName, int32_t type);
     void CollectDeleteBehavior(std::string bundleName, int32_t type, int32_t size);
-    std::unordered_map<std::string, int32_t> GetDeleteBehavior(int32_t type);
+    void GetDeleteBehavior(std::unordered_map<std::string, int32_t> &result, int32_t type);
     void CollectAdaptationToMovingPhotoInfo(const std::string &appName, bool adapted);
     AdaptationToMovingPhotoInfo GetAdaptationToMovingPhotoInfo();
     void CollectCinematicVideoAccessTimes(bool isByUri, bool isHighQualityRequest);
@@ -41,6 +41,12 @@ public:
     void CollectCinematicVideoAddEndTime(const CinematicWaitType waitType, const std::string videoId);
     void CollectCinematicVideoMultistageResult(bool multistageResult);
     CinematicVideoInfo GetCinematicVideoInfo();
+    void CollectInvalidKey(const std::string &bundleName, const std::string &sql);
+    void CollectInvalidPrivateOpen(const std::string &bundleName, const std::string &operation);
+    void CollectSpecialOpen(const std::string &bundleName, const std::string &operation);
+    void GetInvalidMap(std::unordered_map<std::string, std::string> &result, int32_t type);
+    void CollectPhotoError(int32_t typeCode);
+    std::map<int32_t, int32_t> GetPhotoError();
 
 private:
     std::mutex thumbnailErrorLock_;
@@ -50,11 +56,19 @@ private:
     std::mutex removeLock_;
     std::mutex adaptationToMovingPhotoLock_;
     std::mutex cinematicVideoStaticLock_;
+    std::mutex photoErrorLock_;
     std::unordered_map<std::string, ThumbnailErrorInfo> thumbnailErrorMap_;
     std::unordered_map<std::string, CommonBehavior> commonBehaviorMap_;
     std::unordered_map<std::string, int32_t> deleteToTrashMap_;
     std::unordered_map<std::string, int32_t> deleteFromDiskMap_;
     std::unordered_map<std::string, int32_t> removeMap_;
+    std::unordered_map<std::string, std::string> invalidKeyMap_;
+    std::unordered_map<std::string, std::string> invalidPrivateOpenMap_;
+    std::unordered_map<std::string, std::string> invalidSpecialOpenMap_;
+    std::map<int32_t, int32_t> photoErrorMap_;
+    std::mutex invalidKeyLock_;
+    std::mutex invalidPrivateOpenLock_;
+    std::mutex invalidSpecialOpenLock_;
     AdaptationToMovingPhotoInfo adaptationToMovingPhotoInfo_;
     CinematicVideoInfo cinematicVideoInfo_;
 };

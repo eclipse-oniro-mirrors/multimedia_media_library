@@ -36,6 +36,9 @@ MDKRecordPhotosData &MDKRecordPhotosData::UnMarshalling(const MDKRecord &record)
     if (this->fields_.find(this->KEY_ATTRIBUTES) != this->fields_.end()) {
         this->fields_[this->KEY_ATTRIBUTES].GetRecordMap(this->attributes_);
     }
+    if (this->fields_.find(this->KEY_SCA_DETAIL) != this->fields_.end()) {
+        this->fields_[this->KEY_SCA_DETAIL].GetRecordList(this->scaDetailList_);
+    }
     return *this;
 }
 MDKRecordPhotosData &MDKRecordPhotosData::Marshalling()
@@ -416,6 +419,15 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetFrontCamera(const std::string &fron
     this->attributes_[PhotoColumn::PHOTO_FRONT_CAMERA] = MDKRecordField(frontCamera);
     return *this;
 }
+std::optional<std::string> MDKRecordPhotosData::GetXtStyleTemplateName() const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetXtStyleTemplateName(const std::string &xtStyleTemplateName)
+{
+    this->attributes_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = MDKRecordField(xtStyleTemplateName);
+    return *this;
+}
 std::optional<int64_t> MDKRecordPhotosData::GetEditTime() const
 {
     return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_EDIT_TIME);
@@ -479,6 +491,15 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetSupportedWatermarkType(const int32_
     this->attributes_[PhotoColumn::SUPPORTED_WATERMARK_TYPE] = MDKRecordField(supportedWatermarkType);
     return *this;
 }
+std::optional<int32_t> MDKRecordPhotosData::GetMusicMasterMode() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::MUSIC_MASTER_MODE);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetMusicMasterMode(const int32_t musicMasterMode)
+{
+    this->attributes_[PhotoColumn::MUSIC_MASTER_MODE] = MDKRecordField(musicMasterMode);
+    return *this;
+}
 std::optional<int32_t> MDKRecordPhotosData::GetStrongAssociation() const
 {
     return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_STRONG_ASSOCIATION);
@@ -486,6 +507,15 @@ std::optional<int32_t> MDKRecordPhotosData::GetStrongAssociation() const
 MDKRecordPhotosData &MDKRecordPhotosData::SetStrongAssociation(const int32_t strongAssociation)
 {
     this->attributes_[PhotoColumn::PHOTO_STRONG_ASSOCIATION] = MDKRecordField(strongAssociation);
+    return *this;
+}
+std::optional<int32_t> MDKRecordPhotosData::GetIsStylePhoto() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::IS_STYLE_PHOTO);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetIsStylePhoto(const int32_t isStylePhoto)
+{
+    this->attributes_[PhotoColumn::IS_STYLE_PHOTO] = MDKRecordField(isStylePhoto);
     return *this;
 }
 std::optional<int32_t> MDKRecordPhotosData::GetCloudFileId() const
@@ -633,6 +663,23 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoRiskStatus(const int32_t photo
     return *this;
 }
 
+void MDKRecordPhotosData::GetScadetailList(std::vector<ScaDetailVo> &scaDetailList)
+{
+    if (this->scaDetailList_.empty()) {
+        return;
+    }
+    for (auto &scadetail : this->scaDetailList_) {
+        MDKScadetail ref;
+        if (scadetail.GetScadetail(ref) != MDKLocalErrorCode::NO_ERROR) {
+            continue;
+        }
+        ScaDetailVo scaDetailVo;
+        scaDetailVo.usage = ref.usage;
+        scaDetailVo.riskResult = ref.riskResult;
+        scaDetailList.push_back(scaDetailVo);
+    }
+}
+
 std::optional<std::string> MDKRecordPhotosData::GetSourcePath() const
 {
     return this->recordReader_.GetStringValue(this->properties_, KEY_SOURCE_PATH);
@@ -738,6 +785,39 @@ bool MDKRecordPhotosData::hasProperties()
     return !this->properties_.empty();
 }
 
+std::optional<int32_t> MDKRecordPhotosData::GetSupportedDeferredEffects() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::SUPPORTED_DEFERRED_EFFECTS);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetSupportedDeferredEffects(const int32_t supportedDeferredEffects)
+{
+    this->attributes_[PhotoColumn::SUPPORTED_DEFERRED_EFFECTS] = MDKRecordField(supportedDeferredEffects);
+    return *this;
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetDeferredEffectsStatus() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::DEFERRED_EFFECT_STATUS);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetDeferredEffectsStatus(const int32_t deferredEffectStatus)
+{
+    this->attributes_[PhotoColumn::DEFERRED_EFFECT_STATUS] = MDKRecordField(deferredEffectStatus);
+    return *this;
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetCompressionQuality() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::COMPRESSION_QUALITY);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetCompressionQuality(const int32_t compressionQuality)
+{
+    this->attributes_[PhotoColumn::COMPRESSION_QUALITY] = MDKRecordField(compressionQuality);
+    return *this;
+}
+
 std::optional<std::string> MDKRecordPhotosData::GetAttributeFieldValue(const std::string &fieldName) const
 {
     return this->recordReader_.GetStringValue(this->attributes_, fieldName);
@@ -746,5 +826,76 @@ std::optional<std::string> MDKRecordPhotosData::GetAttributeFieldValue(const std
 std::optional<int64_t> MDKRecordPhotosData::GetAttributeFieldLongValue(const std::string &fieldName) const
 {
     return this->recordReader_.GetLongValue(this->attributes_, fieldName);
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetEditDataExist() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_EDIT_DATA_EXIST);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetEditDataExist(const int32_t editDataExist)
+{
+    this->attributes_[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = MDKRecordField(editDataExist);
+    return *this;
+}
+
+std::optional<int32_t> MDKRecordPhotosData::GetPhotoIsShared() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_IS_SHARED);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoIsShared(const int32_t isShared)
+{
+    this->attributes_[PhotoColumn::PHOTO_IS_SHARED] = MDKRecordField(isShared);
+    return *this;
+}
+
+std::optional<std::string> MDKRecordPhotosData::GetPhotoShareOwnerInfo() const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_SHARE_OWNER_INFO);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareOwnerInfo(const std::string &shareOwnerInfo)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_OWNER_INFO] = MDKRecordField(shareOwnerInfo);
+    return *this;
+}
+
+std::optional<std::string> MDKRecordPhotosData::GetShareAlbumOwner() const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_SHARE_ALBUM_OWNER);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetShareAlbumOwner(const std::string &shareAlbumOwner)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_ALBUM_OWNER] = MDKRecordField(shareAlbumOwner);
+    return *this;
+}
+
+std::optional<int64_t> MDKRecordPhotosData::GetPhotoShareDateDay() const
+{
+    return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_SHARE_DATE_DAY);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareDateDay(const int64_t shareDateDay)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_DATE_DAY] = MDKRecordField(shareDateDay);
+    return *this;
+}
+
+std::optional<int64_t> MDKRecordPhotosData::GetPhotoShareGroup() const
+{
+    return this->recordReader_.GetLongValue(this->attributes_, PhotoColumn::PHOTO_SHARE_GROUP);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareGroup(const int64_t shareGroup)
+{
+    this->attributes_[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(shareGroup);
+    return *this;
+}
+
+std::string MDKRecordPhotosData::GetMediaCreatedId() const
+{
+    return this->record_.GetOwnerId();
+}
+
+std::string MDKRecordPhotosData::GetCurrentUserId() const
+{
+    return this->record_.GetCurrentUserId();
 }
 }  // namespace OHOS::Media::CloudSync

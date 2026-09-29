@@ -24,9 +24,6 @@
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 
-/**
- * media path utils which the ability process path
- */
 class MediaUriUtils {
 public:
     EXPORT MediaUriUtils();

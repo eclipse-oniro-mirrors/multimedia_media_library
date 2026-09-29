@@ -15,6 +15,7 @@ import("//build/ohos.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
 
 ohos_static_library("medialibrary_common_utils") {
+  stack_protector_ret = true
   include_dirs = [
     "./include/",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
@@ -38,7 +39,6 @@ ohos_static_library("medialibrary_common_utils") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
   subsystem_name = "multimedia"
@@ -46,6 +46,7 @@ ohos_static_library("medialibrary_common_utils") {
 }
 
 ohos_static_library("permission_utils") {
+  stack_protector_ret = true
   sources = [
     "src/permission_utils.cpp",
     "src/permission_whitelist_utils.cpp",
@@ -66,8 +67,10 @@ ohos_static_library("permission_utils") {
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_core",
     "samgr:samgr_proxy",
   ]
@@ -79,7 +82,6 @@ ohos_static_library("permission_utils") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
   subsystem_name = "multimedia"
@@ -87,6 +89,7 @@ ohos_static_library("permission_utils") {
 }
 
 ohos_static_library("post_event_utils") {
+  stack_protector_ret = true
   include_dirs = [
     "./include/",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
@@ -95,6 +98,7 @@ ohos_static_library("post_event_utils") {
   sources = [ "src/post_event_utils.cpp" ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "ipc:ipc_core",
@@ -107,7 +111,6 @@ ohos_static_library("post_event_utils") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
   subsystem_name = "multimedia"

@@ -15,6 +15,7 @@
 #define MLOG_TAG "Thumbnail"
 
 #include "thumbnail_service.h"
+#include "background_generate_manager.h"
 
 #include "cloud_sync_helper.h"
 #include "file_parser.h"
@@ -25,6 +26,7 @@
 #include "ithumbnail_helper.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_func_timer.h"
 #include "folder_scanner.h"
 #include "medialibrary_async_worker.h"
 #include "medialibrary_db_const.h"
@@ -56,6 +58,7 @@
 #include "battery_srv_client.h"
 #endif
 #include "media_audio_column.h"
+#include "thumbnail_double_upgrade_config_manager.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -66,6 +69,7 @@ namespace Media {
 // LCOV_EXCL_START
 std::shared_ptr<ThumbnailService> ThumbnailService::thumbnailServiceInstance_{nullptr};
 std::mutex ThumbnailService::instanceLock_;
+ThumbnailService::~ThumbnailService() = default;
 ThumbnailService::ThumbnailService(void)
 {
     rdbStorePtr_ = nullptr;
@@ -127,13 +131,21 @@ void ThumbnailService::Init(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     } else {
         isScreenSizeInit_ = true;
     }
+
+    ThumbnailDoubleUpgradeConfigManager::GetInstance().Init();
+    bgGenerateManager_ = std::make_unique<BackgroundGenerateManager>();
+    bgGenerateManager_->Init(rdbStorePtr_);
 }
 
 void ThumbnailService::ReleaseService()
 {
-    StopAllWorker();
+    if (bgGenerateManager_ != nullptr) {
+        bgGenerateManager_->Stop();
+        bgGenerateManager_.reset();
+    }
     rdbStorePtr_ = nullptr;
     context_ = nullptr;
+    StopAllWorker();
     thumbnailServiceInstance_ = nullptr;
 }
 
@@ -223,8 +235,11 @@ int ThumbnailService::GetThumbFd(const string &path, const string &table, const 
     }
     ThumbnailData data;
     int fd = ThumbnailGenerateHelper::GetThumbnailPixelMap(data, opts, thumbType);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed! err %{public}d", err);
+    }
     return fd;
 }
 
@@ -435,6 +450,9 @@ int32_t ThumbnailService::CreateThumbnailFileScanedWithPicture(const std::string
 
 void ThumbnailService::InterruptBgworker()
 {
+    if (bgGenerateManager_ != nullptr) {
+        bgGenerateManager_->Stop();
+    }
     std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
         ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::BACKGROUND);
     CHECK_AND_RETURN_LOG(thumbnailWorker != nullptr, "thumbnailWorker is null");
@@ -456,40 +474,11 @@ int32_t ThumbnailService::GenerateThumbnailBackground()
     if (!CheckSizeValid()) {
         return E_THUMBNAIL_INVALID_SIZE;
     }
-    int32_t err = 0;
-    vector<string> tableList;
-    tableList.emplace_back(PhotoColumn::PHOTOS_TABLE);
-    tableList.emplace_back(AudioColumn::AUDIOS_TABLE);
-    tableList.emplace_back(CONST_MEDIALIBRARY_TABLE);
-
-    for (const auto &tableName : tableList) {
-        ThumbRdbOpt opts = {
-            .store = rdbStorePtr_,
-            .table = tableName
-        };
-
-        if ((tableName == PhotoColumn::PHOTOS_TABLE) && ThumbnailImageFrameWorkUtils::IsSupportGenAstc()) {
-            // CreateAstcBackground contains thumbnails created.
-            err = ThumbnailGenerateHelper::CreateAstcBackground(opts);
-            if (err != E_OK) {
-                MEDIA_ERR_LOG("CreateAstcBackground failed : %{public}d", err);
-            }
-        } else {
-            err = ThumbnailGenerateHelper::CreateThumbnailBackground(opts);
-            if (err != E_OK) {
-                MEDIA_ERR_LOG("CreateThumbnailBackground failed : %{public}d", err);
-            }
-        }
-
-        if (tableName == PhotoColumn::PHOTOS_TABLE) {
-            err = ThumbnailGenerateHelper::CreateLcdBackground(opts);
-            if (err != E_OK) {
-                MEDIA_ERR_LOG("CreateLcdBackground failed : %{public}d", err);
-            }
-        }
+    if (bgGenerateManager_ == nullptr) {
+        MEDIA_ERR_LOG("bgGenerateManager_ is null");
+        return E_ERR;
     }
-
-    return err;
+    return bgGenerateManager_->Start();
 }
 
 int32_t ThumbnailService::UpgradeThumbnailBackground(bool isWifiConnected)
@@ -669,25 +658,6 @@ int32_t ThumbnailService::QueryNewThumbnailCount(const int64_t &time, int32_t &c
     return E_OK;
 }
 
-int32_t ThumbnailService::LocalThumbnailGeneration()
-{
-    if (!CloudSyncHelper::GetInstance()->isThumbnailGenerationCompleted_) {
-        MEDIA_INFO_LOG("active local thumb genetaion exists");
-        return E_OK;
-    }
-    CloudSyncHelper::GetInstance()->isThumbnailGenerationCompleted_ = false;
-    ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
-        .table = PhotoColumn::PHOTOS_TABLE,
-    };
-    int err = ThumbnailGenerateHelper::CreateLocalThumbnail(opts);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("LocalThumbnailGeneration failed : %{public}d", err);
-        return err;
-    }
-    return E_OK;
-}
-
 int32_t ThumbnailService::CreateAstcCloudDownload(const string &id, bool isCloudInsertTaskPriorityHigh)
 {
     if (!isCloudInsertTaskPriorityHigh && !currentStatusForTask_) {
@@ -781,7 +751,8 @@ static void UpdateThumbnailReadyToFailed(ThumbRdbOpt &opts, std::string id)
 
     ValuesBucket values;
     int changedRows;
-    values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, THUMBNAIL_READY_FAILED);
+    values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY,
+        static_cast<int64_t>(ThumbnailReady::GENERATE_THUMB_RETRY));
     int32_t err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { id });
     CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "RdbStore Update failed! %{public}d", err);
@@ -946,6 +917,203 @@ int32_t ThumbnailService::SyncRegenerateAstcWithLocal(const std::string &id)
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "SyncRegenerateAstcWithLocal failed : %{public}d", err);
     return E_OK;
 }
+
+// FileManager缩略图生成相关实现
+namespace {
+    // SP存储相关常量
+    const std::string FILE_MANAGER_THUMB_TASK_SP = "/data/storage/el2/base/preferences/file_manager_thumb_task_sp.xml";
+    const std::string THUMB_TASK_FILE_ID_PREFIX = "thumb_task_file_id_";
+
+    // 温度和电量控制常量
+    const int32_t PROPER_DEVICE_TEMPERATURE_LEVEL_43 = 3;
+    const int32_t PROPER_DEVICE_TEMPERATURE_LEVEL_37 = 2;
+    const int32_t PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL = 20; // 20%电量阈值
+    const int32_t PROPER_DEVICE_BATTERY_CAPACITY_RESTORE = 30; // 30%电量恢复阈值
+
+    // FileManager缩略图生成任务数据结构
+    struct FileManagerThumbnailTaskData : public AsyncTaskData {
+        std::string fileId;
+        std::string path;
+        std::shared_ptr<MediaLibraryRdbStore> rdbStore;
+        Size screenSize;
+
+        FileManagerThumbnailTaskData(const std::string &id, const std::string &p,
+            std::shared_ptr<MediaLibraryRdbStore> store, const Size &size)
+            : fileId(id), path(p), rdbStore(store), screenSize(size) {}
+    };
+
+    // 检查温电量条件是否符合缩略图生成要求（实时生成：>=43度或<=20%电量停止）
+    bool CheckTemperatureBatteryConditionForRealtime()
+    {
+#ifdef HAS_THERMAL_MANAGER_PART
+        auto &thermalMgrClient = PowerMgr::ThermalMgrClient::GetInstance();
+        int32_t temperatureLevel = static_cast<int32_t>(thermalMgrClient.GetThermalLevel());
+        if (temperatureLevel > PROPER_DEVICE_TEMPERATURE_LEVEL_43) {
+            MEDIA_INFO_LOG("Temperature level %{public}d exceeds 43, stop thumbnail generation", temperatureLevel);
+            return false;
+        }
+#endif
+
+#ifdef HAS_BATTERY_MANAGER_PART
+        auto &batteryClient = PowerMgr::BatterySrvClient::GetInstance();
+        int32_t batteryCapacity = batteryClient.GetCapacity();
+        if (batteryCapacity <= PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL) {
+            MEDIA_INFO_LOG("Battery capacity %{public}d below 20, stop thumbnail generation", batteryCapacity);
+            return false;
+        }
+#endif
+
+        return true;
+    }
+
+    // 通过fileId从数据库查询对应的data路径
+    std::string GetFilePathFromDb(const std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr,
+        const std::string &fileId)
+    {
+        if (rdbStorePtr == nullptr) {
+            MEDIA_ERR_LOG("GetFilePathFromDb failed: rdbStorePtr is nullptr");
+            return "";
+        }
+        if (!all_of(fileId.begin(), fileId.end(), ::isdigit)) {
+            MEDIA_ERR_LOG("GetFilePathFromDb failed: invalid fileId");
+            return "";
+        }
+
+        // 查询MEDIA_FILE_PATH（data路径）
+        std::vector<std::string> columns = { MediaColumn::MEDIA_FILE_PATH };
+        NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+        auto resultSet = rdbStorePtr->Query(predicates, columns);
+        if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("GetFilePathFromDb failed: query database error, fileId: %{public}s", fileId.c_str());
+            return "";
+        }
+
+        std::string path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        if (path.empty()) {
+            MEDIA_WARN_LOG("GetFilePathFromDb: path is empty, fileId: %{public}s", fileId.c_str());
+        }
+        return path;
+    }
+
+    // 检查温电量恢复条件（<=37度且>30%电量恢复）
+    bool CheckTemperatureBatteryRestoreCondition()
+    {
+#ifdef HAS_THERMAL_MANAGER_PART
+        auto &thermalMgrClient = PowerMgr::ThermalMgrClient::GetInstance();
+        int32_t temperatureLevel = static_cast<int32_t>(thermalMgrClient.GetThermalLevel());
+        if (temperatureLevel > PROPER_DEVICE_TEMPERATURE_LEVEL_37) {
+            MEDIA_INFO_LOG("Temperature level %{public}d exceeds 37, not ready to restore", temperatureLevel);
+            return false;
+        }
+#endif
+
+#ifdef HAS_BATTERY_MANAGER_PART
+        auto &batteryClient = PowerMgr::BatterySrvClient::GetInstance();
+        int32_t batteryCapacity = batteryClient.GetCapacity();
+        if (batteryCapacity <= PROPER_DEVICE_BATTERY_CAPACITY_RESTORE) {
+            MEDIA_INFO_LOG("Battery capacity %{public}d%% not above 30%%, not ready to restore", batteryCapacity);
+            return false;
+        }
+#endif
+
+        return true;
+    }
+
+    // 保存缩略图生成任务到SP
+    void SaveThumbnailTaskToSP(const std::string &fileId)
+    {
+        int32_t errCode = 0;
+        auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_THUMB_TASK_SP, errCode);
+        if (prefs == nullptr) {
+            MEDIA_ERR_LOG("Failed to get preferences for thumbnail task, errCode: %{public}d", errCode);
+            return;
+        }
+
+        std::string key = THUMB_TASK_FILE_ID_PREFIX + fileId;
+        prefs->PutString(key, fileId);
+        prefs->Flush();
+        MEDIA_INFO_LOG("Saved thumbnail task to SP, fileId: %{public}s", fileId.c_str());
+    }
+
+    // 从SP移除缩略图生成任务
+    void RemoveThumbnailTaskFromSP(const std::string &fileId)
+    {
+        int32_t errCode = 0;
+        auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_THUMB_TASK_SP, errCode);
+        if (prefs == nullptr) {
+            MEDIA_ERR_LOG("Failed to get preferences for thumbnail task, errCode: %{public}d", errCode);
+            return;
+        }
+
+        std::string key = THUMB_TASK_FILE_ID_PREFIX + fileId;
+        prefs->Delete(key);
+        prefs->Flush();
+        MEDIA_INFO_LOG("Removed thumbnail task from SP, fileId: %{public}s", fileId.c_str());
+    }
+
+    // 异步缩略图生成任务执行函数
+    void FileManagerThumbnailTaskExecutor(AsyncTaskData *data)
+    {
+        if (data == nullptr) {
+            MEDIA_ERR_LOG("Thumbnail task data is nullptr");
+            return;
+        }
+
+        FileManagerThumbnailTaskData *taskData = static_cast<FileManagerThumbnailTaskData *>(data);
+        MEDIA_INFO_LOG("Start executing FileManager thumbnail generate task, fileId: %{public}s",
+            taskData->fileId.c_str());
+
+        // 执行前再次检查温电量条件
+        if (!CheckTemperatureBatteryConditionForRealtime()) {
+            MEDIA_INFO_LOG("Temperature or battery condition not met, save task to SP, fileId: %{public}s",
+                taskData->fileId.c_str());
+            SaveThumbnailTaskToSP(taskData->fileId);
+            return;
+        }
+
+        // 从SP中删除file_id
+        RemoveThumbnailTaskFromSP(taskData->fileId);
+
+        // 生成缩略图（只生成小缩略图，不生成LCD）
+        std::string uri = PhotoColumn::PHOTO_URI_PREFIX + taskData->fileId;
+
+        ThumbRdbOpt opts = {
+            .store = taskData->rdbStore,
+            .path = taskData->path,
+            .table = PhotoColumn::PHOTOS_TABLE,
+            .row = taskData->fileId,
+            .dateTaken = "",
+            .dateModified = "",
+            .fileUri = uri,
+            .screenSize = taskData->screenSize
+        };
+
+        // 构建ThumbnailData
+        ThumbnailData thumbnailData;
+        ThumbnailUtils::GetThumbnailInfo(opts, thumbnailData);
+        thumbnailData.needResizeLcd = false; // 不生成LCD
+        thumbnailData.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
+        thumbnailData.genThumbScene = GenThumbScene::ADD_OR_UPDATE_MEDIA;
+
+        // 记录开始生成统计
+        ThumbnailUtils::RecordStartGenerateStats(
+            thumbnailData.stats, GenerateScene::LOCAL, LoadSourceType::LOCAL_PHOTO);
+
+        // 使用IThumbnailHelper::DoCreateThumbnail只生成小缩略图
+        IThumbnailHelper::DoCreateThumbnail(opts, thumbnailData);
+        int32_t ret = ThumbnailGenerationPostProcess::PostProcess(thumbnailData, opts);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("Failed to create thumbnail for fileId: %{public}s, ret: %{public}d",
+                taskData->fileId.c_str(), ret);
+        } else {
+            MEDIA_INFO_LOG("Successfully created thumbnail for fileId: %{public}s", taskData->fileId.c_str());
+        }
+
+        // 记录耗时并上报
+        ThumbnailUtils::RecordCostTimeAndReport(thumbnailData.stats);
+    }
+} // namespace
 
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 // FileManager新增图片触发生成缩略图接口

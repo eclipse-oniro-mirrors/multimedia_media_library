@@ -26,7 +26,6 @@ namespace MediaTool {
 class UserFileClientEx {
 public:
     static int32_t Init();
-    static void Clear();
     static int32_t InsertExt(const std::string &tableName, const std::string &name,
         std::string &outString, bool isRestart = false);
     static int32_t Query(const std::string &tableName, const std::string &uri,

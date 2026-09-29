@@ -37,6 +37,7 @@ const string DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON = "auto_pause_reas
 const string DownloadResourcesColumn::MEDIA_COVER_LEVEL = "cover_level";
 const string DownloadResourcesColumn::MEDIA_TASK_SEQ = "task_sequence";
 const string DownloadResourcesColumn::MEDIA_NETWORK_POLICY = "network_policy";
+const string DownloadResourcesColumn::MEDIA_IS_SHARED = "is_shared";
 
 // index
 const std::string DownloadResourcesColumn::IDSTATUS_INDEX = "idx_drtr_idstatus";
@@ -56,7 +57,8 @@ const std::string DownloadResourcesColumn::CREATE_TABLE = CreateTable() +
     MEDIA_AUTO_PAUSE_REASON + " INT NOT NULL DEFAULT 0, " +
     MEDIA_COVER_LEVEL + " INT NOT NULL DEFAULT 1, " +
     MEDIA_TASK_SEQ + " INT NOT NULL DEFAULT 0, " +
-    MEDIA_NETWORK_POLICY + " INT NOT NULL DEFAULT 0 " +
+    MEDIA_NETWORK_POLICY + " INT NOT NULL DEFAULT 0, " +
+    MEDIA_IS_SHARED + " INT NOT NULL DEFAULT 0 " +
     ")";
 
 const std::string DownloadResourcesColumn::INDEX_DRTR_ID_STATUS =

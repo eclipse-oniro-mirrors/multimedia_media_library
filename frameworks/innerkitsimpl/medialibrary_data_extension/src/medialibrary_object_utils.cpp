@@ -16,7 +16,6 @@
 
 #include "medialibrary_object_utils.h"
 #include <sys/sendfile.h>
-#include "dfx_manager.h"
 #include "directory_ex.h"
 #include "media_file_utils.h"
 #include "media_container_types.h"
@@ -48,6 +47,8 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "dfx_manager.h"
+#include "media_manage_share_permission_check.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -836,7 +837,7 @@ static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeTyp
     int32_t height = fileAsset->GetHeight();
     string mimeType = fileAsset->GetMimeType();
     bool isHeif = (mimeType == "image/heic" || mimeType == "image/heif");
-    bool isHighPixel = (width * height >= HIGH_PIXEL_SIZE);
+    bool isHighPixel = IsHighPixel(width, height);
     if (isHeif) {
         if (isHighPixel) {
             transcodeType = TranscodeType::HIGH_PIXEL_HEIF;
@@ -850,6 +851,11 @@ static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeTyp
         }
         transcodeType = TranscodeType::DEFAULT;
     }
+}
+
+static bool CheckOpenFilePermission(const shared_ptr<FileAsset> &fileAsset, const string &mode)
+{
+    return ManageSharePermissionCheck::CheckOpenPermission(fileAsset, mode);
 }
 
 int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string &mode)
@@ -876,12 +882,15 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
     }
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromUri(uriString);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_URI, "Failed to obtain path from Database");
+    CHECK_AND_RETURN_RET_LOG(CheckOpenFilePermission(fileAsset, mode), E_INVALID_VALUES, "invalid values");
     if (fileAsset->GetTimePending() != 0 && !CheckIsOwner(fileAsset->GetOwnerPackage().c_str())) {
         MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
         return E_IS_PENDING_ERROR;
     }
+    HandlePrivateAsset(fileAsset, "common");
     bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
-    int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(fileAsset, mode, isHeif);
+    int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(
+        fileAsset, mode, isHeif, uriString);
     string path = MediaFileUtils::UpdatePath(fileAsset->GetPath(), fileAsset->GetUri());
     string fileId = MediaFileUtils::GetIdFromUri(fileAsset->GetUri());
     int32_t fd = OpenAsset(path, mode, fileId, type);
@@ -899,7 +908,6 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
             watch->AddWatchList(path, fileAsset->GetUri());
         }
     }
-    MEDIA_DEBUG_LOG("MediaLibraryDataManager OpenFile: Success");
     return fd;
 }
 
@@ -1021,6 +1029,10 @@ int32_t MediaLibraryObjectUtils::CloseFile(MediaLibraryCommand &cmd)
     if (fileAsset == nullptr) {
         MEDIA_ERR_LOG("Get fileAsset from database fail!");
         return E_INVALID_FILEID;
+    }
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        MEDIA_WARN_LOG("This operation is not supported for assets in shared albums");
+        return E_SUCCESS;
     }
     string srcPath = fileAsset->GetPath();
     string fileName = MediaFileUtils::GetFileName(srcPath);
@@ -1842,6 +1854,30 @@ shared_ptr<ResultSet> MediaLibraryObjectUtils::QuerySmartAlbum(MediaLibraryComma
     }
     vector<string> columns;
     return uniStore->Query(cmd, columns);
+}
+
+void MediaLibraryObjectUtils::HandlePrivateAsset(const shared_ptr<FileAsset>& fileAsset, const std::string &type)
+{
+    if (fileAsset == nullptr) {
+        return;
+    }
+    bool isContains = false;
+    std::string operation = "unknow";
+    if (fileAsset->GetDateTrashed() > 0) {
+        isContains = true;
+        operation = "trash";
+    }
+    if (fileAsset->IsHidden() && fileAsset->GetDateTrashed() == 0) {
+        isContains = true;
+        operation = "hidden";
+    }
+    operation = type + "_" + operation;
+    if (isContains) {
+        string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+        MEDIA_INFO_LOG("Invalid private open, bundlename: %{public}s, operation: %{public}s", bundleName.c_str(),
+            operation.c_str());
+        DfxManager::GetInstance()->HandleInvalidPrivateOpen(bundleName, operation);
+    }
 }
 } // namespace Media
 } // namespace OHOS

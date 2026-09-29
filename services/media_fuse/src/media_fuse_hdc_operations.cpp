@@ -120,7 +120,7 @@ int32_t MediaFuseHdcOperations::GetPathFromDisplayname(
     }
     filePath = "";
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        filePath = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+        filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
     }
     resultSet->Close();
     MEDIA_INFO_LOG("get filePath from db, filePath = %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
@@ -146,7 +146,7 @@ int32_t MediaFuseHdcOperations::GetAlbumIdFromAlbumName(const std::string &name,
     }
     albumId = -1;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        albumId = MediaLibraryRdbStore::GetInt(resultSet, PhotoAlbumColumns::ALBUM_ID);
+        albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
         resultSet->Close();
         return E_SUCCESS;
     }
@@ -241,9 +241,9 @@ int32_t MediaFuseHdcOperations::HandleMovingPhoto(std::string &filePath, std::st
         MEDIA_ERR_LOG("Failed to query subtype from db");
         return E_NO_SUCH_FILE;
     }
-    int32_t subtype = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_SUBTYPE);
-    int32_t effectMode = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::MOVING_PHOTO_EFFECT_MODE);
-    displayName = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::MEDIA_NAME);
+    int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+    displayName = GetStringVal(PhotoColumn::MEDIA_NAME, resultSet);
     if (!IsMovingPhoto(subtype, effectMode)) {
         resultSet->Close();
         return E_ERR;
@@ -291,7 +291,7 @@ int32_t MediaFuseHdcOperations::HandleDirStat(const int32_t &albumId, struct sta
         MEDIA_ERR_LOG("Failed to query albumId from db");
         return E_ERR;
     }
-    std::string albumName = MediaLibraryRdbStore::GetString(resultSet, PhotoAlbumColumns::ALBUM_NAME);
+    std::string albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
     time_t mtime = GetAlbumMTime(resultSet);
     FillDirStat(stbuf, mtime, albumName);
     resultSet->Close();
@@ -434,7 +434,7 @@ int32_t MediaFuseHdcOperations::GetFileIdFromPath(const std::string &filePath, s
         MEDIA_ERR_LOG("Failed to query filePath from db");
         return E_ERR;
     }
-    fileId = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_ID);
+    fileId = GetStringVal(MediaColumn::MEDIA_ID, resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("get fileId from db, fileId = %{private}s", fileId.c_str());
     return E_SUCCESS;
@@ -534,7 +534,7 @@ int32_t MediaFuseHdcOperations::ReadPhotoRootDir(void *buf, fuse_fill_dir_t fill
             curr_off++;
             continue;
         }
-        std::string albumName = MediaLibraryRdbStore::GetString(resultSet, PhotoAlbumColumns::ALBUM_NAME);
+        std::string albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
         time_t mtime = GetAlbumMTime(resultSet);
         struct stat st;
         FillDirStat(&st, mtime, albumName);
@@ -613,10 +613,10 @@ int32_t MediaFuseHdcOperations::ReadAlbumDir(
             curr_off++;
             continue;
         }
-        std::string displayName = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_NAME);
-        int32_t subtype = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_SUBTYPE);
-        int32_t effectMode = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::MOVING_PHOTO_EFFECT_MODE);
-        std::string filePath = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+        std::string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+        int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+        std::string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
         std::string localPath;
         if (ConvertToLocalPhotoPath(filePath, localPath) != E_SUCCESS) {
             MEDIA_ERR_LOG(

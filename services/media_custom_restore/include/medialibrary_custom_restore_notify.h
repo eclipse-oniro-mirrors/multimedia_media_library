@@ -40,7 +40,7 @@ public:
     static const std::string NOTIFY_URI_PREFIX;
     CustomRestoreNotify() = default;
     ~CustomRestoreNotify() = default;
-    int32_t Notify(std::string notifyUri, const InnerRestoreResult &restoreResult);
+    int32_t Notify(const std::string &notifyUri, const InnerRestoreResult &restoreResult);
 };
 
 } // namespace Media

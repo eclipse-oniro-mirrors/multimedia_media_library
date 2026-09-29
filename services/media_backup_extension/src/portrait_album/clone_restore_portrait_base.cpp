@@ -60,7 +60,8 @@ void CloneRestorePortraitBase::GetAnalysisAlbumInsertValue(NativeRdb::ValuesBuck
     BackupDatabaseUtils::PutIfPresent(value, ANALYSIS_COL_IS_LOCAL, info.isLocal);
     BackupDatabaseUtils::PutIfPresent<std::string>(value, ANALYSIS_COL_RELATIONSHIP, info.relationship);
     BackupDatabaseUtils::PutIfPresent(value, ANALYSIS_COL_EDIT_OPERATION, info.editOperation);
-    BackupDatabaseUtils::PutIfPresent<std::string>(value, ANALYSIS_COL_EXTRA_INFO, info.extraInfo);
+    BackupDatabaseUtils::PutIfPresent<std::string>(value, ANALYSIS_COL_FRIEND_ID, info.friendId);
+    BackupDatabaseUtils::PutIfPresent<std::string>(value, ANALYSIS_COL_CONTACT_INFO, info.contactInfo);
 }
 
 void CloneRestorePortraitBase::ParseAlbumResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
@@ -87,11 +88,13 @@ void CloneRestorePortraitBase::ParseAlbumResultSet(const std::shared_ptr<NativeR
     analysisAlbumTbl.isCoverSatisfied = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
         ANALYSIS_COL_IS_COVER_SATISFIED);
     analysisAlbumTbl.editOperation = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
- 	    ANALYSIS_COL_EDIT_OPERATION);
+        ANALYSIS_COL_EDIT_OPERATION);
     analysisAlbumTbl.relationship = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
         ANALYSIS_COL_RELATIONSHIP);
-    analysisAlbumTbl.extraInfo = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
-        ANALYSIS_COL_EXTRA_INFO);
+    analysisAlbumTbl.friendId = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
+        ANALYSIS_COL_FRIEND_ID);
+    analysisAlbumTbl.contactInfo = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
+        ANALYSIS_COL_CONTACT_INFO);
 }
 
 int32_t CloneRestorePortraitBase::BatchInsertWithRetry(const std::string &tableName,
@@ -233,8 +236,7 @@ bool CloneRestorePortraitBase::GetFileInfoByFileId(int32_t fileId,
     const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, PhotoInfo& outPhotoInfo)
 {
     auto it = std::find_if(photoInfoMap.begin(), photoInfoMap.end(),
-        [fileId](const auto& entry)
-        {
+        [fileId](const auto& entry) {
             return entry.second.fileIdNew == fileId;
         });
     if (it != photoInfoMap.end()) {

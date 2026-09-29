@@ -15,6 +15,7 @@
 
 #include "on_fetch_records_album_vo.h"
 
+#include <cstdint>
 #include <gtest/gtest.h>
 #include <message_parcel.h>
 
@@ -285,4 +286,197 @@ HWTEST_F(OnFetchRecordsAlbumVoTest, TC015_ReqBody_Marshalling_Unmarshalling_Larg
     }
 }
 
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC001_AlbumReqData_Stringfields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData original;
+    original.cloudId = "cloud_id_extension_001";
+    original.localPath = "/storage/test/extension";
+    original.albumName = "Extension Test Album";
+    original.stringfields["extension_field_1"] = "extension_value_1";
+    original.stringfields["extension_field_2"] = "extension_value_2";
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody::AlbumReqData restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.stringfields["extension_field_1"], "extension_value_1");
+    EXPECT_EQ(restored.stringfields["extension_field_2"], "extension_value_2");
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC002_AlbumReqData_Int64fields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData original;
+    original.cloudId = "cloud_id_extension_002";
+    original.localPath = "/storage/test/int64";
+    original.albumName = "Int64 Test Album";
+    original.int64fields["int_extension_1"] = 111222333444;
+    original.int64fields["int_extension_2"] = -555666777888;
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody::AlbumReqData restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.int64fields["int_extension_1"], 111222333444);
+    EXPECT_EQ(restored.int64fields["int_extension_2"], -555666777888);
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC003_AlbumReqData_MixedFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData original;
+    original.cloudId = "cloud_id_mixed";
+    original.albumName = "Mixed Fields Album";
+    original.albumId = 999;
+    original.sceneId = 1;
+    original.shareType = 2;
+    original.stringfields["mixed_str_1"] = "mixed_value_1";
+    original.stringfields["mixed_str_2"] = "";
+    original.int64fields["mixed_int_1"] = 12345;
+    original.int64fields["mixed_int_2"] = 0;
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody::AlbumReqData restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.albumId, 999);
+    EXPECT_EQ(restored.sceneId, 1);
+    EXPECT_EQ(restored.shareType, 2);
+    EXPECT_EQ(restored.stringfields["mixed_str_1"], "mixed_value_1");
+    EXPECT_EQ(restored.stringfields["mixed_str_2"], "");
+    EXPECT_EQ(restored.int64fields["mixed_int_1"], 12345);
+    EXPECT_EQ(restored.int64fields["mixed_int_2"], 0);
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC004_AlbumReqData_EmptyFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData original;
+    original.cloudId = "cloud_id_empty_fields";
+    original.albumName = "Empty Fields Album";
+    original.albumId = 0;
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody::AlbumReqData restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.cloudId, original.cloudId);
+    EXPECT_EQ(restored.stringfields.size(), 0);
+    EXPECT_EQ(restored.int64fields.size(), 0);
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC005_AlbumReqData_MultiFields_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData original;
+    original.cloudId = "cloud_id_multiple";
+    original.albumName = "Multiple Fields Album";
+    
+    for (int i = 0; i < 15; i++) {
+        original.stringfields["multi_str_" + std::to_string(i)] = "multi_value_" + std::to_string(i);
+        original.int64fields["multi_int_" + std::to_string(i)] = i * 10000;
+    }
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody::AlbumReqData restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.stringfields.size(), 15);
+    EXPECT_EQ(restored.int64fields.size(), 15);
+    for (int i = 0; i < 15; i++) {
+        EXPECT_EQ(restored.stringfields["multi_str_" + std::to_string(i)], "multi_value_" + std::to_string(i));
+        EXPECT_EQ(restored.int64fields["multi_int_" + std::to_string(i)], i * 10000);
+    }
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC006_AlbumReqData_ToString_WithFields_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData data;
+    data.cloudId = "cloud_id_tostring";
+    data.albumName = "ToString Album";
+    data.stringfields["tostring_field"] = "tostring_value";
+    data.int64fields["tostring_int"] = 888;
+
+    std::string result = data.ToString();
+    
+    EXPECT_TRUE(result.find("\"cloudId\":") != std::string::npos);
+    EXPECT_TRUE(result.find("\"stringfields\":") != std::string::npos);
+    EXPECT_TRUE(result.find("\"int64fields\":") != std::string::npos);
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC007_ReqBody_WithExtensionFields_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody original;
+    
+    OnFetchRecordsAlbumReqBody::AlbumReqData album;
+    album.cloudId = "cloud_req_body_ext";
+    album.albumName = "Request Body Extension";
+    album.stringfields["req_field"] = "req_value";
+    album.int64fields["req_int"] = 777;
+    original.albums.push_back(album);
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    EXPECT_EQ(restored.albums.size(), 1);
+    EXPECT_EQ(restored.albums[0].stringfields["req_field"], "req_value");
+    EXPECT_EQ(restored.albums[0].int64fields["req_int"], 777);
+}
+
+HWTEST_F(OnFetchRecordsAlbumVoTest, TC008_AlbumReqData_LargeData_Marshalling_Unmarshalling_Success, TestSize.Level1)
+{
+    OnFetchRecordsAlbumReqBody::AlbumReqData original;
+    original.cloudId = "cloud_large_data";
+    original.albumName = "Large Data Album";
+    
+    std::string largeString(1000, 'x');
+    for (int i = 0; i < 5; i++) {
+        original.stringfields["large_str_" + std::to_string(i)] = largeString;
+        original.int64fields["large_int_" + std::to_string(i)] = INT64_MAX - i;
+    }
+
+    OHOS::MessageParcel parcel;
+    bool ret = original.Marshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    parcel.RewindRead(0);
+    OnFetchRecordsAlbumReqBody::AlbumReqData restored;
+    ret = restored.Unmarshalling(parcel);
+    ASSERT_TRUE(ret);
+
+    for (int i = 0; i < 5; i++) {
+        EXPECT_EQ(restored.stringfields["large_str_" + std::to_string(i)], largeString);
+        EXPECT_EQ(restored.int64fields["large_int_" + std::to_string(i)], INT64_MAX - i);
+    }
+}
 }  // namespace OHOS::Media::CloudSync

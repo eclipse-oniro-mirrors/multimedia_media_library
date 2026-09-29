@@ -46,6 +46,8 @@ public:
     int32_t hidden;
     int64_t dateTrashed;
     int32_t attributesMediaType;
+    int32_t isShared;
+    std::string shareAlbumOwner;
 
 public:  // functions of Parcelable.
     virtual ~PhotosVo() = default;

@@ -172,6 +172,42 @@ void CloneRestoreHighlight::Init(const InitInfo &info)
     garblePath_ = info.backupRestoreDir + GARBLE_DST_PATH;
 
     photoInfoMap_ = info.photoInfoMap;
+    duplicateAssetMap_ = info.duplicateAssetMap;
+}
+
+void CloneRestoreHighlight::ReverseInit(const InitInfo &info)
+{
+    sceneCode_ = info.sceneCode;
+    taskId_ = info.taskId;
+    mediaLibraryRdb_ = info.mediaLibraryRdb;
+    mediaRdb_ = info.mediaRdb;
+
+    std::string highlightSourcePath = info.backupRestoreDir;
+    isHighlightDirExist_ = MediaFileUtils::IsDirectory(highlightSourcePath);
+    MEDIA_INFO_LOG("/highlight/ source dir %{public}s.", isHighlightDirExist_ ? "exist" : "don't exist");
+    coverPath_ = highlightSourcePath + "cover/";
+    musicDir_ = highlightSourcePath + "music";
+    garblePath_ = GARBLE_DST_PATH;
+
+    photoInfoMap_ = info.photoInfoMap;
+    duplicateAssetMap_ = info.duplicateAssetMap;
+}
+
+void CloneRestoreHighlight::ReverseRestore()
+{
+    int64_t startPreprocess = MediaFileUtils::UTCTimeMilliSeconds();
+    Preprocess();
+    int64_t startRestoreAlbums = MediaFileUtils::UTCTimeMilliSeconds();
+    ReverseRestoreAlbums();
+    int64_t startRestoreMaps = MediaFileUtils::UTCTimeMilliSeconds();
+    RestoreMaps();
+    int64_t startUpdateAlbums = MediaFileUtils::UTCTimeMilliSeconds();
+    UpdateAlbums();
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    restoreTimeCost_ += end - startPreprocess;
+    MEDIA_INFO_LOG("TimeCost: Preprocess: %{public}" PRId64 ",RestoreAlbums: %{public}" PRId64
+        ", RestoreMaps: %{public}" PRId64 ", UpdateAlbums: %{public}" PRId64, startRestoreAlbums - startPreprocess,
+        startRestoreMaps - startRestoreAlbums, startUpdateAlbums - startRestoreMaps, end - startUpdateAlbums);
 }
 
 void CloneRestoreHighlight::Restore()
@@ -215,12 +251,71 @@ void CloneRestoreHighlight::Preprocess()
     isCloneHighlight_ = true;
 }
 
+void CloneRestoreHighlight::GetReverseHighlightAlbumInfos()
+{
+    int32_t idNow = GetMaxAlbumId("tab_highlight_album", "id");
+    maxIdOfHighlight_ = idNow;
+    int32_t rowCount = 0;
+    int32_t offset = 0;
+    do {
+        const std::string QUERY_SQL = "SELECT * FROM tab_highlight_album WHERE highlight_status > 0 "
+            " LIMIT " + std::to_string(offset) + ", " + std::to_string(PAGE_SIZE);
+        auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, QUERY_SQL);
+        CHECK_AND_BREAK_INFO_LOG(resultSet != nullptr, "query resultSql is null.");
+
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            HighlightAlbumInfo info;
+            info.highlightIdNew = std::make_optional<int32_t>(idNow++);
+            GetHighlightRowInfo(info, resultSet);
+            GetHighlightNewAlbumId(info);
+            std::string duplicateAlbumName = "";
+            std::unordered_set<int32_t> duplicateAnalysisAlbumIdSet;
+            std::vector<NativeRdb::ValueObject> changeIds =
+                GetHighlightDuplicateIds(info, duplicateAlbumName, duplicateAnalysisAlbumIdSet);
+            if (!duplicateAnalysisAlbumIdSet.empty()) {
+                MEDIA_INFO_LOG("duplicateAnalysisAlbumIdSet is not empty, duplicateAlbumId: %s",
+                    duplicateAlbumName.c_str());
+                continue;
+            }
+            highlightInfos_.emplace_back(info);
+        }
+        resultSet->GetRowCount(rowCount);
+        offset += PAGE_SIZE;
+        resultSet->Close();
+    } while (rowCount == PAGE_SIZE);
+    MEDIA_INFO_LOG("query tab_highlight_album nums: %{public}zu", highlightInfos_.size());
+}
+
+void CloneRestoreHighlight::ReverseRestoreAlbums()
+{
+    CHECK_AND_RETURN_LOG(isCloneHighlight_, "clone highlight flag is false.");
+    MEDIA_INFO_LOG("restore highlight album start.");
+    isMapOrder_ = IsMapColumnOrderExist();
+    BackupDatabaseUtils::UpdateDuplicateCoverUris(mediaLibraryRdb_, duplicateAssetMap_, photoInfoMap_,
+        {HIGHLIGHT, HIGHLIGHT_SUGGESTIONS});
+    GetAnalysisAlbumInfos(true);
+    GetReverseHighlightAlbumInfos();
+    FilterAnalysisAlbumsByHighlightInfos();
+    if (highlightInfos_.empty()) {
+        MEDIA_INFO_LOG("highlightInfos_ is empty, skip insert operations");
+        return;
+    }
+    InsertIntoAnalysisAlbum();
+    InsertIntoHighlightAlbum();
+    MoveHighlightCovers();
+    MoveHighlightMusic(musicDir_, MUSIC_DIR_DST_PATH);
+    GetHighlightCoverInfos();
+    InsertIntoHighlightCoverInfo();
+    GetHighlightPlayInfos();
+    InsertIntoHighlightPlayInfo();
+}
+
 void CloneRestoreHighlight::RestoreAlbums()
 {
     CHECK_AND_RETURN_LOG(isCloneHighlight_, "clone highlight flag is false.");
     MEDIA_INFO_LOG("restore highlight album start.");
     isMapOrder_ = IsMapColumnOrderExist();
-    GetAnalysisAlbumInfos();
+    GetAnalysisAlbumInfos(false);
     InsertIntoAnalysisAlbum();
     GetHighlightAlbumInfos();
     InsertIntoHighlightAlbum();
@@ -402,7 +497,7 @@ bool CloneRestoreHighlight::IsMapColumnOrderExist()
     return result;
 }
 
-void CloneRestoreHighlight::GetAnalysisAlbumInfos()
+void CloneRestoreHighlight::GetAnalysisAlbumInfos(bool isReverse)
 {
     int32_t albumIdNow = GetMaxAlbumId("AnalysisAlbum", "album_id");
     maxIdOfAlbum_ = albumIdNow;
@@ -417,7 +512,7 @@ void CloneRestoreHighlight::GetAnalysisAlbumInfos()
         while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
             AnalysisAlbumInfo info;
             GetAnalysisRowInfo(info, resultSet);
-            info.albumIdNew = std::make_optional<int32_t>(albumIdNow++);
+            info.albumIdNew = isReverse ? info.albumIdOld : std::make_optional<int32_t>(albumIdNow++);
             analysisInfos_.emplace_back(info);
         }
         resultSet->GetRowCount(rowCount);
@@ -425,6 +520,33 @@ void CloneRestoreHighlight::GetAnalysisAlbumInfos()
         resultSet->Close();
     } while (rowCount == PAGE_SIZE);
     MEDIA_INFO_LOG("query AnalysisAlbum nums: %{public}zu", analysisInfos_.size());
+}
+
+void CloneRestoreHighlight::FilterAnalysisAlbumsByHighlightInfos()
+{
+    if (highlightInfos_.empty()) {
+        analysisInfos_.clear();
+        MEDIA_INFO_LOG("highlightInfos_ is empty, clear analysisInfos_");
+        return;
+    }
+
+    std::unordered_set<int32_t> validAlbumIds;
+    for (const auto &highlightInfo : highlightInfos_) {
+        if (highlightInfo.albumIdOld.has_value()) {
+            validAlbumIds.insert(highlightInfo.albumIdOld.value());
+        }
+        if (highlightInfo.aiAlbumIdOld.has_value()) {
+            validAlbumIds.insert(highlightInfo.aiAlbumIdOld.value());
+        }
+    }
+
+    auto it = std::remove_if(analysisInfos_.begin(), analysisInfos_.end(),
+        [&validAlbumIds](const AnalysisAlbumInfo &info) {
+            return !info.albumIdOld.has_value() || validAlbumIds.find(info.albumIdOld.value()) == validAlbumIds.end();
+        });
+    analysisInfos_.erase(it, analysisInfos_.end());
+
+    MEDIA_INFO_LOG("filter analysisInfos_ by highlightInfos_, filtered nums: %{public}zu", analysisInfos_.size());
 }
 
 void CloneRestoreHighlight::GetAnalysisRowInfo(AnalysisAlbumInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet)
@@ -1256,6 +1378,50 @@ void CloneRestoreHighlight::DeleteAnalysisDuplicateRows(const std::unordered_set
     albumDuplicateCnt_ += deleteRows;
 }
 
+void CloneRestoreHighlight::ClearHighlightAlbums()
+{
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "mediaLibraryRdb_ is nullptr.");
+    MEDIA_INFO_LOG("ClearHighlightAlbums start.");
+
+    int32_t highlightUpdateRows = UpdateAllHighlightStatusToDelete();
+    int32_t analysisDeleteRows = DeleteAllMomentAlbums();
+
+    MEDIA_INFO_LOG("ClearHighlightAlbums completed, highlight updated: %{public}d, analysis deleted: %{public}d",
+        highlightUpdateRows, analysisDeleteRows);
+}
+
+int32_t CloneRestoreHighlight::UpdateAllHighlightStatusToDelete()
+{
+    int32_t changedRows = 0;
+    std::unique_ptr<NativeRdb::AbsRdbPredicates> updatePredicates =
+        make_unique<NativeRdb::AbsRdbPredicates>("tab_highlight_album");
+    updatePredicates->NotEqualTo("highlight_status", HIGHLIGHT_STATUS_DELETE);
+    NativeRdb::ValuesBucket rdbValues;
+    rdbValues.PutInt("highlight_status", HIGHLIGHT_STATUS_DELETE);
+    int32_t errCode = BackupDatabaseUtils::Update(mediaLibraryRdb_, changedRows, rdbValues, updatePredicates);
+    if (errCode == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("Update all highlight status to delete, changed rows: %{public}d", changedRows);
+    } else {
+        MEDIA_ERR_LOG("Update all highlight status failed, errCode: %{public}d", errCode);
+    }
+    return changedRows;
+}
+
+int32_t CloneRestoreHighlight::DeleteAllMomentAlbums()
+{
+    int32_t deleteRows = 0;
+    NativeRdb::AbsRdbPredicates deletePredicates("AnalysisAlbum");
+    deletePredicates.In("album_subtype", { PhotoAlbumSubType::HIGHLIGHT,
+        PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS });
+    int32_t errCode = BackupDatabaseUtils::Delete(deletePredicates, deleteRows, mediaLibraryRdb_);
+    if (errCode == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("Delete all moment albums, deleted rows: %{public}d", deleteRows);
+    } else {
+        MEDIA_ERR_LOG("Delete all moment albums failed, errCode: %{public}d", errCode);
+    }
+    return deleteRows;
+}
+
 void CloneRestoreHighlight::UpdateRestoreTimeCost(int64_t timeCost)
 {
     restoreTimeCost_ += timeCost;
@@ -1264,5 +1430,17 @@ void CloneRestoreHighlight::UpdateRestoreTimeCost(int64_t timeCost)
 const std::vector<CloneRestoreHighlight::AnalysisAlbumInfo>& CloneRestoreHighlight::GetAnalysisInfos() const
 {
     return analysisInfos_;
+}
+
+void CloneRestoreHighlight::UpdateHighlightAlbumsViewed()
+{
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "mediaLibraryRdb_ is nullptr.");
+    const std::string UPDATE_SQL = "UPDATE tab_highlight_album SET is_viewed = 1;";
+    int32_t errCode = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, UPDATE_SQL);
+    if (errCode == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("UpdateHighlightAlbumsViewed: updated is_viewed for highlight albums");
+    } else {
+        MEDIA_ERR_LOG("UpdateHighlightAlbumsViewed: update is_viewed failed, errCode=%{public}d", errCode);
+    }
 }
 } // namespace OHOS::Media

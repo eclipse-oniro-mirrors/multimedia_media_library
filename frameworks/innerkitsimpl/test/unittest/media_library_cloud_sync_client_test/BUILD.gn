@@ -48,7 +48,8 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "./include/utils",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
-    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/processor/"
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/processor/",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/cloud_sync_data_convert",
   ]
 
   include_media_cloud_sync_data = [
@@ -63,6 +64,7 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "./src/medi_library_cloud_data_client_test.cpp",
     "./src/media_library_cloud_data_client_inner_api_test.cpp",
     "./src/cloud_media_path_utils_test.cpp",
+    "./src/cloud_album_data_convert_test.cpp",
   ]
 
   deps = [
@@ -70,6 +72,7 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -92,7 +95,6 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "ipc:ipc_single",
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "dfs_service:cloudsync_kit_inner",
     "relational_store:rdb_data_share_adapter",
   ]

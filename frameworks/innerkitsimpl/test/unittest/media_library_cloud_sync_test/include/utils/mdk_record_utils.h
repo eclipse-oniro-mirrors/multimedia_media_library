@@ -287,6 +287,9 @@ private:
         {"original_subtype", &MDKRecordPhotosData::GetOriginalSubType},
         {"moving_photo_effect_mode", &MDKRecordPhotosData::GetMovingPhotoEffectMode},
         {"supported_watermark_type", &MDKRecordPhotosData::GetSupportedWatermarkType},
+        {"is_style_photo", &MDKRecordPhotosData::GetIsStylePhoto},
+        {"supported_deferred_effects", &MDKRecordPhotosData::GetSupportedDeferredEffects},
+        {"deferred_effect_status", &MDKRecordPhotosData::GetDeferredEffectsStatus},
         {"strong_association", &MDKRecordPhotosData::GetStrongAssociation},
         {"file_id", &MDKRecordPhotosData::GetCloudFileId},
         {"owner_album_id", &MDKRecordPhotosData::GetOwnerAlbumId},
@@ -412,6 +415,7 @@ private:
         {"album_type", &MDKRecordAlbumData::GetAlbumType},
         {"album_subtype", &MDKRecordAlbumData::GetAlbumSubType},
         {"logicType", &MDKRecordAlbumData::GetLogicType},
+        {"type", &MDKRecordAlbumData::GetType},
     };
 
     std::map<std::string, GetInt64AlbumFunc> INT64_ALBUM_FUNCS = {
@@ -424,7 +428,6 @@ private:
         {"albumName", &MDKRecordAlbumData::GetAlbumName},
         {"localPath", &MDKRecordAlbumData::GetlPath},
         {"albumId", &MDKRecordAlbumData::GetCloudId},
-        {"type", &MDKRecordAlbumData::GetType},
         {"local_language", &MDKRecordAlbumData::GetLocalLanguage},
         {"emptyShow", &MDKRecordAlbumData::GetEmptyShow},
     };

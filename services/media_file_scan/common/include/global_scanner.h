@@ -42,15 +42,15 @@ enum class ScannerStatus {
 class GlobalScanner {
 public:
     static GlobalScanner& GetInstance();
-    void RunLakeScan(const std::string &path, bool isFirstScanner = true, bool isLakeCloneRestoring = false);
-    void RunLakeScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner = true,
-        bool isLakeCloneRestoring = false);
-    void RunFileManagerScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner = true,
-        bool isLakeCloneRestoring = false);
+    void RunLakeScan(const std::string &path, bool isFirstScanner = true);
+    void RunLakeScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner = true);
+    void RunFileManagerScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner = true);
     bool IsGlobalScanning(const std::vector<MediaNotifyInfo> &notifyInfos, const ScanTaskType &type);
     void InterruptScanner();
     ScannerStatus GetScannerStatus();
     void UpdateTemperatureCondition(bool isHighTemperature);
+    void SetCloneScanInfo(bool isLakeCloneRestoring, int64_t cloneEndTime);
+    bool IsLakeCloneRestoring();
 
 private:
     GlobalScanner() = default;
@@ -58,15 +58,14 @@ private:
     GlobalScanner(const GlobalScanner&) = delete;
     const GlobalScanner& operator=(const GlobalScanner&) = delete;
 
-    void Run(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector, bool isFirstScanner = true,
-        bool isLakeCloneRestoring = false);
-    int32_t WalkFileTree(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector,
-        bool isLakeCloneRestoring = false);
+    void Run(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector, bool isFirstScanner = true);
+    int32_t WalkFileTree(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector);
     int32_t ProcessIncrementScanTask(bool isGlobalScanEnd, IScanPolicy &policy);
     int32_t CheckToDeleteAssets(FolderScanner &folderScanner);
     bool IsForceScanning();
     void CheckScanTemperature();
     void InitTemperatureCondition();
+    bool IsCloneRestoringFile(const std::string &filePath);
 
 private:
     std::mutex scanMutex_;
@@ -75,6 +74,8 @@ private:
     std::atomic<bool> isNotInterruptScanner_{true};
     std::atomic<bool> isHighTemperature_{false};
     std::atomic<int32_t> deleteCountForCloneRestore_{0};
+    std::atomic<bool> isLakeCloneRestoring_{false};
+    std::atomic<int64_t> cloneEndTime_{0};
 };
 } // namespace OHOS::Media
 #endif // GLOBAL_SCANNER_H

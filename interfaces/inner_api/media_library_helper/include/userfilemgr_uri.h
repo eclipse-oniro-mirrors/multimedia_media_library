@@ -79,7 +79,6 @@ namespace Media {
 #define CONST_OPRN_STOP_GENERATE_THUMBNAILS "stop_generate_thumbnails"
 #define CONST_OPRN_GENERATE_THUMBNAILS_RESTORE "generate_thumbnails_restore"
 #define CONST_OPRN_RESTORE_INVALID_HDC_CLOUD_DATA_POS "RESTORE_INVALID_HDC_CLOUD_DATA_POS"
-#define CONST_OPRN_LOCAL_THUMBNAIL_GENERATION "local_thumbnail_generation"
 #define CONST_OPRN_ADD_FILTERS "add_filters"
 #define CONST_OPRN_DISCARD_CAMERA_PHOTO "discard_camera_photo"
 #define CONST_OPRN_SAVE_CAMERA_PHOTO "save_camera_photo"
@@ -93,6 +92,8 @@ namespace Media {
 #define CONST_OPRN_ADD_LOWQUALITY_IMAGE "add_lowquality_image"
 #define CONST_OPRN_SET_VIDEO_ENHANCEMENT_ATTR "set_video_enhancement_attr"
 #define CONST_VIDEO_TYPE_KEYWORD "type_for_cinematic_video"  // 不建议使用 type 结尾
+#define CONST_CALLER "caller"
+#define CONST_MEDIA_LIBRARY "1"
 
 #define CONST_OPRN_FIND_ALL_DUPLICATE_ASSETS "all_duplicate_assets"
 #define CONST_URI_FIND_ALL_DUPLICATE_ASSETS "/all_duplicate_assets"
@@ -101,9 +102,9 @@ namespace Media {
 #define CONST_OPRN_UPDATE_SUPPORTED_WATERMARK_TYPE "update_supported_watermark_type"
 #define CONST_OPRN_UPDATE_HAS_APPLINK "update_supported_has_applink"
 #define CONST_OPRN_UPDATE_APPLINK "update_supported_applink"
+#define CONST_OPRN_QUERY_RAW_ANALYSIS_ALBUM "query_raw_analysis_album"
 #define CONST_OPRN_QUERY_RAW_VISION_TOTAL "query_raw_vision_total"
 #define CONST_OPRN_QUERY_RAW_VISION_VIDEO_TOTAL "query_raw_vision_video_total"
-#define CONST_OPRN_QUERY_RAW_ANALYSIS_ALBUM "query_raw_analysis_album"
 // Asset operations constants
 #define CONST_MEDIA_FILEOPRN "file_operation"
 #define CONST_MEDIA_PHOTOOPRN "photo_operation"
@@ -118,6 +119,7 @@ namespace Media {
 #define CONST_MEDIA_FILEOPRN_OPEN_DEBUG_DB "open_debug_db"
 #define CONST_MEDIA_WHETHER_NEED_WATCH_NOTIFY "whether_need_watch_notify"
 #define CONST_NO_NEED_WATCH_NOTIFY "no_need_watch_notify"
+#define CONST_SHARE_MOVING_PHOTO "share_moving_photo"
 
 // API9 compat photo operations constants
 #define CONST_URI_CREATE_PHOTO "datashare:///media/photo_operation/create_asset"
@@ -165,7 +167,7 @@ namespace Media {
 #define CONST_MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM "remove_smartalbum_map"
 #define CONST_MEDIA_SMARTALBUMMAPOPRN_AGEINGSMARTALBUM "ageing_smartalbum_map"
 
-//UriPermission operations constants
+// UriPermission operations constants
 #define CONST_CHECK_URI_PERMISSION "phaccess_checkuripermission"
 #define CONST_GRANT_URI_PERMISSION "phaccess_granturipermission"
 
@@ -329,7 +331,7 @@ namespace Media {
 #define CONST_PAH_STOP_GENERATE_THUMBNAILS \
     "datashare:///media/phaccess_batch_thumbnail_operation/stop_generate_thumbnails"
 #define CONST_PAH_ADD_LOWQUALITY_IMAGE "datashare:///media/phaccess_multistages_capture_operation/add_lowquality_image"
-    
+
 // Generate thumbnails after clone or upgrade restore operation uri
 #define CONST_PAH_GENERATE_THUMBNAILS_RESTORE \
     "datashare:///media/phaccess_batch_thumbnail_operation/generate_thumbnails_restore"
@@ -402,6 +404,8 @@ namespace Media {
 #define CONST_PAH_STORE_FACARD_PHOTO "datashare:///media/tab_facard_photos_operation/store_form_id"
 
 #define CONST_ASSET_ALBUM_OPERATION "tab_asset_and_album_operation"
+#define CONST_TAB_COVER_RECORD "tab_cover_record_operation"
+#define CONST_TAB_OPERATION_LOG "tab_operation_log_table_operation"
 } // namespace Media
 } // namespace OHOS
 

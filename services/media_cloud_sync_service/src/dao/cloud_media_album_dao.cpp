@@ -19,11 +19,9 @@
 #include "cloud_media_sync_utils.h"
 #include "cloud_media_operation_code.h"
 #include "medialibrary_unistore_manager.h"
-#include "moving_photo_file_utils.h"
 #include "result_set.h"
 #include "result_set_utils.h"
 #include "thumbnail_const.h"
-#include "userfile_manager_types.h"
 #include "result_set_reader.h"
 #include "photos_po_writer.h"
 #include "photo_album_po_writer.h"
@@ -42,6 +40,9 @@
 #include "media_album_order_back.h"
 #include "hi_audit.h"
 #include "media_string_utils.h"
+#include "cloud_media_context.h"
+#include "userfile_manager_types.h"
+#include "settings_data_manager.h"
 
 namespace OHOS::Media::CloudSync {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
@@ -81,6 +82,11 @@ int32_t CloudMediaAlbumDao::HandleLPathAndAlbumType(PhotoAlbumDto &record)
     if (record.albumType == static_cast<int32_t>(PhotoAlbumType::INVALID)) {
         record.albumDateAdded = record.albumDateCreated;
         record.albumDateModified = 0;
+    }
+    if (record.shareType == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM)) {
+        MEDIA_INFO_LOG("HandleLPathAndAlbumType record shareType is share album");
+        albumType = PhotoAlbumType::SHARE;
+        subType = PhotoAlbumSubType::SHARE_GENERIC;
     }
     record.albumType = albumType;
     record.albumSubType = subType;
@@ -296,7 +302,8 @@ static void UpdateAlbum(const PhotoAlbumDto &record)
     if (record.localAlbumInfo.has_value() && record.localAlbumInfo.value().coverUriSource.has_value()) {
         coverUriSource = record.localAlbumInfo.value().coverUriSource.value();
     }
-    CHECK_AND_RETURN(coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER);
+    CHECK_AND_RETURN(coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER ||
+        coverUriSource == CoverUriSource::MANUAL_LOCAL_COVER);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN(rdbStore != nullptr);
     std::vector<string> albumIds = { std::to_string(albumId) };
@@ -324,6 +331,8 @@ void CloudMediaAlbumDao::FillAlbumBaseValues(const PhotoAlbumDto &record, Native
     values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
+    values.PutString(PhotoAlbumColumns::SHARE_ALBUM_OWNER, record.shareAlbumOwner);
+    CloudSyncConvert::CompensateAlbumShareRisk(record, values);
 }
 
 int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, const std::string &field,
@@ -332,6 +341,7 @@ int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, c
     CHECK_AND_RETURN_RET_LOG(albumRefreshHandle != nullptr, E_RDB_STORE_NULL, "albumRefreshHandle is null");
     NativeRdb::ValuesBucket values;
     int32_t changedRows;
+    bool needUpdateAlbum = false;
     if (!record.albumName.empty()) {
         values.PutString(PhotoAlbumColumns::ALBUM_NAME, record.albumName);
     }
@@ -361,12 +371,13 @@ int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, c
             values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, record.coverCloudId);
         }
     } else if (record.coverUriSource == CoverUriSource::DEFAULT_COVER) {
-        values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, record.coverUriSource);
+        needUpdateAlbum = FillAlbumCoverIfNeedUpdate(record, values);
     }
     ret = albumRefreshHandle->Update(changedRows, PhotoAlbumColumns::TABLE, values, field + " = ?", {value});
     CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK, E_RDB,
         "Insert pull record failed, rdb ret = %{public}d", ret);
-    CHECK_AND_EXECUTE(record.coverUriSource != CoverUriSource::DEFAULT_COVER, UpdateAlbum(record));
+    CHECK_AND_EXECUTE(!(record.coverUriSource == CoverUriSource::DEFAULT_COVER && needUpdateAlbum),
+        UpdateAlbum(record));
     return E_OK;
 }
 
@@ -510,11 +521,6 @@ int32_t CloudMediaAlbumDao::IsEmptyAlbum(std::shared_ptr<MediaLibraryRdbStore> r
         return E_ERR;
     }
     MEDIA_INFO_LOG("IsEmptyAlbum true");
-    return E_OK;
-}
-
-int32_t CloudMediaAlbumDao::GetCopyAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList)
-{
     return E_OK;
 }
 
@@ -711,6 +717,8 @@ void CloudMediaAlbumDao::SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRd
     values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, ALBUM_FROM_CLOUD);
     values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
+    values.PutString(PhotoAlbumColumns::SHARE_ALBUM_OWNER, record.shareAlbumOwner);
+    CloudSyncConvert::CompensateAlbumShareRisk(record, values);
 }
 
 int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
@@ -745,10 +753,11 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
             values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, CoverUriSource::MANUAL_WAIT_PULL_COVER);
             values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, record.coverCloudId);
         }
+    } else if (record.coverUriSource == CoverUriSource::DEFAULT_COVER) {
+        FillAlbumCoverValues(record.coverUriSource, record.coverCloudId, values);
     }
     values.PutString(PhotoAlbumColumns::UNIQUE_ID, record.uniqueId);
-    values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS,
-        PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(record.lPath));
+    UpdateAlbumUploadStatusValues(record, values);
     ret = UpdateAlbumOrderInfo(record, values);
     CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateAlbumOrderInfo failed. ret %{public}d.", ret);
     int64_t rowId;
@@ -837,7 +846,10 @@ int32_t CloudMediaAlbumDao::QueryDeleteAlbums(int32_t size, std::vector<PhotoAlb
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SHARE_GENERIC))
         ->EndWrap();
+    AddShareTypeCondition(predicates);
 
     if (!albumModifyFailSet_.empty()) {
         predicates.NotIn(PhotoAlbumColumns::ALBUM_CLOUD_ID, albumModifyFailSet_);
@@ -895,7 +907,10 @@ int32_t CloudMediaAlbumDao::GetMetaModifiedAlbum(int32_t size, std::vector<Photo
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SHARE_GENERIC))
         ->EndWrap();
+    AddShareTypeCondition(predicates);
 
     if (!albumModifyFailSet_.empty()) {
         predicates.NotIn(PhotoAlbumColumns::ALBUM_CLOUD_ID, albumModifyFailSet_);
@@ -1041,21 +1056,6 @@ void CloudMediaAlbumDao::InsertAlbumCreateFailedRecord(const std::string &cloudI
 {
     MEDIA_WARN_LOG("albumCreateFailSet_ add cloudId: %{public}s", cloudId.c_str());
     albumCreateFailSet_.push_back(cloudId);
-}
-
-void CloudMediaAlbumDao::RemoveAlbumModifyFailedRecord(const std::string &cloudId)
-{
-    std::remove(albumModifyFailSet_.begin(), albumModifyFailSet_.end(), cloudId);
-}
-
-void CloudMediaAlbumDao::RemoveAlbumInsertFailedRecord(const std::string &cloudId)
-{
-    std::remove(albumInsertFailSet_.begin(), albumInsertFailSet_.end(), cloudId);
-}
-
-void CloudMediaAlbumDao::RemoveAlbumCreateFailedRecord(const std::string &cloudId)
-{
-    std::remove(albumCreateFailSet_.begin(), albumCreateFailSet_.end(), cloudId);
 }
 
 int32_t CloudMediaAlbumDao::ClearAlbumFailedRecords()
@@ -1268,15 +1268,9 @@ bool CloudMediaAlbumDao::IsNeedPullCoverByDateModified(const string &lPath, cons
         coverCloudIdLocal = get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_CLOUD_ID,
             resultSet, TYPE_STRING));
     }
+    resultSet->Close();
 
-    int64_t dateModifiedCloud = GetDateModified(coverCloudId);
-    int64_t dateModifiedLocal = GetDateModified(coverCloudIdLocal);
-
-    MEDIA_INFO_LOG("IsNeedPullCoverByDateModified:lPath:%{public}s, Cloud:%{public}s, Local:%{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str(),
-        to_string(dateModifiedCloud).c_str(),
-        to_string(dateModifiedLocal).c_str());
-    return dateModifiedCloud > dateModifiedLocal;
+    return IsCloudCoverDateModifiedUpdated(lPath, coverCloudId, coverCloudIdLocal);
 }
 
 static inline string GetCover(const shared_ptr<NativeRdb::ResultSet> &resultSet)
@@ -1340,6 +1334,7 @@ int32_t CloudMediaAlbumDao::GetPhotoAlbum(const std::string &lPath, std::optiona
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetPhotoAlbum Failed to get rdbStore.");
+    CHECK_AND_RETURN_RET_LOG(!lPath.empty(), E_ERR, "GetPhotoAlbum lPath is empty.");
     const std::string execSql = "SELECT * FROM PhotoAlbum WHERE LOWER(lpath) = LOWER(?)";
     std::vector<NativeRdb::ValueObject> bindArgs = {lPath};
     auto resultSet = rdbStore->QuerySql(execSql, bindArgs);
@@ -1348,6 +1343,85 @@ int32_t CloudMediaAlbumDao::GetPhotoAlbum(const std::string &lPath, std::optiona
     bool isValid = (ret == E_OK) && !photoAlbumInfos.empty();
     CHECK_AND_EXECUTE(!isValid, albumInfoOp = photoAlbumInfos[0]);
     return ret;
+}
+
+bool CloudMediaAlbumDao::IsCloudCoverDateModifiedUpdated(const std::string &lPath,
+    const std::string &coverCloudIdFromCloud, const std::string &coverCloudIdFromLocal)
+{
+    int64_t dateModifiedCloud = GetDateModified(coverCloudIdFromCloud);
+    int64_t dateModifiedLocal = GetDateModified(coverCloudIdFromLocal);
+
+    MEDIA_INFO_LOG("lPath:%{public}s, Cloud:%{public}s, Local:%{public}s",
+        MediaFileUtils::DesensitizePath(lPath).c_str(),
+        to_string(dateModifiedCloud).c_str(),
+        to_string(dateModifiedLocal).c_str());
+    return dateModifiedCloud > dateModifiedLocal;
+}
+
+bool CloudMediaAlbumDao::FillAlbumCoverIfNeedUpdate(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    PhotoAlbumPo localAlbumInfo = record.localAlbumInfo.value_or(PhotoAlbumPo{});
+    bool isLocalCoverManualLocal = localAlbumInfo.coverUriSource.value_or(-1) == CoverUriSource::MANUAL_LOCAL_COVER;
+    bool isCloudCoverDateModifiedUpdated =
+        IsCloudCoverDateModifiedUpdated(record.lPath, record.coverCloudId, localAlbumInfo.coverCloudId.value_or(""));
+    if (isLocalCoverManualLocal && !isCloudCoverDateModifiedUpdated) {
+        MEDIA_INFO_LOG("Not overwrite coverUriSource for %{public}s", record.cloudId.c_str());
+        return false;
+    }
+    FillAlbumCoverValues(record.coverUriSource, record.coverCloudId, values);
+    return true;
+}
+
+void CloudMediaAlbumDao::FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
+    NativeRdb::ValuesBucket &values)
+{
+    values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, coverUriSource);
+    if (!coverCloudId.empty()) {
+        values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, coverCloudId);
+    } else {
+        values.PutNull(PhotoAlbumColumns::COVER_CLOUD_ID);
+    }
+}
+
+void CloudMediaAlbumDao::AddShareTypeCondition(NativeRdb::AbsRdbPredicates &predicates)
+{
+    if (CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE)) {
+        predicates.EqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE, to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
+    } else {
+        predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE,
+            to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
+    }
+}
+
+void CloudMediaAlbumDao::UpdateAlbumUploadStatusValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS,
+            PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(record.lPath));
+        return;
+    }
+    values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, static_cast<int32_t>(AlbumUploadSwitchStatus::OPEN));
+}
+
+int32_t CloudMediaAlbumDao::GetShareAlbumsIsSdirty(std::vector<int32_t> &albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "GetShareAlbumsIsSdirty Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_SDIRTY));
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(Media::PhotoAlbumType::SHARE));
+    vector<string> columns = { PhotoAlbumColumns::ALBUM_ID };
+
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetShareAlbumsIsSdirty Failed to query.");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        MEDIA_DEBUG_LOG("GetShareAlbumsIsSdirty find SDIRTY share albumId: %{public}d", albumId);
+        albumIds.push_back(albumId);
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("GetShareAlbumsIsSdirty albumIds size: %{public}zu", albumIds.size());
+    return E_OK;
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync

@@ -40,18 +40,20 @@ struct AuditLog {
     std::string path;
     std::string displayName;
     std::string albumName;
+    std::string mediaType;
 
     const std::string TitleString() const
     {
         return "happenTime, packageName, isForeground, cause, isUserBehavior, operationType, operationScenario, "
-            "operationStatus, operationCount, extend, id, type, size, path, displayName, albumName\n";
+            "operationStatus, operationCount, extend, id, type, size, path, displayName, albumName, mediaType\n";
     }
 
     const std::string ToString() const
     {
         return cause + ", " + std::to_string(isUserBehavior) + ", " + operationType + ", " + operationScenario +
             ", " + operationStatus + ", " + std::to_string(operationCount) + ", " + extend + ", " + id + ", " +
-            std::to_string(type) + ", " + std::to_string(size) + ", " + path + ", " + displayName + ", " + albumName;
+            std::to_string(type) + ", " + std::to_string(size) + ", " + path + ", " + displayName + ", " + albumName +
+            ", " + mediaType;
     }
 };
 
@@ -92,10 +94,26 @@ struct DatabaseAuditLog : public AuditLog {
 class HiAudit : public NoCopyable {
 public:
     EXPORT static HiAudit& GetInstance();
-    EXPORT void Write(const AuditLog& auditLog);
+    EXPORT void Write(const AuditLog& auditLog, bool isPrintLog = true);
+    void WriteForDelete(const int32_t deletedRows, const std::string &cloudId, const int32_t operationType,
+        const int32_t mediaType);
     void WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType, const std::string& status);
     void WriteForCloudSyncAlbum(const std::string& albumName, const std::string& cloudId, const int32_t albumType,
         const int32_t albumSubType, const std::string& bundleName);
+    void WriteForAccountSwitch(const std::string& scenario, const std::string& status);
+    void WriteForSyncSwitch(int32_t switchStatus);
+    void WriteForDataFusion(const std::string& operationScenario, const std::string& status,
+        uint32_t count, const std::string& extend);
+    void WriteForTriggerSync(const std::string& scenario, const std::string& status);
+    void WriteForMove(const std::string& scenario, const std::string& status,
+        uint32_t count, const std::string& srcAlbumId, const std::string& dstAlbumId,
+        const std::string& dstAlbumName);
+    void WriteForHide(const std::string& scenario, const std::string& status,
+        uint32_t count, const std::string& assetId, const std::string& albumName);
+    void WriteForRename(const std::string& scenario, const std::string& status,
+        const std::string& albumId, const std::string& oldAlbumName, const std::string& newAlbumName);
+    void WriteForCloudExit(const std::string& bundleName,
+        const int32_t retainType, const std::string& operationStatus);
 
 private:
     HiAudit();

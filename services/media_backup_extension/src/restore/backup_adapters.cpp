@@ -14,6 +14,9 @@
  */
 #include "backup_adapters.h"
 
+#include <algorithm>
+#include <cctype>
+
 #include "medialibrary_db_const.h"
 #include "media_log.h"
 
@@ -22,6 +25,7 @@ static bool IsSourceTypeValid(const FileInfo &fileInfo, FileSourceType expectedT
 {
     return fileInfo.fileSourceType == expectedType && !fileInfo.storagePath.empty();
 }
+
 bool FileAdapter::IsLakeFile(const FileInfo &fileInfo)
 {
     return IsSourceTypeValid(fileInfo, FileSourceType::MEDIA_HO_LAKE);
@@ -30,6 +34,34 @@ bool FileAdapter::IsLakeFile(const FileInfo &fileInfo)
 bool FileAdapter::IsFileManagerFile(const FileInfo &fileInfo)
 {
     return IsSourceTypeValid(fileInfo, FileSourceType::FILE_MANAGER);
+}
+
+// Case-insensitive prefix check. Returns true when `str` starts with `prefix` regardless of case.
+// Used because file-system / lPath comparisons are case-insensitive on the device.
+static bool HasCaseInsensitivePrefix(const std::string &str, const std::string &prefix)
+{
+    if (str.size() < prefix.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < prefix.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(str[i])) !=
+            std::tolower(static_cast<unsigned char>(prefix[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool FileAdapter::IsFromDocsLpath(const std::string &lPath)
+{
+    // Strict match: exact "/FromDocs" or starts with "/FromDocs/" (case-insensitive).
+    // Reject "/FromDocsBackup", "/FromDocs2", etc.
+    if (lPath.size() == FROMDOCS_LPATH_PREFIX.size() &&
+        HasCaseInsensitivePrefix(lPath, FROMDOCS_LPATH_PREFIX)) {
+        return true;
+    }
+    static const std::string FROMDOCS_SLASH = FROMDOCS_LPATH_PREFIX + "/";
+    return HasCaseInsensitivePrefix(lPath, FROMDOCS_SLASH);
 }
 
 std::string FileAdapter::GetOriginalFilePath(const FileInfo &fileInfo)

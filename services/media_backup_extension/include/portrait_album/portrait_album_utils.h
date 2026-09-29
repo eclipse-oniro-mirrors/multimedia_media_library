@@ -22,6 +22,7 @@
 #include "backup_const.h"
 #include "backup_const_column.h"
 #include "rdb_store.h"
+#include "vision_total_column.h"
 
 namespace OHOS {
 namespace Media {
@@ -118,6 +119,13 @@ public:
      */
     static int32_t GetAlbumIdsByType(std::shared_ptr<NativeRdb::RdbStore> rdbStore,
         int32_t albumType, int32_t albumSubtype, std::vector<std::string>& albumIds);
+
+    /**
+     * @brief Delete graph db portrait data
+     * @param rdbStore Database store
+     * @return int32_t Error code, E_OK for success
+     */
+    static int32_t DeleteGdbPortraitData(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
 
 private:
     /**

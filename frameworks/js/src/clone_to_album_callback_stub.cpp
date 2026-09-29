@@ -26,6 +26,7 @@ namespace Media {
 int32_t CloneToAlbumCallbackStub::OnRemoteRequest(uint32_t code, MessageParcel &data,
     MessageParcel &reply, MessageOption &option)
 {
+    CHECK_AND_RETURN_RET(data.ReadInterfaceToken() == GetDescriptor(), JS_E_INNER_FAIL);
     auto it = HANDLERS.find(code);
     if (it == HANDLERS.end()) {
         MEDIA_INFO_LOG("OnRemoteRequest not find code");
@@ -36,7 +37,6 @@ int32_t CloneToAlbumCallbackStub::OnRemoteRequest(uint32_t code, MessageParcel &
 
 int32_t CloneToAlbumCallbackStub::OnProgress(MessageParcel &data, MessageParcel &reply)
 {
-    CHECK_AND_RETURN_RET(data.ReadInterfaceToken() == GetDescriptor(), JS_E_INNER_FAIL);
     uint64_t processedSize = data.ReadUint64();
     uint64_t totalSize = data.ReadUint64();
     uint32_t processedCount = data.ReadUint32();
@@ -47,7 +47,6 @@ int32_t CloneToAlbumCallbackStub::OnProgress(MessageParcel &data, MessageParcel 
 int32_t CloneToAlbumCallbackStub::OnComplete(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("enter OnComplete");
-    CHECK_AND_RETURN_RET(data.ReadInterfaceToken() == GetDescriptor(), JS_E_INNER_FAIL);
     int32_t errorCode = data.ReadInt32();
     MEDIA_INFO_LOG("enter OnComplete errorCode:%{public}d", errorCode);
     std::vector<std::string> successUris;

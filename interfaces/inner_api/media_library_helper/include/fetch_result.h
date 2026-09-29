@@ -75,6 +75,9 @@ public:
     EXPORT void SetUserId(int32_t userId);
     EXPORT int32_t GetUserId();
 
+    std::map<std::string, std::string> uriMap;
+    int32_t supportedHeif = -1;
+    int32_t supportedHighResolution = -1;
 private:
     EXPORT std::unique_ptr<T> GetObject(std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     EXPORT std::variant<int32_t, int64_t, std::string, double> GetRowValFromColumn(std::string columnName,
@@ -103,6 +106,8 @@ private:
     void GetObjectFromResultSet(PhotoAssetCustomRecord *asset, shared_ptr<NativeRdb::ResultSet> &resultSet);
     void GetObjectFromResultSet(AlbumOrder *asset, shared_ptr<NativeRdb::ResultSet> &resultSet);
 
+    void SetTranscodeInfo(FileAsset *fileAsset);
+    
     std::string networkId_;
     ResultNapiType resultNapiType_;
     std::shared_ptr<DataShare::DataShareResultSet> resultset_ = nullptr;

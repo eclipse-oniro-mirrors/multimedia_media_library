@@ -31,7 +31,6 @@
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaDataControllerProcessor {
 public:
-    PhotosDto ConvertPhotosVoToPhotosDto(const PhotosVo &photosVo);
     PhotosVo ConvertPhotosDtoToPhotosVo(const PhotosDto &photosDto);
     std::vector<MediaOperateResultRespBodyResultNode> GetMediaOperateResult(
         const std::vector<MediaOperateResultDto> &mediaOperateResultDto);

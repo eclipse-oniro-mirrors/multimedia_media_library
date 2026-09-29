@@ -19,6 +19,7 @@
 #include <string>
 
 #include "backup_const.h"
+#include "field_config/clone_field_writer.h"
 #include "rdb_store.h"
 
 namespace OHOS::Media {
@@ -27,6 +28,7 @@ public:
     void Init(int32_t sceneCode, const std::string &taskId,
         std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::shared_ptr<NativeRdb::RdbStore> mediaRdb);
     void RestoreAlbums();
+    void ReverseRestoreAlbums();
     void ReportGeoRestoreTask();
 
     template<typename T>
@@ -45,7 +47,7 @@ private:
     };
 
     void GetGeoDictionaryInfos();
-    void InsertIntoGeoDictionaryAlbums();
+    void InsertIntoGeoDictionaryAlbums(bool removeDuplicate);
 
     bool CheckTableColumns(const std::string& tableName, std::unordered_map<std::string, std::string>& columns);
     void GetGeoDictionaryInfo(GeoDictionaryCloneInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet);
@@ -73,26 +75,14 @@ template<typename T>
 void CloneRestoreGeoDictionary::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 
 template<typename T>
 void CloneRestoreGeoDictionary::PutIfInIntersection(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const std::unordered_set<std::string> &intersection)
 {
-    if (intersection.count(columnName) > 0) {
-        PutIfPresent<T>(values, columnName, optionalValue);
-    }
+    CloneFieldWriter::PutIfInIntersection<T>(values, columnName, optionalValue, intersection);
 }
 } // namespace OHOS::Media
 #endif // CLONE_RESTORE_GEO_DICTIONARY_H

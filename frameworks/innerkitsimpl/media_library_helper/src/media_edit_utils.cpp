@@ -21,12 +21,14 @@
 #include "media_string_utils.h"
 #include "media_path_utils.h"
 #include "media_pure_file_utils.h"
+#include "media_file_utils.h"
 
 using namespace std;
 
 namespace OHOS::Media {
 const std::string ROOT_MEDIA_DIR = "/storage/cloud/files/";
 const std::string MEDIA_EDIT_DATA_DIR = ROOT_MEDIA_DIR + ".editData/";
+const std::string MEDIA_CACHE_DIR = ROOT_MEDIA_DIR + ".cache/";
 
 string MediaEditUtils::GetEditDataDir(const string& photoPath, int32_t userId)
 {
@@ -35,6 +37,15 @@ string MediaEditUtils::GetEditDataDir(const string& photoPath, int32_t userId)
     }
 
     return MediaPathUtils::AppendUserId(MEDIA_EDIT_DATA_DIR, userId) + photoPath.substr(ROOT_MEDIA_DIR.length());
+}
+
+string MediaEditUtils::GetCacheDir(const string& photoPath, int32_t userId)
+{
+    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
+        return "";
+    }
+
+    return MediaPathUtils::AppendUserId(MEDIA_CACHE_DIR, userId) + photoPath.substr(ROOT_MEDIA_DIR.length());
 }
 
 string MediaEditUtils::GetEditDataPath(const string& photoPath, int32_t userId)
@@ -109,5 +120,43 @@ bool MediaEditUtils::IsEditDataSourceBackExists(const std::string &photoPath, in
 bool MediaEditUtils::HasEditData(int64_t editTime)
 {
     return editTime > 0;
+}
+
+string MediaEditUtils::GetEnhancementTempMovingPhotoVideoPath(const string& photoPath, int32_t userId)
+{
+    string parentPath = GetCacheDir(photoPath, userId);
+    if (parentPath.empty()) {
+        return "";
+    }
+    if (!MediaFileUtils::IsDirExists(parentPath) && !MediaFileUtils::CreateDirectory(parentPath)) {
+        MEDIA_ERR_LOG("Cannot create dir %{private}s, errno %{public}d", parentPath.c_str(), errno);
+        return "";
+    }
+    return parentPath + "/enhancement_temp_video.mp4";
+}
+
+string MediaEditUtils::GetEnhancementTempLivePhotoImagePath(const string& photoPath, int32_t userId)
+{
+    string parentPath = GetCacheDir(photoPath, userId);
+    if (parentPath.empty()) {
+        return "";
+    }
+    if (!MediaFileUtils::IsDirExists(parentPath) && !MediaFileUtils::CreateDirectory(parentPath)) {
+        MEDIA_ERR_LOG("Cannot create dir %{private}s, errno %{public}d", parentPath.c_str(), errno);
+        return "";
+    }
+    return parentPath + "/enhancement_temp_image." + MediaPathUtils::GetExtension(photoPath);
+}
+
+bool MediaEditUtils::CheckAndCreateEditDataDir(const string& photoPath)
+{
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(photoPath);
+    if (!MediaFileUtils::IsDirExists(editDataDirPath)) {
+        if (!MediaFileUtils::CreateDirectory(editDataDirPath)) {
+            MEDIA_ERR_LOG("Create edit data directory %{public}s failed", editDataDirPath.c_str());
+            return false;
+        }
+    }
+    return true;
 }
 } // namespace OHOS::Media

@@ -74,10 +74,12 @@ void PictureDataOperations::CleanPictureMapData(std::map<std::string, sptr<Pictu
             bool isTemp = false;
             bool isEdited = false;
             int32_t fileId = (iter->second)->fileId_;
-            IsPictureTempAndEdited(fileId, isTemp, isEdited);
+            int32_t ret = IsPictureTempAndEdited(fileId, isTemp, isEdited);
+            CHECK_AND_RETURN_LOG(ret == E_OK, "get isTemp and isEdited failed");
             bool isLowQualityPicture = (pictureType != HIGH_QUALITY_PICTURE);
             if (isTemp) {
-                FileUtils::SavePicture(fileId, (iter->second)->picture_, isEdited, isLowQualityPicture);
+                int32_t res = FileUtils::SavePicture(fileId, (iter->second)->picture_, isEdited, isLowQualityPicture);
+                CHECK_AND_RETURN_LOG(res != -1, "SavePicture failed");
                 MEDIA_INFO_LOG("end SavePicture, photoId: %{public}s, isEdited: %{public}d",
                     (iter->first).c_str(), static_cast<int32_t>(isEdited));
             }

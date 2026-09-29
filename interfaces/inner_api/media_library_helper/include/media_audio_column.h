@@ -24,28 +24,28 @@ namespace OHOS::Media {
 class AudioColumn : public MediaColumn {
 public:
     // column only in AudioTable
-    static const std::string AUDIO_ALBUM EXPORT;
-    static const std::string AUDIO_ARTIST EXPORT;
-    static const std::string AUDIO_FILE_SOURCE_TYPE EXPORT;
-    static const std::string AUDIO_IS_TEMP EXPORT;
+    static const std::string AUDIO_ALBUM;
+    static const std::string AUDIO_ARTIST;
+    static const std::string AUDIO_FILE_SOURCE_TYPE;
+    static const std::string AUDIO_IS_TEMP;
 
     // table name
-    static const std::string AUDIOS_TABLE EXPORT;
+    static const std::string AUDIOS_TABLE;
 
     // create AudioTable sql
-    static const std::string CREATE_AUDIO_TABLE EXPORT;
+    static const std::string CREATE_AUDIO_TABLE;
 
     // audio uri
-    static const std::string AUDIO_URI_PREFIX EXPORT;
-    static const std::string AUDIO_TYPE_URI EXPORT;
-    static const std::string DEFAULT_AUDIO_URI EXPORT;
+    static const std::string AUDIO_URI_PREFIX;
+    static const std::string AUDIO_TYPE_URI;
+    static const std::string DEFAULT_AUDIO_URI;
 
     // all columns
-    static const std::set<std::string> AUDIO_COLUMNS EXPORT;
+    static const std::set<std::string> AUDIO_COLUMNS;
 
-    static const std::string QUERY_MEDIA_VOLUME EXPORT;
+    static const std::string QUERY_MEDIA_VOLUME;
 
-    static bool IsAudioColumn(const std::string &columnName) EXPORT;
+    static bool IsAudioColumn(const std::string &columnName);
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_AUDIO_COLUMN_H_

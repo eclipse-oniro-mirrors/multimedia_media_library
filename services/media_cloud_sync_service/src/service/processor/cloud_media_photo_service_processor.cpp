@@ -22,6 +22,7 @@
 #include "photos_po.h"
 #include "photos_dto.h"
 #include "media_log.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS::Media::CloudSync {
 PhotosDto CloudMediaPhotoServiceProcessor::Parse(const PhotosPo &photosPo)
@@ -54,17 +55,18 @@ PhotosDto CloudMediaPhotoServiceProcessor::Parse(const PhotosPo &photosPo)
         photosPo.exifRotate.value_or(0), photosDto.thumbStatus);
     photosDto.fileSourceType = photosPo.fileSourceType.value_or(0);
     photosDto.storagePath = photosPo.storagePath.value_or("");
+    photosDto.shareAlbumOwner = photosPo.shareAlbumOwner.value_or("");
     CloudMediaFileUtils::GetParentPathAndFilename(photosDto.data, photosDto.path, photosDto.fileName);
     MEDIA_DEBUG_LOG("photosDto: %{public}s", photosDto.ToString().c_str());
     return photosDto;
 }
 
-std::vector<PhotosDto> CloudMediaPhotoServiceProcessor::GetPhotosDtos(const std::vector<PhotosPo> &photosPos)
+int32_t CloudMediaPhotoServiceProcessor::GetPhotosDtos(
+    const std::vector<PhotosPo> &photosPos, std::vector<PhotosDto> &photoDtoList)
 {
-    std::vector<PhotosDto> photosDtoList;
     for (const auto &photosPo : photosPos) {
-        photosDtoList.emplace_back(this->Parse(photosPo));
+        photoDtoList.emplace_back(this->Parse(photosPo));
     }
-    return photosDtoList;
+    return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

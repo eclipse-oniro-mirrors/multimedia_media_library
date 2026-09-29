@@ -50,6 +50,10 @@ private:
     bool UpdateRefreshHiddenInfo(const PhotoAssetChangeData &assetChangeData, AlbumRefreshInfo& refreshInfo);
     bool IsSystemAlbumInfoChange(const PhotoAssetChangeData &assetChangeData,
         std::function<bool(PhotoAssetChangeInfo)> isAlbumAsset);
+    static bool IsNameChange(const PhotoAssetChangeData &assetChangeData,
+        std::function<bool(PhotoAssetChangeInfo)> isSystemAsset);
+    static bool IsSizeChange(const PhotoAssetChangeData &assetChangeData,
+        std::function<bool(PhotoAssetChangeInfo)> isSystemAsset);
 
 public:
     std::function<bool(const PhotoAssetChangeInfo&)> isSystemAsset_;

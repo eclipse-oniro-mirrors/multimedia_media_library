@@ -17,6 +17,8 @@
 #define CLONE_RESTORE_ANALYSIS_DATA_H
 
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "backup_const.h"
 #include "clone_restore_analysis_total.h"
@@ -24,16 +26,22 @@
 #include "rdb_store.h"
 
 namespace OHOS::Media {
+struct TableTypePair {
+    std::string table;
+    std::vector<std::string> types;
+    bool enableTimeout;
+};
 class CloneRestoreAnalysisData {
 public:
     struct AnalysisDataInfo {
         int32_t fileId;
+        int32_t fileIdOld = 0; // source file id, kept after fileId is rewritten to new id
         std::unordered_map<std::string, std::variant<int32_t, int64_t, double,
             std::string, std::vector<uint8_t>>> columnValMap;
     };
 
     void Init(int32_t sceneCode, const std::string &taskId, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
-        std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, const std::string &totalTableName = "tab_analysis_total");
+        std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
     std::unordered_map<std::string, std::string> GetTableCommonColumns(
         const std::unordered_set<std::string> &excludedColumns);
     void GetValFromResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, AnalysisDataInfo &info,
@@ -56,11 +64,15 @@ public:
     void ReportRestoreTaskofData();
     void ReportAnalysisTableRestoreTask();
     void GetMaxIds();
-    void CloneAnalysisData(const std::string &table, const std::string &type,
+    void CloneAnalysisData(const std::string &table, const std::vector<std::string> &types,
         const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
-        const std::unordered_set<std::string> &excludedColumns);
+        const std::unordered_set<std::string> &excludedColumns,
+        bool enableTimeout = false);
 
 private:
+    void DropFusedBatchSourceRows(const std::vector<NativeRdb::ValuesBucket> &values,
+        int32_t errCode, int64_t rowNum, size_t offset);
+    int64_t GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
     std::string ToUpper(const std::string &str)
     {
         std::string upperStr;
@@ -84,9 +96,10 @@ private:
     int32_t successCnt_{0};
     int32_t failCnt_{0};
     int32_t duplicateCnt_{0};
+    std::atomic<int32_t> exitCode_{-1};
+    bool enableTimeout_{false};
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
-    std::string totalTableName_;
 };
 } // namespace OHOS::Media
 #endif // CLONE_RESTORE_ANALYSIS_DATA_H

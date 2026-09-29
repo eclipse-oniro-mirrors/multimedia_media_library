@@ -174,6 +174,7 @@ std::shared_ptr<PhotoAssetChangeInfo> MediaLibraryManagerNotifyUtils::BuildPhoto
     result->displayName_ = changeInfo.displayName_;
     result->size_ = changeInfo.size_;
     result->livephoto4dStatus_ = changeInfo.livephoto4dStatus_;
+    result->assetSourceType_ = changeInfo.fileSourceType_;
     if (uriType == Notification::NotifyUriType::HIDDEN_PHOTO_URI) {
         result->hiddenTime_ = changeInfo.hiddenTime_;
     }
@@ -194,7 +195,6 @@ std::shared_ptr<AlbumChangeInfo> MediaLibraryManagerNotifyUtils::BuildAlbumChang
     CHECK_AND_RETURN_RET(changeInfo.albumId_ != AccurateRefresh::INVALID_INT32_VALUE, nullptr);
     auto result = std::make_shared<AlbumChangeInfo>();
     CHECK_AND_RETURN_RET(result != nullptr, nullptr);
-    result->albumId_ = changeInfo.albumId_;
     result->albumType_ = changeInfo.albumType_;
     result->albumSubType_ = changeInfo.albumSubType_;
     result->albumName_ = changeInfo.albumName_;

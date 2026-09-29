@@ -29,7 +29,7 @@ namespace Media {
 using namespace std;
 #define ALBUM_MODULE_NAME "Album"
 
-// ==================== ADD Album Table Upgrade Code HERE  ====================
+// ADD Album Table Upgrade Code HERE
 static vector<pair<int32_t, int32_t>> VersionFilterTabAssetAlbumOperation(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;
@@ -55,5 +55,30 @@ static vector<pair<int32_t, int32_t>> VersionFilterTabAssetAlbumOperation(Native
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_FILTER_TAB_ASSET_ALBUM_OPERATION,
     ALBUM_MODULE_NAME, VersionFilterTabAssetAlbumOperation);
 
+static vector<pair<int32_t, int32_t>> AddCoverOrderColumns(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTO_ALBUM, COLUMN_COVER_ORDER_KEY, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_COVER_ORDER_SUBKEY, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_COVER_ORDER_TYPE, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_HIDDEN_COVER_ORDER_KEY, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_HIDDEN_COVER_ORDER_SUBKEY, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_HIDDEN_COVER_ORDER_TYPE, "INT NOT NULL DEFAULT 0")
+                           .AddRawSql(SQL_UPGRADE_CREATE_TAB_COVER_RECORD)
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_TAB_COVER_RECORD_AND_INDEX, ALBUM_MODULE_NAME, AddCoverOrderColumns);
+
+static vector<pair<int32_t, int32_t>> AddAlbumShareColumns(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTO_ALBUM, COLUMN_SHARE_RISK_STATUS, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_SHARE_RISK_TYPE, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_SHARE_ALBUM_OWNER, "TEXT DEFAULT NULL")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_ALBUM_SHARE, ALBUM_MODULE_NAME, AddAlbumShareColumns);
 }
 }
