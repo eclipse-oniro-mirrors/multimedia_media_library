@@ -43,6 +43,9 @@ public:
 public:
     int32_t HandleAlbumMembers(int32_t albumId, const std::vector<ShareMemberDataDto> &members);
     int32_t DeleteAlbumMembers(int32_t albumId);
+
+private:
+    void NotifyShareMemberChange(int32_t albumId);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_SHARE_ALBUM_MEMBER_DAO_H
