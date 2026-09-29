@@ -172,9 +172,13 @@ int32_t CloudMediaAlbumDao::InsertCloudByLPath(const PhotoAlbumDto &record,
     std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle)
 {
     MEDIA_INFO_LOG("FixData: Insert Cloud By LPath of record %{public}s", record.cloudId.c_str());
-    /* handle Physical album conflic, if same album name */
-    int32_t ret = ConflictWithPhysicalAlbum(record, albumRefreshHandle);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "rename fail ret is %{public}d", ret);
+    int32_t ret = E_OK;
+    /* share album no need to handle conflict */
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        /* handle Physical album conflic, if same album name */
+        ret = ConflictWithPhysicalAlbum(record, albumRefreshHandle);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "rename fail ret is %{public}d", ret);
+    }
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
     if (record.cloudId == DEFAULT_SCREENSHOT_CLOUDID) {

@@ -321,10 +321,6 @@ int32_t CloudMediaSharePhotosService::PullDelete(
         cloudId.c_str(),
         isLocal,
         pullData.ToString().c_str());
-    if (isLocal && CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, true)) {
-        MEDIA_ERR_LOG("local record dirty, ignore cloud delete");
-        return this->photosDao_.ClearCloudInfo(cloudId, photoRefresh);
-    }
     int32_t ret = E_OK;
     if (isLocal && CloudMediaFileUtils::LocalWriteOpen(localPath)) {
         ret = this->photosDao_.SetRetry(cloudId);
