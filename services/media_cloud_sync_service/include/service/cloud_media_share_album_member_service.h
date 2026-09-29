@@ -42,7 +42,7 @@ private:
     int32_t HandleShareAlbumMembersInner(const PhotoAlbumDto &record);
 
 private:
-    CloudMediaShareAlbumMemberDao shareAlbumDao_;
+    CloudMediaShareAlbumMemberDao shareAlbumMemberDao_;
     CloudMediaCommonDao commonDao_;
 };
 }  // namespace OHOS::Media::CloudSync

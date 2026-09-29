@@ -36,17 +36,21 @@ int32_t CloudMediaShareAlbumMemberService::HandleShareAlbumMembersInner(const Ph
     isValid = record.shareAlbumDetailDtoOp.has_value();
     CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "no shareAlbumDetail. cloudId: %{public}s", record.cloudId.c_str());
 
-    ShareAlbumDetailDto shareAlbumDetailDto = record.shareAlbumDetailDtoOp.value();
-    isValid = !shareAlbumDetailDto.shareMemberDataList.empty();
-    CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "no shareAlbumMember. cloudId: %{public}s", record.cloudId.c_str());
-
     isValid = record.localAlbumInfo.has_value();
     CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "can not find localAlbuminfo. cloudId: %{public}s", record.cloudId.c_str());
 
     const PhotoAlbumPo &photoAlbumInfo = record.localAlbumInfo.value();
-    int32_t albumid = photoAlbumInfo.albumId.value_or(0);
+    int32_t albumId = photoAlbumInfo.albumId.value_or(0);
 
-    return this->shareAlbumDao_.HandleAlbumMembers(albumid,
+    ShareAlbumDetailDto shareAlbumDetailDto = record.shareAlbumDetailDtoOp.value();
+    isValid = !shareAlbumDetailDto.shareMemberDataList.empty();
+    if (!isValid) {
+        MEDIA_INFO_LOG("shareAlbumMember empty, clear local. cloudId: %{public}s", record.cloudId.c_str());
+        this->shareAlbumMemberDao_.DeleteAlbumMembers(albumId);
+        return E_OK;
+    }
+
+    return this->shareAlbumMemberDao_.HandleAlbumMembers(albumId,
         shareAlbumDetailDto.shareMemberDataList);
 }
 
@@ -59,6 +63,6 @@ int32_t CloudMediaShareAlbumMemberService::HandleDeleteMembers(const PhotoAlbumD
     CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "can not find localAlbuminfo. cloudId: %{public}s", record.cloudId.c_str());
 
     const PhotoAlbumPo &photoAlbumInfo = record.localAlbumInfo.value();
-    return this->shareAlbumDao_.DeleteAlbumMembers(photoAlbumInfo.albumId.value_or(0));
+    return this->shareAlbumMemberDao_.DeleteAlbumMembers(photoAlbumInfo.albumId.value_or(0));
 }
 }  // namespace OHOS::Media::CloudSync
