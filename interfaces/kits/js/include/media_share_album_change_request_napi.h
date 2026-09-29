@@ -35,6 +35,8 @@ enum class ShareAlbumChangeOperation {
     ADD_SHARE_MEMBER,
     UPDATE_SHARE_MEMBER_STATUS,
     DELETE_SHARE_MEMBER,
+    SET_SHARE_COVER_URI,
+    RESET_SHARE_COVER_URI,
 };
 
 class MediaShareAlbumChangeRequestNapi : public MediaChangeRequestNapi {
@@ -57,6 +59,8 @@ private:
     EXPORT static napi_value JSUpdateShareMemberStatus(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSDeleteShareMember(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSDeleteMemberShareAlbum(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSSetShareCoverUri(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSResetShareCoverUri(napi_env env, napi_callback_info info);
 
     static thread_local napi_ref constructor_;
     std::shared_ptr<PhotoAlbum> photoAlbum_ = nullptr;
@@ -66,6 +70,8 @@ public:
     std::string shareOwnerInfo_;
     std::vector<int32_t> deleteIds_;
     std::string albumName_;
+    std::string shareCoverOwner_;
+    std::string coverUri_;
 };
 
 struct SetShareAlbumNameParam {
@@ -94,6 +100,15 @@ struct DeleteMemberShareAlbumParam {
     std::vector<int32_t> albumIdsToDelete;
 };
 
+struct SetShareCoverUriParam {
+    std::string owner;
+    std::string coverUri;
+};
+
+struct ResetShareCoverUriParam {
+    std::string owner;
+};
+
 struct MediaShareAlbumChangeRequestAsyncContext : public NapiError {
     napi_async_work work = nullptr;
     napi_deferred deferred = nullptr;
@@ -117,6 +132,8 @@ struct MediaShareAlbumChangeRequestAsyncContext : public NapiError {
     std::vector<int32_t> deleteIds;
     std::vector<int32_t> albumIdsToDelete;
     std::string deleteMemberAlbumOwner;
+    std::string shareCoverOwner;
+    std::string coverUri;
 };
 
 } // namespace Media

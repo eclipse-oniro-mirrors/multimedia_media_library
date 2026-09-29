@@ -4712,7 +4712,6 @@ static int32_t MarkShareCloudPhotosDirty(const std::vector<int32_t> &albumIds)
         assetRefresh.RefreshAlbum();
         assetRefresh.Notify();
     }
-    CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud photo assets dirty for %{public}zu albums",
         markedCloudPhotoRows, albumIds.size());
     return E_OK;
@@ -4736,7 +4735,6 @@ static int32_t MarkShareCloudAlbumsDirty(const std::vector<int32_t> &albumIds,
     int32_t cloudAlbumRet = albumRefresh->Update(cloudAlbumRows, cloudAlbumValues, cloudAlbumPred);
     CHECK_AND_RETURN_RET_LOG(cloudAlbumRet == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "mark cloud album dirty failed, ret=%{public}d", cloudAlbumRet);
-    CloudSyncHelper::GetInstance()->StartSync();
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum: marked %{public}d cloud album records dirty",
         cloudAlbumRows);
     return E_OK;
@@ -5139,6 +5137,162 @@ int32_t MediaLibraryAlbumOperations::DeleteMemberShareAlbum(const std::string &o
 
     MEDIA_INFO_LOG("DeleteMemberShareAlbum success, owner=%{public}s, albumCount=%{public}zu",
         MediaFileUtils::DesensitizeName(owner).c_str(), albumIds.size());
+    return E_OK;
+}
+
+static int32_t VerifyShareCoverAsset(std::shared_ptr<NativeRdb::ResultSet> &resultSet, int32_t albumId,
+    const std::string &fileId)
+{
+    int32_t ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
+    int32_t isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
+    int32_t mediaType = GetInt32Val(MediaColumn::MEDIA_TYPE, resultSet);
+    int32_t dirty = GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet);
+    int64_t dateTrashed = GetInt64Val(MediaColumn::MEDIA_DATE_TRASHED, resultSet);
+    int32_t hidden = GetInt32Val(MediaColumn::MEDIA_HIDDEN, resultSet);
+    int32_t visibility = GetInt32Val(PhotoColumn::PHOTO_VISIBILITY, resultSet);
+
+    CHECK_AND_RETURN_RET_LOG(ownerAlbumId == albumId, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "SetShareCoverUri: asset does not belong to album, albumId=%{public}d", albumId);
+    CHECK_AND_RETURN_RET_LOG(isShared == 1, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "SetShareCoverUri: asset is not a shared asset, fileId=%{public}s", fileId.c_str());
+    bool isImageOrVideo = (mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE) ||
+        mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO));
+    CHECK_AND_RETURN_RET_LOG(isImageOrVideo, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "SetShareCoverUri: asset is neither image nor video, mediaType=%{public}d", mediaType);
+    CHECK_AND_RETURN_RET_LOG(dirty != static_cast<int32_t>(DirtyTypes::TYPE_DELETED),
+        E_SHARE_ALBUM_INVALID_ID_ARG, "SetShareCoverUri: asset has been deleted, fileId=%{public}s", fileId.c_str());
+    CHECK_AND_RETURN_RET_LOG(dateTrashed == 0, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "SetShareCoverUri: asset has been trashed, fileId=%{public}s", fileId.c_str());
+    CHECK_AND_RETURN_RET_LOG(hidden == 0, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "SetShareCoverUri: asset has been hidden, fileId=%{public}s", fileId.c_str());
+    CHECK_AND_RETURN_RET_LOG(visibility == 0, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "SetShareCoverUri: asset has been blocked, fileId=%{public}s", fileId.c_str());
+    return E_OK;
+}
+
+static int32_t ValidateShareCoverUri(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, int32_t albumId,
+    const std::string &coverUri, std::string &fileId)
+{
+    fileId = MediaFileUtils::GetIdFromUri(coverUri);
+    CHECK_AND_RETURN_RET_LOG(!fileId.empty(), E_SHARE_ALBUM_INVALID_ID_ARG, "invalid cover uri");
+
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
+    vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
+        MediaColumn::MEDIA_TYPE, PhotoColumn::PHOTO_DIRTY, PhotoColumn::PHOTO_IS_SHARED,
+        MediaColumn::MEDIA_DATE_TRASHED, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_VISIBILITY };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "query cover asset failed");
+
+    if (resultSet->GoToNextRow() != NativeRdb::E_OK) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("SetShareCoverUri: asset not found, fileId=%{public}s", fileId.c_str());
+        return E_SHARE_ALBUM_INVALID_ID_ARG;
+    }
+    int32_t ret = VerifyShareCoverAsset(resultSet, albumId, fileId);
+    resultSet->Close();
+    return ret;
+}
+
+int32_t MediaLibraryAlbumOperations::SetShareCoverUri(const int32_t &albumId, const std::string &owner,
+    const std::string &coverUri)
+{
+    MEDIA_INFO_LOG("SetShareCoverUri enter, albumId=%{public}d, owner=%{public}s, coverUri=%{public}s", albumId,
+        MediaFileUtils::DesensitizeName(owner).c_str(), MediaFileUtils::DesensitizeUri(coverUri).c_str());
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "albumId is invalid");
+    CHECK_AND_RETURN_RET_LOG(!owner.empty(), E_SHARE_ALBUM_INVALID_ID_ARG, "owner is empty");
+    CHECK_AND_RETURN_RET_LOG(!coverUri.empty(), E_SHARE_ALBUM_INVALID_ID_ARG, "coverUri is empty");
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
+
+    std::vector<int32_t> albumIds = { albumId };
+    int32_t ret = CheckShareAlbumAndOwner(rdbStore, owner, albumIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "check share album and owner failed");
+
+    string fileId;
+    ret = ValidateShareCoverUri(rdbStore, albumId, coverUri, fileId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "cover uri is invalid");
+
+    SetCoverUriAlbumInfo albumInfo;
+    CHECK_AND_RETURN_RET_LOG(QueryAlbumInfo(albumId, albumInfo) == E_OK, E_HAS_DB_ERROR,
+        "query album info failed, albumId=%{public}d", albumId);
+
+    auto dateModified = MediaFileUtils::UTCTimeMilliSeconds();
+    string coverCloudId;
+    bool isManualCloudCover = IsManunalCloudCover(fileId, coverCloudId);
+    int64_t coverDateTime = GetCoverDateTime(fileId, static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC));
+    CoverUriSource coverSource = coverCloudId.empty() ? CoverUriSource::MANUAL_LOCAL_COVER
+        : CoverUriSource::MANUAL_CLOUD_COVER;
+    MEDIA_INFO_LOG("SetShareCoverUri: albumId=%{public}d, fileId=%{public}s, coverSource=%{public}d, "
+        "isManualCloudCover=%{public}d, coverCloudId=%{public}s, coverDateTime=%{public}s",
+        albumId, fileId.c_str(), static_cast<int32_t>(coverSource), static_cast<int32_t>(isManualCloudCover),
+        coverCloudId.c_str(), to_string(coverDateTime).c_str());
+    NativeRdb::ValuesBucket values;
+    values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri);
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, dateModified);
+    values.PutLong(PhotoAlbumColumns::COVER_DATE_TIME, coverDateTime);
+    values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, static_cast<int32_t>(coverSource));
+    values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, to_string(dateModified) + "," + coverCloudId);
+    if (albumInfo.dirty == static_cast<int32_t>(DirtyTypes::TYPE_SYNCED)) {
+        values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_MDIRTY));
+    }
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
+    int32_t changedRows = 0;
+    AlbumAccurateRefresh albumRefresh(AccurateRefresh::SET_SHARE_COVER_URI_BUSSINESS_NAME);
+    ret = albumRefresh.Update(changedRows, values, predicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && changedRows > 0, E_HAS_DB_ERROR,
+        "update share album cover failed, ret=%{public}d, changedRows=%{public}d", ret, changedRows);
+
+    albumRefresh.Notify();
+    MEDIA_INFO_LOG("SetShareCoverUri success, albumId=%{public}d, fileId=%{public}s, coverSource=%{public}d",
+        albumId, fileId.c_str(), static_cast<int32_t>(coverSource));
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::ResetShareCoverUri(const int32_t &albumId, const std::string &owner)
+{
+    MEDIA_INFO_LOG("ResetShareCoverUri enter, albumId=%{public}d, owner=%{public}s", albumId,
+        MediaFileUtils::DesensitizeName(owner).c_str());
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, -EINVAL, "albumId is invalid");
+    CHECK_AND_RETURN_RET_LOG(!owner.empty(), E_SHARE_ALBUM_INVALID_ID_ARG, "owner is empty");
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
+
+    std::vector<int32_t> albumIds = { albumId };
+    int32_t ret = CheckShareAlbumAndOwner(rdbStore, owner, albumIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "owner check failed");
+
+    SetCoverUriAlbumInfo albumInfo;
+    CHECK_AND_RETURN_RET_LOG(QueryAlbumInfo(albumId, albumInfo) == E_OK, E_HAS_DB_ERROR,
+        "query album info failed, albumId=%{public}d", albumId);
+
+    auto dateModified = MediaFileUtils::UTCTimeMilliSeconds();
+    NativeRdb::ValuesBucket values;
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, dateModified);
+    values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, static_cast<int32_t>(CoverUriSource::DEFAULT_COVER));
+    values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, to_string(dateModified) + ",");
+    if (albumInfo.dirty == static_cast<int32_t>(DirtyTypes::TYPE_SYNCED)) {
+        values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_MDIRTY));
+    }
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.SetWhereClause(PhotoAlbumColumns::ALBUM_ID + " = " + to_string(albumId) + " AND " +
+        PhotoAlbumColumns::COVER_URI_SOURCE + " > " + to_string(static_cast<int32_t>(CoverUriSource::DEFAULT_COVER)));
+    int32_t changedRows = 0;
+    AlbumAccurateRefresh albumRefresh(AccurateRefresh::RESET_SHARE_COVER_URI_BUSSINESS_NAME);
+    ret = albumRefresh.Update(changedRows, values, predicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR,
+        "reset share album cover failed, ret=%{public}d", ret);
+    if (changedRows <= 0) {
+        MEDIA_INFO_LOG("ResetShareCoverUri: no manual cover to reset, albumId=%{public}d", albumId);
+        return E_OK;
+    }
+
+    albumRefresh.Notify();
+    MediaLibraryRdbUtils::UpdateShareAlbumInternal(rdbStore, { std::to_string(albumId) }, false, false);
+    MEDIA_INFO_LOG("ResetShareCoverUri success, albumId=%{public}d", albumId);
     return E_OK;
 }
 } // namespace OHOS::Media

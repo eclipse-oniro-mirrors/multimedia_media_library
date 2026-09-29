@@ -104,6 +104,10 @@ inline const std::string DELETE_MEMBER_SHARE_ALBUM_BUSSINESS_NAME = "DeleteMembe
 
 inline const std::string SHARE_MEMBER_CHANGE_BUSSINESS_NAME = "ShareMemberChange";
 
+inline const std::string SET_SHARE_COVER_URI_BUSSINESS_NAME = "SetShareCoverUri";
+
+inline const std::string RESET_SHARE_COVER_URI_BUSSINESS_NAME = "ResetShareCoverUri";
+
 } // namespace Media
 } // namespace OHOS
 

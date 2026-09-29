@@ -79,6 +79,8 @@
 #include "add_share_member_vo.h"
 #include "delete_member_share_album_vo.h"
 #include "delete_share_member_vo.h"
+#include "set_share_cover_uri_vo.h"
+#include "reset_share_cover_uri_vo.h"
 
 #include "clone_status_notify_vo.h"
 namespace OHOS::Media {
@@ -299,6 +301,14 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM),
         &MediaAlbumsControllerService::DeleteMemberShareAlbum
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_COVER_URI),
+        &MediaAlbumsControllerService::SetShareCoverUri
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_RESET_SHARE_COVER_URI),
+        &MediaAlbumsControllerService::ResetShareCoverUri
     },
 };
 
@@ -1391,5 +1401,52 @@ int32_t MediaAlbumsControllerService::DeleteMemberShareAlbum(MessageParcel &data
         ParameterUtils::CheckDeleteMemberShareAlbum, [](const DeleteMemberShareAlbumReqBody &body) {
             return MediaAlbumsService::GetInstance().DeleteMemberShareAlbum(body);
         });
+}
+
+int32_t MediaAlbumsControllerService::SetShareCoverUri(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter SetShareCoverUri");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_COVER_URI);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    SetShareCoverUriReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("SetShareCoverUri Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    if (reqBody.albumId <= 0 || reqBody.owner.empty() || reqBody.coverUri.empty()) {
+        MEDIA_ERR_LOG("SetShareCoverUri albumId or owner or coverUri is invalid, "
+            "albumId=%{public}d, owner=%{public}s, coverUri=%{public}s",
+            reqBody.albumId, reqBody.owner.c_str(), reqBody.coverUri.c_str());
+        return IPC::UserDefineIPC().WriteResponseBody(reply, -EINVAL);
+    }
+    ret = MediaAlbumsService::GetInstance().SetShareCoverUri(reqBody);
+    MEDIA_INFO_LOG("SetShareCoverUri result=%{public}d", ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::ResetShareCoverUri(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter ResetShareCoverUri");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_RESET_SHARE_COVER_URI);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    ResetShareCoverUriReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ResetShareCoverUri Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    if (reqBody.albumId <= 0 || reqBody.owner.empty()) {
+        MEDIA_ERR_LOG("ResetShareCoverUri owner is empty or albumId is invalid, albumId=%{public}d, owner=%{public}s",
+            reqBody.albumId, reqBody.owner.c_str());
+        return IPC::UserDefineIPC().WriteResponseBody(reply, -EINVAL);
+    }
+    ret = MediaAlbumsService::GetInstance().ResetShareCoverUri(reqBody);
+    MEDIA_INFO_LOG("ResetShareCoverUri albumId=%{public}d, result=%{public}d", reqBody.albumId, ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media

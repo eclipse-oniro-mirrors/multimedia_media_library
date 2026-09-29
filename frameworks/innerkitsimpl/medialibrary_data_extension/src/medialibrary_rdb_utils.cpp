@@ -112,6 +112,7 @@ const vector<string> PHOTO_ALBUM_INFO_COLUMNS = {
     PhotoAlbumColumns::COVER_ORDER_KEY,
     PhotoAlbumColumns::COVER_ORDER_SUBKEY,
     PhotoAlbumColumns::COVER_ORDER_TYPE,
+    PhotoAlbumColumns::COVER_URI_SOURCE,
 };
 
 const vector<string> PHOTO_ALBUM_HIDDEN_INFO_COLUMNS = {
@@ -1426,6 +1427,32 @@ int32_t UpdateCoverUriSourceToDefault(int32_t albumId)
     return changedRows;
 }
 
+static bool IsShareAlbumCoverInvalid(std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+    RdbPredicates &predicates, const UpdateAlbumData &data)
+{
+    vector<string> columns = { PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_IS_SHARED };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false,
+        "IsShareAlbumCoverInvalid: failed to query cover asset, albumId=%{public}d", data.albumId);
+    bool isCoverInShareAlbum = false;
+    int32_t ownerAlbumId = -1;
+    int32_t isShared = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        ownerAlbumId = GetIntValFromColumn(resultSet, PhotoColumn::PHOTO_OWNER_ALBUM_ID);
+        isShared = GetIntValFromColumn(resultSet, PhotoColumn::PHOTO_IS_SHARED);
+        isCoverInShareAlbum = (ownerAlbumId == data.albumId) && (isShared == 1);
+    } else {
+        MEDIA_WARN_LOG("IsShareAlbumCoverInvalid: cover asset not found, albumId=%{public}d", data.albumId);
+    }
+    resultSet->Close();
+    if (!isCoverInShareAlbum) {
+        UpdateCoverUriSourceToDefault(data.albumId);
+    }
+    MEDIA_DEBUG_LOG("IsShareAlbumCoverInvalid: albumId:%{public}d, coverValid:%{public}d, ownerAlbumId:%{public}d, "
+        "isShared:%{public}d", data.albumId, static_cast<int32_t>(isCoverInShareAlbum), ownerAlbumId, isShared);
+    return !isCoverInShareAlbum;
+}
+
 static bool IsNeedSetCover(UpdateAlbumData &data, PhotoAlbumSubType subtype, const bool hiddenState)
 {
     MEDIA_DEBUG_LOG(
@@ -1449,8 +1476,12 @@ static bool IsNeedSetCover(UpdateAlbumData &data, PhotoAlbumSubType subtype, con
         MediaColumn::MEDIA_TIME_PENDING + " = 0 AND " + PhotoColumn::PHOTO_IS_TEMP + " = 0 AND " +
         PhotoColumn::PHOTO_BURST_COVER_LEVEL + " = " +
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) +
-        " AND " + PhotoColumn::PHOTO_SYNC_STATUS + " = 0 AND " + PhotoColumn::PHOTO_CLEAN_FLAG + " = 0";
+        " AND " + PhotoColumn::PHOTO_SYNC_STATUS + " = 0 AND " + PhotoColumn::PHOTO_CLEAN_FLAG + " = 0" +
+        " AND " + PhotoColumn::PHOTO_VISIBILITY + " = 0";
     predicates.SetWhereClause(checkCoverValid);
+    if (subtype == PhotoAlbumSubType::SHARE_GENERIC) {
+        return IsShareAlbumCoverInvalid(rdbStore, predicates, data);
+    }
     if (PhotoAlbum::IsUserOrSourceAlbumSubtype(subtype)) {
         vector<string> columns = { PhotoColumn::PHOTO_OWNER_ALBUM_ID };
         auto resultSet = rdbStore->Query(predicates, columns);
@@ -1969,6 +2000,7 @@ static vector<UpdateAlbumData> GetPhotoAlbumDataInfo(const shared_ptr<ResultSet>
         data.coverOrderKey = GetStringVal(PhotoAlbumColumns::COVER_ORDER_KEY, albumResult);
         data.coverOrderSubKey = GetStringVal(PhotoAlbumColumns::COVER_ORDER_SUBKEY, albumResult);
         data.coverOrderType = GetIntValFromColumn(albumResult, PhotoAlbumColumns::COVER_ORDER_TYPE);
+        data.coverUriSource = GetIntValFromColumn(albumResult, PhotoAlbumColumns::COVER_URI_SOURCE);
         data.shouldNotify = shouldNotify;
         data.shouldUpdateDateModified = shouldUpdateDateModified;
         datas.push_back(data);

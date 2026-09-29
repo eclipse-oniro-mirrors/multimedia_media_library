@@ -245,6 +245,8 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_COVER_URI), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_RESET_SHARE_COVER_URI), 200},
 };
 
 int64_t DfxTimer::GetOperationCodeTimeout(uint32_t operationCode)
