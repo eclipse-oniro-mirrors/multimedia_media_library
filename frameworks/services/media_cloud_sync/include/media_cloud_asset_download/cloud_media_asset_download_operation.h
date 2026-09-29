@@ -136,9 +136,9 @@ public:
 
 private:
     std::reference_wrapper<CloudSyncManager> cloudSyncManager_ = CloudSyncManager::GetInstance();
-    CloudMediaAssetTaskStatus taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
-    CloudMediaDownloadType downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
-    CloudMediaTaskPauseCause pauseCause_ = CloudMediaTaskPauseCause::NO_PAUSE;
+    std::atomic<CloudMediaAssetTaskStatus> taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
+    std::atomic<CloudMediaDownloadType> downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    std::atomic<CloudMediaTaskPauseCause> pauseCause_ = CloudMediaTaskPauseCause::NO_PAUSE;
     std::shared_ptr<DataShare::DataShareHelper> cloudHelper_;
     std::shared_ptr<CloudMediaAssetObserver> cloudMediaAssetObserver_;
     std::shared_ptr<MediaCloudDownloadCallback> downloadCallback_;

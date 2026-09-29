@@ -295,7 +295,7 @@ int32_t CloudMediaAssetDownloadOperation::SubmitBatchDownload(
     std::lock_guard<std::mutex> lock(mutex_);
     if (taskStatus_ != CloudMediaAssetTaskStatus::DOWNLOADING || downloadId_ != DOWNLOAD_ID_DEFAULT) {
         MEDIA_INFO_LOG("SubmitBatchDownload permission denied, taskStatus_: %{public}d.",
-            static_cast<int32_t>(taskStatus_));
+            static_cast<int32_t>(taskStatus_.load()));
         return E_ERR;
     }
     if (cloudRemoteObject_ == nullptr) {
@@ -400,7 +400,7 @@ int32_t CloudMediaAssetDownloadOperation::DoForceTaskExecute()
     CHECK_AND_RETURN_RET_LOG(taskStatus_ != CloudMediaAssetTaskStatus::IDLE, E_ERR,
         "DoForceTaskExecute permission denied");
     if (taskStatus_ == CloudMediaAssetTaskStatus::PAUSED) {
-        MEDIA_INFO_LOG("pause cause is %{public}d", static_cast<int32_t>(pauseCause_));
+        MEDIA_INFO_LOG("pause cause is %{public}d", static_cast<int32_t>(pauseCause_.load()));
         readyForDownload_ = ReadyDataForBatchDownload();
         if (IsDataEmpty(readyForDownload_)) {
             MEDIA_ERR_LOG("no data need to download, cancel download task");
@@ -482,7 +482,7 @@ int32_t CloudMediaAssetDownloadOperation::PassiveStatusRecoverTask(const CloudMe
                 pauseCause_ == CloudMediaTaskPauseCause::USER_PAUSED);
     CHECK_AND_RETURN_RET_LOG(!cond, E_ERR,
         "PassiveStatusRecoverTask permission denied, taskStatus: %{public}d, pauseCause: %{public}d,",
-            static_cast<int32_t>(taskStatus_), static_cast<int32_t>(pauseCause_));
+            static_cast<int32_t>(taskStatus_.load()), static_cast<int32_t>(pauseCause_.load()));
 
     if (recoverCause == CloudMediaTaskRecoverCause::NETWORK_NORMAL &&
         (pauseCause_ == CloudMediaTaskPauseCause::WIFI_UNAVAILABLE ||
@@ -539,7 +539,8 @@ int32_t CloudMediaAssetDownloadOperation::PauseDownloadTask(const CloudMediaTask
     CHECK_AND_RETURN_RET_LOG(!cond, E_ERR,
         "PauseDownloadTask permission denied, pauseCause_ is BACKGROUND_TASK_UNAVAILABLE");
     MEDIA_INFO_LOG("enter PauseDownloadTask, taskStatus_: %{public}d, pauseCause_: %{public}d, pauseCause: %{public}d",
-        static_cast<int32_t>(taskStatus_), static_cast<int32_t>(pauseCause_), static_cast<int32_t>(pauseCause));
+        static_cast<int32_t>(taskStatus_.load()), static_cast<int32_t>(pauseCause_.load()),
+        static_cast<int32_t>(pauseCause));
 
     pauseCause_ = pauseCause;
     if (taskStatus_ == CloudMediaAssetTaskStatus::DOWNLOADING) {

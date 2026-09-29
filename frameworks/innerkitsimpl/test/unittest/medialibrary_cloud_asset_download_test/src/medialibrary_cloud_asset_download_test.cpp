@@ -2416,7 +2416,7 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_status_test_013, TestSi
 {
     MEDIA_INFO_LOG("cloud_asset_status_test_013 Start");
     std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    auto downloadType = operation->downloadType_;
+    auto downloadType = operation->downloadType_.load();
     
     operation->SetTaskStatus(CloudMediaAssetDownloadOperation::Status::RECOVER_FOR_PASSIVE_STATUS);
     EXPECT_EQ(operation->downloadType_, downloadType);
