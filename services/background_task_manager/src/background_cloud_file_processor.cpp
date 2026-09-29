@@ -73,6 +73,8 @@ static constexpr int64_t ONEDAY_TO_SEC = 60 * 60 * 24;
 static constexpr int64_t DOWNLOAD_DAY_FREE_RATIO_HIGH = 30;
 static constexpr int64_t DOWNLOAD_DAY_FREE_RATIO_LOW = 7;
 
+static constexpr int32_t NOT_SHARED_ASSET_FLAG = 0;
+
 static const int64_t DOWNLOAD_ID_DEFAULT = -1;
 
 int32_t BackgroundCloudFileProcessor::processInterval_ = PROCESS_INTERVAL;  // 5 minute
@@ -388,6 +390,7 @@ std::shared_ptr<NativeRdb::ResultSet> BackgroundCloudFileProcessor::QueryCloudFi
         PhotoColumn::PHOTO_CLEAN_FLAG + " = " + std::to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) +
         " AND " + PhotoColumn::MEDIA_FILE_PATH + " IS NOT NULL AND " + PhotoColumn::MEDIA_FILE_PATH + " != '' AND " +
         MediaColumn::MEDIA_SIZE + " > 0 AND " + PhotoColumn::MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_IMAGE) +
+        " AND " + PhotoColumn::PHOTO_IS_SHARED + " = " + std::to_string(NOT_SHARED_ASSET_FLAG) +
         " AND " + MediaColumn::MEDIA_DATE_TAKEN + " > " + std::to_string(currentMilliSecond - downloadMilliSecond) +
         " ORDER BY " + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " + PhotoColumn::MEDIA_ID + " DESC LIMIT " +
         std::to_string(downloadNum);
