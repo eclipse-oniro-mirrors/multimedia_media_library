@@ -114,6 +114,19 @@ std::string MediaFileAccessUtils::GetAssetRealPathById(const std::string &fileId
     return GetAssetRealPath(info);
 }
 
+std::string MediaFileAccessUtils::GetAssetRealPath(const std::shared_ptr<FileAsset> &fileAsset)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, "", "fileAsset is nullptr");
+    AssetPathConvertInfo info;
+    info.assetPath = fileAsset->GetFilePath();
+    info.storagePath = fileAsset->GetStoragePath();
+    info.sourceType = static_cast<FileSourceType>(fileAsset->GetFileSourceType());
+    info.subType = static_cast<PhotoSubType>(fileAsset->GetPhotoSubType());
+    info.burstCoverLevel = static_cast<BurstCoverLevelType>(fileAsset->GetBurstCoverLevel());
+    info.position = fileAsset->GetPosition();
+    return GetAssetRealPath(info);
+}
+
 std::string MediaFileAccessUtils::GetAssetRealPath(const AssetPathConvertInfo &info)
 {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT

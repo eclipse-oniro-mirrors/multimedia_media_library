@@ -224,5 +224,19 @@ CinematicVideoInfo DfxCollector::GetCinematicVideoInfo()
     cinematicVideoInfo_ = {};
     return infoCopy;
 }
+
+void DfxCollector::CollectPhotoError(int32_t typeCode)
+{
+    lock_guard<mutex> lock(photoErrorLock_);
+    photoErrorMap_[typeCode]++;
+}
+
+std::map<int32_t, int32_t> DfxCollector::GetPhotoError()
+{
+    lock_guard<mutex> lock(photoErrorLock_);
+    std::map<int32_t, int32_t> result = photoErrorMap_;
+    photoErrorMap_.clear();
+    return result;
+}
 } // namespace Media
 } // namespace OHOS

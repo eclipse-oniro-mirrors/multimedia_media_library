@@ -1804,6 +1804,29 @@ static bool IsNotMusicFile(const std::string &path)
     return (path.find(ANALYSIS_FILE_PATH) == string::npos);
 }
 
+static void AddPhotoErrorDfx(const shared_ptr<FileAsset> &fileAsset, const std::string &assetPath)
+{
+    auto dfxManager = DfxManager::GetInstance();
+    CHECK_AND_RETURN_LOG(dfxManager != nullptr, "Failed to get dfxManager");
+    PhotoErrorData data = {fileAsset->GetId(), fileAsset->GetFileSourceType(), 0, fileAsset->GetPosition(),
+        static_cast<int32_t>(fileAsset->GetMediaType()), assetPath, fileAsset->GetDisplayName()};
+    dfxManager->HandlePhotoError(data);
+}
+
+static void AddWriteWatchList(const string &path, const string &mode,
+    const shared_ptr<FileAsset> &fileAsset, bool isMovingPhotoVideo, bool noNeedWatchNotify)
+{
+    if (mode.find(MEDIA_FILEMODE_WRITEONLY) != string::npos && !isMovingPhotoVideo && IsNotMusicFile(path)
+        && !noNeedWatchNotify) {
+        auto watch = MediaLibraryInotify::GetInstance();
+        if (watch != nullptr) {
+            MEDIA_INFO_LOG("enter inotify, path = %{public}s, fileId = %{public}d",
+                DfxUtils::GetSafePath(path).c_str(), fileAsset->GetId());
+            watch->AddWatchList(path, fileAsset->GetUri(), MediaLibraryApi::API_10);
+        }
+    }
+}
+
 int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &fileAsset, const string &mode,
     MediaLibraryApi api, bool isMovingPhotoVideo, int32_t type, bool noNeedWatchNotify,
     bool isCloseMovingPhotoStatusSharing)
@@ -1830,14 +1853,17 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
         }
     } else {
         // If below API10, TIME_PENDING is 0 after asset created, so if file is not exist, create an empty one
-        if (!MediaFileUtils::IsFileExists(fileAsset->GetPath())) {
+        string assetPath = MediaFileAccessUtils::GetAssetRealPath(fileAsset);
+        assetPath = assetPath.empty() ? fileAsset->GetPath() : assetPath;
+        if (!MediaFileUtils::IsFileExists(assetPath)) {
             MEDIA_INFO_LOG("create empty file for %{public}s, path: %{private}s",
                 MediaFileUtils::DesensitizeUri(fileAsset->GetUri()).c_str(),
-                MediaFileUtils::DesensitizePath(fileAsset->GetPath()).c_str());
-            int32_t errCode = CreateDirectoryAndAsset(fileAsset->GetPath());
+                MediaFileUtils::DesensitizePath(assetPath).c_str());
+            int32_t errCode = CreateDirectoryAndAsset(assetPath);
             CHECK_AND_RETURN_RET(errCode == E_OK, errCode);
+            AddPhotoErrorDfx(fileAsset, assetPath);
         }
-        path = MediaFileUtils::UpdatePath(fileAsset->GetPath(), fileAsset->GetUri());
+        path = MediaFileUtils::UpdatePath(assetPath, fileAsset->GetUri());
     }
 
     string fileId = MediaFileUtils::GetIdFromUri(fileAsset->GetUri());
@@ -1853,15 +1879,7 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
         fileAsset->GetUserId(), fileAsset->GetUri().c_str(), fileAsset->GetPath().c_str(), fd, errno);
 
     tracer.Start("AddWatchList");
-    if (mode.find(MEDIA_FILEMODE_WRITEONLY) != string::npos && !isMovingPhotoVideo && IsNotMusicFile(path)
-        && !noNeedWatchNotify) {
-        auto watch = MediaLibraryInotify::GetInstance();
-        if (watch != nullptr) {
-            MEDIA_INFO_LOG("enter inotify, path = %{public}s, fileId = %{public}d",
-                DfxUtils::GetSafePath(path).c_str(), fileAsset->GetId());
-            watch->AddWatchList(path, fileAsset->GetUri(), MediaLibraryApi::API_10);
-        }
-    }
+    AddWriteWatchList(path, mode, fileAsset, isMovingPhotoVideo, noNeedWatchNotify);
     tracer.Finish();
     return fd;
 }
