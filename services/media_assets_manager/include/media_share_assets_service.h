@@ -34,7 +34,7 @@ class MediaShareAssetsService {
 public:
     static MediaShareAssetsService &GetInstance();
 
-    int32_t RemoveShareAlbumAndAsset();
+    int32_t RemoveShareAlbumAndAsset(bool needAvoidRepeatedDoing = true);
     // 重启后续跑上次未完成的共享资产删除任务
     void RestartRemoveShareAlbumAndAsset();
     // 删除指定的共享相册及其资产, 全部处理完后启动一次异步清理任务

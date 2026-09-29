@@ -243,10 +243,17 @@ void MediaShareAssetsService::AfterRemoveShareAlbumAndAsset()
         static_cast<int32_t>(CloudMediaRetainType::SHARE_RETAIN_FORCE), "success");
 }
 
-int32_t MediaShareAssetsService::RemoveShareAlbumAndAsset()
+int32_t MediaShareAssetsService::RemoveShareAlbumAndAsset(bool needAvoidRepeatedDoing)
 {
     MediaLibraryTracer tracer;
     tracer.Start("CLOUD_EXIT: RemoveShareAlbumAndAsset");
+
+    // 判断是不是已经有共享资产删除任务在执行, 如果有也直接返回
+    if (needAvoidRepeatedDoing && MediaShareAssetsCloudExitUtils::IsShareAssetCleaning()) {
+        MEDIA_INFO_LOG("share assets is cleaning, skipping this remove operation");
+        return E_OK;
+    }
+
     TimeLogger timeLogger;
     timeLogger.Start("RemoveShareAlbumAndAsset");
 
@@ -270,7 +277,7 @@ void MediaShareAssetsService::RestartRemoveShareAlbumAndAsset()
         TimeLogger timeLogger;
         timeLogger.Start("RestartRemoveShareAlbumAndAsset");
         if (MediaShareAssetsCloudExitUtils::IsShareAssetCleaning()) {
-            RemoveShareAlbumAndAsset();
+            RemoveShareAlbumAndAsset(false);
         }
     }).detach();
 }

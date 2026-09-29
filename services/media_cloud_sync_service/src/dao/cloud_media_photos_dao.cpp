@@ -1560,7 +1560,8 @@ int32_t CloudMediaPhotosDao::ClearCloudInfo(
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, 0);
     int32_t changedRows = DEFAULT_VALUE;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
-    MEDIA_INFO_LOG("ClearCloudInfo Update Ret: %{public}d, ChangedRows: %{public}d", ret, changedRows);
+    MEDIA_INFO_LOG("ClearCloudInfo Update Ret: %{public}d, ChangedRows: %{public}d, cloudId: %{public}s",
+        ret, changedRows, cloudId.c_str());
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_CLOUDSYNC_RDB_UPDATE_FAILED, "Failed to ClearCloudInfo.");
     CHECK_AND_RETURN_RET_WARN_LOG(changedRows > 0, ret, "ClearCloudInfo Check updateRows: %{public}d.", changedRows);
     return ret;
