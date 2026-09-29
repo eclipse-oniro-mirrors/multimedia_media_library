@@ -25,6 +25,7 @@ group("test") {
     "unittest/media_clone_pending_record_utils_test:unittest",
     "unittest/media_library_asset_helper_capi_test:unittest",
     "unittest/media_library_asset_manager_test:unittest",
+    "unittest/media_share_assets_service_test:unittest",
     "unittest/media_library_camera_helper_test:unittest",
     "unittest/media_library_camera_service_test:unittest",
     "unittest/media_library_manager_test:unittest",
