@@ -291,7 +291,7 @@ int64_t PhotosDao::GetAssetTotalSizeByFileSourceType(int32_t fileSourceType)
     resultSet->Close();
     MEDIA_INFO_LOG("media db media asset size is: %{public}" PRId64, totalVolume);
 
-    CHECK_AND_RETURN_RET_LOG(totalVolume >= 0, totalVolume,
+    CHECK_AND_RETURN_RET_LOG(totalVolume >= 0, 0,
         "totalVolume is negative: %{public}" PRId64 ". Return 0.", totalVolume);
     return totalVolume;
 }
