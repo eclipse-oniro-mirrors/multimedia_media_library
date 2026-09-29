@@ -80,6 +80,7 @@ ohos_executable("mediatool") {
     "data_share:datashare_provider",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "init:libbegetutil",
     "ipc:ipc_napi",
     "ipc:ipc_single",

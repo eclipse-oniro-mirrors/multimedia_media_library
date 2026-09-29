@@ -88,6 +88,7 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",

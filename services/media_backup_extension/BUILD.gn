@@ -225,6 +225,7 @@ ohos_shared_library("mediabackup") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "icu:shared_icuuc",
     "i18n:intl_util",
     "image_framework:image_native",
     "init:libbegetutil",

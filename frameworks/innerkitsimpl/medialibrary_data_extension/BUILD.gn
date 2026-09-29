@@ -1507,6 +1507,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "init:libbeget_proxy",
     "init:libbegetutil",

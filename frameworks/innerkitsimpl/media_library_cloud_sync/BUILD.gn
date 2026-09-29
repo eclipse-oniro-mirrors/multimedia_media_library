@@ -120,6 +120,7 @@ ohos_shared_library("media_library_cloud_sync") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_single",
     "ipc:ipc_napi",

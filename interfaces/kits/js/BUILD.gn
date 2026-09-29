@@ -437,6 +437,7 @@ ohos_shared_library("medialibrary_nutils") {
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
     "e2fsprogs:libext2_uuid",
+    "ets_runtime:libark_jsruntime",
     "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
@@ -565,6 +566,7 @@ ohos_shared_library("medialibrary") {
     "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "ipc:ipc_single",
@@ -643,6 +645,7 @@ ohos_shared_library("userfilemanager") {
     "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "ipc:ipc_single",
@@ -727,6 +730,7 @@ ohos_shared_library("photoaccesshelpernative") {
     "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "media_foundation:media_foundation",
@@ -802,7 +806,9 @@ ohos_shared_library("photopickercomponent") {
   deps = [ ":photopickercomponent_abc" ]
 
   external_deps = [
+    "ets_runtime:libark_jsruntime",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
@@ -854,7 +860,9 @@ ohos_shared_library("albumpickercomponent") {
   deps = [ ":albumpickercomponent_abc" ]
 
   external_deps = [
+    "ets_runtime:libark_jsruntime",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
@@ -906,6 +914,7 @@ ohos_shared_library("recentphotocomponent") {
   deps = [ ":recentphotocomponent_abc" ]
 
   external_deps = [
+    "ets_runtime:libark_jsruntime",
     "hilog:libhilog",
     "libuv:uv",
     "napi:ace_napi",
@@ -999,6 +1008,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "form_fwk:form_manager",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "i18n:intl_util",
     "image_framework:image",
     "image_framework:image_native",
