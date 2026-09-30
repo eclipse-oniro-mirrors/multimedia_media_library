@@ -164,6 +164,8 @@ ohos_shared_library("media_library") {
     "kv_store:distributeddata_inner",
     "libexif:libexif",
     "media_foundation:media_foundation",
+    "napi:ace_napi",
+    "node:node_header_notice",
     "os_account:os_account_innerkits",
     "player_framework:media_client",
     "preferences:native_preferences",

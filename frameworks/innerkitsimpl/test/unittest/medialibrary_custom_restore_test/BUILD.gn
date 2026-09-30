@@ -119,6 +119,7 @@ ohos_unittest("medialibrary_custom_restore_test") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_single",
     "ipc:ipc_napi",

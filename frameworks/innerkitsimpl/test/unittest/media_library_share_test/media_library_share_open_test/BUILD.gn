@@ -109,6 +109,7 @@ ohos_unittest("media_library_share_open_test") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "image_framework:image",
     "ipc:ipc_napi",

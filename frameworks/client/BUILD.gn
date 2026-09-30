@@ -78,6 +78,7 @@ ohos_shared_library("media_library_client") {
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
+    "icu:shared_icuuc",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",

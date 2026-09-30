@@ -58,6 +58,7 @@
           "drivers_interface_display",
           "drivers_interface_usb",
           "e2fsprogs",
+          "ets_runtime",
           "eventhandler",
           "file_api",
           "graphic_2d",

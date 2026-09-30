@@ -77,6 +77,7 @@ ohos_unittest("media_library_share_tlv_test") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_napi",
     "ipc:ipc_single",

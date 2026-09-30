@@ -84,6 +84,7 @@ ohos_unittest("media_permission_unittest") {
     "data_share:datashare_provider",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "icu:shared_icuuc",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "preferences:native_preferences",

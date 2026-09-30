@@ -77,6 +77,7 @@ ohos_unittest("media_notification_register_manager_test") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "relational_store:native_rdb",
