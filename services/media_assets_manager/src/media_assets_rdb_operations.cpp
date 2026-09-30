@@ -623,22 +623,8 @@ int32_t MediaAssetsRdbOperations::StartThumbnailCreationTask(NativeRdb::RdbPredi
     pid_t pid)
 {
     MEDIA_INFO_LOG("MediaAssetsRdbOperations::StartThumbnailCreationTask requestId:%{public}d", requestId);
-    // shared album interception: reject if any matched asset belongs to a shared album
-    {
-        NativeRdb::RdbPredicates queryPredicate = rdbPredicate;
-        vector<string> columns = { PhotoColumn::PHOTO_IS_SHARED };
-        auto resultSet = MediaLibraryRdbStore::Query(queryPredicate, columns);
-        if (resultSet != nullptr) {
-            while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-                int32_t isShared = GetInt32Val(PhotoColumn::PHOTO_IS_SHARED, resultSet);
-                if (isShared == SHARED_ASSET_FLAG) {
-                    MEDIA_ERR_LOG("StartThumbnailCreationTask does not support shared album asset");
-                    return E_OPERATION_NOT_SUPPORT;
-                }
-            }
-            resultSet->Close();
-        }
-    }
+    rdbPredicate.NotEqualTo(PhotoColumn::PHOTO_IS_SHARED,
+        std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
     return ThumbnailService::GetInstance()->CreateAstcBatchOnDemand(rdbPredicate, requestId, pid);
 }
 

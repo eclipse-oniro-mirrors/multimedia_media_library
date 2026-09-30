@@ -19,6 +19,7 @@
 
 #include <cinttypes>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "cloud_sync_notify_handler.h"
@@ -34,8 +35,15 @@ constexpr int64_t SOUTH_DEVICE_CLEAN_DATA_TIMEOUT_MILLISECOND = 12 * 60 * 60 * 1
 const std::string SHARE_RETAIN_STATUS_INFO = "/data/storage/el2/base/preferences/share_retain_status_info.xml";
 const std::string SHARE_RETAIN_STATUS_KEY = "persist.multimedia.medialibrary.retain.share.status";
 
+static std::mutex& GetShareCleanStatusMutex()
+{
+    static std::mutex shareCleanStatusMutex;
+    return shareCleanStatusMutex;
+}
+
 void MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus status)
 {
+    std::lock_guard<std::mutex> lock(GetShareCleanStatusMutex());
     // 防止一直无法恢复, 使用时间戳代替开关
     int64_t timeStamp = 0;
     if (status == CloudSyncStatus::CLOUD_CLEANING) {
@@ -58,6 +66,7 @@ void MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus st
 
 bool MediaShareAssetsCloudExitUtils::IsShareAssetCleaning()
 {
+    std::lock_guard<std::mutex> lock(GetShareCleanStatusMutex());
     int64_t timeStamp = 0;
     int32_t errCode = 0;
     std::shared_ptr<NativePreferences::Preferences> prefs =
