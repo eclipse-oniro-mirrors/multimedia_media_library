@@ -18,6 +18,7 @@
 
 #include <charconv>
 #include <fcntl.h>
+#include <regex>
 #include "directory_ex.h"
 #include "hitrace_meter.h"
 #include "media_exif.h"
@@ -670,16 +671,51 @@ void PopulateExtractedAVMetadataTwo(
     }
 }
 
-void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_ptr<Metadata> &data)
+void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<Metadata> &data,
+    bool hasLat, bool hasLon)
+{
+    std::string iso6709Str;
+    if (!customMeta->GetData(PHOTO_DATA_VIDEO_IOS_LOCATION, iso6709Str) || iso6709Str.empty()) {
+        return;
+    }
+    std::regex pattern(R"([+-]\d+\.\d+)");
+    std::sregex_iterator it(iso6709Str.cbegin(), iso6709Str.cend(), pattern);
+    std::sregex_iterator end;
+    if (it == end) {
+        return;
+    }
+    std::string latStr = it->str();
+    if (++it == end) {
+        return;
+    }
+    std::string lonStr = it->str();
+    if (!hasLat) {
+        data->SetLatitude(std::stod(latStr));
+    }
+    if (!hasLon) {
+        data->SetLongitude(std::stod(lonStr));
+    }
+}
+
+void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_ptr<Metadata> &data,
+    const shared_ptr<Meta> &customMeta)
 {
     float floatTempMeta;
-
-    if (meta->GetData(Tag::MEDIA_LATITUDE, floatTempMeta)) {
-        data->SetLatitude((double)floatTempMeta);
+    bool hasLat = meta->GetData(Tag::MEDIA_LATITUDE, floatTempMeta);
+    if (hasLat) {
+        data->SetLatitude(static_cast<double>(floatTempMeta));
     }
-    if (meta->GetData(Tag::MEDIA_LONGITUDE, floatTempMeta)) {
-        data->SetLongitude((double)floatTempMeta);
+    bool hasLon = meta->GetData(Tag::MEDIA_LONGITUDE, floatTempMeta);
+    if (hasLon) {
+        data->SetLongitude(static_cast<double>(floatTempMeta));
     }
+    if (hasLat && hasLon) {
+        return;
+    }
+    if (customMeta == nullptr) {
+        return;
+    }
+    ParseIOSVideoLocation(customMeta, data, hasLat, hasLon);
 }
 
 static void ParseLivePhotoCoverPosition(std::unique_ptr<Metadata> &data)
@@ -735,7 +771,7 @@ void MetadataExtractor::FillExtractedMetadata(const std::unordered_map<int32_t, 
         customMeta = nullptr;
     }
     PopulateVideoTimeInfo(customMeta, resultMap, data);
-    PopulateExtractedAVLocationMeta(meta, data);
+    PopulateExtractedAVLocationMeta(meta, data, customMeta);
 
     int64_t timeNow = MediaFileUtils::UTCTimeMilliSeconds();
     data->SetLastVisitTime(timeNow);
