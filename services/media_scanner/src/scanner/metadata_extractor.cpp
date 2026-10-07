@@ -671,24 +671,9 @@ void PopulateExtractedAVMetadataTwo(
     }
 }
 
-void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_ptr<Metadata> &data,
-    const shared_ptr<Meta> &customMeta)
+void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<Metadata> &data,
+    bool hasLat, bool hasLon)
 {
-    float floatTempMeta;
-    bool hasLat = meta->GetData(Tag::MEDIA_LATITUDE, floatTempMeta);
-    if (hasLat) {
-        data->SetLatitude(static_cast<double>(floatTempMeta));
-    }
-    bool hasLon = meta->GetData(Tag::MEDIA_LONGITUDE, floatTempMeta);
-    if (hasLon) {
-        data->SetLongitude(static_cast<double>(floatTempMeta));
-    }
-    if (hasLat && hasLon) {
-        return;
-    }
-    if (customMeta == nullptr) {
-        return;
-    }
     std::string iso6709Str;
     if (!customMeta->GetData(PHOTO_DATA_VIDEO_IOS_LOCATION, iso6709Str) || iso6709Str.empty()) {
         return;
@@ -710,6 +695,27 @@ void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_pt
     if (!hasLon) {
         data->SetLongitude(std::stod(lonStr));
     }
+}
+
+void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_ptr<Metadata> &data,
+    const shared_ptr<Meta> &customMeta)
+{
+    float floatTempMeta;
+    bool hasLat = meta->GetData(Tag::MEDIA_LATITUDE, floatTempMeta);
+    if (hasLat) {
+        data->SetLatitude(static_cast<double>(floatTempMeta));
+    }
+    bool hasLon = meta->GetData(Tag::MEDIA_LONGITUDE, floatTempMeta);
+    if (hasLon) {
+        data->SetLongitude(static_cast<double>(floatTempMeta));
+    }
+    if (hasLat && hasLon) {
+        return;
+    }
+    if (customMeta == nullptr) {
+        return;
+    }
+    ParseIOSVideoLocation(customMeta, data, hasLat, hasLon);
 }
 
 static void ParseLivePhotoCoverPosition(std::unique_ptr<Metadata> &data)
