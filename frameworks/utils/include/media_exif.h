@@ -72,6 +72,7 @@ const std::string PHOTO_DATA_IMAGE_XT_STYLE_TEMPLATE_NAME = "HwMnoteXtStyleTempl
 const std::string PHOTO_DATA_VIDEO_CUSTOM_INFO = "customInfo";
 const std::string PHOTO_DATA_VIDEO_COVER_TIME = "com.openharmony.covertime";
 const std::string PHOTO_DATA_VIDEO_IOS_CREATION_DATE = "com.apple.quicktime.creationdate";
+const std::string PHOTO_DATA_VIDEO_IOS_LOCATION = "com.apple.quicktime.location.ISO6709";
 const std::string PHOTO_DATA_IMAGE_OFFSET_TIME_ORIGINAL = "OffsetTimeOriginal";
 const std::string PHOTO_DATA_IMAGE_SUBSEC_TIME_ORIGINAL = "SubsecTimeOriginal";
 const std::string PHOTO_DATA_IMAGE_OFFSET_TIME = "OffsetTime";
