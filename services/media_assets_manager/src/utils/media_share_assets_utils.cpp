@@ -58,7 +58,7 @@ void MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus st
         MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
         return;
     }
-    bool retFlag = prefs->PutLong(SHARE_RETAIN_STATUS_KEY, timeStamp);
+    int32_t retFlag = prefs->PutLong(SHARE_RETAIN_STATUS_KEY, timeStamp);
     prefs->FlushSync();
     MEDIA_INFO_LOG("SetShareAssetCleanStatus set status: %{public}d, result: %{public}d, timeStamp: %{public}" PRId64,
         static_cast<int32_t>(status), retFlag, timeStamp);
