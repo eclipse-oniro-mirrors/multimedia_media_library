@@ -110,11 +110,11 @@ static bool SetSystemParameter(const std::string& key, int64_t value)
     return system::SetParameter(key, valueStr);
 }
 
-static void SetSouthDeviceSyncSwitchStatus(CloudSyncStatus status)
+void CloudMediaAssetManager::SetSouthDeviceSyncSwitchStatus(int32_t status)
 {
     std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
     bool retFlag = false;
-    if (status == CloudSyncStatus::CLOUD_CLEANING) {
+    if (status == static_cast<int32_t>(CloudSyncStatus::CLOUD_CLEANING)) {
         auto timeStamp = MediaFileUtils::UTCTimeMilliSeconds();
         retFlag = SetSystemParameter(CLOUDSYNC_SWITCH_STATUS_KEY, timeStamp);
     } else {
@@ -897,7 +897,7 @@ int32_t CloudMediaAssetManager::ForceRetainDownloadCloudMedia(CloudMediaRetainTy
             isCloudCleaning, isHdcCleaning);
         return E_OK;
     }
-    SetSouthDeviceSyncSwitchStatus(CloudSyncStatus::CLOUD_CLEANING);
+    SetSouthDeviceSyncSwitchStatus(static_cast<int32_t>(CloudSyncStatus::CLOUD_CLEANING));
     // 清除LCD主动老化标记
     LcdAgingManager::GetInstance().SetIsActiveLcdAging(false);
 
@@ -937,7 +937,7 @@ int32_t CloudMediaAssetManager::ForceRetainDownloadCloudMedia(CloudMediaRetainTy
         MEDIA_INFO_LOG("cloud sync manager end reset cursor");
     }
 
-    SetSouthDeviceSyncSwitchStatus(CloudSyncStatus::SYNC_SWITCHED_OFF);
+    SetSouthDeviceSyncSwitchStatus(static_cast<int32_t>(CloudSyncStatus::SYNC_SWITCHED_OFF));
 
     TryToStartSync();
 

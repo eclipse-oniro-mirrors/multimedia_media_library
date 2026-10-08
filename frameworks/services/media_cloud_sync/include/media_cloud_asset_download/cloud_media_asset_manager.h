@@ -82,6 +82,7 @@ public:
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(
         GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody);
     EXPORT static void WaitIfBackUpingOrRestoring();
+    EXPORT static void SetSouthDeviceSyncSwitchStatus(int32_t status);
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     EXPORT void CleanDownloadTasksTable();
 #endif

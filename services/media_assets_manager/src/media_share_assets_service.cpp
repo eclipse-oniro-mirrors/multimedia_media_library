@@ -215,6 +215,8 @@ void MediaShareAssetsService::BeforeRemoveShareAlbumAndAsset()
     HiAudit::GetInstance().WriteForCloudExit(MediaLibraryBundleManager::GetInstance()->GetClientBundleName(),
         static_cast<int32_t>(CloudMediaRetainType::SHARE_RETAIN_FORCE), "start");
 
+    CloudMediaAssetManager::SetSouthDeviceSyncSwitchStatus(static_cast<int32_t>(CloudSyncStatus::CLOUD_CLEANING));
+
     // 主动停止端云同步
     this->cloudShareSyncFoundationService_.StopSync();
 
@@ -235,6 +237,8 @@ void MediaShareAssetsService::AfterRemoveShareAlbumAndAsset()
     MediaShareAssetsCloudExitUtils::SetShareAssetCleanStatus(CloudSyncStatus::SYNC_SWITCHED_OFF);
     // 重置端云同步水位
     this->cloudShareSyncFoundationService_.ResetCursor();
+
+    CloudMediaAssetManager::SetSouthDeviceSyncSwitchStatus(static_cast<int32_t>(CloudSyncStatus::SYNC_SWITCHED_OFF));
 
     // 尝试启动端云同步
     this->cloudShareSyncFoundationService_.TryToStartSync();
