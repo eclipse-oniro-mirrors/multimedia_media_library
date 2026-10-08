@@ -70,6 +70,7 @@ private:
     bool HandleLcdAspectRatio(const std::unordered_map<std::string, std::string> &stringfieldsMap,
         CloudMdkRecordPhotosVo &photosVo);
     void GetScadetailInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data);
+    void GetShareAttributesInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data);
 
 private:
     static constexpr int32_t USER_COMMENT_LIMIT_SIZE = 1024;

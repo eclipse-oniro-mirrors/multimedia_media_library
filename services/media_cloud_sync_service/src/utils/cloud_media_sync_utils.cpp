@@ -704,10 +704,12 @@ int32_t CloudMediaSyncUtils::MoveLivePhoto(
 int32_t CloudMediaSyncUtils::FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, const CloudMediaPullDataDto &pullData)
 {
     photosDto.isShared = pullData.attributesIsShared;
-    photosDto.shareOwnerInfo = pullData.attributesShareOwnerInfo;
-    photosDto.shareAlbumOwner = pullData.attributesShareAlbumOwner;
-    photosDto.shareDateDay = pullData.attributesShareDateDay;
-    photosDto.shareGroup = pullData.attributesShareGroup;
+    CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), E_OK);
+    const auto &shareDetailDto = pullData.sharePhotoDetailDtoOp.value();
+    photosDto.shareOwnerInfo = shareDetailDto.attributesShareOwnerInfo;
+    photosDto.shareAlbumOwner = shareDetailDto.attributesShareAlbumOwner;
+    photosDto.shareDateDay = shareDetailDto.attributesShareDateDay;
+    photosDto.shareGroup = shareDetailDto.attributesShareGroup;
     return E_OK;
 }
 

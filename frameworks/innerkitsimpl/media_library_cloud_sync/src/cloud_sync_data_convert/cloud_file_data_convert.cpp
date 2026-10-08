@@ -1162,16 +1162,21 @@ std::string CloudFileDataConvert::GetContentRelatedLog(const CloudMdkRecordPhoto
 void CloudFileDataConvert::ConvertShareAlbumInfoToVo(const MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
 {
     onFetchPhotoVo.isShared = data.GetPhotoIsShared().value_or(0);
-    onFetchPhotoVo.shareOwnerInfo = data.GetPhotoShareOwnerInfo().value_or("");
-    onFetchPhotoVo.shareAlbumOwner = data.GetShareAlbumOwner().value_or("");
-    onFetchPhotoVo.shareDateDay = data.GetPhotoShareDateDay().value_or(0L);
-    onFetchPhotoVo.shareGroup = data.GetPhotoShareGroup().value_or(0L);
+    CHECK_AND_RETURN(onFetchPhotoVo.isShared == 1);
+    onFetchPhotoVo.InitSharePhotoDetailVo(onFetchPhotoVo.isShared);
+    auto &sharePhotoDetailVo = onFetchPhotoVo.sharePhotoDetailDtoOp.value();
+    sharePhotoDetailVo.shareOwnerInfo = data.GetPhotoShareOwnerInfo().value_or("");
+    sharePhotoDetailVo.shareAlbumOwner = data.GetShareAlbumOwner().value_or("");
+    sharePhotoDetailVo.shareDateDay = data.GetPhotoShareDateDay().value_or(0);
+    sharePhotoDetailVo.shareGroup = data.GetPhotoShareGroup().value_or(0);
 }
 
 void CloudFileDataConvert::ConvertScaDetailToVo(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
 {
-    onFetchPhotoVo.sharePhotoDetail.currentUserId = data.GetCurrentUserId();
-    onFetchPhotoVo.sharePhotoDetail.mediaCreateId = data.GetMediaCreatedId();
-    data.GetScadetailList(onFetchPhotoVo.sharePhotoDetail.scaDetailList);
+    CHECK_AND_RETURN(onFetchPhotoVo.sharePhotoDetailDtoOp.has_value());
+    auto &sharePhotoDetailVo = onFetchPhotoVo.sharePhotoDetailDtoOp.value();
+    sharePhotoDetailVo.currentUserId = data.GetCurrentUserId();
+    sharePhotoDetailVo.mediaCreateId = data.GetMediaCreatedId();
+    data.GetScadetailList(sharePhotoDetailVo.scaDetailList);
 }
 } // namespace OHOS::Media::CloudSync

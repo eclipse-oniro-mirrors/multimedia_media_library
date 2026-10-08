@@ -103,11 +103,7 @@ public:
     int32_t isCritical{0};
     int32_t compressionQuality{-1};
     int32_t isShared{0};
-    std::string shareOwnerInfo;
-    int64_t shareDateDay{0};
-    int64_t shareGroup{0};
-    std::string shareAlbumOwner;
-    SharePhotoDetailVo sharePhotoDetail;
+    std::optional<SharePhotoDetailVo> sharePhotoDetailDtoOp;
     int32_t editDataExist;
 
 public:  // functions of Parcelable.
@@ -117,6 +113,14 @@ public:  // functions of Parcelable.
 
 public:  // basic functions
     std::string ToString() const;
+
+public:
+    void InitSharePhotoDetailVo(int32_t isShared);
+
+private:
+    bool MarshallSharePhotoDetailVo(MessageParcel &parcel) const;
+    bool UnmarshallSharePhotoDetailVo(MessageParcel &parcel);
+    std::string SharePhotoDetailVoToString() const;
 
 private:
     bool MarshallingBasicInfo(Parcel &parcel) const;

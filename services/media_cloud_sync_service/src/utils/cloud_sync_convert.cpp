@@ -32,6 +32,7 @@
 #include "media_file_utils.h"
 #include "photo_file_utils.h"
 #include "media_values_bucket_utils.h"
+#include "cloud_media_context.h"
 
 namespace OHOS::Media::CloudSync {
 static const int32_t MAX_SCAND_SIZE = 3;
@@ -403,7 +404,14 @@ int32_t CloudSyncConvert::CompensateAssetShareRisk(
 {
     int32_t shareRiskStatus = -1;
     std::string shareRiskType;
-    if (!ComputeRiskFromScaDetailList(data.scaDetailDataList, MEDIA_ASSET_USAGES, shareRiskStatus, shareRiskType)) {
+    if (data.sharePhotoDetailDtoOp.has_value()) {
+        MEDIA_ERR_LOG("CompensateAssetShareRisk: no share photo detail, cloudId:%{public}s",
+            data.cloudId.c_str());
+        return E_CLOUDSYNC_INVAL_ARG;
+    }
+    const auto &sharePhotoDetailDto = data.sharePhotoDetailDtoOp.value();
+    if (!ComputeRiskFromScaDetailList(sharePhotoDetailDto.scaDetailList, MEDIA_ASSET_USAGES,
+        shareRiskStatus, shareRiskType)) {
         MEDIA_ERR_LOG(
             "CompensateAssetShareRisk: invalid sca share risk data, cloudId=%{public}s",
             data.cloudId.c_str());
@@ -984,38 +992,48 @@ int32_t CloudSyncConvert::CompensateLivePhoto4DPair(
 
 int32_t CloudSyncConvert::CompensateAttIsShared(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, pullData.attributesIsShared);
-    if (pullData.attributesIsShared) {
-        values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceTypes::MEDIA_SHARE_ALBUM));
-    }
+    int32_t shareType = CloudMediaContext::GetInstance().GetSceneType();
+    CHECK_AND_RETURN_RET_WARN_LOG(shareType == pullData.attributesIsShared, E_ERR,
+        "shareType:%{public}d inconsistent with attributesIsShared:%{public}d", shareType, pullData.attributesIsShared);
+    CHECK_AND_RETURN_RET(shareType == static_cast<int32_t>(SceneType::SHARE), E_OK);
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, shareType);
+    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA_SHARE_ALBUM));
     return E_OK;
 }
 
 int32_t CloudSyncConvert::CompensateAttShareOwnerInfo(
     const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    values.PutString(PhotoColumn::PHOTO_SHARE_OWNER_INFO, pullData.attributesShareOwnerInfo);
+    CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), E_OK);
+    const auto &sharePhotoDetailDto = pullData.sharePhotoDetailDtoOp.value();
+    values.PutString(PhotoColumn::PHOTO_SHARE_OWNER_INFO, sharePhotoDetailDto.attributesShareOwnerInfo);
     return E_OK;
 }
 
 int32_t CloudSyncConvert::CompensateAttShareAlbumOwner(
     const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    values.PutString(PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, pullData.attributesShareAlbumOwner);
+    CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), E_OK);
+    const auto &sharePhotoDetailDto = pullData.sharePhotoDetailDtoOp.value();
+    values.PutString(PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, sharePhotoDetailDto.attributesShareAlbumOwner);
     return E_OK;
 }
 
 int32_t CloudSyncConvert::CompensateAttShareDateDay(
     const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    values.PutLong(PhotoColumn::PHOTO_SHARE_DATE_DAY, pullData.attributesShareDateDay);
+    CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), E_OK);
+    const auto &sharePhotoDetailDto = pullData.sharePhotoDetailDtoOp.value();
+    values.PutLong(PhotoColumn::PHOTO_SHARE_DATE_DAY, sharePhotoDetailDto.attributesShareDateDay);
     return E_OK;
 }
 
 int32_t CloudSyncConvert::CompensateAttShareGroup(
     const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    values.PutLong(PhotoColumn::PHOTO_SHARE_GROUP, pullData.attributesShareGroup);
+    CHECK_AND_RETURN_RET(pullData.sharePhotoDetailDtoOp.has_value(), E_OK);
+    const auto &sharePhotoDetailDto = pullData.sharePhotoDetailDtoOp.value();
+    values.PutLong(PhotoColumn::PHOTO_SHARE_GROUP, sharePhotoDetailDto.attributesShareGroup);
     return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

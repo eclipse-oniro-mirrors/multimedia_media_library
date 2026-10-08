@@ -43,6 +43,10 @@ public: // basic functions
 // 照片下行共享风控详情: 当前用户角色判定 + scaDetail 列表
 class EXPORT SharePhotoDetailVo : public IPC::IMediaParcelable {
 public:
+    std::string shareOwnerInfo;
+    std::string shareAlbumOwner;
+    int64_t shareDateDay{0};
+    int64_t shareGroup{0};
     std::string currentUserId;
     std::string mediaCreateId;
     std::vector<ScaDetailVo> scaDetailList;

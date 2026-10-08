@@ -210,6 +210,8 @@ int32_t CloudMediaPhotosService::PullUpdate(CloudMediaPullDataDto &pullData, std
     CHECK_AND_RETURN_RET_INFO_LOG(!CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, false),
         E_OK,
         "local record dirty, ignore cloud update");
+    this->shareCheckService_.VerifyPullData(pullData);
+
     bool mtimeChanged = false;
     int32_t ret = IsMtimeChanged(pullData, mtimeChanged);
     if (ret != E_OK) {
@@ -307,6 +309,8 @@ int32_t CloudMediaPhotosService::DoDataMerge(CloudMediaPullDataDto &pullData, co
     // fetch local data, to make sure the local data is consistent with the cloud data in the following merge process.
     CHECK_AND_EXECUTE(pullData.localPhotosPoOp.has_value(),
                       this->commonDao_.QueryPhotoByFilePath(localKeyData.filePath, pullData.localPhotosPoOp));
+    this->shareCheckService_.VerifyPullData(pullData);
+
     int32_t ret = this->photosDao_.ConflictDataMerge(
         pullData, localKeyData.filePath, cloudStd, cloudMapIds, refreshAlbums, photoRefresh);
     if (ret != E_OK) {
@@ -427,6 +431,8 @@ int32_t CloudMediaPhotosService::PullInsert(
 
     for (auto insertData : allPullDatas) {
         MEDIA_DEBUG_LOG("PullInsert insert of record %{public}s", insertData.cloudId.c_str());
+        this->shareCheckService_.VerifyPullData(insertData);
+
         ExtractEditDataCamera(insertData);
         ret = this->photosDao_.GetInsertParams(
             insertData, recordAnalysisAlbumMaps, recordAlbumMaps, refreshAlbums, insertFiles);

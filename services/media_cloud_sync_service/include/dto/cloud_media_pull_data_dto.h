@@ -16,6 +16,7 @@
 #ifndef OHOS_MEDIA_CLOUDSYNC_CLOUD_MEDIA_PULL_DATA_H
 #define OHOS_MEDIA_CLOUDSYNC_CLOUD_MEDIA_PULL_DATA_H
 
+#include <optional>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -27,6 +28,22 @@
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
+class SharePhotoDetailDto {
+public:
+    std::string attributesShareOwnerInfo;  /* share_owner_info */
+    std::string attributesShareAlbumOwner; /* share_album_owner */
+    int64_t attributesShareDateDay{0};     /* share_date_day */
+    int64_t attributesShareGroup{0};       /* share_group */
+    // Shared Album Risk Control
+    std::vector<ScaDetailDataDto> scaDetailList;
+    std::string currentUserId;             /* 当前用户ID，用于角色判定 */
+    std::string mediaCreateId;             /* 资产创建者ID */
+
+public:
+    virtual ~SharePhotoDetailDto() = default;
+    std::string ToString() const;
+};
+
 class EXPORT CloudMediaPullDataDto {
 public:
     std::optional<PhotoAlbumPo> albumInfoOp;
@@ -105,14 +122,7 @@ public:
     int32_t attributesRiskStatus{0};              /* photo_risk_status */
     int32_t attributesIsCritical{0};              /* is_critical */
     int32_t attributesIsShared{0};                /* is_shared */
-    std::string attributesShareOwnerInfo;         /* share_owner_info */
-    std::string attributesShareAlbumOwner;        /* share_album_owner */
-    int64_t attributesShareDateDay{0};            /* share_date_day */
-    int64_t attributesShareGroup{0};              /* share_group */
-    // Shared Album Risk Control
-    std::vector<ScaDetailDataDto> scaDetailDataList;
-    std::string currentUserId;                    /* 当前用户ID，用于角色判定 */
-    std::string mediaCreateId;                    /* 资产创建者ID */
+    std::optional<SharePhotoDetailDto> sharePhotoDetailDtoOp;
 
     // "properties"
     bool hasProperties{false};
