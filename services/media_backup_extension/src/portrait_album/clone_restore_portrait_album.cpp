@@ -1070,7 +1070,7 @@ int32_t CloneRestorePortrait::RestoreMaps()
     
     const std::string QUERY_TOTAL_COUNT_SQL = "SELECT count(1) AS count FROM AnalysisPhotoMap AS map "
         " INNER JOIN AnalysisAlbum AS a ON map.map_album = a.album_id "
-        " WHERE a.album_subtype = 4102 AND (a.is_removed != 1 OR a.is_removed IS NULL)";
+        " WHERE a.album_subtype = 4102";
     int32_t totalNumber = BackupDatabaseUtils::QueryInt(mediaRdb_, QUERY_TOTAL_COUNT_SQL, "count");
     MEDIA_INFO_LOG("totalNumber: %{public}d", totalNumber);
     for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
