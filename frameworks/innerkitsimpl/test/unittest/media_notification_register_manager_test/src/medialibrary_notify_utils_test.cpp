@@ -20,6 +20,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_napi_log.h"
 #include "medialibrary_napi_utils.h"
+#include "medialibrary_notify_utils.h"
 #include "media_log.h"
 #include "media_change_info.h"
 #include "photo_asset_change_info.h"
@@ -468,7 +469,7 @@ HWTEST_F(MediaLibraryNotifyUtilsTest, SetValueInt32_003, TestSize.Level1)
     napi_env env = nullptr;
     napi_value result = nullptr;
     napi_status status = napi_create_object(env, &result);
-    if (status == napi_ok && && result != nullptr) {
+    if (status == napi_ok && result != nullptr) {
         status = MediaLibraryNotifyUtils::SetValueInt32(env, "testInt", 0, result);
         EXPECT_EQ(status, napi_ok);
     }
@@ -550,7 +551,7 @@ HWTEST_F(MediaLibraryNotifyUtilsTest, SetValueInt64_005, TestSize.Level1)
     napi_value result = nullptr;
     napi_status status = napi_create_object(env, &result);
     if (status == napi_ok && result != nullptr) {
-        status = MediaLibraryNotifyUtils::SetValueInt64(env, "testInt64", -9223372036854775808LL, result);
+        status = MediaLibraryNotifyUtils::SetValueInt64(env, "testInt64", (-9223372036854775807LL - 1), result);
         EXPECT_EQ(status, napi_ok);
     }
 }
@@ -680,7 +681,7 @@ HWTEST_F(MediaLibraryNotifyUtilsTest, BuildPhotoAssetRecheckChangeInfos_001, Tes
 HWTEST_F(MediaLibraryNotifyUtilsTest, BuildAlbumRecheckChangeInfos_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("BuildAlbumRecheckChangeInfos_001::Start");
-    napi_env环境 = nullptr;
+    napi_env env = nullptr;
     napi_value result = MediaLibraryNotifyUtils::BuildAlbumRecheckChangeInfos(env);
     if (result != nullptr) {
         EXPECT_TRUE(result != nullptr);
@@ -1150,6 +1151,81 @@ HWTEST_F(MediaLibraryNotifyUtilsTest, BuildSingleAlbumChangeInfos_002, TestSize.
     shared_ptr<AccurateRefresh::AlbumChangeData> changeInfo = nullptr;
     auto mediaChangeInfo = make_shared<Notification::MediaChangeInfo>();
     napi_value result = MediaLibraryNotifyUtils::BuildSingleAlbumChangeInfos(env, changeInfo, mediaChangeInfo);
+    EXPECT_EQ(result, nullptr);
+}
+
+// 共享图片/共享相册注册名 -> uri 映射（覆盖新增的两个 RegisterNotifyType 常量与 REGISTER_NOTIFY_TYPE_MAP 表项）
+HWTEST_F(MediaLibraryNotifyUtilsTest, GetRegisterNotifyType_share_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetRegisterNotifyType_share_001::Start");
+    Notification::NotifyUriType uriType;
+    int32_t result = MediaLibraryNotifyUtils::GetRegisterNotifyType(RegisterNotifyType::SHARE_PHOTO_CHANGE, uriType);
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(uriType, Notification::NotifyUriType::SHARE_PHOTO_URI);
+
+    result = MediaLibraryNotifyUtils::GetRegisterNotifyType(RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE, uriType);
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(uriType, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI);
+}
+
+// 共享 uri -> 注册名映射（覆盖 REGISTER_TYPE_MAP / REGISTER_URI_MAP 新增表项）
+HWTEST_F(MediaLibraryNotifyUtilsTest, GetNotifyTypeAndUri_share_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetNotifyTypeAndUri_share_001::Start");
+    Notification::NotifyUriType uriType;
+    string uri;
+    int32_t result = MediaLibraryNotifyUtils::GetNotifyTypeAndUri(
+        Notification::NotifyUriType::SHARE_PHOTO_URI, uriType, uri);
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(uriType, Notification::NotifyUriType::SHARE_PHOTO_URI);
+    EXPECT_EQ(uri, RegisterNotifyType::SHARE_PHOTO_CHANGE);
+
+    result = MediaLibraryNotifyUtils::GetNotifyTypeAndUri(
+        Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI, uriType, uri);
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(uriType, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI);
+    EXPECT_EQ(uri, RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE);
+}
+
+// 共享图片：uriType 为 SHARE_PHOTO_URI 时进入新增的共享字段分支（null env 下不崩、返回 nullptr）
+HWTEST_F(MediaLibraryNotifyUtilsTest, BuildPhotoAssetChangeInfo_share_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("BuildPhotoAssetChangeInfo_share_001::Start");
+    napi_env env = nullptr;
+    AccurateRefresh::PhotoAssetChangeInfo assetInfo;
+    assetInfo.fileId_ = 1;
+    assetInfo.isShared_ = 1;
+    assetInfo.shareDateDay_ = 20260101;
+    assetInfo.shareGroup_ = 200;
+    assetInfo.shareRiskStatus_ = 3;
+    assetInfo.photoVisibility_ = 1;
+    napi_value result = MediaLibraryNotifyUtils::BuildPhotoAssetChangeInfo(env, assetInfo,
+        Notification::NotifyUriType::SHARE_PHOTO_URI);
+    EXPECT_EQ(result, nullptr);
+
+    // 非共享 uriType：不进该分支
+    result = MediaLibraryNotifyUtils::BuildPhotoAssetChangeInfo(env, assetInfo,
+        Notification::NotifyUriType::PHOTO_URI);
+    EXPECT_EQ(result, nullptr);
+}
+
+// 共享相册：IsShareAlbum 为真时进入新增的 shareRiskStatus 分支（null env 下不崩、返回 nullptr）
+HWTEST_F(MediaLibraryNotifyUtilsTest, BuildAlbumChangeInfo_share_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("BuildAlbumChangeInfo_share_001::Start");
+    napi_env env = nullptr;
+    AccurateRefresh::AlbumChangeInfo albumInfo;
+    albumInfo.albumId_ = 1;
+    albumInfo.albumType_ = static_cast<int32_t>(PhotoAlbumType::SHARE);
+    albumInfo.albumSubType_ = static_cast<int32_t>(PhotoAlbumSubType::SHARE_GENERIC);
+    albumInfo.shareRiskStatus_ = 3;
+    napi_value result = MediaLibraryNotifyUtils::BuildAlbumChangeInfo(env, albumInfo);
+    EXPECT_EQ(result, nullptr);
+
+    // 非共享相册：不进该分支
+    albumInfo.albumType_ = static_cast<int32_t>(PhotoAlbumType::USER);
+    albumInfo.albumSubType_ = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+    result = MediaLibraryNotifyUtils::BuildAlbumChangeInfo(env, albumInfo);
     EXPECT_EQ(result, nullptr);
 }
 

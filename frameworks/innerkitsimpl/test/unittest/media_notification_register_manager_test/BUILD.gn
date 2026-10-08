@@ -39,6 +39,7 @@ ohos_unittest("media_notification_register_manager_test") {
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "src/media_notification_register_manager_test.cpp",
     "src/media_notify_asset_manager_observer_test.cpp",
+    "src/medialibrary_notify_utils_test.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/register_manager/media_observer_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/register_manager/notify_register_permission.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/register_manager/observer_callback_recipient.cpp",
@@ -61,6 +62,7 @@ ohos_unittest("media_notification_register_manager_test") {
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
   ]
  
   external_deps = [

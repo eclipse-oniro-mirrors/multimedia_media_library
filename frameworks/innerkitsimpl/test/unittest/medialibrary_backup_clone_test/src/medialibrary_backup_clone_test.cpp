@@ -7836,5 +7836,41 @@ HWTEST_F(MediaLibraryBackupCloneTest, UpgradeRestore_MoveMigrateCloudFile_FailNo
     EXPECT_EQ(upgradeRestore->migrateFileNumber_, 0);
     MEDIA_INFO_LOG("End UpgradeRestore_MoveMigrateCloudFile_FailNotInterrupt");
 }
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_cleanup_temp_backup_dir_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_cleanup_temp_backup_dir_001");
+    std::string origDir = restoreService->backupRestoreDir_;
+    restoreService->backupRestoreDir_ = TEST_PATH;
+ 
+    // Branch 1: temp backup dir does not exist, cleanup should succeed directly
+    EXPECT_TRUE(restoreService->CleanupTempBackupDir());
+ 
+    // Branch 2: temp backup dir exists, should be deleted and return true
+    std::string tmpDir = std::string(TEST_PATH) + "/storage/media/local/files/.backup/backup/media_temp_rdb";
+    ASSERT_TRUE(MediaFileUtils::CreateDirectory(tmpDir));
+    EXPECT_TRUE(MediaFileUtils::IsDirExists(tmpDir));
+    EXPECT_TRUE(restoreService->CleanupTempBackupDir());
+    EXPECT_FALSE(MediaFileUtils::IsDirExists(tmpDir));
+ 
+    restoreService->backupRestoreDir_ = origDir;
+}
+ 
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_parse_dst_device_backup_info_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_parse_dst_device_backup_info_002");
+ 
+    restoreService->restoreInfo_ =
+        R"([{"type": "compatibility_info", "detail": "{\"backupHdcEnable\": true, \"share\": true}"}])";
+    restoreService->ParseDstDeviceBackupInfo();
+    EXPECT_TRUE(restoreService->dstDeviceBackupInfo_.hdcEnabled);
+    EXPECT_TRUE(restoreService->dstDeviceBackupInfo_.shareEnabled);
+ 
+    restoreService->restoreInfo_ =
+        R"([{"type": "compatibility_info", "detail": "{\"backupHdcEnable\": true, \"share\": false}"}])";
+    restoreService->ParseDstDeviceBackupInfo();
+    EXPECT_TRUE(restoreService->dstDeviceBackupInfo_.hdcEnabled);
+    EXPECT_TRUE(restoreService->dstDeviceBackupInfo_.shareEnabled);
+}
 } // namespace Media
 } // namespace OHOS
