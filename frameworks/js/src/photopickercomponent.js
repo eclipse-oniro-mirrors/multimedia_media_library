@@ -721,15 +721,14 @@ export class PhotoPickerComponent extends ViewPU {
             }
         } else if ('onRecommendedLabelClicked' === o) {
             if (this.onRecommendedLabelClicked) {
-                if (e.text) {
-                    this.onRecommendedLabelClicked(e.text);
-                } else {
-                    let smartLabel = new this.RecommendedLabel();
-                    smartLabel.id = e.id;
-                    smartLabel.name = e.name;
-                    smartLabel.thumbnail = e.thumbnail;
-                    this.onRecommendedLabelClicked(smartLabel);
+                let smartEntity = new this.SmartEntity();
+                smartEntity.id = e.id;
+                smartEntity.name = e.name;
+                this.onRecommendedLabelClicked(smartEntity);
+                if (e.thumbnail) {
+                    smartEntity.thumbnail = e.thumbnail;
                 }
+                this.onRecommendedLabelClicked(smartEntity);
             }
         } else if ('onPickerStateChanged' === o) {
             if (this.onPickerStateChanged) {

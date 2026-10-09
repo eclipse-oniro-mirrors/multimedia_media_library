@@ -544,20 +544,18 @@ export struct PhotoPickerComponent {
       }
     } else if (dataType === 'onRecommendedLabelClicked') {
       if (this.onRecommendedLabelClicked) {
-        if (e.text) {
-            this.onRecommendedLabelClicked(e.text);
-        } else {
-            let smartLabel = new this.RecommendedLabel();
-            smartLabel.id = e.id;
-            smartLabel.name = e.name;
-            smartLabel.thumbnail = e.thumbnail;
-            this.onRecommendedLabelClicked(smartLabel);
-        }
-      } else if (dataType === 'onPickerStateChanged') {
-        if (this.onPickerStateChanged) {
-            this.onPickerStateChanged(e.pickerState);
+        let smartEntity = new this.SmartEntity();
+        smartEntity.id = e.id;
+        smartEntity.name = e.name;
+        this.onRecommendedLabelClicked(smartEntity);
+        if (e.thumbnail) {
+            smartEntity.thumbnail = e.thumbnail;
         }
       } 
+    } else if (dataType === 'onPickerStateChanged') {
+      if (this.onPickerStateChanged) {
+          this.onPickerStateChanged(e.pickerState);
+      }
     } else {
       console.info('PhotoPickerComponent onReceive: other case');
     }
