@@ -294,6 +294,11 @@ std::string MDKRecordAlbumData::GetOwnerId() const
     return this->record_.GetOwnerId();
 }
 
+std::string MDKRecordAlbumData::GetCurrentUserId() const
+{
+    return this->record_.GetCurrentUserId();
+}
+
 void MDKRecordAlbumData::GetShareMembers(std::vector<ShareMemberDataVo> &shareMemberDatas)
 {
     if (this->permissions_.empty()) {

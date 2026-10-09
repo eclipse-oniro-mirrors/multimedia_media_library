@@ -28,6 +28,7 @@ class EXPORT ShareAlbumDetailVo : public IPC::IMediaParcelable {
 public:
     std::vector<ShareMemberDataVo> shareMemberData;
     std::vector<ScaDetailVo> scaDetailList;
+    std::string currentUserId;
 
 public:
     virtual ~ShareAlbumDetailVo() = default;

@@ -37,6 +37,11 @@ public:
 
 private:
     int32_t FindAlbumInfo(PhotoAlbumDto &record);
+    bool HasAlbumPermission(const PhotoAlbumDto &record) const;
+    int32_t HandleNoPermissionRecord(PhotoAlbumDto &record, ChangeType &changeType,
+        std::vector<std::string> &failedRecords);
+    int32_t PullRemoveAlbumOnExit(PhotoAlbumDto &record, ChangeType &changeType,
+        std::vector<std::string> &failedRecords);
     int32_t HandleRecord(PhotoAlbumDto &record, ChangeType &changeType,
         std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
     int32_t PullInsert(const PhotoAlbumDto &record, ChangeType &changeType,

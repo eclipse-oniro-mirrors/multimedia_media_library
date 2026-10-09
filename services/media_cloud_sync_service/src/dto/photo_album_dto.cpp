@@ -77,6 +77,7 @@ std::string ShareAlbumDetailDto::ToString() const
 {
     std::stringstream ss;
     ss << "{"
+       << "\"currentUserId\": \"" << currentUserId << "\", "
        << "\"shareMemberDataList\": [";
     for (size_t i = 0; i < shareMemberDataList.size(); i++) {
         ss << shareMemberDataList[i].ToString();
