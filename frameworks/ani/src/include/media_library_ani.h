@@ -24,6 +24,7 @@
 #include <vector>
 #include "ani_error.h"
 #include "datashare_helper.h"
+#include "default_cover_order_info.h"
 #include "fetch_result_ani.h"
 #include "photo_album_ani.h"
 #include "medialibrary_ani_utils.h"
@@ -34,6 +35,7 @@
 #include "medialibrary_notify_callback_wrapper_ani.h"
 #include "medialibrary_notify_new_observer_ani.h"
 #include "deep_optimize_space_ani_callback.h"
+#include "analysis_tool_ani_callback_holder.h"
 
 namespace OHOS {
 namespace Media {
@@ -111,6 +113,7 @@ public:
     void GetIdsFromUris(std::list<Uri>& listValue, std::vector<string>& ids, bool isPhoto);
     static string GetTrashAlbumUri();
     static std::string trashAlbumUri_;
+    static std::mutex trashMutex_;
     ani_ref cbOnRef_ = nullptr;
     ani_ref cbOffRef_ = nullptr;
     sptr<AAFwk::IDataAbilityObserver> audioDataObserver_ = nullptr;
@@ -258,11 +261,16 @@ public:
         ani_string photoUri, ani_string albumUri, ani_object options);
     static ani_object PhotoAccessGetSupportedPhotoFormats(ani_env *env, ani_object object, ani_enum_item photoTypeAni);
     static ani_int StartAssetAnalysis(ani_env *env, ani_object object, ani_enum_item type, ani_object assetUris);
+    static ani_string InvokeAnalysisTool(ani_env *env, ani_object object, ani_object config,
+        ani_fn_object callback);
+    static void CancelAnalysisTool(ani_env *env, ani_object object, ani_object config);
     static void PhotoAccessRemoveFormInfo(ani_env *env, ani_object object, ani_object info);
     static void PhotoAccessRemoveGalleryFormInfo(ani_env *env, ani_object object, ani_object info);
     static void PhotoAccessUpdateGalleryFormInfo(ani_env *env, ani_object object, ani_object info);
     static ani_object PhotoAccessHelperAgentCreateAssetsWithAlbum(ani_env *env, ani_object object,
     ani_object source, ani_string albumUri, ani_boolean isAuthorized, ani_object photoCreationConfigs);
+    static ani_object PhotoAccessHelperCreateAssetsWithAlbum(ani_env *env, ani_object object,
+    ani_object creationSettings, ani_boolean whetherRealTimeThumb, ani_string albumUri);
     static ani_object GetAlbumsByIds(ani_env *env, ani_object object, ani_object albumIds);
     static void SinglePhotoAlbumChangeOnCallback(ani_env *env, ani_object object, ani_object album,
         ani_object onCallback);
@@ -284,6 +292,8 @@ public:
     static void PhotoAccessOnPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void PhotoAccessOnHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnSharePhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnSharePhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void AvailabilityRegisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOn);
 
     static void PhotoAccessOffPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
@@ -292,6 +302,8 @@ public:
     static void PhotoAccessOffPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffSharePhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffSharePhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void AvailabilityUnregisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void SetPreferredCompatibleMode(ani_env *env, ani_object object, ani_string bundleName, ani_int mode);
     static ani_int GetPreferredCompatibleMode(ani_env *env, ani_object object, ani_string bundleName);
@@ -320,11 +332,18 @@ public:
         ani_object context, ani_object photoCreationConfigs, ani_object appInfo, ani_fn_object result);
     static ani_object ShowAssetsCreationDialog(ani_env *env, ani_object object,
         ani_object context, ani_object srcFileUris, ani_object photoCreationConfigs, ani_object appInfo,
-        ani_fn_object result);
+        ani_boolean isImageFullyDisplayed, ani_fn_object result);
     static ani_object RequestPhotoUrisReadPermission(ani_env *env, ani_object object,
         ani_object context, ani_object srcFileUris, ani_object appInfo, ani_fn_object result);
     static ani_object StartPhotoPicker(ani_env *env, ani_object object, ani_object context,
         ani_object photoSelectOptions);
+    static void ModifyAlbumDefaultCoverOrder(ani_env *env, ani_object object, ani_object coverOrderInfos,
+        ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
+    static void ModifyHiddenAlbumDefaultCoverOrder(ani_env *env, ani_object object, ani_object coverOrderInfos,
+        ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
+    static ani_object CanPerformDeepOptimizeSpace(ani_env *env, ani_object object);
+    static ani_object GetDeepOptimizeSpace(ani_env *env, ani_object object);
+    static ani_object ConvertAssetToCompatibleAsset(ani_env *env, ani_object object, ani_object assets);
 
 private:
     int32_t GetListenerType(const std::string &str) const;
@@ -338,6 +357,8 @@ private:
         const Notification::NotifyUriType uriType);
     static int32_t RegisterObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
         const Notification::NotifyUriType uriType);
+    static int32_t RegisterObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
     static int32_t RemoveClientObserver(ani_env *env, ani_ref ref,
         map<Notification::NotifyUriType, vector<shared_ptr<ClientObserverAni>>> &ClientObserverAnis,
         const Notification::NotifyUriType uriType);
@@ -351,6 +372,17 @@ private:
     static int32_t CreateAndRegisterNewAvailabilityObserverAni(ani_env *env, ani_ref ref,
         Notification::NotifyUriType registerUriType, std::string& registerUri, ChangeListenerAni& listObj);
     static int32_t UnregisterAvailabilityObserverExecuteAni(ani_env *env, ChangeListenerAni &listObj);
+    static int32_t AddSingleClientObserver(ani_env *env, ani_ref &ref,
+        std::shared_ptr<MediaOnNotifyNewObserverAni> &observer,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
+    static int32_t HandleNewUriRegistration(ani_env *env, ani_ref &ref,
+        std::shared_ptr<MediaOnNotifyNewObserverAni> &observer,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
+    static int32_t HandleExistingUriCheck(ani_env *env, ani_ref &ref,
+        std::vector<std::shared_ptr<ClientObserverAni>> &existingObservers,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
+    static int32_t RegisterSingleObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
 
     ani_env *env_;
     int32_t userId_ = -1;
@@ -370,6 +402,7 @@ struct InitConfirmRequestParams {
     ani_object &srcFileUris;
     ani_object photoCreationConfigs;
     ani_object appInfo;
+    bool isImageFullyDisplayed;
     ani_fn_object resultcb;
 };
 
@@ -406,6 +439,7 @@ struct PhotoAssetInfoAni {
     int32_t height;
     std::string uri;
     int32_t fileId;
+    std::string shootingModeTag;
 };
 
 struct MediaLibraryAsyncContext : public AniError {
@@ -426,6 +460,10 @@ struct MediaLibraryAsyncContext : public AniError {
     std::string extendArgs;
     std::string analysisProgress;
     int32_t analysisType = AnalysisType::ANALYSIS_INVALID;
+    int32_t analysisToolType = 0;
+    std::string analysisToolParam;
+    std::string analysisToolTaskId;
+    std::shared_ptr<AnalysisToolAniCallbackHolder> analysisToolAniCallbackHolder;
     std::unique_ptr<FetchResult<FileAsset>> fetchFileResult;
     std::unique_ptr<FetchResult<AlbumAsset>> fetchAlbumResult;
     std::unique_ptr<FetchResult<PhotoAlbum>> fetchPhotoAlbumResult;
@@ -472,6 +510,8 @@ struct MediaLibraryAsyncContext : public AniError {
     std::vector<std::string> albumIds;
     std::unordered_map<int32_t, unique_ptr<PhotoAlbum>> albumMap;
     bool isContainsAlbumUri = false;
+    bool whetherRealTimeThumb = false;
+    bool isNullableUriArray = false;
     int32_t taskId = -1;
     bool isFullAnalysis = false;
     ani_object callback;
@@ -498,6 +538,11 @@ struct MediaLibraryAsyncContext : public AniError {
     ani_ref taskSignalRef;
     bool hasDeepOptimizeSpaceCallback = false;
     std::shared_ptr<DeepOptimizeSpaceAniCallbackHolder> deepOptimizeSpaceCallbackHolder;
+    std::vector<DefaultCoverOrderInfo> coverOrderInfos;
+    bool disableModification = false;
+    bool isAsyncRefreshAlbum = false;
+    bool canDeepOptimize = false;
+    int64_t lcdOptimizableSize = 0;
 };
 } // namespace Media
 } // namespace OHOS

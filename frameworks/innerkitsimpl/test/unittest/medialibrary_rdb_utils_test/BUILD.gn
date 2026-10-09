@@ -32,12 +32,15 @@ ohos_unittest("medialibrary_rdb_utils_test") {
 
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
     "./src/medialibrary_rdb_utils_test.cpp",
+    "./src/medialibrary_rdb_utils_album_cover_test.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
   ]
 
@@ -57,7 +60,6 @@ ohos_unittest("medialibrary_rdb_utils_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]

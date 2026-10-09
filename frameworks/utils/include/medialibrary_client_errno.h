@@ -66,9 +66,13 @@ constexpr int32_t JS_E_NAMETOOLONG    = UFM_JS_ERR(UFM_SYSCAP_BASE, 36);
 
 constexpr int32_t JS_E_INPUT_INVALID = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 104);
 constexpr int32_t JS_E_INIT_FAIL = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 107);
+constexpr int32_t JS_E_ASSET_NOT_EXIST = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 108);
 constexpr int32_t JS_E_PARAM_INVALID = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 151);
 constexpr int32_t JS_E_OPR_TYPE_NOT_SUPPORT = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 201);
 constexpr int32_t JS_E_INNER_FAIL = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 301);
+constexpr int32_t JS_E_INNER_OPEN_FILE_FAIL = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 302);
+// No cloud-enhanced composite auxiliary image (source_back) for the requested photo.
+constexpr int32_t JS_E_NO_COMPOSITE_AUXILIARY_IMAGE = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 151);
 // trans server errorCode to js Error code
 const std::unordered_map<int, int> trans2JsError = {
     { E_PERMISSION_DENIED,    JS_ERR_PERMISSION_DENIED },
@@ -83,6 +87,8 @@ const std::unordered_map<int, int> trans2JsError = {
     { -ENAMETOOLONG,          JS_E_NAMETOOLONG },
     { -EINVAL,                JS_ERR_PARAMETER_INVALID },
     { -ENOMEM,                JS_ERR_NO_MEM },
+    { E_FILE_OPEN_FAIL,       JS_E_INNER_OPEN_FILE_FAIL },
+    { E_MEDIATYPE_NOT_ALLOW,  OHOS_INVALID_PARAM_CODE },
 };
 
 const std::unordered_map<int, int> transMove2JsError = {
@@ -92,8 +98,11 @@ const std::unordered_map<int, int> transMove2JsError = {
     { E_PATH_NOT_SUPPORT,     JS_E_PARAM_INVALID},
     { E_FILE_NOT_EXIST,       JS_E_PARAM_INVALID},
     { E_INVALID_PARAM,        JS_E_PARAM_INVALID},
-    { E_MEDIA_TYPE,           JS_E_PARAM_INVALID},
+    { E_MEDIA_TYPE_INVAILD,   JS_E_PARAM_INVALID},
     { E_CANCEL_TASK,          JS_E_PARAM_INVALID},
+    { E_TARGET_ALBUM_INVAILD, JS_E_PARAM_INVALID},
+    { E_FILE_HIDDEN_OR_TRASHED, JS_E_PARAM_INVALID},
+    { E_FILE_IS_PENDING_STATU, JS_E_PARAM_INVALID},
     { E_RDB,                  JS_E_INNER_FAIL},
     { E_ERR,                  JS_E_INNER_FAIL},
 };
@@ -123,7 +132,9 @@ const std::unordered_map<int, std::string> jsErrMap = {
     { JS_E_PARAM_INVALID,       "invalid parameter" },
     { JS_E_INNER_FAIL,          "medialibrary inner fail" },
     { JS_E_INPUT_INVALID,       "invalid input parameter" },
-    { JS_E_OPR_TYPE_NOT_SUPPORT, "operation type not support"}
+    { JS_E_OPR_TYPE_NOT_SUPPORT, "operation type not support"},
+    { JS_E_INNER_OPEN_FILE_FAIL, "medialibrary openfile fail" },
+    { JS_E_ASSET_NOT_EXIST, "The specified asset does not exist" }
 };
 
 const std::unordered_map<int32_t, int32_t> ClientErrTable {

@@ -27,7 +27,7 @@ private:
     int32_t RunForward(ScenarioContext &context);
     int32_t RunBackward(ScenarioContext &context);
 
-    void SaveFinishedProgress();
+    void SaveFinishedStatus();
 };
 } // namespace OHOS::Media
 

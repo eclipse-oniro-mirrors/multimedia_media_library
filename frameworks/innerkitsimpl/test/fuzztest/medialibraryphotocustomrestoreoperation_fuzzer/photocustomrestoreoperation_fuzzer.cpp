@@ -105,9 +105,9 @@ static RestoreTaskInfo FuzzRestoreTaskInfo()
     return restoreTaskInfo;
 }
 
-static FileInfo FuzzFileInfo()
+static RestoreFileInfo FuzzFileInfo()
 {
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.originFilePath = provider->ConsumeBytesAsString(NUM_BYTES);
     fileInfo.filePath = provider->ConsumeBytesAsString(NUM_BYTES);
     fileInfo.fileName = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -170,14 +170,14 @@ static void PhotoCustomRestoreOperationTest()
     UniqueNumber uniqueNumber = FuzzUniqueNumber();
     operation.HandleCustomRestore(timeInfoMap, restoreTaskInfo, files, provider->ConsumeBool(), uniqueNumber);
 
-    FileInfo fileInfo = FuzzFileInfo();
+    RestoreFileInfo fileInfo = FuzzFileInfo();
     operation.UpdatePhotoAlbum(restoreTaskInfo, fileInfo);
     operation.GenerateCustomRestoreNotify(restoreTaskInfo, notifyType);
 
     int32_t errCode = provider->ConsumeBool() ? E_OK : provider->ConsumeIntegral<int32_t>();
     operation.SendNotifyMessage(restoreTaskInfo, notifyType, errCode, fileNum, uniqueNumber);
 
-    vector<FileInfo> fileInfos = {fileInfo};
+    vector<RestoreFileInfo> fileInfos = {fileInfo};
     operation.SetDestinationPath(fileInfos, uniqueNumber);
 
     std::string result = "";
@@ -185,7 +185,6 @@ static void PhotoCustomRestoreOperationTest()
     operation.GetAssetRootDir(mediaType, result);
 
     int32_t sameFileNum = provider->ConsumeIntegral<int32_t>();
-    operation.BatchInsert(timeInfoMap, restoreTaskInfo, fileInfos, sameFileNum, provider->ConsumeBool());
     operation.QueryAlbumId(restoreTaskInfo);
     operation.InitPhotoCache(restoreTaskInfo);
 

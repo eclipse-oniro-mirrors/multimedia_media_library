@@ -25,6 +25,7 @@
 #include "media_deleted_file_task.h"
 #include "media_thumbnail_acl_task.h"
 #include "media_live_photo_4d_status_task.h"
+#include "media_music_master_mode_task.h"
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 #include "media_critical_label_task.h"
 #endif
@@ -36,7 +37,14 @@
 #include "media_burst_key_duplicate_task.h"
 #include "media_lcd_size_task.h"
 #include "media_share_dirty_data_task.h"
+#include "media_map_code_upgrade_task.h"
 #include "media_camera_cache_clean_task.h"
+#include "media_fix_lcd_file_size_task.h"
+#include "dirty_file_report_task.h"
+#include "media_file_manager_offline_cleanup_task.h"
+#include "media_migrate_live_photo_4d_pair_task.h"
+#include "media_reverse_clone_marker_aging_task.h"
+#include "media_fix_duplicate_unique_id_task.h"
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -47,6 +55,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         #endif
         std::make_shared<MediaFileManagerTempFileAgingTask>(),
         std::make_shared<MediaVideoModeTask>(),
+        std::make_shared<MediaMusicMasterModeTask>(),
         std::make_shared<MediaClearInvalidUserCommentTask>(),
         std::make_shared<MediaDeletedFileTask>(),
         std::make_shared<MediaThumbnailAclTask>(),
@@ -61,6 +70,13 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaClonePendingTask>(),
         std::make_shared<MediaShareDirtyDataTask>(),
         std::make_shared<MediaCameraCacheCleanTask>(),
+        std::make_shared<MediaMapCodeUpgradeTask>(),
+        std::make_shared<MediaReverseCloneMarkerAgingTask>(),
+        std::make_shared<MediaFixLcdFileSizeTask>(),
+        std::make_shared<DirtyFileReportTask>(),
+        std::make_shared<MediaFileManagerOfflineCleanupTask>(),
+        std::make_shared<MediaMigrateLivePhoto4dPairTask>(),
+        std::make_shared<MediaFixDuplicateUniqueIdTask>(),
     };
 }
 

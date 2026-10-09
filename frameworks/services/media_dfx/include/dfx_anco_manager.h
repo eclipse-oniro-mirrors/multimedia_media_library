@@ -24,6 +24,13 @@
 
 namespace OHOS {
 namespace Media {
+#define SCAN_FM_START_TIME "scan_fileManager_start_time"
+#define SCAN_FM_END_TIME "scan_fileManager_end_time"
+#define SCAN_FILEMANAGER_LOAD_TYPE "scan_fileManager_load_type"
+#define SCAN_FM_ALBUM_COUNT "scan_fileManager_album_count"
+#define SCAN_FM_IMAGE_COUNT "scan_fileManager_image_count"
+#define SCAN_FM_VIDEO_COUNT "scan_fileManager_video_count"
+#define IS_INVENTORY_LOADING "is_inventory_loading"
 
 class AncoDfxManager {
 public:
@@ -31,10 +38,11 @@ public:
     static AncoDfxManager& GetInstance();
     void ShutDownTimer();
     void RunDfx();
-    void ReportFirstLoadInfo(uint64_t startTime, uint64_t endTime);
+    void ReportFirstLoadInfo(uint64_t startTime, uint64_t endTime, LoadType loadType = LoadType::LAKE_FIRST_LOAD);
     void ReportAncoCheckInfo(const AncoCheckInfo& reportData);
     void ReportAncoOperationChangeInfo(const AncoOperationChangeInfo& reportData);
     void NotifyOperationChange(const int32_t objType, const int32_t optType);
+    void ReportFileManagerFirstLoad();
 
 private:
     AncoDfxManager();
@@ -42,7 +50,7 @@ private:
     void SetStartTime();
     void ResetStartTime();
     void InnerReportAncoCountFormatInfo(uint64_t loadStartTime = 0, uint64_t loadEndTime = 0,
-        bool firstLoad = false);
+        bool firstLoad = false, LoadType loadType = LoadType::LAKE_FIRST_LOAD);
     void InnerReportAndResetOptChangeInfo();
     void StartFormatCountTimer();
     void StartOptChangeInfoTimer();

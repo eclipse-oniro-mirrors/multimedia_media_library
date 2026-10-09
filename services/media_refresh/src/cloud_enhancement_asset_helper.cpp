@@ -22,7 +22,7 @@ namespace Media::AccurateRefresh {
 bool CloudEnhancementAssetHelper::IsAsset(const PhotoAssetChangeInfo &assetInfo)
 {
     return assetInfo.strongAssociation_ == static_cast<int32_t> (StrongAssociationType::CLOUD_ENHANCEMENT) &&
-        AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false);
+        AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false, 0);
 }
 
 bool CloudEnhancementAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)
@@ -33,7 +33,7 @@ bool CloudEnhancementAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &asset
 bool CloudEnhancementAssetHelper::IsHiddenAsset(const PhotoAssetChangeInfo &assetInfo)
 {
     return assetInfo.strongAssociation_ == static_cast<int32_t> (StrongAssociationType::CLOUD_ENHANCEMENT) &&
-        AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true);
+        AlbumAssetHelper::IsImageAsset(assetInfo) && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true, 0);
 }
 bool CloudEnhancementAssetHelper::IsNewerAsset(const PhotoAssetChangeInfo &compareAssetInfo,
     const PhotoAssetChangeInfo &currentAssetInfo)

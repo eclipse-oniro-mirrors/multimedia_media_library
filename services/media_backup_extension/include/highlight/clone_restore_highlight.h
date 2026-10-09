@@ -21,6 +21,7 @@
 
 #include "backup_const.h"
 #include "backup_database_utils.h"
+#include "field_config/clone_field_writer.h"
 #include "media_log.h"
 #include "nlohmann/json.hpp"
 #include "rdb_store.h"
@@ -36,6 +37,7 @@ public:
         std::shared_ptr<NativeRdb::RdbStore> mediaRdb;
         std::string backupRestoreDir;
         std::unordered_map<int32_t, PhotoInfo> photoInfoMap;
+        std::unordered_map<int32_t, int32_t> duplicateAssetMap;
     };
 
     struct AnalysisAlbumInfo {
@@ -82,7 +84,9 @@ public:
     };
 
     void Init(const InitInfo &info);
+    void ReverseInit(const InitInfo &info);
     void Restore();
+    void ReverseRestore();
     void ReportCloneRestoreHighlightTask();
     int32_t GetNewHighlightAlbumId(int32_t oldId);
     int32_t GetNewHighlightPhotoId(int32_t oldId);
@@ -92,6 +96,8 @@ public:
     void UpdateHighlightStatus(const std::vector<int32_t> &highlightIds);
     void UpdateRestoreTimeCost(int64_t timeCost);
     const std::vector<AnalysisAlbumInfo>& GetAnalysisInfos() const;
+    void ClearHighlightAlbums();
+    void UpdateHighlightAlbumsViewed();
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket &values, const std::string &columnName,
@@ -233,12 +239,15 @@ private:
 
     void Preprocess();
     void RestoreAlbums();
+    void ReverseRestoreAlbums();
     void RestoreMaps();
     int32_t GetTotalNumberOfMaps();
     void RestoreMapsBatch();
     void UpdateAlbums();
 
-    void GetAnalysisAlbumInfos();
+    void GetAnalysisAlbumInfos(bool isReverse);
+    void FilterAnalysisAlbumsByHighlightInfos();
+    void GetAnalysisAlbumInfosWithHighlightFilter();
     void GetAnalysisRowInfo(AnalysisAlbumInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet);
     void UpdateAlbumCoverUri(AnalysisAlbumInfo &info);
     void InsertIntoAnalysisAlbum();
@@ -256,6 +265,7 @@ private:
         int64_t &rowNum);
     NativeRdb::ValuesBucket GetMapInsertValue(int32_t albumId, int32_t fileId, std::optional<int32_t> &order);
     void GetHighlightAlbumInfos();
+    void GetReverseHighlightAlbumInfos();
     void GetHighlightNewAlbumId(HighlightAlbumInfo &info);
     void GetHighlightRowInfo(HighlightAlbumInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet);
     void InsertIntoHighlightAlbum();
@@ -286,6 +296,8 @@ private:
         const std::string &duplicateAlbumName);
     void DeleteAnalysisDuplicateRows(const std::unordered_set<int32_t> &duplicateAnalysisAlbumIdSet,
         const std::string &duplicateAlbumName);
+    int32_t UpdateAllHighlightStatusToDelete();
+    int32_t DeleteAllMomentAlbums();
 
 private:
     int32_t sceneCode_{-1};
@@ -298,6 +310,7 @@ private:
     // new media_liabrary.db
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
     std::unordered_map<int32_t, PhotoInfo> photoInfoMap_;
+    std::unordered_map<int32_t, int32_t> duplicateAssetMap_;
     std::unordered_map<std::string, std::unordered_set<std::string>> intersectionMap_;
 
     std::vector<AnalysisAlbumInfo> analysisInfos_;
@@ -332,27 +345,14 @@ template<typename T>
 void CloneRestoreHighlight::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 
 template<typename T>
 void CloneRestoreHighlight::PutIfInIntersection(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const std::unordered_set<std::string> &intersection)
 {
-    if (intersection.count(columnName) > 0) {
-        PutIfPresent<T>(values, columnName, optionalValue);
-        return;
-    }
+    CloneFieldWriter::PutIfInIntersection<T>(values, columnName, optionalValue, intersection);
 }
 
 template<typename T>

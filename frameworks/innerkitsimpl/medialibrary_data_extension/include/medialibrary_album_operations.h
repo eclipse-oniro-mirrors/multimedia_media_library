@@ -31,6 +31,7 @@
 #include "medialibrary_async_worker.h"
 #include "medialibrary_rdb_transaction.h"
 #include "album_accurate_refresh.h"
+#include "default_cover_order_info.h"
 #include "medialibrary_album_fusion_utils.h"
 // LCOV_EXCL_START
 namespace OHOS {
@@ -53,7 +54,9 @@ struct MergeAlbumInfo {
     std::string tagId;
     std::vector<string> repeatedAlbumIds;
     std::string relationship;
-    std::string extra_info;
+    std::string extraInfo;
+    std::string friendId;
+    std::string contactInfo;
 };
 
 struct SetCoverUriAlbumInfo {
@@ -77,6 +80,12 @@ struct RenameAlbumOutput {
     bool argInvalid = false;
 };
 
+struct AlbumCoverResult {
+    int32_t albumId = 0;
+    int32_t count = 0;
+    int32_t coverUriSource = -1;
+};
+
 class MediaLibraryAlbumOperations {
 public:
     static int32_t CreateAlbumOperation(MediaLibraryCommand &cmd);
@@ -88,6 +97,14 @@ public:
     static std::shared_ptr<NativeRdb::ResultSet> QueryPhotoAlbum(MediaLibraryCommand &cmd,
         const std::vector<std::string> &columns);
     static int32_t DeletePhotoAlbum(NativeRdb::RdbPredicates &predicates);
+    static int32_t SetShareAlbumName(const int32_t &albumId, const std::string &owner, const std::string &albumName);
+    static int32_t DeleteSharePhotoAlbum(const std::string &owner, const std::vector<int32_t> &albumIds);
+    static int32_t AddShareMember(int32_t albumId, const std::string &owner, const std::string &member,
+        int32_t status);
+    static int32_t UpdateShareMemberStatus(int32_t albumId, const std::string &owner, const std::string &member,
+        int32_t status);
+    static int32_t DeleteShareMember(int32_t albumId, const std::string &owner, const std::string &member);
+    static int32_t DeleteMemberShareAlbum(const std::string &owner, const std::vector<int32_t> &albumIds);
     static int32_t DeletePhotoAssetsCompleted(const DataShare::DataSharePredicates &predicates, const bool isAging);
     static int32_t DeletePhotoAssetsPermanentlyWithUri(const DataShare::DataSharePredicates &predicates);
     static int32_t DeleteHighlightAlbums(NativeRdb::RdbPredicates &predicates);
@@ -109,6 +126,10 @@ public:
         const std::string &albumId, const std::string &operation, const std::vector<std::string> &nickNames);
     static int32_t OperatePortraitAlbumExtraInfo(
         const std::string &albumId, const std::vector<std::string> &extraInfos);
+    static int32_t OperatePortraitAlbumFriendId(
+        const std::string &albumId, const std::vector<std::string> &friendIds);
+    static int32_t OperatePortraitAlbumContactInfo(
+        const std::string &albumId, const std::vector<std::string> &contactInfos);
     static int32_t OperatePortraitAlbumIsRemoved(const string &albumId, const string &value);
     static int32_t SetHighlightAlbumName(const NativeRdb::ValuesBucket &values,
         const DataShare::DataSharePredicates &predicates);
@@ -147,6 +168,7 @@ public:
         const vector<NativeRdb::RdbPredicates> &predicatesArray);
     static int32_t CreatePortraitAlbum(const string &albumName);
     static int32_t GetPortraitAlbumExtraInfo(const int32_t &albumId, string &extraInfo);
+    static int32_t GetPortraitAlbumFriendId(const int32_t &albumId, string &friendId);
     static int32_t AlbumChangeSetHiddenAttribute(int32_t albumId, bool fileHidden, bool inherited);
     // ReuseId: if > 0, try to reuse the deleted album id; Otherwise query for an existing id;
     // Gatekeep that no duplicate lpath will be created.
@@ -159,7 +181,15 @@ public:
     // Get column informations of PhotoAlbum table except primary key column
     static const std::unordered_map<std::string, ColumnSchema>& GetPhotoAlbumTableSchema();
 
+    static int32_t ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+        bool disable, bool isAsyncRefreshAlbum);
+    static int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+        bool disable, bool isAsyncRefreshAlbum);
 private:
+    static int32_t ValidateAddShareMember(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+        int32_t albumId, const std::string &owner, const std::string &member);
+    static int32_t ValidateDeleteMemberShareAlbum(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+        const std::vector<int32_t> &albumIds, const std::string &owner);
     static int32_t GetTargetAlbumId(const DataShare::DataSharePredicates &predicates, std::string &targetAlbumId);
     static int32_t GetAndCheckTargetAlbum(const DataShare::DataSharePredicates &predicates, std::string &targetAlbumId);
     static int32_t GetAndCheckAlbumName(const NativeRdb::ValuesBucket &values, string &albumName);

@@ -140,6 +140,7 @@ void CloudSyncObserver::DealGalleryDownload(CloudSyncNotifyInfo &notifyInfo)
 
 void CloudSyncObserver::OnChange(const ChangeInfo &changeInfo)
 {
+    CHECK_AND_RETURN_LOG(!changeInfo.uris_.empty(), "OnChange notify uri empty");
     CloudSyncNotifyInfo notifyInfo = {changeInfo.uris_, changeInfo.changeType_, changeInfo.data_};
     string uriString = notifyInfo.uris.front().ToString();
     MEDIA_DEBUG_LOG("#uriString: %{public}s, #uriSize: %{public}zu changeType: %{public}d",

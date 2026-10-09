@@ -45,6 +45,14 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_WITH_INT_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_COND_WITH_MESSAGE(env, cond, msg)                 \
     do {                                                            \
         if (!(cond)) {                                    \
@@ -53,9 +61,49 @@
         }                                                           \
     } while (0)
 
+#define CHECK_COND_WITH_INT_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, OHOS_INVALID_PARAM_CODE, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_COND_WITH_MESSAGE_INT_CODE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, OHOS_INVALID_PARAM_CODE, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_PARAMETER_WITH_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_COND_WITH_ERR_MESSAGE(env, cond, err, msg)                                           \
     do {                                                                                      \
         if (!(cond)) {                                                                        \
+            NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                                                   \
+        }                                                                                     \
+    } while (0)
+
+#define CHECK_WITH_INT_ERR_MESSAGE(env, cond, err, msg)                                           \
+    do {                                                                                      \
+        if (!(cond)) {                                                                        \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                                                   \
+        }                                                                                     \
+    } while (0)
+
+#define CHECK_ARGS_WITH_ERRMSG(env, cond, err, msg)                                           \
+    do {                                                                                      \
+        if ((cond) != napi_ok) {                                                                        \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                                                   \
         }                                                                                     \
@@ -163,16 +211,44 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_WITH_CODE(env, cond, err)                     \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_ARGS(env, cond, err) CHECK_ARGS_BASE(env, cond, err, nullptr)
+
+#define CHECK_ARGS_WITH_INT(env, cond, err) CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, nullptr)
 
 #define CHECK_ARGS_THROW_INVALID_PARAM(env, cond) CHECK_ARGS(env, cond, OHOS_INVALID_PARAM_CODE)
 
 #define CHECK_ARGS_RET_VOID(env, cond, err) CHECK_ARGS_BASE(env, cond, err, NAPI_RETVAL_NOTHING)
 
+#define CHECK_ARGS_RET_VOID_WITH_INT(env, cond, err) CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, NAPI_RETVAL_NOTHING)
+
 #define CHECK_COND(env, cond, err)                                  \
     do {                                                            \
         if (!(cond)) {                                              \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                         \
+        }                                                           \
+    } while (0)
+
+#define CHECK_COND_WITH_INT(env, cond, err)                                  \
+    do {                                                            \
+        if (!(cond)) {                                              \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                         \
+        }                                                           \
+    } while (0)
+
+#define CHECK_COND_WITH_INT_CODE(env, cond, err)                                  \
+    do {                                                            \
+        if (!(cond)) {                                              \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
             return nullptr;                                         \
         }                                                           \
     } while (0)
@@ -207,6 +283,14 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_WITH_INT_MEG(env, cond, err, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_ARGS_WITH_MSG(env, cond, err, msg)                 \
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
@@ -222,9 +306,25 @@
             return;                                                     \
         }                                                               \
     } while (0)
+
+#define CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, cond, err, msg)                 \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
+            return;                                                     \
+        }                                                               \
+    } while (0)
+
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
+
+struct AsyncErrorInfo {
+    int error;
+    int32_t realErr = 0;
+    std::string apiName;
+    std::string errorMsg;
+};
 
 /* Constants for array index */
 const int32_t PARAM0 = 0;
@@ -410,6 +510,8 @@ public:
     static napi_status GetParamStringWithLength(napi_env env, napi_value arg, int32_t maxLen,
         std::string &str);
     static napi_status GetParamStringPathMax(napi_env env, napi_value arg, std::string &str);
+    static napi_status GetParamStringStrict(napi_env env, napi_value arg, size_t maxLen,
+        std::string &str);
     static napi_status GetProperty(napi_env env, const napi_value arg, const std::string &propName,
         std::string &propValue);
     static napi_status GetArrayProperty(napi_env env, napi_value arg, const std::string &propName,
@@ -505,8 +607,11 @@ public:
         napi_env env, int error, napi_value &errorObj, const std::string &Name, int32_t realErr = 0,
         const std::string &errMsg = "");
 
+    static void HandleErrorWithIntCode(
+        napi_env env, napi_value &errorObj, const AsyncErrorInfo &errInfo);
+
     static void CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
-        const std::string errMsg);
+        const std::string errMsg, bool isIntCode = false);
 
     static void InvokeJSAsyncMethodWithoutWork(napi_env env, napi_deferred deferred, napi_ref callbackRef,
         const JSAsyncContextOutput &asyncContext);
@@ -619,6 +724,10 @@ public:
     static napi_value BuildNextRowObject(const napi_env& env, std::shared_ptr<RowObject>& rowObj, bool isShared);
     static napi_value BuildNextRowAlbumObject(const napi_env& env, std::shared_ptr<RowObject>& rowObj);
     static napi_status hasFetchOpt(napi_env env, const napi_value arg, bool &hasFetchOpt);
+    static bool ParseFileIdFromPredicates(const DataShare::DataSharePredicates &predicates, std::string &fileId);
+    static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds);
+    static bool HasSharedAlbum(const std::vector<std::string>& albumIds);
+    static void ExtractFileIdsFromUris(const std::vector<std::string>& uriArray, std::vector<std::string>& fileIdArray);
 
 private:
     static napi_value BuildValueByIndex(const napi_env& env, int32_t index, const std::string& name,

@@ -276,7 +276,6 @@ int32_t CloudMediaDataDao::GetDirtyTypeStat(std::vector<uint64_t> &dirtyTypeStat
 
 int32_t CloudMediaDataDao::GetVideoToCache(std::vector<PhotosPo> &photosPos)
 {
-    MEDIA_INFO_LOG("GetVideoToCache begin");
     std::vector<PhotosDto> photosDtoVec;
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -310,6 +309,7 @@ int32_t CloudMediaDataDao::GetAgingFile(const AgingFileQueryDto &queryDto, std::
     predicates.LessThanOrEqualTo(PhotoColumn::PHOTO_LAST_VISIT_TIME, timeRangeCon);
     predicates.And()->LessThanOrEqualTo(MediaColumn::MEDIA_DATE_TAKEN, timeRangeCon);
     predicates.And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.OrderByAsc(PhotoColumn::PHOTO_LAST_VISIT_TIME);
     predicates.Limit(sizeLimit);
     const std::vector<std::string> columns = {};
@@ -337,6 +337,7 @@ int32_t CloudMediaDataDao::GetActiveAgingFile(const AgingFileQueryDto &queryDto,
     predicates.LessThanOrEqualTo(PhotoColumn::PHOTO_LAST_VISIT_TIME, timeRangeCon);
     predicates.And()->LessThanOrEqualTo(MediaColumn::MEDIA_DATE_TAKEN, timeRangeCon);
     predicates.And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.And()->EqualTo(PhotoColumn::MEDIA_HIDDEN, 0);  // 非隐藏文件
     predicates.OrderByAsc(PhotoColumn::PHOTO_LAST_VISIT_TIME);
     predicates.Limit(sizeLimit);
@@ -349,7 +350,6 @@ int32_t CloudMediaDataDao::GetActiveAgingFile(const AgingFileQueryDto &queryDto,
 
 int32_t CloudMediaDataDao::UpdateLocalFileDirty(std::string &cloudId)
 {
-    MEDIA_INFO_LOG("enter UpdateLocalFileDirty");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdateLocalFileDirty get store failed.");
     NativeRdb::ValuesBucket valuesBucket;
@@ -363,7 +363,6 @@ int32_t CloudMediaDataDao::UpdateLocalFileDirty(std::string &cloudId)
 
 int32_t CloudMediaDataDao::CheckAndDeleteAlbum()
 {
-    MEDIA_INFO_LOG("enter CheckAndDeleteAlbum");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "CheckAndDeleteAlbum get store failed.");
     int32_t ret = rdbStore->ExecuteSql(SQL_CHECK_AND_DELETE_ALBUM);
@@ -373,7 +372,6 @@ int32_t CloudMediaDataDao::CheckAndDeleteAlbum()
 
 int32_t CloudMediaDataDao::CheckAndUpdateAlbum()
 {
-    MEDIA_INFO_LOG("enter CheckAndUpdateAlbum");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "CheckAndUpdateAlbum get store failed.");
     int32_t ret = rdbStore->ExecuteSql(SQL_CHECK_AND_UPDATE_ALBUM);

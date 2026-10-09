@@ -41,21 +41,6 @@ shared_ptr<MediaLibraryBundleManager> MediaLibraryBundleManager::GetInstance()
 void MediaLibraryBundleManager::GetBundleNameByUID(const int32_t uid, string &bundleName)
 {
     PermissionUtils::GetClientBundle(uid, bundleName);
-    if (bundleName.empty()) {
-        return;
-    }
-
-    auto it = cacheMap_.find(uid);
-    if (it != cacheMap_.end()) {
-        cacheList_.erase(it->second);
-    }
-    cacheList_.push_front(make_pair(uid, bundleName));
-    cacheMap_[uid] = cacheList_.begin();
-    if (cacheMap_.size() > CAPACITY) {
-        int32_t deleteKey = cacheList_.back().first;
-        cacheMap_.erase(deleteKey);
-        cacheList_.pop_back();
-    }
 }
 
 void MediaLibraryBundleManager::GetBundleNameByTokenId(const uint64_t tokenId, string &bundleName)
@@ -72,16 +57,33 @@ void MediaLibraryBundleManager::GetBundleNameByTokenId(const uint64_t tokenId, s
  */
 std::string MediaLibraryBundleManager::GetClientBundleName()
 {
-    lock_guard<mutex> lock(uninstallMutex_);
     int32_t uid = IPCSkeleton::GetCallingUid();
-    auto iter = cacheMap_.find(uid);
-    if (iter == cacheMap_.end()) {
-        string bundleName;
-        GetBundleNameByUID(uid, bundleName);
+    {
+        lock_guard<mutex> lock(uninstallMutex_);
+        auto iter = cacheMap_.find(uid);
+        if (iter != cacheMap_.end()) {
+            cacheList_.splice(cacheList_.begin(), cacheList_, iter->second);
+            return iter->second->second;
+        }
+    }
+    string bundleName;
+    GetBundleNameByUID(uid, bundleName);
+    if (bundleName.empty()) {
         return bundleName;
     }
-    cacheList_.splice(cacheList_.begin(), cacheList_, iter->second);
-    return iter->second->second;
+    lock_guard<mutex> lock(uninstallMutex_);
+    auto it = cacheMap_.find(uid);
+    if (it != cacheMap_.end()) {
+        cacheList_.erase(it->second);
+    }
+    cacheList_.push_front(make_pair(uid, bundleName));
+    cacheMap_[uid] = cacheList_.begin();
+    if (cacheMap_.size() > CAPACITY) {
+        int32_t deleteKey = cacheList_.back().first;
+        cacheMap_.erase(deleteKey);
+        cacheList_.pop_back();
+    }
+    return bundleName;
 }
 
 void MediaLibraryBundleManager::Clear()

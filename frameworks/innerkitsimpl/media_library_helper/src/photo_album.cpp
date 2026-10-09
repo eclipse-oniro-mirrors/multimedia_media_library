@@ -182,16 +182,6 @@ bool PhotoAlbum::GetHiddenOnly() const
     return hiddenOnly_;
 }
 
-void PhotoAlbum::SetLocationOnly(const bool locationOnly)
-{
-    locationOnly_ = locationOnly;
-}
-
-bool PhotoAlbum::GetLocationOnly() const
-{
-    return locationOnly_;
-}
-
 void PhotoAlbum::SetDisplayLevel(const int32_t displayLevel)
 {
     displayLevel_ = displayLevel;
@@ -200,6 +190,16 @@ void PhotoAlbum::SetDisplayLevel(const int32_t displayLevel)
 int32_t PhotoAlbum::GetDisplayLevel() const
 {
     return displayLevel_;
+}
+
+void PhotoAlbum::SetLocationOnly(const bool locationOnly)
+{
+    locationOnly_ = locationOnly;
+}
+
+bool PhotoAlbum::GetLocationOnly() const
+{
+    return locationOnly_;
 }
 
 void PhotoAlbum::SetPriority(const int32_t priority)
@@ -356,6 +356,11 @@ bool PhotoAlbum::IsAnalysisAlbum(const PhotoAlbumType albumType, const PhotoAlbu
             albumSubType <= PhotoAlbumSubType::ANALYSIS_END);
 }
 
+bool PhotoAlbum::IsShareAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)
+{
+    return (albumType == PhotoAlbumType::SHARE) && (albumSubType == PhotoAlbumSubType::SHARE_GENERIC);
+}
+
 bool PhotoAlbum::CheckOrderStyleType(const OrderStyleType orderStyle)
 {
     return (orderStyle == OrderStyleType::MIX) || (orderStyle == OrderStyleType::SPLIT);
@@ -442,6 +447,16 @@ int32_t PhotoAlbum::GetShareType() const
     return shareType_;
 }
 
+void PhotoAlbum::SetShareAlbumOwner(const std::string &shareAlbumOwner)
+{
+    shareAlbumOwner_ = shareAlbumOwner;
+}
+
+const std::string& PhotoAlbum::GetShareAlbumOwner() const
+{
+    return shareAlbumOwner_;
+}
+
 void PhotoAlbum::SetFileHidden(bool fileHidden)
 {
     fileHidden_ = fileHidden;
@@ -455,6 +470,43 @@ bool PhotoAlbum::IsFileHidden() const
 bool PhotoAlbum::IsUserPhotoAlbumByType(const PhotoAlbumType albumType)
 {
     return albumType == PhotoAlbumType::USER;
+}
+
+std::vector<std::string> PhotoAlbum::GetUserAlbumSubtypes()
+{
+    return {std::to_string(PhotoAlbumSubType::USER_GENERIC)};
+}
+
+std::vector<std::string> PhotoAlbum::GetSourceAlbumSubtypes()
+{
+    return {std::to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+        std::to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)};
+}
+
+std::vector<std::string> PhotoAlbum::GetUserAndSourceAlbumSubtypes()
+{
+    std::vector<std::string> userAlbumSubtypes = GetUserAlbumSubtypes();
+    std::vector<std::string> sourceAlbumSubtypes = GetSourceAlbumSubtypes();
+    std::vector<std::string> mergedAlbumSubtypes;
+    mergedAlbumSubtypes.reserve(userAlbumSubtypes.size() + sourceAlbumSubtypes.size());
+    mergedAlbumSubtypes.insert(mergedAlbumSubtypes.end(), userAlbumSubtypes.begin(), userAlbumSubtypes.end());
+    mergedAlbumSubtypes.insert(mergedAlbumSubtypes.end(), sourceAlbumSubtypes.begin(), sourceAlbumSubtypes.end());
+    return mergedAlbumSubtypes;
+}
+
+bool PhotoAlbum::IsUserAlbumSubtype(const PhotoAlbumSubType subtype)
+{
+    return subtype == PhotoAlbumSubType::USER_GENERIC;
+}
+
+bool PhotoAlbum::IsSourceAlbumSubtype(const PhotoAlbumSubType subtype)
+{
+    return subtype >= PhotoAlbumSubType::SOURCE_START && subtype <= PhotoAlbumSubType::SOURCE_END;
+}
+
+bool PhotoAlbum::IsUserOrSourceAlbumSubtype(const PhotoAlbumSubType subtype)
+{
+    return IsUserAlbumSubtype(subtype) || IsSourceAlbumSubtype(subtype);
 }
 }  // namespace Media
 }  // namespace OHOS

@@ -21,6 +21,7 @@
 #include "datashare_errno.h"
 #include "datashare_predicates.h"
 #include "datashare_result_set.h"
+#include "dfx_system_photo_keys.h"
 #include "image_type.h"
 #include "media_column.h"
 #include "media_file_utils.h"
@@ -96,12 +97,22 @@ static int32_t CheckSystemApiKeys(const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
+        PhotoColumn::PHOTO_RISK_STATUS,
     };
 
-    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryNapiUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryNapiUtils::IsSystemApp()) {
+        return E_SUCCESS;
+    }
+
+    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
         LOGE("This key can only be used by system apps");
         return E_CHECK_SYSTEMAPP_FAIL;
     }
+
+    DfxSystemPhotoKeys::ReportIfSystemKey("cj", key);
+
     return E_SUCCESS;
 }
 
@@ -113,6 +124,11 @@ static PhotoAssetMember HandleDateTransitionKey(const string &key,
         .stringValue = nullptr,
         .boolValue = false
     };
+    if (fileAssetPtr == nullptr) {
+        LOGE("fileAssetPtr is nullptr");
+        errCode = JS_INNER_FAIL;
+        return assetMember;
+    }
     if (fileAssetPtr->GetMemberMap().count(key) == 0) {
         errCode = JS_E_FILE_KEY;
         return assetMember;

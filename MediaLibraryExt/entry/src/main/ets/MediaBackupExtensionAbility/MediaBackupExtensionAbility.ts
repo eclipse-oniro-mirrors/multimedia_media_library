@@ -194,6 +194,7 @@ const DEFAULT_PROGRESS_INFO = {
 
 interface BackupCompatibilityInfo {
   backupHdcEnable: boolean;
+  share?: string;
 }
 
 export default class MediaBackupExtAbility extends BackupExtensionAbility {
@@ -219,6 +220,7 @@ export default class MediaBackupExtAbility extends BackupExtensionAbility {
       console.time(TAG + ' getRestoreCompatibilityInfo');
       let backupCompatibilityInfo: BackupCompatibilityInfo = {
         backupHdcEnable: true,
+        share: 'v1.0',
       };
       let ret = JSON.stringify(backupCompatibilityInfo);
       console.log(TAG, ' getRestoreCompatibilityInfo ret: ' + ret);

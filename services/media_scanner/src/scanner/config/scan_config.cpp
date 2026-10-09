@@ -24,20 +24,23 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "scanner_utils.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 
+// ==================== ScanConfig ====================
+
 bool ScanConfig::Validate(std::string& realPath) const
 {
-    if (filePath_.empty()) {
+    const auto& info = GetDefaultScanInfo();
+    if (info.GetFilePath().empty()) {
         MEDIA_ERR_LOG("ScanConfig::Validate: filePath is empty");
         return false;
     }
 
-    if (!PathToRealPath(filePath_, realPath)) {
+    if (!PathToRealPath(info.GetFilePath(), realPath)) {
         MEDIA_ERR_LOG("ScanConfig::Validate: failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(filePath_).c_str(), errno);
+            MediaFileUtils::DesensitizePath(info.GetFilePath()).c_str(), errno);
         return false;
     }
 
@@ -52,32 +55,38 @@ bool ScanConfig::Validate(std::string& realPath) const
 
 ScanConfig ScanConfig::Merge(const ScanConfig& other, ScanExecutionMode executionMode) const
 {
-    if (fileId_ <= 0 || other.GetFileId() <= 0 || fileId_ != other.GetFileId()) {
+    const auto& thisInfo = GetDefaultScanInfo();
+    const auto& otherInfo = other.GetDefaultScanInfo();
+
+    if (thisInfo.GetFileId() <= 0 || otherInfo.GetFileId() <= 0 ||
+        thisInfo.GetFileId() != otherInfo.GetFileId()) {
         MEDIA_WARN_LOG("Merge: fileId invalid or mismatch (this=%{public}d, other=%{public}d)",
-            fileId_, other.GetFileId());
+            thisInfo.GetFileId(), otherInfo.GetFileId());
     }
 
     ScanConfig merged;
 
-    merged.SetFileId(fileId_);
-    merged.SetFilePath(!other.GetFilePath().empty() ? other.GetFilePath() : filePath_);
+    merged.defaultScanInfo_.SetFileId(thisInfo.GetFileId());
+    merged.defaultScanInfo_.SetFilePath(
+        !otherInfo.GetFilePath().empty() ? otherInfo.GetFilePath() : thisInfo.GetFilePath());
+    merged.defaultScanInfo_.SetIsMovingPhoto(
+        thisInfo.GetIsMovingPhoto() || otherInfo.GetIsMovingPhoto());
 
-    merged.SetIsMovingPhoto(GetIsMovingPhoto() || other.GetIsMovingPhoto());
     merged.SetForceScan(true);
     merged.SetSkipAlbumUpdate(false);
-    
+
     if (GetStrategyType() == other.GetStrategyType()) {
         merged.SetStrategyType(GetStrategyType());
     } else {
         merged.SetStrategyType(ScanStrategyType::DEFAULT_SCAN);
     }
-    
+
     if (GetConflictPolicy() == other.GetConflictPolicy()) {
         merged.SetConflictPolicy(GetConflictPolicy());
     } else {
         merged.SetConflictPolicy(ConflictPolicy::DEFAULT);
     }
-    
+
     // callback 以同步的为准
     if (GetExecutionMode() == ScanExecutionMode::SYNC) {
         merged.SetCallback(callback_);
@@ -86,7 +95,7 @@ ScanConfig ScanConfig::Merge(const ScanConfig& other, ScanExecutionMode executio
     } else {
         merged.SetCallback(callback_ ? callback_ : other.GetCallback());
     }
-    
+
     // 合并后置空 originalPhotoPicture，避免 picture 数据不准确导致缩略图生成异常
     auto mergedCallback = merged.GetCallback();
     if (mergedCallback) {
@@ -94,24 +103,27 @@ ScanConfig ScanConfig::Merge(const ScanConfig& other, ScanExecutionMode executio
     }
 
     merged.SetExecutionMode(executionMode);
-    
+
     return merged;
 }
 
 std::string ScanConfig::ToString() const
 {
+    const auto& info = GetDefaultScanInfo();
     std::stringstream ss;
     ss << "{"
        << "\"strategyType\": " << static_cast<int>(strategyType_) << ", "
        << "\"conflictPolicy\": " << static_cast<int>(conflictPolicy_) << ", "
        << "\"executionMode\": " << static_cast<int>(executionMode_) << ", "
-       << "\"fileId\": " << fileId_ << ", "
-       << "\"isMovingPhoto\": " << (isMovingPhoto_ ? "true" : "false") << ", "
+       << "\"fileId\": " << info.GetFileId() << ", "
+       << "\"isMovingPhoto\": " << (info.GetIsMovingPhoto() ? "true" : "false") << ", "
        << "\"isSkipAlbumUpdate\": " << (isSkipAlbumUpdate_ ? "true" : "false") << ", "
        << "\"needGenerateThumbnail\": " << (needGenerateThumbnail_ ? "true" : "false")
        << "}";
     return ss.str();
 }
+
+// 公共变量 - 执行模式
 
 ScanExecutionMode ScanConfig::GetExecutionMode() const
 {
@@ -123,35 +135,7 @@ void ScanConfig::SetExecutionMode(ScanExecutionMode executionMode)
     executionMode_ = executionMode;
 }
 
-const std::string& ScanConfig::GetFilePath() const
-{
-    return filePath_;
-}
-
-void ScanConfig::SetFilePath(const std::string& path)
-{
-    filePath_ = path;
-}
-
-int32_t ScanConfig::GetFileId() const
-{
-    return fileId_;
-}
-
-void ScanConfig::SetFileId(int32_t id)
-{
-    fileId_ = id;
-}
-
-bool ScanConfig::GetIsMovingPhoto() const
-{
-    return isMovingPhoto_;
-}
-
-void ScanConfig::SetIsMovingPhoto(bool isMoving)
-{
-    isMovingPhoto_ = isMoving;
-}
+// 公共变量 - 业务相关
 
 bool ScanConfig::GetForceScan() const
 {
@@ -172,6 +156,8 @@ void ScanConfig::SetSkipAlbumUpdate(bool skip)
 {
     isSkipAlbumUpdate_ = skip;
 }
+
+// 公共变量 - 缩略图相关
 
 bool ScanConfig::GetNeedGenerateThumbnail() const
 {
@@ -233,6 +219,8 @@ void ScanConfig::SetUpdateDirtyCallback(const std::shared_ptr<IMediaScannerCallb
     updateDirtyCallback_ = cb;
 }
 
+// 公共变量 - 扫描策略
+
 ScanStrategyType ScanConfig::GetStrategyType() const
 {
     return strategyType_;
@@ -268,5 +256,28 @@ MediaLibraryApi ScanConfig::GetApiVersion() const
     return MediaLibraryApi::API_10;
 }
 
+// Info 访问器
+
+DefaultScanInfo& ScanConfig::GetDefaultScanInfo()
+{
+    return defaultScanInfo_;
+}
+
+const DefaultScanInfo& ScanConfig::GetDefaultScanInfo() const
+{
+    return defaultScanInfo_;
+}
+
+CustomRestoreInfo& ScanConfig::GetCustomRestoreInfo()
+{
+    return customRestoreInfo_;
+}
+
+const CustomRestoreInfo& ScanConfig::GetCustomRestoreInfo() const
+{
+    return customRestoreInfo_;
+}
+
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP

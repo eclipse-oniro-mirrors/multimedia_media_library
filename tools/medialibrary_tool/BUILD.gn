@@ -15,6 +15,8 @@ import("//build/ohos.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
 
 ohos_executable("mediatool") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
   include_dirs = []
   sources = [ "src/main.cpp" ]
@@ -30,6 +32,7 @@ ohos_executable("mediatool") {
     "${MEDIALIB_ROOT_PATH}/interfaces/innerkits/native/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_helper/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/kits/js/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
@@ -57,6 +60,7 @@ ohos_executable("mediatool") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps += [
@@ -69,6 +73,7 @@ ohos_executable("mediatool") {
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken_shared",
     "access_token:libtokensetproc_shared",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
@@ -78,7 +83,8 @@ ohos_executable("mediatool") {
     "init:libbegetutil",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
+    "node:node_header_notice",
+    "relational_store:native_rdb",
     "samgr:samgr_proxy",
   ]
 
@@ -100,7 +106,6 @@ ohos_executable("mediatool") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

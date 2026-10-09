@@ -22,6 +22,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "dfx_manager.h"
+#include "media_library_monitor.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "parameters.h"
@@ -86,6 +87,7 @@ static void HandleLoopTask(DfxData *data)
 {
     MEDIA_DEBUG_LOG("HandleLoopTask");
     MadviseMemoryCheck();
+    Monitor::MediaLibraryMonitor::GetInstance().Tick();
 
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
@@ -97,6 +99,7 @@ static void HandleLoopTask(DfxData *data)
     int64_t lastReportTime = prefs->GetLong(LAST_REPORT_TIME, 0);
     int64_t lastMiddleReportTime = prefs->GetLong(LAST_MIDDLE_REPORT_TIME, 0);
     DfxManager::GetInstance()->HandleFiveMinuteTask();
+    DfxManager::GetInstance()->HandleSixHourMissions();
     if (MediaFileUtils::UTCTimeSeconds() - lastMiddleReportTime >= SIX_HOUR) {
         MEDIA_INFO_LOG("Report Middle Xml");
         lastMiddleReportTime = DfxManager::GetInstance()->HandleMiddleReport();

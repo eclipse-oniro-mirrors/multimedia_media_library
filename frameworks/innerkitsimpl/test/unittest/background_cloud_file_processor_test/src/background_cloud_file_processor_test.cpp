@@ -372,19 +372,6 @@ HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_GetDownloadNum_Test_001, TestSi
     MEDIA_INFO_LOG("Bcfpt_CheckAndUpdateDownloadCnt_Test_001 End");
 }
 
-HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_removeFinishedResult_Test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("Bcfpt_removeFinishedResult_Test_001 Start");
-    std::vector<std::string> downloadingPaths = { "file1", "file2", "file3" };
-    BackgroundCloudFileProcessor::downloadResult_ = {
-        {"file1", BackgroundCloudFileProcessor::INIT},
-        {"file2", BackgroundCloudFileProcessor::SUCCESS},
-        {"file3", BackgroundCloudFileProcessor::NETWORK_UNAVAILABLE}
-    };
-    BackgroundCloudFileProcessor::removeFinishedResult(downloadingPaths);
-    MEDIA_INFO_LOG("Bcfpt_removeFinishedResult_Test_001 End");
-}
-
 HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_AddDownloadTask_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Bcfpt_AddDownloadTask_Test_001 Start");

@@ -30,7 +30,7 @@ static bool IsGrantOperation(MediaLibraryCommand &cmd)
 
 int32_t GrantPermissionHandler::ExecuteCheckPermission(MediaLibraryCommand &cmd, PermParam &permParam)
 {
-    MEDIA_DEBUG_LOG("GrantPermissionHandler enter");
+    MEDIA_DEBUG_LOG("GrantPermissionHandler enter ");
     return ConvertPermResult(IsGrantOperation(cmd) && (IPCSkeleton::GetCallingUid() == GRANT_PERMISSION_CALLING_UID ||
         IPCSkeleton::GetCallingUid() == ROOT_UID || IPCSkeleton::GetCallingUid() == SANDBOX_UID));
 }

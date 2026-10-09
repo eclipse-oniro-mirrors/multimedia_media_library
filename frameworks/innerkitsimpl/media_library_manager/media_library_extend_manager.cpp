@@ -31,6 +31,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "user_inner_ipc_client.h"
+#include "media_common_client.h"
 #include "medialibrary_business_code.h"
 #include "get_result_set_from_db_vo.h"
 #include "get_result_set_from_photos_extend_vo.h"
@@ -39,13 +40,12 @@
 #include "notify_asset_sended_vo.h"
 #include "open_asset_compress_vo.h"
 #include "get_compress_asset_size_vo.h"
-#include "media_audio_column.h"
-
+#include "userfilemgr_uri.h"
 using namespace std;
-// LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
-static constexpr int32_t DEFUALT_USER_ID = 100;
+static constexpr int32_t DEFAULT_USER_ID = 100;
 static constexpr int32_t DATASHARE_ERR = -1;
 static constexpr int64_t SHARE_UID = 5520;
 static constexpr int32_t COMPRESS_URI_MAX_SIZE = 500;
@@ -53,6 +53,7 @@ static constexpr int32_t COMPRESS_URI_MAX_SIZE = 500;
 static const std::string OPEN_PRIVATE_LIVE_PHOTO = "open_private_live_photo";
 static const std::string MEDIA_DATA_DB_URI = "uri";
 static const std::string MEDIA_MOVING_PHOTO_OPRN_KEYWORD = "moving_photo_operation";
+static const std::string SHARE_MOVING_PHOTO = "share_moving_photo";
 
 MediaLibraryExtendManager *MediaLibraryExtendManager::GetMediaLibraryExtendManager()
 {
@@ -72,7 +73,7 @@ static sptr<IRemoteObject> InitToken()
 
 static int32_t GetCurrentAccountId()
 {
-    int32_t activeUserId = DEFUALT_USER_ID;
+    int32_t activeUserId = DEFAULT_USER_ID;
     ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
     if (ret != ERR_OK) {
         MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
@@ -86,14 +87,15 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
     int32_t activeUser = GetCurrentAccountId();
     MEDIA_INFO_LOG("userId_: %{public}d -> activeUser: %{public}d", userId_, activeUser);
     if (dataShareHelper_ == nullptr || activeUser != userId_) {
-        auto token = InitToken();
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.SetUserId(activeUser);
+        sptr<IRemoteObject> token = InitToken();
         if (token == nullptr) {
             MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
             return;
         }
-        Uri uri = Uri(MEDIALIBRARY_DATA_URI);
-        std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUser).ToString();
-        dataShareHelper_ = DataShare::DataShareHelper::Creator(token, multiUri);
+        client.Init(token, activeUser);
+        dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(
                 "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
@@ -132,6 +134,8 @@ int32_t MediaLibraryExtendManager::OpenAsset(string &uri, const string openMode,
 
     string assetUri = uri;
     MediaUriUtils::AppendKeyValue(assetUri, "type", to_string(static_cast<int32_t>(type)));
+    MediaUriUtils::AppendKeyValue(assetUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, SHARE_MOVING_PHOTO);
+    MediaUriUtils::AppendKeyValue(assetUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     MEDIA_DEBUG_LOG("merged uri = %{public}s", assetUri.c_str());
     Uri openUri(assetUri);
     int ret = dataShareHelper_->OpenFile(openUri, openMode);
@@ -151,6 +155,7 @@ int32_t MediaLibraryExtendManager::ReadPrivateMovingPhoto(string &uri, const Hid
     string movingPhotoUri = uri;
     MediaUriUtils::AppendKeyValue(movingPhotoUri, "type", to_string(static_cast<int32_t>(type)));
     MediaUriUtils::AppendKeyValue(movingPhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_LIVE_PHOTO);
+    MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openMovingPhotoUri(movingPhotoUri);
     int ret = dataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
     if (ret == DATASHARE_ERR && ForceReconnect()) {
@@ -198,7 +203,7 @@ std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromP
     }
     return respBody.resultSet;
 }
-                                   
+
 // LCOV_EXCL_START
 int32_t MediaLibraryExtendManager::SendBrokerChangeOperation(string operation)
 {

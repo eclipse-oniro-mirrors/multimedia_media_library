@@ -22,6 +22,8 @@
 #include "portrait_is_removed_handler.h"
 #include "media_log.h"
 #include "portrait_extra_info_handler.h"
+#include "portrait_friend_id_handler.h"
+#include "portrait_contact_info_handler.h"
 
 namespace OHOS::Media {
 namespace {
@@ -57,6 +59,19 @@ const AnalysisAlbumAttributeHandlerEntry PORTRAIT_EXTRA_INFO_HANDLER = {
     PortraitExtraInfoHandler::GetAttributeExecute,
 };
 
+const AnalysisAlbumAttributeHandlerEntry PORTRAIT_FRIEND_ID_HANDLER = {
+    &ANALYSIS_ALBUM_FRIEND_ID_SPEC,
+    PortraitFriendIdHandler::ValidateTarget,
+    PortraitFriendIdHandler::Execute,
+    PortraitFriendIdHandler::GetAttributeExecute,
+};
+
+const AnalysisAlbumAttributeHandlerEntry PORTRAIT_CONTACT_INFO_HANDLER = {
+    &ANALYSIS_ALBUM_CONTACT_INFO_SPEC,
+    PortraitContactInfoHandler::ValidateTarget,
+    PortraitContactInfoHandler::Execute,
+};
+
 const AnalysisAlbumAttributeHandlerEntry *ResolveHandler(const std::string &attr)
 {
     if (attr == PORTRAIT_NICK_NAME_HANDLER.spec->attr) {
@@ -65,6 +80,10 @@ const AnalysisAlbumAttributeHandlerEntry *ResolveHandler(const std::string &attr
         return &PORTRAIT_IS_REMOVED_HANDLER;
     } else if (attr == PORTRAIT_EXTRA_INFO_HANDLER.spec->attr) {
         return &PORTRAIT_EXTRA_INFO_HANDLER;
+    } else if (attr == PORTRAIT_FRIEND_ID_HANDLER.spec->attr) {
+        return &PORTRAIT_FRIEND_ID_HANDLER;
+    } else if (attr == PORTRAIT_CONTACT_INFO_HANDLER.spec->attr) {
+        return &PORTRAIT_CONTACT_INFO_HANDLER;
     }
     return nullptr;
 }
@@ -97,10 +116,11 @@ int32_t AnalysisAlbumAttributeDispatcher::GetAttributeExecute(const std::shared_
     std::vector<std::string> &attributeArray,
     std::vector<std::unordered_map<std::string, std::string>> &queryResults)
 {
-    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "photoAlbum is nullptr");
+    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INNER_FAIL, "photoAlbum is nullptr");
     for (const auto &attr : attributeArray) {
         const auto *handler = ResolveHandler(attr);
-        CHECK_AND_RETURN_RET_LOG(handler != nullptr && handler->getAttributeExecute != nullptr, E_INVALID_VALUES,
+        CHECK_AND_RETURN_RET_LOG(handler != nullptr && handler->getAttributeExecute != nullptr,
+            E_PARAM_CONVERT_FORMAT,
             "no handler for analysis album attribute: %{public}s", attr.c_str());
         int32_t checkResult = handler->validateTarget(photoAlbum);
         CHECK_AND_RETURN_RET_LOG(checkResult == E_OK, checkResult,

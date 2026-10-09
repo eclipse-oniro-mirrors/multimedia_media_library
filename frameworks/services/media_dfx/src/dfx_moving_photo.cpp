@@ -114,7 +114,7 @@ void DfxMovingPhoto::StatisticsMovingPhotos(
             continue;
         }
 
-        const string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(photoInfo.path);
+        const std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(photoInfo.path);
         CHECK_AND_CONTINUE(!MediaFileUtils::IsFileExists(videoPath));
 
         statistics.dirtyMovingPhotoTotalCount++;

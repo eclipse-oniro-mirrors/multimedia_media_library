@@ -45,6 +45,7 @@ public:
     int32_t hdrMode;
     int32_t videoMode;
     std::string frontCamera;
+    std::string xtStyleTemplateName;  // xt style template name
     int64_t editTime;
     int32_t originalSubtype;
     int64_t coverPosition;
@@ -52,6 +53,9 @@ public:
     int32_t exifRotate;
     int32_t movingPhotoEffectMode;
     int32_t supportedWatermarkType;
+    int32_t isStylePhoto;
+    int32_t supportedDeferredEffects;
+    int32_t deferredEffectStatus;
     int32_t strongAssociation;
     int32_t fileId;
     std::string cloudId;
@@ -82,9 +86,17 @@ public:
     bool isNew;
     int32_t fileSourceType;
     std::string storagePath;
+    int32_t editDataExist;
     std::string uniqueId;
     std::string packageName;
     int32_t photoRiskStatus;
+    int32_t compressionQuality;
+    int32_t isShared;
+    std::string shareOwnerInfo;
+    int64_t shareDateDay;
+    int64_t shareGroup;
+    std::string shareAlbumOwner;
+    int32_t musicMasterMode;
 
     // Photo Album
     std::string albumCloudId;

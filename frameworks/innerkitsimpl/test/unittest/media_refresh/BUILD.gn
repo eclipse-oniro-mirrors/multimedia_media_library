@@ -39,6 +39,7 @@ ohos_unittest("media_refresh_test") {
     "./src/analysis_album_strategy_pipeline_test.cpp",
     "./src/asset_accurate_refresh_test.cpp",
     "./src/accurate_refresh_test_util.cpp",
+    "./src/live_photo_4d_asset_helper_test.cpp",
     "./src/media_refresh_controller_service_test.cpp",
   ]
   accurate_refresh_source = [
@@ -54,8 +55,11 @@ ohos_unittest("media_refresh_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/favorite_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/hiddem_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/image_asset_helper.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/live_photo_4d_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/owner_album_info_calculation.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/share_album_info_calculation.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_asset_helper.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/share_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/trash_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/video_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/asset_change_notify_execution.cpp",
@@ -84,6 +88,7 @@ ohos_unittest("media_refresh_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -108,7 +113,6 @@ ohos_unittest("media_refresh_test") {
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]

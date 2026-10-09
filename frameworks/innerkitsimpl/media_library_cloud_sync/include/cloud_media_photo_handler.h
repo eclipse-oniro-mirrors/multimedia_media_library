@@ -18,19 +18,23 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "i_cloud_media_data_handler.h"
+#include "cloud_share_album_define.h"
 #include "cloud_check_data.h"
 #include "cloud_meta_data.h"
 #include "mdk_record.h"
 #include "mdk_reference.h"
 #include "mdk_database.h"
 #include "cloud_media_data_client_handler_processor.h"
+#include "cloud_media_photo_handler_processor.h"
 #include "report_failure_vo.h"
 #include "cloud_media_define.h"
 #include "on_dentry_file_vo.h"
 #include "on_fetch_records_vo.h"
+#include "get_retey_records_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaPhotoHandler : public ICloudMediaDataHandler {
@@ -45,6 +49,8 @@ public:  // getter & setter
     void SetCloudType(const int32_t cloudType) override;
     void SetCloudSpaceFull(bool isCloudSpaceFull) override;
     bool IsCloudSpaceFull() override;
+    void SetSceneType(int32_t sceneType) override;
+    std::unordered_map<std::string, std::string> &GetHeader();
 
 public:
     int32_t GetCheckRecords(const std::vector<std::string> &cloudIds,
@@ -64,6 +70,7 @@ public:
         std::vector<int32_t> &stats) override;
     int32_t OnDentryFileInsert(std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords) override;
     int32_t GetRetryRecords(std::vector<std::string> &records) override;
+    int32_t GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords) override;
     int32_t OnStartSync() override;
     int32_t OnCompleteSync() override;
     int32_t OnCompletePull(const MediaOperateResult &optRet) override;
@@ -86,9 +93,12 @@ private:
 
 private:
     CloudMediaDataClientHandlerProcessor processor_;
+    CloudMediaPhotoHandlerProcessor photoHandlerProcessor_;
     std::string traceId_;
     int32_t userId_;
     int32_t cloudType_;
+    SceneType sceneType_ = SceneType::NORMAL;
+    std::unordered_map<std::string, std::string> header_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTO_HANDLER_H

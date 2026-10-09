@@ -40,11 +40,12 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/dup_sim",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/group_photo_album",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/video_ringtone_processor",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/reverse_clone_restore",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/utils",
 
   ]
 
   sources = [
-    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
     "./medialibrarybackupextension_fuzzer.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/backup_restore_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/restore/photos_dao.cpp",
@@ -77,6 +78,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/backup_database_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/backup_database_utils.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/upgrade_restore_gallery_media_task.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/rom_low_space_guard.cpp",
 
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/log/backup_log_utils.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/log/backup_zip_util.cpp",
@@ -110,13 +112,25 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/gallery_media_count_statistic.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/external_files_count_statistic.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/photos_count_statistic.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_executor.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_plan_builder.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/geo_knowledge/clone_restore_geo_base.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_album.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_base.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/pet_album_utils.cpp",
-
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/play_info_mapper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/restore_map_code_utils.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_operation.cpp",
   ]
 
-  source_ipc_client = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp" ]
+  source_ipc_client = []
   sources += source_ipc_client
 
   deps = [
@@ -124,6 +138,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
   ]
 
@@ -147,6 +162,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "dfs_service:cloudsync_kit_inner",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "image_framework:image_native",
@@ -155,7 +171,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
+    "node:node_header_notice",
     "preferences:native_preferences",
     "player_framework:media_client",
     "relational_store:native_rdb",
@@ -170,6 +186,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "libxml2:libxml2",
     "e2fsprogs:libext2_uuid",
     "samgr:samgr_proxy",
+    "window_manager:libwmutil",
   ]
 
   if (media_library_analysis_data_enable) {

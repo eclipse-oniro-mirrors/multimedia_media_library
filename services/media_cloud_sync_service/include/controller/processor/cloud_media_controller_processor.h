@@ -28,7 +28,6 @@
 namespace OHOS::Media::CloudSync {
 class CloudMediaControllerProcessor {
 public:
-    PhotosDto ConvertPhotosVoToPhotosDto(const PhotosVo &photosVo);
     PhotosVo ConvertPhotosDtoToPhotosVo(const PhotosDto &photosDto);
 };
 }  // namespace OHOS::Media::CloudSync

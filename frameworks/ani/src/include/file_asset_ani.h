@@ -58,6 +58,7 @@ struct FileAssetContext : public AniError {
     std::string extension;
 
     uint32_t businessCode = 0;
+    std::string uniqueId;
 };
 
 struct FileAssetAniMethod {
@@ -113,6 +114,7 @@ public:
     static ani_object PhotoAccessHelperGetThumbnailData(ani_env *env, ani_object object, ani_enum_item type);
     static ani_string GetExif(ani_env *env, ani_object object);
     static ani_status PhotoAccessHelperSetPending(ani_env *env, ani_object object, ani_boolean pendingState);
+    static ani_string PhotoAccessHelperGenerateUniqueIdSync(ani_env *env, ani_object object);
     std::string GetFileDisplayName() const;
     std::string GetFileUri() const;
     int32_t GetFileId() const;

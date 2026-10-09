@@ -34,6 +34,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/controller",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dto",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager/include",
     "../medialibrary_unittest_utils/include",
     "./include",
@@ -45,6 +46,8 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/callback",
   ]
 
   include_media_ipc = [
@@ -105,6 +108,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/modify_assets_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/pause_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_cloud_enhancement_task_state_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_composite_auxiliary_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_media_data_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/release_debug_database_vo.cpp",
@@ -140,6 +144,18 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/cancel_photo_uri_permission_test.cpp",
     "./src/check_photo_uris_read_permission_test.cpp",
     "./src/clone_asset_test.cpp",
+    "./src/convert_to_asset_test.cpp",
+    "./src/cancel_task_test.cpp",
+    "./src/clone_and_move_controller_test.cpp",
+    "./src/create_file_manager_asset_test.cpp",
+    "./src/clone_to_album_and_convert_asset_test.cpp",
+    "./src/media_assets_controller_ipc_test.cpp",
+    "./src/asset_change_query_by_storage_path_test.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/convert_to_asset_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_cancel_task_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_to_album_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/media_assets_rdb_operations.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/clone_to_album_callback_proxy.cpp",
   ]
 
   if (media_library_feature_cloud_enhancement) {
@@ -155,6 +171,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/custom_restore_test.cpp",
     "./src/compatible_info_test.cpp",
     "./src/delete_asset_test.cpp",
+    "./src/get_cloned_asset_uris_inner_test.cpp",
     "./src/delete_assets_permanently_test.cpp",
     "./src/delete_photos_completed_test.cpp",
     "./src/get_asset_analysis_data_test.cpp",
@@ -174,6 +191,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/modify_assets_test.cpp",
     "./src/persist_permission_test.cpp",
     "./src/query_cloud_enhancement_task_state_test.cpp",
+    "./src/query_composite_auxiliary_image_test.cpp",
     "./src/query_edit_asset_status_test.cpp",
     "./src/query_media_data_status_test.cpp",
     "./src/release_debug_database_test.cpp",
@@ -203,7 +221,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -214,6 +232,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "ability_runtime:ability_manager",
     "ability_runtime:abilitykit_native",
     "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
     "ability_runtime:napi_base_context",
     "ability_runtime:runtime",
     "ability_runtime:uri_permission_mgr",
@@ -245,11 +264,11 @@ ohos_unittest("media_assets_controller_service_test") {
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",
     "preferences:native_preferences",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "zlib:shared_libz",

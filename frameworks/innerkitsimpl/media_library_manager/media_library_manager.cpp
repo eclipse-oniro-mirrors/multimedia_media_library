@@ -19,14 +19,18 @@
 
 #include <fcntl.h>
 #include <sys/xattr.h>
+#include <map>
 
 #include "accesstoken_kit.h"
 #include "directory_ex.h"
 #include "iservice_registry.h"
+#include "os_account_manager.h"
 #include "media_asset_rdbstore.h"
+#include "media_common_client.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_string_utils.h"
+#include "media_uri_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_manager_notify_observer_manager.h"
@@ -35,7 +39,6 @@
 #include "media_app_uri_permission_column.h"
 #include "media_app_uri_sensitive_column.h"
 #include "media_library_tab_old_photos_client.h"
-#include "moving_photo_file_utils.h"
 #include "post_proc.h"
 #include "permission_utils.h"
 #include "result_set_utils.h"
@@ -65,8 +68,14 @@
 #include "album_get_assets_vo.h"
 #include "image_source.h"
 #include "js_interface_helper.h"
-#include "get_assets_vo.h"
+#include "media_path_utils.h"
+#include "thumbnail_manager.h"
 #include "moving_photo_file_utils.h"
+#include "get_assets_vo.h"
+#include "batch_update_metadata_modified_vo.h"
+#include "set_photo_critical_vo.h"
+#include "fetch_result.h"
+#include "userfilemgr_uri.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"
@@ -75,16 +84,19 @@
 using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Security::AccessToken;
-// LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
 shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::sDataShareHelper_ = nullptr;
 sptr<IRemoteObject> MediaLibraryManager::token_ = nullptr;
+shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::currentDataShareHelper_ = nullptr;
+int32_t MediaLibraryManager::userId_ = -1;
 constexpr int32_t DEFAULT_THUMBNAIL_SIZE = 256;
 constexpr int32_t MAX_DEFAULT_THUMBNAIL_SIZE = 768;
 constexpr int32_t DEFAULT_MONTH_THUMBNAIL_SIZE = 128;
 constexpr int32_t DEFAULT_YEAR_THUMBNAIL_SIZE = 64;
 constexpr int32_t URI_MAX_SIZE = 1000;
+constexpr int32_t DEFAULT_USER_ID = 100;
 
 const std::string PENDING_STATUS_INNER = "pending";
 const std::string MULTI_USER_URI_FLAG = "user=";
@@ -107,8 +119,9 @@ MediaLibraryManager *MediaLibraryManager::GetMediaLibraryManager()
 void MediaLibraryManager::InitMediaLibraryManager(const sptr<IRemoteObject> &token)
 {
     token_ = token;
-    CHECK_AND_EXECUTE(sDataShareHelper_ != nullptr,
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI));
+    auto &client = IPC::MediaCommonClient::GetInstance();
+    client.Init(token);
+    sDataShareHelper_ = client.GetOrCreateDataShareHelper(-1);
 }
 
 sptr<IRemoteObject> MediaLibraryManager::InitToken()
@@ -123,109 +136,148 @@ sptr<IRemoteObject> MediaLibraryManager::InitToken()
 void MediaLibraryManager::InitMediaLibraryManager()
 {
     token_ = InitToken();
-    if (sDataShareHelper_ == nullptr && token_ != nullptr) {
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    if (token_ != nullptr) {
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.Init(token_);
+        sDataShareHelper_ = client.GetOrCreateDataShareHelper(-1);
     }
+}
+
+static int32_t GetCurrentAccountId()
+{
+    int32_t activeUserId = DEFAULT_USER_ID;
+    ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
+    if (ret != ERR_OK) {
+        MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
+    }
+    return activeUserId;
+}
+
+shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::GetDataShareHelper()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    int32_t activeUser = GetCurrentAccountId();
+    if (currentDataShareHelper_ == nullptr || activeUser != userId_) {
+        MEDIA_INFO_LOG("GetDataShareHelper userid has changed, userId_: %{public}d -> activeUser: %{public}d", userId_,
+            activeUser);
+        if (token_ == nullptr) {
+            token_ = InitToken();
+        }
+        if (token_ == nullptr) {
+            MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
+            return nullptr;
+        }
+        Uri uri = Uri(MEDIALIBRARY_DATA_URI);
+        std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUser).ToString();
+        currentDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, multiUri);
+        if (currentDataShareHelper_ != nullptr) {
+            userId_ = activeUser;
+        } else {
+            MEDIA_ERR_LOG(
+                "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
+        }
+    }
+    return currentDataShareHelper_;
 }
 
 int32_t MediaLibraryManager::RegisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterSinglePhotoChange(const std::string &assetUri,
     std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterSingleAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterSinglePhotoChange(const std::string &assetUri,
     std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterSingleAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
 }
 
 int32_t MediaLibraryManager::RegisterSinglePhotoAlbumChange(const std::string &albumUri,
     std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterSingleAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterSinglePhotoAlbumChange(const std::string &albumUri,
     std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterSingleAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
 }
 
 int32_t MediaLibraryManager::RegisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
 }
 
 string MediaLibraryManager::CreateAsset(const string &displayName)
@@ -293,13 +345,14 @@ int32_t MediaLibraryManager::OpenAsset(string &uri, const string openMode)
     if (!MEDIA_OPEN_MODES.count(originOpenMode)) {
         return E_ERR;
     }
-
-    if (sDataShareHelper_ == nullptr) {
+    auto currentDataShareHelper = GetDataShareHelper();
+    if (currentDataShareHelper == nullptr) {
         MEDIA_ERR_LOG("Failed to open Asset, datashareHelper is nullptr");
         return E_ERR;
     }
+    MediaUriUtils::AppendKeyValue(uri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openUri(uri);
-    return sDataShareHelper_->OpenFile(openUri, openMode);
+    return currentDataShareHelper->OpenFile(openUri, openMode);
 }
 
 int32_t MediaLibraryManager::CloseAsset(const string &uri, const int32_t fd)
@@ -633,7 +686,8 @@ static int32_t GetFdFromSandbox(const string &path, string &sandboxPath, bool is
     return open(absFilePath.c_str(), O_RDONLY);
 }
 
-static void UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper, const string &fileIdStr)
+void MediaLibraryManager::UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper,
+    const string &fileIdStr)
 {
     MEDIA_INFO_LOG("UpdateAssetVisitCount fileIdStr :%{public}s", fileIdStr.c_str());
     AddAssetVisitCountReqBody reqBody;
@@ -665,11 +719,13 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "Failed to open thumbnail, dataShareHelper is nullptr");
     if (path.empty()) {
         MEDIA_ERR_LOG("OpenThumbnail path is empty");
+        MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_MEDIA_LIBRARY);
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
     string sandboxPath = GetSandboxPath(path, size, isAstc);
-    if ((sandboxPath.find("LCD") != std::string::npos) && CheckIsCloudFile(sandboxPath)) {
+    if ((sandboxPath.find("LCD.jpg") != std::string::npos) && MediaPathUtils::CheckIsCloudFile(sandboxPath)) {
+        MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_MEDIA_LIBRARY);
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
@@ -681,6 +737,7 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     MEDIA_INFO_LOG("OpenThumbnail from andboxPath failed, errno %{public}d path :%{public}s fd %{public}d",
         errno, MediaFileUtils::DesensitizePath(path).c_str(), fd);
     CHECK_AND_EXECUTE(!IsAsciiString(path), uriStr += "&" + THUMBNAIL_PATH + "=" + path);
+    MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openUri(uriStr);
     return dataShareHelper->OpenFile(openUri, "R");
 }
@@ -823,8 +880,8 @@ unique_ptr<PixelMap> MediaLibraryManager::QueryThumbnail(UriParams& params)
     tracer.Start("QueryThumbnail uri:" + params.fileUri);
 
     string oper = params.isAstc ? CONST_MEDIA_DATA_DB_THUMB_ASTC : CONST_MEDIA_DATA_DB_THUMBNAIL;
-    string openUriStr = params.fileUri + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + oper + "&" +
-        CONST_MEDIA_DATA_DB_WIDTH +
+    string openUriStr = params.fileUri + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + oper +
+        "&" + CONST_MEDIA_DATA_DB_WIDTH +
         "=" + to_string(params.size.width) + "&" + CONST_MEDIA_DATA_DB_HEIGHT + "=" + to_string(params.size.height);
     if (params.user != "") {
         openUriStr = openUriStr + "&" + THUMBNAIL_USER + "=" + params.user;
@@ -1065,6 +1122,7 @@ int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri, const strin
         "Failed to read video of moving photo, datashareHelper is nullptr");
     string videoUri = uri;
     MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, option);
+    MediaUriUtils::AppendKeyValue(videoUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper->OpenFile(openVideoUri, MEDIA_FILEMODE_READONLY);
 
@@ -1129,6 +1187,7 @@ int32_t MediaLibraryManager::ReadPrivateMovingPhoto(const string &uri)
     string movingPhotoUri = uri;
     MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
         CONST_OPEN_PRIVATE_LIVE_PHOTO);
+    MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openMovingPhotoUri(movingPhotoUri);
     return sDataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
 }
@@ -1217,6 +1276,13 @@ std::unordered_map<std::string, std::string> MediaLibraryManager::GetUrisByOldUr
     return TabOldPhotosClient(*this).GetUrisByOldUris(uris);
 }
 
+int32_t MediaLibraryManager::GetClonedAssetUris(const std::vector<std::string> &oldUris,
+    std::map<std::string, std::string> &clonedUris)
+{
+    MEDIA_INFO_LOG("Start GetClonedAssetUris, size: %{public}zu", oldUris.size());
+    return TabOldPhotosClient(*this).GetClonedAssetUrisInner(oldUris, clonedUris);
+}
+
 int32_t MediaLibraryManager::GetAlbumLpath(uint32_t ownerAlbumId, std::string &lpath)
 {
     MEDIA_DEBUG_LOG("MediaLibraryManager::GetAlbumLpath Start.");
@@ -1285,7 +1351,8 @@ FetchResult<PhotoAlbum> MediaLibraryManager::GetAlbums(const std::vector<std::st
     MEDIA_DEBUG_LOG("GetAlbums Start.");
     FetchResult<PhotoAlbum> emptyPhotoAlbum;
     CHECK_AND_RETURN_RET_LOG(predicate != nullptr, emptyPhotoAlbum, "predicate is nullptr");
-    CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, emptyPhotoAlbum, "dataShareHelper is nullptr");
+    auto currentsDataShareHelper = GetDataShareHelper();
+    CHECK_AND_RETURN_RET_LOG(currentsDataShareHelper != nullptr, emptyPhotoAlbum, "dataShareHelper is nullptr");
 
     QueryAlbumsReqBody reqBody;
     QueryAlbumsRespBody respBody;
@@ -1294,7 +1361,7 @@ FetchResult<PhotoAlbum> MediaLibraryManager::GetAlbums(const std::vector<std::st
     reqBody.columns = fetchColumns;
     reqBody.predicates = *predicate;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ALBUMS);
-    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(sDataShareHelper_)
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(currentsDataShareHelper)
         .Call(businessCode, reqBody, respBody);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, emptyPhotoAlbum,
         "after IPC::UserInnerIPCClient().Call, errCode: %{public}d.",
@@ -1519,6 +1586,16 @@ static void SetCloudSubTypeDefaultPredicates(DataSharePredicates &predicates, bo
     SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
     predicates.EndWrap();
 }
+
+static void SetLivePhoto4DSubTypeDefaultPredicates(DataSharePredicates &predicates, bool hiddenOnly)
+{
+    predicates.BeginWrap();
+    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    predicates.EqualTo(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+    predicates.EndWrap();
+}
+
 int32_t GetSystemAlbumPredicatesForInner(const PhotoAlbumSubType subType, DataSharePredicates &predicates,
     const bool hiddenOnly)
 {
@@ -1553,6 +1630,10 @@ int32_t GetSystemAlbumPredicatesForInner(const PhotoAlbumSubType subType, DataSh
         }
         case PhotoAlbumSubType::CLOUD_ENHANCEMENT: {
             SetCloudSubTypeDefaultPredicates(predicates, hiddenOnly);
+            break;
+        }
+        case PhotoAlbumSubType::LIVEPHOTO_4D: {
+            SetLivePhoto4DSubTypeDefaultPredicates(predicates, hiddenOnly);
             break;
         }
         default: {
@@ -1674,17 +1755,6 @@ FetchResult<FileAsset> MediaLibraryManager::GetAssets(const PhotoAlbum &album,
     return FetchResult<FileAsset>(std::move(resultSet));
 }
 
-bool MediaLibraryManager::CheckIsCloudFile(const std::string &sandboxPath)
-{
-    constexpr size_t MAX_ATTR_NAME = 64;
-    constexpr const char* CLOUD_LOCATION_ATTR = "user.cloud.location";
-    char cloudvalue[MAX_ATTR_NAME] = {'\0'};
-    auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
-    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
-    constexpr const char FILE_POSITION_CLOUD = '2';
-    return cloudvalue[0] == FILE_POSITION_CLOUD;
-}
-
 FetchResult<FileAsset> MediaLibraryManager::GetAssets(const std::vector<std::string> &fetchColumns,
     const DataShare::DataSharePredicates *predicate)
 {
@@ -1717,6 +1787,68 @@ FetchResult<FileAsset> MediaLibraryManager::GetAssets(const std::vector<std::str
         return fileAsset;
     }
     return FetchResult<FileAsset>(std::move(resultSet));
+}
+
+void MediaLibraryManager::BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds)
+{
+    MEDIA_INFO_LOG("BatchUpdateMetaDataModified fileIds size: %{public}zu", fileIds.size());
+    CHECK_AND_RETURN_LOG(!fileIds.empty(), "fileIds is empty");
+    
+    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_LOG(dataShareHelper != nullptr, "dataShareHelper is nullptr");
+
+    constexpr size_t BATCH_SIZE = 500;
+    size_t totalSize = fileIds.size();
+    size_t batchCount = (totalSize + BATCH_SIZE - 1) / BATCH_SIZE;
+    
+    for (size_t batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+        size_t startIndex = batchIndex * BATCH_SIZE;
+        size_t endIndex = std::min(startIndex + BATCH_SIZE, totalSize);
+        
+        std::vector<std::string> batchIds(fileIds.begin() + startIndex, fileIds.begin() + endIndex);
+        
+        BatchUpdateMetaDataModifiedReqBody reqBody;
+        reqBody.fileIds = batchIds;
+        uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED);
+        int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+        if (errCode < 0) {
+            MEDIA_ERR_LOG("BatchUpdateMetaDataModified batch %{public}zu failed, errCode: %{public}d",
+                batchIndex, errCode);
+        }
+    }
+}
+
+int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical)
+{
+    MEDIA_INFO_LOG("SetPhotoCritical fileId: %{public}d, photoRiskStatus: %{public}d, isCritical: %{public}d",
+        fileId, photoRiskStatus, isCritical);
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "invalid fileId");
+    CHECK_AND_RETURN_RET_LOG(photoRiskStatus >= static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED) &&
+        photoRiskStatus <= static_cast<int32_t>(PhotoRiskStatus::REJECTED), E_INVALID_VALUES,
+        "invalid photoRiskStatus: %{public}d", photoRiskStatus);
+    CHECK_AND_RETURN_RET_LOG(isCritical == 0 || isCritical == 1, E_INVALID_VALUES,
+        "invalid isCritical: %{public}d", isCritical);
+    int32_t expectedCritical = (photoRiskStatus >= static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS)) ? 1 : 0;
+    CHECK_AND_RETURN_RET_LOG(isCritical == expectedCritical, E_INVALID_VALUES,
+        "isCritical does not match photoRiskStatus %{public}d, expected isCritical: %{public}d",
+        photoRiskStatus, expectedCritical);
+
+    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "dataShareHelper is nullptr");
+
+    SetPhotoCriticalReqBody reqBody;
+    reqBody.fileId = fileId;
+    reqBody.photoRiskStatus = photoRiskStatus;
+    reqBody.isCritical = isCritical;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL);
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+    if (errCode < 0) {
+        MEDIA_ERR_LOG("SetPhotoCritical failed, errCode: %{public}d", errCode);
+        return errCode;
+    }
+    return E_OK;
 }
 } // namespace Media
 } // namespace OHOS

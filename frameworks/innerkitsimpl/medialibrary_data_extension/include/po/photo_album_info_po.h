@@ -48,7 +48,7 @@ public:
         return ss.str();
     }
 
-    PhotoAlbumInfoPo &Parse(const shared_ptr<NativeRdb::ResultSet> &resultSet)
+    PhotoAlbumInfoPo &Parse(const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
     {
         if (resultSet == nullptr) {
             return *this;

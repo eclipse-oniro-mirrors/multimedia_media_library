@@ -133,6 +133,7 @@ struct SendableFileAssetAsyncContext : public NapiError {
     std::string jsonStr;
     std::string editData;
     std::string uri;
+    std::map<std::string, std::string> uriMap;
     char* editDataBuffer;
 };
 } // namespace Media

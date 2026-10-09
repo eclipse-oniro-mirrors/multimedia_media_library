@@ -45,6 +45,7 @@ ohos_unittest("media_analysis_data_service_test") {
 
   sources = [
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/service/active_analysis_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/service/analysis_tool_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/service/media_analysis_data_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dao/medialibrary_analysis_album_operations.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dto/change_request_set_order_position_dto.cpp",
@@ -78,7 +79,9 @@ ohos_unittest("media_analysis_data_service_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
     "./src/active_analysis_manager_test.cpp",
+    "./src/analysis_tool_manager_test.cpp",
     "./src/media_analysis_data_service_test.cpp",
     "./src/analysis_lcd_aging_dao_test.cpp",
     "./src/lcd_download_operation_test.cpp",
@@ -107,6 +110,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -134,8 +138,8 @@ ohos_unittest("media_analysis_data_service_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",

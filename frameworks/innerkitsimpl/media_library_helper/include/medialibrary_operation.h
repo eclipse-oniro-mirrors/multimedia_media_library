@@ -22,7 +22,7 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
-enum class EXPORT OperationObject : uint32_t {
+enum class OperationObject : uint32_t {
     UNKNOWN_OBJECT = 0,
     FILESYSTEM_ASSET,
     FILESYSTEM_PHOTO,
@@ -129,10 +129,12 @@ enum class EXPORT OperationObject : uint32_t {
     FILESYSTEM_DEBUG_DB,
     VISION_ANALYSIS,
     VISION_ANALYSIS_VIDEO,
+    TAB_OPERATION_LOG,
     TAB_PHOTOS_EXT_OPERATE,
+    TAB_COVER_RECORD,
 };
 
-enum class EXPORT OperationType : uint32_t {
+enum class OperationType : uint32_t {
     UNKNOWN_TYPE = 0,
     OPEN,
     CLOSE,
@@ -198,7 +200,6 @@ enum class EXPORT OperationType : uint32_t {
     START_GENERATE_THUMBNAILS,
     STOP_GENERATE_THUMBNAILS,
     GENERATE_THUMBNAILS_RESTORE,
-    LOCAL_THUMBNAIL_GENERATION,
     TOOL_QUERY_BY_DISPLAY_NAME,
     ADD_LOWQUALITY_IMAGE,
     FINISH_REQUEST_PICTURE,

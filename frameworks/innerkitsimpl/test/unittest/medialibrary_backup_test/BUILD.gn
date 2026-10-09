@@ -51,6 +51,8 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/group_photo_album",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/video_ringtone_processor",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/reverse_clone_restore",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/utils",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
     "../medialibrary_unittest_utils/include",
   ]
@@ -64,6 +66,7 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_database_helper.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_database_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_dfx_utils.cpp",
@@ -107,6 +110,8 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_photos_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/video_ringtone_processor/video_ringtone_processor.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore_resume_marker.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/external_source.cpp",
     "./src/gallery_source.cpp",
@@ -135,13 +140,14 @@ ohos_unittest("medialibrary_backup_test") {
     "./src/restore/photos_data_handler_test.cpp",
     "./src/restore/photos_restore_test.cpp",
     "./src/restore/tab_old_photos_restore_test.cpp",
+    "./src/restore/ocr_restore_test.cpp",
     "./src/video_ringtone_processor_test.cpp",
     "./src/utils/database_utils.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore_map_code_utils.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_operation.cpp",
   ]
 
-  source_ipc_client = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
-  ]
+  source_ipc_client = []
 
   sources += source_ipc_client
 
@@ -150,6 +156,7 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -182,7 +189,7 @@ ohos_unittest("medialibrary_backup_test") {
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
+    "node:node_header_notice",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",

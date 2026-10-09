@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "media_asset_bucket_type.h"
 #include "medialibrary_db_const.h"
 #include "uri.h"
 #include "userfile_manager_types.h"
@@ -103,7 +104,8 @@ public:
         std::vector<std::string> &timeIdBatch);
     EXPORT static void GetTimeIdFromUri(const std::vector<std::string> &uriBatch,
         std::vector<std::string> &timeIdBatch, int32_t &start, int32_t &count);
-    EXPORT static int32_t CreateAssetBucket(int32_t fileId, int32_t &bucketNum);
+    EXPORT static int32_t CreateAssetBucket(int32_t fileId, int32_t &bucketNum,
+        AssetBucketType bucketType = AssetBucketType::NORMAL);
     EXPORT static std::string GetPathFromUri(const std::string &uri, bool isPhoto);
     EXPORT static std::string GetPhotoUri(const std::string &fileId, const std::string &path,
         const std::string &displayName);

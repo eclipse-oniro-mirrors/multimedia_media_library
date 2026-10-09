@@ -20,6 +20,8 @@ config("media_permission_helper_config") {
 }
 
 ohos_shared_library("media_permission_helper") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
 
   include_dirs = [
@@ -27,6 +29,7 @@ ohos_shared_library("media_permission_helper") {
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 
   user_ipc_client_include_dirs = [
@@ -47,12 +50,6 @@ ohos_shared_library("media_permission_helper") {
     "./src/media_permission_helper.cpp",
   ]
 
-  columns_sources = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/base_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_permission_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_sensitive_column.cpp",
-  ]
-
   media_assets_manager_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_permission_inner_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uri_permission_inner_vo.cpp",
@@ -66,15 +63,16 @@ ohos_shared_library("media_permission_helper") {
   public_configs = [ ":media_permission_helper_config" ]
 
   include_dirs += user_ipc_client_include_dirs
-  sources += columns_sources
   sources += media_assets_manager_vo_source
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",
@@ -83,6 +81,7 @@ ohos_shared_library("media_permission_helper") {
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "kv_store:distributeddata_inner",
     "os_account:os_account_innerkits",
     "samgr:samgr_proxy",
     "ipc:ipc_core",
@@ -107,7 +106,6 @@ ohos_shared_library("media_permission_helper") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
 

@@ -26,7 +26,7 @@ namespace OHOS {
 namespace Media {
 using namespace std;
 #define VISION_MODULE_NAME "Vision"
-// ==================== ADD Vision Table Upgrade Code HERE  ====================
+// ADD Vision Table Upgrade Code HERE
 
 // VERSION_ADD_VISION_TABLE: 添加分析相关表
 static vector<pair<int32_t, int32_t>> VersionAddVisionTable(NativeRdb::RdbStore& store)
@@ -59,5 +59,74 @@ static vector<pair<int32_t, int32_t>> VersionAddCaptionTable(NativeRdb::RdbStore
     return UpgradeHelper::ExecuteCommands(commands, store);
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_CAPTION_TABLE, VISION_MODULE_NAME, VersionAddCaptionTable)
+
+static vector<pair<int32_t, int32_t>> AddOcrTimeSubtype(NativeRdb::RdbStore &store)
+{
+    // add column
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_OCR_TIME, "BIGINT NOT NULL DEFAULT 0")
+                        .AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_OCR_SUBTYPE, "TEXT")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_OCR_TIME_SUBTYPE, VISION_MODULE_NAME, AddOcrTimeSubtype)
+
+static vector<pair<int32_t, int32_t>> VersionAddClsSched(NativeRdb::RdbStore& store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_IS_CLS_SCHED, "INT DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_IS_SHEET, "INT DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_CLS_SCHED_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_CLS_SCHED, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_SHEET, "INT NOT NULL DEFAULT 0")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(
+    VERSION_ADD_CLS_SCHED, VISION_MODULE_NAME, VersionAddClsSched)
+
+static vector<pair<int32_t, int32_t>> VersionAddAffectiveColumn(NativeRdb::RdbStore& store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_VALENCE_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_AROUSAL_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_AUTHENTICITY, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_ATMOSPHERE, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_AFFECTIVE_EMOTION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_INTERESTINGNESS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_CUTENESS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_AFFECTIVE_CAPTION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AFFECTIVE, COLUMN_AFFECTIVE_DETECTOR_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_AFFECTIVE_DETECTOR, "INT NOT NULL DEFAULT 0")
+                           .Build();
+
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_AFFECTIVE_COLUMN, VISION_MODULE_NAME, VersionAddAffectiveColumn)
+
+static vector<pair<int32_t, int32_t>> VersionAddAestheticsVlm(NativeRdb::RdbStore& store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_NARRATIVE_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_NARRATIVE_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_PORTRAIT_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_PORTRAIT_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_COMPOSITION_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_COMPOSITION_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_QUALITY_TAGS, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_QUALITY_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_AESTHETICS_CAPTION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_VLM_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_AESTHETICS_SCORE, COLUMN_AESTHETICS_VLM_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_IMAGE_FACE, COLUMN_FACIAL_EXPRESSION_SCORE, "INT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_IMAGE_FACE, COLUMN_FACIAL_EXPRESSION_DETAIL, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_IMAGE_FACE, COLUMN_FACIAL_EXPRESSION_VERSION, "TEXT")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_AESTHETICS_VLM, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_TAB_ANALYSIS_TOTAL, COLUMN_FACIAL_DETECTION, "INT NOT NULL DEFAULT 0")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(
+    VERSION_ADD_AESTHETICS_VLM, VISION_MODULE_NAME, VersionAddAestheticsVlm)
 }
 }

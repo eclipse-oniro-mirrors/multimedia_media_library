@@ -23,6 +23,7 @@
 #include <thread>
 #include <sys/stat.h>
 
+#include "directory_ex.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -45,8 +46,10 @@ using namespace OHOS::Security::AccessToken;
 namespace OHOS {
 namespace Media {
 const std::string MEDIA_KIT_WHITE_LIST_NAME = "medialibrary_kit_whitelist.json";
+const std::string MEDIA_KIT_WHITE_LIST_JSON_LOCAL_DIR =
+    "/system/etc/com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/";
 const std::string MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH =
-    "/system/etc/com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/" + MEDIA_KIT_WHITE_LIST_NAME;
+    MEDIA_KIT_WHITE_LIST_JSON_LOCAL_DIR + MEDIA_KIT_WHITE_LIST_NAME;
 const string DUE_INSTALL_DIR =
     "/data/service/el1/public/update/param_service/install/system/etc/"
     "com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/";
@@ -104,7 +107,17 @@ static bool IsLeftVersionHigher(const std::string &v1, const std::string &v2)
 
 static nlohmann::json LoadJsonFile(const std::string &jsonPath, bool &isLoad)
 {
-    std::ifstream jFile(jsonPath);
+    bool isJsonPathValid = (jsonPath == MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH ||
+        jsonPath == DUE_INSTALL_DIR + MEDIA_KIT_WHITE_LIST_NAME);
+    CHECK_AND_RETURN_RET_LOG(isJsonPathValid, {}, "invalid whitelist json path");
+
+    std::string absJsonPath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(jsonPath, absJsonPath), {},
+        "failed to get real path: %{public}s", MediaFileUtils::DesensitizePath(jsonPath).c_str());
+    CHECK_AND_RETURN_RET_LOG(!absJsonPath.empty(), {}, "real path is empty: %{public}s",
+        MediaFileUtils::DesensitizePath(jsonPath).c_str());
+
+    std::ifstream jFile(absJsonPath);
     CHECK_AND_RETURN_RET_LOG(jFile.is_open(), {}, "Failed to open file, Error: %{public}s", std::strerror(errno));
 
     std::stringstream buffer;
@@ -168,9 +181,14 @@ int32_t PermissionWhitelistUtils::LoadWhiteList()
 int32_t PermissionWhitelistUtils::ParseWhiteList(const nlohmann::json &higherVerFile)
 {
     std::unordered_map<std::string, int> tmpWhiteList;
+    CHECK_AND_RETURN_RET_LOG((higherVerFile.contains(LIST_APPLICATIONS) &&
+        higherVerFile[LIST_APPLICATIONS].is_array()),
+        E_FAIL, "Invalid or missing %{public}s in whiteList config", LIST_APPLICATIONS.c_str());
     for (const auto &app : higherVerFile[LIST_APPLICATIONS]) {
-        CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_APPIDENTIFIER) && app.contains(LIST_ALLOW_API_VERSION)),
-            "Missing appIdentifier or allowedApiVersion");
+        CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_APPIDENTIFIER) &&
+            app[LIST_APPIDENTIFIER].is_string()), "Invalid or missing appIdentifier");
+        CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_ALLOW_API_VERSION) &&
+            app[LIST_ALLOW_API_VERSION].is_number_integer()), "Invalid or missing allowedApiVersion");
 
         std::string appIdentifier = app[LIST_APPIDENTIFIER].get<std::string>();
         int allowedApiVersion = app[LIST_ALLOW_API_VERSION].get<int>();

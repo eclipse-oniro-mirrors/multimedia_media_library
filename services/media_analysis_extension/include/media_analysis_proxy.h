@@ -35,6 +35,7 @@ public:
     ~MediaAnalysisProxy();
     static sptr<IRemoteObject> GetRemoteObject(int32_t code);
     bool static SendTransactCmd(int32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    int32_t static SendToolTransactCmd(int32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option);
 
 private:
     const static int32_t SAID = 10120;

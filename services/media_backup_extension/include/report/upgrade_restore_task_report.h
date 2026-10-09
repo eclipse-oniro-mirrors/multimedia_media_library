@@ -59,12 +59,14 @@ public:
     UpgradeRestoreTaskReport &ReportFileListCloneConfig(AncoFileListClone ancoFileListClone,
         FileManagerFileListClone fileManagerFileListClone);
     UpgradeRestoreTaskReport &ReportFileTransferConfig(AncoFileTransfer ancoFileTransfer);
+    UpgradeRestoreTaskReport &ReportReverse(const ReverseRestoreReportInfo &reportInfo);
 
 private:
     int32_t PostInfoDfx(const MediaRestoreResultInfo &info);
     int32_t PostInfoAuditLog(const MediaRestoreResultInfo &info);
     int32_t PostErrorInfoAuditLog(const ErrorInfo &info);
     int32_t PostProgressInfoAuditLog(const std::string &status, const std::string &progressInfo);
+    int32_t PostInfoReverseAuditLog(const std::string &infoStr);
 
 private:
     int32_t sceneCode_{-1};

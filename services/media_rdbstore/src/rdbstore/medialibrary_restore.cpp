@@ -37,7 +37,7 @@ namespace {
     const std::string CLOUD_STOP_FLAG_K = "persist.kernel.medialibrarydata.stopflag";
     const std::string CLOUD_STOP_FLAG_V = "1";
     constexpr int PARAMETER_E_OK        = 0;
-    constexpr int WAIT_SECONDS          = 120;
+    constexpr int WAIT_SECONDS          = 30;
     constexpr int SLEEP_SECONDS         = 60;
     constexpr int MAX_RETRY_TIMES       = 2;
     enum HA_SWITCH_STATUS : uint32_t {
@@ -105,16 +105,10 @@ void MediaLibraryRestore::StopCloudSync()
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRestore::StopCloudSync");
-    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME, true);
-    uint32_t times = 0;
-    int ret = WaitParameter(CLOUD_STOP_FLAG_K.c_str(), CLOUD_STOP_FLAG_V.c_str(), WAIT_SECONDS);
-    if (ret == PARAMETER_E_OK) {
-        MEDIA_INFO_LOG("StopCloudSync success end");
-        return;
-    }
-    isBackuping_ = false;
-    MEDIA_INFO_LOG("StopCloudSync timeout error, set backup false");
-    return;
+    int32_t ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME, true);
+    CHECK_AND_RETURN_LOG(ret == PARAMETER_E_OK, "StopCloudSync fail, errcode = %{public}d", ret);
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT_SECONDS));
+    MEDIA_INFO_LOG("StopCloudSync wait done, start backup");
 }
 #endif
 

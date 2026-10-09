@@ -102,6 +102,25 @@ int32_t MediaChangeEffect::TakeEffectForPicture(std::shared_ptr<Media::Picture> 
 #endif
     return 0;
 }
- 
+
+int32_t MediaChangeEffect::TakeEffectCloudEnhanceForPicture(std::shared_ptr<Media::Picture> &inPicture,
+    string &editData)
+{
+#ifdef IMAGE_EFFECT_SUPPORT
+    Effect::ErrorCode ret = Effect::ErrorCode::ERR_UNKNOWN;
+    std::shared_ptr<Effect::ImageEffect> imageEffect = std::make_shared<Effect::ImageEffect>();
+    CHECK_AND_RETURN_RET(imageEffect != nullptr, ParseInt(ret));
+
+    ret = imageEffect->SetInputPicture(inPicture.get()); // 原图修改
+    CHECK_AND_RETURN_RET(ret == Effect::ErrorCode::SUCCESS, ParseInt(ret));
+
+    ret = imageEffect->Load(editData);
+    CHECK_AND_RETURN_RET(ret == Effect::ErrorCode::SUCCESS, ParseInt(ret));
+
+    ret = imageEffect->Start();
+    CHECK_AND_RETURN_RET(ret == Effect::ErrorCode::SUCCESS, ParseInt(ret));
+#endif
+    return 0;
+}
 } // end of namespace
 }

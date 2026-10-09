@@ -26,19 +26,6 @@
  
 namespace OHOS {
 namespace Media {
-const std::string COVER_URI_VALUE_INSERT =
-    " (SELECT '" + PhotoColumn::PHOTO_URI_PREFIX + "'||NEW." + MediaColumn::MEDIA_ID + "||" +
-    "(SELECT SUBSTR(NEW." + MediaColumn::MEDIA_FILE_PATH +
-    ", (SELECT LENGTH(NEW." + MediaColumn::MEDIA_FILE_PATH +
-    ") - INSTR(reverseStr, '/') + 1) , (SELECT (SELECT LENGTH(NEW." +
-    MediaColumn::MEDIA_FILE_PATH + ") - INSTR(reverseStr, '.')) - (SELECT LENGTH(NEW." +
-    MediaColumn::MEDIA_FILE_PATH + ") - INSTR(reverseStr, '/')))) from (select " +
-    " (WITH RECURSIVE reverse_string(str, revstr) AS ( SELECT NEW." +
-    MediaColumn::MEDIA_FILE_PATH + ", '' UNION ALL SELECT SUBSTR(str, 1, LENGTH(str) - 1), " +
-    "revstr || SUBSTR(str, LENGTH(str), 1) FROM reverse_string WHERE LENGTH(str) > 1 ) " +
-    " SELECT revstr || str FROM reverse_string WHERE LENGTH(str) = 1) as reverseStr)) ||'/'||NEW." +
-    MediaColumn::MEDIA_NAME + ")";
-
 const std::string COVER_URI_VALUE_UPDATE =
     "( SELECT '" + PhotoColumn::PHOTO_URI_PREFIX + "' || fileId ||" +
     " ( SELECT SUBSTR( filePath, ( SELECT LENGTH( filePath ) - INSTR ( reverseStr, '/' ) + 1 )," +
@@ -56,12 +43,6 @@ const std::string COVER_URI_VALUE_UPDATE =
     MediaColumn::MEDIA_PACKAGE_NAME + " = OLD." + MediaColumn::MEDIA_PACKAGE_NAME + " AND " +
     PhotoUpgrade::PHOTOS_QUERY_FILTER + " ORDER BY " +
     MediaColumn::MEDIA_DATE_MODIFIED + " DESC LIMIT 1 ) ) )";
-
-const std::string COUNT_VALUE_INSERT =
-    " (SELECT COUNT(1) FROM " + PhotoColumn::PHOTOS_TABLE +
-    " WHERE " +
-    MediaColumn::MEDIA_PACKAGE_NAME + " = NEW." + MediaColumn::MEDIA_PACKAGE_NAME + " AND " +
-    PhotoUpgrade::PHOTOS_QUERY_FILTER + " )";
 
 const std::string COUNT_VALUE_UPDATE =
     " (SELECT COUNT(1) FROM " + PhotoColumn::PHOTOS_TABLE +

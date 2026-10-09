@@ -169,5 +169,20 @@ HWTEST_F(MediaUriUtilsUnitTest, CheckUri_test06, TestSize.Level1)
     EXPECT_EQ(MediaUriUtils::CheckUri(uri), false);
     MEDIA_INFO_LOG("end CheckUri_test06");
 }
+
+HWTEST_F(MediaUriUtilsUnitTest, medialib_get_file_id_string_test_001, TestSize.Level1)
+{
+    std::string fullUri = "file://media/Photo/1/IMG_123456789_000/test.jpg";
+    std::string id1 = MediaUriUtils::GetFileIdStr(fullUri);
+    EXPECT_EQ(id1, "1");
+
+    std::string uriNull;
+    std::string id2 = MediaUriUtils::GetFileIdStr(uriNull);
+    EXPECT_EQ(id2, "-1");
+
+    std::string uriPhoto = "file://media/Photo";
+    std::string id3 = MediaUriUtils::GetFileIdStr(uriPhoto);
+    EXPECT_EQ(id3, "-1");
+}
 } // namespace Media
 } // namespace OHOS

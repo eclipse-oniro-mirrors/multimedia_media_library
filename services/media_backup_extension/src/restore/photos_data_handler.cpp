@@ -25,6 +25,7 @@
 #include "media_file_utils.h"
 #include "upgrade_restore_task_report.h"
 #include "media_string_utils.h"
+#include "settings_data_manager.h"
 
 namespace OHOS::Media {
 void PhotosDataHandler::OnStart(int32_t sceneCode, const std::string &taskId,
@@ -56,6 +57,12 @@ void PhotosDataHandler::HandleDirtyFiles(bool isRestore)
 {
     if (!isRestore) {
         MEDIA_WARN_LOG("Only handle dirty files in restore scene");
+        return;
+    }
+    std::string reverseRestoreStatus;
+    int32_t ret = SettingsDataManager::GetReverseRestoreStatus(reverseRestoreStatus);
+    if (ret == E_OK && !reverseRestoreStatus.empty()) {
+        MEDIA_INFO_LOG("Reverse restore status exists, skip handle dirty files");
         return;
     }
     int64_t startQuery = MediaFileUtils::UTCTimeMilliSeconds();

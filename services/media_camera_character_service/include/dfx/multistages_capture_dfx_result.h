@@ -44,6 +44,7 @@ const std::unordered_map<int32_t, MultiStagesCaptureMediaType> SUBTYPR_TO_MEDIAT
     {static_cast<int32_t>(PhotoSubType::MOVING_PHOTO), MultiStagesCaptureMediaType::MOVING_PHOTO_VIDEO},
     {static_cast<int32_t>(PhotoSubType::CAMERA), MultiStagesCaptureMediaType::VIDEO},
     {static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO), MultiStagesCaptureMediaType::CINEMATIC_VIDEO},
+    {static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2), MultiStagesCaptureMediaType::CINEMATIC_VIDEO},
 };
 
 class MultiStagesCaptureDfxResult {

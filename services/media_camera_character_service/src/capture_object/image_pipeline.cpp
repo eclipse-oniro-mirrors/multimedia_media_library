@@ -30,6 +30,7 @@
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
 #include "userfile_manager_types.h"
+#include "c2pa_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -107,6 +108,10 @@ int32_t ImagePipeline::AddFiltersToPhoto(const std::string& sourcePath, const st
     tracer.Start("MediaChangeEffect::TakeEffect");
     int32_t quality = assetInfo.GetMimeType() == MIME_TYPE_HEIF ? PACKOPTION_QUALITY_HEIF : PACKOPTION_QUALITY;
     ret = MediaChangeEffect::TakeEffect(sourcePath, tempFilterPath, info, quality);
+    auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
+    if (c2paConfigInfo.enableC2PA) {
+        C2paUtils::SignForCreate(tempFilterPath, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+    }
     tracer.Finish();
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to TakeEffect, ret: %{public}d.", ret);
 

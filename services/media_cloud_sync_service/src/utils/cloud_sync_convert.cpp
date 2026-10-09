@@ -34,6 +34,7 @@
 #include "media_values_bucket_utils.h"
 
 namespace OHOS::Media::CloudSync {
+static const int32_t MAX_SCAND_SIZE = 3;
 static bool convertToLong(const std::string &str, int64_t &value)
 {
     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
@@ -225,6 +226,16 @@ int32_t CloudSyncConvert::CompensateAttFrontCamera(const CloudMediaPullDataDto &
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateAttXtStyleTemplateName(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    std::string xtStyleTemplateName = data.attributesXtStyleTemplateName;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        !xtStyleTemplateName.empty(), E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::xtStyleTemplateName.");
+    values.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, xtStyleTemplateName);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateAttEditTime(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     int64_t editTime = data.attributesEditTime;
@@ -280,6 +291,37 @@ int32_t CloudSyncConvert::CompensateAttSupportedWatermarkType(
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateIsStylePhoto(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t isStylePhoto = data.attributesIsStylePhoto;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        isStylePhoto != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::isStylePhoto.");
+    values.PutInt(PhotoColumn::IS_STYLE_PHOTO, isStylePhoto);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateSupportedDeferredEffects(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t supportedDeferredEffects = data.supportedDeferredEffects;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        supportedDeferredEffects != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::supportedDeferredEffects.");
+    values.PutInt(PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, supportedDeferredEffects);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateDeferredEffectsStatus(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t deferredEffectsStatus = data.deferredEffectsStatus;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        // 字段初始默认值就是-1，做特殊适配-2
+        deferredEffectsStatus != -2, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::deferredEffectsStatus.");
+    values.PutInt(PhotoColumn::DEFERRED_EFFECT_STATUS, deferredEffectsStatus);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateAttStrongAssociation(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
@@ -318,6 +360,81 @@ int32_t CloudSyncConvert::CompensateAttIsCritical(
     return E_OK;
 }
 
+static bool ComputeRiskFromScaDetailList(const std::vector<ScaDetailDataDto> &scaDetailList,
+    const std::set<std::string> &usageFilter, int32_t &outStatus, std::string &outType)
+{
+    if (scaDetailList.empty()) {
+        return false;
+    }
+    std::vector<std::string> usages[MAX_SCAND_SIZE];  // [BLOCKED]=高风险, [REVIEWING]=审核中, [VISIBLE]=低风险
+    for (const auto &scaDetail : scaDetailList) {
+        if (!usageFilter.empty() && usageFilter.find(scaDetail.usage) == usageFilter.end()) {
+            continue;
+        }
+        if (scaDetail.riskResult >= RISK_RESULT_REVIEWING && scaDetail.riskResult <= RISK_RESULT_BLOCKED) {
+            usages[scaDetail.riskResult].push_back(scaDetail.usage);
+        }
+    }
+    if (usages[RISK_RESULT_BLOCKED].empty() && usages[RISK_RESULT_REVIEWING].empty() &&
+        usages[RISK_RESULT_VISIBLE].empty()) {
+        return false;
+    }
+    auto joinType = [](const std::vector<std::string> &items) {
+        return std::accumulate(items.begin(), items.end(), std::string(),
+            [](const std::string &a, const std::string &b) {
+                return a.empty() ? b : a + "," + b;
+            });
+    };
+    if (!usages[RISK_RESULT_BLOCKED].empty()) {
+        outStatus = RISK_RESULT_BLOCKED;
+        outType = joinType(usages[RISK_RESULT_BLOCKED]);
+    } else if (!usages[RISK_RESULT_REVIEWING].empty()) {
+        outStatus = RISK_RESULT_REVIEWING;
+        outType = joinType(usages[RISK_RESULT_REVIEWING]);
+    } else {
+        outStatus = RISK_RESULT_VISIBLE;
+        outType = joinType(usages[RISK_RESULT_VISIBLE]);
+    }
+    return true;
+}
+
+int32_t CloudSyncConvert::CompensateAssetShareRisk(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t shareRiskStatus = -1;
+    std::string shareRiskType;
+    if (!ComputeRiskFromScaDetailList(data.scaDetailDataList, MEDIA_ASSET_USAGES, shareRiskStatus, shareRiskType)) {
+        MEDIA_ERR_LOG(
+            "CompensateAssetShareRisk: invalid sca share risk data, cloudId=%{public}s",
+            data.cloudId.c_str());
+        return E_CLOUDSYNC_INVAL_ARG;
+    }
+    values.PutInt(PhotoColumn::PHOTO_SHARE_RISK_STATUS, shareRiskStatus);
+    values.PutString(PhotoColumn::PHOTO_SHARE_RISK_TYPE, shareRiskType);
+    values.PutInt(PhotoColumn::PHOTO_VISIBILITY, shareRiskStatus == RISK_RESULT_BLOCKED ? 1 : 0);
+    MEDIA_INFO_LOG("CompensateAssetShareRisk: status=%{public}d, type=%{public}s, cloudId=%{public}s",
+        shareRiskStatus, shareRiskType.c_str(), data.cloudId.c_str());
+    return E_OK;
+}
+
+void CloudSyncConvert::CompensateAlbumShareRisk(const PhotoAlbumDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t shareRiskStatus = -1;
+    std::string shareRiskType;
+    if (!data.shareAlbumDetailDtoOp.has_value() ||
+        !ComputeRiskFromScaDetailList(data.shareAlbumDetailDtoOp.value().scaDetailDataList,
+        ALBUM_ASSET_USAGES, shareRiskStatus, shareRiskType)) {
+        MEDIA_ERR_LOG(
+            "CompensateAlbumShareRisk: invalid sca share risk data, cloudId=%{public}s",
+            data.cloudId.c_str());
+        return;
+    }
+    values.PutInt(PhotoAlbumColumns::SHARE_RISK_STATUS, shareRiskStatus);
+    values.PutString(PhotoAlbumColumns::SHARE_RISK_TYPE, shareRiskType);
+
+    MEDIA_INFO_LOG("CompensateAlbumShareRisk: status=%{public}d, type=%{public}s",
+        shareRiskStatus, shareRiskType.c_str());
+}
 
 int32_t CloudSyncConvert::CompensatePropTitle(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
@@ -526,9 +643,9 @@ int32_t CloudSyncConvert::CompensateBasicFixLivePhoto(
 {
     int32_t fileType = data.basicFileType;
     CHECK_AND_RETURN_RET_WARN_LOG(fileType != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find basic::fileType.");
-    if (fileType == FILE_TYPE_LIVEPHOTO) {
-        values.Delete(PhotoColumn::PHOTO_SUBTYPE);
-        values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    if (fileType == FILE_TYPE_LIVEPHOTO &&
+        data.attributesMovingPhotoEffectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
     return E_OK;
 }
@@ -590,11 +707,21 @@ int32_t CloudSyncConvert::CompensateBasicBurstCoverLevel(
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateCompressionQuality(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t compressionQuality = data.compressionQuality;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        compressionQuality != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes: compressionQuality.");
+    values.PutInt(PhotoColumn::COMPRESSION_QUALITY, compressionQuality);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateUniqueId(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     std::string uniqueId = data.attributesUniqueId;
-    CHECK_AND_RETURN_RET_WARN_LOG(!uniqueId.empty(), E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::unique_id.");
+    CHECK_AND_RETURN_RET(!uniqueId.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.PutString(PhotoColumn::UNIQUE_ID, uniqueId);
     return E_OK;
 }
@@ -603,8 +730,18 @@ int32_t CloudSyncConvert::CompensatePackageName(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     std::string packageName = data.attributesPackageName;
-    CHECK_AND_RETURN_RET_WARN_LOG(!packageName.empty(), E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes:package_name.");
+    CHECK_AND_RETURN_RET(!packageName.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, packageName);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateEditDataExist(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t editDataExist = data.editDataExist;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        editDataExist != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::editDataExist.");
+    values.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, editDataExist);
     return E_OK;
 }
 
@@ -643,18 +780,30 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttHdrMode(data, values);
     CompensateAttVideoMode(data, values);
     CompensateAttFrontCamera(data, values);
+    CompensateAttXtStyleTemplateName(data, values);
     CompensateAttEditTime(data, values);
     CompensateAttOriginalSubtype(data, values);
     CompensateAttCoverPosition(data, values);
     CompensateAttIsRectificationCover(data, values);
     CompensateAttMovingPhotoEffectMode(data, values);
     CompensateAttSupportedWatermarkType(data, values);
+    CompensateIsStylePhoto(data, values);
     CompensateAttStrongAssociation(data, values);
+    CompensateSupportedDeferredEffects(data, values);
+    CompensateDeferredEffectsStatus(data, values);
     CompensateUniqueId(data, values);
     CompensatePackageName(data, values);
     // Safe Album: risk status for children's watch
     CompensateAttRiskStatus(data, values);
     CompensateAttIsCritical(data, values);
+    CompensateCompressionQuality(data, values);
+    CompensateAttIsShared(data, values);
+    CompensateAttShareOwnerInfo(data, values);
+    CompensateAttShareAlbumOwner(data, values);
+    CompensateAttShareDateDay(data, values);
+    CompensateAttShareGroup(data, values);
+    CompensateEditDataExist(data, values);
+    CompensateAssetShareRisk(data, values);
     return E_OK;
 }
 
@@ -683,8 +832,6 @@ int32_t CloudSyncConvert::ExtractCompatibleValue(const CloudMediaPullDataDto &da
     // attributes HashMap
     CompensateAttributesHashMap(data, values);
     CompensateInt64FieldsHashMap(data, values);
-    // file info
-    CompensateFileInfo(data, values);
     return E_OK;
 }
 
@@ -709,6 +856,7 @@ int32_t CloudSyncConvert::CompensateAttributesHashMap(
     // compensate attributes HashMap here.
     CompensateDateAddedYearMonthDay(data, values);
     CompensatePhotoLcdSize(data, values);
+    CompensateLivePhoto4DPair(data, values);
     return E_OK;
 }
 
@@ -730,13 +878,14 @@ int32_t CloudSyncConvert::CompensateDateAddedYearMonthDay(
     if (itDay != data.stringfields.end()) {
         dateAddedDay = itDay->second;
     }
-    if (dateAddedYear.empty() || dateAddedMonth.empty() || dateAddedDay.empty()) {
-        int64_t dateAdded = 0;
-        MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    int64_t dateAdded = 0;
+    MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    if (!PhotoFileUtils::ValidateDateAddedYearMonthDay(dateAddedYear, dateAddedMonth, dateAddedDay, dateAdded)) {
         DateParts parts = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
         dateAddedYear = parts.year;
         dateAddedMonth = parts.month;
         dateAddedDay = parts.day;
+        values.Put(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     }
     values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
     values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
@@ -760,6 +909,43 @@ int32_t CloudSyncConvert::CompensateInt64FieldsHashMap(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     // compensate attributes HashMap here.
+    HandleLivePhoto4dStatus(data, values);
+    HandleMusicMasterModeStatus(data, values);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::HandleMusicMasterModeStatus(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    auto it = pullData.int64fields.find(PhotoColumn::MUSIC_MASTER_MODE);
+    CHECK_AND_RETURN_RET(it != pullData.int64fields.end(), E_OK);
+    values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, static_cast<int32_t>(it->second));
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::HandleLivePhoto4dStatus(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    auto it = pullData.int64fields.find(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS);
+    bool isValid = it != pullData.int64fields.end();
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    int64_t livePhoto4dStatus = it->second;
+    int64_t maxStatus = static_cast<int64_t>(LivePhoto4dStatusType::TYPE_MAX_VALUE);
+    int64_t minStatus = static_cast<int64_t>(LivePhoto4dStatusType::TYPE_MIN_VALUE);
+    isValid = (livePhoto4dStatus <= maxStatus) && (livePhoto4dStatus >= minStatus);
+    CHECK_AND_EXECUTE(isValid, livePhoto4dStatus = minStatus);
+    // If local already has a 4D effect status (4-9) and cloud value is 0-4, skip cloud update
+    // to protect the correct local value from being overwritten by inferior cloud value
+    if (pullData.localPhotosPoOp.has_value()) {
+        int32_t localStatus = pullData.localPhotosPoOp.value().livePhoto4dStatus.value_or(0);
+        if (MediaFileUtils::IsLivePhoto4dEffect(localStatus) &&
+            livePhoto4dStatus <= static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+            MEDIA_INFO_LOG("HandleLivePhoto4dStatus: local status %{public}d is 4d effect and cloud status "
+                "%{public}lld is 0-4, skip cloud update", localStatus, static_cast<long long>(livePhoto4dStatus));
+            return E_OK;
+        }
+    }
+    values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, livePhoto4dStatus);
     return E_OK;
 }
 
@@ -775,13 +961,61 @@ int32_t CloudSyncConvert::CompensatePhotoLcdSize(const CloudMediaPullDataDto &da
     return E_OK;
 }
 
-void CloudSyncConvert::CompensateFileInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+int32_t CloudSyncConvert::CompensateLivePhoto4DPair(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, data.attributesFileSourceType);
-    if (data.attributesStoragePath.empty()) {
-        values.PutNull(PhotoColumn::PHOTO_STORAGE_PATH);
-    } else {
-        values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, data.attributesStoragePath);
+    auto it = pullData.stringfields.find(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR);
+    bool isValid = it != pullData.stringfields.end();
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    const std::string livePhoto4dPair = it->second;
+
+    isValid = pullData.localPhotosPoOp.has_value();
+    if (!isValid) { // 新增下行
+        values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, livePhoto4dPair);
+    } else { // 更新下行
+        const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
+        const std::string &localLivePhoto4dPair = photoInfo.livePhoto4DPair.value_or("");
+        if (localLivePhoto4dPair.empty()) {
+            values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, livePhoto4dPair);
+        }
     }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttIsShared(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, pullData.attributesIsShared);
+    if (pullData.attributesIsShared) {
+        values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceTypes::MEDIA_SHARE_ALBUM));
+    }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareOwnerInfo(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    values.PutString(PhotoColumn::PHOTO_SHARE_OWNER_INFO, pullData.attributesShareOwnerInfo);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareAlbumOwner(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    values.PutString(PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, pullData.attributesShareAlbumOwner);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareDateDay(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    values.PutLong(PhotoColumn::PHOTO_SHARE_DATE_DAY, pullData.attributesShareDateDay);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareGroup(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    values.PutLong(PhotoColumn::PHOTO_SHARE_GROUP, pullData.attributesShareGroup);
+    return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

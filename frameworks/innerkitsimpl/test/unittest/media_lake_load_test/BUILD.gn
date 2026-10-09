@@ -52,6 +52,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/lake_file_handler.cpp",
   ]
   media_file_scan_common_source = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_audit_reporter.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_dfx_collector.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_scene_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_status_helper.cpp",
@@ -65,8 +66,11 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/global_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/album_dao.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/photo_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/lake_scan_rule_config.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/dir_scan_anomaly_helper.cpp",
   ]
   media_file_monitor_source = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/common/src/file_monitor_wrapper.cpp",
@@ -83,16 +87,23 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scan_policy.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/media_fileinterwork_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/opt_dao.cpp",
   ]
 
   sources = [
     "./src/consistency_check_manager_test.cpp",
+    "./src/dir_scan_anomaly_helper_test.cpp",
     "./src/folder_scanner_test.cpp",
     "./src/global_scanner_test.cpp",
     "./src/lake_file_operations_test.cpp",
     "./src/file_parser_test.cpp",
     "./src/file_manager_parser_test.cpp",
     "./src/media_fileinterwork_scanner_test.cpp",
+    "./src/file_scan_utils_test.cpp",
+    "./src/check_dfx_collector_test.cpp",
+    "./src/consistency_check_data_types_test.cpp",
+    "./src/folder_scanner_utils_test.cpp",
+    "./src/scan_rule_config_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
@@ -109,6 +120,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
  
   external_deps = [
@@ -155,7 +167,6 @@ ohos_unittest("media_lake_load_test") {
     "libexif:libexif",
     "libfuse:libfuse",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "player_framework:media_client",

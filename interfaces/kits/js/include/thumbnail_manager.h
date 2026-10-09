@@ -31,6 +31,7 @@
 #include "pixel_map.h"
 #include "unique_fd.h"
 #include "userfile_manager_types.h"
+#include "datashare_helper.h"
 
 namespace OHOS {
 namespace Media {
@@ -205,6 +206,8 @@ private:
     static std::mutex mutex_;
     static bool init_;
     std::atomic<bool> isThreadRunning_;
+    static std::shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
+    static sptr<IRemoteObject> token_;
 };
 } // Media
 } // OHOS

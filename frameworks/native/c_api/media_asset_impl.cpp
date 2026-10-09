@@ -164,7 +164,7 @@ MediaLibrary_ErrorCode MediaAssetImpl::GetDateModified(uint32_t* dateModified)
 MediaLibrary_ErrorCode MediaAssetImpl::GetDateAddedMs(uint32_t* dateAddedMs)
 {
     CHECK_AND_RETURN_RET_LOG(fileAsset_ != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "fileAsset is nullptr");
-    *dateAddedMs = static_cast<uint32_t>(fileAsset_->GetDateModified());
+    *dateAddedMs = static_cast<uint32_t>(fileAsset_->GetDateAdded());
     return MEDIA_LIBRARY_OK;
 }
 

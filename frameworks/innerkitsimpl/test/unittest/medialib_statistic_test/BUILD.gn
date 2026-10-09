@@ -50,6 +50,7 @@ ohos_unittest("medialibrary_statistic_unittest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_js",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [

@@ -37,7 +37,6 @@ struct PhotoAssetChangeInfo {
     std::string ownerAlbumUri_;
     bool isFavorite_ = false;
     int32_t mediaType_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    std::string mimeType_;
     bool isHidden_ = false;
     int64_t dateTrashedMs_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
     int32_t strongAssociation_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
@@ -45,32 +44,16 @@ struct PhotoAssetChangeInfo {
     int64_t dateAddedMs_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
     int64_t dateTakenMs_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
     std::vector<std::shared_ptr<AlbumChangeInfo>> albumChangeInfos_;
-    int32_t subType_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int32_t syncStatus_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int32_t cleanFlag_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int32_t timePending_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    bool isTemp_ = false;
-    int32_t burstCoverLevel_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int32_t ownerAlbumId_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     int64_t hiddenTime_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
-    int64_t thumbnailReady_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
     std::string displayName_;
-    std::string path_;
-    int32_t dirty_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int64_t timestamp_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
     int32_t position_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     int64_t size_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
-    int32_t fileSourceType_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    std::string shootingMode_;
-    int32_t movingPhotoEffectMode_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    std::string frontCamera_;
+    int32_t assetSourceType_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     int32_t livephoto4dStatus_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     int64_t dateModifiedMs_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
-    int64_t localAssetSize_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
 };
 
 struct AlbumChangeInfo {
-    int32_t albumId_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     std::string lpath_;
     int32_t imageCount_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     int32_t videoCount_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
@@ -86,19 +69,9 @@ struct AlbumChangeInfo {
     PhotoAssetChangeInfo coverInfo_;
     bool isHiddenCoverChange_ = false;
     PhotoAssetChangeInfo hiddenCoverInfo_;
-    int64_t coverDateTime_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
-    int64_t hiddenCoverDateTime_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT64;
-    int32_t dirty_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int32_t coverUriSource_ = 0;
     int32_t albumsOrder_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
     int32_t orderSection_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    std::string cloudId_;
-    int32_t isLocal_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    int32_t isCoverSatisfied_ = MEDIA_LIBRARY_NOTIFY_INVALID_INT32;
-    std::string groupTag_;
     int32_t hidden_ = 0;
-    bool needForceSelectCover = false;
-    bool needForceSelectHiddenCover = false;
 };
 
 struct AlbumChangeData {

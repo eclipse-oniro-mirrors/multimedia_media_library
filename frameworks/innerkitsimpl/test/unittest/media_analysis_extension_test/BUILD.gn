@@ -40,6 +40,7 @@ ohos_unittest("media_analysis_extension_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits:analysis_data_kits",
   ]
 
@@ -58,7 +59,6 @@ ohos_unittest("media_analysis_extension_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "ability_base:want",

@@ -258,7 +258,7 @@ HWTEST_F(PortraitAlbumCloneTest, medialibrary_backup_clone_restore_portrait_albu
     cloneRestorePortrait = make_unique<CloneRestorePortrait>();
     cloneRestorePortrait->Init(
         CLONE_RESTORE_ID, "", newRdbStore->GetRaw(), portraitAlbumSource.cloneStorePtr_, {}, false, &scoreMaskMap);
-    cloneRestorePortrait->RestoreFromGalleryPortraitAlbum();
+    cloneRestorePortrait->RestoreFromGalleryPortraitAlbum(false);
     VerifyPortraitAlbumRestore(newRdbStore->GetRaw());
     cloneRestorePortrait = nullptr;
     ClearCloneSource(portraitAlbumSource, TEST_BACKUP_DB_PATH);

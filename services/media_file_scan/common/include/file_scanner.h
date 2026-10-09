@@ -24,6 +24,7 @@
 #include "folder_parser.h"
 #include "values_bucket.h"
 #include "media_file_notify_info.h"
+#include "keyd_mutex.h"
 
 namespace OHOS::Media {
 
@@ -66,6 +67,7 @@ private:
     virtual void RefreshInsertAssetInfo();
     void UpdateAlbum();
     bool CheckUpdateFolderParserInfo(MediaNotifyInfo &fileInfo);
+    static KeydMutex<string> keydMutexByPath_;
 
 protected:
     const ScanMode scanMode_;

@@ -126,7 +126,12 @@ int32_t ThumbnailGenerationPostProcess::GetNotifyType(const ThumbnailData& data,
     RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
     rdbPredicates.SetWhereClause(strQueryCondition);
 
+    MediaLibraryTracer tracer;
+    std::string label = "ThumbnailGenerationPostProcess.GetNotifyType.QueryByStep table:" +
+        PhotoColumn::PHOTOS_TABLE + " id:" + data.id + " columns:" + std::to_string(columns.size());
+    tracer.Start(label);
     auto resultSet = opts.store->QueryByStep(rdbPredicates, columns);
+    tracer.Finish();
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "QueryByStep() result is null");
     int32_t rowsCount = 0;
     auto ret = resultSet->GetRowCount(rowsCount);

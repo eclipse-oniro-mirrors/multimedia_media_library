@@ -67,6 +67,10 @@ struct QuerySizeAndResolution {
     std::string highlightRomSize;
     std::string ThumbnailRomSize;
     std::string EditdataRomSize;
+    std::string thumbDirRomSize;
+    std::string editDataDirRomSize;
+    std::string kvdbDirRomSize;
+    std::string dentryRomSize;
     std::string totalSize;
 };
 
@@ -77,7 +81,11 @@ struct PhotoStatistics {
     int32_t cloudVideoCount;   // 纯云端视频数量
     int32_t sharedImageCount;  // 端云共存照片数量
     int32_t sharedVideoCount;  // 端云共存视频数量
-    int32_t southDeviceType;
+    int32_t userAlbumCount;
+    int32_t sourceAlbumCount;
+    int32_t uploadUserAlbumCount;
+    int32_t uploadSourceAlbumCount;
+    int32_t notUploadAssetCount;
     int32_t tasksWaitingCount;
     int32_t tasksDownloadingCount;
     int32_t tasksPauseCount;
@@ -86,11 +94,15 @@ struct PhotoStatistics {
     int32_t tasksAutoPauseCount;
     int64_t tasksSuccessTotalSize;
     int64_t tasksSuccessTotalTime;
-    int32_t userAlbumCount;
-    int32_t sourceAlbumCount;
-    int32_t uploadUserAlbumCount;
-    int32_t uploadSourceAlbumCount;
-    int32_t notUploadAssetCount;
+    int32_t southDeviceType;
+    int32_t fileManagerLocalImageCount;
+    int32_t fileManagerLocalVideoCount;
+    int32_t fileManagerCloudImageCount;
+    int32_t fileManagerCloudVideoCount;
+    int32_t fileManagerSharedImageCount;
+    int32_t fileManagerSharedVideoCount;
+    int32_t fileManagerAlbumCount;
+    int32_t uploadFileManagerAlbumCount;
 };
 
 struct LcdAndAstcCount {
@@ -98,11 +110,6 @@ struct LcdAndAstcCount {
     int32_t localAstcCount;
     int32_t cloudLcdCount;
     int32_t cloudAstcCount;
-};
-
-enum PhotoErrorType : int32_t {
-    PHOTO_INVALID_TYPE = -1,  // 无效参数
-    PHOTO_MISS_TYPE = 1,    // 图片丢失
 };
 
 struct PhotoErrorCount {
@@ -128,15 +135,6 @@ struct HeifAgingStatistics {
     uint32_t agingFileNum = 0;
     uint64_t agingTotalSize = 0;
 };
-
-struct UpgradeExceptionInfo {
-    int32_t srcVersion = 0;
-    int32_t dstVersion = 0;
-    bool isSync;
-    std::string exceptionVersions;
-    int64_t duration = 0;
-};
-
 struct AncoCheckInfo {
     uint64_t checkStartTime;
     uint64_t checkEndTime;
@@ -155,13 +153,29 @@ struct AncoOperationChangeInfo {
     int32_t totalOptCount;
 };
 
+enum LoadType : int32_t {
+    LAKE_FIRST_LOAD = 0, // 湖内首次加载
+    FILEMANAGER_FIRST_LOAD = 1, // 文管首次加载
+    FILEMANAGER_CLONE_FIRST_LOAD = 2, // 克隆后，文管首次加载
+    DOCS_MEDIA_SCAN = 3,
+};
+
 struct AncoCountFormatInfo {
     uint64_t loadStartTime;
     uint64_t loadEndTime;
     int32_t albumCount;
     int32_t imageCount;
     int32_t videoCount;
+    LoadType loadType;
     std::string assetFormatDistribution = "{}";
+};
+
+struct UpgradeExceptionInfo {
+    int32_t srcVersion = 0;
+    int32_t dstVersion = 0;
+    bool isSync;
+    std::string exceptionVersions;
+    int64_t duration = 0;
 };
 
 struct ThmInodeCleanInfo {
@@ -182,17 +196,18 @@ public:
     void ReportThumbnailError();
     void ReportCommonBehavior();
     void ReportDeleteStatistic();
-    void ReportDeleteBehavior(std::string bundleName, int32_t type, std::string path);
+    void ReportInvalidBehavior();
+    static void ReportDeleteBehavior(std::string bundleName, int32_t type, std::string path);
     void ReportThumbnailGeneration(const ThumbnailData::GenerateStats &stats);
     void ReportPhotoInfo(const PhotoStatistics& stats);
     void ReportAlbumInfo(const std::string &albumName, int32_t albumImageCount, int32_t albumVideoCount,
-        bool isLocal);
+        bool isLocal, const std::string &albumInfo = "");
     void ReportDirtyCloudPhoto(const std::string &data, int32_t dirty, int32_t cloudVersion);
     void ReportCommonVersion(int32_t dbVersion);
     void ReportAnalysisVersion(const std::string &analysisName, int32_t version);
     void ReportAdaptationToMovingPhoto();
     void ReportCinematicVideo();
-    void ReportAlibHeifDuplicate();
+    void ReportMultishotInfo();
     void ReportMediaLibCompatConfig();
     static int32_t ReportCloudSyncThumbGenerationStatus(const int32_t& downloadedThumb, const int32_t& generatedThumb,
         const int32_t& totalDownload, const int32_t& southDeviceType);
@@ -212,12 +227,17 @@ public:
     void ReportPhotoSizeAndResolutionInfo(const QuerySizeAndResolution& querySizeAndResolution,
         const std::string& photoMimeType);
     void ReportAccurateRefreshResult(const AccurateRefreshDfxDataPoint& reportData);
+    void ReportAlibHeifDuplicate();
     static int32_t reportHeifAgingStatistics(const HeifAgingStatistics& heifAgingStatistics);
     static int32_t ReportUpgradeFault(const UpgradeExceptionInfo& reportData);
     static int32_t ReportAncoCheckInfo(const AncoCheckInfo& reportData);
     static int32_t ReportAncoOperationChangeInfo(const AncoOperationChangeInfo& reportData);
     static int32_t ReportAncoCountFormatInfo(const AncoCountFormatInfo& reportData, bool firstLoad = false);
+    static int32_t ReportAncoCountFormatInfoForDirScan(const std::string &assetFormatDistribution);
     int32_t ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info);
+    void ReportReadLcd(const int32_t southDeviceType);
+    void ReportAgingLcdInfo();
+    void ReportVisitLcd(const int32_t southDeviceType);
 };
 } // namespace Media
 } // namespace OHOS

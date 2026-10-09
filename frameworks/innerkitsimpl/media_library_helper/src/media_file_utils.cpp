@@ -12,10 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <charconv>
 #include <cstdint>
 #define MLOG_TAG "FileUtils"
 
 #include "media_file_utils.h"
+#include "napi/native_api.h"
 
 #include <stack>
 #include <dirent.h>
@@ -54,6 +56,7 @@
 #include "image_packer.h"
 #include "media_audio_column.h"
 #include "media_string_utils.h"
+#include "media_path_utils.h"
 #include "moving_photo_file_utils.h"
 #include "photo_file_utils.h"
 #include "media_edit_utils.h"
@@ -62,12 +65,13 @@ using namespace std;
 // LCOV_EXCL_START
 namespace OHOS::Media {
 static const mode_t CHOWN_RWX_USR_GRP = 02771;
-static const mode_t CHOWN_RW_USR_GRP = 0660;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
 constexpr size_t DISPLAYNAME_MAX = 255;
 constexpr int32_t HAS_APPLINK_MIN = 0;
 constexpr int32_t HAS_APPLINK_MAX = 2;
 constexpr int32_t APPLINK_STATE_MIN = 0;
+static const string JPG_EXT = ".jpg";
+static const string HEIC_EXT = ".heic";
 constexpr int32_t APPLINK_STATE_MAX = 2;
 constexpr size_t APPLINK_MAX = 512;
 const int32_t OPEN_FDS = 64;
@@ -76,7 +80,6 @@ constexpr unsigned short MAX_RECURSION_DEPTH = 4;
 constexpr size_t DEFAULT_TIME_SIZE = 32;
 constexpr int32_t CROSS_POLICY_ERR = 18;
 const int32_t HMFS_MONITOR_FL = 2;
-const int32_t INTEGER_MAX_LENGTH = 10;
 const std::string LISTENING_BASE_PATH = "/storage/media/local/files/";
 const std::string PHOTO_DIR = "Photo";
 const std::string AUDIO_DIR = "Audio";
@@ -89,9 +92,18 @@ const std::string TMP_SUFFIX = "tmp";
 const std::vector<std::string> SET_LISTEN_DIR = {
     PHOTO_DIR, AUDIO_DIR, THUMBS_DIR, EDIT_DATA_DIR, THUMBS_PHOTO_DIR, EDIT_DATA_PHOTO_DIR
 };
+
+// 受支持的图片和视频文件扩展名
+const std::vector<std::string> SUPPORTED_MEDIA_EXTENSIONS = {
+    // photo
+    ".arw", ".avif", ".bm", ".bmp", ".cr2", ".crw", ".cur", ".dng", ".gif", ".heic", ".heifs",
+    ".heif", ".hif", ".ico", ".jpe", ".jpeg", ".jpg", ".nef", ".nrw", ".pef", ".png", ".raf",
+    ".rw2", ".srw", ".svg", ".tif", ".tiff", ".wbmp", ".webp",
+    // video
+    ".3g2", ".3gp", ".avi", ".flv", ".m4v", ".mkv", ".mp4", ".rm", ".rmvb", ".wmv"
+};
 const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
-const std::string MAX_INTEGER = "2147483648";
 const std::string DEFAULT_IMAGE_NAME = "IMG_";
 const std::string DEFAULT_VIDEO_NAME = "VID_";
 const std::string DEFAULT_AUDIO_NAME = "AUD_";
@@ -300,6 +312,34 @@ bool MediaFileUtils::IsFileExists(const string &fileName)
     return ((stat(fileName.c_str(), &statInfo)) == E_SUCCESS);
 }
 
+bool MediaFileUtils::IsFileExistsWithExtRetry(const string &fileName)
+{
+    if (IsFileExists(fileName)) {
+        return true;
+    }
+
+    string fallbackPath;
+    if (fileName.rfind(JPG_EXT) != string::npos) {
+        fallbackPath = SwapExtensionInPath(fileName, JPG_EXT, HEIC_EXT);
+    } else if (fileName.rfind(HEIC_EXT) != string::npos) {
+        fallbackPath = SwapExtensionInPath(fileName, HEIC_EXT, JPG_EXT);
+    }
+
+    CHECK_AND_RETURN_RET_LOG(!fallbackPath.empty(), false,
+        "IsFileExistsWithExtRetry first attempt failed, fallbackPath is empty");
+
+    MEDIA_INFO_LOG("IsFileExistsWithExtRetry first attempt failed, try fallback path %{public}s",
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    if (!fallbackPath.empty() && fallbackPath != fileName && IsFileExists(fallbackPath)) {
+        return true;
+    }
+    MEDIA_INFO_LOG("IsFileExistsWithExtRetry both original and fallback paths not found, "
+        "original=%{public}s, fallback=%{public}s",
+        MediaFileUtils::DesensitizePath(fileName).c_str(),
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    return false;
+}
+
 bool MediaFileUtils::IsFileValid(const string &fileName)
 {
     struct stat statInfo {};
@@ -427,16 +467,8 @@ bool MediaFileUtils::CreateFile(const string &filePath)
         MEDIA_ERR_LOG("Output file path could not be created");
         return state;
     }
-
-    if (chmod(normalizedDstPath.c_str(), CHOWN_RW_USR_GRP) == E_SUCCESS) {
-        state = true;
-    } else {
-        MEDIA_ERR_LOG("Failed to change permissions, error: %{public}d", errno);
-    }
-
     file.close();
-
-    return state;
+    return true;
 }
 
 bool MediaFileUtils::DeleteFile(const string &fileName)
@@ -478,7 +510,7 @@ bool MediaFileUtils::DeleteDir(const string &dirName)
     return errRet;
 }
 
-bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile)
+bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile, bool skipCheckPermit)
 {
     bool fileExist = IsFileExists(destFile);
     if (fileExist) {
@@ -488,7 +520,7 @@ bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::st
         CHECK_AND_RETURN_RET_LOG(DeleteFile(destFile), false, "delete destFile:%{private}s error", destFile.c_str());
     }
 
-    if (CopyFileUtil(srcFile, destFile)) {
+    if (CopyFileUtil(srcFile, destFile, skipCheckPermit)) {
         CHECK_AND_PRINT_LOG(DeleteFile(srcFile), "delete srcFile:%{private}s failed", srcFile.c_str());
         CHECK_AND_PRINT_LOG(DeleteFile(destFile + TMP_SUFFIX), "delete tmpFile:%{private}s failed", srcFile.c_str());
         return true;
@@ -612,6 +644,69 @@ bool MediaFileUtils::MoveFile(const string &oldPath, const string &newPath, bool
     return errRet;
 }
 
+bool MediaFileUtils::MoveFileWithExtRetry(const string &srcPath, const string &destPath)
+{
+    bool ret = MoveFile(srcPath, destPath, true);
+    if (!ret && errno == ENOENT && IsFileExists(srcPath)) {
+        string fallbackDestPath = destPath;
+        if (destPath.find(JPG_EXT) != string::npos) {
+            fallbackDestPath = MediaFileUtils::SwapExtensionInPath(destPath, JPG_EXT, HEIC_EXT);
+        } else if (destPath.find(HEIC_EXT) != string::npos) {
+            fallbackDestPath = MediaFileUtils::SwapExtensionInPath(destPath, HEIC_EXT, JPG_EXT);
+        }
+        MEDIA_INFO_LOG("MoveFileWithExtRetry retry with fallback destPath: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackDestPath).c_str());
+        ret = MoveFile(srcPath, fallbackDestPath, true);
+        CHECK_AND_PRINT_LOG(ret, "MoveFileWithExtRetry both attempts failed, destPath: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackDestPath).c_str());
+    }
+    return ret;
+}
+
+int32_t MediaFileUtils::OpenFileWithExtRetry(const std::string &filePath, std::string &absFilePath)
+{
+    if (PathToRealPath(filePath, absFilePath)) {
+        int32_t fd = open(absFilePath.c_str(), O_RDONLY);
+        if (fd != E_ERR) {
+            return fd;
+        }
+    }
+
+    if (errno != ENOENT) {
+        return E_ERR;
+    }
+
+    MEDIA_INFO_LOG("OpenFileWithExtRetry first attempt failed, try fallback for %{public}s, errno: %{public}d",
+        MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
+    string fallbackPath = filePath;
+    if (filePath.find(JPG_EXT) != string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
+    } else if (filePath.find(HEIC_EXT) != string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
+    }
+
+    if (!IsFileExists(fallbackPath)) {
+        MEDIA_ERR_LOG("OpenFileWithExtRetry fallback path not exists: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        return E_ERR;
+    }
+
+    string absFallbackPath;
+    if (PathToRealPath(fallbackPath, absFallbackPath)) {
+        int32_t fd = open(absFallbackPath.c_str(), O_RDONLY);
+        if (fd != E_ERR) {
+            absFilePath = absFallbackPath;
+            MEDIA_INFO_LOG("OpenFileWithExtRetry fallback succeeded, path: %{public}s",
+                MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+            return fd;
+        }
+    }
+    MEDIA_ERR_LOG("OpenFileWithExtRetry both attempts failed, original: %{public}s, fallback: %{public}s",
+        MediaFileUtils::DesensitizePath(filePath).c_str(),
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    return E_ERR;
+}
+
 int32_t MediaFileUtils::CloneToAlbumCancel(const std::string &requestId)
 {
     MEDIA_INFO_LOG("CloneToAlbumCancel start, requestId=%{public}s", requestId.c_str());
@@ -641,6 +736,17 @@ static int32_t CheckFilePathAndGetFd(const string &filePath)
     return open(absFilePath.c_str(), O_RDONLY);
 }
 
+static int32_t CheckDestPathAndGetFd(const string &destPath)
+{
+    auto normalizedPath = std::filesystem::absolute(destPath).lexically_normal();
+    if (normalizedPath.empty()) {
+        MEDIA_ERR_LOG("Failed to normalize dest path:%{public}s",
+            MediaFileUtils::DesensitizePath(destPath).c_str());
+        return -1;
+    }
+    return open(normalizedPath.c_str(), O_WRONLY | O_CREAT, CHOWN_RO_USR_GRP);
+}
+
 bool MediaFileUtils::CheckCancelCopy(const std::string &requestId)
 {
     std::lock_guard<std::mutex> lock(cancelMutex_);
@@ -660,7 +766,7 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
     int32_t errCode = E_INNER_FAIL;
     int32_t source = CheckFilePathAndGetFd(filePath);
     CHECK_AND_RETURN_RET_LOG(source != -1, errCode, "Open failed:%{public}d", errno);
-    int32_t dest = open(newPath.c_str(), O_WRONLY | O_CREAT, CHOWN_RO_USR_GRP);
+    int32_t dest = CheckDestPathAndGetFd(newPath);
     if (dest == -1) {
         MEDIA_ERR_LOG("Open failed for destination file %{public}d", errno);
         close(source);
@@ -669,7 +775,7 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
     if (fstat(source, &fst) == E_SUCCESS) {
         off_t offset = 0;
         int64_t size = static_cast<int64_t>(fst.st_size);
-        size_t sent = 0;
+        ssize_t sent = 0;
         while (size >= 0) {
             sent = sendfile(dest, source, &offset, BUFFER_SIZE);
             if (sent == -1) {
@@ -685,19 +791,13 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
             }
             size -= static_cast<int64_t>(sent);
             if (progressCallback) {
-                progressCallback(sent);
+                progressCallback(static_cast<uint64_t>(sent));
             }
-            if (sent == 0) {
-                break;
-            }
+            CHECK_AND_BREAK(sent != 0);
         }
 
         if (size == 0) {
-            // Copy ownership and mode of source file
-            if (fchown(dest, fst.st_uid, fst.st_gid) == E_SUCCESS &&
-                fchmod(dest, fst.st_mode) == E_SUCCESS) {
-                errCode = E_OK;
-            }
+            errCode = E_OK;
         }
     }
     close(source);
@@ -724,7 +824,7 @@ static bool SendFileWithRetry(int32_t dest, int32_t source, off_t totalSize, off
     return true;
 }
 
-bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
+bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath, bool skipCheckPermit)
 {
     struct stat fst{};
     bool errCode = false;
@@ -749,6 +849,7 @@ bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
     UniqueFd srcFd(source);
     CHECK_AND_RETURN_RET_LOG(srcFd.Get() != -1, errCode, "Open failed for source file, errno: %{public}d", errno);
 
+    CHECK_AND_RETURN_RET_LOG(!newPath.empty(), errCode, "dest path is empty, safety check");
     int32_t dest = open(newPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, CHOWN_RO_USR_GRP);
     UniqueFd destFd(dest);
     CHECK_AND_RETURN_RET_LOG(destFd.Get() != -1, errCode, "Open failed for destination file %{public}d", errno);
@@ -762,8 +863,9 @@ bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
         "Failed to copy content by sendfile");
 
     if (copied == total_size) {
-        if (fchown(destFd.Get(), fst.st_uid, fst.st_gid) == E_SUCCESS &&
-            fchmod(destFd.Get(), fst.st_mode) == E_SUCCESS) {
+        errCode = true;
+        if (skipCheckPermit) {
+            MEDIA_ERR_LOG("Open failed for destination file %{public}d", errno);
             errCode = true;
         }
     }
@@ -784,7 +886,6 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd, int32_t width, int32_t h
     uint32_t err = E_OK;
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(fd, opts, err);
     CHECK_AND_RETURN_RET_LOG(imageSource != nullptr, nullptr, "CreateImageSource failed, err: %{public}u", err);
-
     DecodingOptionsForPicture decodeOptions;
     if (width > 0 && height > 0) {
     }
@@ -794,7 +895,8 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd, int32_t width, int32_t h
     return picturePtr;
 }
 
-static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType, int32_t dstFd)
+static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType,
+    int32_t dstFd, int32_t quality)
 {
     CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "picturePtr is nullptr");
     MediaLibraryTracer tracer;
@@ -805,6 +907,8 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
     packOption.format = mimeType;
     packOption.desiredDynamicRange = EncodeDynamicRange::AUTO;
     packOption.needsPackProperties = true;
+    packOption.quality = quality;
+    MEDIA_DEBUG_LOG("quality : %{public}d", quality);
 
     int32_t ret = imagePacker.StartPacking(dstFd, packOption);
     CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, false, "StartPacking failed, ret: %{public}d", ret);
@@ -816,13 +920,13 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
 }
 
 static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::string &extension,
-    int32_t width, int32_t height)
+    TmpCompatibleDupInfo info)
 {
-    std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd, width, height);
+    std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd, info.width, info.height);
     CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "DecodeAsset failed");
 
     std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
-    if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd)) {
+    if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd, info.quality)) {
         MEDIA_ERR_LOG("EncodeAsset mimeType: %{public}s failed", mimeType.c_str());
         return false;
     }
@@ -831,7 +935,7 @@ static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::strin
 }
 
 bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::string &dstFile,
-    const std::string &extension, int32_t width, int32_t height)
+    const std::string &extension, TmpCompatibleDupInfo info)
 {
     MEDIA_DEBUG_LOG("ConvertFormatCopy srcFile: %{private}s, dstFile: %{private}s, extension: %{private}s",
         srcFile.c_str(), dstFile.c_str(), extension.c_str());
@@ -853,6 +957,11 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
         MEDIA_ERR_LOG("Failed to obtain the canonical path for destination path:%{public}s", srcFile.c_str());
         return false;
     }
+    if (info.quickCopy) {
+        bool ret = CopyFileSafe(absFilePath, normalizedDstPath);
+        CHECK_AND_EXECUTE(ret, DeleteFile(normalizedDstPath));
+        return ret;
+    }
     UniqueFd srcFd(open(absFilePath.c_str(), O_RDONLY));
     if (srcFd.Get() == E_ERR) {
         MEDIA_ERR_LOG("Open failed for source file, errno: %{public}d", errno);
@@ -864,7 +973,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
         return false;
     }
 
-    if (!DecodeEncodeSaveAsset(srcFd.Get(), dstFd.Get(), extension, width, height)) {
+    if (!DecodeEncodeSaveAsset(srcFd.Get(), dstFd.Get(), extension, info)) {
         MEDIA_ERR_LOG("DecodeEncodeSaveAsset failed");
         DeleteFile(normalizedDstPath);
         return false;
@@ -873,10 +982,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
     bool errCode = false;
     struct stat fst{};
     if (fstat(srcFd.Get(), &fst) == E_SUCCESS) {
-        // Copy ownership and mode of source file
-        if (fchown(dstFd.Get(), fst.st_uid, fst.st_gid) == E_SUCCESS && fchmod(dstFd.Get(), fst.st_mode) == E_SUCCESS) {
-            errCode = true;
-        }
+        errCode = true;
     }
 
     return errCode;
@@ -950,12 +1056,57 @@ bool MediaFileUtils::CopyFileSafe(const string &filePath, const string &newPath)
     string newTempPath = newPath + "_" + std::to_string(MediaFileUtils::UTCTimeMilliSeconds());
     if (!CopyFileUtil(filePath, newTempPath)) {
         MEDIA_ERR_LOG("copy file errno: %{public}d", errno);
-        if (!DeleteFile(newTempPath)) {
-            MEDIA_ERR_LOG("del temp file errno: %{public}d", errno);
-        }
+        DeleteFile(newTempPath);
         return false;
     }
-    return rename(newTempPath.c_str(), newPath.c_str()) == E_OK;
+    if (rename(newTempPath.c_str(), newPath.c_str()) == E_OK) {
+        return true;
+    }
+    MEDIA_ERR_LOG("CopyFileSafe rename failed, errno: %{public}d", errno);
+    DeleteFile(newTempPath);
+    return false;
+}
+
+bool MediaFileUtils::CopyFileSafeWithExtRetry(const string &filePath, const string &newPath, bool retryExtOnSrcPath)
+{
+    if (CopyFileSafe(filePath, newPath)) {
+        return true;
+    }
+
+    if (errno != ENOENT) {
+        return false;
+    }
+
+    string fallbackFilePath = filePath;
+    string fallbackNewPath = newPath;
+    if (retryExtOnSrcPath) {
+        if (filePath.find(JPG_EXT) != string::npos) {
+            fallbackFilePath = SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
+        } else if (filePath.find(HEIC_EXT) != string::npos) {
+            fallbackFilePath = SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
+        }
+        if (!IsFileExists(fallbackFilePath)) {
+            MEDIA_ERR_LOG("CopyFileSafeWithExtRetry fallback source not exists: %{public}s",
+                DesensitizePath(fallbackFilePath).c_str());
+            return false;
+        }
+    } else {
+        if (newPath.find(JPG_EXT) != string::npos) {
+            fallbackNewPath = SwapExtensionInPath(newPath, JPG_EXT, HEIC_EXT);
+        } else if (newPath.find(HEIC_EXT) != string::npos) {
+            fallbackNewPath = SwapExtensionInPath(newPath, HEIC_EXT, JPG_EXT);
+        }
+        if (!IsFileExists(filePath)) {
+            MEDIA_ERR_LOG("CopyFileSafeWithExtRetry source not exists: %{public}s",
+                DesensitizePath(filePath).c_str());
+            return false;
+        }
+    }
+
+    MEDIA_INFO_LOG("CopyFileSafeWithExtRetry retry with fallback src=%{public}s, dst=%{public}s",
+        DesensitizePath(fallbackFilePath).c_str(), DesensitizePath(fallbackNewPath).c_str());
+
+    return CopyFileSafe(fallbackFilePath, fallbackNewPath);
 }
 
 void MediaFileUtils::SetDeletionRecord(int fd, const string &fileName)
@@ -1089,6 +1240,57 @@ bool MediaFileUtils::ReadStrFromFile(const std::string &filePath, std::string &f
     return true;
 }
 
+std::string MediaFileUtils::SwapExtensionInPath(const std::string &filePath, const std::string &fromExt,
+    const std::string &toExt)
+{
+    std::string result = filePath;
+    size_t pos = result.rfind(fromExt);
+    if (pos != std::string::npos) {
+        result.replace(pos, fromExt.length(), toExt);
+    }
+    return result;
+}
+
+bool MediaFileUtils::ReadStrFromFileWithExtRetry(const std::string &filePath, std::string &fileContent)
+{
+    if (ReadStrFromFile(filePath, fileContent)) {
+        return true;
+    }
+
+    if (errno != ENOENT) {
+        return false;
+    }
+
+    MEDIA_INFO_LOG("ReadStrFromFileWithExtRetry first attempt failed, try fallback path for %{public}s",
+        MediaFileUtils::DesensitizePath(filePath).c_str());
+    std::string fallbackPath;
+    if (filePath.find(JPG_EXT) != std::string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
+    } else if (filePath.find(HEIC_EXT) != std::string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
+    } else {
+        MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry no jpg/heic extension found in path %{public}s",
+            MediaFileUtils::DesensitizePath(filePath).c_str());
+        return false;
+    }
+
+    if (!IsFileExists(fallbackPath)) {
+        MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry fallback path not exists: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        return false;
+    }
+
+    if (ReadStrFromFile(fallbackPath, fileContent)) {
+        MEDIA_INFO_LOG("ReadStrFromFileWithExtRetry fallback succeeded with path %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        return true;
+    }
+    MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry both original and fallback paths failed, original=%{public}s, "
+        "fallback=%{public}s", MediaFileUtils::DesensitizePath(filePath).c_str(),
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    return false;
+}
+
 bool MediaFileUtils::CopyFile(int32_t rfd, int32_t wfd)
 {
     static const off_t sendSize1G = 1LL * 1024 * 1024 * 1024;
@@ -1161,7 +1363,7 @@ int32_t MediaFileUtils::CheckTitle(const string &title)
         MEDIA_ERR_LOG("Title is empty.");
         return -EINVAL;
     }
-    
+
     static const string titleRegexCheck = R"([\\/:*?"<>|])";
     if (RegexCheck(title, titleRegexCheck)) {
         MEDIA_ERR_LOG("Failed to check title regex: %{private}s", title.c_str());
@@ -1307,11 +1509,17 @@ string MediaFileUtils::GetHighlightPath(const string &uri)
         return "";
     }
 
+    string pathSuffix = uri.substr(prefixLen);
+    if (pathSuffix.find("..") != string::npos) {
+        MEDIA_ERR_LOG("Invalid uri with path traversal: %{private}s", uri.c_str());
+        return "";
+    }
+
     string path;
     if (IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
-        path = "/storage/cloud/files/.thumbs" + uri.substr(prefixLen);
+        path = "/storage/cloud/files/.thumbs" + pathSuffix;
     } else {
-        path = "/storage/cloud/files" + uri.substr(prefixLen);
+        path = "/storage/cloud/files" + pathSuffix;
     }
     
     return path;
@@ -1328,7 +1536,14 @@ string MediaFileUtils::GetHighlightVideoPath(const string &uri)
     } else {
         return "";
     }
-    string path = "/storage/cloud/files" + uri.substr(prefixLen);
+
+    string pathSuffix = uri.substr(prefixLen);
+    if (pathSuffix.find("..") != string::npos) {
+        MEDIA_ERR_LOG("Invalid uri with path traversal: %{private}s", uri.c_str());
+        return "";
+    }
+
+    string path = "/storage/cloud/files" + pathSuffix;
     return path;
 }
 
@@ -1439,6 +1654,11 @@ int32_t MediaFileUtils::CheckDentryName(const string &dentryName)
     int err = CheckStringSize(dentryName, DISPLAYNAME_MAX);
     if (err < 0) {
         return err;
+    }
+
+    if (dentryName == "." || dentryName == "..") {
+        MEDIA_ERR_LOG("Invalid dentry name: path traversal component %{private}s", dentryName.c_str());
+        return -EINVAL;
     }
 
     static const string DENTRY_REGEX_CHECK = R"([\\/:*?"'`<>|{}\[\]])";
@@ -1605,6 +1825,17 @@ MediaType MediaFileUtils::GetMediaTypeNotSupported(const string &filePath)
     string extention = GetExtensionFromPath(filePath);
     string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extention, MEDIA_EXTRA_MIME_TYPE_MAP);
     return MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
+}
+
+bool MediaFileUtils::IsSupportedMediaExtension(const std::string &displayName)
+{
+    size_t pos = displayName.find_last_of('.');
+    CHECK_AND_RETURN_RET_LOG(pos != std::string::npos, false, "Invalid file path: %{public}s",
+        displayName.c_str());
+    std::string extension = displayName.substr(pos);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+    return std::find(SUPPORTED_MEDIA_EXTENSIONS.begin(), SUPPORTED_MEDIA_EXTENSIONS.end(),
+        extension) != SUPPORTED_MEDIA_EXTENSIONS.end();
 }
 
 string MediaFileUtils::SplitByChar(const string &str, const char split)
@@ -2067,7 +2298,7 @@ bool MediaFileUtils::IsFileTablePath(const string &path)
         return false;
     }
 
-    if (path.find(ROOT_MEDIA_DIR) == string::npos) {
+    if (path.find(ROOT_MEDIA_DIR) != 0) {
         return false;
     }
 
@@ -2084,7 +2315,7 @@ bool MediaFileUtils::IsPhotoTablePath(const string &path)
         return false;
     }
 
-    if (path.find(ROOT_MEDIA_DIR) == string::npos) {
+    if (path.find(ROOT_MEDIA_DIR) != 0) {
         return false;
     }
 
@@ -2225,11 +2456,19 @@ string MediaFileUtils::GetMovingPhotoVideoPath(const string &imagePath)
 
 string MediaFileUtils::GetOriMovingPhotoVideoPath(const string &imagePath)
 {
+    if (!MediaPathUtils::CheckPhotoPath(imagePath)) {
+        MEDIA_ERR_LOG("Invalid imagePath: %{private}s", imagePath.c_str());
+        return "";
+    }
     return MEDIA_EDIT_DATA_DIR + imagePath.substr(ROOT_MEDIA_DIR.length())+ "/source.mp4";
 }
 
 string MediaFileUtils::GetTempOriMovingPhotoVideoPath(const string &imagePath)
 {
+    if (!MediaPathUtils::CheckPhotoPath(imagePath)) {
+        MEDIA_ERR_LOG("Invalid imagePath: %{private}s", imagePath.c_str());
+        return "";
+    }
     string outPath = MEDIA_EDIT_DATA_DIR + imagePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
     size_t lastSlashIndex = outPath.find_last_of('/');
     return outPath.substr(0, lastSlashIndex + 1) + "temp_" + outPath.substr(lastSlashIndex + 1);
@@ -2535,31 +2774,22 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
+// 需要兼容1.000, -2147483648等场景， 目前实现为ConvertToInt不完全消费场景.
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
-    MEDIA_DEBUG_LOG("KeyWord is:%{public}s", value.c_str());
-    std::string unsignedStr = value;
-    while (unsignedStr.size() > 0 && unsignedStr[0] == '-') {
-        unsignedStr = unsignedStr.substr(1);
-    }
-    for (size_t i = 0; i < unsignedStr.size(); i++) {
-        if (!std::isdigit(unsignedStr[i])) {
-            MEDIA_INFO_LOG("KeyWord invalid char of:%{public}c", unsignedStr[i]);
-            unsignedStr = unsignedStr.substr(0, i);
-            break;
-        }
-    }
-    if (unsignedStr.size() == 0) {
-        MEDIA_ERR_LOG("KeyWord Invalid argument");
-        return false;
-    } else if (unsignedStr.size() < INTEGER_MAX_LENGTH) {
-        return true;
-    } else if (unsignedStr.size() == INTEGER_MAX_LENGTH) {
-        return unsignedStr < MAX_INTEGER;
-    } else {
-        MEDIA_ERR_LOG("KeyWord is out length!");
+    int convetValue = 0;
+    if (value.empty()) {
         return false;
     }
+    auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), convetValue);
+    return ec == std::errc{};
+}
+
+bool MediaFileUtils::IsParamNullish(void *env, void *arg)
+{
+    napi_valuetype type = napi_undefined;
+    napi_typeof(static_cast<napi_env>(env), static_cast<napi_value>(arg), &type);
+    return type == napi_null || type == napi_undefined;
 }
 
 static int64_t GetRoundSize(int64_t size)
@@ -2804,15 +3034,21 @@ int32_t MediaFileUtils::FindNormalPhotoAttachments(const std::string &cloudPath,
 bool MediaFileUtils::CheckLivePhoto4dStatus(int32_t livePhoto4dStatus)
 {
     return livePhoto4dStatus >= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED) &&
-        livePhoto4dStatus <= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
+        livePhoto4dStatus <= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY);
+}
+
+bool MediaFileUtils::IsLivePhoto4dEffect(int32_t livePhoto4dStatus)
+{
+    return livePhoto4dStatus >= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D) &&
+        livePhoto4dStatus <= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY);
 }
 
 bool MediaFileUtils::IsValidUuid(const std::string& uuidStr)
 {
     // UUID格式: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     // 8-4-4-4-12 格式的十六进制字符串
-    if (uuidStr.empty()) {
-        return true;
+    if (uuidStr.empty() || uuidStr == "-1") {
+        return false;
     }
     std::regex uuid_regex(
         "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -2854,6 +3090,15 @@ std::string MediaFileUtils::GenerateUUID()
     char str[UUID_STR_LEN] = {};
     uuid_unparse(uuid, str);
     return std::string(str);
+}
+
+string MediaFileUtils::RemoveExtension(const string &path)
+{
+    size_t splitIndex = path.find_last_of('.');
+    size_t lastSlashIndex = path.find_last_of('/');
+    bool cond = (splitIndex == string::npos || (lastSlashIndex != string::npos && lastSlashIndex > splitIndex));
+    CHECK_AND_RETURN_RET(!cond, "");
+    return path.substr(0, splitIndex);
 }
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP

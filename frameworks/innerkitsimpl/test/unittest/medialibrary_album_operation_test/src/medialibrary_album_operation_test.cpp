@@ -62,9 +62,12 @@ constexpr int32_t THIRD_ALBUM_END_ASSET_ID = 15;
 constexpr int32_t FOURTH_ALBUM_START_ASSET_ID = 16;
 constexpr int32_t FOURTH_ALBUM_END_ASSET_ID = 19;
 constexpr int32_t IS_ME_VALUE = 1;
+constexpr int32_t IS_NOT_ME_VALUE = 0;
 constexpr int32_t RANK_ONE = 1;
 constexpr int32_t RANK_TWO = 2;
 constexpr int32_t WAIT_TIME = 3;
+const string ME_RELATIONSHIP_VALUE = "me";
+const string FAMILY_RELATIONSHIP_VALUE = "family";
 struct AlbumColumn {
     string coverUri;
     int count;
@@ -77,6 +80,7 @@ struct AlbumColumn {
     int renameOperation;
     int isCoverSatisfied;
     string albumName;
+    string relationship;
 };
 
 enum class TestNickNameChangeOperation {
@@ -596,6 +600,7 @@ void InsertAlbumTestData(AlbumColumn &column, const PhotoAlbumSubType &subType =
     valuesBucket.Put(IS_ME, column.isMe);
     valuesBucket.Put(RENAME_OPERATION, column.renameOperation);
     valuesBucket.Put(IS_COVER_SATISFIED, column.isCoverSatisfied);
+    valuesBucket.Put(ALBUM_RELATIONSHIP, column.relationship);
     MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
 }
 
@@ -665,6 +670,27 @@ vector<string> GeneratePortraitNickNames(int32_t startIndex, int32_t count)
         nickNames.emplace_back("nick_" + to_string(startIndex + index));
     }
     return nickNames;
+}
+
+AlbumColumn QueryAlbumRelationshipInfo(int32_t albumId)
+{
+    AlbumColumn column = {};
+    string sql = "SELECT " + IS_ME + ", " + ALBUM_RELATIONSHIP + " FROM " + ANALYSIS_ALBUM_TABLE +
+        " WHERE " + ALBUM_ID + " = ?";
+    vector<string> bindArgs = { to_string(albumId) };
+    auto resultSet = g_rdbStore->QuerySql(sql, bindArgs);
+    EXPECT_NE(resultSet, nullptr);
+    if (resultSet == nullptr) {
+        return column;
+    }
+    int32_t ret = resultSet->GoToFirstRow();
+    EXPECT_EQ(ret, NativeRdb::E_OK);
+    if (ret != NativeRdb::E_OK) {
+        return column;
+    }
+    column.isMe = GetInt32Val(IS_ME, resultSet);
+    column.relationship = GetStringVal(ALBUM_RELATIONSHIP, resultSet);
+    return column;
 }
 
 AlbumColumn BuildPortraitAlbumColumn(int32_t albumId, int32_t count)
@@ -1007,6 +1033,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_isme_0
     targetColumn.count = ALBUM_TARGET_COUNT;
     targetColumn.tagId = "2";
     targetColumn.isMe = IS_ME_VALUE;
+    targetColumn.relationship = ME_RELATIONSHIP_VALUE;
     InsertMergeTestData(curColumn, targetColumn);
     NativeRdb::ValuesBucket values;
     values.Put(ALBUM_ID, TRUE_ALBUM_ID);
@@ -1026,6 +1053,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_isme_1
     curColumn.count = ALBUM_CUR_COUNT;
     curColumn.tagId = "1";
     curColumn.isMe = IS_ME_VALUE;
+    curColumn.relationship = ME_RELATIONSHIP_VALUE;
     AlbumColumn targetColumn;
     targetColumn.coverUri = "file://media/Photo/11/3/3.jpg";
     targetColumn.count = ALBUM_TARGET_COUNT;
@@ -1038,6 +1066,70 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_isme_1
     DataShare::DataSharePredicates predicates;
     EXPECT_EQ(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates), E_OK);
     MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_isme_10 End");
+}
+
+HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_IsMeFollowRelationship_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_IsMeFollowRelationship_01::Start");
+    CreatTestImage();
+    AlbumColumn curColumn;
+    curColumn.coverUri = "file://media/Photo/2/3/3.jpg";
+    curColumn.count = ALBUM_CUR_COUNT;
+    curColumn.tagId = "1";
+    curColumn.displayLevel = FAVORITE_PAGE;
+    curColumn.rank = RANK_ONE;
+    curColumn.relationship = FAMILY_RELATIONSHIP_VALUE;
+    AlbumColumn targetColumn;
+    targetColumn.coverUri = "file://media/Photo/11/3/3.jpg";
+    targetColumn.count = ALBUM_TARGET_COUNT;
+    targetColumn.tagId = "2";
+    targetColumn.displayLevel = UNFAVORITE_PAGE;
+    targetColumn.isMe = IS_ME_VALUE;
+    targetColumn.relationship = ME_RELATIONSHIP_VALUE;
+    InsertMergeTestData(curColumn, targetColumn);
+
+    NativeRdb::ValuesBucket values;
+    values.Put(ALBUM_ID, TRUE_ALBUM_ID);
+    values.Put(TARGET_ALBUM_ID, TURE_ALBUM_ID_TWO);
+    DataShare::DataSharePredicates predicates;
+    EXPECT_EQ(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(OperationType::PORTRAIT_MERGE_ALBUM,
+        values, predicates), E_OK);
+
+    AlbumColumn mergedColumn = QueryAlbumRelationshipInfo(TRUE_ALBUM_ID);
+    EXPECT_EQ(mergedColumn.relationship, FAMILY_RELATIONSHIP_VALUE);
+    EXPECT_EQ(mergedColumn.isMe, IS_NOT_ME_VALUE);
+    MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_IsMeFollowRelationship_01 End");
+}
+
+HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_IsMeFollowRelationship_02,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_IsMeFollowRelationship_02::Start");
+    CreatTestImage();
+    AlbumColumn curColumn;
+    curColumn.coverUri = "file://media/Photo/2/3/3.jpg";
+    curColumn.count = ALBUM_CUR_COUNT;
+    curColumn.tagId = "1";
+    AlbumColumn targetColumn;
+    targetColumn.coverUri = "file://media/Photo/11/3/3.jpg";
+    targetColumn.count = ALBUM_TARGET_COUNT;
+    targetColumn.tagId = "2";
+    targetColumn.isMe = IS_ME_VALUE;
+    targetColumn.relationship = ME_RELATIONSHIP_VALUE;
+    InsertMergeTestData(curColumn, targetColumn);
+
+    NativeRdb::ValuesBucket values;
+    values.Put(ALBUM_ID, TRUE_ALBUM_ID);
+    values.Put(TARGET_ALBUM_ID, TURE_ALBUM_ID_TWO);
+    DataShare::DataSharePredicates predicates;
+    EXPECT_EQ(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(OperationType::PORTRAIT_MERGE_ALBUM,
+        values, predicates), E_OK);
+
+    AlbumColumn mergedColumn = QueryAlbumRelationshipInfo(TRUE_ALBUM_ID);
+    EXPECT_EQ(mergedColumn.relationship, ME_RELATIONSHIP_VALUE);
+    EXPECT_EQ(mergedColumn.isMe, IS_ME_VALUE);
+    MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_IsMeFollowRelationship_02 End");
 }
 
 HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_albumName_00, TestSize.Level1)

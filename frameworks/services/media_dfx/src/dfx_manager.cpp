@@ -15,6 +15,7 @@
 #define MLOG_TAG "DfxManager"
 
 #include <sstream>
+#include <chrono>
 #include "dfx_manager.h"
 #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "cloud_media_context.h"
@@ -31,6 +32,7 @@
 #endif
 #include "dfx_database_utils.h"
 #include "dfx_deprecated_perm_usage.h"
+#include "dfx_photo_error_processor.h"
 #include "vision_aesthetics_score_column.h"
 #include "parameters.h"
 #include "photo_storage_operation.h"
@@ -39,9 +41,16 @@
 #include "hi_audit.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
-#include "settings_data_manager.h"
 #include "result_set_utils.h"
+#include "settings_data_manager.h"
 #include "cloud_file_error.h"
+#include "media_column.h"
+#include "photo_album_column.h"
+#include "medialibrary_rdbstore.h"
+#include "net_connect_observer.h"
+#include "net_conn_client.h"
+#include "cloud_media_operation_code.h"
+#include "media_map_const_utils.h"
 
 using namespace std;
 
@@ -54,6 +63,11 @@ mutex DfxManager::instanceLock_;
 struct QueryParams {
     MediaType mediaType;
     PhotoPositionType positionType;
+};
+
+struct QueryLcdParams {
+    std::vector<int32_t> thumbState;
+    int32_t isFavorite;
 };
 
 shared_ptr<DfxManager> DfxManager::GetInstance()
@@ -167,6 +181,15 @@ static string GetDisplayName(const string &coverId, const std::map<std::string, 
     return DfxUtils::GetSafeDiaplayNameWhenChinese(displayName);
 }
 
+static int32_t GetMediaType(const string &coverId, const std::map<std::string, int32_t> &mediaTypes)
+{
+    auto it = std::find_if(mediaTypes.begin(), mediaTypes.end(),
+        [&](const std::pair<std::string, int32_t> &mediaType) {
+            return mediaType.first == coverId;
+        });
+    return it == mediaTypes.end() ? -1 : it->second;
+}
+
 static string GetAlbumName(const string &coverId, const DeleteBehaviorData &deleteBehaviorData)
 {
     auto itIds = std::find_if(deleteBehaviorData.ownerAlbumIds.begin(), deleteBehaviorData.ownerAlbumIds.end(),
@@ -212,8 +235,10 @@ static void LogDelete(DfxData *data)
             string coverId = MediaFileUri::GetPhotoId(uri);
             string displayName = GetDisplayName(coverId, taskData->deleteBehaviorData_.displayNames);
             string albumName = GetAlbumName(coverId, taskData->deleteBehaviorData_);
+            std::string mediaType =
+                MediaMapConstUtils::MediaTypeToString(GetMediaType(coverId, taskData->deleteBehaviorData_.mediaTypes));
             AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok",
-                id, type, size, (halfUri.substr(pathPos + 1)).c_str(), displayName, albumName };
+                id, type, size, halfUri.substr(pathPos + 1), displayName, albumName, mediaType };
             HiAudit::GetInstance().Write(auditLog);
             dfxReporter->ReportDeleteBehavior(id, type, halfUri.substr(pathPos + 1));
         }
@@ -248,6 +273,30 @@ void DfxManager::HandleDeleteBehavior(int32_t type, int32_t size, std::vector<st
         return;
     }
     dfxWorker_->AddTask(deleteBehaviorTask);
+}
+
+void DfxManager::HandleInvalidKey(std::string& bundleName, std::string& sql)
+{
+    if (bundleName.empty() || sql.empty()) {
+        return;
+    }
+    dfxCollector_->CollectInvalidKey(bundleName, sql);
+}
+
+void DfxManager::HandleInvalidPrivateOpen(std::string& bundleName, std::string& operation)
+{
+    if (bundleName.empty() || operation.empty()) {
+        return;
+    }
+    dfxCollector_->CollectInvalidPrivateOpen(bundleName, operation);
+}
+
+void DfxManager::HandleSpecialOpen(std::string& bundleName, std::string& operation)
+{
+    if (bundleName.empty() || operation.empty()) {
+        return;
+    }
+    dfxCollector_->CollectSpecialOpen(bundleName, operation);
 }
 
 const std::string SQL_BATCH_DOWNLOAD_INFO_COUNT = "\
@@ -288,7 +337,9 @@ const std::string SQL_ALBUM_UPLOAD_STATISTICS = "\
         COUNT(CASE WHEN album_type = 2048 THEN 1 END) AS SOURCE_ALBUM_COUNT, \
         COUNT(CASE WHEN album_type = 0 THEN 1 END) AS USER_ALBUM_COUNT, \
         COUNT(CASE WHEN album_type = 2048 AND upload_status = 1 THEN 1 END) AS UPLOAD_SOURCE_ALBUM_COUNT, \
-        COUNT(CASE WHEN album_type = 0 AND upload_status = 1 THEN 1 END) AS UPLOAD_USER_ALBUM_COUNT \
+        COUNT(CASE WHEN album_type = 0 AND upload_status = 1 THEN 1 END) AS UPLOAD_USER_ALBUM_COUNT, \
+        COUNT(CASE WHEN album_subtype = 2050 THEN 1 END) AS FILEMANAGER_ALBUM_COUNT, \
+        COUNT(CASE WHEN album_subtype = 2050 AND upload_status = 1 THEN 1 END) AS UPLOAD_FILEMANAGER_ALBUM_COUNT \
     FROM PhotoAlbum;";
 
 const std::string SQL_NOT_UPLOAD_ASSET_COUNT = "\
@@ -315,6 +366,8 @@ static void QueryAlbumCountByUpload(PhotoStatistics &stats)
         stats.userAlbumCount = GetInt32Val("USER_ALBUM_COUNT", resultSet);
         stats.uploadSourceAlbumCount = GetInt32Val("UPLOAD_SOURCE_ALBUM_COUNT", resultSet);
         stats.uploadUserAlbumCount = GetInt32Val("UPLOAD_USER_ALBUM_COUNT", resultSet);
+        stats.fileManagerAlbumCount = GetInt32Val("FILEMANAGER_ALBUM_COUNT", resultSet);
+        stats.uploadFileManagerAlbumCount = GetInt32Val("UPLOAD_FILEMANAGER_ALBUM_COUNT", resultSet);
     }
     resultSet->Close();
 }
@@ -328,6 +381,8 @@ static void QueryAssetCountByUpload(PhotoStatistics &stats)
     CHECK_AND_RETURN_WARN_LOG(resultSet != nullptr, "resultSet is nullptr");
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         stats.notUploadAssetCount = GetInt32Val("NOT_UPLOAD_ASSET_COUNT", resultSet);
+        stats.fileManagerAlbumCount = GetInt32Val("FILEMANAGER_ALBUM_COUNT", resultSet);
+        stats.uploadFileManagerAlbumCount = GetInt32Val("UPLOAD_FILEMANAGER_ALBUM_COUNT", resultSet);
     }
     resultSet->Close();
 }
@@ -369,10 +424,38 @@ static void AddSouthDeviceType(PhotoStatistics &stats)
     stats.southDeviceType = static_cast<int32_t>(SettingsDataManager::GetPhotosSyncSwitchStatus());
 }
 
+static void AddFileManagerPhotoStats(PhotoStatistics &stats)
+{
+    const std::vector<QueryParams> queryParamsList = {
+    {MediaType::MEDIA_TYPE_IMAGE, PhotoPositionType::LOCAL},
+    {MediaType::MEDIA_TYPE_VIDEO, PhotoPositionType::LOCAL},
+    {MediaType::MEDIA_TYPE_IMAGE, PhotoPositionType::CLOUD},
+    {MediaType::MEDIA_TYPE_VIDEO, PhotoPositionType::CLOUD},
+    {MediaType::MEDIA_TYPE_IMAGE, PhotoPositionType::LOCAL_AND_CLOUD},
+    {MediaType::MEDIA_TYPE_VIDEO, PhotoPositionType::LOCAL_AND_CLOUD}
+    };
+
+    int32_t* countPtrs[] = {
+    &stats.fileManagerLocalImageCount,
+    &stats.fileManagerLocalVideoCount,
+    &stats.fileManagerCloudImageCount,
+    &stats.fileManagerCloudVideoCount,
+    &stats.fileManagerSharedImageCount,
+    &stats.fileManagerSharedVideoCount
+    };
+
+    for (size_t i = 0; i < queryParamsList.size(); i++) {
+    const auto& params = queryParamsList[i];
+    *countPtrs[i] = DfxDatabaseUtils::QueryFileManagerFromPhotos(params.mediaType,
+    static_cast<int32_t>(params.positionType));
+    }
+}
+
 static void HandlePhotoInfo(std::shared_ptr<DfxReporter>& dfxReporter)
 {
     PhotoStatistics stats = {};
     AddPhotoStats(stats);
+    AddFileManagerPhotoStats(stats);
     AddDownloadTaskInfo(stats);
     AddSouthDeviceType(stats);
     QueryAlbumAndAssetCountByUpload(stats);
@@ -383,14 +466,22 @@ static void HandlePhotoInfo(std::shared_ptr<DfxReporter>& dfxReporter)
                    "DownloadTasksPauseCount: %{public}d, DownloadTasksFailedCount: %{public}d, "
                    "DownloadTasksSuccessCount: %{public}d, DownloadTasksAutoPauseCount: %{public}d, "
                    "DownloadTasksSuccessTotalSize: %{public}" PRId64 " bytes, "
-                   "DownloadTasksSuccessTotalTime: %{public}" PRId64 " seconds",
+                   "DownloadTasksSuccessTotalTime: %{public}" PRId64 " seconds, "
+                   "fileManagerLocalImageCount: %{public}d, fileManagerLocalVideoCount: %{public}d, "
+                   "fileManagerCloudImageCount: %{public}d, fileManagerCloudVideoCount: %{public}d, "
+                   "fileManagerSharedImageCount: %{public}d, fileManagerSharedVideoCount: %{public}d, "
+                   "fileManagerAlbumCount: %{public}d, uploadFileManagerAlbumCount: %{public}d, ",
                    stats.localImageCount, stats.localVideoCount,
                    stats.cloudImageCount, stats.cloudVideoCount,
                    stats.sharedImageCount, stats.sharedVideoCount,
                    stats.tasksWaitingCount, stats.tasksDownloadingCount,
                    stats.tasksPauseCount, stats.tasksFailedCount,
                    stats.tasksSuccessCount, stats.tasksAutoPauseCount,
-                   stats.tasksSuccessTotalSize, stats.tasksSuccessTotalTime
+                   stats.tasksSuccessTotalSize, stats.tasksSuccessTotalTime,
+                   stats.fileManagerLocalImageCount, stats.fileManagerLocalVideoCount,
+                   stats.fileManagerCloudImageCount, stats.fileManagerCloudVideoCount,
+                   stats.fileManagerSharedImageCount, stats.fileManagerSharedVideoCount,
+                   stats.fileManagerAlbumCount, stats.uploadFileManagerAlbumCount
                    );
     dfxReporter->ReportPhotoInfo(stats);
 }
@@ -414,6 +505,68 @@ static void HandleAlbumInfoByUploadStatus(std::shared_ptr<DfxReporter> &dfxRepor
     }
 }
 
+static void HandleSmartAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
+{
+    // Portrait album
+    DfxPortraitAlbumInfo portraitInfo;
+    DfxDatabaseUtils::QueryPortraitAlbumInfo(portraitInfo);
+    std::string portraitDetail = "visible:" + std::to_string(portraitInfo.visibleCount) +
+        ",hidden:" + std::to_string(portraitInfo.hiddenCount) +
+        ",named:" + std::to_string(portraitInfo.namedCount) +
+        ",unnamed:" + std::to_string(portraitInfo.unnamedCount) +
+        ",top10:" + portraitInfo.top10List;
+    dfxReporter->ReportAlbumInfo("PORTRAIT", 0, 0, false, portraitDetail);
+
+    // Group photo album
+    DfxGroupPhotoAlbumInfo groupPhotoInfo;
+    DfxDatabaseUtils::QueryGroupPhotoAlbumInfo(groupPhotoInfo);
+    std::string groupPhotoDetail = "total:" + std::to_string(groupPhotoInfo.totalCount) +
+        ",top10:" + groupPhotoInfo.top10List;
+    dfxReporter->ReportAlbumInfo("GROUP_PHOTO", 0, 0, false, groupPhotoDetail);
+
+    // Classify album
+    DfxClassifyAlbumInfo classifyInfo;
+    DfxDatabaseUtils::QueryClassifyAlbumInfo(classifyInfo);
+    std::string classifyDetail = "total:" + std::to_string(classifyInfo.totalCount) +
+        ",top10:" + classifyInfo.top10List;
+    dfxReporter->ReportAlbumInfo("CLASSIFY", 0, 0, false, classifyDetail);
+
+    // City album
+    DfxCityAlbumInfo cityInfo;
+    DfxDatabaseUtils::QueryCityAlbumInfo(cityInfo);
+    std::string cityDetail = "total:" + std::to_string(cityInfo.totalCount) +
+        ",top10:" + cityInfo.top10List;
+    dfxReporter->ReportAlbumInfo("GEOGRAPHY_CITY", 0, 0, false, cityDetail);
+
+    // Geography photo
+    DfxGeographyPhotoInfo geoInfo;
+    DfxDatabaseUtils::QueryGeographyPhotoInfo(geoInfo);
+    std::string geoDetail = "location:" + std::to_string(geoInfo.locationPhotoCount) +
+        ",local:" + std::to_string(geoInfo.localCount) +
+        ",cloud:" + std::to_string(geoInfo.cloudCount);
+    dfxReporter->ReportAlbumInfo("GEOGRAPHY_LOCATION", 0, 0, false, geoDetail);
+
+    // Highlight album
+    DfxHighlightAlbumInfo highlightInfo;
+    DfxDatabaseUtils::QueryHighlightAlbumInfo(highlightInfo);
+    std::string highlightDetail = "visible:" + std::to_string(highlightInfo.visibleCount) +
+        ",hidden:" + std::to_string(highlightInfo.hiddenCount) +
+        ",top10:" + highlightInfo.top10List;
+    dfxReporter->ReportAlbumInfo("HIGHLIGHT", 0, 0, false, highlightDetail);
+
+    // Shooting mode album
+    DfxShootingModeAlbumInfo shootingModeInfo;
+    DfxDatabaseUtils::QueryShootingModeAlbumInfo(shootingModeInfo);
+    std::string shootingModeDetail = "total:" + std::to_string(shootingModeInfo.totalCount) +
+        ",top10:" + shootingModeInfo.top10List;
+    dfxReporter->ReportAlbumInfo("SHOOTING_MODE", 0, 0, false, shootingModeDetail);
+
+    // Orphan analysis album count
+    int32_t orphanCount = DfxDatabaseUtils::QueryOrphanAnalysisAlbumCount();
+    std::string orphanDetail = "orphan:" + std::to_string(orphanCount);
+    dfxReporter->ReportAlbumInfo("ORPHAN_ANALYSIS", 0, 0, false, orphanDetail);
+}
+
 static void HandleAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
 {
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::IMAGE));
@@ -423,6 +576,7 @@ static void HandleAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::TRASH));
     HandleAlbumInfoByUploadStatus(dfxReporter, false);
     HandleAlbumInfoByUploadStatus(dfxReporter, true);
+    HandleSmartAlbumInfo(dfxReporter);
 }
 
 static void HandleDirtyCloudPhoto(std::shared_ptr<DfxReporter> &dfxReporter)
@@ -505,23 +659,16 @@ static void HandleStatistic(DfxData *data)
     DfxDeprecatedPermUsage::Statistics();
 }
 
-static void CheckPhotoError(std::shared_ptr<DfxReporter>& dfxReporter)
-{
-    CHECK_AND_RETURN_INFO_LOG(dfxReporter != nullptr, "E_OK");
-    auto photoCount = DfxDatabaseUtils::QueryPhotoErrorCount();
-    CHECK_AND_RETURN_INFO_LOG(photoCount, "E_OK");
-    MEDIA_ERR_LOG("DFX ReportPhotoError count is %{public}d", photoCount);
-    PhotoErrorCount photoError = { {PhotoErrorType::PHOTO_MISS_TYPE}, {photoCount} };
-    dfxReporter->ReportPhotoError(photoError);
-}
-
 static void HandleCheckTwoDayTask(DfxData *data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "Failed to get data for Handle Check Two Day Task!");
     auto *taskData = static_cast<StatisticData *>(data);
     std::shared_ptr<DfxReporter> dfxReporter = taskData->dfxReporter_;
     CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for Handle Check Two Day Task!");
-    CheckPhotoError(dfxReporter);
+
+    auto dfxManager = DfxManager::GetInstance();
+    CHECK_AND_RETURN_LOG(dfxManager != nullptr, "Failed to get dfxManager");
+    dfxManager->CheckPhotoError(dfxReporter);
 }
 
 void DfxManager::HandleHalfDayMissions()
@@ -625,15 +772,25 @@ void DfxManager::HandleFiveMinuteTask()
 
 void DfxManager::HandleDeleteBehaviors()
 {
-    std::unordered_map<string, int32_t> deleteAssetToTrash =
-        dfxCollector_->GetDeleteBehavior(DfxType::TRASH_PHOTO);
+    std::unordered_map<string, int32_t> deleteAssetToTrash;
+    dfxCollector_->GetDeleteBehavior(deleteAssetToTrash, DfxType::TRASH_PHOTO);
     dfxAnalyzer_->FlushDeleteBehavior(deleteAssetToTrash, DfxType::TRASH_PHOTO);
-    std::unordered_map<string, int32_t> deleteAssetFromDisk =
-        dfxCollector_->GetDeleteBehavior(DfxType::ALBUM_DELETE_ASSETS);
-    dfxAnalyzer_->FlushDeleteBehavior(deleteAssetToTrash, DfxType::ALBUM_DELETE_ASSETS);
-    std::unordered_map<string, int32_t> removeAssets =
-        dfxCollector_->GetDeleteBehavior(DfxType::ALBUM_REMOVE_PHOTOS);
+    std::unordered_map<string, int32_t> deleteAssetFromDisk;
+    dfxCollector_->GetDeleteBehavior(deleteAssetFromDisk, DfxType::ALBUM_DELETE_ASSETS);
+    dfxAnalyzer_->FlushDeleteBehavior(deleteAssetFromDisk, DfxType::ALBUM_DELETE_ASSETS);
+    std::unordered_map<string, int32_t> removeAssets;
+    dfxCollector_->GetDeleteBehavior(removeAssets, DfxType::ALBUM_REMOVE_PHOTOS);
     dfxAnalyzer_->FlushDeleteBehavior(removeAssets, DfxType::ALBUM_REMOVE_PHOTOS);
+
+    std::unordered_map<string, string> invalidKeyMap;
+    dfxCollector_->GetInvalidMap(invalidKeyMap, DfxType::INVALID_KEY);
+    dfxAnalyzer_->FlushInvalidMap(invalidKeyMap, DfxType::INVALID_KEY);
+    std::unordered_map<string, string> invalidPrivateOpenMap;
+    dfxCollector_->GetInvalidMap(invalidPrivateOpenMap, DfxType::INVALID_PRIVATE_OPEN);
+    dfxAnalyzer_->FlushInvalidMap(invalidPrivateOpenMap, DfxType::INVALID_PRIVATE_OPEN);
+    std::unordered_map<string, string> specialOpenMap;
+    dfxCollector_->GetInvalidMap(specialOpenMap, DfxType::SPECIAL_OPEN);
+    dfxAnalyzer_->FlushInvalidMap(specialOpenMap, DfxType::SPECIAL_OPEN);
 }
 
 int64_t DfxManager::HandleMiddleReport()
@@ -644,6 +801,7 @@ int64_t DfxManager::HandleMiddleReport()
     }
     dfxReporter_->ReportCommonBehavior();
     dfxReporter_->ReportDeleteStatistic();
+    dfxReporter_->ReportInvalidBehavior();
     return MediaFileUtils::UTCTimeSeconds();
 }
 
@@ -660,6 +818,10 @@ int64_t DfxManager::HandleOneDayReport()
     dfxReporter_->ReportCinematicVideo();
     dfxReporter_->ReportAlibHeifDuplicate();
     dfxReporter_->ReportMediaLibCompatConfig();
+    dfxReporter_->ReportReadLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL));
+    dfxReporter_->ReportReadLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_CLOUD));
+    dfxReporter_->ReportReadLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_HDC));
+    dfxReporter_->ReportVisitLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_VISIT));
     return MediaFileUtils::UTCTimeSeconds();
 }
 
@@ -688,7 +850,8 @@ static bool QueryCinematicVideoStatus(const string &fileId, MultiStagesCaptureVi
     resultSet->GetColumnIndex(PhotoColumn::PHOTO_SUBTYPE, columnIndexSubtype);
     int32_t currentSubtype = 0;
     resultSet->GetInt(columnIndexSubtype, currentSubtype);
-    if (currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) &&
+        currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         MEDIA_INFO_LOG("Current photo is not cinematic video");
         return false;
     }
@@ -746,7 +909,7 @@ void DfxManager::HandleCinematicVideoMultistageResult(bool multistageResult)
     dfxCollector_->CollectCinematicVideoMultistageResult(multistageResult);
 }
 
-static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
+static void GetPhotoAndPhotoExtSizesNoCache(QuerySizeAndResolution &queryInfo)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is null");
@@ -764,7 +927,7 @@ static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
     int64_t totalExtSize = cacheSize + highlightSize + totalThumbnailSizeResult.totalThumbnailSize +
         totalEditdataSizeRusult.totalEditdataSize;
     LocalPhotoSizeResult localPhotoSizeResult = {};
-    photoStorageOperation.GetLocalPhotoSize(rdbStore, localPhotoSizeResult, totalExtSize);
+    photoStorageOperation.GetLocalPhotoSize(rdbStore, localPhotoSizeResult);
 
     int64_t totalSize = localPhotoSizeResult.localImageSize + localPhotoSizeResult.localVideoSize + totalExtSize;
 
@@ -775,13 +938,55 @@ static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
     queryInfo.localImageRomSize = std::to_string(localPhotoSizeResult.localImageSize);
     queryInfo.localVideoRomSize = std::to_string(localPhotoSizeResult.localVideoSize);
     queryInfo.totalSize = std::to_string(totalSize);
+    queryInfo.thumbDirRomSize = std::to_string(photoStorageOperation.GetThumbDirSize());
+    queryInfo.editDataDirRomSize = std::to_string(photoStorageOperation.GetEditDataDirSize());
+    queryInfo.kvdbDirRomSize = std::to_string(photoStorageOperation.GetKVDBDirSize());
+    queryInfo.dentryRomSize = std::to_string(photoStorageOperation.GetDentrySize());
     MEDIA_INFO_LOG("localImageRomSize: %{public}s, localVideoRomSize: %{public}s, totalThumbnailSize: %{public}s, "
                    "totalEditdataSize: %{public}s, cacheSize: %{public}s, highlightSize: %{public}s, "
-                   "totalSize: %{public}s",
+                   "totalSize: %{public}s, thumbDirRomSize: %{public}s, editDataDirRomSize: %{public}s, "
+                   "kvdbDirRomSize: %{public}s, dentryRomSize: %{public}s",
                    queryInfo.localImageRomSize.c_str(), queryInfo.localVideoRomSize.c_str(),
                    queryInfo.ThumbnailRomSize.c_str(), queryInfo.EditdataRomSize.c_str(),
                    queryInfo.cacheRomSize.c_str(), queryInfo.highlightRomSize.c_str(),
-                   queryInfo.totalSize.c_str());
+                   queryInfo.totalSize.c_str(), queryInfo.thumbDirRomSize.c_str(),
+                   queryInfo.editDataDirRomSize.c_str(), queryInfo.kvdbDirRomSize.c_str(),
+                   queryInfo.dentryRomSize.c_str());
+}
+
+static void GetPhotoAndPhotoExtSizesFromCache(QuerySizeAndResolution &queryInfo, StorageQueryCache &cache)
+{
+    queryInfo.cacheRomSize = std::to_string(cache.cacheSize);
+    queryInfo.highlightRomSize = std::to_string(cache.highlightSize);
+    queryInfo.ThumbnailRomSize = std::to_string(cache.thumbnailResult.totalThumbnailSize);
+    queryInfo.EditdataRomSize = std::to_string(cache.editdataResult.totalEditdataSize);
+    queryInfo.localImageRomSize = std::to_string(cache.localPhotoResult.localImageSize);
+    queryInfo.localVideoRomSize = std::to_string(cache.localPhotoResult.localVideoSize);
+    queryInfo.totalSize = std::to_string(cache.totalSize);
+    queryInfo.thumbDirRomSize = std::to_string(cache.thumbDirSize);
+    queryInfo.editDataDirRomSize = std::to_string(cache.editDataDirSize);
+    queryInfo.kvdbDirRomSize = std::to_string(cache.kvdbDirSize);
+    queryInfo.dentryRomSize = std::to_string(cache.dentrySize);
+    MEDIA_INFO_LOG("localImageRomSize: %{public}s, localVideoRomSize: %{public}s, totalThumbnailSize: %{public}s, "
+                   "totalEditdataSize: %{public}s, cacheSize: %{public}s, highlightSize: %{public}s, "
+                   "totalSize: %{public}s, thumbDirRomSize: %{public}s, editDataDirRomSize: %{public}s, "
+                   "kvdbDirRomSize: %{public}s, dentryRomSize: %{public}s",
+                   queryInfo.localImageRomSize.c_str(), queryInfo.localVideoRomSize.c_str(),
+                   queryInfo.ThumbnailRomSize.c_str(), queryInfo.EditdataRomSize.c_str(),
+                   queryInfo.cacheRomSize.c_str(), queryInfo.highlightRomSize.c_str(),
+                   queryInfo.totalSize.c_str(), queryInfo.thumbDirRomSize.c_str(),
+                   queryInfo.editDataDirRomSize.c_str(), queryInfo.kvdbDirRomSize.c_str(),
+                   queryInfo.dentryRomSize.c_str());
+}
+
+static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
+{
+    GetPhotoAndPhotoExtSizesNoCache(queryInfo);
+}
+
+static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo, StorageQueryCache &cache)
+{
+    GetPhotoAndPhotoExtSizesFromCache(queryInfo, cache);
 }
 
 static void HandleGetSizeAndResolutionInfo(std::shared_ptr<DfxReporter>& dfxReporter)
@@ -789,12 +994,32 @@ static void HandleGetSizeAndResolutionInfo(std::shared_ptr<DfxReporter>& dfxRepo
     MEDIA_INFO_LOG("HandleGetSizeAndResolutionInfo start");
     CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for HandleGetSizeAndResolutionInfo!");
     QuerySizeAndResolution queryInfo = {};
-    bool bQueryInfo = DfxDatabaseUtils::GetSizeAndResolutionInfo(queryInfo);
+    bool bQueryInfo = DfxDatabaseUtils::GetSizeAndResolutionInfo(queryInfo, true);
     CHECK_AND_RETURN_LOG(bQueryInfo, "E_OK");
     std::string photoMimeType;
     DfxDatabaseUtils::GetPhotoMimeType(photoMimeType);
     GetPhotoAndPhotoExtSizes(queryInfo);
     dfxReporter->ReportPhotoSizeAndResolutionInfo(queryInfo, photoMimeType);
+}
+
+static void HandleGetSizeAndResolutionInfo(std::shared_ptr<DfxReporter>& dfxReporter, StorageQueryCache &cache)
+{
+    MEDIA_INFO_LOG("HandleGetSizeAndResolutionInfo start (with cache)");
+    CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for HandleGetSizeAndResolutionInfo!");
+    QuerySizeAndResolution queryInfo = {};
+    bool bQueryInfo = DfxDatabaseUtils::GetSizeAndResolutionInfo(queryInfo, false);
+    CHECK_AND_RETURN_LOG(bQueryInfo, "E_OK");
+    std::string photoMimeType;
+    DfxDatabaseUtils::GetPhotoMimeType(photoMimeType);
+    GetPhotoAndPhotoExtSizes(queryInfo, cache);
+    dfxReporter->ReportPhotoSizeAndResolutionInfo(queryInfo, photoMimeType);
+}
+
+void DfxManager::HandleImmediatePhotoInfoExtReport(StorageQueryCache &cache)
+{
+    MEDIA_INFO_LOG("HandleImmediatePhotoInfoExtReport start");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    HandleGetSizeAndResolutionInfo(dfxReporter_, cache);
 }
 
 static void HandleCheckOneWeekDayTask(DfxData *data)
@@ -827,6 +1052,40 @@ void DfxManager::HandleOneWeekMissions()
         dfxWorker_->AddTask(oneWeekTask);
         int64_t time = MediaFileUtils::UTCTimeSeconds();
         prefs->PutLong(LAST_WEEK_REPORT_TIME, time);
+        prefs->FlushSync();
+    }
+}
+
+static void HandleCheckSixHourTask(DfxData *data)
+{
+    CHECK_AND_RETURN_LOG(data != nullptr, "Failed to get data for Handle Check Six Hour Task!");
+    auto *taskData = static_cast<StatisticData *>(data);
+    std::shared_ptr<DfxReporter> dfxReporter = taskData->dfxReporter_;
+    CHECK_AND_RETURN_LOG(dfxReporter != nullptr, "Failed to get dfxReporter for Handle Check Six Hour Task!");
+    HandleGetSizeAndResolutionInfo(dfxReporter);
+}
+
+void DfxManager::HandleSixHourMissions()
+{
+    MEDIA_INFO_LOG("HandlePhotoInfo start");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+    int64_t lastReportTime = prefs->GetLong(LAST_SIX_HOUR_REPORT_TIME, 0);
+    if (MediaFileUtils::UTCTimeSeconds() - lastReportTime > SIX_HOUR && dfxWorker_ != nullptr) {
+        MEDIA_INFO_LOG("start handle statistic behavior");
+        auto *taskData = new (nothrow) StatisticData(dfxReporter_);
+        CHECK_AND_RETURN_LOG(taskData != nullptr, "Failed to alloc async data for Handle Six Hour Missions!");
+        auto sixHourTask = make_shared<DfxTask>(HandleCheckSixHourTask, taskData);
+        CHECK_AND_RETURN_LOG(sixHourTask != nullptr, "Failed to create dfx task.");
+        dfxWorker_->AddTask(sixHourTask);
+        int64_t time = MediaFileUtils::UTCTimeSeconds();
+        prefs->PutLong(LAST_SIX_HOUR_REPORT_TIME, time);
         prefs->FlushSync();
     }
 }
@@ -1255,7 +1514,7 @@ void DfxManager::HandleAccurateRefreshTimeOut(const AccurateRefreshDfxDataPoint&
         MEDIA_WARN_LOG("DfxManager not init");
         return;
     }
-    MEDIA_INFO_LOG("enter HandleAccurateRefreshTimeOut");
+    MEDIA_DEBUG_LOG("enter HandleAccurateRefreshTimeOut");
     dfxReporter_->ReportAccurateRefreshResult(reportData);
 }
 
@@ -1313,6 +1572,184 @@ bool DfxManager::GetMemoryRelease()
 void DfxManager::SetMemoryRelease(bool memoryRelease)
 {
     memoryRelease_ = memoryRelease;
+}
+
+static void AddPhotoLcdCountStats(PhotoLcdStatistics &stats)
+{
+    const std::vector<QueryLcdParams> queryParamsList = {
+        {
+            {static_cast<int32_t>(CloudSync::ThumbState::DOWNLOADED),
+             static_cast<int32_t>(CloudSync::ThumbState::THM_TO_DOWNLOAD)},
+            0
+        },
+        {
+            {static_cast<int32_t>(CloudSync::ThumbState::LCD_TO_DOWNLOAD),
+             static_cast<int32_t>(CloudSync::ThumbState::TO_DOWNLOAD)},
+            0
+        },
+        {{}, 1}
+    };
+
+    int32_t* countPtrs[] = {
+        &stats.localPropertyCount,
+        &stats.cloudPropertyCount,
+        &stats.favoriteCount
+    };
+
+    for (size_t i = 0; i < queryParamsList.size(); i++) {
+        const auto& params = queryParamsList[i];
+        *countPtrs[i] = DfxDatabaseUtils::QueryLcdFromPhotos(params.thumbState, params.isFavorite);
+    }
+}
+
+static void AddPhotoLcdAlbumCoverStats(PhotoLcdStatistics &stats)
+{
+    stats.albumCoverCount = DfxDatabaseUtils::QueryAlbumCoverCount();
+}
+
+static void AddPhotoExtSmartCountStats(PhotoLcdStatistics &stats)
+{
+    stats.smartCount = DfxDatabaseUtils::QueryPhotoExtSmartCount();
+}
+
+void DfxManager::HandleAgingLcdCount()
+{
+    MEDIA_INFO_LOG("HandleAgingLcdCount isSuccess");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    PhotoLcdStatistics stats = {};
+    AddPhotoLcdCountStats(stats);
+    AddPhotoLcdAlbumCoverStats(stats);
+    AddPhotoExtSmartCountStats(stats);
+    dfxAnalyzer_->FlushAgingLcdCount(stats);
+}
+
+void DfxManager::HandleAgingLcdContinue()
+{
+    MEDIA_INFO_LOG("HandlerAgingLcdContinue");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    dfxAnalyzer_->FlushAgingLcdContinue();
+}
+
+void DfxManager::HandleAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSize,
+    int64_t freeSizeOld, int64_t freeSize, int64_t totalTime)
+{
+    MEDIA_INFO_LOG("HandleAgingLcdFinish");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    dfxAnalyzer_->FlushAgingLcdFinish(hasAgingLcdNumber, totalSize, freeSizeOld, freeSize, totalTime);
+    dfxReporter_->ReportAgingLcdInfo();
+}
+
+void DfxManager::HandleReadLcd(bool isSuccess)
+{
+    MEDIA_DEBUG_LOG("HandleReadLcd isSuccess: %{public}d", isSuccess);
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    NetManagerStandard::NetHandle handle;
+    int32_t ret = NetManagerStandard::NetConnClient::GetInstance().GetDefaultNet(handle);
+    CHECK_AND_EXECUTE(ret == 0, dfxAnalyzer_->FlushReadLcdTimes(isSuccess, NetConnStatusType::NO_NETWORK));
+    CHECK_AND_RETURN_LOG(ret == 0, "GetDefaultNet failed");
+    NetManagerStandard::NetAllCapabilities netAllCap;
+    ret = NetManagerStandard::NetConnClient::GetInstance().GetNetCapabilities(handle, netAllCap);
+    CHECK_AND_EXECUTE(ret == 0, dfxAnalyzer_->FlushReadLcdTimes(isSuccess, NetConnStatusType::NO_NETWORK));
+    CHECK_AND_RETURN_LOG(ret == 0, "GetNetCapabilities failed");
+    NetConnStatusType netStatus = NetConnStatusType::NO_NETWORK;
+    const std::set<NetManagerStandard::NetBearType>& types = netAllCap.bearerTypes_;   // 每次流读都去获取网络状态需要评估性能影响。
+    if (types.count(NetManagerStandard::BEARER_CELLULAR)) {
+        netStatus = NetConnStatusType::CELLULAR_CONNECTED;
+    } else if (types.count(NetManagerStandard::BEARER_WIFI)) {
+        netStatus = NetConnStatusType::WIFI_CONNECTED;
+    } else if (types.count(NetManagerStandard::BEARER_ETHERNET)) {
+        netStatus = NetConnStatusType::ETHERNET_CONNECTED;
+    }
+    dfxAnalyzer_->FlushReadLcdTimes(isSuccess, netStatus);
+}
+
+void DfxManager::HandleThumbnailQuality()
+{
+    MEDIA_DEBUG_LOG("HandleThumbnailQuality enter");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    const int32_t southDeviceType = static_cast<int32_t>(SettingsDataManager::GetPhotosSyncSwitchStatus());
+    dfxAnalyzer_->FlushThumbnailQuality(southDeviceType);
+}
+
+void DfxManager::HandleVisitLcd()
+{
+    MEDIA_DEBUG_LOG("HandleVisitLcd enter");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    dfxAnalyzer_->FlushVisitLcd();
+}
+
+static void LogPhotoError(DfxData *data)
+{
+    CHECK_AND_RETURN(data != nullptr);
+    auto *taskData = static_cast<PhotoErrorTask *>(data);
+    CHECK_AND_RETURN(taskData != nullptr);
+    const int32_t typeCode = taskData->typeCode_;
+    const PhotoErrorData &photoErrorData = taskData->photoErrorData_;
+    AuditLog auditLog = { false, "DFX", "OPEN_EMPTY_CREATE", "io", 1, "success",
+        to_string(typeCode), to_string(photoErrorData.fileId), DfxType::OLD_API_OPEN, 0,
+        DfxUtils::GetSafePath(photoErrorData.path), DfxUtils::GetSafeDiaplayNameWhenChinese(photoErrorData.displayName),
+        "", MediaMapConstUtils::MediaTypeToString(photoErrorData.mediaType) };
+    HiAudit::GetInstance().Write(auditLog);
+}
+
+void DfxManager::HandlePhotoError(const PhotoErrorData &data)
+{
+    PhotoErrorDimension dim{ data.fileSourceType, data.southDeviceType, data.position, data.mediaType,
+        PhotoErrorType::OPEN_CREATE_EMPTY_FILE };
+    int32_t typeCode = DfxPhotoErrorHelper::EncodePhotoErrorType(dim);
+    if (dfxCollector_ != nullptr) {
+        dfxCollector_->CollectPhotoError(typeCode);
+    }
+    CHECK_AND_RETURN_LOG(dfxWorker_ != nullptr, "Can not get dfxWorker_");
+    auto *taskData = new (nothrow) PhotoErrorTask(typeCode, data);
+    CHECK_AND_RETURN_LOG(taskData != nullptr, "Failed to new taskData");
+    auto photoErrorTask = make_shared<DfxTask>(LogPhotoError, taskData);
+    if (photoErrorTask == nullptr) {
+        MEDIA_ERR_LOG("Failed to create async task for photoErrorTask.");
+        delete taskData;
+        return;
+    }
+    dfxWorker_->AddTask(photoErrorTask);
+}
+
+void DfxManager::CheckPhotoError(std::shared_ptr<DfxReporter> &dfxReporter)
+{
+    static constexpr int32_t PHOTO_ERROR_SCAN_BATCH_SIZE = 500; // 每批查询、扫描数量
+    static constexpr int32_t PHOTO_ERROR_PACK_BATCH_SIZE = 5;   // 一次上报长度
+    CheckPhotoErrorInScan(dfxReporter, PHOTO_ERROR_SCAN_BATCH_SIZE, PHOTO_ERROR_PACK_BATCH_SIZE);
+    CheckPhotoErrorInOpen(dfxReporter, PHOTO_ERROR_PACK_BATCH_SIZE);
+}
+
+void DfxManager::CheckPhotoErrorInScan(std::shared_ptr<DfxReporter> &dfxReporter, int32_t scanBatchSize,
+    int32_t packBatchSize)
+{
+    CHECK_AND_RETURN_INFO_LOG(dfxReporter != nullptr, "E_OK");
+    // processor 驱动完整扫描后返回打包 batches；中断则返回空，不上报。
+    DfxPhotoErrorProcessor processor;
+    auto batches = processor.GetPhotoErrorBatches(scanBatchSize, packBatchSize);
+    MEDIA_INFO_LOG("DFX ReportPhotoError batches: %{public}d", static_cast<int32_t>(batches.size()));
+    for (const auto& batch : batches) {
+        dfxReporter->ReportPhotoError(batch);
+    }
+}
+
+void DfxManager::CheckPhotoErrorInOpen(std::shared_ptr<DfxReporter> &dfxReporter, int32_t packBatchSize)
+{
+    CHECK_AND_RETURN_INFO_LOG(dfxReporter != nullptr, "E_OK");
+    CHECK_AND_RETURN(dfxCollector_ != nullptr);
+    auto openMap = dfxCollector_->GetPhotoError();
+    CHECK_AND_RETURN(!openMap.empty());
+    auto openBatches = DfxPhotoErrorHelper::PackPhotoErrors(openMap, packBatchSize);
+    MEDIA_INFO_LOG("DFX ReportPhotoError open batches: %{public}d", static_cast<int32_t>(openBatches.size()));
+    for (const auto& openBatch : openBatches) {
+        dfxReporter->ReportPhotoError(openBatch);
+    }
 }
 } // namespace Media
 } // namespace OHOS

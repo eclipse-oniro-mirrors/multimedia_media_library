@@ -35,6 +35,10 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/background",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dao",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/callback",
   ]
 
   include_media_cloud_sync_data = [
@@ -57,13 +61,16 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "./src/media_cloud_sync_test_utils.cpp",
     "./src/cloud_media_photos_delete_test.cpp",
     "./src/media_assets_delete_service_test.cpp",
+    "./src/cloud_media_file_info_service_test.cpp",
+    "./src/cloud_media_file_manager_service_test.cpp",
     "./src/cloud_media_dao_utils_test.cpp",
     "./src/cloud_media_dao_utils_extended_test.cpp",
     "./src/cloud_media_photos_rename_service_test.cpp",
     "./src/cloud_media_attachment_utils_test.cpp",
     "./src/cloud_media_download_dao_test.cpp",
-    "./src/cloud_media_file_info_service_test.cpp",
-    "./src/cloud_media_file_manager_service_test.cpp",
+    "./src/clone_to_album_service_test.cpp",
+    "./src/media_assets_recover_service_test.cpp",
+    "./src/photo_album_po_writer_test.cpp",
   ]
 
   deps = [
@@ -71,6 +78,7 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -93,12 +101,12 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "preferences:native_preferences",
+    "e2fsprogs:libext2_uuid",
   ]
 
   cflags = [
@@ -142,6 +150,7 @@ ohos_unittest("media_library_cloud_sync_service_dao_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -163,7 +172,6 @@ ohos_unittest("media_library_cloud_sync_service_dao_test") {
     "common_event_service:cesfwk_innerkits",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
@@ -205,6 +213,7 @@ ohos_unittest("media_library_cloud_sync_service_dto_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -226,7 +235,6 @@ ohos_unittest("media_library_cloud_sync_service_dto_test") {
     "common_event_service:cesfwk_innerkits",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
@@ -269,6 +277,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -290,7 +299,6 @@ ohos_unittest("media_library_cloud_sync_service_controller_service_test") {
     "common_event_service:cesfwk_innerkits",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
@@ -317,6 +325,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
 
   sources = [
     "src/cloud_media_controller_processor_test.cpp",
+    "src/cloud_media_album_controller_processor_extension_test.cpp",
   ]
 
   include_media_cloud_sync_data = [
@@ -331,6 +340,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -354,7 +364,6 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
     "common_event_service:cesfwk_innerkits",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
@@ -414,6 +423,7 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -436,7 +446,6 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
@@ -482,6 +491,7 @@ ohos_unittest("media_library_cloud_sync_service_service_ext_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
@@ -503,7 +513,6 @@ ohos_unittest("media_library_cloud_sync_service_service_ext_test") {
     "common_event_service:cesfwk_innerkits",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "media_foundation:media_foundation",

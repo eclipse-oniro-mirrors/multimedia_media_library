@@ -49,6 +49,23 @@ const std::vector<std::string> compatibleModeEnum {
     "ORIGINAL_FORMAT_MODE", "COMPATIBLE_FORMAT_MODE"
 };
 
+const std::vector<std::string> analysisToolTypeEnum {
+    "ANALYSIS_BASE_TOOL_TYPE",
+    "IMAGE_RETRIEVAL_TOOL_TYPE",
+    "NEGATIVE_FILTER_TOOL_TYPE",
+    "FACE_RECOGNITION_TOOL_TYPE",
+    "BATCH_SIMILARITY_SELECTION_TOOL_TYPE",
+    "BALANCED_SELECTION_TOOL_TYPE",
+    "COVER_GRID_SELECTION_TOOL_TYPE",
+    "HIGHLIGHT_TOOL_TYPE",
+    "SEARCH_TOOL_TYPE",
+    "SELECTION_TOOL_TYPE",
+    "PORTRAIT_ALBUM_TOOL_TYPE",
+    "CLASSIFY_ALBUM_TOOL_TYPE",
+    "SIMILARITY_CLEANING_TOOL_TYPE",
+    "EDIT_RECOMMENDATION_TOOL_TYPE",
+    "AI_SEARCH_TOOL_TYPE"
+};
 const std::vector<std::string> preferredCompatibleModeEnum {
     "DEFAULT", "CURRENT", "COMPATIBLE"
 };
@@ -82,7 +99,7 @@ const std::vector<std::string> directoryEnumValues {
 };
 
 const std::vector<std::string> systemAlbumSubType {
-    "FAVORITE", "VIDEO", "HIDDEN", "TRASH", "SCREENSHOT", "CAMERA", "IMAGE", "CLOUD_ENHANCEMENT"
+    "FAVORITE", "VIDEO", "HIDDEN", "TRASH", "SCREENSHOT", "CAMERA", "IMAGE", "CLOUD_ENHANCEMENT", "LIVEPHOTO_4D",
 };
 
 const std::vector<std::string> analysisAlbumSubType {
@@ -95,7 +112,8 @@ const std::vector<std::string> positionTypeEnum {
 };
 
 const std::vector<std::string> photoSubTypeEnum {
-    "DEFAULT", "SCREENSHOT", "CAMERA", "MOVING_PHOTO", "BURST", "CINEMATIC_VIDEO", "SPATIAL_3DGS"
+    "DEFAULT", "SCREENSHOT", "CAMERA", "MOVING_PHOTO", "BURST", "CINEMATIC_VIDEO",
+    "SLOW_MOTION_VIDEO", "SPATIAL_3DGS", "CINEMATIC_VIDEO_V2"
 };
 
 const std::vector<std::string> photoPermissionTypeEnum {
@@ -171,7 +189,8 @@ const std::vector<std::string> cloudMediaDownloadTypeEnum {
 
 const std::vector<std::string> cloudMediaRetainTypeEnum {
     "RETAIN_FORCE", // RETAIN_FORCE is an external interface and cannot be modified, corresponds to RETAIN_FORCE
-    "HDC_RETAIN_FORCE"
+    "HDC_RETAIN_FORCE",
+    "SHARE_RETAIN_FORCE"
 };
 
 const std::vector<std::string> cloudMediaAssetTaskStatusEnum {
@@ -214,7 +233,8 @@ const std::vector<std::string> appLinkStateEnum {
 };
 
 const std::vector<std::string> livePhoto4dStatusTypeEnum {
-    "UNIDENTIFIED", "UNSUPPORTED", "SUPPORTED", "USED", "FOURD_LIVEPHOTO"
+    "UNIDENTIFIED", "UNSUPPORTED", "SUPPORTED", "USED", "FOURD_LIVEPHOTO",
+    "LEFT_ROTATE", "UP_ROTATE", "ZOOM_OUT", "HITCHCOCK", "GRAMMY"
 };
 
 const std::vector<std::string> deepOptimizeStateEnum {
@@ -227,8 +247,10 @@ const std::vector<std::pair<std::string, int32_t>> PHOTO_SUB_TYPE_ENUM_PROPERTIE
     std::make_pair("CAMERA",            static_cast<int32_t>(PhotoSubType::CAMERA)),
     std::make_pair("MOVING_PHOTO",      static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)),
     std::make_pair("BURST",             static_cast<int32_t>(PhotoSubType::BURST)),
+    std::make_pair("CINEMATIC_VIDEO",   static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)),
     std::make_pair("SLOW_MOTION_VIDEO", static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)),
-    std::make_pair("SPATIAL_3DGS",      static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS))
+    std::make_pair("SPATIAL_3DGS",      static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS)),
+    std::make_pair("CINEMATIC_VIDEO_V2", static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2))
 };
 
 const std::vector<std::pair<std::string, std::string>> FILE_KEY_ENUM_PROPERTIES = {
@@ -335,6 +357,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("CHANGE_TIME",               PhotoColumn::PHOTO_CHANGE_TIME),
     std::make_pair("EXIST_COMPATIBLE_DUPLICATE", PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE),
     std::make_pair("HDR_MODE",                  PhotoColumn::PHOTO_HDR_MODE),
+    std::make_pair("MUSIC_MASTER_MODE",         PhotoColumn::MUSIC_MASTER_MODE),
     std::make_pair("CLOUD_ID",                  PhotoColumn::PHOTO_CLOUD_ID),
     std::make_pair("VIDEO_MODE",                PhotoColumn::PHOTO_VIDEO_MODE),
     std::make_pair("FUSION_ASSET_STORAGE_PATH", PhotoColumn::PHOTO_STORAGE_PATH),
@@ -348,10 +371,13 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("DATE_ADDED_DAY",            PhotoColumn::PHOTO_DATE_ADDED_DAY),
     std::make_pair("UNIQUE_ID",                 PhotoColumn::UNIQUE_ID),
     std::make_pair("LIVEPHOTO_4D_STATUS",       PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS),
+    std::make_pair("LIVEPHOTO_4D_LATEST_PAIR",  PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR),
     std::make_pair("HIDDEN_TIME",               PhotoColumn::PHOTO_HIDDEN_TIME),
     std::make_pair("LOCAL_ASSET_SIZE",          PhotoColumn::LOCAL_ASSET_SIZE),
     std::make_pair("FILE_HIDDEN",               PhotoColumn::PHOTO_FILE_HIDDEN),
     std::make_pair("ATTACHMENT_SIZE",           PhotoColumn::ATTACHMENT_SIZE),
+    std::make_pair("LCD_FILE_SIZE",             PhotoColumn::PHOTO_LCD_FILE_SIZE),
+    std::make_pair("THUMB_STATUS",              PhotoColumn::PHOTO_THUMB_STATUS),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {
@@ -379,6 +405,9 @@ const std::vector<std::pair<std::string, std::string>> DEFAULT_URI_ENUM_PROPERTI
 const std::vector<std::pair<std::string, std::string>> ALBUM_ATTRIBUTE_ENUM_PROPERTIES = {
     std::make_pair("NICK_NAME_ATTR", "nickname"),
     std::make_pair("IS_REMOVED_ATTR", "is_removed"),
+    std::make_pair("EXTRA_INFO_ATTR", "extra_info"),
+    std::make_pair("FRIEND_ID_ATTR", "friend_id"),
+    std::make_pair("CONTACT_INFO_ATTR", "contact_info"),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUM_OPERATION_TYPE_ENUM_PROPERTIES = {

@@ -17,6 +17,7 @@
 #define METADATA_H
 
 #include <unordered_map>
+#include <optional>
 #include <variant>
 #include "scanner_utils.h"
 #include "fetch_result.h"
@@ -33,6 +34,9 @@ public:
 
     EXPORT void SetVideoMode(const VariantData &logType);
     EXPORT int32_t GetVideoMode() const;
+
+    EXPORT void SetMusicMasterMode(const VariantData &musicMasterMode);
+    EXPORT int32_t GetMusicMasterMode() const;
 
     EXPORT void SetFileId(const VariantData &id);
     EXPORT int32_t GetFileId() const;
@@ -111,9 +115,11 @@ public:
 
     EXPORT void SetLongitude(const VariantData &longitude);
     EXPORT double GetLongitude() const;
+    EXPORT bool HasLongitude() const;
 
     EXPORT void SetLatitude(const VariantData &latitude);
     EXPORT double GetLatitude() const;
+    EXPORT bool HasLatitude() const;
 
     EXPORT void SetTimePending(const VariantData &timePending);
     EXPORT int64_t GetTimePending() const;
@@ -149,10 +155,10 @@ public:
     EXPORT int32_t GetMovingPhotoEffectMode() const;
 
     EXPORT void SetFrontCamera(const VariantData &forntcamera);
-    EXPORT std::string GetFrontCamera() const;
+    EXPORT const std::string &GetFrontCamera() const;
     
     void SetMovingPhotoImagePath(const VariantData &imagePath);
-    EXPORT std::string GetMovingPhotoImagePath() const;
+    EXPORT const std::string &GetMovingPhotoImagePath() const;
 
     EXPORT void SetDynamicRangeType(const VariantData &type);
     EXPORT int32_t GetDynamicRangeType() const;
@@ -176,20 +182,23 @@ public:
     EXPORT int32_t GetDirty() const;
 
     EXPORT void SetDetailTime(const VariantData &detailTime);
-    EXPORT std::string GetDetailTime() const;
+    EXPORT const std::string &GetDetailTime() const;
 
     EXPORT void SetForAdd(bool forAdd);
     EXPORT bool GetForAdd() const;
     EXPORT void SetTableName(const std::string &tableName);
     EXPORT std::string GetTableName();
     void SetOwnerPackage(const VariantData &ownerPackage);
-    const std::string GetOwnerPackage() const;
+    const std::string &GetOwnerPackage() const;
 
     void SetBurstCoverLevel(const VariantData &burstCoverLevel);
     int32_t GetBurstCoverLevel() const;
 
     void SetStageVideoTaskStatus(const VariantData &stageVideoTaskStatus);
     int32_t GetStageVideoTaskStatus() const;
+
+    EXPORT void SetXtStyleTemplateName(const VariantData &xtStyleTemplateName);
+    EXPORT std::string GetXtStyleTemplateName() const;
 
     EXPORT void SetFileSourceType(const VariantData &fileSourceType);
     EXPORT int32_t GetFileSourceType() const;
@@ -205,6 +214,14 @@ public:
 
     using MetadataFnPtr = void (Metadata::*)(const VariantData &);
     EXPORT std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataFnPtr>> memberFuncMap_;
+
+    // Reverse mapping: column → (dataType, getter) for Metadata → ValuesBucket direction
+    template<typename R>
+    using Getter = R (Metadata::*)() const;
+    using MetadataGetter = std::variant<Getter<int32_t>, Getter<int64_t>,
+        Getter<const std::string&>, Getter<double>, Getter<MediaType>>;
+    static const std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataGetter>> valueFuncMap_;
+    EXPORT NativeRdb::ValueObject GetValue(const std::string &column) const;
 
 private:
     int32_t id_;
@@ -244,14 +261,15 @@ private:
     int32_t dynamicRangeType_;
     int32_t hdrMode_;
     int32_t videoMode_ {-1};
+    int32_t musicMasterMode_ {0};
     double aspectRatio_;
 
     // video, audio, image
     int64_t dateTaken_ {0};
 
     // image
-    double longitude_;
-    double latitude_;
+    std::optional<double> longitude_;
+    std::optional<double> latitude_;
     std::string userComment_;
     std::string allExif_;
 
@@ -297,6 +315,9 @@ private:
     int32_t burstCoverLevel_;
 
     int32_t stageVideoTaskStatus_;
+
+    // xt style template name
+    std::string xtStyleTemplateName_;
 
     int32_t fileSourceType_;
     int32_t needThumbnail_ = 1;

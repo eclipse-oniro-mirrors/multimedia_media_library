@@ -28,6 +28,8 @@ config("ffi_config") {
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
     "include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
@@ -81,6 +83,7 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -98,11 +101,13 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",
     "app_file_service:fileuri_native",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:cj_data_share_predicates_ffi",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "image_framework:cj_image_ffi",
     "image_framework:image",
@@ -114,10 +119,11 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "window_manager:libwm",
@@ -136,7 +142,7 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
+      branch_protector_ret = "pac_ret"
     }
   }
 

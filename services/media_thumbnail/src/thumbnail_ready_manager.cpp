@@ -22,6 +22,7 @@
 
 #include "dfx_utils.h"
 #include "ithumbnail_helper.h"
+#include "media_func_timer.h"
 #include "media_log.h"
 #include "media_file_uri.h"
 #include "medialibrary_errno.h"
@@ -277,8 +278,11 @@ void ThumbnailReadyManager::RecordNotFoundThumbnail(const std::string &path,
     auto data = thumbReadyTaskData->downloadThumbMap[path];
     ThumbRdbOpt& opts = thumbReadyTaskData->opts;
     IThumbnailHelper::CacheThumbnailState(opts, data, false);
-    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
-    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    {
+        MediaFuncTimer timer("PostProcess id:%s", data.id.c_str());
+        int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+        CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
+    }
 }
 
 void ThumbnailReadyManager::HandleDownloadBatch(int32_t requestId, pid_t pid)
@@ -505,7 +509,6 @@ void ThumbnailReadyManager::InsertHighTemperatureTask(NativeRdb::RdbPredicates &
 int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(NativeRdb::RdbPredicates &rdbPredicate,
     int32_t requestId, pid_t pid)
 {
-    std::lock_guard<std::mutex> lock(processMutex_);
     CHECK_AND_RETURN_RET_LOG(requestId > 0, E_INVALID_VALUES,
         "create astc batch failed, invalid request id:%{public}d", requestId);
     if (GetCurrentTemperatureLevel() >= READY_TEMPERATURE_LEVEL) {
@@ -515,6 +518,7 @@ int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(NativeRdb::RdbPredicates 
     }
 
     std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo;
+    std::lock_guard<std::mutex> lock(processMutex_);
     if (processRequestMap_.Find(pid, taskInfo)) {
         if (taskInfo != nullptr) {
             int32_t oldRequestId = taskInfo->requestId;
@@ -542,7 +546,6 @@ int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(NativeRdb::RdbPredicates 
 void ThumbnailReadyManager::CancelAstcBatchTask(int32_t requestId, pid_t pid)
 {
     MEDIA_INFO_LOG("CancelAstcBatchTask pid:%{public}d, requestId:%{public}d", pid, requestId);
-    std::lock_guard<std::mutex> lock(processMutex_);
     CHECK_AND_RETURN_LOG(requestId > 0, "cancel astc batch failed, invalid request id:%{public}d", requestId);
 
     auto temperatureStatus = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
@@ -551,7 +554,9 @@ void ThumbnailReadyManager::CancelAstcBatchTask(int32_t requestId, pid_t pid)
             temperatureStatusMap_.Erase(pid);
         }
     }
+
     auto taskInfo = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
+    std::lock_guard<std::mutex> lock(processMutex_);
     CHECK_AND_RETURN_LOG(processRequestMap_.Find(pid, taskInfo), "cancel astc batch failed, no task found");
     CHECK_AND_RETURN_LOG(taskInfo != nullptr, "cancel astc batch failed, task info is null");
     CHECK_AND_RETURN(taskInfo->requestId == requestId);

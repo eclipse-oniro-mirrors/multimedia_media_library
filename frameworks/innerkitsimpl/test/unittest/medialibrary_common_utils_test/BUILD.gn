@@ -29,6 +29,7 @@ ohos_unittest("medialibrary_common_utils_test") {
 
   sources = [
     "./src/medialibrary_common_utils_test.cpp",
+    "./src/medialibrary_file_utils_test.cpp",
     "./src/medialibrary_js_interface_helper_test.cpp",
     "./src/medialibrary_permission_utils_test.cpp",
     "./src/medialibrary_privacy_manager_test.cpp",
@@ -39,6 +40,7 @@ ohos_unittest("medialibrary_common_utils_test") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -59,7 +61,6 @@ ohos_unittest("medialibrary_common_utils_test") {
     "hilog:libhilog",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "graphic_surface:surface",

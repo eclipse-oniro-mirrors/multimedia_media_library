@@ -123,10 +123,13 @@ private:
     std::string ToString(const FileInfo &fileInfo)
     {
         std::stringstream ss;
-        ss << "FileInfo[ fileId: " << fileInfo.fileIdOld << ", displayName: " << fileInfo.displayName
-           << ", bundleName: " << fileInfo.bundleName << ", lPath: " << fileInfo.lPath
-           << ", size: " << fileInfo.fileSize << ", fileType: " << fileInfo.fileType
-           << ", oldPath: " << fileInfo.oldPath << ", sourcePath: " << fileInfo.sourcePath << " ]";
+        ss << "FileInfo[ fileId: " << fileInfo.fileIdOld << ", displayName: "
+           << MediaFileUtils::DesensitizeName(fileInfo.displayName) << ", bundleName: "
+           << MediaFileUtils::DesensitizeName(fileInfo.bundleName) << ", lPath: "
+           << MediaFileUtils::DesensitizePath(fileInfo.lPath) << ", size: " << fileInfo.fileSize
+           << ", fileType: " << fileInfo.fileType << ", oldPath: "
+           << MediaFileUtils::DesensitizePath(fileInfo.oldPath) << ", sourcePath: "
+           << MediaFileUtils::DesensitizePath(fileInfo.sourcePath) << " ]";
         return ss.str();
     }
     std::string GetSuffix(const std::string &displayName);

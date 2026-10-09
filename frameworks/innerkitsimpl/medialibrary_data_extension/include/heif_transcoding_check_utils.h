@@ -16,6 +16,7 @@
 #ifndef HEIF_TRANSCODING_CHECK_UTILS_H
 #define HEIF_TRANSCODING_CHECK_UTILS_H
 
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -42,6 +43,7 @@ public:
     EXPORT static void ClearBundleInfoInCache();
     EXPORT static TranscodeMode CheckTranscodeMode(const std::string &bundleName,
         bool isHighPixel, bool isHeifFile);
+    EXPORT static bool IsDUEVersionHigher();
 private:
     static sptr<AppExecFwk::IBundleMgr> GetSysBundleManager();
     static int32_t ParseWhiteList(const nlohmann::json &checkListJson);
@@ -69,6 +71,7 @@ private:
     static sptr<AppExecFwk::IBundleMgr> bundleMgr_;
     static std::mutex bundleMgrMutex_;
     static std::shared_ptr<EventFwk::CommonEventSubscriber> cotaUpdateSubscriber_;
+    static std::shared_mutex checkListMutex_;
     class CotaUpdateReceiver;
 };
 }

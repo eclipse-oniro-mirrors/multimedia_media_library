@@ -82,7 +82,7 @@ const std::vector<std::string> directoryEnumValues {
 };
 
 const std::vector<std::string> systemAlbumSubType {
-    "FAVORITE", "VIDEO", "HIDDEN", "TRASH", "SCREENSHOT", "CAMERA", "IMAGE", "CLOUD_ENHANCEMENT"
+    "FAVORITE", "VIDEO", "HIDDEN", "TRASH", "SCREENSHOT", "CAMERA", "IMAGE", "CLOUD_ENHANCEMENT", "LIVEPHOTO_4D",
 };
 
 const std::vector<std::string> analysisAlbumSubType {
@@ -95,7 +95,8 @@ const std::vector<std::string> positionTypeEnum {
 };
 
 const std::vector<std::string> photoSubTypeEnum {
-    "DEFAULT", "SCREENSHOT", "CAMERA", "MOVING_PHOTO"
+    "DEFAULT", "SCREENSHOT", "CAMERA", "MOVING_PHOTO", "BURST", "CINEMATIC_VIDEO",
+    "SLOW_MOTION_VIDEO", "SPATIAL_3DGS", "CINEMATIC_VIDEO_V2"
 };
 
 const std::vector<std::string> photoPermissionTypeEnum {
@@ -255,6 +256,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("CHANGE_TIME",               PhotoColumn::PHOTO_CHANGE_TIME),
     std::make_pair("EXIST_COMPATIBLE_DUPLICATE", PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE),
     std::make_pair("HDR_MODE",                  PhotoColumn::PHOTO_HDR_MODE),
+    std::make_pair("MUSIC_MASTER_MODE",         PhotoColumn::MUSIC_MASTER_MODE),
     std::make_pair("CLOUD_ID",                  PhotoColumn::PHOTO_CLOUD_ID),
     std::make_pair("VIDEO_MODE",                PhotoColumn::PHOTO_VIDEO_MODE),
     std::make_pair("FUSION_ASSET_STORAGE_PATH", PhotoColumn::PHOTO_STORAGE_PATH),
@@ -268,10 +270,13 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("DATE_ADDED_DAY",            PhotoColumn::PHOTO_DATE_ADDED_DAY),
     std::make_pair("UNIQUE_ID",                 PhotoColumn::UNIQUE_ID),
     std::make_pair("LIVEPHOTO_4D_STATUS",       PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS),
+    std::make_pair("LIVEPHOTO_4D_LATEST_PAIR",  PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR),
     std::make_pair("HIDDEN_TIME",               PhotoColumn::PHOTO_HIDDEN_TIME),
     std::make_pair("LOCAL_ASSET_SIZE",          PhotoColumn::LOCAL_ASSET_SIZE),
     std::make_pair("FILE_HIDDEN",               PhotoColumn::PHOTO_FILE_HIDDEN),
     std::make_pair("ATTACHMENT_SIZE",           PhotoColumn::ATTACHMENT_SIZE),
+    std::make_pair("LCD_FILE_SIZE",             PhotoColumn::PHOTO_LCD_FILE_SIZE),
+    std::make_pair("THUMB_STATUS",              PhotoColumn::PHOTO_THUMB_STATUS),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {

@@ -17,6 +17,7 @@
 
 #include "medialibrary_client_errno.h"
 #include "napi_error.h"
+#include <unistd.h>
 
 namespace OHOS {
 namespace Media {
@@ -32,6 +33,14 @@ NapiMediaAssetDataHandler::NapiMediaAssetDataHandler(napi_env env, napi_ref data
     destUri_ = destUri;
     sourceMode_ = sourceMode;
     dataHandlerRef_ = dataHandler;
+}
+
+NapiMediaAssetDataHandler::~NapiMediaAssetDataHandler()
+{
+    if (compositeFd_ >= 0) {
+        close(compositeFd_);
+        compositeFd_ = -1;
+    }
 }
 
 void NapiMediaAssetDataHandler::DeleteNapiReference(napi_env env)
@@ -66,6 +75,26 @@ std::string NapiMediaAssetDataHandler::GetDestUri()
 SourceMode NapiMediaAssetDataHandler::GetSourceMode()
 {
     return sourceMode_;
+}
+
+bool NapiMediaAssetDataHandler::IsCompositeAuxiliary()
+{
+    return isCompositeAuxiliary_;
+}
+
+void NapiMediaAssetDataHandler::SetCompositeAuxiliary(bool isCompositeAuxiliary)
+{
+    isCompositeAuxiliary_ = isCompositeAuxiliary;
+}
+
+int NapiMediaAssetDataHandler::GetCompositeFd()
+{
+    return compositeFd_;
+}
+
+void NapiMediaAssetDataHandler::SetCompositeFd(int compositeFd)
+{
+    compositeFd_ = compositeFd;
 }
 
 void NapiMediaAssetDataHandler::SetNotifyMode(NotifyMode notifyMode)

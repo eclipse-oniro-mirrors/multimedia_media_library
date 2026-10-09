@@ -36,6 +36,10 @@ public:
     EXPORT static int64_t UTCTimeSeconds();
     EXPORT static int64_t UTCTimeMilliSeconds();
     EXPORT static int64_t UTCTimeNanoSeconds();
+    EXPORT static bool TimeStampToUtcDate(int64_t timestamp, int& year, int& month, int& day);
+    // 检查year, month, day代表的日历时间是否能够合理代表timestamp在某个时区的日期。
+    // 如果year, month, day在timestamp转化成UTC时间日期后在[-12h, +14h]的范围内，则返回true，否则返回false。
+    EXPORT static bool IsPlausibleDateTime(int year, int month, int day, int64_t timestamp);
 };
 } // namespace OHOS::Media
 

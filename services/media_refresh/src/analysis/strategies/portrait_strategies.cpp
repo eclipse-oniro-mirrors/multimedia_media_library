@@ -28,10 +28,20 @@ namespace AccurateRefresh {
 bool PortraitCoverStrategy::ShouldRefreshCover(const UpdateAlbumData &oldAlbum,
     const AnalysisAlbumRefreshInfo &info)
 {
-    // 仅封面失效时需要进行刷新，其余场景维持当前封面
+    if (info.isForceRefresh_) {
+        MEDIA_INFO_LOG("Force refresh portrait album cover, id: %{public}d", oldAlbum.albumId);
+        return true;
+    }
+
     CHECK_AND_RETURN_RET_LOG(!isCurrentCoverDeleted(oldAlbum, info), true,
         "Invalid cover due to delete, id: %{public}d", oldAlbum.albumId);
-    
+
+    const int32_t newCount = oldAlbum.albumCount + info.deltaCount_;
+    if (newCount > 0 && oldAlbum.albumCoverUri.empty()) {
+        MEDIA_INFO_LOG("Refresh empty portrait album cover, id: %{public}d", oldAlbum.albumId);
+        return true;
+    }
+
     if (oldAlbum.albumCount == 0 && info.deltaCount_ > 0) {
         MEDIA_INFO_LOG("Recover from an empty portrait album, id: %{public}d", oldAlbum.albumId);
         return true;

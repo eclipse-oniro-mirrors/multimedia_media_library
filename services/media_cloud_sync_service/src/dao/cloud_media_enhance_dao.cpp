@@ -33,7 +33,6 @@
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaEnhanceDao::GetCloudSyncUnPreparedDataCount(int32_t &result)
 {
-    MEDIA_INFO_LOG("enter GetCloudSyncUnPreparedDataCount");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
 
@@ -57,7 +56,6 @@ int32_t CloudMediaEnhanceDao::GetCloudSyncUnPreparedDataCount(int32_t &result)
 
 std::tuple<std::string, std::string> CloudMediaEnhanceDao::GetNextUnPreparedData()
 {
-    MEDIA_INFO_LOG("enter GetNextUnPreparedData");
     auto ret = std::make_tuple<std::string, std::string>("", "");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, ret, "Failed to get rdbStore.");

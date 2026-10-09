@@ -90,7 +90,7 @@ public:
     int32_t GetLocalKeyData(KeyData &localKeyData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     bool JudgeConflict(const CloudMediaPullDataDto &pullData, const KeyData &localKeyData, const KeyData &cloudKeyData);
     void UpdateAlbumInternal(std::set<std::string> &refreshAlbums);
-    int32_t GetRetryRecords(std::vector<std::string> &cloudIds);
+    int32_t GetRetryRecords(std::vector<PhotosPo> &photoInfoList);
     std::vector<PhotosPo> GetCheckRecords(const std::vector<std::string> cloudIds);
     int32_t GetCreatedRecords(int32_t size, std::vector<PhotosPo> &createdRecords);
     int32_t GetMetaModifiedRecords(int32_t size, std::vector<PhotosPo> &cloudRecordPoList);
@@ -113,7 +113,7 @@ public:
     int32_t UpdatePhotoVisible();
     int32_t SetRetry(const std::string &cloudId);
     int32_t DeleteLocalByCloudId(
-        const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+        const CloudMediaPullDataDto &data, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t UpdateFailRecordsCloudId(
         const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     void UpdateMediaAnalysisHdcData();
@@ -142,10 +142,8 @@ public:
     void UpdateAnalysisAlbumsCountForCloud();
 
 private:
-    void HandleIncomingCloudConflict(const CloudMediaPullDataDto &pullData,
-        NativeRdb::ValuesBucket &values);
-    void ProcessResultSetData(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
-        NativeRdb::ValuesBucket &values, const CloudMediaPullDataDto &pullData);
+    void HandleWatchRelatedFields(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    void HandleWatchRelatedFieldsForUpdate(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
     void UpdateAllAlbumsCountForCloud(const std::vector<std::string> &albums);
     void UpdateAlbumCountInternal(const std::vector<std::string> &subtypes);
     void GetSourceAlbumFromPath(const CloudMediaPullDataDto &pullData, int32_t &albumId, std::set<int32_t> &cloudMapIds,
@@ -226,6 +224,7 @@ private:
                 (1 = {1} OR hidden = 0) AND \
                 time_pending = 0 AND \
                 COALESCE(is_temp, 0) = 0 AND \
+                is_shared = {2} AND \
                 file_id NOT IN ({0}) \
             ORDER BY size ASC \
         ) \
@@ -256,6 +255,7 @@ private:
                 (1 = {1} OR hidden = 0) AND \
                 time_pending = 0 AND \
                 COALESCE(is_temp, 0) = 0 AND \
+                is_shared = {2} AND \
                 file_id NOT IN ({0}) \
             ORDER BY size ASC \
         ) \
@@ -297,6 +297,7 @@ private:
             WHERE dirty IN (2, 6) AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
@@ -317,6 +318,7 @@ private:
                 photo_risk_status = 1 AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
@@ -340,6 +342,7 @@ private:
                 lcd_visit_time >= 2 AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
@@ -364,6 +367,7 @@ private:
                 lcd_visit_time >= 2 AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \

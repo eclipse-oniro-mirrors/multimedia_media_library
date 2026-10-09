@@ -41,7 +41,7 @@ class ExternalOpenCall : public NativeRdb::RdbOpenCallback {
 public:
     int OnCreate(NativeRdb::RdbStore &rdbStore) override;
     int OnUpgrade(NativeRdb::RdbStore &rdbStore, int oldVersion, int newVersion) override;
-    static const string CREATE_EXTERNAL_FILES;
+    static const std::string CREATE_EXTERNAL_FILES;
 };
 } // namespace Media
 } // namespace OHOS

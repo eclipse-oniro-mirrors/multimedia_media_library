@@ -71,6 +71,10 @@ enum DfxType {
     DELETE_LOCAL_ASSETS_PERMANENTLY = 18,
     ALBUM_DELETE_ASSETS = 19,
     TRASH_PHOTO = 20,
+    INVALID_KEY = 21,
+    INVALID_PRIVATE_OPEN = 22,
+    SPECIAL_OPEN = 23,
+    OLD_API_OPEN = 24,
     CLOUD_DEFAULT_OPEN = 1000,
     CLOUD_LCD_OPEN,
     RDB_INSERT = 1100,
@@ -99,6 +103,10 @@ enum DfxType {
     START_MOUNT_FUSE_FAIL,
     START_FUSE_DAEMON_FAIL,
     STOP_WITH_FUSE_TIMEOUT,
+    MEDIA_ON_STOP,
+    START_RDB_INIT,
+    START_KVDB_INIT,
+    START_SYS_PARAM,
     FUSE_OPEN = 1500,
     FUSE_RELEASE,
     FUSE_WRITE,
@@ -107,7 +115,11 @@ enum DfxType {
     FUSE_UNLINK,
     FUSE_OPENDIR,
     FUSE_READDIR,
-    FUSE_RELEASEDIR
+    FUSE_RELEASEDIR,
+    FUSE_GETATTR,
+    CLOUD_SYNC_CODE_START = 1600,
+    CLOUD_SYNC_PHOTOS_CLOUD_ID_EMPTY,
+    CLOUD_SYNC_CODE_END = 1700,
 };
 
 const std::string NULL_STRING = "";
@@ -115,7 +127,10 @@ const std::string SPLIT_CHAR = "|";
 
 const std::string THUMBNAIL_ERROR_XML = "/data/storage/el2/base/preferences/thumbnail_error.xml";
 const std::string COMMON_BEHAVIOR_XML = "/data/storage/el2/base/preferences/common_behavior.xml";
+const std::string COMMON_BEHAVIOR_FOR_FUSE_GETATTR_XML =
+    "/data/storage/el2/base/preferences/common_behavior_for_fuse_getattr.xml";
 const std::string DELETE_BEHAVIOR_XML = "/data/storage/el2/base/preferences/delete_behavior.xml";
+const std::string INVALID_BEHAVIOR_XML = "/data/storage/el2/base/preferences/invalid_behavior.xml";
 const std::string ADAPTATION_TO_MOVING_PHOTO_XML = "/data/storage/el2/base/preferences/adaptation_to_moving_photo.xml";
 const std::string DFX_CINEMATIC_VIDEO_XML = "/data/storage/el2/base/preferences/dfx_cinematic_video.xml";
 const std::string ALIB_HEIF_DUPLICATE_XML = "/data/storage/el2/base/preferences/alib_heif_duplicate.xml";
@@ -124,11 +139,17 @@ const std::string ALIB_HIGH_PIXEL_DUPLICATE_XML = "/data/storage/el2/base/prefer
 const std::string ALIB_HIGH_PIXEL_HEIF_DUPLICATE_XML =
     "/data/storage/el2/base/preferences/alib_high_pixel_heif_duplicate.xml";
 const std::string DFX_COMMON_XML = "/data/storage/el2/base/preferences/dfx_common.xml";
+const std::string DFX_MULTISHOT_INFO_XML = "/data/storage/el2/base/preferences/dfx_multishot_info.xml";
+const std::string SLOW_MOTION_ACCESS_XML = "/data/storage/el2/base/preferences/slow_motion_access.xml";
+const std::string AGING_LCD_INFO = "/data/storage/el2/base/preferences/aging_lcd_info.xml";
+const std::string READ_LCD_INFO = "/data/storage/el2/base/preferences/read_lcd_info.xml";
+const std::string THUMBNAIL_QUALITY_INFO = "/data/storage/el2/base/preferences/thumbnail_quality_info.xml";
 const std::string LAST_REPORT_TIME = "last_report_time";
 const std::string LAST_MIDDLE_REPORT_TIME = "last_middle_report_time";
 const std::string LAST_HALF_DAY_REPORT_TIME = "last_half_day_report_time";
 const std::string LAST_TWO_DAY_REPORT_TIME = "last_two_day_report_time";
 const std::string LAST_WEEK_REPORT_TIME = "last_week_report_time";
+const std::string LAST_SIX_HOUR_REPORT_TIME = "last_six_hour_report_time";
 const std::string THUMBNAIL_ERROR_VERSION = "thumbnail_error_version";
 const std::string DELETE_STATISTIC_VERSION = "delete_statistic_version";
 const std::string MOVING_PHOTO_KEY_UNADAPTED_NUM = "unadapted_app_num";
@@ -148,6 +169,10 @@ const std::string CLOUD_SYNC_START_TIME = "cloud_sync_start_time";
 const std::string CLOUDSYNC_STATUS_KEY = "persist.kernel.cloudsync.status";
 const std::string IS_REPORTED = "is_reported";
 const std::string LAST_CLEAR_DISK_DIRTY_DATA_TIME = "last_clear_disk_dirty_data_time";
+const std::string MULTISHOT_INFO_KEY_DEF_EFF_STA_TIMES = "deferredEffectsStatusTimes";
+const std::string MULTISHOT_INFO_KEY_MULTISHOT_NUM = "multishotNum";
+const std::string MULTISHOT_INFO_KEY_SUP_DEF_EFF_TIMES = "supportedDeferredEffectsNum";
+const std::string MULTISHOT_INFO_KEY_UPD_ORI_RES_TIMES = "updateOriImageResourceTimes";
 
 const std::string CLOUD_PHOTO_PATH = "/storage/cloud/files/Photo/";
 const std::string CLOUD_FILE_PATH = "/storage/cloud/files/";
@@ -164,6 +189,39 @@ const std::string TRANSCODE_FAILED_TIMES = "transcode_failed_times";
 const std::string INNER_FAILED_TIMES = "inner_failed_times";
 const std::string CODEC_FAILED_TIMES = "codec_failed_times";
 const std::string APP_PACKAGE_CONFIG = "app_package_config";
+
+const std::string LCD_AGING_TOTAL_TIME = "lcd_aging_total_time";
+const std::string LOCAL_LCD_NUM = "local_lcd_num";
+const std::string CLOUD_LCD_NUM = "cloud_lcd_num";
+const std::string LOCAL_AND_CLOUD_LCD_NUM = "local_and_cloud_lcd_num";
+const std::string FAVORITE_LCD_NUM = "favorite_lcd_num";
+const std::string ALBUM_COVER_NUM = "album_cover_num";
+const std::string SMART_NUM = "smart_num";
+const std::string AGING_LCD_NUM = "aging_lcd_num";
+const std::string AGING_CONTINUE_NUM = "aging_continue_num";
+const std::string FLASH_TOTAL_SIZE = "flash_total_size";
+const std::string FLASH_FREE_SIZE = "flash_free_size";
+const std::string FLASH_FREE_SIZE_OLD = "flash_free_size_old";
+
+const std::string SUCCESS_NUM = "success_num";
+const std::string FAIL_NUM = "fail_num";
+const std::string MOBILE_RD_SUCCESS_NUM = "mobile_rd_success_num";
+const std::string MOBILE_RD_FAIL_NUM = "mobile_rd_fail_num";
+const std::string WIFI_RD_SUCCESS_NUM = "wifi_rd_success_num";
+const std::string WIFI_RD_FAIL_NUM = "wifi_rd_fail_num";
+const std::string OTHER_RD_SUCCESS_NUM = "other_rd_success_num";
+const std::string OTHER_RD_FAIL_NUM = "other_rd_fail_num";
+const std::string ETHERNET_RD_SUCCESS_NUM = "ethernet_rd_success_num";
+const std::string ETHERNET_RD_FAIL_NUM = "ethernet_rd_fail_num";
+const std::string SYSTEM_APP_RD_NUM = "system_app_rd_num";
+const std::string NON_SYSTEM_APP_RD_NUM = "non_system_app_rd_num";
+const std::string SYSTEM_APP_VISIT_NUM = "system_app_visit_num";
+const std::string NON_SYSTEM_APP_VISIT_NUM = "non_system_app_visit_num";
+const std::string SOUTH_DEVICE_TYPE = "south_device_type";
+const std::string THUMBNAIL_LOW_QUALITY_NUM = "thumbnail_low_quality_num";
+const std::string THUMBNAIL_LOW_QUALITY_NUM_NULL = "thumbnail_low_quality_num_null";
+const std::string THUMBNAIL_LOW_QUALITY_NUM_CLOUD = "thumbnail_low_quality_num_cloud";
+const std::string THUMBNAIL_LOW_QUALITY_NUM_HDC = "thumbnail_low_quality_num_hdc";
 
 struct ThumbnailErrorInfo {
     int32_t method;
@@ -201,6 +259,9 @@ struct PhotoRecordInfo {
     int32_t abnormalLpathCount;
     int32_t photoWaitUploadCloudCount;
     int32_t photoWaitUploadHdcCount;
+    int32_t abnormalDateTakenCount; // date_taken异常总数（未来时间/秒级误写/零值/负值）
+    int32_t lcdFailedCount;
+    int32_t thumbRetryCount;
 };
 
 struct AdaptationToMovingPhotoInfo {
@@ -230,11 +291,24 @@ struct CinematicVideoInfo {
 
     CinematicVideoInfo()
         : accessTimesLow(0),
-          accessTimesHigh(0),
-          uriAccessTimesLow(0),
-          uriAccessTimesHigh(0),
-          multistageSuccessTimes(0),
-          multistageFailedTimes(0) {}
+        accessTimesHigh(0),
+        uriAccessTimesLow(0),
+        uriAccessTimesHigh(0),
+        multistageSuccessTimes(0),
+        multistageFailedTimes(0) {}
+};
+
+struct MultishotInfo {
+    int32_t deferredEffectsStatusTimes;
+    int32_t multishotNum;
+    int32_t supportedDeferredEffectsNum;
+    int32_t updateOriImageResourceTimes;
+ 
+    MultishotInfo()
+        : deferredEffectsStatusTimes(0),
+        multishotNum(0),
+        supportedDeferredEffectsNum(0),
+        updateOriImageResourceTimes(0) {}
 };
 
 const std::unordered_map<int32_t, std::string> ALBUM_MAP = {
@@ -260,6 +334,61 @@ enum TranscodeAccessType {
 enum TranscodeErrorType {
     INNER_FAILED = 0,
     CODEC_FAILED,
+};
+
+enum NetConnStatusType {
+    NO_NETWORK = 0,
+    WIFI_CONNECTED,
+    CELLULAR_CONNECTED,
+    ETHERNET_CONNECTED,
+};
+
+struct PhotoLcdStatistics {
+    int32_t localPropertyCount = 0;
+    int32_t cloudPropertyCount = 0;
+    int32_t favoriteCount = 0;
+    int32_t albumCoverCount = 0;
+    int32_t smartCount = 0;
+};
+
+struct DfxPortraitAlbumInfo {
+    int32_t visibleCount = 0;
+    int32_t hiddenCount = 0;
+    int32_t namedCount = 0;
+    int32_t unnamedCount = 0;
+    std::string top10List;
+};
+
+struct DfxGroupPhotoAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
+
+struct DfxClassifyAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
+
+struct DfxCityAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
+};
+
+struct DfxGeographyPhotoInfo {
+    int32_t locationPhotoCount = 0;
+    int32_t localCount = 0;
+    int32_t cloudCount = 0;
+};
+
+struct DfxHighlightAlbumInfo {
+    int32_t visibleCount = 0;
+    int32_t hiddenCount = 0;
+    std::string top10List;
+};
+
+struct DfxShootingModeAlbumInfo {
+    int32_t totalCount = 0;
+    std::string top10List;
 };
 } // namespace Media
 } // namespace OHOS

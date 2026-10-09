@@ -173,18 +173,22 @@ void BackgroundCloudBatchSelectedFileProcessor::ClassifyCurrentRoundFileIdInList
     }
 }
 
-void BackgroundCloudBatchSelectedFileProcessor::StopAllDownloadingTask(bool needClean)
+void BackgroundCloudBatchSelectedFileProcessor::StopAllDownloadingTask(bool needClean, CloudSync::SceneType sceneType)
 {
     vector<int64_t> downloadIdList;
     unique_lock<mutex> downloadLock(downloadResultMutex_);
     for (auto &entry : currentDownloadIdFileInfoMap_) {
-        downloadIdList.push_back(entry.first);
+        if (entry.second.is_shared == static_cast<int32_t>(sceneType)) { // 按场景过滤本轮需停止的下载任务
+            downloadIdList.push_back(entry.first);
+        }
     }
     downloadLock.unlock();
+
     for (auto downloadId : downloadIdList) {
         StopDownloadFiles(downloadId, needClean);
     }
-    ClearRoundMapInfos();
+    // 只清理本轮已停止任务的内存跟踪 非本场景任务保留
+    ClearRoundMapInfos(downloadIdList);
 }
 
 bool BackgroundCloudBatchSelectedFileProcessor::GetStorageFreeRatio(double &freeRatio)
@@ -266,7 +270,8 @@ void BackgroundCloudBatchSelectedFileProcessor::UpdateDBProgressStatusInfoForBat
             MEDIA_INFO_LOG("BatchSelectFileDownload exception download UpdateDBProgressInfo, fileId: %{public}d,"
                 " ret: %{public}d", fileId, ret);
             int32_t percentDB = 0;
-            QueryPercentOnTaskStart(fileIdStr, percentDB);
+            int32_t isShared = 0;
+            QueryPercentOnTaskStart(fileIdStr, percentDB, isShared);
             ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(DownloadAssetsNotifyType::DOWNLOAD_FAILED,
                 fileId, percentDB);
             MEDIA_INFO_LOG("BatchSelectFileDownload Already Failed NotifyDownloadProgressInfo, ret: %{public}d", ret);
@@ -300,7 +305,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchDownloadFinishStatu
         completedValue = GetInt32Val("completed_orders", resultSet);
         failedValue = GetInt32Val("failed_orders", resultSet);
     }
-    resultSet->Close();
+    int32_t closeRet = resultSet->Close();
+    CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     return E_OK;
 }
 
@@ -341,7 +347,8 @@ void BackgroundCloudBatchSelectedFileProcessor::DownloadSelectedBatchResources()
     vector<int32_t> exceptionFileIds;
     ParseBatchSelectedToDoFiles(resultSet, pendingURIs, localFileIds, exceptionFileIds);
     if (resultSet != nullptr) {
-        resultSet->Close();
+        int32_t closeRet = resultSet->Close();
+        CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     }
     // 当前round 过程中已下载的文件任务表状态
     UpdateDBProgressStatusInfoForBatch(localFileIds,
@@ -392,6 +399,21 @@ void BackgroundCloudBatchSelectedFileProcessor::ClearRoundMapInfos()
     downloadResult_.clear();
     downloadFileIdAndCount_.clear();
     currentDownloadIdFileInfoMap_.clear();
+}
+
+void BackgroundCloudBatchSelectedFileProcessor::ClearRoundMapInfos(const std::vector<int64_t> &cleanDownloadIds)
+{
+    MEDIA_INFO_LOG("BatchSelectFileDownload ClearRoundMapInfos with ids IN");
+    unique_lock<mutex> downloadLock(downloadResultMutex_);
+    // 只清理指定任务的内存跟踪 其他任务保留
+    for (auto downloadId : cleanDownloadIds) {
+        auto infoIter = currentDownloadIdFileInfoMap_.find(downloadId);
+        if (infoIter != currentDownloadIdFileInfoMap_.end()) {
+            downloadResult_.erase(infoIter->second.fileId);
+            downloadFileIdAndCount_.erase(infoIter->second.fileId);
+            currentDownloadIdFileInfoMap_.erase(infoIter);
+        }
+    }
 }
 
 void BackgroundCloudBatchSelectedFileProcessor::DownloadLatestBatchSelectedFinished()
@@ -495,36 +517,35 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::AddSelectedBatchDownloadTask(
 {
     MEDIA_INFO_LOG("BatchSelectFileDownload AddTask In fileId: %{public}s",
         MediaFileUri::GetPhotoId(downloadFilesUri).c_str());
-    auto asyncWorker = MediaLibraryAsyncWorker::GetInstance();
-    CHECK_AND_RETURN_RET_LOG(asyncWorker != nullptr, E_FAIL, "Failed to get async worker instance!");
     SingleDownloadFiles downloadFile;
     downloadFile.uri = downloadFilesUri; // 单个下载
     // 双框架图片1、视频3 单框架是图片1、视频2
     downloadFile.mediaType = MEDIA_TYPE_IMAGE;
-    auto *taskData = new (std::nothrow) BatchDownloadCloudFilesData(downloadFile);
-    CHECK_AND_RETURN_RET_LOG(taskData != nullptr, E_NO_MEMORY,
-        "Failed to alloc async data for downloading cloud files!");
-    auto asyncTask = std::make_shared<MediaLibraryAsyncTask>(DownloadSelectedBatchFilesExecutor, taskData);
-    asyncWorker->AddTask(asyncTask, false);
+    BatchDownloadCloudFilesData taskData(downloadFile);
+    DownloadSelectedBatchFilesExecutor(&taskData); // 同步调用 串行
     MEDIA_INFO_LOG("BatchSelectFileDownload AddTask End fileId: %{public}s",
         MediaFileUri::GetPhotoId(downloadFilesUri).c_str());
     return E_OK;
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryPercentOnTaskStart(std::string &fileId, int32_t &percent)
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryPercentOnTaskStart(std::string &fileId, int32_t &percent,
+    int32_t &isShared)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "QueryPercentOnTaskStart Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(DownloadResourcesColumn::TABLE);
     predicates.EqualTo(DownloadResourcesColumn::MEDIA_ID, fileId);
-    auto resultSet = rdbStore->Query(predicates, {DownloadResourcesColumn::MEDIA_PERCENT});
+    auto resultSet = rdbStore->Query(predicates, {DownloadResourcesColumn::MEDIA_PERCENT,
+        DownloadResourcesColumn::MEDIA_IS_SHARED});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "QueryPercentOnTaskStart rs is null");
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
         percent = GetInt32Val(DownloadResourcesColumn::MEDIA_PERCENT, resultSet);
+        isShared = GetInt32Val(DownloadResourcesColumn::MEDIA_IS_SHARED, resultSet);
         MEDIA_INFO_LOG("BatchSelectFileDownload percent resume fileId %{public}s, percent %{public}d",
             fileId.c_str(), percent);
     }
-    resultSet->Close();
+    int32_t closeRet = resultSet->Close();
+    CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     percent = (percent == -1) ? 0 : percent; // -1 not start
     return NativeRdb::E_OK;
 }
@@ -551,13 +572,15 @@ void BackgroundCloudBatchSelectedFileProcessor::DownloadSelectedBatchFilesExecut
     }
     MEDIA_INFO_LOG("BatchSelectFileDownload StartFileCache downloadId: %{public}s.", to_string(downloadId).c_str());
     int32_t percentDB = 0;
-    QueryPercentOnTaskStart(fileId, percentDB);
+    int32_t isShared = 0;
+    QueryPercentOnTaskStart(fileId, percentDB, isShared);
     int32_t cnt = GetDownloadFileIdCnt(fileId);
     CheckAndUpdateDownloadFileIdCnt(fileId, cnt);
     InDownloadingFileInfo currentDownloadFileInfo;
     currentDownloadFileInfo.fileId = fileId;
     currentDownloadFileInfo.percent = percentDB;
     currentDownloadFileInfo.status = BatchDownloadStatus::INIT;
+    currentDownloadFileInfo.is_shared = isShared;
     unique_lock<mutex> downloadLock(downloadResultMutex_);
     downloadResult_[fileId] = BatchDownloadStatus::INIT;
     currentDownloadIdFileInfoMap_[downloadId] = currentDownloadFileInfo;
@@ -665,7 +688,8 @@ void BackgroundCloudBatchSelectedFileProcessor::HandleBatchSelectedRunningCallba
     if (progress.totalSize != 0) {
         int32_t percent = (100 * progress.downloadedSize) / progress.totalSize;
         int32_t percentDB = 0;
-        QueryPercentOnTaskStart(fileId, percentDB);
+        int32_t isShared = 0;
+        QueryPercentOnTaskStart(fileId, percentDB, isShared);
         MEDIA_INFO_LOG("BatchSelectFileDownload RunningCallback, fileId: %{public}s, percent: %{public}d,"
             "percentDB: %{public}d", fileId.c_str(), percent, percentDB);
         CHECK_AND_RETURN_LOG(percentDB <= percent, "skip write percent fileId: %{public}s", fileId.c_str());
@@ -787,7 +811,8 @@ void BackgroundCloudBatchSelectedFileProcessor::HandleBatchSelectedStoppedCallba
         int32_t percent = (100 * progress.downloadedSize) / progress.totalSize;
         MEDIA_INFO_LOG("BatchSelectFileDownload StoppedCallback, percent: %{public}d", percent);
         int32_t percentDB = 0;
-        QueryPercentOnTaskStart(fileId, percentDB);
+        int32_t isShared = 0;
+        QueryPercentOnTaskStart(fileId, percentDB, isShared);
         MEDIA_INFO_LOG("BatchSelectFileDownload StoppedCallback, fileId: %{public}s, percent: %{public}d,"
             "percentDB: %{public}d", fileId.c_str(), percent, percentDB);
         if (percentDB < percent) { // write percent
@@ -825,7 +850,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFil
         num = GetInt32Val("count", resultSet);
     }
     if (resultSet != nullptr) {
-        resultSet->Close();
+        int32_t closeRet = resultSet->Close();
+        CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     }
     return num;
 }
@@ -849,7 +875,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumFor
         num = GetInt32Val("count", resultSet);
     }
     if (resultSet != nullptr) {
-        resultSet->Close();
+        int32_t closeRet = resultSet->Close();
+        CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     }
     return num;
 }
@@ -948,7 +975,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInA
         num = GetInt32Val("count", resultSet);
     }
     if (resultSet != nullptr) {
-        resultSet->Close();
+        int32_t closeRet = resultSet->Close();
+        CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     }
     return num;
 }
@@ -971,7 +999,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInA
         num = GetInt32Val("count", resultSet);
     }
     if (resultSet != nullptr) {
-        resultSet->Close();
+        int32_t closeRet = resultSet->Close();
+        CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     }
     return num;
 }
@@ -996,10 +1025,11 @@ void BackgroundCloudBatchSelectedFileProcessor::StartBatchDownloadResourcesTimer
     MEDIA_INFO_LOG("BatchSelectFileDownload StartBatchDownloadResourcesTimer END");
 }
 
-void BackgroundCloudBatchSelectedFileProcessor::StopBatchDownloadResourcesTimer(bool needClean)
+void BackgroundCloudBatchSelectedFileProcessor::StopBatchDownloadResourcesTimer(bool needClean,
+    CloudSync::SceneType sceneType)
 {
     SetBatchDownloadProcessRunningStatus(false); // 无任务 且timer 停止重新设置状态 先设置保证不重复进
-    StopAllDownloadingTask(needClean);
+    StopAllDownloadingTask(needClean, sceneType);
     lock_guard<recursive_mutex> lockRec(mutex_);
     MEDIA_INFO_LOG("BatchSelectFileDownload StopBatchDownloadResourcesTimer START");
     CHECK_AND_EXECUTE(batchDownloadResourcesStartTimerId_ <= 0,
@@ -1137,7 +1167,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::ClassifyFileIdsInDownloadReso
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         existedIds.push_back(to_string(GetInt32Val(DownloadResourcesColumn::MEDIA_ID, resultSet)));
     }
-    resultSet->Close();
+    int32_t closeRet = resultSet->Close();
+    CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     return NativeRdb::E_OK;
 }
 
@@ -1378,11 +1409,12 @@ void BackgroundCloudBatchSelectedFileProcessor::NotifyRefreshProgressInfo()
 }
 
 // 手动触发 全量停止和取消入口
-void BackgroundCloudBatchSelectedFileProcessor::TriggerStopBatchDownloadProcessor(bool cleanCache)
+void BackgroundCloudBatchSelectedFileProcessor::TriggerStopBatchDownloadProcessor(bool cleanCache,
+    CloudSync::SceneType sceneType)
 {
     if (BackgroundCloudBatchSelectedFileProcessor::IsStartTimerRunning()) {
         MEDIA_INFO_LOG("LaunchBatchDownloadProcessor BatchDownloadResources End");
-        BackgroundCloudBatchSelectedFileProcessor::StopBatchDownloadResourcesTimer(cleanCache);
+        BackgroundCloudBatchSelectedFileProcessor::StopBatchDownloadResourcesTimer(cleanCache, sceneType);
     }
 }
 
@@ -1401,7 +1433,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryAutoPauseReason(int32_t 
         autoStopReason = GetInt32Val(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, resultSet);
         MEDIA_INFO_LOG("BatchSelectFileDownload autostop reason  %{public}d", autoStopReason);
     }
-    resultSet->Close();
+    int32_t closeRet = resultSet->Close();
+    CHECK_AND_PRINT_LOG(closeRet == NativeRdb::E_OK, "Failed to close resultSet, err: %{public}d", closeRet);
     return NativeRdb::E_OK;
 }
 
@@ -1459,8 +1492,12 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownlo
         }
     #endif
     double freeRatio = 0.0;
-    BackgroundCloudBatchSelectedFileProcessor::GetStorageFreeRatio(freeRatio);
-    bool isDiskEnough = freeRatio > ABLE_STOP_DOWNLOAD_STORAGE_FREE_RATIO;
+    bool isDiskEnough = true;
+    if (BackgroundCloudBatchSelectedFileProcessor::GetStorageFreeRatio(freeRatio)) {
+        isDiskEnough = freeRatio > ABLE_STOP_DOWNLOAD_STORAGE_FREE_RATIO;
+    } else {
+        MEDIA_WARN_LOG("CanAutoStopCondition: GetStorageFreeRatio failed, skip disk check");
+    }
     if (!isDiskEnough) {
         autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_ROM_LOW;
         return true;
@@ -1507,8 +1544,12 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()
     #endif
 
     double freeRatio = 0.0;
-    BackgroundCloudBatchSelectedFileProcessor::GetStorageFreeRatio(freeRatio);
-    bool isDiskEnough =  freeRatio > ABLE_RESTORE_DOWNLOAD_STORAGE_FREE_RATIO;
+    bool isDiskEnough = false;
+    if (BackgroundCloudBatchSelectedFileProcessor::GetStorageFreeRatio(freeRatio)) {
+        isDiskEnough = freeRatio > ABLE_RESTORE_DOWNLOAD_STORAGE_FREE_RATIO;
+    } else {
+        MEDIA_WARN_LOG("CanAutoRestoreCondition: GetStorageFreeRatio failed, assume disk insufficient");
+    }
     if (!isDiskEnough) {
         currentNotRestoreReasons.push_back(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_ROM_LOW));
     }

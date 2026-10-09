@@ -18,6 +18,7 @@
 #include "media_log.h"
 #include "rdb_store.h"
 #include "result_set_utils.h"
+#include "userfile_manager_types.h"
 #include "photo_album_upload_status_operation.h"
 
 namespace OHOS::Media {
@@ -50,7 +51,8 @@ std::string PhotoAlbumClone::GetPhotoAlbumSelectQuerySql()
 int32_t PhotoAlbumClone::GetPhotoAlbumCountInOriginalDb()
 {
     std::string querySql = GetPhotoAlbumCountQuerySql();
-    std::vector<NativeRdb::ValueObject> bindArgs = { static_cast<int32_t>(DirtyType::TYPE_DELETED) };
+    std::vector<NativeRdb::ValueObject> bindArgs = { static_cast<int32_t>(DirtyType::TYPE_DELETED),
+        static_cast<int32_t>(PhotoAlbumType::SHARE) };
     CHECK_AND_RETURN_RET_LOG(this->mediaLibraryOriginalRdb_ != nullptr, 0,
         "Media_Restore: mediaLibraryOriginalRdb_ is null.");
     auto resultSet = this->mediaLibraryOriginalRdb_->QuerySql(querySql, bindArgs);
@@ -71,7 +73,8 @@ int32_t PhotoAlbumClone::GetPhotoAlbumCountInOriginalDb()
 std::shared_ptr<NativeRdb::ResultSet> PhotoAlbumClone::GetPhotoAlbumInOriginalDb(int32_t offset, int32_t pageSize)
 {
     std::string querySql = GetPhotoAlbumSelectQuerySql();
-    std::vector<NativeRdb::ValueObject> bindArgs = { static_cast<int32_t>(DirtyType::TYPE_DELETED), offset, pageSize };
+    std::vector<NativeRdb::ValueObject> bindArgs = { static_cast<int32_t>(DirtyType::TYPE_DELETED),
+        static_cast<int32_t>(PhotoAlbumType::SHARE), offset, pageSize };
     CHECK_AND_RETURN_RET_LOG(this->mediaLibraryOriginalRdb_ != nullptr, nullptr,
         "Media_Restore: mediaLibraryOriginalRdb_ is null.");
     auto resultSet = this->mediaLibraryOriginalRdb_->QuerySql(querySql, bindArgs);
@@ -111,11 +114,11 @@ void PhotoAlbumClone::TRACE_LOG(const std::string &tableName, vector<AlbumInfo> 
         albumInfo.albumSubType = %{public}d, \
         albumInfo.lPath = %{public}s",
             tableName.c_str(),
-            albumInfo.albumName.c_str(),
-            albumInfo.albumBundleName.c_str(),
+            MediaFileUtils::DesensitizeName(albumInfo.albumName).c_str(),
+            MediaFileUtils::DesensitizeName(albumInfo.albumBundleName).c_str(),
             static_cast<int32_t>(albumInfo.albumType),
             static_cast<int32_t>(albumInfo.albumSubType),
-            albumInfo.lPath.c_str());
+            MediaFileUtils::DesensitizePath(albumInfo.lPath).c_str());
     }
     // fetch all albums from mediaLibraryRdb
     std::vector<PhotoAlbumDao::PhotoAlbumRowData> targetAlbumInfos = this->photoAlbumDao_.GetPhotoAlbums();

@@ -15,6 +15,7 @@
 
 #include "attachment_size_update_operation.h"
 
+#include "map_operation_flag.h"
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -34,7 +35,7 @@ using namespace OHOS::NativeRdb;
 
 namespace OHOS::Media {
 const std::string ORIGIN_ATTACHMENT_SIZE_ASSETS_NUMBER = "origin_attachment_size_assets_number";
-const std::int32_t ATTACHMENT_SIZE_SCAN_BATCH_SIZE = 50;
+const std::int32_t ATTACHMENT_SIZE_SCAN_BATCH_SIZE = 200;
 const std::string TASK_PROGRESS_XML = "/data/storage/el2/base/preferences/task_progress.xml";
 
 const std::string SQL_PHOTOS_TABLE_QUERY_ATTACHMENT_ASSETS = "SELECT"
@@ -44,7 +45,7 @@ const std::string SQL_PHOTOS_TABLE_QUERY_ATTACHMENT_ASSETS = "SELECT"
                                                              "FROM"
                                                              " Photos "
                                                              "WHERE"
-                                                             " attachment_size = -1"
+                                                             " attachment_size = 0"
                                                              " AND sync_status = 0"
                                                              " AND clean_flag = 0"
                                                              " AND time_pending = 0"
@@ -73,6 +74,33 @@ static int QueryMaxFileId()
     return maxFileId;
 }
 
+static int32_t UpdateSingleAttachmentSizeIfNeeded(int32_t fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+
+    if (!MAP_OPERATION_FLAG) {
+        return E_OK;
+    }
+
+    std::string filePath;
+    int32_t ret = MediaLibraryPhotoOperations::GetFilePathById(rdbStore, std::to_string(fileId), filePath);
+    if (ret != E_OK) {
+        MEDIA_WARN_LOG("Skip invalid file ID: %{public}d (error code: %{public}d)", fileId, ret);
+        return ret;
+    }
+
+    uint64_t editDataSize = 0;
+    uint64_t attachmentSize = 0;
+    MediaLibraryRdbStore::StatEditAndAttachmentSize(filePath, editDataSize, attachmentSize);
+    if (attachmentSize == 0) {
+        MEDIA_DEBUG_LOG("No attachment size for file ID: %{public}d, skip update", fileId);
+        return E_OK;
+    }
+
+    return MediaLibraryRdbStore::UpdateAttachmentSize(rdbStore, std::to_string(fileId), attachmentSize);
+}
+
 void AttachmentSizeUpdateOperation::UpdateAttachmentSize()
 {
     isContinue_.store(true);
@@ -94,10 +122,9 @@ void AttachmentSizeUpdateOperation::UpdateAttachmentSize()
         if (batchSize > 0) {
             curFileId = batchSize;
         } else {
-            MEDIA_WARN_LOG("No valid batch progress, break loop. curFileId: %{public}d, endId: %{public}d, "
+            MEDIA_WARN_LOG("No valid batch progress in current range. curFileId: %{public}d, endId: %{public}d, "
                 "batchSize: %{public}d", curFileId, endId, batchSize);
             curFileId = endId;
-            break;
         }
     }
     prefs->PutInt(ORIGIN_ATTACHMENT_SIZE_ASSETS_NUMBER, curFileId);
@@ -142,12 +169,13 @@ std::vector<AttachmentSizeAssetInfo> AttachmentSizeUpdateOperation::QueryAttachm
 void AttachmentSizeUpdateOperation::HandleAttachmentSizeAssets(const std::vector<AttachmentSizeAssetInfo> &assetInfos)
 {
     for (const AttachmentSizeAssetInfo &assetInfo : assetInfos) {
-        if (assetInfo.attachmentSize >= 0) {
+        if (assetInfo.attachmentSize > 0) {
             continue;
         }
-        int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(assetInfo.fileId));
+        int32_t ret = UpdateSingleAttachmentSizeIfNeeded(assetInfo.fileId);
         if (ret != E_OK) {
-            MEDIA_ERR_LOG("CalSingleEditDataSize failed ID: %{public}d (ret code: %{public}d)", assetInfo.fileId, ret);
+            MEDIA_ERR_LOG("UpdateSingleAttachmentSizeIfNeeded failed ID: %{public}d (ret code: %{public}d)",
+                assetInfo.fileId, ret);
         }
     }
 }

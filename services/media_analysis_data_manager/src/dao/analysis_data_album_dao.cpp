@@ -39,7 +39,7 @@ int32_t AnalysisDataAlbumDao::GetFaceIdByAlbumId(int32_t albumId, string& groupT
     NativeRdb::RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(albumId));
     vector<string> columns = { GROUP_TAG };
-    auto resultSet = MediaLibraryRdbStore::StepQueryWithoutCheck(predicates, columns);
+    auto resultSet = MediaLibraryRdbStore::QueryByStepWithoutCount(predicates, columns);
     bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK);
     CHECK_AND_RETURN_RET_LOG(!cond, E_HAS_DB_ERROR, "Failed to query group tag!");
     groupTag = GetStringVal(GROUP_TAG, resultSet);

@@ -836,7 +836,10 @@ HWTEST_F(CloudMediaPhotoHandlerOnFetchRecordsTest, OnDentryFileInsert, TestSize.
                                                        "originalAssetCloudId",
                                                        "sourcePath",
                                                        "supportedWatermarkType",
-                                                       "strongAssociation"};
+                                                       "strongAssociation",
+                                                       "is_style_photo"
+                                                       "supported_deferred_effects",
+                                                       "deferred_effect_status"};
     CloudDataUtils utils;
     for (auto cloudId : cloudIds) {
         ret = photosDao.GetPhotoByCloudId(photosList, cloudId, photo);
@@ -939,7 +942,8 @@ HWTEST_F(CloudMediaPhotoHandlerOnFetchRecordsTest, OnDentryFileInsert_merge, Tes
                                                        "originalAssetCloudId",
                                                        "sourcePath",
                                                        "supportedWatermarkType",
-                                                       "strongAssociation"};
+                                                       "strongAssociation",
+                                                       "is_style_photo"};
     CloudDataUtils utils;
     photosList = photosDao.QueryPhotosByCloudIds(cloudIds);
     EXPECT_EQ(photosList.size(), cloudIds.size());

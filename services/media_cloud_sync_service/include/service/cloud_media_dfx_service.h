@@ -29,8 +29,6 @@ public:
     static void SyncStart(const std::string& taskId, const int32_t syncReason = 1);
     static void UpdateMetaStat(uint32_t index, uint64_t diff, uint32_t syncType = 0);
     static void UpdateAttachmentStat(uint32_t index, uint64_t diff);
-    static void UpdateAlbumStat(uint32_t index, uint64_t diff);
-    static void UpdateUploadMetaStat(uint32_t index, uint64_t diff);
     static void UpdateUploadDetailError(int32_t error);
     static void SyncEnd(const int32_t stopReason = 0);
     static void ReportSyncFault(const std::string& funcName, const int lineNum, const SyncFaultEvent& event);

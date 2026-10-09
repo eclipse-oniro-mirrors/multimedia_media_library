@@ -17,7 +17,6 @@
 
 #include <string>
 #include <vector>
-#include <uv.h>
 
 #include "cj_ffi/cj_common_ffi.h"
 #include "want.h"

@@ -58,7 +58,7 @@ void AncoDfxManager::RunDfx()
     alreadyRunDfx_ = true;
 }
 
-void AncoDfxManager::ReportFirstLoadInfo(uint64_t loadStartTime, uint64_t loadEndTime)
+void AncoDfxManager::ReportFirstLoadInfo(uint64_t loadStartTime, uint64_t loadEndTime, LoadType loadType)
 {
     MEDIA_INFO_LOG("anco ReportFirstLoadInfo");
     int32_t errCode;
@@ -114,12 +114,14 @@ void AncoDfxManager::NotifyOperationChange(const int32_t objType, const int32_t 
     ancoOptChangeInfo_.totalOptCount += 1;
 }
 
-void AncoDfxManager::InnerReportAncoCountFormatInfo(uint64_t loadStartTime, uint64_t loadEndTime, bool firstLoad)
+void AncoDfxManager::InnerReportAncoCountFormatInfo(uint64_t loadStartTime, uint64_t loadEndTime, bool firstLoad,
+    LoadType loadType)
 {
     MEDIA_INFO_LOG("anco InnerReportAncoCountFormatInfo");
     AncoCountFormatInfo reportData;
     reportData.loadStartTime = loadStartTime;
     reportData.loadEndTime = loadEndTime;
+    reportData.loadType = loadType;
     int32_t queryRet = DfxDatabaseUtils::QueryAncoPhotosFormatAndCount(reportData);
     if (queryRet != E_OK) {
         MEDIA_ERR_LOG("QueryAncoPhotosFormatAndCount error: %{public}d", queryRet);
@@ -139,6 +141,46 @@ void AncoDfxManager::InnerReportAncoCountFormatInfo(uint64_t loadStartTime, uint
         return;
     }
     prefs->PutLong(ANCO_FORMAT_COUNT_LAST_REPORT_TIME, MediaFileUtils::UTCTimeSeconds());
+    prefs->FlushSync();
+}
+
+void AncoDfxManager::ReportFileManagerFirstLoad()
+{
+    MEDIA_INFO_LOG("enter ReportFileManagerFirstLoad");
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    int32_t loadTypeValue = prefs->GetInt(SCAN_FILEMANAGER_LOAD_TYPE,
+    static_cast<int32_t>(LoadType::FILEMANAGER_FIRST_LOAD));
+
+    bool isLoadingFlag = prefs->GetBool(IS_INVENTORY_LOADING, false);
+    AncoCountFormatInfo reportData;
+    if (isLoadingFlag) {
+        reportData.loadType = LoadType::FILEMANAGER_FIRST_LOAD;
+    } else {
+        reportData.loadType = (loadTypeValue == static_cast<int32_t>(LoadType::FILEMANAGER_FIRST_LOAD)) ?
+        LoadType::FILEMANAGER_FIRST_LOAD : LoadType::FILEMANAGER_CLONE_FIRST_LOAD;
+    }
+    reportData.loadStartTime = prefs->GetLong(SCAN_FM_START_TIME, 0);
+    reportData.loadEndTime = prefs->GetLong(SCAN_FM_END_TIME, 0);
+    reportData.albumCount = prefs->GetInt(SCAN_FM_ALBUM_COUNT, 0);
+    reportData.imageCount = prefs->GetInt(SCAN_FM_IMAGE_COUNT, 0);
+    reportData.videoCount = prefs->GetInt(SCAN_FM_VIDEO_COUNT, 0);
+    MEDIA_INFO_LOG("ReportFileManagerFirstLoad loadType: %{public}d, loadStartTime: %{public}" PRId64
+                    "loadEndTime: %{public}" PRId64 "albumCount: %{public}d, imageCount: %{public}d, "
+                    "videoCount: %{public}d ",
+                    static_cast<int32_t>(reportData.loadType), reportData.loadStartTime, reportData.loadEndTime,
+                    reportData.albumCount, reportData.imageCount, reportData.videoCount);
+    int32_t dfxRet = DfxReporter::ReportAncoCountFormatInfo(reportData, true);
+    CHECK_AND_RETURN_LOG(dfxRet == E_OK, "DfxReporter ReportAncoCountFormatInfo error: %{public}d", dfxRet);
+    prefs->PutBool(IS_INVENTORY_LOADING, false);
+    prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, 0);
+    prefs->PutLong(SCAN_FM_START_TIME, 0);
+    prefs->PutLong(SCAN_FM_END_TIME, 0);
+    prefs->PutInt(SCAN_FM_ALBUM_COUNT, 0);
+    prefs->PutInt(SCAN_FM_IMAGE_COUNT, 0);
+    prefs->PutInt(SCAN_FM_VIDEO_COUNT, 0);
     prefs->FlushSync();
 }
 

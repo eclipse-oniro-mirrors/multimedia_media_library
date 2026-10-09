@@ -25,16 +25,18 @@
 #include "medialibrary_db_const.h"
 #include "userfile_manager_types.h"
 #include "result_set_utils.h"
+#include "parameters.h"
+#include "acl.h"
 
 using namespace OHOS::FileManagement::CloudSync;
 
 namespace OHOS::Media {
-std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::shared_ptr<MediaLibraryRdbStore> rdbStore)
+std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(
+    std::shared_ptr<MediaLibraryRdbStore> rdbStore, StorageQueryCache &cache)
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::FindStorage");
-    bool conn = rdbStore == nullptr;
-    CHECK_AND_RETURN_RET_LOG(!conn, nullptr, "RdbStore is null");
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nullptr, "RdbStore is null");
 
     TotalThumbnailSizeResult totalThumbnailSizeResult = {};
     GetTotalThumbnailSize(rdbStore, totalThumbnailSizeResult);
@@ -44,6 +46,7 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::sh
     TotalEditdataSizeResult totalEditdataSizeRusult = {};
     GetTotalEditdataSize(rdbStore, totalEditdataSizeRusult);
     
+    int64_t highlightSize = GetHighlightSizeFromPreferences();
     int64_t dfsSize = 0;
     int32_t ret = CloudSyncManager::GetInstance().GetDentryFileOccupy(dfsSize);
     CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "Media_Storage: Failed to get dfsSize");
@@ -51,40 +54,49 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::sh
     
     MEDIA_INFO_LOG("Editdata stats: total_size = %{public}" PRId64 " bytes, count = %{public}d"
         ", highlightSize = %{public}" PRId64, totalEditdataSizeRusult.totalEditdataSize,
-        totalEditdataSizeRusult.editdataCount, GetHighlightSizeFromPreferences());
-    int64_t totalExtSize = GetCacheSize() + GetBackUpSize() + GetMetaSize() + GetAudioSize() + GetCameraSize() +
-        GetPictureSize() + GetMediaVideoSize() + GetCustomSize() + GetDataSize() + GetHighlightSizeFromPreferences()
-        + totalThumbnailSizeResult.totalThumbnailSize + totalEditdataSizeRusult.totalEditdataSize + dfsSize;
+        totalEditdataSizeRusult.editdataCount, highlightSize);
+    
+    int64_t totalCacheSize = CalculateTotalCacheSize() + dfsSize;
+    int64_t totalExtSize = totalCacheSize + highlightSize
+        + totalThumbnailSizeResult.totalThumbnailSize + totalEditdataSizeRusult.totalEditdataSize;
     int64_t totalImageSize = 0;
     int64_t totalVideoSize = 0;
+    QueryLocalPhotoVideoSize(rdbStore, totalImageSize, totalVideoSize);
+    int64_t totalSize = totalImageSize + totalVideoSize + totalExtSize;
+    
+    cache = { totalCacheSize, highlightSize, totalThumbnailSizeResult,
+        totalEditdataSizeRusult, { totalImageSize, totalVideoSize }, totalExtSize, totalSize,
+        GetThumbDirSize(), GetEditDataDirSize(), GetKVDBDirSize(), dfsSize };
+    
+    MEDIA_INFO_LOG("Media_Storage: ext = %{public}" PRId64 ", Image = %{public}" PRId64 ", Video = %{public}" PRId64,
+        totalExtSize, totalImageSize, totalVideoSize);
+    std::vector<NativeRdb::ValueObject> params = {totalExtSize, totalImageSize, totalVideoSize};
+    return rdbStore->QuerySql(this->SQL_DB_STORAGE_INFO_QUERY, params);
+}
+
+int64_t PhotoStorageOperation::CalculateTotalCacheSize()
+{
+    int64_t totalCacheSize = GetCacheSize() + GetBackUpSize() + GetMetaSize() + GetAudioSize() + 
+        GetCameraSize() + GetPictureSize() + GetMediaVideoSize() + GetCustomSize();
+    return totalCacheSize;
+}
+
+void PhotoStorageOperation::QueryLocalPhotoVideoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    int64_t &totalImageSize, int64_t &totalVideoSize)
+{
     std::string sql = this->SQL_DB_STORAGE_QUERY;
     auto queryResultSet = rdbStore->QuerySql(sql);
-    CHECK_AND_RETURN_RET_LOG(queryResultSet != nullptr, nullptr, "queryResultSet is null!");
+    CHECK_AND_RETURN_LOG(queryResultSet != nullptr, "queryResultSet is null!");
     while (queryResultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t mediatype = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, queryResultSet);
         int64_t size = GetInt64Val(MEDIA_DATA_DB_SIZE, queryResultSet);
         MEDIA_INFO_LOG("media_type: %{public}d, size: %{public}lld", mediatype, static_cast<long long>(size));
-        if (mediatype == static_cast<int32_t>(MEDIA_TYPE_IMAGE) || mediatype == -1) { // -1 thumbnailType
+        if (mediatype == static_cast<int32_t>(MEDIA_TYPE_IMAGE) || mediatype == -1) {
             totalImageSize = size;
         } else if (mediatype == static_cast<int32_t>(MEDIA_TYPE_VIDEO)) {
             totalVideoSize = size;
         }
     }
-    MEDIA_INFO_LOG("Media_Storage: ext = %{public}" PRId64 ", Image = %{public}" PRId64 ", Video = %{public}" PRId64,
-        totalExtSize, totalImageSize, totalVideoSize);
-    std::vector<NativeRdb::ValueObject> params = {totalExtSize, totalImageSize, totalVideoSize};
-    std::string sqlInfo = this->SQL_DB_STORAGE_INFO_QUERY;
-    return rdbStore->QuerySql(sqlInfo, params);
-}
-
-int64_t PhotoStorageOperation::GetDataSize()
-{
-    MediaLibraryTracer tracer;
-    tracer.Start("PhotoStorageOperation::GetDataSize");
-    size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_DATA_DIR, totalSize);
-    MEDIA_INFO_LOG("Media_Storage: DataSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
-    return static_cast<int64_t>(totalSize);
 }
 
 int64_t PhotoStorageOperation::GetCustomSize()
@@ -260,13 +272,12 @@ void PhotoStorageOperation::GetTotalEditdataSize(std::shared_ptr<MediaLibraryRdb
 }
 
 void PhotoStorageOperation::GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-    LocalPhotoSizeResult &localPhotoSizeResult, int64_t totalExtSize)
+    LocalPhotoSizeResult &localPhotoSizeResult)
 {
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is null");
 
     std::string sql = this->SQL_DB_STORAGE_QUERY;
-    std::vector<NativeRdb::ValueObject> params = {totalExtSize};
-    auto statsResult = rdbStore->QuerySql(sql, params);
+    auto statsResult = rdbStore->QuerySql(sql);
     int32_t mediaType = MediaType::MEDIA_TYPE_DEFAULT;
     while (statsResult && (statsResult->GoToNextRow() == NativeRdb::E_OK)) {
         statsResult->GetInt(0, mediaType);
@@ -276,6 +287,45 @@ void PhotoStorageOperation::GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbSto
             statsResult->GetLong(1, localPhotoSizeResult.localVideoSize);
         }
     }
-    statsResult->Close();
+}
+
+int64_t PhotoStorageOperation::GetThumbDirSize()
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoStorageOperation::GetThumbDirSize");
+    size_t totalSize = 0;
+    std::string thumbDir = ROOT_MEDIA_DIR + THUMB_DIR_VALUE;
+    MediaFileUtils::StatDirSize(thumbDir, totalSize);
+    MEDIA_INFO_LOG("Media_Storage: ThumbDirSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
+    return static_cast<int64_t>(totalSize);
+}
+
+int64_t PhotoStorageOperation::GetEditDataDirSize()
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoStorageOperation::GetEditDataDirSize");
+    size_t totalSize = 0;
+    MediaFileUtils::StatDirSize(MEDIA_EDIT_DATA_DIR, totalSize);
+    MEDIA_INFO_LOG("Media_Storage: EditDataDirSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
+    return static_cast<int64_t>(totalSize);
+}
+
+int64_t PhotoStorageOperation::GetKVDBDirSize()
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoStorageOperation::GetKVDBDirSize");
+    size_t totalSize = 0;
+    MediaFileUtils::StatDirSize(KVDB_DIR, totalSize);
+    MEDIA_INFO_LOG("Media_Storage: KVDBDirSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
+    return static_cast<int64_t>(totalSize);
+}
+
+int64_t PhotoStorageOperation::GetDentrySize()
+{
+    int64_t dfsSize = 0;
+    int32_t ret = CloudSyncManager::GetInstance().GetDentryFileOccupy(dfsSize);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, 0, "Media_Storage: Failed to get dentry size");
+    MEDIA_INFO_LOG("Media_Storage: DentrySize = %{public}" PRId64, dfsSize);
+    return dfsSize;
 }
 }  // namespace OHOS::Media

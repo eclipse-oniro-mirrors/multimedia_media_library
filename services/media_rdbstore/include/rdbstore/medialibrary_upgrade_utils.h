@@ -52,6 +52,9 @@ public:
     static void AddUpgradeDfxMessages(int32_t version, int32_t index, int32_t error);
     static void ReportUpgradeDfxMessages(int64_t startTime, int32_t srcVersion,
         int32_t dstVersion, bool isSync);
+
+    static void SetOldVersion(int32_t oldVersion);
+    static int32_t GetOldVersion();
 };
  
 } // Media

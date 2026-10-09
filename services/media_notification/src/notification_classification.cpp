@@ -65,6 +65,10 @@ std::unordered_map<std::variant<AssetRefreshOperation, AlbumRefreshOperation>,
         {AssetRefreshOperation::ANALYSIS_ASSET_OPERATION_RECHECK, HandleAnalysisAssetRecheck},
         {AssetRefreshOperation::ASSET_OPERATION_YUV_READY, HandleYuvReady},
 
+        {AssetRefreshOperation::ASSET_OPERATION_ADD_SHARE, HandleAssetAddShare},
+        {AssetRefreshOperation::ASSET_OPERATION_REMOVE_SHARE, HandleAssetRemoveShare},
+        {AssetRefreshOperation::ASSET_OPERATION_UPDATE_SHARE, HandleAssetUpdateShare},
+
         {AlbumRefreshOperation::ALBUM_OPERATION_ADD, HandleAlbumAdd},
         {AlbumRefreshOperation::ALBUM_OPERATION_UPDATE, HandleAlbumUpdate},
         {AlbumRefreshOperation::ALBUM_OPERATION_REMOVE, HandleAlbumRemove},
@@ -78,6 +82,10 @@ std::unordered_map<std::variant<AssetRefreshOperation, AlbumRefreshOperation>,
         {AlbumRefreshOperation::ANALYSIS_ALBUM_OPERATION_REMOVE, HandleAnalysisAlbumRemove},
         {AlbumRefreshOperation::ANALYSIS_ALBUM_OPERATION_UPDATE, HandleAnalysisAlbumUpdate},
         {AlbumRefreshOperation::ANALYSIS_ALBUM_OPERATION_RECHECK, HandleAnalysisAlbumRecheck},
+
+        {AlbumRefreshOperation::ALBUM_OPERATION_ADD_SHARE, HandleAlbumAddShare},
+        {AlbumRefreshOperation::ALBUM_OPERATION_REMOVE_SHARE, HandleAlbumRemoveShare},
+        {AlbumRefreshOperation::ALBUM_OPERATION_UPDATE_SHARE, HandleAlbumUpdateShare},
 };
 std::unordered_set<int32_t> NotificationClassification::addAlbumIdSet_;
 std::mutex NotificationClassification::addAlbumIdMutex_;
@@ -270,7 +278,9 @@ std::vector<MediaChangeInfo> NotificationClassification::HandleAssetRecheck(Noti
         BuildMediaChangeInfo(
             notifyInfoInner, true, AccurateNotifyType::NOTIFY_ASSET_ADD, NotifyUriType::HIDDEN_PHOTO_URI),
         BuildMediaChangeInfo(
-            notifyInfoInner, true, AccurateNotifyType::NOTIFY_ASSET_ADD, NotifyUriType::TRASH_PHOTO_URI)};
+            notifyInfoInner, true, AccurateNotifyType::NOTIFY_ASSET_ADD, NotifyUriType::TRASH_PHOTO_URI),
+        BuildMediaChangeInfo(
+            notifyInfoInner, true, AccurateNotifyType::NOTIFY_ASSET_ADD, NotifyUriType::SHARE_PHOTO_URI)};
 }
 
 std::vector<MediaChangeInfo> NotificationClassification::HandleAssetAddWithAnalysis(NotifyInfoInner &notifyInfoInner)
@@ -326,6 +336,27 @@ std::vector<MediaChangeInfo> NotificationClassification::HandleYuvReady(NotifyIn
         notifyInfoInner, false, AccurateNotifyType::NOTIFY_ASSET_YUV_READY, NotifyUriType::PHOTO_URI)};
 }
 
+std::vector<MediaChangeInfo> NotificationClassification::HandleAssetAddShare(NotifyInfoInner &notifyInfoInner)
+{
+    MEDIA_INFO_LOG("HandleAssetAddShare");
+    return {BuildMediaChangeInfo(
+        notifyInfoInner, false, AccurateNotifyType::NOTIFY_ASSET_ADD, NotifyUriType::SHARE_PHOTO_URI)};
+}
+
+std::vector<MediaChangeInfo> NotificationClassification::HandleAssetRemoveShare(NotifyInfoInner &notifyInfoInner)
+{
+    MEDIA_INFO_LOG("HandleAssetRemoveShare");
+    return {BuildMediaChangeInfo(
+        notifyInfoInner, false, AccurateNotifyType::NOTIFY_ASSET_REMOVE, NotifyUriType::SHARE_PHOTO_URI)};
+}
+
+std::vector<MediaChangeInfo> NotificationClassification::HandleAssetUpdateShare(NotifyInfoInner &notifyInfoInner)
+{
+    MEDIA_INFO_LOG("HandleAssetUpdateShare");
+    return {BuildMediaChangeInfo(
+        notifyInfoInner, false, AccurateNotifyType::NOTIFY_ASSET_UPDATE, NotifyUriType::SHARE_PHOTO_URI)};
+}
+
 std::vector<MediaChangeInfo> NotificationClassification::HandleAlbumAdd(NotifyInfoInner &notifyInfoInner)
 {
     MEDIA_INFO_LOG("HandleAlbumAdd");
@@ -378,7 +409,9 @@ std::vector<MediaChangeInfo> NotificationClassification::HandleAlbumRecheck(Noti
         BuildMediaChangeInfo(
             notifyInfoInner, true, AccurateNotifyType::NOTIFY_ALBUM_ADD, NotifyUriType::HIDDEN_ALBUM_URI),
         BuildMediaChangeInfo(
-            notifyInfoInner, true, AccurateNotifyType::NOTIFY_ALBUM_ADD, NotifyUriType::TRASH_ALBUM_URI)};
+            notifyInfoInner, true, AccurateNotifyType::NOTIFY_ALBUM_ADD, NotifyUriType::TRASH_ALBUM_URI),
+        BuildMediaChangeInfo(
+            notifyInfoInner, true, AccurateNotifyType::NOTIFY_ALBUM_ADD, NotifyUriType::SHARE_PHOTO_ALBUM_URI)};
 }
 
 std::vector<MediaChangeInfo> NotificationClassification::HandleAnalysisAlbumAdd(NotifyInfoInner &notifyInfoInner)
@@ -404,6 +437,27 @@ std::vector<MediaChangeInfo> NotificationClassification::HandleAnalysisAlbumRech
 {
     return {BuildMediaChangeInfo(notifyInfoInner, true, AccurateNotifyType::NOTIFY_ALBUM_ADD_ANALYSIS,
         NotifyUriType::ANALYSIS_ALBUM_URI)};
+}
+
+std::vector<MediaChangeInfo> NotificationClassification::HandleAlbumAddShare(NotifyInfoInner &notifyInfoInner)
+{
+    MEDIA_INFO_LOG("HandleAlbumAddShare");
+    return {BuildMediaChangeInfo(
+        notifyInfoInner, false, AccurateNotifyType::NOTIFY_ALBUM_ADD, NotifyUriType::SHARE_PHOTO_ALBUM_URI)};
+}
+
+std::vector<MediaChangeInfo> NotificationClassification::HandleAlbumRemoveShare(NotifyInfoInner &notifyInfoInner)
+{
+    MEDIA_INFO_LOG("HandleAlbumRemoveShare");
+    return {BuildMediaChangeInfo(
+        notifyInfoInner, false, AccurateNotifyType::NOTIFY_ALBUM_REMOVE, NotifyUriType::SHARE_PHOTO_ALBUM_URI)};
+}
+
+std::vector<MediaChangeInfo> NotificationClassification::HandleAlbumUpdateShare(NotifyInfoInner &notifyInfoInner)
+{
+    MEDIA_INFO_LOG("HandleAlbumUpdateShare");
+    return {BuildMediaChangeInfo(
+        notifyInfoInner, false, AccurateNotifyType::NOTIFY_ALBUM_UPDATE, NotifyUriType::SHARE_PHOTO_ALBUM_URI)};
 }
 
 std::vector<MediaChangeInfo> NotificationClassification::HandleAlbumAddAndUpdate(NotifyInfoInner &notifyInfoInner)

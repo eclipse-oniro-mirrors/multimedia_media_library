@@ -28,9 +28,10 @@ class GetRetryRecordsVoTest : public testing::Test {};
 
 HWTEST_F(GetRetryRecordsVoTest, TC001_Marshalling_Unmarshalling_Empty_Success, TestSize.Level1)
 {
-    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：正常数据）；验证业务状态断言：反序列化后的数据与原始数据一致
+    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：空数据）
+    // 验证业务状态断言：反序列化后的数据与原始数据一致
     GetRetryRecordsRespBody original;
-    original.cloudIds.clear();
+    original.retryDataList.clear();
 
     OHOS::MessageParcel parcel;
     bool ret = original.Marshalling(parcel);
@@ -41,14 +42,18 @@ HWTEST_F(GetRetryRecordsVoTest, TC001_Marshalling_Unmarshalling_Empty_Success, T
     ret = restored.Unmarshalling(parcel);
     ASSERT_TRUE(ret);
 
-    EXPECT_EQ(restored.cloudIds.size(), 0);
+    EXPECT_TRUE(restored.retryDataList.empty());
 }
 
 HWTEST_F(GetRetryRecordsVoTest, TC002_Marshalling_Unmarshalling_Single_Success, TestSize.Level1)
 {
-    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：正常数据）；验证业务状态断言：反序列化后的数据与原始数据一致
+    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：单条数据）
+    // 验证业务状态断言：反序列化后的数据与原始数据一致
     GetRetryRecordsRespBody original;
-    original.cloudIds.push_back("cloud_id_001");
+    GetRetryRecordsDataVo retryData;
+    retryData.cloudId = "cloud_id_001";
+    retryData.shareAlbumOwner = "owner_001";
+    original.retryDataList[retryData.cloudId] = retryData;
 
     OHOS::MessageParcel parcel;
     bool ret = original.Marshalling(parcel);
@@ -59,17 +64,24 @@ HWTEST_F(GetRetryRecordsVoTest, TC002_Marshalling_Unmarshalling_Single_Success, 
     ret = restored.Unmarshalling(parcel);
     ASSERT_TRUE(ret);
 
-    EXPECT_EQ(restored.cloudIds.size(), 1);
-    EXPECT_EQ(restored.cloudIds[0], "cloud_id_001");
+    ASSERT_EQ(restored.retryDataList.size(), 1);
+    auto it = restored.retryDataList.find("cloud_id_001");
+    ASSERT_NE(it, restored.retryDataList.end());
+    EXPECT_EQ(it->second.cloudId, "cloud_id_001");
+    EXPECT_EQ(it->second.shareAlbumOwner, "owner_001");
 }
 
 HWTEST_F(GetRetryRecordsVoTest, TC003_Marshalling_Unmarshalling_Multiple_Success, TestSize.Level1)
 {
-    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：正常数据）；验证业务状态断言：反序列化后的数据与原始数据一致
+    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：多条数据）
+    // 验证业务状态断言：反序列化后的数据与原始数据一致
     GetRetryRecordsRespBody original;
-    original.cloudIds.push_back("cloud_id_001");
-    original.cloudIds.push_back("cloud_id_002");
-    original.cloudIds.push_back("cloud_id_003");
+    for (int i = 1; i <= 3; i++) {
+        GetRetryRecordsDataVo retryData;
+        retryData.cloudId = "cloud_id_00" + std::to_string(i);
+        retryData.shareAlbumOwner = "owner_00" + std::to_string(i);
+        original.retryDataList[retryData.cloudId] = retryData;
+    }
 
     OHOS::MessageParcel parcel;
     bool ret = original.Marshalling(parcel);
@@ -80,18 +92,27 @@ HWTEST_F(GetRetryRecordsVoTest, TC003_Marshalling_Unmarshalling_Multiple_Success
     ret = restored.Unmarshalling(parcel);
     ASSERT_TRUE(ret);
 
-    EXPECT_EQ(restored.cloudIds.size(), 3);
-    EXPECT_EQ(restored.cloudIds[0], "cloud_id_001");
-    EXPECT_EQ(restored.cloudIds[1], "cloud_id_002");
-    EXPECT_EQ(restored.cloudIds[2], "cloud_id_003");
+    ASSERT_EQ(restored.retryDataList.size(), 3);
+    for (int i = 1; i <= 3; i++) {
+        std::string cloudId = "cloud_id_00" + std::to_string(i);
+        auto it = restored.retryDataList.find(cloudId);
+        ASSERT_NE(it, restored.retryDataList.end());
+        EXPECT_EQ(it->second.cloudId, cloudId);
+        EXPECT_EQ(it->second.shareAlbumOwner, "owner_00" + std::to_string(i));
+    }
 }
 
 HWTEST_F(GetRetryRecordsVoTest, TC004_Marshalling_Unmarshalling_LongString_Success, TestSize.Level1)
 {
-    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：正常数据）；验证业务状态断言：反序列化后的数据与原始数据一致
+    // 用例说明：测试序列化与反序列化；覆盖边界路径（触发条件：超长字符串）
+    // 验证业务状态断言：反序列化后的数据与原始数据一致
     GetRetryRecordsRespBody original;
     std::string longCloudId(1000, 'A');
-    original.cloudIds.push_back(longCloudId);
+    std::string longOwner(1000, 'B');
+    GetRetryRecordsDataVo retryData;
+    retryData.cloudId = longCloudId;
+    retryData.shareAlbumOwner = longOwner;
+    original.retryDataList[retryData.cloudId] = retryData;
 
     OHOS::MessageParcel parcel;
     bool ret = original.Marshalling(parcel);
@@ -102,17 +123,27 @@ HWTEST_F(GetRetryRecordsVoTest, TC004_Marshalling_Unmarshalling_LongString_Succe
     ret = restored.Unmarshalling(parcel);
     ASSERT_TRUE(ret);
 
-    EXPECT_EQ(restored.cloudIds.size(), 1);
-    EXPECT_EQ(restored.cloudIds[0], longCloudId);
+    ASSERT_EQ(restored.retryDataList.size(), 1);
+    auto it = restored.retryDataList.find(longCloudId);
+    ASSERT_NE(it, restored.retryDataList.end());
+    EXPECT_EQ(it->second.cloudId, longCloudId);
+    EXPECT_EQ(it->second.shareAlbumOwner, longOwner);
 }
 
 HWTEST_F(GetRetryRecordsVoTest, TC005_Marshalling_Unmarshalling_SpecialString_Success, TestSize.Level1)
 {
-    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：正常数据）；验证业务状态断言：反序列化后的数据与原始数据一致
+    // 用例说明：测试序列化与反序列化；覆盖边界路径（触发条件：空串与特殊字符）
+    // 验证业务状态断言：反序列化后的数据与原始数据一致
+    std::vector<std::string> cloudIds = {
+        "cloud_id_empty", "cloud_id_with_中文", "cloud_id_with_special!@#$%^&*()"};
+    std::vector<std::string> owners = {"", "owner_中文", "owner_special!@#$%^&*()"};
     GetRetryRecordsRespBody original;
-    original.cloudIds.push_back("");
-    original.cloudIds.push_back("cloud_id_with_中文");
-    original.cloudIds.push_back("cloud_id_with_special!@#$%^&*()");
+    for (size_t i = 0; i < cloudIds.size(); i++) {
+        GetRetryRecordsDataVo retryData;
+        retryData.cloudId = cloudIds[i];
+        retryData.shareAlbumOwner = owners[i];
+        original.retryDataList[retryData.cloudId] = retryData;
+    }
 
     OHOS::MessageParcel parcel;
     bool ret = original.Marshalling(parcel);
@@ -123,18 +154,26 @@ HWTEST_F(GetRetryRecordsVoTest, TC005_Marshalling_Unmarshalling_SpecialString_Su
     ret = restored.Unmarshalling(parcel);
     ASSERT_TRUE(ret);
 
-    EXPECT_EQ(restored.cloudIds.size(), 3);
-    EXPECT_EQ(restored.cloudIds[0], "");
-    EXPECT_EQ(restored.cloudIds[1], "cloud_id_with_中文");
-    EXPECT_EQ(restored.cloudIds[2], "cloud_id_with_special!@#$%^&*()");
+    ASSERT_EQ(restored.retryDataList.size(), cloudIds.size());
+    for (size_t i = 0; i < cloudIds.size(); i++) {
+        auto it = restored.retryDataList.find(cloudIds[i]);
+        ASSERT_NE(it, restored.retryDataList.end());
+        EXPECT_EQ(it->second.cloudId, cloudIds[i]);
+        EXPECT_EQ(it->second.shareAlbumOwner, owners[i]);
+    }
 }
 
-HWTEST_F(GetRetryRecordsVoTest, TC006_Marshalling_Unmarshalling_LargeVector_Success, TestSize.Level1)
+HWTEST_F(GetRetryRecordsVoTest, TC006_Marshalling_Unmarshalling_LargeMap_Success, TestSize.Level1)
 {
-    // 用例说明：测试序列化与反序列化；覆盖正常路径（触发条件：正常数据）；验证业务状态断言：反序列化后的数据与原始数据一致
+    // 用例说明：测试序列化与反序列化；覆盖边界路径（触发条件：大批量数据）
+    // 验证业务状态断言：反序列化后的数据与原始数据一致
+    const int32_t dataSize = 100;
     GetRetryRecordsRespBody original;
-    for (int i = 0; i < 100; i++) {
-        original.cloudIds.push_back("cloud_id_" + std::to_string(i));
+    for (int32_t i = 0; i < dataSize; i++) {
+        GetRetryRecordsDataVo retryData;
+        retryData.cloudId = "cloud_id_" + std::to_string(i);
+        retryData.shareAlbumOwner = "owner_" + std::to_string(i);
+        original.retryDataList[retryData.cloudId] = retryData;
     }
 
     OHOS::MessageParcel parcel;
@@ -146,10 +185,13 @@ HWTEST_F(GetRetryRecordsVoTest, TC006_Marshalling_Unmarshalling_LargeVector_Succ
     ret = restored.Unmarshalling(parcel);
     ASSERT_TRUE(ret);
 
-    EXPECT_EQ(restored.cloudIds.size(), 100);
-    for (int i = 0; i < 100; i++) {
-        EXPECT_EQ(restored.cloudIds[i], "cloud_id_" + std::to_string(i));
+    ASSERT_EQ(restored.retryDataList.size(), dataSize);
+    for (int32_t i = 0; i < dataSize; i++) {
+        std::string cloudId = "cloud_id_" + std::to_string(i);
+        auto it = restored.retryDataList.find(cloudId);
+        ASSERT_NE(it, restored.retryDataList.end());
+        EXPECT_EQ(it->second.cloudId, cloudId);
+        EXPECT_EQ(it->second.shareAlbumOwner, "owner_" + std::to_string(i));
     }
 }
-
 }  // namespace OHOS::Media::CloudSync

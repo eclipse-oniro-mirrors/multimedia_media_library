@@ -34,13 +34,14 @@ private:  // data members
     int32_t userId_;
     std::string tableName_;
     std::string traceId_;
+    int32_t sceneType_ = 0;
 
 private:  // data handlers
     std::shared_ptr<ICloudMediaDataHandler> dataHandler_;
 
 public:  // constructor
     CloudMediaDataHandler() = default;
-    CloudMediaDataHandler(const std::string &tableName, int32_t cloudType, int32_t userId);
+    CloudMediaDataHandler(const std::string &tableName, int32_t cloudType, int32_t userId, int32_t sceneType = 0);
     virtual ~CloudMediaDataHandler() = default;
 
 public:  // getter & setter
@@ -56,6 +57,8 @@ public:  // getter & setter
     void SetCloudSpaceFull(bool isCloudSpaceFull) override;
     bool IsCloudSpaceFull() override;
     // LCOV_EXCL_STOP
+    void SetSceneType(int32_t sceneType) override;
+    int32_t GetSceneType() const;
 
 public:
     int32_t GetCheckRecords(const std::vector<std::string> &cloudIds,
@@ -75,6 +78,7 @@ public:
         std::vector<int32_t> &stats) override;
     int32_t OnDentryFileInsert(std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords) override;
     int32_t GetRetryRecords(std::vector<std::string> &records) override;
+    int32_t GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords) override;
     int32_t OnStartSync() override;
     int32_t OnCompleteSync() override;
     int32_t OnCompletePull(const MediaOperateResult &optRet) override;

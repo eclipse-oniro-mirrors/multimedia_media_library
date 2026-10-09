@@ -37,9 +37,30 @@ struct LocalPhotoSizeResult {
     int64_t localVideoSize;
 };
 
+struct StorageQueryCache {
+    int64_t cacheSize = 0;
+    int64_t highlightSize = 0;
+    TotalThumbnailSizeResult thumbnailResult = {};
+    TotalEditdataSizeResult editdataResult = {};
+    LocalPhotoSizeResult localPhotoResult = {};
+    int64_t totalExtSize = 0;
+    int64_t totalSize = 0;
+    int64_t thumbDirSize = 0;
+    int64_t editDataDirSize = 0;
+    int64_t kvdbDirSize = 0;
+    int64_t dentrySize = 0;
+};
+
 class PhotoStorageOperation {
 public:
-    std::shared_ptr<NativeRdb::ResultSet> FindStorage(std::shared_ptr<MediaLibraryRdbStore> mediaRdbStorePtr);
+    std::shared_ptr<NativeRdb::ResultSet> FindStorage(
+        std::shared_ptr<MediaLibraryRdbStore> mediaRdbStorePtr,
+        StorageQueryCache &cache);
+    
+    int64_t CalculateTotalCacheSize();
+    void QueryLocalPhotoVideoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        int64_t &totalImageSize, int64_t &totalVideoSize);
+    
     std::shared_ptr<NativeRdb::ResultSet> QueryHighlightDirectorySize(std::shared_ptr<MediaLibraryRdbStore> rdbStore);
     int64_t GetCacheSize();
     int64_t GetBackUpSize();
@@ -49,15 +70,18 @@ public:
     int64_t GetMediaVideoSize();
     int64_t GetCustomSize();
     int64_t GetMetaSize();
-    int64_t GetDataSize();
     int64_t GetHighlightSizeFromPreferences();
     void GetTotalThumbnailSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         TotalThumbnailSizeResult &totalThumbnailSizeResult);
 
     void GetTotalEditdataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         TotalEditdataSizeResult &totalEditdataSizeResult);
-    void GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore, LocalPhotoSizeResult &localPhotoSizeResult,
-        int64_t totalExtSize);
+    void GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore, LocalPhotoSizeResult &localPhotoSizeResult);
+
+    int64_t GetThumbDirSize();
+    int64_t GetEditDataDirSize();
+    int64_t GetKVDBDirSize();
+    int64_t GetDentrySize();
 
 private:
     int64_t GetHighlightSize();

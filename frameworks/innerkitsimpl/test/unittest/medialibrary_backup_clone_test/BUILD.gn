@@ -48,6 +48,11 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/ocr",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/report",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/restore",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/reverse_clone_restore",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/field_config",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/field_config/tables",
+    "${MEDIALIB_SERVICES_PATH}/media_kv_db/include",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/utils",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "../medialibrary_unittest_utils/include",
@@ -65,6 +70,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/beauty_score_clone.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/portrait_nickname_clone.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_album.cpp",
@@ -85,6 +91,9 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_database_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_dfx_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_file_utils.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/field_config/clone_field_registry.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/field_config/clone_field_query.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/field_config/clone_field_writer.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/backup_restore_service.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/base_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/burst_key_generator.cpp",
@@ -98,6 +107,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/clone_restore_cv_analysis.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/clone_restore_highlight.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/highlight_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/play_info_mapper.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/group_photo_album/clone_restore_group_photo.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/group_photo_album/group_photo_album_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/log/backup_hi_audit.cpp",
@@ -113,9 +123,9 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/report/photos_count_statistic.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/report/upgrade_restore_gallery_media_task.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/report/upgrade_restore_task_report.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/rom_low_space_guard.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/asset_map_clone.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/backup_adapters.cpp",
-    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/dao_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/db_upgrade_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/gallery_db_upgrade.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/gallery_media_dao.cpp",
@@ -133,9 +143,12 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_photos_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/video_ringtone_processor/video_ringtone_processor.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore_resume_marker.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_deprecated_perm_usage.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/clone_source.cpp",
+    "./src/clone_field_config_test.cpp",
     "./src/highlight/clone_highlight_source.cpp",
     "./src/highlight/clone_restore_highlight_test.cpp",
     "./src/medialibrary_backup_clone_test.cpp",
@@ -143,6 +156,9 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./src/medialibrary_backup_clone_test3.cpp",
     "./src/group_photo/clone_group_photo_source.cpp",
     "./src/group_photo/clone_restore_group_photo_test.cpp",
+    "./src/anco_reverse_clone_adapter_test.cpp",
+    "./src/reverse_clone_resource_plan_test.cpp",
+    "./src/rom_low_space_guard_test.cpp",
     "./src/clone_restore_cloud_asset_coverage_test.cpp",
     "./src/clone_restore_additional_coverage_test.cpp",
     "./src/clone_restore_table_status_branch_test.cpp",
@@ -151,6 +167,9 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./src/clone_restore_db_migration_branch_test.cpp",
     "./src/portrait_album/portrait_album_clone_test.cpp",
     "./src/portrait_album/portrait_album_source.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore_map_code_utils.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_operation.cpp",
     "./src/pet_album/pet_album_clone_test.cpp",
     "./src/pet_album/pet_album_source.cpp",
     "./src/analysis_data/clone_restore_analysis_data_test.cpp",
@@ -160,9 +179,29 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./src/analysis_album/search_index_clone_test.cpp",
   ]
 
-  source_ipc_client = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
+  reverse_restore_sources = [
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/cloud_data_cleaner.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/file_id_migrator.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/album_asset_absorb.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/table_data_adapter.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/classify/clone_restore_classify_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/classify/clone_reverse_restore_classify.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_restore_geo_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_reverse_restore_geo.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/beauty_score_clone_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_executor.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_plan_builder.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
   ]
+
+  sources += reverse_restore_sources
+
+  source_ipc_client = []
 
   sources += source_ipc_client
 
@@ -170,6 +209,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
   ]
 
@@ -201,7 +241,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
+    "node:node_header_notice",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",
@@ -210,6 +250,9 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
     "zlib:shared_libz",
+    "preferences:native_preferences",
+    "googletest:gtest_main",
+    "googletest:gmock_main",
   ]
 
   defines = []

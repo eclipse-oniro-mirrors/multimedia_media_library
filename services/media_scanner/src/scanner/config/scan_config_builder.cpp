@@ -27,29 +27,15 @@ ScanConfigBuilder::ScanConfigBuilder(const ScanConfig& config)
     config_ = config;
 }
 
+// 公共变量 - 执行模式
+
 ScanConfigBuilder& ScanConfigBuilder::SetExecutionMode(ScanExecutionMode executionMode)
 {
     config_.SetExecutionMode(executionMode);
     return *this;
 }
 
-ScanConfigBuilder& ScanConfigBuilder::SetFilePath(const std::string& path)
-{
-    config_.SetFilePath(path);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetFileId(int32_t fileId)
-{
-    config_.SetFileId(fileId);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetIsMovingPhoto(bool isMoving)
-{
-    config_.SetIsMovingPhoto(isMoving);
-    return *this;
-}
+// 公共变量 - 业务相关
 
 ScanConfigBuilder& ScanConfigBuilder::SetForceScan(bool force)
 {
@@ -62,6 +48,8 @@ ScanConfigBuilder& ScanConfigBuilder::SetSkipAlbumUpdate(bool skip)
     config_.SetSkipAlbumUpdate(skip);
     return *this;
 }
+
+// 公共变量 - 缩略图相关
 
 ScanConfigBuilder& ScanConfigBuilder::SetNeedGenerateThumbnail(bool need)
 {
@@ -94,6 +82,15 @@ ScanConfigBuilder& ScanConfigBuilder::SetOriginalPicture(const std::shared_ptr<P
     return *this;
 }
 
+ScanConfigBuilder& ScanConfigBuilder::SetUpdateDirtyCallback(
+    const std::shared_ptr<IMediaScannerCallback>& updateDirtyCallback)
+{
+    config_.SetUpdateDirtyCallback(updateDirtyCallback);
+    return *this;
+}
+
+// 公共变量 - 扫描策略
+
 ScanConfigBuilder& ScanConfigBuilder::SetStrategyType(ScanStrategyType type)
 {
     config_.SetStrategyType(type);
@@ -112,11 +109,33 @@ ScanConfigBuilder& ScanConfigBuilder::SetQuality(ScanQuality quality)
     return *this;
 }
 
-ScanConfigBuilder& ScanConfigBuilder::UseCameraShotPreset(bool isMovingPhoto, ScanQuality quality)
+// Info 设置
+
+ScanConfigBuilder& ScanConfigBuilder::SetDefaultScanInfo(const DefaultScanInfo& info)
+{
+    config_.GetDefaultScanInfo() = info;
+    return *this;
+}
+
+ScanConfigBuilder& ScanConfigBuilder::SetCustomRestoreInfo(const CustomRestoreInfo& info)
+{
+    config_.GetCustomRestoreInfo() = info;
+    return *this;
+}
+
+// 预设方法
+
+ScanConfigBuilder& ScanConfigBuilder::UseCustomRestorePreset(const CustomRestoreInfo& info)
+{
+    config_.GetCustomRestoreInfo() = info;
+    config_.SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN);
+    return *this;
+}
+
+ScanConfigBuilder& ScanConfigBuilder::UseCameraShotPreset(ScanQuality quality)
 {
     config_.SetStrategyType(ScanStrategyType::DEFAULT_SCAN);
     config_.SetConflictPolicy(ConflictPolicy::QUALITY_PRIORITY);
-    config_.SetIsMovingPhoto(isMovingPhoto);
     config_.SetQuality(quality);
     return *this;
 }

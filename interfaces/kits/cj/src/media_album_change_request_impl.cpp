@@ -67,8 +67,10 @@ int64_t MediaAlbumChangeRequestImpl::CJGetAlbum(int32_t* errCode)
             *errCode = JS_INNER_FAIL;
             return 0;
         }
+        *errCode = E_SUCCESS;
         return photoAlbumImpl->GetID();
     }
+    *errCode = E_SUCCESS;
     return 0;
 }
 

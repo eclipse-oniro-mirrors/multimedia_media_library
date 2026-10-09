@@ -22,7 +22,7 @@ namespace Media::AccurateRefresh {
 
 bool FavoriteAssetHelper::IsAsset(const PhotoAssetChangeInfo &assetInfo)
 {
-    return assetInfo.isFavorite_ && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false);
+    return assetInfo.isFavorite_ && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false, 0);
 }
 
 bool FavoriteAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)
@@ -32,7 +32,7 @@ bool FavoriteAssetHelper::IsVideoAsset(const PhotoAssetChangeInfo &assetInfo)
 
 bool FavoriteAssetHelper::IsHiddenAsset(const PhotoAssetChangeInfo &assetInfo)
 {
-    return assetInfo.isFavorite_ && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true);
+    return assetInfo.isFavorite_ && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, true, 0);
 }
 bool FavoriteAssetHelper::IsNewerAsset(const PhotoAssetChangeInfo &compareAssetInfo,
     const PhotoAssetChangeInfo &currentAssetInfo)

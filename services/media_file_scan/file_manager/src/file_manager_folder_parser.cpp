@@ -17,6 +17,7 @@
 #include "file_manager_folder_parser.h"
 
 #include "file_scan_utils.h"
+#include "media_log_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -33,9 +34,9 @@ bool FileManagerFolderParser::IsFolderSkip()
 {
     for (std::string blackPath : AlbumGreyList::FILE_MANAGER_ALBUM_BLACKLIST) {
         // Lpath start = "/FromDocs" + blackPath
-        if (StartsWithIgnoreCase(commonAlbumInfo_.lpath, FILE_MANAGER_LPATH_PREFIX + blackPath)) {
+        if (FileScanUtils::IsPathUnderRoot(commonAlbumInfo_.lpath, FILE_MANAGER_LPATH_PREFIX + blackPath)) {
             MEDIA_WARN_LOG("The converted file manager lpath is in the blacklist, lpath is: %{public}s",
-                FileScanUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
+                MediaLogUtils::GarbleFilePath(commonAlbumInfo_.lpath).c_str());
             return true;
         }
     }
@@ -60,7 +61,7 @@ int32_t FileManagerFolderParser::GetConvertedLpath(const std::string &data, std:
         return E_OK;
     }
     MEDIA_INFO_LOG("Scan get converted file manager lpath failed from data: %{public}s",
-        FileScanUtils::GarbleFilePath(data).c_str());
+        MediaLogUtils::GarbleFilePath(data).c_str());
     return E_ERR;
 }
 
@@ -91,7 +92,7 @@ int32_t FileManagerFolderParser::GetAlbumName(CommonAlbumInfo &commonAlbumInfo)
     }
     commonAlbumInfo.bundleName = albumPluginInfo_.bundleName;
     MEDIA_INFO_LOG("GetAlbumName end, albumName is : %{public}s",
-        FileScanUtils::GarbleFile(commonAlbumInfo.albumName).c_str());
+        MediaLogUtils::GarbleFile(commonAlbumInfo.albumName).c_str());
     return E_OK;
 }
 // LCOV_EXCL_STOP

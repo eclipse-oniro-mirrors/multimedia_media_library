@@ -35,7 +35,7 @@ namespace Media {
  * 提供FileManager场景下缩略图生成所需的工具函数和常量
  */
 namespace FileManagerThumbnailHelper {
-    // ========== 类型定义 ==========
+    // 类型定义
 
     // FileManager缩略图恢复结果枚举
 enum class RestoreResult {
@@ -43,7 +43,7 @@ enum class RestoreResult {
         SUCCESS,
     };
 
-    // ========== 常量定义 ==========
+    // 常量定义
 
     // SP存储相关常量
     constexpr const char* FILE_MANAGER_THUMB_TASK_SP =
@@ -55,7 +55,7 @@ enum class RestoreResult {
     constexpr int32_t PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL = 20; // 20%电量阈值
     constexpr int32_t PROPER_DEVICE_BATTERY_CAPACITY_RESTORE = 30; // 30%电量恢复阈值
 
-    // ========== 温度和电量检查 ==========
+    // 温度和电量检查
 
     /**
      * 检查温电量条件是否符合缩略图实时生成要求
@@ -69,7 +69,7 @@ enum class RestoreResult {
      */
     bool CheckTemperatureBatteryRestoreCondition();
 
-    // ========== SP存储操作 ==========
+    // SP存储操作
 
     /**
      * 保存缩略图任务到SharedPreferences
@@ -83,7 +83,7 @@ enum class RestoreResult {
      */
     void RemoveThumbnailTaskFromSP(const std::string &fileId);
 
-    // ========== 数据库查询 ==========
+    // 数据库查询
 
     /**
      * 从数据库查询文件路径
@@ -94,7 +94,7 @@ enum class RestoreResult {
     std::string GetFilePathFromDb(const std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr,
         const std::string &fileId);
 
-    // ========== 任务执行 ==========
+    // 任务执行
 
     /**
      * FileManager新增图片触发生成缩略图
@@ -112,7 +112,7 @@ enum class RestoreResult {
      */
     void FileManagerThumbnailTaskExecutor(std::shared_ptr<ThumbnailTaskData> &data);
 
-    // ========== 任务恢复辅助函数 ==========
+    // 任务恢复辅助函数
 
     /**
      * 异步启动缩略图恢复任务

@@ -28,6 +28,7 @@
 #endif
 #include "cloud_media_asset_manager.h"
 #include "cloud_media_asset_types.h"
+#include "hi_audit.h"
 #include "cloud_upload_checker.h"
 #include "common_event_utils.h"
 #include "dfx_cloud_manager.h"
@@ -90,7 +91,6 @@
 #include "medialibrary_aspect_ratio_operation.h"
 #include "database_adapter.h"
 #include "product_info.h"
-#include "permission_whitelist_utils.h"
 #include "thumbnail_service.h"
 #include "cloud_media_retain_smart_data.h"
 #include "power_mgr_client.h"
@@ -99,9 +99,12 @@
 #include "lcd_aging_worker.h"
 #include "lcd_download_task.h"
 #include "consistency_check_manager.h"
-#ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
-#include "media_fileinterwork_scanner.h"
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+#include "watch_system_handler.h"
+#include "critical_label_task_queue.h"
 #endif
+#include "medialibrary_rdb_operations.h"
+#include "media_cloud_dentry_batch_task.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::NetManagerStandard;
@@ -112,7 +115,8 @@ shared_ptr<MedialibrarySubscriber> MedialibrarySubscriber::subscriber_ = nullptr
 std::future<bool> MedialibrarySubscriber::subscribeAsyncTask_;
 std::mutex MedialibrarySubscriber::subscribeLock_;
 std::mutex MedialibrarySubscriber::subscribeAsyncTaskLock_;
-
+std::shared_mutex MedialibrarySubscriber::backgroundTaskMutex_;
+const int32_t OH_DEFAULT_USER_ID = 100;
 // The task can be performed when the battery level reaches the value
 const int32_t PROPER_DEVICE_BATTERY_CAPACITY = 50;
 const int32_t PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL = 20;
@@ -158,9 +162,6 @@ std::mutex uploadDBMutex;
 int64_t g_lastTime = MediaFileUtils::UTCTimeMilliSeconds();
 const int64_t TWELVE_HOUR_MS = static_cast<int64_t>(12 * 3600 * 1000);
 constexpr int32_t SUBSCRIBE_TASK_TIMEOUT_SECOND = 2;
-const string CLOUD_UPDATE_EVENT = "usual.event.DUE_HAP_CFG_UPDATED";
-const string CLOUD_EVENT_INFO_TYPE = "type";
-const string CLOUD_EVENT_INFO_TYPE_VALUE = "medialibrary_kit_whitelist";
 const std::string CLONE_FLAG = "multimedia.medialibrary.cloneFlag";
 const std::string CLONE_STATE = "persist.dataclone.state";
 
@@ -181,8 +182,7 @@ const std::vector<std::string> MedialibrarySubscriber::events_ = {
     EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_START,
     EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_END,
     EventFwk::CommonEventSupport::COMMON_EVENT_POWER_CONNECTED,
-    EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED,
-    CLOUD_UPDATE_EVENT
+    EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED
 };
 
 const std::map<std::string, StatusEventType> BACKGROUND_OPERATION_STATUS_MAP = {
@@ -296,7 +296,7 @@ bool MedialibrarySubscriber::Subscribe(void)
 
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     int32_t retReg = subscriber_->RegisterDefaultNetObserver();
-    CHECK_AND_RETURN_RET_LOG(retReg == E_OK, E_ERR, "failed to RegisterDefaultNetObserver");
+    CHECK_AND_PRINT_LOG(retReg == E_OK, "failed to RegisterDefaultNetObserver");
 #endif
     return ret;
 }
@@ -309,13 +309,16 @@ int32_t MedialibrarySubscriber::RegisterDefaultNetObserver()
         CreateOptions options;
         options.enabled_ = true;
         cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_DATASHARE_URI, options);
-        CHECK_AND_RETURN_RET_LOG(cloudHelper_ != nullptr, E_ERR, "cloudHelper_ is null.");
-        std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
-        CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);
-        CHECK_AND_RETURN_RET_LOG(CloudMediaAssetUnlimitObserver_ != nullptr, E_ERR,
-            "CloudMediaAssetUnlimitObserver_ is null.");
-        cloudHelper_->RegisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_, true);
-        MEDIA_INFO_LOG("DefaultNetConnectObserver RegisterDefaultNetObserver");
+        if (cloudHelper_ != nullptr) {
+            std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
+            CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);
+            CHECK_AND_RETURN_RET_LOG(CloudMediaAssetUnlimitObserver_ != nullptr, E_ERR,
+                "CloudMediaAssetUnlimitObserver_ is null.");
+            cloudHelper_->RegisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_, true);
+            MEDIA_INFO_LOG("DefaultNetConnectObserver RegisterDefaultNetObserver");
+        } else {
+            MEDIA_ERR_LOG("cloudHelper_ is null.");
+        }
     }
     if (defaultNetObserver_ == nullptr) { // 补注册
         defaultNetObserver_ = new (std::nothrow) DefaultNetConnectObserver();
@@ -525,7 +528,10 @@ void MedialibrarySubscriber::WalCheckPointAsync()
     if (!isScreenOff_ || !isCharging_) {
         return;
     }
-    std::thread(MediaLibraryRdbStore::WalCheckPoint).detach();
+    std::thread([] {
+        std::unique_lock<std::shared_mutex> lock(MedialibrarySubscriber::backgroundTaskMutex_);
+        MediaLibraryRdbOperations::WalCheckPoint();
+    }).detach();
 }
 
 bool MedialibrarySubscriber::GetPowerConnected()
@@ -615,6 +621,18 @@ bool MedialibrarySubscriber::IsCurrentStatusOn()
     return currentStatus_;
 }
 
+bool MedialibrarySubscriber::IsMainUser()
+{
+    const int32_t INVALID_UID = -1;
+    const int32_t BASE_USER_RANGE = 200000;
+    int uid = IPCSkeleton::GetCallingUid();
+    if (uid <= INVALID_UID) {
+        MEDIA_ERR_LOG("Get INVALID_UID UID %{public}d", uid);
+    }
+    int32_t userId = uid / BASE_USER_RANGE;
+    return userId == OH_DEFAULT_USER_ID;
+}
+
 bool MedialibrarySubscriber::IsCriticalTypeStatusOn()
 {
     return checkCriticalTypeStatus_;
@@ -631,7 +649,7 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     if (defaultNetObserver_ == nullptr && subscriber_!= nullptr) { // 补注册
         MEDIA_INFO_LOG("DefaultNetConnectObserver RegisterDefaultNetObserver OnReceiveEvent");
         int32_t retReg = subscriber_->RegisterDefaultNetObserver();
-        CHECK_AND_RETURN_LOG(retReg == E_OK, "failed to RegisterDefaultNetObserver");
+        CHECK_AND_PRINT_LOG(retReg == E_OK, "failed to RegisterDefaultNetObserver");
     }
 #endif
     const AAFwk::Want &want = eventData.GetWant();
@@ -653,6 +671,11 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
         bool isNetConnected = eventData.GetCode() == NET_CONN_STATE_CONNECTED;
         MEDIA_INFO_LOG("netType: %{public}d, isConnected: %{public}d.", netType, static_cast<int32_t>(isNetConnected));
         isCellularNetConnected_ = netType == BEARER_CELLULAR ? isNetConnected : isCellularNetConnected_;
+        #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+            if (isNetConnected) {
+                WatchSystemHandler::UpdateAllowNetworkSwitch();
+            }
+        #endif
     } else if (BACKGROUND_OPERATION_STATUS_MAP.count(action) != 0) {
         UpdateBackgroundOperationStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
         UpdateCloudMediaAssetDownloadStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
@@ -660,13 +683,11 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudFileProcessor::SetDownloadLatestFinished(false);
 #endif
+        HiAudit::GetInstance().WriteForAccountSwitch("LOGOUT", "success");
     } else if (MediaLakeCloneEventManager::IsRestoreEvent(want)) {
         MediaLakeCloneEventManager::GetInstance().HandleRestoreEvent(want);
     }
     OnReceiveEventSubAction(action);
-    if (action == CLOUD_UPDATE_EVENT && want.GetStringParam(CLOUD_EVENT_INFO_TYPE) == CLOUD_EVENT_INFO_TYPE_VALUE) {
-        PermissionWhitelistUtils::OnReceiveEvent();
-    }
     OnReceiveEventSub(eventData);
     // !! Do not add code here !!
 }
@@ -710,6 +731,12 @@ void MedialibrarySubscriber::HandleNetInfoChange(std::string &action)
             MedialibraryRelatedSystemStateManager::GetInstance()->SetCellularNetConnected(isCellularNetConnected_);
             MedialibraryRelatedSystemStateManager::GetInstance()->SetWifiConnected(isWifiConnected_);
     }
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+        auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+        if (criticalLabelTaskQueue != nullptr) {
+            criticalLabelTaskQueue->NotifyThread();
+        }
+#endif
 }
 
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
@@ -1155,8 +1182,10 @@ void MedialibrarySubscriber::DoFillUUIDOfPhotoAndAlbums()
 
 void MedialibrarySubscriber::DoBackgroundOperation()
 {
+    std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
     bool cond = (!backgroundDelayTask_.IsDelayTaskTimeOut() || !currentStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
+    Background::MediaCloudDentryBatchTask::CheckDentryCreation();
     PeriodicAnalyzePhotosData();
     Background::LcdDownloadTask::HandleLcdDownload();
 #ifdef META_RECOVERY_SUPPORT
@@ -1229,9 +1258,6 @@ void MedialibrarySubscriber::DoBackgroundOperationStepTwo()
     DfxManager::GetInstance()->HandleOneWeekMissions();
     PhotoDayMonthYearOperation::RepairDateTime();
     MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
-#ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
-    MediaFileInterworkScanner::GetInstance()->ScanFileManager();
-#endif
     backgroundTaskFactory_.Execute();
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
     CloudEnhancementChecker::RecognizeCloudEnhancementPhotosByDisplayName();
@@ -1278,7 +1304,7 @@ void MedialibrarySubscriber::StopBackgroundOperation()
 void MedialibrarySubscriber::UpdateThumbnailBgGenerationStatus()
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    bool isPowerSufficientForThumbnail = batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL;
+    bool isPowerSufficientForThumbnail = batteryCapacity_ > PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL;
     bool newStatus = false;
     if (!isBackgroundTaskAllowed_) {
         newStatus = false;
@@ -1286,7 +1312,7 @@ void MedialibrarySubscriber::UpdateThumbnailBgGenerationStatus()
         newStatus = isScreenOff_ && isPowerSufficientForThumbnail &&
             newTemperatureLevel_ <= PROPER_DEVICE_TEMPERATURE_LEVEL_43;
     } else if (isScreenOff_ && newTemperatureLevel_ <= PROPER_DEVICE_TEMPERATURE_LEVEL_40 &&
-        batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY) {
+        batteryCapacity_ > PROPER_DEVICE_BATTERY_CAPACITY) {
         int32_t thumbAstcCount = 0;
         int32_t thumbTotalCount = 0;
         MedialibrarySubscriberDatabaseUtils::QueryThumbAstc(thumbAstcCount);
@@ -1338,15 +1364,30 @@ bool MedialibrarySubscriber::UpdateCheckCriticalTypeStatus()
     auto instance = MedialibraryRelatedSystemStateManager::GetInstance();
     bool isNetworkSufficient = instance->IsNetAvailableInOnlyWifiCondition();
     bool isPowerSufficient = batteryCapacity_ >= PROPER_DEVICE_BATTERY_CRITICAL_LEVEL;
+    bool prevState = checkCriticalTypeStatus_;
     checkCriticalTypeStatus_ = isNetworkSufficient && isCharging_ && isPowerSufficient &&
             newTemperatureLevel_ <= PROPER_DEVICE_TEMPERATURE_LEVEL_37 && isScreenOff_;
 
+    MEDIA_DEBUG_LOG("update non-realtime status:%{public}d, %{public}d, %{public}d, %{public}d, %{public}d",
+        checkCriticalTypeStatus_, isScreenOff_, isCharging_, isPowerSufficient, newTemperatureLevel_);
+
+    if (prevState != checkCriticalTypeStatus_) {
+        auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+        if (criticalLabelTaskQueue != nullptr) {
+            if (!prevState && checkCriticalTypeStatus_) {
+                criticalLabelTaskQueue->StartNewCriticalSession();
+            } else {
+                criticalLabelTaskQueue->NotifyThread();
+            }
+        }
+    }
     return checkCriticalTypeStatus_;
 }
 #endif
 
 void MedialibrarySubscriber::DoThumbnailBgOperation()
 {
+    std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
     bool cond = (!thumbnailBgDelayTask_.IsDelayTaskTimeOut() || !thumbnailBgGenerationStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoThumbnailBgOperation are not met, will return.");
 

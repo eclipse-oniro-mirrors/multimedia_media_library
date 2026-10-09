@@ -23,6 +23,7 @@
 #include "medialibrary_errno.h"
 #include "media_scanner_db.h"
 #include "scan_config_builder.h"
+#include "scan_task_context.h"
 
 namespace OHOS {
 namespace Media {
@@ -73,6 +74,9 @@ int32_t MediaScannerManager::ScanFile(const std::string &path, const std::shared
         isCameraShotMovingPhoto ? MediaScannerObj::CAMERA_SHOT_MOVING_PHOTO : MediaScannerObj::FILE;
     std::unique_ptr<MediaScannerObj> scanner =
         std::make_unique<MediaScannerObj>(realPath, callback, scanType, api);
+    if (isCameraShotMovingPhoto) {
+        scanner->SetForceScan(true);
+    }
     executor_.Commit(move(scanner));
 
     return E_OK;
@@ -217,8 +221,13 @@ void MediaScannerManager::ErrorRecord(const std::string &path)
 
 int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
 {
+    MEDIA_INFO_LOG("ScanSync, strategyType %{public}d", static_cast<int>(config.GetStrategyType()));
+    if (config.GetStrategyType() == ScanStrategyType::CUSTOM_RESTORE_SCAN) {
+        return ExecuteCustomRestore(config, ScanExecutionMode::SYNC);
+    }
     MEDIA_INFO_LOG("scan file sync, path %{public}s, fileId %{public}d",
-        MediaFileUtils::DesensitizePath(config.GetFilePath()).c_str(), config.GetFileId());
+        MediaFileUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
+        config.GetDefaultScanInfo().GetFileId());
 
     auto context = PrepareValidatedContext(config, ScanExecutionMode::SYNC);
     if (context == nullptr) {
@@ -238,20 +247,21 @@ int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
     }
 
     if (submitResult == ScanSubmitResult::WAITING) {
-        enhancedExecutor_->WaitForSyncScanCompletion(context->config.GetFileId());
-        MEDIA_INFO_LOG("waiting completed (fileId %{public}d)", context->config.GetFileId());
+        enhancedExecutor_->WaitForSyncScanCompletion(context->config.GetDefaultScanInfo().GetFileId());
+        MEDIA_INFO_LOG("waiting completed (fileId %{public}d)", context->config.GetDefaultScanInfo().GetFileId());
         return E_OK;
     }
 
     enhancedExecutor_->StartSync(context);
-    MEDIA_INFO_LOG("completed (fileId %{public}d)", context->config.GetFileId());
+    MEDIA_INFO_LOG("completed (fileId %{public}d)", context->config.GetDefaultScanInfo().GetFileId());
     return E_OK;
 }
 
 int32_t MediaScannerManager::ScanAsync(const ScanConfig &config)
 {
     MEDIA_INFO_LOG("scan file async, path %{public}s, fileId %{public}d",
-        MediaFileUtils::DesensitizePath(config.GetFilePath()).c_str(), config.GetFileId());
+        MediaFileUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
+        config.GetDefaultScanInfo().GetFileId());
     
     auto context = PrepareValidatedContext(config, ScanExecutionMode::ASYNC);
     if (context == nullptr) {
@@ -272,13 +282,13 @@ int32_t MediaScannerManager::ScanAsync(const ScanConfig &config)
 
     if (submitResult == ScanSubmitResult::WAITING) {
         MEDIA_INFO_LOG("merged to existing task (fileId %{public}d)",
-            context->config.GetFileId());
+            context->config.GetDefaultScanInfo().GetFileId());
         return E_OK;
     }
 
     enhancedExecutor_->StartAsync();
     MEDIA_INFO_LOG("submitted (fileId %{public}d, result %{public}d)",
-        context->config.GetFileId(), static_cast<int32_t>(submitResult));
+        context->config.GetDefaultScanInfo().GetFileId(), static_cast<int32_t>(submitResult));
     return E_OK;
 }
 
@@ -290,13 +300,43 @@ std::shared_ptr<ScanTaskContext> MediaScannerManager::PrepareValidatedContext(co
         return nullptr;
     }
 
+    auto defaultScanInfo = config.GetDefaultScanInfo();
+    defaultScanInfo.SetFilePath(realPath);
     auto finalConfig = ScanConfigBuilder(config)
-        .SetFilePath(realPath)
+        .SetDefaultScanInfo(defaultScanInfo)
         .SetExecutionMode(executionMode)
         .Build();
 
     return std::make_shared<ScanTaskContext>(finalConfig);
 }
+
+// LCOV_EXCL_START
+int32_t MediaScannerManager::ExecuteCustomRestore(const ScanConfig &config, ScanExecutionMode executionMode)
+{
+    if (config.GetCustomRestoreInfo().GetFilePaths().empty()) {
+        MEDIA_ERR_LOG("ExecuteCustomRestore: invalid config");
+        return E_INVALID_ARGUMENTS;
+    }
+ 
+    MEDIA_INFO_LOG("ExecuteCustomRestore begin, file count: %{public}d",
+        static_cast<int32_t>(config.GetCustomRestoreInfo().GetFilePaths().size()));
+ 
+    if (enhancedExecutor_ == nullptr) {
+        MEDIA_ERR_LOG("enhancedExecutor is null");
+        return E_ERR;
+    }
+    auto finalConfig = ScanConfigBuilder(config)
+        .SetExecutionMode(executionMode)
+        .Build();
+ 
+    auto context = std::make_shared<ScanTaskContext>(finalConfig);
+    // customRestoreInfo is held by ScanConfig directly
+ 
+    // Directly execute synchronously (bypass Submit/deduplicator)
+    enhancedExecutor_->StartSync(context);
+    return E_OK;
+}
+// LCOV_EXCL_STOP
 
 } // namespace Media
 } // namespace OHOS

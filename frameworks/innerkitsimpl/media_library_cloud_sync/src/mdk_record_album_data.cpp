@@ -38,6 +38,12 @@ void MDKRecordAlbumData::UnMarshalling(const MDKRecord &record)
     if (this->fields_.find(this->KEY_ATTRIBUTES) != this->fields_.end()) {
         this->fields_[this->KEY_ATTRIBUTES].GetRecordMap(this->attributes_);
     }
+    if (this->fields_.find(this->KEY_PERMISSIONS) != this->fields_.end()) {
+        this->fields_[this->KEY_PERMISSIONS].GetRecordList(this->permissions_);
+    }
+    if (this->fields_.find(this->KEY_SCA_DETAIL) != this->fields_.end()) {
+        this->fields_[this->KEY_SCA_DETAIL].GetRecordList(this->scaDetailList_);
+    }
 }
 void MDKRecordAlbumData::Marshalling()
 {
@@ -176,14 +182,9 @@ void MDKRecordAlbumData::SetIsLogic(const bool isLogic)
 {
     this->fields_[this->ALBUM_IS_LOGIC] = MDKRecordField(isLogic);
 }
-std::optional<std::string> MDKRecordAlbumData::GetType() const
+std::optional<int32_t> MDKRecordAlbumData::GetType() const
 {
-    return this->recordReader_.GetStringValue(this->fields_, this->KEY_TYPE);
-}
-// type, "directory" or "file"
-void MDKRecordAlbumData::SetType(const std::string &type)
-{
-    this->fields_[this->KEY_TYPE] = MDKRecordField(type);
+    return this->recordReader_.GetIntValue(this->fields_, this->KEY_TYPE);
 }
 std::optional<std::string> MDKRecordAlbumData::GetLocalLanguage() const
 {
@@ -276,5 +277,57 @@ std::optional<std::string> MDKRecordAlbumData::GetUniqueId() const
 void MDKRecordAlbumData::SetUniqueId(const std::string &uniqueId)
 {
     this->attributes_[PhotoAlbumColumns::UNIQUE_ID] = MDKRecordField(uniqueId);
+}
+
+std::optional<std::string> MDKRecordAlbumData::GetAttributeFieldValue(const std::string &fieldName) const
+{
+    return this->recordReader_.GetStringValue(this->attributes_, fieldName);
+}
+
+std::optional<int64_t> MDKRecordAlbumData::GetAttributeFieldLongValue(const std::string &fieldName) const
+{
+    return this->recordReader_.GetLongValue(this->attributes_, fieldName);
+}
+
+std::string MDKRecordAlbumData::GetOwnerId() const
+{
+    return this->record_.GetOwnerId();
+}
+
+void MDKRecordAlbumData::GetShareMembers(std::vector<ShareMemberDataVo> &shareMemberDatas)
+{
+    if (this->permissions_.empty()) {
+        return;
+    }
+    for (auto &permission : this->permissions_) {
+        MDKParticipant ref;
+        if (permission.GetParticipant(ref) != MDKLocalErrorCode::NO_ERROR) {
+            continue;
+        }
+        if (ref.role == MDKRoleType::ROLE_OWNER) {
+            continue;
+        }
+        ShareMemberDataVo memberData;
+        memberData.userId = ref.userId;
+        memberData.status = static_cast<int32_t>(ref.status);
+        shareMemberDatas.push_back(memberData);
+    }
+}
+
+void MDKRecordAlbumData::GetScadetailList(std::vector<ScaDetailVo> &scaDetailList)
+{
+    if (this->scaDetailList_.empty()) {
+        return;
+    }
+    for (auto &scadetail : this->scaDetailList_) {
+        MDKScadetail ref;
+        if (scadetail.GetScadetail(ref) != MDKLocalErrorCode::NO_ERROR) {
+            continue;
+        }
+        ScaDetailVo scaDetailVo;
+        scaDetailVo.usage = ref.usage;
+        scaDetailVo.riskResult = ref.riskResult;
+        scaDetailList.push_back(scaDetailVo);
+    }
 }
 }  // namespace OHOS::Media::CloudSync

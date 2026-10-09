@@ -32,6 +32,8 @@
 #include "thumbnail_service.h"
 #include "media_string_utils.h"
 #include "medialibrary_photo_operations.h"
+#include "moving_photo_file_utils.h"
+#include "photo_dao.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -39,30 +41,6 @@ std::mutex g_fileManagerScanFlagMutex;
 std::unordered_map<int32_t, bool> g_fileManagerScanFlag;
 const std::string PATH_HIDDEN_PREFIX = ".";
 // LCOV_EXCL_START
-bool FileParser::PhotosRowData::IsExist()
-{
-    return fileId > 0;
-}
-
-std::string FileParser::PhotosRowData::ToString() const
-{
-    std::stringstream ss;
-    ss << "PhotosRowData["
-        << "fileId: " << fileId << ", "
-        << "mediaType: " << mediaType << ", "
-        << "fileSourceType: " << fileSourceType << ", "
-        << "size: " << size << ", "
-        << "dateModified: " << dateModified << ", "
-        << "dateTaken: " << dateTaken << ", "
-        << "inode: " << inode << ", "
-        << "mimeType: " << mimeType << ", "
-        << "storagePath: " << FileScanUtils::GarbleFilePath(storagePath) << ", "
-        << "ownerAlbumId: " << ownerAlbumId << ", "
-        << "ownerPackage: " << FileScanUtils::GarbleFile(ownerPackage) << ", "
-        << "packageName: " << FileScanUtils::GarbleFile(packageName) << ", "
-        << "data: " << FileScanUtils::GarbleFilePath(data) << "]";
-    return ss.str();
-}
 
 bool FileParser::MetaStatus::IsChanged() const
 {
@@ -88,7 +66,6 @@ FileParser::FileParser(const std::string &path, const FileSourceType &sourceType
 {
     path_ = path;
     mediaLibraryRdb_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    MEDIA_INFO_LOG("FileParser: The info is %{public}s", PrintInfo(fileInfo_).c_str());
 }
 
 FileParser::FileParser(const MediaNotifyInfo &notifyInfo, const FileSourceType &sourceType, ScanMode scanMode)
@@ -101,7 +78,6 @@ FileParser::FileParser(const MediaNotifyInfo &notifyInfo, const FileSourceType &
         FileScanUtils::GarbleFilePath(notifyInfo.afterPath).c_str());
     path_ = notifyInfo.afterPath;
     mediaLibraryRdb_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    MEDIA_INFO_LOG("FileParser: The info is %{public}s", PrintInfo(fileInfo_).c_str());
 }
 
 bool IsImageOrVideoType(int32_t fileType)
@@ -265,6 +241,7 @@ void FileParser::ParseFileInfo()
     fileInfo_.hdrMode = data->GetHdrMode();
     fileInfo_.videoMode = data->GetVideoMode();
     fileInfo_.coverPosition = data->GetCoverPosition();
+    fileInfo_.musicMasterMode = data->GetMusicMasterMode();
 }
 
 bool FileParser::HasChangePart(const FileParser::PhotosRowData &rowData)
@@ -347,63 +324,15 @@ FileParser::PhotosRowData FileParser::FindSameFileByDefault()
 
 FileParser::PhotosRowData FileParser::FindSameFileByStoragePath(const std::string &storagePath)
 {
-    const int32_t NOT_TRASHED = 0;
-    const int32_t NOT_HIDDEN = 0;
-    FileParser::PhotosRowData rowData;
-    CHECK_AND_RETURN_RET_LOG(!storagePath.empty(), rowData, "storagePath is empty");
-    std::vector<NativeRdb::ValueObject> params = { storagePath, sourceType_, FileSourceType::MEDIA,
-        static_cast<int32_t>(PhotoPositionType::LOCAL), static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD),
-        NOT_TRASHED, NOT_HIDDEN };
-    return FindSameFileInDatabase(SQL_PHOTOS_FIND_SAME_FILE_BY_STORAGE_PATH, params);
-}
-
-FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &querySql,
-    const std::vector<NativeRdb::ValueObject> &params)
-{
-    FileParser::PhotosRowData rowData;
-    CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, rowData, "mediaLibraryRdb_ is null.");
-    auto resultSet = mediaLibraryRdb_->QuerySql(querySql, params);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, rowData);
-    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        resultSet->Close();
-        return rowData;
-    }
-    rowData.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-    rowData.mediaType = GetInt32Val(MediaColumn::MEDIA_TYPE, resultSet);
-    rowData.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-    rowData.syncStatus = GetInt32Val(PhotoColumn::PHOTO_SYNC_STATUS, resultSet);
-    rowData.size = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
-    rowData.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
-    rowData.editTime = GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet);
-    rowData.inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
-    rowData.mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
-    rowData.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
-    rowData.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
-    rowData.ownerPackage = GetStringVal(PhotoColumn::MEDIA_OWNER_PACKAGE, resultSet);
-    rowData.packageName = GetStringVal(PhotoColumn::MEDIA_PACKAGE_NAME, resultSet);
-    rowData.dateTaken = GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet);
-    rowData.data = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
-    rowData.subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-    rowData.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
-    rowData.dateYear = GetInt32Val(PhotoColumn::PHOTO_DATE_YEAR, resultSet);
-    rowData.dateMonth = GetInt32Val(PhotoColumn::PHOTO_DATE_MONTH, resultSet);
-    rowData.dateDay = GetInt32Val(PhotoColumn::PHOTO_DATE_DAY, resultSet);
-    resultSet->Close();
-    MEDIA_INFO_LOG("FileParser: rowData: %{public}s", rowData.ToString().c_str());
-    return rowData;
+    return PhotoDao().FindSameFileByStoragePath(storagePath, sourceType_);
 }
 
 int32_t FileParser::IsExistSameFileForCloneRestore(int32_t ownerAlbumId)
 {
-    CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "mediaLibraryRdb_ is null.");
     int pictureFlag = fileInfo_.fileType == MediaType::MEDIA_TYPE_VIDEO ? 0 : 1;
     std::vector<NativeRdb::ValueObject> params = { ownerAlbumId, fileInfo_.displayName,
         fileInfo_.fileSize, pictureFlag, fileInfo_.orientation};
-    auto resultSet = mediaLibraryRdb_->QuerySql(SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE, params);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
-        E_ERR, "Query failed, not exist same file");
-    resultSet->Close();
-    return E_OK;
+    return PhotoDao().IsExistSameFileForCloneRestore(params);
 }
 
 // 校验当前资产的通知是否合法
@@ -471,21 +400,18 @@ void FileParser::SetByPhotosRowData(const PhotosRowData &rowData)
     if (rowData.subtype == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)) {
         fileInfo_.subtype = rowData.subtype;
     }
-    if (rowData.dateTaken > 0) {
-        fileInfo_.dateTaken = rowData.dateTaken;
+    if (rowData.dateTaken > 0 && rowData.dateTaken < fileInfo_.dateTaken) {
+        SetDateTakenFields(rowData);
     }
-    if (rowData.dateTaken > 0) {
-        fileInfo_.dateTaken = rowData.dateTaken;
-    }
-    if (!rowData.dateYear.empty()) {
-        fileInfo_.dateYear = rowData.dateYear;
-    }
-    if (!rowData.dateMonth.empty()) {
-        fileInfo_.dateMonth = rowData.dateMonth;
-    }
-    if (!rowData.dateDay.empty()) {
-        fileInfo_.dateDay = rowData.dateDay;
-    }
+}
+
+void FileParser::SetDateTakenFields(const PhotosRowData &rowData)
+{
+    fileInfo_.dateTaken = rowData.dateTaken;
+    fileInfo_.dateYear = rowData.dateYear;
+    fileInfo_.dateMonth = rowData.dateMonth;
+    fileInfo_.dateDay = rowData.dateDay;
+    fileInfo_.detailTime = rowData.detailTime;
 }
 
 NativeRdb::ValuesBucket FileParser::GetAssetInsertValues()
@@ -515,32 +441,41 @@ NativeRdb::ValuesBucket FileParser::GetAssetUpdateValues()
     values.Put(PhotoColumn::PHOTO_DATE_YEAR, fileInfo_.dateYear);
     values.Put(PhotoColumn::PHOTO_DATE_MONTH, fileInfo_.dateMonth);
     values.Put(PhotoColumn::PHOTO_DATE_DAY, fileInfo_.dateDay);
+    values.Put(PhotoColumn::PHOTO_DETAIL_TIME, fileInfo_.detailTime);
     return values;
 }
 
 int32_t FileParser::SetAssetSubtypeValues(NativeRdb::ValuesBucket &values)
 {
-    int32_t fileId = fileInfo_.fileId;
-    vector<string> columns = {PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE};
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore when query owner_album_id");
-    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "failed to acquire result from visitor query.");
-    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
-        MEDIA_INFO_LOG("set asset subtype values, subtype:%{public}d, effectMode:%{public}d", subtype, effectMode);
-        if (fileInfo_.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
-            effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
-            values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
-        } else {
-            values.Put(PhotoColumn::PHOTO_SUBTYPE, fileInfo_.subtype);
-        }
+    int32_t subtype = 0;
+    int32_t effectMode = 0;
+    bool found = false;
+    int32_t ret = PhotoDao().QuerySubtypeAndEffectMode(fileInfo_.fileId, subtype, effectMode, found);
+    CHECK_AND_RETURN_RET(ret == E_OK, E_ERR);
+    CHECK_AND_RETURN_RET(found, E_OK);
+    MEDIA_INFO_LOG("set asset subtype values, subtype:%{public}d, effectMode:%{public}d", subtype, effectMode);
+    if (fileInfo_.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
+        effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
+        values.Put(MediaColumn::MEDIA_DURATION, 0);
+    } else {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, fileInfo_.subtype);
     }
-    resultSet->Close();
     return E_OK;
+}
+
+// 电影模式V2资产的shooting_mode相关字段由相机侧写入（AddPhotoProxy/UpdatePhotoProxy），
+// 扫描器解析视频元数据为空时会覆盖，因此对V2资产跳过这两个字段的更新
+// 注意：values.Delete仅从本次UPDATE的SET子句移除该列，不修改数据库已有值
+bool FileParser::IsCinematicVideoV2Asset()
+{
+    if (fileInfo_.fileType != MediaType::MEDIA_TYPE_VIDEO) {
+        return false;
+    }
+    int32_t subtype = 0;
+    bool found = false;
+    int32_t ret = PhotoDao().QuerySubtype(fileInfo_.fileId, subtype, found);
+    return ret == E_OK && found && subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
 }
 
 NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
@@ -559,6 +494,10 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
 
     values.Put(MediaColumn::MEDIA_DURATION, fileInfo_.duration);
     values.Put(PhotoColumn::PHOTO_ORIENTATION, fileInfo_.orientation);
+    if (fileInfo_.width <= 0 || fileInfo_.height <= 0) {
+        MEDIA_WARN_LOG("WritePhotoSize [FileParser] fileId=%{public}d, width=%{public}d, height=%{public}d",
+            fileInfo_.fileId, fileInfo_.width, fileInfo_.height);
+    }
     values.Put(PhotoColumn::PHOTO_HEIGHT, fileInfo_.height);
     values.Put(PhotoColumn::PHOTO_WIDTH, fileInfo_.width);
     double aspectRatio = MediaFileUtils::CalculateAspectRatio(fileInfo_.height, fileInfo_.width);
@@ -580,12 +519,33 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
 
     values.Put(PhotoColumn::LOCAL_ASSET_SIZE, fileInfo_.localAssetSize);
     values.Put(PhotoColumn::PHOTO_COVER_POSITION, fileInfo_.coverPosition);
+    values.Put(PhotoColumn::MUSIC_MASTER_MODE, fileInfo_.musicMasterMode);
 
     SetAssetAlbumValues(values);
     SetAssetLocationValues(values);
     SetAssetSubtypeValues(values);
+    CHECK_AND_EXECUTE(fileInfo_.subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO),
+        SetAssetLivePhoto4dValues(values));
 
     return values;
+}
+
+void FileParser::SetAssetLivePhoto4dValues(NativeRdb::ValuesBucket &values)
+{
+    uint32_t version = 0;
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(fileInfo_.filePath, version);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "get extraData version failed, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("livePhoto4d: Live photo 4d version: %{public}u", version);
+    if (fileInfo_.livePhoto4dStatus == static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8) ||
+        version == LIVE_PHOTO_4D_VERSION) {
+        values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+        if (version != LIVE_PHOTO_4D_VERSION) {
+            ret = MovingPhotoFileUtils::ModifyExtraDataVersion(fileInfo_.filePath,
+                static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+            CHECK_AND_RETURN_LOG(ret == E_OK, "modify extraData version failed, ret: %{public}d", ret);
+        }
+    }
 }
 
 void FileParser::SetAssetAlbumValues(NativeRdb::ValuesBucket &values)
@@ -680,39 +640,6 @@ std::string FileParser::ToString()
     return ss.str();
 }
 
-int32_t FileParser::QueryThumbnailInfos(const std::vector<std::string> &inodes,
-    std::vector<ThumbnailInfo> &infos, std::vector<int32_t> &thumbnailVisibleList)
-{
-    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(PhotoColumn::PHOTO_FILE_INODE, inodes);
-    for (const auto &inode : inodes) {
-        MEDIA_INFO_LOG("generate thumbnail inode: %{public}s", inode.c_str());
-    }
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null.");
-
-    auto resultSet = rdbStore->Query(predicates, {PhotoColumn::PHOTO_FILE_INODE, MediaColumn::MEDIA_ID,
-        MediaColumn::MEDIA_DATE_MODIFIED, MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_DATE_TAKEN,
-        PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_THUMBNAIL_VISIBLE});
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr!");
-
-    while (resultSet->GoToNextRow() == E_OK) {
-        ThumbnailInfo info;
-        string inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
-        info.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-        info.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-        info.path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
-        info.dateTaken = GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet);
-        info.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
-        int32_t thumbnailVisible = GetInt32Val(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, resultSet);
-
-        infos.push_back(info);
-        thumbnailVisibleList.push_back(thumbnailVisible);
-    }
-    resultSet->Close();
-    return E_OK;
-}
-
 std::vector<std::string> FileParser::GenerateThumbnail(ScanMode scanMode, const std::vector<std::string> &inodes)
 {
     MEDIA_INFO_LOG("generate thumbnail");
@@ -725,7 +652,7 @@ std::vector<std::string> FileParser::GenerateThumbnail(ScanMode scanMode, const 
     // 查询数据库
     std::vector<ThumbnailInfo> infos;
     std::vector<int32_t> thumbnailVisibleList;
-    int32_t ret = QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
+    int32_t ret = PhotoDao().QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, uris, "QueryThumbnailInfos failed");
 
     // 生成缩略图（LakeFileScanner 不需要功耗管控）
@@ -743,28 +670,16 @@ std::vector<std::string> FileParser::GenerateThumbnail(ScanMode scanMode, const 
 std::vector<std::string> FileParser::GetFileUris(const std::vector<std::string> &inodes)
 {
     // 查找对应的fileId
-    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.In(PhotoColumn::PHOTO_FILE_INODE, inodes);
-    for (auto inode : inodes) {
-        MEDIA_INFO_LOG("generate thumbnail inode: %{public}s", inode.c_str());
-    }
+    std::vector<ThumbnailInfo> infos;
+    std::vector<int32_t> thumbnailVisibleList;
+    int32_t ret = PhotoDao().QueryThumbnailInfos(inodes, infos, thumbnailVisibleList);
     std::vector<std::string> uris;
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, uris, "rdbStore is null.");
-    auto resultSet = rdbStore->Query(predicates, {PhotoColumn::PHOTO_FILE_INODE, MediaColumn::MEDIA_ID,
-        MediaColumn::MEDIA_NAME, PhotoColumn::MEDIA_FILE_PATH});
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, uris, "resultSet is nullptr!");
-
-    while (resultSet->GoToNextRow() == E_OK) {
-        int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-        std::string inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
-        std::string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-        std::string path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, uris, "QueryThumbnailInfos failed");
+    for (const auto &info : infos) {
         std::string uri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
-            to_string(fileId), MediaFileUtils::GetExtraUri(displayName, path));
+            to_string(info.fileId), MediaFileUtils::GetExtraUri(info.displayName, info.path));
         uris.push_back(uri);
     }
-    resultSet->Close();
     return uris;
 }
 
@@ -779,6 +694,12 @@ int32_t FileParser::UpdateAssetInDatabase()
 {
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_HAS_DB_ERROR, "mediaLibraryRdb_ is null.");
     NativeRdb::ValuesBucket values = GetAssetUpdateValues();
+    if (IsCinematicVideoV2Asset()) {
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE);
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+        MEDIA_INFO_LOG("skip update shooting mode fields for cinematic video v2, fileId: %{public}d",
+            fileInfo_.fileId);
+    }
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, fileInfo_.fileId);
     int32_t changedRows = 0;
@@ -830,19 +751,21 @@ int64_t FileParser::GetFileDateAdded(const struct stat &statInfo)
     return MediaFileUtils::UTCTimeMilliSeconds();
 }
 
-void FileParser::SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan)
+void FileParser::SetFileManagerScanFlagBySingle(const std::string &fileIdStr, bool stopScan)
 {
-    for (const auto& fileIdStr : fileIds) {
-        CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
-        int32_t fileId = std::stoi(fileIdStr);
-        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
-        if (stopScan) {
-            g_fileManagerScanFlag[fileId] = stopScan;
-        } else {
-            auto it = g_fileManagerScanFlag.find(fileId);
-            if (it != g_fileManagerScanFlag.end()) {
-                g_fileManagerScanFlag.erase(it);
-            }
+    int32_t fileId;
+    bool result = MediaStringUtils::ConvertToInt(fileIdStr, fileId);
+    if (!result) {
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", fileIdStr.c_str());
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+    if (stopScan) {
+        g_fileManagerScanFlag[fileId] = stopScan;
+    } else {
+        auto it = g_fileManagerScanFlag.find(fileId);
+        if (it != g_fileManagerScanFlag.end()) {
+            g_fileManagerScanFlag.erase(it);
         }
     }
 }

@@ -130,7 +130,10 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
 {
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
+    } else {
+        videoInfo.videoPath = videoInfo.filePath;
     }
+    MEDIA_INFO_LOG("AddSingleVideo videoPath = %{private}s", videoInfo.videoPath.c_str());
     std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
@@ -152,27 +155,26 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
         fileNamePrefix + "_tmp2" + fileNameSubfix;
     MediaFileUtils::CreateFile(sharedTemp1CloudView);
     MediaFileUtils::CreateFile(sharedTemp2CloudView);
-    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath);
+    std::string editDirOriginPath = physicalPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
+        videoInfo.filePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
+    std::vector<std::string> srcPath = {editDirOriginPath, srcPhysicalPath};
+    deferredProcSession_->AddVideo(videoId, srcPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
 }
 
 void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     VideoInfo &videoInfo, bool isMovingPhoto)
 {
-    std::string effectVideoPath = videoInfo.videoPath;
+    videoInfo.videoPath = videoInfo.filePath;
     CHECK_AND_RETURN_LOG(videoInfo.videoPath.size() >= MEDIA_EDIT_DATA_DIR.size(),
         "videoPath is too short, video Path: %{private}s", videoInfo.videoPath.c_str());
     CHECK_AND_RETURN_LOG(videoInfo.videoPath.substr(0, ROOT_MEDIA_DIR.length()) == ROOT_MEDIA_DIR,
         "Invalid video path %{private}s does not begin with ROOT_MEDIA_DIR", videoInfo.videoPath.c_str());
     // 原始视频
-    videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
-        "file is not real path, file path: %{private}s", videoInfo.videoPath.c_str());
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
-    } else {
-        videoInfo.videoPath = effectVideoPath;
     }
+    MEDIA_INFO_LOG("AddDoubleVideo videoPath = %{private}s", videoInfo.videoPath.c_str());
     std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
@@ -193,8 +195,9 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     MediaFileUtils::CreateFile(sharedTemp1CloudView);
     MediaFileUtils::CreateFile(sharedTemp2CloudView);
     std::string moviePathRealPath = physicalPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
-        videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath,
+        videoInfo.filePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
+    std::vector<std::string> srcPath = {srcPhysicalPath};
+    deferredProcSession_->AddVideo(videoId, srcPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath,
         moviePathRealPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
     DfxManager::GetInstance()->HandleCinematicVideoAddStartTime(CinematicWaitType::PROCESS_CINEMATIC, videoId);
@@ -205,23 +208,22 @@ void MultiStagesVideoCaptureManager::AddVideoInternal(const std::string &videoId
     VideoInfo &videoInfo, bool isTrashed, bool isMovingPhoto)
 {
     MEDIA_INFO_LOG("AddVideoInternal, file path: %{private}s", videoInfo.videoPath.c_str());
-    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR)) {
-        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR)) {
-            MEDIA_ERR_LOG("Create camera cache directory failed");
+    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES)) {
+        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES)) {
+            MEDIA_ERR_LOG("Create camera cache temp directory failed");
+            return;
+        }
+    }
+    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES)) {
+        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR +
+                CAMERA_CACHE_ENHANCE_DIR_VALUES)) {
+            MEDIA_ERR_LOG("Create camera cache enhanced directory failed");
             return;
         }
     }
     MultiStagesCaptureRequestTaskManager::AddPhotoInProgress(videoInfo.fileId, videoId, isTrashed);
 #ifdef ABILITY_CAMERA_SUPPORT
-    videoInfo.videoPath = videoInfo.filePath;
-    if (isMovingPhoto) {
-        videoInfo.videoPath = MovingPhotoFileUtils::GetSourceMovingPhotoVideoPath(videoInfo.filePath);
-        if (!MediaFileUtils::IsFileExists(videoInfo.videoPath)) {
-            videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
-        }
-    }
-    CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
-        "file is not real path, file path: %{private}s", videoInfo.videoPath.c_str());
+    MEDIA_INFO_LOG("AddVideoInternal videoPath = %{public}s", videoInfo.videoPath.c_str());
     AddVideoInfo(videoId, videoInfo);
     switch (videoInfo.videoCount) {
         case VideoCount::SINGLE:
@@ -346,7 +348,9 @@ void MultiStagesVideoCaptureManager::SyncWithDeferredVideoProcSessionInternal()
         std::string videoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
         std::string filePath = GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, resultSet);
         bool isMovingPhoto = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet) > 0;
-        bool isCinematicVideo = QuerySubType(videoId) == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO);
+        int32_t videoSubType = QuerySubType(videoId);
+        bool isCinematicVideo = (videoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+            videoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
         bool isTrashed = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
         int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
         VideoInfo videoInfo = {fileId, isCinematicVideo ? VideoCount::DOUBLE : VideoCount::SINGLE,
@@ -493,7 +497,8 @@ static int32_t UpdateIsTempAndDirty(const SaveCameraPhotoDto &dto, int32_t subTy
     }
     int32_t updateRows = 0;
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::SAVE_CAMERA_PHOTO_BUSSINESS_NAME);
-    if (subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+    if (subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+        subType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) {
         updateRows = assetRefresh.UpdateWithDateTime(values, predicates);
         CHECK_AND_RETURN_RET_LOG(updateRows >= 0, E_ERR, "update temp flag fail.");
         predicates.EqualTo(PhotoColumn::PHOTO_QUALITY, to_string(static_cast<int32_t>(MultiStagesPhotoQuality::FULL)));
@@ -525,10 +530,14 @@ int32_t MultiStagesVideoCaptureManager::SaveCameraVideo(const SaveCameraPhotoDto
     int32_t ret = UpdateIsTempAndDirty(dto, fileAsset->GetPhotoSubType());
     CHECK_AND_RETURN_RET_LOG(!(fileAsset->GetPath().empty()), E_ERR, "path is empty.");
 
+    DefaultScanInfo scanInfo;
+    scanInfo.SetIsMovingPhoto(false);
+    scanInfo.SetFilePath(fileAsset->GetPath());
+    scanInfo.SetFileId(dto.fileId);
     ScanConfig config = ScanConfigBuilder()
-        .UseCameraShotPreset(false, ScanQuality::DEFAULT)
-        .SetFilePath(fileAsset->GetPath())
-        .SetFileId(dto.fileId)
+        .UseCameraShotPreset(ScanQuality::DEFAULT)
+        .SetNeedGenerateThumbnail(true)
+        .SetDefaultScanInfo(scanInfo)
         .Build();
     MediaLibraryAssetOperations::ScanFile(config);
 

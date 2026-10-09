@@ -67,6 +67,12 @@ enum class DeferredProcType : int32_t {
     OFFLINE,
 };
 
+struct C2PAConfigInfo {
+    bool enableC2PA{false};
+    std::string authorId{""};
+    std::string authorName{""};
+};
+
 class PhotoProxy : public RefBase {
 public:
     PhotoProxy() {}
@@ -88,7 +94,15 @@ public:
     virtual double GetLatitude() = 0;
     virtual double GetLongitude() = 0;
     virtual int32_t GetShootingMode() = 0;
+    virtual std::string GetShootingVersion() // 获取拍摄版本号，写入shooting_mode_tag字段
+    {
+        return "";
+    }
     virtual uint32_t GetCloudImageEnhanceFlag() = 0;
+    virtual C2PAConfigInfo GetC2PAConfigInfo()
+    {
+        return C2PAConfigInfo();
+    }
     virtual int32_t GetStageVideoTaskStatus() // 动态照片是否需要下发分段式视频任务，返回状态枚举值
     {
         return 0;
@@ -99,13 +113,19 @@ public:
         return 0;
     }
 
+    virtual int32_t GetCompressionQuality()
+    {
+        return 0;
+    }
+
     std::string ToString()
     {
         std::stringstream ss;
         ss << "{"
            << "\"photoId\": \"" << this->GetPhotoId() << "\","
            << "\"burstKey\": \"" << this->GetBurstKey() << "\","
-           << "\"ceAvailable\": \"" << std::to_string(this->GetCloudImageEnhanceFlag())
+           << "\"ceAvailable\": \"" << std::to_string(this->GetCloudImageEnhanceFlag()) << "\","
+           << "\"compressionQuality\": \"" << this->GetCompressionQuality() << "\","
            << "}";
         return ss.str();
     }

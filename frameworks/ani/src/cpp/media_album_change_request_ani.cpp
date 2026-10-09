@@ -79,12 +79,14 @@ static bool CheckOperateAttributePermissionForCall(ani_env *env)
         AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
         return false;
     }
-    if (!CheckAniCallerPermission(PERM_ACCESS_MEDIALIB_THUMB_DB)) {
-        AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
-            "Permission denied : ohos.permission.ACCESS_MEDIALIB_THUMB_DB required.");
-        return false;
+    if (CheckAniCallerPermission(PERM_ACCESS_MEDIALIB_THUMB_DB) ||
+        CheckAniCallerPermission(PERM_WRITE_IMAGEVIDEO)) {
+        return true;
     }
-    return true;
+    AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+        "Permission denied : ohos.permission.ACCESS_MEDIALIB_THUMB_DB or "
+        "ohos.permission.WRITE_IMAGEVIDEO required.");
+    return false;
 }
 
 ani_status MediaAlbumChangeRequestAni::Init(ani_env *env)
@@ -316,6 +318,18 @@ ani_status MediaAlbumChangeRequestAni::PlaceBefore([[maybe_unused]] ani_env *env
     auto albumAni = PhotoAlbumAni::UnwrapPhotoAlbumObject(env, albumHandle);
     CHECK_COND_RET(albumAni != nullptr, ANI_INVALID_ARGS, "albumAni is nullptr");
     aniContext->objectInfo->referencePhotoAlbum_ = albumAni->GetPhotoAlbumInstance();
+    auto sourceAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
+    if (sourceAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(sourceAlbum->GetPhotoAlbumType(), sourceAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "This operation is not supported for this album type");
+        return ANI_ERROR;
+    }
+    auto referenceAlbum = aniContext->objectInfo->referencePhotoAlbum_;
+    if (referenceAlbum != nullptr &&
+        PhotoAlbum::IsShareAlbum(referenceAlbum->GetPhotoAlbumType(), referenceAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "This operation is not supported for this album type");
+        return ANI_ERROR;
+    }
     aniContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ORDER_ALBUM);
     return ANI_OK;
 }
@@ -434,6 +448,44 @@ void MediaAlbumChangeRequestAni::SetExtraInfoOperationData(AnalysisAlbumOperatio
     albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_EXTRA_INFO);
 }
 
+void MediaAlbumChangeRequestAni::SetFriendIdOperationData(AnalysisAlbumOperation &operation)
+{
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_FRIEND_ID);
+}
+
+void MediaAlbumChangeRequestAni::SetContactInfoOperationData(AnalysisAlbumOperation &operation)
+{
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_CONTACT_INFO);
+}
+
+static ani_status ApplyOperateAttribute(ani_env *env,
+    const std::unique_ptr<MediaAlbumChangeRequestContext>& aniContext,
+    AnalysisAlbumOperation& analysisOperation)
+{
+    if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_NICK_NAME) {
+        CHECK_ARGS_WITH_RET_MSG(env,
+            aniContext->objectInfo->SetNickNameOperationData(analysisOperation.type, analysisOperation.values),
+            JS_E_PARAM_INVALID, ANI_ERROR, "The total number of pending nickname values exceeds the limit");
+    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_IS_REMOVED) {
+        aniContext->objectInfo->SetIsRemovedOperationData(analysisOperation);
+    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_EXTRA_INFO) {
+        aniContext->objectInfo->SetExtraInfoOperationData(analysisOperation);
+    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_FRIEND_ID) {
+        aniContext->objectInfo->SetFriendIdOperationData(analysisOperation);
+    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_CONTACT_INFO) {
+        aniContext->objectInfo->SetContactInfoOperationData(analysisOperation);
+    } else {
+        ANI_ERR_LOG("Unsupported operateAttribute attr: %{public}s", analysisOperation.attr.c_str());
+    }
+    return ANI_OK;
+}
+
 ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object object, ani_object operation)
 {
     CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is null");
@@ -447,6 +499,10 @@ ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object
 
     auto photoAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_WITH_RET_MESSAGE(env, photoAlbum != nullptr, ANI_INVALID_ARGS, "photoAlbum is null");
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for this album type");
+        return ANI_ERROR;
+    }
     if (!IsPortraitAlbumAttributeTarget(photoAlbum)) {
         AniError::ThrowError(env, JS_E_OPR_TYPE_NOT_SUPPORT, "Only portrait album can operate attribute");
         return ANI_ERROR;
@@ -474,18 +530,7 @@ ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object
         return ANI_OK;
     }
 
-    if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_NICK_NAME) {
-        CHECK_ARGS_WITH_RET_MSG(env,
-            aniContext->objectInfo->SetNickNameOperationData(analysisOperation.type, analysisOperation.values),
-            JS_E_PARAM_INVALID, ANI_ERROR, "The total number of pending nickname values exceeds the limit");
-    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_IS_REMOVED) {
-        aniContext->objectInfo->SetIsRemovedOperationData(analysisOperation);
-    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_EXTRA_INFO) {
-        aniContext->objectInfo->SetExtraInfoOperationData(analysisOperation);
-    } else {
-        ANI_ERR_LOG("Unsupported operateAttribute attr: %{public}s", analysisOperation.attr.c_str());
-    }
-    return ANI_OK;
+    return ApplyOperateAttribute(env, aniContext, analysisOperation);
 }
 
 ani_status MediaAlbumChangeRequestAni::MergeAlbum(ani_env *env, ani_object object, ani_object albumHandle)
@@ -538,7 +583,6 @@ bool MediaAlbumChangeRequestAni::CheckDismissAssetVaild(std::vector<std::string>
     return true;
 }
 
-
 ani_status MediaAlbumChangeRequestAni::DismissAssets(ani_env *env, ani_object object, ani_object arrayPhotoAssetStr)
 {
     CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is null");
@@ -558,6 +602,10 @@ ani_status MediaAlbumChangeRequestAni::DismissAssets(ani_env *env, ani_object ob
         AniError::ThrowError(env, JS_E_OPERATION_NOT_SUPPORT, "This dismissAssets is not support");
         return ANI_INVALID_ARGS;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(newAssetArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     auto photoAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
     CHECK_COND_RET(photoAlbum != nullptr, ANI_INVALID_ARGS, "photoAlbum is null");
     auto type = photoAlbum->GetPhotoAlbumType();
@@ -609,6 +657,10 @@ ani_status MediaAlbumChangeRequestAni::AddAssets(ani_env *env, ani_object object
             "The previous addAssets operation has contained the same asset");
         return ANI_ERROR;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     changeRequest->assetsToAdd_.insert(changeRequest->assetsToAdd_.end(), assetUriArray.begin(), assetUriArray.end());
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::ADD_ASSETS);
     return ANI_OK;
@@ -683,6 +735,10 @@ ani_status MediaAlbumChangeRequestAni::MoveAssets(ani_env *env, ani_object objec
             return ANI_ERROR;
         }
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     changeRequest->RecordMoveAssets(assetUriArray, targetPhotoAlbum);
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::MOVE_ASSETS);
     return ANI_OK;
@@ -759,6 +815,13 @@ ani_status MediaAlbumChangeRequestAni::MoveAssetsWithUri(ani_env *env, ani_objec
             return ANI_ERROR;
         }
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    if (MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray)) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "This operation is not supported for assets in shared albums");
+        return ANI_INVALID_ARGS;
+    }
     changeRequest->RecordMoveAssets(assetUriArray, targetPhotoAlbum);
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::MOVE_ASSETS_WITH_URI);
     return ANI_OK;
@@ -786,6 +849,10 @@ ani_status MediaAlbumChangeRequestAni::RemoveAssets(ani_env *env, ani_object obj
             "The previous RemoveAssets operation has contained the same asset");
         return ANI_ERROR;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetUriArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     changeRequest->assetsToRemove_.insert(
         changeRequest->assetsToRemove_.end(), assetUriArray.begin(), assetUriArray.end());
     changeRequest->albumChangeOperations_.push_back(AlbumChangeOperation::REMOVE_ASSETS);
@@ -1810,6 +1877,22 @@ static bool UpdateExtraInfoExecute(MediaAlbumChangeRequestContext& context)
         changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
 }
 
+static bool UpdateFriendIdExecute(MediaAlbumChangeRequestContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
+static bool UpdateContactInfoExecute(MediaAlbumChangeRequestContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
 static bool SetCoverUriExecute(MediaAlbumChangeRequestContext& context)
 {
     auto changeRequest = context.objectInfo;
@@ -1928,6 +2011,8 @@ static const unordered_map<AlbumChangeOperation,
     { AlbumChangeOperation::DISMISS, DismissExecute },
     { AlbumChangeOperation::RESET_COVER_URI, ResetCoverUriExecute },
     { AlbumChangeOperation::UPDATE_EXTRA_INFO, UpdateExtraInfoExecute },
+    { AlbumChangeOperation::UPDATE_FRIEND_ID, UpdateFriendIdExecute },
+    { AlbumChangeOperation::UPDATE_CONTACT_INFO, UpdateContactInfoExecute },
 };
 
 static bool SetAlbumPropertyExecute(
@@ -2035,7 +2120,9 @@ static void ApplyAlbumChangeRequestExecute(std::unique_ptr<MediaAlbumChangeReque
                    changeOperation == AlbumChangeOperation::SET_DISPLAY_LEVEL ||
                    changeOperation == AlbumChangeOperation::DISMISS ||
                    changeOperation == AlbumChangeOperation::RESET_COVER_URI ||
-                   changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO) {
+                   changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO ||
+                   changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID ||
+                   changeOperation == AlbumChangeOperation::UPDATE_CONTACT_INFO) {
             valid = SetAlbumPropertyExecute(aniContext, changeOperation);
         } else {
             ANI_ERR_LOG("Invalid album change operation: %{public}d", changeOperation);

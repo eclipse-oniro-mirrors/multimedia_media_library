@@ -512,6 +512,8 @@ ani_object HighlightAlbumAni::GetOrderPosition(ani_env *env, ani_object object, 
 
     std::set<std::string> idSet(assetIdArray.begin(), assetIdArray.end());
     CHECK_COND_WITH_MESSAGE(env, idSet.size() == assetIdArray.size(), "assetIdArray has duplicated elements");
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(assetIdArray),
+        "This operation is not supported for assets in shared albums");
     context->assetIdArray = std::move(assetIdArray);
     context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
 

@@ -112,6 +112,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS
     PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME + " BIGINT NOT NULL DEFAULT 0, " +
     PhotoColumn::PHOTO_VISIT_COUNT + " INT NOT NULL DEFAULT 0, " +
     PhotoColumn::PHOTO_LCD_VISIT_COUNT + " INT NOT NULL DEFAULT 0," +
+    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME + " TEXT DEFAULT '-1', " +
     PhotoColumn::PHOTO_HAS_APPLINK + " INT NOT NULL DEFAULT 0," +
     PhotoColumn::PHOTO_APPLINK + " TEXT, " +
     PhotoColumn::PHOTO_TRANSCODE_TIME + " BIGINT NOT NULL DEFAULT 0, " +
@@ -136,9 +137,21 @@ const std::string PhotoUpgrade::CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS + " INT NOT NULL DEFAULT 0, " +
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " TEXT, " +
     PhotoColumn::LOCAL_ASSET_SIZE + " BIGINT NOT NULL DEFAULT 0, " +
+    PhotoColumn::MUSIC_MASTER_MODE + " INT NOT NULL DEFAULT 0, " +
     PhotoColumn::PHOTO_FILE_HIDDEN + " INT NOT NULL DEFAULT 0, " +
     PhotoColumn::PHOTO_NEED_THUMBNAIL + " INT NOT NULL DEFAULT 1 , " +
-    PhotoColumn::ATTACHMENT_SIZE + " BIGINT NOT NULL DEFAULT -1" +
+    PhotoColumn::ATTACHMENT_SIZE + " BIGINT NOT NULL DEFAULT 0, " +
+    PhotoColumn::PHOTO_LCD_FILE_SIZE + " INT NOT NULL DEFAULT 0, " +
+    PhotoColumn::COMPRESSION_QUALITY + " INT NOT NULL DEFAULT -1, " +
+    PhotoColumn::PHOTO_IS_SHARED + " INT NOT NULL DEFAULT 0, " +
+    PhotoColumn::PHOTO_SHARE_OWNER_INFO + " TEXT DEFAULT NULL, " +
+    PhotoColumn::PHOTO_SHARE_ALBUM_OWNER + " TEXT DEFAULT NULL, " +
+    PhotoColumn::PHOTO_VISIBILITY + " INT NOT NULL DEFAULT 0, " +
+    PhotoColumn::PHOTO_SHARE_RISK_STATUS + " INT NOT NULL DEFAULT 0, " +
+    PhotoColumn::PHOTO_SHARE_RISK_TYPE + " TEXT DEFAULT NULL, " +
+    PhotoColumn::PHOTO_SHARE_DATE_DAY + " BIGINT NOT NULL DEFAULT 0, " +
+    PhotoColumn::PHOTO_SHARE_GROUP + " BIGINT NOT NULL DEFAULT 0, " +
+    PhotoColumn::C2PA_CONFIG_INFO + " TEXT " +
     ") ";
 
 const std::string PhotoUpgrade::CREATE_CLOUD_ID_INDEX = BaseColumn::CreateIndex() +
@@ -229,7 +242,7 @@ const std::string PhotoUpgrade::CREATE_SCHPT_HIDDEN_TIME_INDEX =
     MediaColumn::MEDIA_HIDDEN + "," + MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_DATE_TRASHED +
     "," + PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
     PhotoColumn::PHOTO_HIDDEN_TIME + " DESC, " + MediaColumn::MEDIA_TYPE + "," +
-    PhotoColumn::PHOTO_OWNER_ALBUM_ID + ");";
+    PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::DROP_SCHPT_HIDDEN_TIME_INDEX = BaseColumn::DropIndex() +
     PhotoColumn::PHOTO_SCHPT_HIDDEN_TIME_INDEX;
@@ -239,7 +252,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_FAVORITE_INDEX =
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_HIDDEN + "," + MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_DATE_TRASHED +
     "," + PhotoColumn::PHOTO_IS_TEMP + "," + MediaColumn::MEDIA_IS_FAV + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC);";
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " +
+    MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::DROP_PHOTO_FAVORITE_INDEX = BaseColumn::DropIndex() +
     PhotoColumn::PHOTO_FAVORITE_INDEX;
@@ -294,7 +308,8 @@ const std::string PhotoUpgrade::INDEX_SCTHP_PHOTO_DATEADDED =
     PhotoColumn::PHOTO_CLEAN_FLAG + "," + MediaColumn::MEDIA_DATE_TRASHED + "," +
     MediaColumn::MEDIA_HIDDEN + "," + MediaColumn::MEDIA_TIME_PENDING + "," +
     PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
-    MediaColumn::MEDIA_DATE_ADDED + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
+    MediaColumn::MEDIA_DATE_ADDED + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + "," +
+    MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::INDEX_LATITUDE =
     BaseColumn::CreateIndex() + PhotoColumn::LATITUDE_INDEX + " ON " +
@@ -347,7 +362,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX = 
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE +
     "," + MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME +
-    " DESC, " + PhotoColumn::PHOTO_STRONG_ASSOCIATION + ");";
+    " DESC, " + PhotoColumn::PHOTO_STRONG_ASSOCIATION + "," + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -356,7 +371,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX = 
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," +
     MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
-    " DESC, " + PhotoColumn::PHOTO_STRONG_ASSOCIATION + ");";
+    " DESC, " + PhotoColumn::PHOTO_STRONG_ASSOCIATION + "," + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -364,7 +379,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX = Ba
     PhotoColumn::PHOTO_CLEAN_FLAG + "," +  PhotoColumn::PHOTO_SYNC_STATUS + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_TIME_PENDING + "," +
     PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
-    MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME + " DESC);";
+    MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
+    MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -372,7 +388,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX = Ba
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC);";
+    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
+    MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_SIZE_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -380,7 +397,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX = BaseColu
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-    "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC);";
+    "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC, " +
+    MediaColumn::MEDIA_DATE_TAKEN + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -389,7 +407,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX = BaseCo
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE +
     "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC," +
-    PhotoColumn::PHOTO_STRONG_ASSOCIATION + ");";
+    PhotoColumn::PHOTO_STRONG_ASSOCIATION + "," + MediaColumn::MEDIA_NAME + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -397,7 +415,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX = 
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-    "," + MediaColumn::MEDIA_NAME + " DESC);";
+    "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " +
+    MediaColumn::MEDIA_ID + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -405,7 +424,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX 
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE +
-    "," + MediaColumn::MEDIA_NAME + " DESC," + PhotoColumn::PHOTO_STRONG_ASSOCIATION + ");";
+    "," + MediaColumn::MEDIA_NAME + " DESC," + PhotoColumn::PHOTO_STRONG_ASSOCIATION +
+    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -413,7 +433,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX =
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_SHOOTING_MODE +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC);";
+    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
+    MediaColumn::MEDIA_ID + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_BURST_MODE_ALBUM_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_BURST_MODE_ALBUM_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -438,7 +459,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX = BaseColumn:
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_MIME_TYPE +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC);";
+    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
+    MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_MOVING_PHOTO_ALBUM_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_MOVING_PHOTO_ALBUM_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -446,7 +468,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_MOVING_PHOTO_ALBUM_INDEX = BaseColu
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC) "
+    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + ") "
     "WHERE (subtype = " + to_string(static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) +
         " OR (moving_photo_effect_mode = " + to_string(static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) +
             " AND subtype = " + to_string(static_cast<int32_t>(PhotoSubType::DEFAULT)) + "));";

@@ -55,6 +55,11 @@ struct FileAssetsInfo {
     int64_t size;
     int32_t ownerAlbumId;
     std::string title;
+    int64_t dateTrashed;
+    int32_t hidden;
+    int32_t dirty;
+    int32_t isTemp;
+    int64_t timePending;
 };
 
 struct FileAlbumInfo {

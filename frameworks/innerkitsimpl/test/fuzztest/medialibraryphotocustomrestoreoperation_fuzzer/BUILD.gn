@@ -32,7 +32,12 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/operation",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include/dao",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
   ]
 
   sources = [
@@ -41,10 +46,12 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/medialibrary_custom_restore_notify.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/photo_custom_restore_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/dao/media_custom_restore_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/media_share_dirty_data_cleaner.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/src/medialibrary_rdbstore_utils_fuzzer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/custom_restore_utils.cpp",
   ]
 
   if (media_library_feature_custom_restore) {
@@ -55,6 +62,7 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -84,7 +92,6 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",

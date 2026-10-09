@@ -50,6 +50,8 @@ enum class AssetChangeOperation {
     SET_DISPLAY_NAME,
     SET_HIDDEN_ATTRIBUTE,
     SET_DISPLAY_NAME_BY_FILE,
+    SET_CAMERA_EDIT_DATA,
+    SET_LIVEPHOTO_4D_STATUS,
 };
 
 enum class AddResourceMode {
@@ -77,6 +79,14 @@ private:
 };
 
 struct MediaAssetChangeRequestAniContext;
+
+struct SubmitCacheConfig {
+    bool isCreation;
+    bool isSetEffectMode;
+    bool isWriteGpsAdvanced;
+    int32_t userId {-1};
+    bool isCameraEditData {false};
+};
 
 class MediaAssetChangeRequestAni : public MediaChangeRequestAni {
 public:
@@ -114,6 +124,7 @@ public:
         ani_object assets);
 
     static ani_object SetEditData(ani_env *env, ani_object aniObject, ani_object editData);
+    static ani_object SetCameraEditData(ani_env *env, ani_object aniObject, ani_object editData);
     static ani_object SetFavorite(ani_env *env, ani_object object, ani_boolean favoriteState);
     static ani_object SetHidden(ani_env *env, ani_object object, ani_boolean hiddenState);
     static ani_object SetHiddenAttribute(ani_env *env, ani_object object, ani_boolean fileHiddenState);
@@ -139,6 +150,9 @@ public:
         ani_enum_item watermarkTypeAni);
     static ani_object SetVideoEnhancementAttr(ani_env *env, ani_object aniObject,
         ani_enum_item videoEnhancementType, ani_string photoId);
+    static ani_object SetLivePhoto4dStatus(ani_env *env, ani_object object, ani_int livePhoto4dStatus,
+        ani_string livePhoto4dLatestPair);
+    bool CheckSetLivePhoto4dStatus(ani_env *env);
     void RecordChangeOperation(AssetChangeOperation changeOperation);
     bool Contains(AssetChangeOperation changeOperation) const;
     bool ContainsResource(ResourceType resourceType) const;
@@ -146,7 +160,7 @@ public:
     bool CheckMovingPhotoResource(ResourceType resourceType) const;
     bool CheckEffectModeWriteOperation();
     bool CheckMovingPhotoWriteOperation();
-    bool CheckChangeOperations(ani_env *env);
+    bool CheckChangeOperations(ani_env *env, std::unique_ptr<MediaAssetChangeRequestAniContext> &context);
     int32_t CreateAssetBySecurityComponent(std::string &assetUri);
     int32_t CopyToMediaLibrary(bool isCreation, AddResourceMode mode);
     int32_t PutMediaAssetEditData(DataShare::DataShareValuesBucket &valuesBucket);
@@ -179,8 +193,8 @@ public:
     void SetIsWriteGpsAdvanced(bool val);
     bool GetIsWriteGpsAdvanced();
     void PutStringToCreationValue(const std::string &columnName, const std::string &val);
-
-    int32_t SubmitCache(bool isCreation, bool isSetEffectMode, bool isWriteGpsAdvanced, const int32_t userId = -1);
+    DataShare::DataShareValuesBucket GetSubmitCacheValuesBucket(SubmitCacheConfig submitCacheConfig);
+    int32_t SubmitCache(SubmitCacheConfig submitCacheConfig);
     int32_t SubmitCacheWithCreation(
         std::string &uri, std::string &assetUri, bool isSetEffectMode, const int32_t userId);
     int32_t SubmitCacheWithoutCreation(std::string &uri, bool isSetEffectMode, bool isWriteGpsAdvanced,
@@ -225,6 +239,7 @@ struct MediaAssetChangeRequestAniContext : public AniError {
     int32_t fd;
     int32_t userId_ = -1;
     std::vector<std::string> fileIds;
+    bool isCameraEditData {false};
 };
 } // namespace Media
 } // namespace OHOS

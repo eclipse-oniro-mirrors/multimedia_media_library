@@ -39,11 +39,15 @@ static const string SQL_INSERT_PHOTO = "INSERT INTO " + PhotoColumn::PHOTOS_TABL
 
 static int32_t ClearTable(const string &table)
 {
-    RdbPredicates predicates(table);
-
-    int32_t rows = 0;
-    int32_t err = g_rdbStore->Delete(rows, predicates);
-    if (err != E_OK) {
+    string sql = "DELETE FROM " + table;
+    int32_t err = g_rdbStore->ExecuteSql(sql);
+    if (err != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to clear table, err: %{public}d", err);
+        return E_HAS_DB_ERROR;
+    }
+    sql = "UPDATE sqlite_sequence SET seq = 0 WHERE name = '" + table + "'";
+    err = g_rdbStore->ExecuteSql(sql);
+    if (err != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Failed to clear table, err: %{public}d", err);
         return E_HAS_DB_ERROR;
     }

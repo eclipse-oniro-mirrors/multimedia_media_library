@@ -25,8 +25,12 @@ ohos_unittest("media_file_manager_test") {
     "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
     "${MEDIALIB_SERVICES_PATH}/media_file_manager/include",
+    "${MEDIALIB_SERVICES_PATH}/media_refresh/include",
     "../medialibrary_unittest_utils/include",
     "./include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -34,14 +38,19 @@ ohos_unittest("media_file_manager_test") {
   sources = [
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_file_manager/src/file_manager_asset_operations.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_file_manager/src/file_manager_album_operations.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/file_manager_asset_operations_test.cpp",
+    "./src/file_manager_asset_move_operations_test.cpp",
+    "./src/file_manager_album_operations_test.cpp",
+    "./src/media_duplicate_checker_utils_test.cpp",
   ]
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [

@@ -47,6 +47,7 @@
           "battery_manager",
           "bundle_framework",
           "c_utils",
+          "cJSON",
           "cellular_data",
           "camera_framework",
           "core_service",
@@ -76,7 +77,9 @@
           "memory_utils",
           "memmgr",
           "image_framework",
+          "libuv",
           "napi",
+          "node",
           "resource_management",
           "resource_schedule_service",
           "runtime_core",
@@ -109,7 +112,8 @@
           "ets_frontend",
           "json",
           "drivekit_native",
-          "bounds_checking_function"
+          "bounds_checking_function",
+          "form_fwk"
         ]
       },
       "build": {
@@ -153,11 +157,11 @@
             "//foundation/multimedia/media_library/services/media_backup_extension:media_backup_package",
             "//foundation/multimedia/media_library/services/media_mtp:media_mtp_package",
             "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_library_cloud_sync:media_library_cloud_sync",
+            "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_share_album_lite:media_share_album_lite",
             "//foundation/multimedia/media_library/common:media_library_common",
             "//foundation/multimedia/media_library/frameworks/client:media_library_client",
             "//foundation/multimedia/media_library/frameworks/innerkitsimpl/analysis_data_kits:analysis_data_kits",
-            "//foundation/multimedia/media_library/common/media_cloud_sync_data:media_cloud_sync_data",
-            "//foundation/multimedia/media_library/common/media_ipc_common:media_ipc_common"
+            "//foundation/multimedia/media_library/common/media_cloud_sync_data:media_cloud_sync_data"
           ]
         },
         "inner_kits": [
@@ -197,6 +201,8 @@
                   "mdk_record_field.h",
                   "mdk_record.h",
                   "mdk_reference.h",
+                  "mdk_participant.h",
+                  "mdk_scadetail.h",
                   "dk_record_parser.h",
                   "cloud_media_factory.h",
                   "i_cloud_media_data_handler.h",
@@ -303,6 +309,15 @@
                 ]
               },
               "name": "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_library_camera_helper:media_library_camera_helper"
+            },
+            {
+              "header": {
+                "header_base": "//foundation/multimedia/media_library/interfaces/inner_api/media_share_album_lite/include",
+                "header_files": [
+                  "media_share_photo_data_client.h"
+                ]
+              },
+              "name": "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_share_album_lite:media_share_album_lite"
             }
         ],
         "test": [

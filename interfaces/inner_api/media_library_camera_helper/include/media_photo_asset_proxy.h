@@ -102,7 +102,7 @@ private:
     static int32_t AddProcessVideo(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
         const sptr<PhotoProxy> &photoProxy, int32_t fileId, int32_t VideoCount);
 
-     // imgae落盘
+    // imgae落盘
     void SaveFileForImage(const sptr<PhotoProxy> &editPhotoProxy, const sptr<PhotoProxy> &srcPhotoProxy);
     void DealWithLowQualityPhoto(int fd, const sptr<PhotoProxy> &photoProxy, const int32_t pathType);
     int32_t CloseFd(const int32_t fd, const int32_t pathType);
@@ -115,6 +115,8 @@ private:
     int32_t CreateFileFdForCamera(const int32_t pathType);
     void ScanCameraFile(const int32_t pathType);
     static void GetPhotoIdForAsset(const sptr<PhotoProxy> &photoProxy, const PhotoSubType& type, std::string& photoId);
+    static PhotoSubType GetSubTypeFromShotType(CameraShotType shotType);
+    static int32_t GetVideoCountFromSaveVideoType(SaveVideoType saveVideoType);
 
 private:
     sptr<PhotoProxy> photoProxy_;

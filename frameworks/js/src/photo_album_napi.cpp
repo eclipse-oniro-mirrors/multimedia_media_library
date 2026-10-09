@@ -354,6 +354,11 @@ void PhotoAlbumNapi::PhotoAlbumNapiDestructor(napi_env env, void *nativeObject, 
 
 napi_value UnwrapPhotoAlbumObject(napi_env env, napi_callback_info info, PhotoAlbumNapi** obj)
 {
+    if (obj == nullptr) {
+        NAPI_ERR_LOG("PhotoAlbumNapi** obj is nullptr");
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_undefined(env, &result), JS_INNER_FAIL);
 
@@ -365,9 +370,10 @@ napi_value UnwrapPhotoAlbumObject(napi_env env, napi_callback_info info, PhotoAl
     }
 
     CHECK_ARGS(env, napi_unwrap(env, thisVar, reinterpret_cast<void **>(obj)), JS_INNER_FAIL);
-    if (obj == nullptr) {
+    if (*obj == nullptr) {
+        NAPI_ERR_LOG("Napi unwraped obj is nullptr");
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
-        return result;
+        return nullptr;
     }
 
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
@@ -413,6 +419,10 @@ napi_value PhotoAlbumNapi::JSPhotoAccessGetAlbumUri(napi_env env, napi_callback_
     CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
 
     napi_value jsResult = nullptr;
+    if (obj == nullptr) {
+        NAPI_ERR_LOG("Unwrap PhotoAlbumObject failed, obj is nullptr");
+        return nullptr;
+    }
     CHECK_ARGS(env, napi_create_string_utf8(env, obj->GetAlbumUri().c_str(), NAPI_AUTO_LENGTH, &jsResult),
         JS_INNER_FAIL);
     return jsResult;
@@ -675,21 +685,25 @@ static napi_value ParseArgsCommitModify(napi_env env, napi_callback_info info,
 {
     constexpr size_t minArgs = ARGS_ZERO;
     constexpr size_t maxArgs = ARGS_ONE;
-    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        JS_ERR_PARAMETER_INVALID);
+    CHECK_ARGS_WITH_ERRMSG(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_ERR_PARAMETER_INVALID, "The number of parameters is invalid");
 
     auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
     if (photoAlbum == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The current album object is invalid, the Album is not a valid instance obtained from "
+            "photoAccessHelper.geAlbums() or createAlbum()");
         return nullptr;
     }
     if (!PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The album is not a user album, only user albums support this operation");
         return nullptr;
     }
 
     if (MediaFileUtils::CheckAlbumName(photoAlbum->GetAlbumName()) < 0) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The album name exceeds the length limit or contains invalid characters");
         return nullptr;
     }
     context->predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
@@ -731,6 +745,9 @@ static void JSCommitModifyIPCExecute(PhotoAlbumNapiAsyncContext *context)
     reqBody.albumId = photoAlbum->GetAlbumId();
     changedRows = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody);
     context->SaveError(changedRows);
+    if (changedRows < 0) {
+        context->errorMsg = "The server returned an error during commitModify, please retry and check logs";
+    }
     context->changedRows = changedRows;
 }
 
@@ -748,6 +765,9 @@ static void JSCommitModifyExecute(napi_env env, void *data)
     Uri uri(CONST_UFM_UPDATE_PHOTO_ALBUM);
     int changedRows = UserFileClient::Update(uri, context->predicates, context->valuesBucket);
     context->SaveError(changedRows);
+    if (changedRows < 0) {
+        context->errorMsg = "The server returned an error during commitModify, please retry and check logs";
+    }
     context->changedRows = changedRows;
 }
 
@@ -799,37 +819,42 @@ napi_value PhotoAlbumNapi::PhotoAccessHelperCommitModify(napi_env env, napi_call
 static napi_value GetAssetsIdArray(napi_env env, napi_value arg, vector<string> &assetsArray)
 {
     bool isArray = false;
-    CHECK_ARGS(env, napi_is_array(env, arg, &isArray), JS_INNER_FAIL);
+    CHECK_ARGS_WITH_ERRMSG(env, napi_is_array(env, arg, &isArray), JS_INNER_FAIL,
+        "The assets parameter must be an array");
     if (!isArray) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to check array type");
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The assets parameter must be an array");
         return nullptr;
     }
 
     uint32_t len = 0;
-    CHECK_ARGS(env, napi_get_array_length(env, arg, &len), JS_INNER_FAIL);
+    CHECK_ARGS_WITH_ERRMSG(env, napi_get_array_length(env, arg, &len), JS_INNER_FAIL, "The assets array is empty");
     if (len < 0) {
         NAPI_ERR_LOG("Failed to check array length: %{public}u", len);
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to check array length");
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The assets array is empty");
         return nullptr;
     }
     if (len == 0) {
         napi_value result = nullptr;
-        CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+        CHECK_ARGS_WITH_ERRMSG(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL, "The assets array is empty");
         return result;
     }
 
     for (uint32_t i = 0; i < len; i++) {
         napi_value asset = nullptr;
-        CHECK_ARGS(env, napi_get_element(env, arg, i, &asset), JS_INNER_FAIL);
+        CHECK_ARGS_WITH_ERRMSG(env, napi_get_element(env, arg, i, &asset), JS_INNER_FAIL,
+            "The array element must be a valid PhotoAsset object");
         if (asset == nullptr) {
-            NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get asset element");
+            NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+                "The array element must be a valid PhotoAsset object");
             return nullptr;
         }
 
         FileAssetNapi *obj = nullptr;
-        CHECK_ARGS(env, napi_unwrap(env, asset, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
+        CHECK_ARGS_WITH_ERRMSG(env, napi_unwrap(env, asset, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL,
+            "The array element must be a valid PhotoAsset object");
         if (obj == nullptr) {
-            NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get asset napi object");
+            NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+                "The array element must be a valid PhotoAsset object");
             return nullptr;
         }
         if ((obj->GetMediaType() != MEDIA_TYPE_IMAGE && obj->GetMediaType() != MEDIA_TYPE_VIDEO)) {
@@ -849,12 +874,13 @@ static napi_value ParseArgsAddAssets(napi_env env, napi_callback_info info,
 {
     constexpr size_t minArgs = ARGS_ONE;
     constexpr size_t maxArgs = ARGS_TWO;
-    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        JS_ERR_PARAMETER_INVALID);
+    CHECK_ARGS_WITH_ERRMSG(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_ERR_PARAMETER_INVALID, "The number of parameters is invalid");
 
     auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
     if (!PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The album is not a user album, only user albums support addAssets");
         return nullptr;
     }
 
@@ -867,6 +893,8 @@ static napi_value ParseArgsAddAssets(napi_env env, napi_callback_info info,
         CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
         return result;
     }
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(assetsArray),
+        "This operation is not supported for assets in shared albums");
     int32_t albumId = photoAlbum->GetAlbumId();
     for (const auto &assetId : assetsArray) {
         DataShareValuesBucket valuesBucket;
@@ -941,6 +969,7 @@ static void JSPhotoAlbumAddAssetsIPCExecute(PhotoAlbumNapiAsyncContext *context)
     int32_t changedRows = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
     if (changedRows < 0) {
         context->SaveError(changedRows);
+        context->errorMsg = "IPC call failed, please retry and check logs";
         return;
     }
 
@@ -971,6 +1000,7 @@ static void JSPhotoAlbumAddAssetsExecute(napi_env env, void *data)
     auto changedRows = UserFileClient::BatchInsert(uri, context->valuesBuckets);
     if (changedRows < 0) {
         context->SaveError(changedRows);
+        context->errorMsg = "Batch insert failed, database operation error, please retry";
         return;
     }
     context->changedRows = changedRows;
@@ -978,6 +1008,7 @@ static void JSPhotoAlbumAddAssetsExecute(napi_env env, void *data)
     if (ret < 0) {
         NAPI_ERR_LOG("Update count failed");
         context->SaveError(E_HAS_DB_ERROR);
+        context->errorMsg = "Failed to update album count, please retry and check logs";
     }
 }
 
@@ -1034,12 +1065,13 @@ static napi_value ParseArgsRemoveAssets(napi_env env, napi_callback_info info,
 {
     constexpr size_t minArgs = ARGS_ONE;
     constexpr size_t maxArgs = ARGS_TWO;
-    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        JS_ERR_PARAMETER_INVALID);
+    CHECK_ARGS_WITH_ERRMSG(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_ERR_PARAMETER_INVALID, "The number of parameters is invalid");
 
     auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
     if (!PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The album is not a user album, only user albums support removeAssets");
         return nullptr;
     }
 
@@ -1051,6 +1083,11 @@ static napi_value ParseArgsRemoveAssets(napi_env env, napi_callback_info info,
         CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
         return result;
     }
+
+    vector<string> fileIdArray;
+    MediaLibraryNapiUtils::ExtractFileIdsFromUris(assetsArray, fileIdArray);
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIdArray),
+        "This operation is not supported for assets in shared albums");
 
     context->assetsArray = assetsArray;
     context->predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
@@ -1079,6 +1116,7 @@ static void JSPhotoAlbumRemoveAssetsIPCExecute(PhotoAlbumNapiAsyncContext *conte
     if (deletedRows < 0) {
         NAPI_ERR_LOG("Remove assets failed: %{public}d", deletedRows);
         context->SaveError(deletedRows);
+        context->errorMsg = "IPC call returned a non-permission error code, please retry and check logs";
         return;
     }
 
@@ -1112,6 +1150,7 @@ static void JSPhotoAlbumRemoveAssetsExecute(napi_env env, void *data)
     if (deletedRows < 0) {
         NAPI_ERR_LOG("Remove assets failed: %{public}d", deletedRows);
         context->SaveError(deletedRows);
+        context->errorMsg = "System internal error, please retry and check logs";
         return;
     }
     context->changedRows = deletedRows;
@@ -1119,6 +1158,7 @@ static void JSPhotoAlbumRemoveAssetsExecute(napi_env env, void *data)
     if (ret < 0) {
         NAPI_ERR_LOG("Update count failed");
         context->SaveError(E_HAS_DB_ERROR);
+        context->errorMsg = "Failed to update album count, please retry and check logs";
     }
 }
 
@@ -1244,17 +1284,20 @@ static napi_value ParseArgsGetPhotoAssets(napi_env env, napi_callback_info info,
 {
     constexpr size_t minArgs = ARGS_ONE;
     constexpr size_t maxArgs = ARGS_TWO;
-    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        JS_ERR_PARAMETER_INVALID);
+    CHECK_ARGS_WITH_ERRMSG(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_ERR_PARAMETER_INVALID, "The object is not a valid instance");
 
     /* Parse the first argument */
-    CHECK_ARGS(env, MediaLibraryNapiUtils::GetFetchOption(env, context->argv[PARAM0], ASSET_FETCH_OPT, context),
-        JS_INNER_FAIL);
+    CHECK_ARGS_WITH_ERRMSG(env, MediaLibraryNapiUtils::GetFetchOption(env, context->argv[PARAM0], ASSET_FETCH_OPT,
+        context), JS_INNER_FAIL, "FetchOptions parsing failed, please check if the parameter is valid FetchOptions "
+        "type");
 
     auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
     auto ret = GetPredicatesByAlbumTypes(photoAlbum, context->predicates, photoAlbum->GetHiddenOnly());
     if (ret != E_SUCCESS) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
+            "The current album object is invalid, the Album is not a valid instance obtained from "
+            "photoAccessHelper.getAlbums() or createAlbum()");
         return nullptr;
     }
     CHECK_NULLPTR_RET(MediaLibraryNapiUtils::AddDefaultAssetColumns(env, context->fetchColumn,
@@ -1294,6 +1337,7 @@ static void JSGetPhotoAssetsExecute(napi_env env, void *data)
     auto resultSet = UserFileClient::Query(uri, context->predicates, context->fetchColumn, errCode);
     if (resultSet == nullptr) {
         context->SaveError(E_HAS_DB_ERROR);
+        context->errorMsg = "Database query failed, please retry and check logs";
         return;
     }
     context->fetchResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
@@ -1369,6 +1413,7 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
 
     if (resultSet == nullptr) {
         context->SaveError(E_HAS_DB_ERROR);
+        context->errorMsg = "Database query failed, please retry and check logs";
         return;
     }
     context->fetchResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
@@ -1792,6 +1837,10 @@ static napi_value ParseArgsSetCoverUri(napi_env env, napi_callback_info info,
     auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Only system apps can update album cover");
+        return nullptr;
+    }
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "This operation is not supported for this album type");
         return nullptr;
     }
 
@@ -2295,7 +2344,7 @@ static bool CheckGetAttributePermission(napi_env env)
         return false;
     }
     if (!CheckAlbumChangeRequestCallerPermission(PERM_READ_IMAGEVIDEO)) {
-        NapiError::ThrowError(env, E_PERMISSION_DENIED, "Permission denied: "
+        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "Permission denied: "
             + string(PERM_READ_IMAGEVIDEO));
         return false;
     }
@@ -2355,8 +2404,9 @@ napi_value PhotoAlbumNapi::JSAnalysisAlbumGetAttribute(napi_env env, napi_callba
     CHECK_COND_WITH_ERR_MESSAGE(env, !HasDuplicate(attributeArray), JS_E_PARAM_INVALID,
         "Duplicate attributes found");
     for (const auto& attribute : attributeArray) {
-        CHECK_COND_WITH_ERR_MESSAGE(env, attribute == ANALYSIS_ALBUM_ATTR_EXTRA_INFO, JS_E_PARAM_INVALID,
-            "Invalid attribute: " + attribute);
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            attribute == ANALYSIS_ALBUM_ATTR_EXTRA_INFO || attribute == ANALYSIS_ALBUM_ATTR_FRIEND_ID,
+            JS_E_PARAM_INVALID, "Invalid attribute: " + attribute);
     }
     asyncContext->attributeArray = std::move(attributeArray);
 

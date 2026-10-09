@@ -28,7 +28,7 @@ class MediaLibraryCommonUtils {
 public:
     static int32_t GenKeySHA256(const std::vector<uint8_t> &input, std::string &key);
     static int32_t GenKeySHA256(const std::string &input, std::string &key);
-    static bool CheckWhereClause(const std::string &whereClause);
+    static bool CheckWhereClause(const std::string &whereClause, bool isSA = false);
     static void AppendSelections(std::string &selections);
     static bool CanConvertStrToInt32(const std::string &str);
 private:

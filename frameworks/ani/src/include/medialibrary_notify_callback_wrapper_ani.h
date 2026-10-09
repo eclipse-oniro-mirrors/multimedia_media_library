@@ -36,6 +36,12 @@ public:
     ani_ref ref_;
 };
 
+enum PhotoChangeListenScene {
+    BothPhotoAndSinglePhoto,
+    BothAlbumAndSingleAlbum,
+    Other
+};
+
 struct NewJsOnChangeCallbackWrapperAni {
     ani_env *env_;
     ani_vm *etsVm_;
@@ -45,6 +51,10 @@ struct NewJsOnChangeCallbackWrapperAni {
     std::shared_ptr<Notification::UserDefineNotifyInfo> userDefineInfo_;
     std::vector<std::shared_ptr<ClientObserverAni>> ClientObserverAnis_;
     std::shared_ptr<Notification::DbAvailabilityData> dbAvailabilityInfo_;
+    std::map<std::string, std::vector<std::shared_ptr<ClientObserverAni>>> singleClientObserverAnis_;
+    std::map<std::string, std::shared_ptr<AccurateRefresh::PhotoAssetChangeData>> singleAssetClientChangeInfoAni_;
+    std::map<std::string, std::shared_ptr<AccurateRefresh::AlbumChangeData>> singleAlbumClientChangeInfoAni_;
+    PhotoChangeListenScene changeListenScene;
 };
 } // Media
 } // OHOS

@@ -41,8 +41,8 @@ ScanSubmitResult ScanTaskDeduplicator::SubmitTask(const std::shared_ptr<ScanTask
         return ScanSubmitResult::REJECTED;
     }
 
-    if (task->config.GetFileId() < 0) {
-        MEDIA_ERR_LOG("invalid fileId %{public}d", task->config.GetFileId());
+    if (task->config.GetDefaultScanInfo().GetFileId() < 0) {
+        MEDIA_ERR_LOG("invalid fileId %{public}d", task->config.GetDefaultScanInfo().GetFileId());
         return ScanSubmitResult::REJECTED;
     }
 

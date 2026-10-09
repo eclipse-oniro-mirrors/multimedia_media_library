@@ -203,10 +203,6 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, CommonPath_Test, TestSize.Level1)
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath("test"), "");
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath(".test"), ".mp4");
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath("what/can/i/say.avi"), "what/can/i/say.mp4");
-
-    EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoTmpPath(""), "");
-    result = CloudMediaSyncUtils::GetMovingPhotoTmpPath("/storage/cloud/files/user/test");
-    EXPECT_EQ(result, "/mnt/hmdfs/account/device_view/local/files/.cloud_cache/download_cache/user/test");
 }
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, GenerateCloudIdWithHash_Test, TestSize.Level1)
@@ -716,6 +712,196 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleDateAddedYearMonthDay_Test, TestS
     int64_t newDateAdded = 1700000001;
     CloudSyncConvert::HandleDateAddedYearMonthDay(oldDateAdded, newDateAdded, values);
     EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR), true);
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_002, TestSize.Level1)
+{
+    // 测试TYPE_UNIDENTIFIED
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED);
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_003, TestSize.Level1)
+{
+    // 测试TYPE_UNSUPPORTED
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED);
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_004, TestSize.Level1)
+{
+    // 测试TYPE_SUPPORTED
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_SUPPORTED);
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_SUPPORTED));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_005, TestSize.Level1)
+{
+    // 测试TYPE_USED
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_USED);
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_USED));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_006, TestSize.Level1)
+{
+    // 测试TYPE4D_LIVEPHOTO
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_007, TestSize.Level1)
+{
+    // 测试无效值-1（会被clamp到TYPE_MIN_VALUE）
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] = -1;
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_MIN_VALUE));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_008, TestSize.Level1)
+{
+    // 测试无效值100（会被clamp到TYPE_MIN_VALUE）
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] = 100;
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_MIN_VALUE));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_009, TestSize.Level1)
+{
+    // 测试本地已有4D效果状态(4-9)且云端值为0-3时，拒绝云端值下行
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED);
+    PhotosPo localPhoto;
+    localPhoto.livePhoto4dStatus = static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE);
+    data.localPhotosPoOp = localPhoto;
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    // 本地4-9，云端0-3，不应写入云端值
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), false);
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_010, TestSize.Level1)
+{
+    // 测试本地已有4D效果状态(4-9)且云端值也为4D效果(4)时，拒绝云端值下行
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
+    PhotosPo localPhoto;
+    localPhoto.livePhoto4dStatus = static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE);
+    data.localPhotosPoOp = localPhoto;
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    // 本地5，云端4(0-4范围)，不应写入云端值
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), false);
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_011, TestSize.Level1)
+{
+    // 测试本地已有4D效果状态(4-9)但云端值为5-9时，允许云端值下行
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UP_ROTATE);
+    PhotosPo localPhoto;
+    localPhoto.livePhoto4dStatus = static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE);
+    data.localPhotosPoOp = localPhoto;
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    // 本地5，云端6(5-9范围)，允许写入云端值
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_UP_ROTATE));
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleLivePhoto4dStatus_Test_012, TestSize.Level1)
+{
+    // 测试本地status为0(未识别)时，正常写入云端值
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    data.int64fields[PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS] =
+        static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
+    PhotosPo localPhoto;
+    localPhoto.livePhoto4dStatus = 0;
+    data.localPhotosPoOp = localPhoto;
+    auto ret = CloudSyncConvert::HandleLivePhoto4dStatus(data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS), true);
+    int64_t status = 0;
+    ValueObject valueObject;
+    values.GetObject(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, valueObject);
+    valueObject.GetLong(status);
+    EXPECT_EQ(status, static_cast<int64_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
 }
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, ToStringWithCommaAndQuote_SingleValue, TestSize.Level1)

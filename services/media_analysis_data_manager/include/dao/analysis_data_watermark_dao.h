@@ -30,7 +30,9 @@ namespace OHOS::Media::AnalysisData {
 class AnalysisDataWatermarkDao {
 private:
     static inline const std::string DELETE_WATERMARK_STATUS_BY_FILE_ID = "\
-        DELETE FROM tab_analysis_watermark \
+        UPDATE tab_analysis_watermark \
+        SET status = 2, valid_region_x = 0, valid_region_y = 0, \
+        valid_region_width = 1, valid_region_height = 1 \
         WHERE file_id = ?;";
 
 public:

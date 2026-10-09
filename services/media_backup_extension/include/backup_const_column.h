@@ -48,11 +48,7 @@ const std::string GALLERY_MERGE_FACE_HASH = GALLERY_TABLE_MERGE_FACE + "." + GAL
 const std::string GALLERY_MERGE_FACE_TAG_ID = GALLERY_TABLE_MERGE_FACE + "." + GALLERY_TAG_ID;
 const std::string GALLERY_MERGE_TAG_TAG_ID = GALLERY_TABLE_MERGE_TAG + "." + GALLERY_TAG_ID;
 const std::string GALLERY_RELATIONSHIP = "merge_tag.relationship";
-const std::string GALLERY_MEDIA_ID = GALLERY_TABLE_MEDIA + "." + GALLERY_ID;
-const std::string GALLERY_MEDIA_HASH = GALLERY_TABLE_MEDIA + "." + GALLERY_HASH;
-const std::string GALLERY_FACE_HASH = GALLERY_TABLE_FACE + "." + GALLERY_HASH;
 const std::string GALLERY_MERGE_FACE_FACE_ID = GALLERY_TABLE_MERGE_FACE + "." + GALLERY_FACE_ID;
-const std::string GALLERY_FACE_FACE_ID = GALLERY_TABLE_FACE + "." + GALLERY_FACE_ID;
 const std::string GALLERY_IS_HIDDEN = "merge_tag.is_hidden";
 const std::string E_VERSION = "-1";
 const std::string TAG_ID_PREFIX = "ser_";
@@ -92,7 +88,8 @@ const std::string ANALYSIS_COL_RENAME_OPERATION = "rename_operation";
 const std::string ANALYSIS_COL_IS_LOCAL = "is_local";
 const std::string ANALYSIS_COL_IS_COVER_SATISFIED = "is_cover_satisfied";
 const std::string ANALYSIS_COL_RELATIONSHIP = "relationship";
-const std::string ANALYSIS_COL_EXTRA_INFO = "extra_info";
+const std::string ANALYSIS_COL_FRIEND_ID = "friend_id";
+const std::string ANALYSIS_COL_CONTACT_INFO = "contact_info";
 
 /* FaceTag TBL COL_NAME */
 const std::string FACE_TAG_COL_ID = "id";
@@ -161,6 +158,9 @@ const std::string IMAGE_FACE_COL_EMOTION = "emotion";
 const std::string IMAGE_FACE_COL_COMPLETENESS = "completeness";
 const std::string IMAGE_FACE_COL_FACE_SCORE = "face_score";
 const std::string IMAGE_FACE_COL_FACE_SCORE_VERSION = "face_score_version";
+const std::string IMAGE_FACE_COL_FACIAL_EXPRESSION_SCORE = "facial_expression_score";
+const std::string IMAGE_FACE_COL_FACIAL_EXPRESSION_DETAIL = "facial_expression_detail";
+const std::string IMAGE_FACE_COL_FACIAL_EXPRESSION_VERSION = "facial_expression_version";
 
 // video_face_tbl COL_NAME
 const std::string ANALYSIS_VIDEO_FACE_TABLE = "tab_analysis_video_face";
@@ -208,6 +208,17 @@ const std::string BEAUTY_SCORE_COL_SEMANTICS_SCORE = "semantics_score";
 const std::string BEAUTY_SCORE_COL_IS_BLACK_WHITE_STRIPE = "is_black_white_stripe";
 const std::string BEAUTY_SCORE_COL_IS_BLURRY = "is_blurry";
 const std::string BEAUTY_SCORE_COL_IS_MOSAIC = "is_mosaic";
+const std::string BEAUTY_SCORE_COL_NARRATIVE_TAGS = "narrative_tags";
+const std::string BEAUTY_SCORE_COL_NARRATIVE_SCORE = "narrative_score";
+const std::string BEAUTY_SCORE_COL_PORTRAIT_TAGS = "portrait_tags";
+const std::string BEAUTY_SCORE_COL_PORTRAIT_SCORE = "portrait_score";
+const std::string BEAUTY_SCORE_COL_COMPOSITION_TAGS = "composition_tags";
+const std::string BEAUTY_SCORE_COL_COMPOSITION_SCORE = "composition_score";
+const std::string BEAUTY_SCORE_COL_QUALITY_TAGS = "quality_tags";
+const std::string BEAUTY_SCORE_COL_QUALITY_SCORE = "quality_score";
+const std::string BEAUTY_SCORE_COL_CAPTION = "caption";
+const std::string BEAUTY_SCORE_COL_VLM_SCORE = "vlm_score";
+const std::string BEAUTY_SCORE_COL_AESTHETICS_VLM_VERSION = "aesthetics_vlm_version";
 
 // Asset Map TBL COL_NAME
 const std::string TAB_OLD_PHOTOS = "tab_old_photos";
@@ -217,43 +228,35 @@ const std::string ASSET_MAP_COL_OLD_FILE_ID = "old_file_id";
 const std::string ASSET_MAP_COL_OLD_DATA = "old_data";
 const std::string ASSET_MAP_COL_CLONE_SEQUENCE = "clone_sequence";
 
-//  analysis_pet_tag TBL COL_NAME
-const std::string ANALYSIS_PET_TAG_TABLE = "tab_analysis_pet_tag";
-const std::string PET_TAG_COL_ID = "id";
-const std::string PET_TAG_COL_TAG_ID = "tag_id";
-const std::string PET_TAG_COL_PET_LABEL = "pet_label";
-const std::string PET_TAG_COL_CENTER_FEATURES = "center_features";
-const std::string PET_TAG_COL_TAG_VERSION = "tag_version";
-const std::string PET_TAG_COL_COUNT = "count";
-const std::string PET_TAG_COL_DATE_MODIFIED = "date_modified";
-const std::string PET_TAG_COL_ANALYSIS_VERSION = "analysis_version";
-
-//  analysis_pet_face TBL COL_NAME
-const std::string ANALYSIS_PET_FACE_TABLE = "tab_analysis_pet_face";
-const std::string PET_FACE_COL_ID = "id";
-const std::string PET_FACE_COL_FILE_ID = "file_id";
-const std::string PET_FACE_COL_PET_ID = "pet_id";
-const std::string PET_FACE_COL_PROB = "prob";
-const std::string PET_FACE_COL_PET_LABEL = "pet_label";
-const std::string PET_FACE_COL_PET_TOTAL_FACES = "pet_total_faces";
-const std::string PET_FACE_COL_FEATURES = "features";
-const std::string PET_FACE_COL_PET_TAG_ID = "pet_tag_id";
-const std::string PET_FACE_COL_SCALE_X = "scale_x";
-const std::string PET_FACE_COL_SCALE_Y = "scale_y";
-const std::string PET_FACE_COL_SCALE_WIDTH = "scale_width";
-const std::string PET_FACE_COL_SCALE_HEIGHT = "scale_height";
-const std::string PET_FACE_COL_HEAD_VERSION = "head_version";
-const std::string PET_FACE_COL_PET_FEATURE_VERSION = "feature_version";
-const std::string PET_FACE_COL_TAG_VERSION = "tag_version";
-const std::string PET_FACE_COL_ANALYSIS_VERSION = "analysis_version";
-const std::string PET_FACE_COL_BEAUTY_BOUNDER_X = "beauty_bounder_x";
-const std::string PET_FACE_COL_BEAUTY_BOUNDER_Y = "beauty_bounder_y";
-const std::string PET_FACE_COL_BEAUTY_BOUNDER_WIDTH = "beauty_bounder_width";
-const std::string PET_FACE_COL_BEAUTY_BOUNDER_HEIGHT = "beauty_bounder_height";
-const std::string PET_FACE_COL_DATE_MODIFIED = "date_modified";
+// Tab Old Albums TBL COL_NAME
+const std::string TAB_OLD_ALBUMS = "tab_old_albums";
+const std::string OLD_ALBUM_ID_COL = "old_album_id";
+const std::string ALBUM_ID_COL = "album_id";
+const std::string ALBUM_TYPE_COL = "album_type";
+const std::string ALBUM_SUBTYPE_COL = "album_subtype";
+const std::string ALBUM_CLONE_SEQUENCE_COL = "clone_sequence";
 
 // tab_analysis_video_total TBL COL_NAME
 const std::string ANALYSIS_VIDEO_TOTAL_TABLE = "tab_analysis_video_total";
+
+// tab_analysis_ai_retouch TBL COL_NAME
+const std::string ANALYSIS_AI_RETOUCH_TABLE = "tab_analysis_ai_retouch";
+const std::string AI_RETOUCH_COL_FILE_ID = "file_id";
+const std::string AI_RETOUCH_COL_PORTRAIT_REFINE = "portrait_refine";
+const std::string AI_RETOUCH_COL_PASSERS_REMOVE = "passers_remove";
+const std::string AI_RETOUCH_COL_REFLECTIVE_REMOVE = "reflective_remove";
+const std::string AI_RETOUCH_COL_MOIRE_REMOVE = "moire_remove";
+const std::string AI_RETOUCH_COL_MAGIC_EMOJI = "magic_emoji";
+const std::string AI_RETOUCH_COL_AI_RETOUCH_VERSION = "ai_retouch_version";
+const std::string AI_RETOUCH_COL_MAGIC_EMOJI_VERSION = "magic_emoji_version";
+const std::string AI_RETOUCH_COL_ANALYSIS_VERSION = "analysis_version";
+
+// tab_analysis_total TBL COL_NAME
+const std::string TOTAL_COL_FILE_ID = "file_id";
+const std::string TOTAL_COL_AI_RETOUCH = "ai_retouch";
+const std::string TOTAL_COL_MAGIC_EMOJI = "magic_emoji";
+const std::string TOTAL_COL_SCENE = "scene";
+constexpr int32_t SCENE_BIT_POSITION_CLONE = 4;
 
 // tab_analysis_watermark TBL COL_NAME
 #define ANALYSIS_WATERMARK_TABLE          "tab_analysis_watermark"
@@ -321,25 +324,13 @@ const std::unordered_map<std::string, std::string> RELATIONSHIP_MAP = {
     {std::to_string(INDEX_OTHER), "other"}
 };
 
-// Tab Old Albums TBL COL_NAME
-const std::string TAB_OLD_ALBUMS = "tab_old_albums";
-const std::string OLD_ALBUM_ID_COL = "old_album_id";
-const std::string ALBUM_ID_COL = "album_id";
-const std::string ALBUM_TYPE_COL = "album_type";
-const std::string ALBUM_SUBTYPE_COL = "album_subtype";
-const std::string ALBUM_CLONE_SEQUENCE_COL = "clone_sequence";
-
 const std::string QUERY_FACE_TAG_COUNT = "SELECT count(1) AS count FROM " + VISION_FACE_TAG_TABLE;
 const std::string QUERY_IMAGE_FACE_COUNT = "SELECT count(1) AS count FROM " + VISION_IMAGE_FACE_TABLE;
 const std::string QUERY_VIDEO_FACE_COUNT = "SELECT count(1) AS count FROM " + VISION_VIDEO_FACE_TABLE;
 const std::string QUERY_BEAUTY_SCORE_COUNT = "SELECT count(1) AS count FROM " + VISION_AESTHETICS_TABLE;
-const std::string QUERY_PET_TAG_COUNT = "SELECT count(1) AS count FROM " + ANALYSIS_PET_TAG_TABLE;
-const std::string QUERY_PET_FACE_COUNT = "SELECT count(1) AS count FROM " + ANALYSIS_PET_FACE_TABLE;
 
 const std::string CREATE_FACE_TAG_INDEX =
     "CREATE INDEX IF NOT EXISTS face_clone_tag_index ON tab_analysis_face_tag (tag_id)";
-const std::string CREATE_PET_TAG_INDEX =
-    "CREATE INDEX IF NOT EXISTS pet_clone_tag_index ON tab_analysis_pet_tag (tag_id)";
 
 const std::string GALLERY_TAG_NAME_NOT_NULL_OR_EMPTY = GALLERY_TAG_NAME + " IS NOT NULL AND " + GALLERY_TAG_NAME +
     " != ''";

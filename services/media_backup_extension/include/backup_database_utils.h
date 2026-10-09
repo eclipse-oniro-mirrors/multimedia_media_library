@@ -17,9 +17,12 @@
 #define BACKUP_DATABASE_UTILS_H
 
 #include <string>
+#include "field_config/clone_field_writer.h"
 #include <sstream>
 #include <vector>
 #include <type_traits>
+#include <stdint.h>
+#include <limits.h>
 
 #include "backup_const.h"
 #include "rdb_helper.h"
@@ -33,6 +36,12 @@ namespace OHOS {
 namespace Media {
 using FileIdPair = std::pair<int32_t, int32_t>;
 using TagPairOpt = std::pair<std::optional<std::string>, std::optional<std::string>>;
+struct AlbumTagInfo {
+    TagPairOpt tagPair;
+    std::optional<int32_t> albumId;
+    std::optional<int32_t> albumSubtype;
+};
+
 constexpr int32_t TOTAL_TBL_FACE_ANALYSED = 2;
 constexpr int32_t TOTAL_TBL_PET_ANALYSED = 1;
 struct CloneVideoInfo {
@@ -47,7 +56,12 @@ public:
 public:
     static int32_t InitDb(std::shared_ptr<NativeRdb::RdbStore> &rdbStore, const std::string &dbName,
         const std::string &dbPath, const std::string &bundleName, bool isMediaLibary,
-            int32_t area = DEFAULT_AREA_VERSION);
+            int32_t area = DEFAULT_AREA_VERSION, bool needSetSearchable = true,
+            std::unique_ptr<NativeRdb::RdbStoreConfig> *outConfig = nullptr);
+    static int32_t InitDbForOldVersion(std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
+        const std::string &dbName, const std::string &dbPath, const std::string &bundleName,
+        bool isMediaLibrary, int32_t& oldVersion, int32_t area = DEFAULT_AREA_VERSION,
+            std::unique_ptr<NativeRdb::RdbStoreConfig> *outConfig = nullptr);
     static int32_t InitReadOnlyRdb(std::shared_ptr<NativeRdb::RdbStore> &rdbStore, const std::string &dbName,
         const std::string &dbPath, const std::string &bundleName);
     static int32_t QueryInt(std::shared_ptr<NativeRdb::RdbStore> rdbStore, const std::string &sql,
@@ -77,7 +91,6 @@ public:
     static uint32_t GetUint32ValFromBytes(const std::vector<uint8_t> &bytes, size_t start);
     static void UpdateAnalysisTotalStatus(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
     static void UpdateAnalysisFaceTagStatus(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
-    static void UpdateAnalysisPetTagStatus(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
     static bool SetTagIdNew(PortraitAlbumInfo &portraitAlbumInfo,
         std::unordered_map<std::string, std::string> &tagIdMap);
     static bool SetFileIdNew(FaceInfo &faceInfo, const std::unordered_map<std::string, FileInfo> &fileInfoMap);
@@ -89,10 +102,16 @@ public:
     static bool IsValInBound(float val, float minVal, float maxVal);
     static std::vector<std::pair<std::string, std::string>> GetColumnInfoPairs(
         const std::shared_ptr<NativeRdb::RdbStore> &rdbStore, const std::string &tableName);
+    static void UpdateDuplicateCoverUris(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
+        const std::unordered_map<int32_t, int32_t>& duplicateAssetMap,
+        const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap,
+        const std::vector<int32_t>& albumSubtypes);
     static std::vector<std::string> GetCommonColumnInfos(std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
         std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::string tableName);
-    static std::vector<std::string> filterColumns(const std::vector<std::string>& allColumns,
+    static std::vector<std::string> FilterExcludedColumns(const std::vector<std::string>& allColumns,
         const std::vector<std::string>& excludedColumns);
+    static std::vector<std::string> FilterIncludedColumns(const std::vector<std::string>& allColumns,
+        const std::vector<std::string>& includedColumns);
     static std::vector<FileIdPair> CollectFileIdPairs(const std::vector<FileInfo>& fileInfos);
     static std::pair<std::vector<int32_t>, std::vector<int32_t>> UnzipFileIdPairs(const std::vector<FileIdPair>& pairs);
     static void UpdateAnalysisPhotoMapStatus(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
@@ -111,14 +130,12 @@ public:
     static void UpdateFaceAnalysisTblStatus(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
     static void DeleteExistingImageFaceData(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
         const std::vector<FileIdPair>& fileIdPair);
-    static void DeleteExistingPetFaceData(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
-        const std::vector<FileIdPair>& fileIdPair);
     static std::vector<TagPairOpt> QueryTagInfo(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
     static void ParseFaceTagResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
         TagPairOpt& tagPair);
     static void UpdateGroupTagColumn(const std::vector<TagPairOpt>& updatedPairs,
         std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
-    static void UpdateFaceGroupTagsUnion(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
+    static void UpdateFaceTagsUnion(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
     static void UpdateFaceGroupTagOfGallery(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
     static void UpdateTagPairs(std::vector<TagPairOpt>& updatedPairs, const std::string& newGroupTag,
         const std::vector<std::string>& tagIds);
@@ -134,7 +151,7 @@ public:
         std::vector<NativeRdb::ValuesBucket> &value, int64_t &rowNum,
         NativeRdb::ConflictResolution conflictResolution);
     static std::string CheckDbIntegrity(std::shared_ptr<NativeRdb::RdbStore> rdbStore, int32_t sceneCode,
-        const std::string &dbTag = "");
+        const std::string &dbTag = "", ReverseRestoreReportInfo *reportInfo = nullptr);
     static int32_t QueryLocalNoAstcCount(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
     static int32_t QueryReadyAstcCount(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
     static std::unordered_map<int32_t, int32_t> QueryMediaTypeCount(
@@ -145,6 +162,7 @@ public:
     static std::string JoinValues(const std::vector<T>& values, std::string_view delimiter);
     template <typename T>
     static std::string JoinSQLValues(const std::vector<T>& values, std::string_view delimiter);
+
     template <typename T>
     static std::vector<T> LeftJoinValues(std::vector<T>& values,
         std::string_view delimiter);
@@ -153,10 +171,10 @@ public:
     template <typename T>
     static std::optional<T> GetOptionalValue(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         const std::string &columnName);
+    static void UpdateBurstPhotos(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore, int32_t maxId);
     template <typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
         const std::optional<T>& optionalValue);
-    static void UpdateBurstPhotos(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore, int32_t maxFileId);
     static std::vector<int32_t> QueryIntVec(std::shared_ptr<NativeRdb::RdbStore> rdbStore,
         const std::string& sql, const std::string& columnName);
     static std::unordered_map<int32_t, int32_t> QueryIntMap(std::shared_ptr<NativeRdb::RdbStore> rdbStore,
@@ -177,6 +195,7 @@ public:
         const std::shared_ptr<NativeRdb::RdbStore> &rdbStore, std::vector<SouthDeviceType>& uniqueSouthDeviceType);
     static bool ClearConfigInfo(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     static void ClearAnalysisVideoTotalTable(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
+    static int32_t GetDbPhotoCount(std::shared_ptr<NativeRdb::RdbStore> rdbStore, bool isLocal);
     static void CheckFaceToAnalysisVideoTotalTable(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     static void UpdateStatusToAnalysisTable(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     static void UpdateFaceToAnalysisVideoTotalTable(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
@@ -185,11 +204,16 @@ public:
     static void DeleteDirtytagIdFromFaceTagTable(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     static void UpdateVideoFaceTagId(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     static void UpdateVideoTotalFaceId(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
+    static std::vector<AlbumTagInfo> QueryAlbumTagInfo(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
+    static void ParseAlbumTagResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet, AlbumTagInfo& albumTag);
+    static void UpdateTagsColumn(const std::vector<AlbumTagInfo> &UpdateAlbumTagInfo,
+        std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
 
 private:
     static std::string CloudSyncTriggerFunc(const std::vector<std::string> &args);
     static std::string IsCallerSelfFunc(const std::vector<std::string> &args);
     static std::string PhotoAlbumNotifyFunc(const std::vector<std::string>& args);
+    static std::string PhotoMapCodeFunc(const std::vector<std::string>& args);
     static std::string BeginGenerateHighlightThumbnail(const std::vector<std::string>& args);
     static const ssize_t WAL_LIMIT_SIZE = 1024 * 1024 * 1024;
 };
@@ -204,18 +228,35 @@ public:
     virtual int32_t OnUpgrade(NativeRdb::RdbStore &rdb, int32_t oldVersion,
         int32_t newVersion) override
     {
+        oldVersion_ = oldVersion;
         return 0;
     }
+
+    virtual int32_t OnDowngrade(NativeRdb::RdbStore &rdb, int32_t oldVersion,
+        int32_t newVersion) override
+    {
+        oldVersion_ = oldVersion;
+        return 0;
+    }
+    
+    virtual int OnOpen(NativeRdb::RdbStore &rdb) override
+    {
+        if (oldVersion_ == INT32_MAX) {
+            oldVersion_ = MEDIA_RDB_VERSION;
+        }
+        return 0;
+    }
+    int32_t oldVersion_ {INT32_MAX};
 };
 
-class CloneFileInfoRestoreDbCallBack : public RdbCallback {
+class CloneFileInfoRestoreDbCallback : public RdbCallback {
 public:
     int32_t OnCreate(NativeRdb::RdbStore &rdbStore) override;
 };
 
-class CloneFileInfoDbCallBack : public RdbCallback {
+class CloneFileInfoDbCallback : public RdbCallback {
 public:
-    CloneFileInfoDbCallBack(AncoFileListClone ancoFileListClone, FileManagerFileListClone fileManagerFileListClone)
+    CloneFileInfoDbCallback(AncoFileListClone ancoFileListClone, FileManagerFileListClone fileManagerFileListClone)
         : ancoFileListClone_(ancoFileListClone), fileManagerFileListClone_(fileManagerFileListClone) {}
 
     int32_t OnCreate(NativeRdb::RdbStore &rdbStore) override;
@@ -320,19 +361,7 @@ template <typename T>
 void BackupDatabaseUtils::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }  else if constexpr (std::is_same_v<std::decay_t<T>, std::vector<uint8_t>>) {
-            values.PutBlob(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 } // namespace Media
 } // namespace OHOS

@@ -31,6 +31,7 @@
 #include "medialibrary_asset_operations.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_tracer.h"
 #include "medialibrary_type_const.h"
 #include "preferences.h"
 #include "preferences_helper.h"
@@ -175,6 +176,8 @@ bool PersistTouchLocked(const std::shared_ptr<NativePreferences::Preferences> &p
 
 bool ClonePendingRecordUtils::AddPendingFileId(int32_t fileId)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("AddPendingFileId");
     if (fileId <= 0) {
         return true;
     }
@@ -202,6 +205,8 @@ bool ClonePendingRecordUtils::AddPendingFileId(int32_t fileId)
 
 bool ClonePendingRecordUtils::UpdatePendingFileTouch(int32_t fileId, bool forcePersist)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("UpdatePendingFileTouch");
     if (fileId <= 0) {
         return true;
     }
@@ -248,6 +253,8 @@ bool ClonePendingRecordUtils::IsPendingFileTouchExpired(int32_t fileId, int64_t 
 
 bool ClonePendingRecordUtils::RemovePendingFileId(int32_t fileId)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("RemovePendingFileId");
     return RemovePendingFileIds({ fileId });
 }
 

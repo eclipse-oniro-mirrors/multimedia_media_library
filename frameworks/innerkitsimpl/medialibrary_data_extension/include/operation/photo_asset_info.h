@@ -26,6 +26,7 @@ public:
     int32_t subtype;
     int32_t ownerAlbumId;
     std::string burstGroupName;
+    std::string newDisplayName;
 
 public:
     std::string ToString() const

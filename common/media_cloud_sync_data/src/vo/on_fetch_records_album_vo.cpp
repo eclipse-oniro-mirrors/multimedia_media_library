@@ -21,6 +21,8 @@
 
 #include "media_itypes_utils.h"
 #include "media_log.h"
+#include "itypes_util.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnFetchRecordsAlbumReqBody::AlbumReqData::Unmarshalling(MessageParcel &parcel)
@@ -43,6 +45,10 @@ bool OnFetchRecordsAlbumReqBody::AlbumReqData::Unmarshalling(MessageParcel &parc
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->sceneId), false, "sceneId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->shareType), false, "shareType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    CHECK_AND_RETURN_RET_LOG(this->UnmarshallingShareAlbumDetailVo(parcel), false, "shareAlbumDetailVoOp");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(this->stringfields, parcel), false, "stringfields");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(this->int64fields, parcel), false, "int64fields");
     return true;
 }
 bool OnFetchRecordsAlbumReqBody::AlbumReqData::Marshalling(MessageParcel &parcel) const
@@ -65,6 +71,10 @@ bool OnFetchRecordsAlbumReqBody::AlbumReqData::Marshalling(MessageParcel &parcel
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->sceneId), false, "sceneId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->shareType), false, "shareType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    CHECK_AND_RETURN_RET_LOG(this->MarshallingShareAlbumDetailVo(parcel), false, "shareAlbumDetailVoOp");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(this->stringfields, parcel), false, "stringfields");
+    CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(this->int64fields, parcel), false, "int64fields");
     return true;
 }
 
@@ -86,6 +96,19 @@ std::string OnFetchRecordsAlbumReqBody::AlbumReqData::ToString() const
        << "\"coverUriSource\": \"" << coverUriSource << "\","
        << "\"uniqueId\": \"" << uniqueId << "\","
        << "\"coverCloudId\": \"" << coverCloudId << "\","
+       << "\"stringfields\": {";
+    for (const auto &node : stringfields) {
+        ss << "\"" << node.first << "\": \"" << node.second << "\", ";
+    }
+    ss << "},"
+       << "\"int64fields\": {";
+    for (const auto &node : int64fields) {
+        ss << "\"" << node.first << "\": " << node.second << ", ";
+    }
+    ss << "}"
+       << "\"shareType\": \"" << shareType << "\","
+       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\","
+       << "\"shareMemberData\": \"" << ShareAlbumDetailVoToString() << "\","
        << "}";
     return ss.str();
 }
@@ -157,5 +180,36 @@ std::string OnFetchRecordsAlbumRespBody::ToString() const
     ss << "]"
        << "}";
     return ss.str();
+}
+
+void OnFetchRecordsAlbumReqBody::AlbumReqData::InitShareAlbumDetailVo(int32_t shareType)
+{
+    CHECK_AND_RETURN(shareType == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
+    CHECK_AND_RETURN(!this->shareAlbumDetailVoOp.has_value());
+    this->shareAlbumDetailVoOp = ShareAlbumDetailVo();
+}
+
+bool OnFetchRecordsAlbumReqBody::AlbumReqData::MarshallingShareAlbumDetailVo(MessageParcel &parcel) const
+{
+    CHECK_AND_RETURN_RET(shareType == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM), true);
+    CHECK_AND_RETURN_RET_LOG(this->shareAlbumDetailVoOp.has_value(), true, "not share album.");
+    CHECK_AND_RETURN_RET_LOG(this->shareAlbumDetailVoOp.value().Marshalling(parcel), false, "shareAlbumDetailVoOp");
+    return true;
+}
+
+bool OnFetchRecordsAlbumReqBody::AlbumReqData::UnmarshallingShareAlbumDetailVo(MessageParcel &parcel)
+{
+    CHECK_AND_RETURN_RET(shareType == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM), true);
+    CHECK_AND_RETURN_RET_LOG(this->shareAlbumDetailVoOp.has_value(), true, "not share album.");
+    CHECK_AND_RETURN_RET_LOG(this->shareAlbumDetailVoOp.value().Unmarshalling(parcel), false, "shareAlbumDetailVoOp");
+    return true;
+}
+
+std::string OnFetchRecordsAlbumReqBody::AlbumReqData::ShareAlbumDetailVoToString() const
+{
+    if (!this->shareAlbumDetailVoOp.has_value()) {
+        return "";
+    }
+    return this->shareAlbumDetailVoOp.value().ToString();
 }
 }  // namespace OHOS::Media::CloudSync

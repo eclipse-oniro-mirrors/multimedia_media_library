@@ -51,7 +51,7 @@ const int64_t SINGLE_OVER_THRESHOLD_DATA_TIME = 216000;  // 216秒 (每1万条�
 
 static int32_t GetNewFileId(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, int32_t oldFileId);
 static bool UpdateGroupId(DedupInfo &mappedInfo, const std::optional<int32_t> &groupId,
-    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isRep);
 
 void CloneRestoreDupSim::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
@@ -438,16 +438,16 @@ static int32_t GetNewFileId(const std::unordered_map<int32_t, PhotoInfo> &photoI
 }
 
 static bool UpdateGroupId(DedupInfo &mappedInfo, const std::optional<int32_t> &groupId,
-    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isRep)
 {
     if (!groupId.has_value()) {
         return true;  // groupId为空，视为成功
     }
     int32_t newGroupId = GetNewFileId(photoInfoMap, groupId.value());
     if (newGroupId != -1) {
-        if (groupId == mappedInfo.groupIdRep) {
+        if (isRep) {
             mappedInfo.groupIdRep = newGroupId;
-        } else if (groupId == mappedInfo.groupIdSim) {
+        } else {
             mappedInfo.groupIdSim = newGroupId;
         }
         return true;  // 映射成功
@@ -485,8 +485,8 @@ void CloneRestoreDupSim::BatchInsertDedupData(
         // 检查groupId映射
         DedupInfo mappedInfo = info;
         mappedInfo.fileId = newFileId;
-        bool groupRepSuccess = UpdateGroupId(mappedInfo, info.groupIdRep, photoInfoMap_);
-        bool groupSimSuccess = UpdateGroupId(mappedInfo, info.groupIdSim, photoInfoMap_);
+        bool groupRepSuccess = UpdateGroupId(mappedInfo, info.groupIdRep, photoInfoMap_, true);
+        bool groupSimSuccess = UpdateGroupId(mappedInfo, info.groupIdSim, photoInfoMap_, false);
         // 如果任何一个groupId映射失败，跳过这条数据
         if (!groupRepSuccess || !groupSimSuccess) {
             skipGroupMapping++;
@@ -527,10 +527,7 @@ NativeRdb::ValuesBucket CloneRestoreDupSim::CreateValuesBucketFromDedupInfo(cons
 std::vector<AffectiveInfo> CloneRestoreDupSim::QueryAffectiveTblByFileIds(const std::string &fileIdClause)
 {
     std::vector<AffectiveInfo> result;
-    std::string querySql = "SELECT id, file_id, category, valence, arousal, model_version, model_name, "
-                           "extra, timestamp, analysis_version, affective_score, affective_score_version "
-                           " FROM " +
-                           AFFECTIVE_TABLE;
+    std::string querySql = "SELECT * FROM " + AFFECTIVE_TABLE;
     querySql += " WHERE file_id IN " + fileIdClause;
 
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
@@ -550,6 +547,16 @@ std::vector<AffectiveInfo> CloneRestoreDupSim::QueryAffectiveTblByFileIds(const 
         info.affectiveScore = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, "affective_score");
         info.affectiveScoreVersion =
             BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "affective_score_version");
+        info.valenceScore = BackupDatabaseUtils::GetOptionalValue<std::int32_t>(resultSet, "valence_score");
+        info.arousalScore = BackupDatabaseUtils::GetOptionalValue<std::int32_t>(resultSet, "arousal_score");
+        info.authenticity = BackupDatabaseUtils::GetOptionalValue<std::int32_t>(resultSet, "authenticity");
+        info.atmosphere = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "atmosphere");
+        info.emotion = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "emotion");
+        info.interestingness = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "interestingness");
+        info.cuteness = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "cuteness");
+        info.caption = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "caption");
+        info.affectiveDetectorVersion =
+            BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "affective_detector_version");
         result.emplace_back(info);
     }
     resultSet->Close();
@@ -606,6 +613,15 @@ NativeRdb::ValuesBucket CloneRestoreDupSim::CreateValuesBucketFromAffectiveInfo(
     BackupDatabaseUtils::PutIfPresent(values, "analysis_version", info.analysisVersion);
     BackupDatabaseUtils::PutIfPresent(values, "affective_score", info.affectiveScore);
     BackupDatabaseUtils::PutIfPresent(values, "affective_score_version", info.affectiveScoreVersion);
+    BackupDatabaseUtils::PutIfPresent(values, "valence_score", info.valenceScore);
+    BackupDatabaseUtils::PutIfPresent(values, "arousal_score", info.arousalScore);
+    BackupDatabaseUtils::PutIfPresent(values, "authenticity", info.authenticity);
+    BackupDatabaseUtils::PutIfPresent(values, "atmosphere", info.atmosphere);
+    BackupDatabaseUtils::PutIfPresent(values, "emotion", info.emotion);
+    BackupDatabaseUtils::PutIfPresent(values, "interestingness", info.interestingness);
+    BackupDatabaseUtils::PutIfPresent(values, "cuteness", info.cuteness);
+    BackupDatabaseUtils::PutIfPresent(values, "caption", info.caption);
+    BackupDatabaseUtils::PutIfPresent(values, "affective_detector_version", info.affectiveDetectorVersion);
 
     return values;
 }
@@ -626,15 +642,15 @@ void CloneRestoreDupSim::PreprocessSourceTotalTable()
 {
     MEDIA_INFO_LOG("PreprocessSourceTotalTable: Set similarity and duplicate to 1 if > 0 in source database");
 
-    // Update similarity field: set to 1 if > 0
-    std::string updateSimilaritySql =
-        "UPDATE " + VISION_TOTAL_TABLE + " SET " + SIMILARITY + " = 1 WHERE " + SIMILARITY + " > 0";
+    // Update similarity field: set to 1 if similarity > 0 and similarity <> 3
+    std::string updateSimilaritySql = "UPDATE " + VISION_TOTAL_TABLE + " SET " + SIMILARITY + " = 1 WHERE " +
+                                      SIMILARITY + " > 0 AND " + SIMILARITY + " <> 3";
     int32_t ret1 = BackupDatabaseUtils::ExecuteSQL(mediaRdb_, updateSimilaritySql);
     MEDIA_INFO_LOG("PreprocessSourceTotalTable: similarity updated, ret=%{public}d", ret1);
 
-    // Update duplicate field: set to 1 if > 0
-    std::string updateDuplicateSql =
-        "UPDATE " + VISION_TOTAL_TABLE + " SET " + DUPLICATE + " = 1 WHERE " + DUPLICATE + " > 0";
+    // Update duplicate field: set to 1 if duplicate > 0 and duplicate <> 3
+    std::string updateDuplicateSql = "UPDATE " + VISION_TOTAL_TABLE + " SET " + DUPLICATE + " = 1 WHERE " +
+                                     DUPLICATE + " > 0 AND " + DUPLICATE + " <> 3";
     int32_t ret2 = BackupDatabaseUtils::ExecuteSQL(mediaRdb_, updateDuplicateSql);
     MEDIA_INFO_LOG("PreprocessSourceTotalTable: duplicate updated, ret=%{public}d", ret2);
 }
@@ -782,6 +798,7 @@ void CloneRestoreDupSim::UpdateTotalTableForAffective()
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
 
     UpdateTotalTableField(AFFECTIVE, insertedAffectiveFileIds_);
+    UpdateTotalTableField(AFFECTIVE_DETECTOR, insertedAffectiveFileIds_);
 
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("UpdateTotalTableForAffective cost %{public}lld ms", (long long)(end - start));

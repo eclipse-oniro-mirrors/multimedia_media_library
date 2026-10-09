@@ -69,6 +69,7 @@ public:
         }
         std::shared_ptr<Notification::MediaProgressChangeInfo> progresschangeInfo =
             Notification::MediaProgressChangeInfo::Unmarshalling(*parcel);
+        CHECK_AND_RETURN_LOG(progresschangeInfo != nullptr, "progresschangeInfo is null");
         if (onSizeProgress_ != nullptr) {
             auto *sizeProgressData =
                 new ProgressData{progresschangeInfo->realTimeprocessSize, progresschangeInfo->remainSize};

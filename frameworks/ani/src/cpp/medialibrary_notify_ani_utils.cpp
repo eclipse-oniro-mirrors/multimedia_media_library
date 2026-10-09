@@ -23,6 +23,7 @@
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_tracer.h"
 #include "photo_album_column.h"
+#include "photo_album.h"
 #include "media_library_enum_ani.h"
 #include "ani_class_name.h"
 
@@ -36,8 +37,12 @@ const std::string RegisterNotifyType::TRASH_PHOTO_CHANGE = "trashedPhotoChange";
 const std::string RegisterNotifyType::PHOTO_ALBUM_CHANGE = "photoAlbumChange";
 const std::string RegisterNotifyType::HIDDEN_ALBUM_CHANGE = "hiddenAlbumChange";
 const std::string RegisterNotifyType::TRASHED_ALBUM_CHANGE = "trashedAlbumChange";
+const std::string RegisterNotifyType::SHARE_PHOTO_CHANGE = "sharePhotoChange";
+const std::string RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE = "sharePhotoAlbumChange";
 const std::string RegisterNotifyType::BATCH_DOWNLOAD_PROGRESS_CHANGE = "downloadProgressChange";
 const std::string RegisterNotifyType::USER_CLIENT_CHANGE = "userDefineChange";
+const std::string RegisterNotifyType::SINGLE_PHOTO_CHANGE = "singlePhotoChange";
+const std::string RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE = "singlePhotoAlbumChange";
 const std::string RegisterNotifyType::MEDIALIBRARY_AVAILABILITY_CHANGE = "medialibraryAvailabilityChange";
 
 const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
@@ -66,8 +71,26 @@ const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyAniUt
     { RegisterNotifyType::PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::PHOTO_ALBUM_URI },
     { RegisterNotifyType::HIDDEN_ALBUM_CHANGE, Notification::NotifyUriType::HIDDEN_ALBUM_URI },
     { RegisterNotifyType::TRASHED_ALBUM_CHANGE, Notification::NotifyUriType::TRASH_ALBUM_URI },
+    { RegisterNotifyType::SHARE_PHOTO_CHANGE, Notification::NotifyUriType::SHARE_PHOTO_URI },
+    { RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI },
 };
 
+const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyAniUtils::REGISTER_SINGLE_NOTIFY_TYPE_MAP = {
+    { RegisterNotifyType::SINGLE_PHOTO_CHANGE, Notification::NotifyUriType::SINGLE_PHOTO_URI },
+    { RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
+};
+
+const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
+    MediaLibraryNotifyAniUtils::REGISTER_SINGLE_TYPE_MAP = {
+    { Notification::NotifyUriType::SINGLE_PHOTO_URI, Notification::NotifyUriType::SINGLE_PHOTO_URI },
+    { Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
+};
+
+const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyAniUtils::REGISTER_SINGLE_URI_MAP = {
+    { Notification::NotifyUriType::SINGLE_PHOTO_URI, RegisterNotifyType::SINGLE_PHOTO_CHANGE },
+    { Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE },
+};
+ 	 
 const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
     MediaLibraryNotifyAniUtils::REGISTER_TYPE_MAP = {
     { Notification::NotifyUriType::PHOTO_URI, Notification::NotifyUriType::PHOTO_URI },
@@ -76,6 +99,8 @@ const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
     { Notification::NotifyUriType::PHOTO_ALBUM_URI, Notification::NotifyUriType::PHOTO_ALBUM_URI },
     { Notification::NotifyUriType::HIDDEN_ALBUM_URI, Notification::NotifyUriType::HIDDEN_ALBUM_URI },
     { Notification::NotifyUriType::TRASH_ALBUM_URI, Notification::NotifyUriType::TRASH_ALBUM_URI },
+    { Notification::NotifyUriType::SHARE_PHOTO_URI, Notification::NotifyUriType::SHARE_PHOTO_URI },
+    { Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI },
 };
 
 const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyAniUtils::REGISTER_URI_MAP = {
@@ -85,6 +110,8 @@ const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyAniUt
     { Notification::NotifyUriType::PHOTO_ALBUM_URI, RegisterNotifyType::PHOTO_ALBUM_CHANGE },
     { Notification::NotifyUriType::HIDDEN_ALBUM_URI, RegisterNotifyType::HIDDEN_ALBUM_CHANGE },
     { Notification::NotifyUriType::TRASH_ALBUM_URI, RegisterNotifyType::TRASHED_ALBUM_CHANGE },
+    { Notification::NotifyUriType::SHARE_PHOTO_URI, RegisterNotifyType::SHARE_PHOTO_CHANGE },
+    { Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI, RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE },
 };
 
 const std::map<Notification::AccurateNotifyType, NotifyChangeType>
@@ -103,6 +130,7 @@ const std::unordered_map<int32_t, int32_t> ERROR_MAP = {
     { -E_CHECK_SYSTEMAPP_FAIL, E_CHECK_SYSTEMAPP_FAIL },
     { JS_E_PARAM_INVALID,      JS_E_PARAM_INVALID },
     { OHOS_INVALID_PARAM_CODE, OHOS_INVALID_PARAM_CODE },
+    { E_MAX_ON_SINGLE_NUM,     JS_E_PARAM_INVALID },
 };
 
 int32_t MediaLibraryNotifyAniUtils::GetUserDefineNotifyTypeAndUri(const Notification::NotifyUriType type,
@@ -170,6 +198,33 @@ NotifyChangeType MediaLibraryNotifyAniUtils::GetNotifyChangeType(const Notificat
         return NotifyChangeType::NOTIFY_CHANGE_INVALID;
     }
     return NOTIFY_CHANGE_TYPE_MAP.at(notifyType);
+}
+
+int32_t MediaLibraryNotifyAniUtils::GetSingleRegisterNotifyType(const string &type,
+    Notification::NotifyUriType &uriType)
+{
+    if (REGISTER_SINGLE_NOTIFY_TYPE_MAP.find(type) == REGISTER_SINGLE_NOTIFY_TYPE_MAP.end()) {
+        ANI_ERR_LOG("registerNotifyType is invalid");
+        return E_ERR;
+    }
+    uriType = REGISTER_SINGLE_NOTIFY_TYPE_MAP.at(type);
+    return E_OK;
+}
+
+int32_t MediaLibraryNotifyAniUtils::GetSingleNotifyTypeAndUri(const Notification::NotifyUriType type,
+    Notification::NotifyUriType &uriType, string &uri)
+{
+    if (REGISTER_SINGLE_TYPE_MAP.find(type) == REGISTER_SINGLE_TYPE_MAP.end()) {
+        ANI_ERR_LOG("type is invalid");
+        return E_ERR;
+    }
+    uriType = REGISTER_SINGLE_TYPE_MAP.at(type);
+    if (REGISTER_SINGLE_URI_MAP.find(uriType) == REGISTER_SINGLE_URI_MAP.end()) {
+        ANI_ERR_LOG("uriType is invalid");
+        return E_ERR;
+    }
+    uri = REGISTER_SINGLE_URI_MAP.at(uriType);
+    return E_OK;
 }
 
 ani_status MediaLibraryNotifyAniUtils::CreateAniObject(ani_env* env, const std::string className,
@@ -345,13 +400,13 @@ ani_object MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfo(ani_env *env,
     SetValueString(env, "uri", photoAssetChangeInfo.uri_.c_str(), retObj);
     SetValueString(env, "albumUri", photoAssetChangeInfo.ownerAlbumUri_.c_str(), retObj);
     SetValueEnum(env, "mediaType", photoAssetChangeInfo.mediaType_, retObj);
+    SetValueBool(env, "isFavorite", photoAssetChangeInfo.isFavorite_, retObj);
     if (!MediaLibraryAniUtils::IsSystemApp()) {
         return retObj;
     }
 
     SetValueInt32(env, "fileId", photoAssetChangeInfo.fileId_, retObj);
     SetValueString(env, "dateDay", photoAssetChangeInfo.dateDay_.c_str(), retObj);
-    SetValueBool(env, "isFavorite", photoAssetChangeInfo.isFavorite_, retObj);
     SetValueBool(env, "isHidden", photoAssetChangeInfo.isHidden_, retObj);
     SetValueEnum(env, "strongAssociation", photoAssetChangeInfo.strongAssociation_, retObj);
     SetValueEnum(env, "thumbnailVisible", photoAssetChangeInfo.thumbnailVisible_, retObj);
@@ -362,6 +417,13 @@ ani_object MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfo(ani_env *env,
 
     if (uriType == Notification::NotifyUriType::HIDDEN_PHOTO_URI) {
         SetValueInt64(env, "hiddenTime", photoAssetChangeInfo.hiddenTime_, retObj);
+    }
+
+    if (uriType == Notification::NotifyUriType::SHARE_PHOTO_URI) {
+        SetValueInt64(env, "shareDateDay", photoAssetChangeInfo.shareDateDay_, retObj);
+        SetValueInt64(env, "shareGroup", photoAssetChangeInfo.shareGroup_, retObj);
+        SetValueInt32(env, "shareRiskStatus", photoAssetChangeInfo.shareRiskStatus_, retObj);
+        SetValueInt32(env, "photoVisibility", photoAssetChangeInfo.photoVisibility_, retObj);
     }
     
     return retObj;
@@ -487,6 +549,10 @@ ani_object MediaLibraryNotifyAniUtils::BuildAlbumChangeInfo(ani_env* env,
     SetValueBool(env, "isCoverChanged", albumChangeInfo.isCoverChange_, retObj);
     SetValueBool(env, "isHiddenCoverChanged", albumChangeInfo.isHiddenCoverChange_, retObj);
     SetValueString(env, "lpath", albumChangeInfo.lpath_, retObj);
+    if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumChangeInfo.albumType_),
+        static_cast<PhotoAlbumSubType>(albumChangeInfo.albumSubType_))) {
+        SetValueInt32(env, "shareRiskStatus", albumChangeInfo.shareRiskStatus_, retObj);
+    }
 
     ani_status status = ANI_OK;
     ani_object coverInfoValue = BuildPhotoAssetChangeInfo(env, albumChangeInfo.coverInfo_);
@@ -683,6 +749,153 @@ int32_t MediaLibraryNotifyAniUtils::ConvertToJsError(int32_t innerErr)
         err = ERROR_MAP.at(innerErr);
     }
     return err;
+}
+
+ani_object MediaLibraryNotifyAniUtils::BuildSinglePhotoAssetChangeInfos(ani_env* env,
+    const std::shared_ptr<AccurateRefresh::PhotoAssetChangeData> &changeInfo,
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfos)
+{
+    ANI_INFO_LOG("MediaLibraryNotifyAniUtils::BuildSinglePhotoAssetChangeInfos");
+    MediaLibraryTracer tracer;
+    tracer.Start("BuildSinglePhotoAssetChangeInfos");
+    if (changeInfo == nullptr) {
+        ANI_ERR_LOG("Invalid changeInfo");
+        return nullptr;
+    }
+    ani_object retObj = nullptr;
+    CHECK_COND_RET(CreateAniObject(env, PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFOS_HANDLE, retObj) == ANI_OK, nullptr,
+        "CreateAniObject fail: %{public}s", PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFOS_HANDLE.c_str());
+    CHECK_COND_RET(retObj != nullptr, nullptr, "retObj is nullptr");
+
+    ani_enum_item type;
+    NotifyChangeType ChangeType = GetNotifyChangeType(changeInfos->notifyType);
+    if (ChangeType == NotifyChangeType::NOTIFY_CHANGE_INVALID) {
+        return nullptr;
+    }
+    CHECK_COND_RET(MediaLibraryEnumAni::ToAniEnum(env, ChangeType, type) == ANI_OK,
+        nullptr, "Call ToAniEnum NotifyChangeType fail");
+    CHECK_COND_RET(env->Object_SetPropertyByName_Ref(retObj, "type", static_cast<ani_ref>(type)) == ANI_OK, nullptr,
+        "Call Object_SetPropertyByName_Ref fail");
+
+    ani_object assetResults = nullptr;
+    auto notifyType = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    CHECK_COND_RET(ToPhotoChangeInfoAniArray(env, changeInfos->changeInfos, assetResults, notifyType)
+        == ANI_OK, nullptr, "Call ToPhotoChangeInfoAniArray NotifyChangeType fail");
+    CHECK_COND_RET(env->Object_SetPropertyByName_Ref(retObj, "assetChangeDatas",
+        static_cast<ani_ref>(assetResults)) == ANI_OK, nullptr,
+        "Set object named property error! field: assetChangeDatas");
+
+    ani_boolean isForRecheck = changeInfos->isForRecheck? ANI_TRUE : ANI_FALSE;
+    CHECK_COND_RET(env->Object_SetPropertyByName_Boolean(retObj, "isForRecheck", isForRecheck) == ANI_OK, nullptr,
+        "Call Object_SetPropertyByName_Ref fail");
+    return retObj;
+}
+
+ani_object MediaLibraryNotifyAniUtils::BuildSingleAlbumChangeInfos(ani_env* env,
+    const std::shared_ptr<AccurateRefresh::AlbumChangeData> &changeInfo,
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfos)
+{
+    ANI_INFO_LOG("MediaLibraryNotifyAniUtils::BuildSingleAlbumChangeInfos");
+    MediaLibraryTracer tracer;
+    tracer.Start("BuildSingleAlbumChangeInfos");
+    if (changeInfo == nullptr) {
+        ANI_ERR_LOG("Invalid changeInfo");
+        return nullptr;
+    }
+    ani_object retObj = nullptr;
+    ani_status status = ANI_OK;
+    CHECK_COND_RET(CreateAniObject(env, PAH_ANI_CLASS_ALBUM_CHANGE_INFOS_HANDLE, retObj) == ANI_OK, nullptr,
+        "CreateAniObject fail: %{public}s", PAH_ANI_CLASS_ALBUM_CHANGE_INFOS_HANDLE.c_str());
+    CHECK_COND_RET(retObj != nullptr, nullptr, "retObj is nullptr");
+
+    NotifyChangeType changeType = GetNotifyChangeType(changeInfos->notifyType);
+    if (changeType == NotifyChangeType::NOTIFY_CHANGE_INVALID) {
+        return nullptr;
+    }
+    status = MediaLibraryNotifyAniUtils::SetValueEnum(env, "type", changeType, retObj);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("set array named property error: type");
+        return nullptr;
+    }
+
+    MEDIA_INFO_LOG("single photoAlbumData %{public}s", changeInfo->ToString().c_str());
+    ani_object albumResults = nullptr;
+    CHECK_COND_RET(ToAlbumChangeDataAniArray(env, changeInfos->changeInfos, albumResults)
+        == ANI_OK, nullptr, "Call ToAlbumChangeDataAniArray fail");
+    CHECK_COND_RET(env->Object_SetPropertyByName_Ref(retObj, "albumChangeDatas", albumResults) == ANI_OK,
+        nullptr, "Call Object_SetPropertyByName_Ref albumChangeDatas fail");
+
+    status = MediaLibraryNotifyAniUtils::SetValueBool(env, "isForRecheck", changeInfos->isForRecheck, retObj);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("set array named property error: isForRecheck");
+        return nullptr;
+    }
+
+    return retObj;
+}
+
+
+ani_object MediaLibraryNotifyAniUtils::BuildSinglePhotoAssetRecheckChangeInfos(ani_env *env)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("BuildSinglePhotoAssetRecheckChangeInfos");
+    ANI_INFO_LOG("MediaLibraryNotifyAniUtils::BuildSinglePhotoAssetRecheckChangeInfos");
+
+    ani_object retObj = nullptr;
+    CHECK_COND_RET(CreateAniObject(env, PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFOS_HANDLE, retObj) == ANI_OK, nullptr,
+        "CreateAniObject fail: %{public}s", PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFOS_HANDLE.c_str());
+    CHECK_COND_RET(retObj != nullptr, nullptr, "retObj is nullptr");
+
+    ani_enum_item type;
+    NotifyChangeType ChangeType = NotifyChangeType::NOTIFY_CHANGE_UPDATE;
+    if (ChangeType == NotifyChangeType::NOTIFY_CHANGE_INVALID) {
+        return nullptr;
+    }
+    CHECK_COND_RET(MediaLibraryEnumAni::ToAniEnum(env, ChangeType, type) == ANI_OK,
+        nullptr, "Call ToAniEnum NotifyChangeType fail");
+    CHECK_COND_RET(env->Object_SetPropertyByName_Ref(retObj, "type", static_cast<ani_ref>(type)) == ANI_OK, nullptr,
+        "Call Object_SetPropertyByName_Ref fail");
+
+    CHECK_COND_RET(SetValueNull(env, "assetChangeDatas", retObj) == ANI_OK, nullptr,
+        "Set object named property error! field: assetChangeDatas");
+
+    CHECK_COND_RET(env->Object_SetPropertyByName_Boolean(retObj, "isForRecheck", ANI_TRUE) == ANI_OK, nullptr,
+        "Call Object_SetPropertyByName_Ref fail");
+
+    return retObj;
+}
+
+ani_object MediaLibraryNotifyAniUtils::BuildSingleAlbumRecheckChangeInfos(ani_env *env)
+{
+    ANI_INFO_LOG("MediaLibraryNotifyAniUtils::BuildSingleAlbumRecheckChangeInfos");
+    MediaLibraryTracer tracer;
+    tracer.Start("BuildSingleAlbumRecheckChangeInfos");
+
+    ani_object retObj = nullptr;
+    ani_status status = ANI_OK;
+    CHECK_COND_RET(CreateAniObject(env, PAH_ANI_CLASS_ALBUM_CHANGE_INFOS_HANDLE, retObj) == ANI_OK, nullptr,
+        "CreateAniObject fail: %{public}s", PAH_ANI_CLASS_ALBUM_CHANGE_INFOS_HANDLE.c_str());
+    CHECK_COND_RET(retObj != nullptr, nullptr, "retObj is nullptr");
+    // 发送全查的通知，默认通知类型为UPDATE
+    status = SetValueEnum(env, "type", static_cast<int32_t>(NotifyChangeType::NOTIFY_CHANGE_UPDATE), retObj);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("set array named property error: type");
+        return nullptr;
+    }
+
+    status = SetValueNull(env, "albumChangeDatas", retObj);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("set array named property error: albumChangeDatas");
+        return nullptr;
+    }
+
+    status = SetValueBool(env, "isForRecheck", true, retObj);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("set array named property error: isForRecheck");
+        return nullptr;
+    }
+
+    return retObj;
 }
 }  // namespace Media
 }  // namespace OHOS

@@ -19,6 +19,10 @@
 #include "backup_database_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_gdbstore.h"
+#include "medialibrary_gdbstore_manager.h"
+#include "application_context.h"
+#include "media_file_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -67,7 +71,42 @@ int32_t PortraitAlbumUtils::DeletePortraitAlbumData(std::shared_ptr<NativeRdb::R
     // Delete image face data
     ret = DeleteImageFaceData(rdbStore);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to delete image face data");
+
+    // Delete Graph db Portrait Data
+    ret = DeleteGdbPortraitData(rdbStore);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to delete gdbstore portrait data");
     return E_OK;
+}
+
+int32_t PortraitAlbumUtils::DeleteGdbPortraitData(std::shared_ptr<NativeRdb::RdbStore> rdbStore)
+{
+    MEDIA_INFO_LOG("DeleteGdbPortraitData");
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    auto context = AbilityRuntime::Context::GetApplicationContext();
+    CHECK_AND_RETURN_RET_LOG(context != nullptr, E_ERR, "Failed to get application context when init gdb store");
+    MediaLibraryGdbStore::SetDatabaseDir(context->GetDatabaseDir());
+
+    std::shared_ptr<MediaLibraryGdbStore> gdbStore = MediaLibraryGdbStoreManager::GetInstance().GetGdbStore();
+    if (gdbStore == nullptr) {
+        MEDIA_ERR_LOG("gdbStore is nullptr");
+        return E_ERR;
+    }
+    int32_t errCode = gdbStore->Init();
+    if (errCode != E_OK) {
+        MEDIA_ERR_LOG("Gdb store init failed, errCode is %{public}d", errCode);
+        return errCode;
+    }
+    std::string deletePersonGql = "MATCH (person:Q215627) DETACH DELETE person;";
+    int32_t ret = gdbStore->ExecuteWriteGql(deletePersonGql);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to delete Persons Nodes");
+    std::string updateGdbSql = "UPDATE " + VISION_TOTAL_TABLE + " SET " + GRAPH_DB + "= (" + GRAPH_DB + "| " +
+        GDB_NEED_UPDATE + ") WHERE " + GRAPH_DB + "!= 0;";
+    ret = ExecuteSQLSafe(rdbStore, updateGdbSql);
+
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("DeleteGdbPortraitData cost %{public}lld", (long long)(end - start));
+    return ret;
 }
 
 int32_t PortraitAlbumUtils::DeleteGroupPhotoAlbumData(std::shared_ptr<NativeRdb::RdbStore> rdbStore)

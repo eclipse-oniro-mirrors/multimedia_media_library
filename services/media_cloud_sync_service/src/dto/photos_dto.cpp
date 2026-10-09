@@ -70,7 +70,12 @@ void PhotosDto::GetAttributesInfo(std::stringstream &ss) const
        << "\"version\": " << this->version << ", "
        << "\"fileSourceType\": " << this->fileSourceType << ", "
        << "\"storagePath\": \"" << MediaFileUtils::DesensitizePath(this->storagePath) << "\", "
-       << "\"errorType\": " << this->errorType << ", ";
+       << "\"errorType\": " << this->errorType << ", "
+       << "\"isShared\": " << this->isShared << ", "
+       << "\"shareOwnerInfo\": " << this->shareOwnerInfo << ", "
+       << "\"shareDateDay\": " << this->shareDateDay << ", "
+       << "\"shareGroup\": " << this->shareGroup << ", "
+       << "\"shareAlbumOwner\": " << this->shareAlbumOwner << ", ";
 }
 
 void PhotosDto::GetPropertiesInfo(std::stringstream &ss) const

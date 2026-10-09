@@ -68,7 +68,7 @@ ohos_fuzztest("MediaLibraryMediaAssetsControllerService2FuzzTest") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -97,7 +97,6 @@ ohos_fuzztest("MediaLibraryMediaAssetsControllerService2FuzzTest") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudsync_kit_inner",

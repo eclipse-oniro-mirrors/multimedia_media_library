@@ -88,11 +88,7 @@ static bool HandleAddFiltersError(const std::string &sourceVideoPath, const std:
         MEDIA_ERR_LOG("HandleAddFiltersError videoPath already exists");
         return true;
     }
-    if (!MediaFileUtils::IsFileExists(sourceVideoPath)) {
-        MEDIA_ERR_LOG("HandleAddFiltersError sourceVideoPath not exists");
-        return false;
-    }
-    return MediaFileUtils::CopyFileUtil(sourceVideoPath, videoPath);
+    return MediaFileUtils::CopyFileSafeWithExtRetry(sourceVideoPath, videoPath, true);
 }
 
 static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& videoPath,
@@ -104,7 +100,7 @@ static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& vid
 
     if (isLivePhotoRevert) {
         string cacheDir = videoPath.substr(0, videoPath.rfind('/'));
-        string tempImagePath = cacheDir + "/image_livephoto" + MediaFileUtils::GetExtensionFromPath(assetPath);
+        string tempImagePath = cacheDir + "/image_livephoto." + MediaFileUtils::GetExtensionFromPath(assetPath);
 
         int64_t coverPosition = 0;
         int32_t ret = MovingPhotoFileUtils::GetLivePhotoCoverPosition(videoPath, realPath, coverPosition);
@@ -131,11 +127,15 @@ static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& vid
         MediaFileUtils::DeleteFile(videoPath);
     } else {
         if (isNeedScan && MediaFileUtils::IsFileExists(assetPath)) {
-            ScanConfig config = ScanConfigBuilder().UseCameraShotPreset(true, ScanQuality::DEFAULT)
-                                                   .SetFilePath(assetPath)
-                                                   .SetFileId(fileId)
-                                                   .SetNeedGenerateThumbnail(false)
-                                                   .Build();
+            DefaultScanInfo scanInfo;
+            scanInfo.SetIsMovingPhoto(true);
+            scanInfo.SetFilePath(assetPath);
+            scanInfo.SetFileId(fileId);
+            ScanConfig config = ScanConfigBuilder()
+                .UseCameraShotPreset(ScanQuality::DEFAULT)
+                .SetNeedGenerateThumbnail(false)
+                .SetDefaultScanInfo(scanInfo)
+                .Build();
 
             MediaLibraryObjectUtils::ScanFileAsync(config);
         }
@@ -149,9 +149,10 @@ void VideoCompositionCallbackImpl::onResult(VEFResult result, VEFError errorCode
     close(outputFileFd_);
     editorMap_.erase(inputFileFd_);
     if (errorCode != VEFError::ERR_OK) {
-        mutex_.lock();
-        --curWorkerNum_;
-        mutex_.unlock();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            --curWorkerNum_;
+        }
         MEDIA_ERR_LOG("VideoCompositionCallbackImpl onResult error:%{public}d", (int32_t)errorCode);
         // Video Composite failed save sourceVideo to photo directory
         CHECK_AND_PRINT_LOG(HandleAddFiltersError(sourceVideoPath_, videoPath_),
@@ -167,19 +168,25 @@ void VideoCompositionCallbackImpl::onResult(VEFResult result, VEFError errorCode
     string realPath = MediaFileAccessUtils::GetAssetRealPath(assetPath_);
     ProcessLivePhotoRevert(assetPath_, videoPath_, realPath, isNeedScan_, fileId_);
 
-    mutex_.lock();
-    if (waitQueue_.empty()) {
-        --curWorkerNum_;
-        mutex_.unlock();
-    } else {
-        Task task = std::move(waitQueue_.front());
-        waitQueue_.pop();
-        mutex_.unlock();
+    Task task;
+    bool hasTask = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (waitQueue_.empty()) {
+            --curWorkerNum_;
+        } else {
+            task = std::move(waitQueue_.front());
+            waitQueue_.pop();
+            hasTask = true;
+        }
+    }
+    if (hasTask) {
         if (CallStartComposite(task.sourceVideoPath_, task.videoPath_, task.editData_,
                                task.assetPath_, task.isNeedScan_, task.outputVideoPath_, task.fileId_) != E_OK) {
-            mutex_.lock();
-            --curWorkerNum_;
-            mutex_.unlock();
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                --curWorkerNum_;
+            }
             MEDIA_ERR_LOG("Failed to CallStartComposite, path:%{private}s", task.videoPath_.c_str());
             CHECK_AND_RETURN_LOG(HandleAddFiltersError(task.sourceVideoPath_, task.videoPath_),
                 "Copy sourceVideoPath to videoPath, path:%{private}s", task.sourceVideoPath_.c_str());
@@ -211,10 +218,9 @@ int32_t VideoCompositionCallbackImpl::CallStartComposite(const std::string& sour
     tmpPath = MediaFileAccessUtils::GetAssetRealPath(sourceVideoPath);
 #endif
     string absSourceVideoPath;
-    CHECK_AND_RETURN_RET_LOG(PathToRealPath(tmpPath, absSourceVideoPath), E_HAS_FS_ERROR,
-        "file is not real path, file path: %{private}s, errno: %{public}d", tmpPath.c_str(), errno);
-    int32_t inputFileFd = open(tmpPath.c_str(), O_RDONLY);
-    CHECK_AND_RETURN_RET_LOG(inputFileFd != -1, E_ERR, "Open failed for inputFileFd file, errno: %{public}d", errno);
+    int32_t inputFileFd = MediaFileUtils::OpenFileWithExtRetry(tmpPath, absSourceVideoPath);
+    CHECK_AND_RETURN_RET_LOG(inputFileFd >= 0, E_HAS_FS_ERROR,
+        "OpenFileWithExtRetry failed for source video file, errno: %{public}d", errno);
     if (CheckDirPathReal(videoPath) != E_OK) {
         MEDIA_ERR_LOG("dirFile is not real path, file path: %{private}s, errno: %{public}d", videoPath.c_str(), errno);
         close(inputFileFd);
@@ -266,24 +272,29 @@ void VideoCompositionCallbackImpl::AddCompositionTask(const std::string& assetPa
         : outputVideoPath;
     string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
 
-    mutex_.lock();
-    if (curWorkerNum_ < MAX_CONCURRENT_NUM) {
-        ++curWorkerNum_;
-        mutex_.unlock();
+    bool canStart = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (curWorkerNum_ < MAX_CONCURRENT_NUM) {
+            ++curWorkerNum_;
+            canStart = true;
+        } else {
+            MEDIA_WARN_LOG("Failed to CallStartComposite, curWorkerNum over MAX_CONCURRENT_NUM");
+            Task newWaitTask{sourceVideoPath, videoPath, editData, assetPath, isNeedScan, outputVideoPath, fileId};
+            waitQueue_.push(std::move(newWaitTask));
+        }
+    }
+    if (canStart) {
         if (CallStartComposite(
             sourceVideoPath, videoPath, editData, assetPath, isNeedScan, outputVideoPath, fileId) != E_OK) {
-            mutex_.lock();
-            --curWorkerNum_;
-            mutex_.unlock();
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                --curWorkerNum_;
+            }
             MEDIA_ERR_LOG("Failed to CallStartComposite, path:%{private}s", videoPath.c_str());
             CHECK_AND_RETURN_LOG(HandleAddFiltersError(sourceVideoPath, videoPath),
                 "Copy sourceVideoPath to videoPath, path:%{private}s", sourceVideoPath.c_str());
         }
-    } else {
-        MEDIA_WARN_LOG("Failed to CallStartComposite, curWorkerNum over MAX_CONCURRENT_NUM");
-        Task newWaitTask{sourceVideoPath, videoPath, editData, assetPath, isNeedScan, outputVideoPath, fileId};
-        waitQueue_.push(std::move(newWaitTask));
-        mutex_.unlock();
     }
 }
 

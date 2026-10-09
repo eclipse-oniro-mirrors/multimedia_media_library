@@ -21,6 +21,7 @@
 #include "medialibrary_business_code.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_client_errno.h"
+#include "napi_error.h"
 
 namespace OHOS::Media {
 thread_local napi_ref TaskSignalNapi::sTaskSignalConstructor_ = nullptr;
@@ -67,7 +68,7 @@ napi_value TaskSignalNapi::TaskSignalConstructor(napi_env env, napi_callback_inf
         return nullptr;
     }
 
-    auto *taskSignal = new TaskSignalNapi();
+    auto *taskSignal = new(std::nothrow) TaskSignalNapi();
     if (taskSignal == nullptr) {
         NAPI_ERR_LOG("Failed to create TaskSignalNapi");
         return nullptr;

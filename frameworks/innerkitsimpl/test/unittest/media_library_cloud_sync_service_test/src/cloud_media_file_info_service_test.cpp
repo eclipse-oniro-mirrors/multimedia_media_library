@@ -394,8 +394,8 @@ HWTEST_F(CloudMediaFileInfoServiceTest, FixFileInfoWithLocal_LakePathFormat_Test
 
     service.FixFileInfo(pullData);
 
-    EXPECT_TRUE(pullData.attributesStoragePath.find("/storage/media/local/files/Docs/HO_DATA_EXT_MISC/") !=
-                std::string::npos);
+    EXPECT_TRUE(
+        pullData.attributesStoragePath.find("/storage/media/local/files/Docs/HO_DATA_EXT_MISC/") != std::string::npos);
 }
 
 /**

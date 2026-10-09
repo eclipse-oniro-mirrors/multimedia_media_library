@@ -92,13 +92,13 @@ size_t MultistagesCameraCaptureManager::InsertCaptureData(const int32_t &fileId,
     std::lock_guard<std::mutex> lock(mapMutex_);
     CHECK_AND_RETURN_RET_LOG(fileId > 0, pipeLinesMap_.size(), "invalid fileId: %{public}d.", fileId);
 
-    std::string photoIdInput = photoId;
+    std::string photoIdInput = to_string(fileId);
     if (photoId.empty()) {
         MEDIA_WARN_LOG("photoId is empty, using fileId instead.");
         photoIdInput = std::to_string(fileId);
     }
 
-    if (fileId2PhotoId_.find(fileId) != fileId2PhotoId_.end() || pipeLinesMap_.find(photoId) != pipeLinesMap_.end()) {
+    if (fileId2PhotoId_.find(fileId) != fileId2PhotoId_.end()) {
         MEDIA_ERR_LOG("Duplicate data is not allowed in the camera process.");
         return pipeLinesMap_.size();
     }

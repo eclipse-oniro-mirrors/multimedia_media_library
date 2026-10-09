@@ -39,7 +39,7 @@ int32_t AnalysisAlbumImpactAnalyzer::CalcDataChange(const PhotoAssetChangeData &
     const UpdateAlbumData &baseInfo, AnalysisAlbumRefreshInfo &info)
 {
     int32_t invalidDelta = 0;
-    CHECK_AND_RETURN_RET_LOG(policy_.effective != nullptr && policy_.effective->IsEffective(data, baseInfo),
+    CHECK_AND_RETURN_RET_DEBUG_LOG(policy_.effective != nullptr && policy_.effective->IsEffective(data, baseInfo),
         invalidDelta, "CalcDataChange failed");
 
     auto ctxOpt = AnalysisAnalyzerContextBuilder()

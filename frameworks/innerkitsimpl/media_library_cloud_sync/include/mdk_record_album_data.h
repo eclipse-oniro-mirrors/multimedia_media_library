@@ -24,9 +24,13 @@
 #include "mdk_record.h"
 #include "mdk_reference.h"
 #include "mdk_database.h"
+#include "mdk_participant.h"
 #include "mdk_record_reader.h"
 #include "mdk_record_field.h"
 #include "cloud_media_define.h"
+#include "share_member_data_vo.h"
+#include "mdk_scadetail.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT MDKRecordAlbumData {
@@ -35,6 +39,8 @@ private:  // data member
     std::map<std::string, MDKRecordField> fields_;
     std::map<std::string, MDKRecordField> properties_;
     std::map<std::string, MDKRecordField> attributes_;
+    std::vector<MDKRecordField> permissions_;
+    std::vector<MDKRecordField> scaDetailList_;
 
 private:  // composited class
     MDKRecordReader recordReader_;
@@ -73,9 +79,8 @@ public:  // getter & setter
     void SetLogicType(const int32_t &logicType);
     std::optional<bool> IsLogic() const;
     void SetIsLogic(const bool isLogic);
-    std::optional<std::string> GetType() const;
-    // type, "directory" or "file"
-    void SetType(const std::string &type);
+    // type, 0 - nomal album, 1 - kid's watch share album, 2 - share album
+    std::optional<int32_t> GetType() const;
     std::optional<std::string> GetLocalLanguage() const;
     void SetLocalLanguage(const std::string &localLanguage);
     void SetNewCreate(const bool isNewCreate);
@@ -99,6 +104,12 @@ public:  // getter & setter
     void SetSceneId(const int32_t &sceneId);
     std::optional<int32_t> GetShareType() const;
     void SetShareType(const int32_t &shareType);
+    std::string GetOwnerId() const;
+    void GetShareMembers(std::vector<ShareMemberDataVo> &shareMemberDataList);
+    void GetScadetailList(std::vector<ScaDetailVo> &scaDetailList);
+    
+    std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
+    std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
 
 private:
     const std::string VALUE_RECORD_TYPE = "album";
@@ -110,6 +121,8 @@ private:
     const std::string KEY_TYPE = "type";
     const std::string KEY_PROPERTIES = "properties";
     const std::string KEY_ATTRIBUTES = "attributes";
+    const std::string KEY_PERMISSIONS = "permissions";
+    const std::string KEY_SCA_DETAIL = "scaDetail";
 
     /* properties */
     const std::string ALBUM_NAME = "albumName";

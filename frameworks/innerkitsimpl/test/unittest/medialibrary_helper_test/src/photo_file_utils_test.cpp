@@ -110,6 +110,21 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetMetaPathFromOrignalPath_0
     EXPECT_EQ(PhotoFileUtils::GetMetaPathFromOrignalPath(photoPath, metaPath), 0);
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_HasSource_003, TestSize.Level1)
+{
+    // subtype = CINEMATIC_VIDEO_V2(8): 无其它条件也应返回true
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 8), true);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 8, 0), true);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 8, 1), true);
+    // 对照: V1(CINEMATIC_VIDEO=5) 也是true
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 5), true);
+    // 对照: 慢动作视频(6)需editDataExist才能判定有源
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 6, 0), false);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 6, 1), true);
+    // 对照: 普通DEFAULT子类型无源
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 0, 0), false);
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetMetaDataRealPath_001, TestSize.Level1)
 {
     string photoPath = "";
@@ -167,6 +182,50 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ConstructDateAddedDateParts,
     EXPECT_NE(parts.month, "");
     EXPECT_NE(parts.day, "");
     MEDIA_INFO_LOG("PhotoFileUtils_ConstructDateAddedDateParts End");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Valid_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251225",
+        1766644004000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251224",
+        1766644004000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251226",
+        1766661664000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251225", 1766661664000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251224", 1766661664000), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Empty_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("", "202512", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "",
+        1766644004000), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Invalid_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("abcd", "202512", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("202", "202512", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "20251", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251226", 1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2024", "202412", "20241225", 1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2026", "202601", "20260101", 1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251227", 1766661664000), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Mismatch_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202412", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20241225",
+        1766644004000), false);
 }
 } // namespace Media
 } // namespace OHOS

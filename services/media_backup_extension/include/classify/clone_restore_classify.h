@@ -19,8 +19,10 @@
 #include <string>
 
 #include "backup_const.h"
+#include "field_config/clone_field_writer.h"
 #include "clone_restore_analysis_total.h"
 #include "rdb_store.h"
+#include "classify_restore_const.h"
 
 namespace OHOS::Media {
 class CloneRestoreClassify {
@@ -43,41 +45,6 @@ private:
         ALL = 0,
         IMAGE,
         VIDEO
-    };
-    struct ClassifyCloneInfo {
-        std::optional<int32_t> id;
-        std::optional<int32_t> fileIdOld;
-        std::optional<int32_t> fileIdNew;
-        std::optional<int32_t> categoryId;
-        std::optional<std::string> subLabel;
-        std::optional<double> prob;
-        std::optional<std::vector<uint8_t>> feature;
-        std::optional<std::string> simResult;
-        std::optional<std::string> labelVersion;
-        std::optional<std::string> saliencySubProb;
-        std::optional<std::string> analysisVersion;
-        std::optional<std::string> captionResult;
-        std::optional<std::string> captionVersion;
-        std::optional<int32_t> significanceScore;
-        std::optional<std::string> significanceScoreVersion;
-    };
-    struct ClassifyVideoCloneInfo {
-        std::optional<int32_t> id;
-        std::optional<int32_t> fileIdOld;
-        std::optional<int32_t> fileIdNew;
-        std::optional<std::string> categoryId;
-        std::optional<std::string> confidenceProbability;
-        std::optional<std::string> subCategory;
-        std::optional<std::string> subConfidenceProb;
-        std::optional<std::string> subLabel;
-        std::optional<std::string> subLabelProb;
-        std::optional<std::string> subLabelType;
-        std::optional<std::string> tracks;
-        std::optional<std::vector<uint8_t>> videoPartFeature;
-        std::optional<std::string> filterTag;
-        std::optional<std::string> algoVersion;
-        std::optional<std::string> analysisVersion;
-        std::optional<int32_t> triggerGenerateThumbnail;
     };
 
     void RestoreByVersion(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
@@ -108,6 +75,7 @@ private:
         const std::unordered_set<int32_t> &existingFileIds);
     void InsertClassifyAlbums(std::vector<ClassifyCloneInfo> &classifyInfos);
     void InsertClassifyVideoAlbums(std::vector<ClassifyVideoCloneInfo> &classifyVideoInfos);
+    std::vector<int32_t> CollectBatchFileIds(const std::vector<ClassifyCloneInfo> &classifyInfos, size_t offset);
 
     void GetClassifyInfo(ClassifyCloneInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet);
     void GetMapInsertValue(NativeRdb::ValuesBucket &value, ClassifyCloneInfo info,
@@ -155,28 +123,14 @@ template<typename T>
 void CloneRestoreClassify::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::vector<uint8_t>>) {
-            values.PutBlob(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 
 template<typename T>
 void CloneRestoreClassify::PutIfInIntersection(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const std::unordered_set<std::string> &intersection)
 {
-    if (intersection.count(columnName) > 0) {
-        PutIfPresent<T>(values, columnName, optionalValue);
-    }
+    CloneFieldWriter::PutIfInIntersection<T>(values, columnName, optionalValue, intersection);
 }
 } // namespace OHOS::Media
 #endif // CLONE_RESTORE_CLASSIFY_H

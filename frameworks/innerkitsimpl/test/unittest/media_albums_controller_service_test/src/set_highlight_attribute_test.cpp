@@ -33,6 +33,7 @@
 #include "story_album_column.h"
 #include "story_db_sqls.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

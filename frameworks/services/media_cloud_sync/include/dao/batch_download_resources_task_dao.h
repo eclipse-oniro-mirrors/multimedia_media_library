@@ -29,6 +29,7 @@
 #include "media_column.h"
 #include "download_resources_column.h"
 #include "medialibrary_type_const.h"
+#include "cloud_share_album_define.h"
 
 namespace OHOS {
 namespace Media {
@@ -41,6 +42,7 @@ const std::vector<std::string> PULL_QUERY_DOWNLOAD_COLUMNS = {
     PhotoColumn::MEDIA_SIZE,
     PhotoColumn::MEDIA_FILE_PATH,
     PhotoColumn::PHOTO_BURST_COVER_LEVEL,
+    PhotoColumn::PHOTO_IS_SHARED,
 };
 
 const std::vector<std::string> PULL_QUERY_DOWNLOAD_STATUS_COLUMNS = {
@@ -56,6 +58,7 @@ const std::vector<std::string> PULL_QUERY_DOWNLOAD_STATUS_COLUMNS = {
     DownloadResourcesColumn::MEDIA_COVER_LEVEL,
     DownloadResourcesColumn::MEDIA_TASK_SEQ,
     DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
+    DownloadResourcesColumn::MEDIA_IS_SHARED,
 };
 
 class BatchDownloadResourcesTaskDao {
@@ -103,7 +106,7 @@ public:
     EXPORT int32_t QueryCancelDownloadingStatusResources(std::vector<std::string> &fileIds,
         std::vector<std::string> &fileIdsDownloading, std::vector<std::string> &fileIdsNotInDownloading);
     EXPORT int32_t DeleteCancelStateDownloadResources(const std::vector<std::string> &fileIds);
-    EXPORT int32_t DeleteAllDownloadResourcesInfo();
+    EXPORT int32_t DeleteAllDownloadResourcesInfo(CloudSync::SceneType sceneType = CloudSync::SceneType::NORMAL);
 
     // get
     EXPORT int32_t QueryCloudMediaBatchDownloadResourcesStatus(

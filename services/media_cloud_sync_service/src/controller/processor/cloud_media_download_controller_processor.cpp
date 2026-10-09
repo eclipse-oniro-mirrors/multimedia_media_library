@@ -35,6 +35,7 @@ PhotosVo CloudMediaDownloadControllerProcessor::ConvertPhotosDtoToPhotosVo(const
     photosVo.dateTrashed = photosDto.dateTrashed;
     photosVo.fileSourceType = photosDto.fileSourceType;
     photosVo.storagePath = photosDto.storagePath;
+    photosVo.shareAlbumOwner = photosDto.shareAlbumOwner;
     for (auto &nodePair : photosDto.attachment) {
         CloudFileDataVo fileDataVo;
         fileDataVo.fileName = nodePair.second.fileName;

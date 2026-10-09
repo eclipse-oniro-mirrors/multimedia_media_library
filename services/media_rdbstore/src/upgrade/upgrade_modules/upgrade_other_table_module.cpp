@@ -18,15 +18,17 @@
 #include "media_library_upgrade_macros.h"
 #include "media_library_upgrade_helper.h"
 #include "upgrade_other_table_sqls.h"
+#include "share_member_column.h"
 #include "media_log.h"
 #include "rdb_store.h"
 #include "medialibrary_db_const.h"
+#include "photo_map_code_operation.h"
 
 namespace OHOS {
 namespace Media {
 using namespace std;
 #define OTHER_TABLE_MODULE_NAME "OtherTable"
-// ==================== ADD Other Table Upgrade Code HERE  ====================
+// ADD Other Table Upgrade Code HERE
 
 static vector<pair<int32_t, int32_t>> AddExtraInfoColumn(NativeRdb::RdbStore &store)
 {
@@ -37,5 +39,72 @@ static vector<pair<int32_t, int32_t>> AddExtraInfoColumn(NativeRdb::RdbStore &st
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_EXTRA_INFO,
     OTHER_TABLE_MODULE_NAME, AddExtraInfoColumn);
+
+static vector<pair<int32_t, int32_t>> AddFriendIdColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_ANALYSIS_ALBUM, COLUMN_FRIEND_ID, "TEXT")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_FRIEND_ID,
+    OTHER_TABLE_MODULE_NAME, AddFriendIdColumn);
+
+static vector<pair<int32_t, int32_t>> AddContactInfoColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_ANALYSIS_ALBUM, COLUMN_CONTACT_INFO, "TEXT")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_CONTACT_INFO,
+    OTHER_TABLE_MODULE_NAME, AddContactInfoColumn);
+
+static vector<pair<int32_t, int32_t>> AddIsSharedColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_DOWNLOAD_RESOURCES_TASK_RECORDS, COLUMN_IS_SHARED,
+        "INT DEFAULT 0 NOT NULL")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_IS_SHARED_IN_DRTR,
+    OTHER_TABLE_MODULE_NAME, AddIsSharedColumn);
+
+static vector<pair<int32_t, int32_t>> AddShareMemberTable(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddRawSql(SQL_CREATE_TAB_SHARE_ALBUM_MEMBER)
+                           .AddRawSql(SQL_CREATE_TAB_SHARE_ALBUM_MEMBER_INDEX)
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_MEMBER_SHARE,
+    OTHER_TABLE_MODULE_NAME, AddShareMemberTable);
+
+static vector<pair<int32_t, int32_t>> AddPhotoMapCodeTable(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddRawSql(SQL_CREATE_MAP_CODE_TABLE)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_INSERT_TRIGGER)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_UPDATE_TRIGGER)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_CLEAR_TRIGGER)
+                           .AddRawSql(SQL_CREATE_MAP_CODE_DELETE_TRIGGER)
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_MAP_CODE_TABLE, OTHER_TABLE_MODULE_NAME, AddPhotoMapCodeTable);
+
+static vector<pair<int32_t, int32_t>> AddPhotoMapCodeIndex(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    PhotoMapCodeOperation::SetMapCodeReadyStatus(MAP_CODE_IS_NOT_READY);
+    auto commands = builder.AddRawSql(SQL_CREATE_MAPCODE_LEVEL_5_INDEX)
+                           .AddRawSql(SQL_CREATE_MAPCODE_LEVEL_20_INDEX)
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_ADD_MAP_CODE_TABLE, OTHER_TABLE_MODULE_NAME, AddPhotoMapCodeIndex);
+
 }
 }

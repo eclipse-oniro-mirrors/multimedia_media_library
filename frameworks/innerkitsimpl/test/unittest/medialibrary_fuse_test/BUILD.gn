@@ -34,18 +34,16 @@ ohos_unittest("medialibrary_fuse_test") {
   ]
 
   sources = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_daemon.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_hdc_operations.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_high_daemon.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_low_daemon.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_tmp_compatible_dup_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_cloud_permission_check.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_node.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_fuse_hdc_operations_test.cpp",
     "./src/mock_medialibrary_fuse_test.cpp",
     "./src/medialibrary_fuse_test.cpp",
-    "./src/media_fuse_node_test.cpp",
+    "./src/medialibrary_album_fusion_test.cpp",
     "${MEDIALIB_INTERFACES_PATH}/medialibrary_data_extension/src/transcode_compatible_info_operations.cpp",
   ]
 
@@ -53,6 +51,7 @@ ohos_unittest("medialibrary_fuse_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
   ]
 
@@ -86,7 +85,6 @@ ohos_unittest("medialibrary_fuse_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "libfuse:libfuse",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "relational_store:native_appdatafwk",
     "relational_store:native_rdb",

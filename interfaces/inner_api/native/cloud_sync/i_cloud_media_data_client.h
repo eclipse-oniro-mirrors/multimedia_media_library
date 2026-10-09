@@ -41,6 +41,7 @@ public:  // getter & setter
     virtual std::string GetTraceId() const = 0;
     virtual void SetUserId(const int32_t &userId) = 0;
     virtual void SetCloudType(const int32_t cloudType) = 0;
+    virtual void SetSceneType(int32_t sceneType) = 0;
 
 public:
     // 核查

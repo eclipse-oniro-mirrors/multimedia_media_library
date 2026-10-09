@@ -107,6 +107,12 @@ private:
     int32_t GetCopyPhotoObjectPath(uint32_t handle, PathMap &paths);
     void CountPhotosNumber(const std::shared_ptr<MtpOperationContext> &context, FileCountInfo &fileCountInfo);
     int32_t GetCloudPhotoCountFromAlbum(const std::shared_ptr<MtpOperationContext> &context);
+    void SetPredicatesByParent(DataShare::DataSharePredicates &predicates, uint32_t parent);
+    int32_t QueryAlbumTypeInfo(const std::string &albumId, int32_t &albumType, int32_t &albumSubType);
+    int32_t QueryAlbumIdByName(const std::string &albumName, int32_t &albumId);
+    bool IsFileManagerAlbum(uint32_t albumId);
+    std::shared_ptr<DataShare::DataShareResultSet> GetPhotosInfo(uint32_t handle, bool isAlbum);
+    int32_t CreateAsset(uint32_t albumId, const std::string &displayName, MediaType mediaType, int32_t &outRowId);
 private:
     static std::mutex mutex_;
     static std::shared_ptr<MtpMedialibraryManager> instance_;

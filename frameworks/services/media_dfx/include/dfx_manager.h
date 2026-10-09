@@ -26,6 +26,7 @@
 #include "ipc_skeleton.h"
 #include "dfx_worker.h"
 #include "dfx_cloud_const.h"
+#include "photo_storage_operation.h"
 
 namespace OHOS {
 namespace Media {
@@ -34,6 +35,25 @@ struct DeleteBehaviorData {
     std::map<std::string, std::string> displayNames;
     std::map<std::string, std::string> albumNames;
     std::map<std::string, std::string> ownerAlbumIds;
+    std::map<std::string, int32_t> mediaTypes;
+};
+
+struct PhotoErrorData {
+    int32_t fileId {0};
+    int32_t fileSourceType {0};
+    int32_t southDeviceType {0};
+    int32_t position {0};
+    int32_t mediaType {0};
+    std::string path;
+    std::string displayName;
+};
+
+struct PhotoErrorTask : public DfxData {
+    explicit PhotoErrorTask(int32_t typeCode, const PhotoErrorData &photoErrorData)
+        : typeCode_(typeCode), photoErrorData_(photoErrorData) {}
+    ~PhotoErrorTask() override = default;
+    int32_t typeCode_ {0};
+    PhotoErrorData photoErrorData_;
 };
 
 enum class MultiStagesCaptureVideoStatus {
@@ -96,6 +116,8 @@ public:
     void HandleSyncEnd(const int32_t stopReason = 0);
     void HandleReportSyncFault(const std::string& position, const SyncFaultEvent& event);
     void HandleOneWeekMissions();
+    void HandleSixHourMissions();
+    EXPORT void HandleImmediatePhotoInfoExtReport(StorageQueryCache &cache);
     EXPORT void HandleTranscodeAccessTime(const TranscodeAccessType type, TranscodeType transcodeType);
     EXPORT void HandleTranscodeFailed(const TranscodeErrorType type, TranscodeType transcodeType);
     EXPORT void HandleTranscodeCostTime(const int32_t costTime, TranscodeType transcodeType);
@@ -110,12 +132,26 @@ public:
     bool GetMemoryRelease();
     void SetLastIPCTime(int64_t lastIPCTime);
     void SetMemoryRelease(bool memoryRelease);
+    EXPORT void HandleAgingLcdCount();
+    EXPORT void HandleAgingLcdContinue();
+    EXPORT void HandleAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSize,
+        int64_t freeSizeOld, int64_t freeSize, int64_t totalTime);
+    EXPORT void HandleReadLcd(bool isSuccess);
+    EXPORT void HandleThumbnailQuality();
+    EXPORT void HandleVisitLcd();
+    void HandleInvalidKey(std::string& bundleName, std::string& sql);
+    void HandleInvalidPrivateOpen(std::string& bundleName, std::string& operation);
+    void HandleSpecialOpen(std::string& bundleName, std::string& operation);
+    void HandlePhotoError(const PhotoErrorData &data);
+    void CheckPhotoError(std::shared_ptr<DfxReporter> &dfxReporter);
 
 private:
     void Init();
     void HandleAlbumInfoBySubtype(int32_t albumSubType);
     void ResetStatistic();
     void CopyStatistic(CloudSyncStat& stat);
+    void CheckPhotoErrorInScan(std::shared_ptr<DfxReporter> &dfxReporter, int32_t scanBatchSize, int32_t packBatchSize);
+    void CheckPhotoErrorInOpen(std::shared_ptr<DfxReporter> &dfxReporter, int32_t packBatchSize);
 
 private:
     static std::mutex instanceLock_;

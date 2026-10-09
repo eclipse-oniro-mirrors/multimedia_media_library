@@ -26,6 +26,7 @@
 
 namespace OHOS::Media {
 constexpr int32_t BATCH_SIZE = 200;
+constexpr int32_t IMAGE_FACE_INSERT_BATCH_SIZE = 200;
 class CloneRestorePortrait : public CloneRestorePortraitBase {
 public:
     void Init(int32_t sceneCode, const std::string &taskId, std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
@@ -33,8 +34,8 @@ public:
         const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isCloudRestoreSatisfied,
         std::unordered_map<int32_t, uint32_t>* scoreMaskMap = nullptr);
     void Preprocess();
-    void Restore();
-    void RestoreFromGalleryPortraitAlbum();
+    void Restore(bool isReverse);
+    void RestoreFromGalleryPortraitAlbum(bool isReverse);
     void RestorePortraitClusteringInfo();
     void RestoreImageFaceInfo();
     void UpdateAnalysisTotalTblNoFaceStatus();
@@ -42,6 +43,10 @@ public:
     int32_t RestoreMaps();
     const std::unordered_map<int32_t, uint32_t>& GetScoreMaskMap() const { return scoreMaskMap_; }
     void UpdateScoreMask(int32_t fileId, uint32_t mask);
+    bool RefreshTotalAlbumNumber();
+    void ClearProfileFaceScore(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
+    void ClearTotalScoreBit2(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
+    void DeleteExistingGdbPortraitData();
 
 protected:
     std::atomic<uint64_t> migratePortraitAlbumNumber_{0};
@@ -59,7 +64,8 @@ private:
     void DeleteExistingCluseringInfo();
     void DeleteExistingImageFaceInfos();
     void LogPortraitCloneDfx();
-    vector<AnalysisAlbumTbl> QueryPortraitAlbumTbl(int32_t offset, const std::vector<std::string>& commonColumns);
+    vector<AnalysisAlbumTbl> QueryPortraitAlbumTbl(int32_t offset, const std::vector<std::string>& commonColumns,
+        bool isReverse);
     std::unordered_set<std::string> QueryAllPortraitAlbum();
     void InsertPortraitAlbum(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl);
     int32_t InsertPortraitAlbumByTable(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl);
@@ -72,13 +78,14 @@ private:
     void PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
         const std::optional<T>& optionalValue, const U& defaultValue);
     std::vector<ImageFaceTbl> ProcessImageFaceTbls(const std::vector<ImageFaceTbl>& imageFaceTbls,
-        const std::vector<FileIdPair>& fileIdPairs);
-    std::vector<ImageFaceTbl> QueryImageFaceTbl(int32_t offset, std::string &fileIdClause,
+        const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
+    std::vector<ImageFaceTbl> QueryImageFaceTbl(const std::vector<int32_t> &fileIdChunk,
         const std::vector<std::string> &commonColumns);
     void ParseImageFaceResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
         ImageFaceTbl& imageFaceTbl);
     void ParseImageFaceResultSet1(const std::shared_ptr<NativeRdb::ResultSet>& resultSet, ImageFaceTbl& imageFaceTbl);
     NativeRdb::ValuesBucket CreateValuesBucketFromImageFaceTbl(const ImageFaceTbl& imageFaceTbl);
+    void PutImageFaceDetailValues(NativeRdb::ValuesBucket& values, const ImageFaceTbl& imageFaceTbl);
     void BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls);
     void RestoreMapsBatch();
     void UpdateMapInsertValues(std::vector<NativeRdb::ValuesBucket> &values);
@@ -88,6 +95,7 @@ private:
     void InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesBucket> &values);
     void ReportPortraitCloneStat(int32_t sceneCode);
     void RestoreAnalysisTotalFaceStatus();
+    void RestoreAnalysisTotalFacialDetectionStatus();
     void UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId);
 
 public:

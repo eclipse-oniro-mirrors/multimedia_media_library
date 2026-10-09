@@ -25,6 +25,8 @@ config("analysis_data_kits_config") {
 }
  
 ohos_shared_library("analysis_data_kits") {
+  stack_protector_ret = true
+  branch_protector_ret = "pac_ret"
   install_enable = true
  
   sources = [
@@ -54,6 +56,8 @@ ohos_shared_library("analysis_data_kits") {
     "./vo/set_subtitle_vo.cpp",
     "./vo/prepare_lcd_vo.cpp",
     "./vo/remove_cloud_lcd_vo.cpp",
+    "./vo/invoke_analysis_tool_vo.cpp",
+    "./vo/cancel_analysis_tool_vo.cpp",
   ]
  
   include_dirs = [
@@ -80,7 +84,7 @@ ohos_shared_library("analysis_data_kits") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
  
   external_deps = [
@@ -100,6 +104,9 @@ ohos_shared_library("analysis_data_kits") {
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "kv_store:distributeddata_inner",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
     "samgr:samgr_proxy",
     "ipc:ipc_core",
   ]
@@ -122,7 +129,6 @@ ohos_shared_library("analysis_data_kits") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
   }
  

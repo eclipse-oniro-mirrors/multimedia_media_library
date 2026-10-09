@@ -53,6 +53,11 @@ interface MimeTypeFilter {
   filterType: number
 }
 
+interface PhotoStateProps {
+  isPhotoBrowserShow: boolean;
+  isMovingPhotoBadgeShownValid: boolean;
+}
+
 @Component
 export struct PhotoPickerComponent {
   pickerOptions?: PickerOptions | undefined;
@@ -60,6 +65,7 @@ export struct PhotoPickerComponent {
   onDeselect?: (uri: string) => void;
   onItemClicked?: (itemInfo: ItemInfo, clickType: ClickType) => boolean;
   onItemClickedNotify?: (itemInfo: ItemInfo, clickType: ClickType) => void;
+  onUnselectableItemClicked?: (unselectableItemInfo: UnselectableItemInfo) => void;
   onEnterPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
   onExitPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
   onPickerControllerReady?: () => void;
@@ -87,6 +93,22 @@ export struct PhotoPickerComponent {
   @State revokeIndex = 0;
   isPickerKilled = false;
   private proxy: UIExtensionProxy | undefined;
+  private isPhotoBrowserShow: boolean = false;
+  private isMovingPhotoBadgeShownValid: boolean = false;
+
+  private setPhotoStateProps(): void {
+    this.pickerController.getMovingPhotoState = (): PhotoStateProps => {
+      return {
+        isPhotoBrowserShow: this.isPhotoBrowserShow,
+        isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
+      };
+    };
+  }
+
+  aboutToAppear(): void {
+    this.setPhotoStateProps();
+  }
+
   pickerController.onEnterPhotoBrowser = () => {
     return false;
   }
@@ -339,6 +361,7 @@ export struct PhotoPickerComponent {
             isOnItemClickedNotifySet: this.onItemClickedNotify ? true : false,
             isOnRecommendedLabelClickedSet: this.onRecommendedLabelClicked ? true : false,
             isOnPickerStateChangedSet: this.onPickerStateChanged ? true : false,
+            isUnSelectableItemClickedSet: this.onUnselectableItemClicked ? true : false,
             isPreviewForSingleSelectionSupported: this.pickerOptions?.isPreviewForSingleSelectionSupported as boolean,
             singleSelectionMode: this.pickerOptions?.singleSelectionMode as number,
             isSlidingSelectionSupported: this.pickerOptions?.isSlidingSelectionSupported as boolean,
@@ -416,6 +439,8 @@ export struct PhotoPickerComponent {
       this.handleItemClick(wantParam);
     } else if (dataType === 'itemClickedNotify') {
       this.handleItemClickedNotify(wantParam); 
+    } else if (dataType === 'unSelectableItemClicked') {
+      this.handleUnselectableItemClicked(wantParam);
     } else if (dataType === 'onPhotoBrowserStateChanged') {
       this.handleEnterOrExitPhotoBrowser(wantParam);
     } else if (dataType === 'remoteReady') {
@@ -583,6 +608,37 @@ export struct PhotoPickerComponent {
     }
   }
 
+  private handleUnselectableItemClicked(wantParam: Record<string, Object>): void {
+    if (this.onUnselectableItemClicked) {
+      let unselectableItemInfo: UnselectableItemInfo = this.getUnselectableItemInfo(wantParam);
+      this.onUnselectableItemClicked(unselectableItemInfo);
+      console.info('PhotoPickerComponent onReceive: unselectableItemClicked = ' +
+        JSON.stringify(unselectableItemInfo));
+    }
+  }
+
+  private getUnselectableItemInfo(wantParam: Record<string, Object>): UnselectableItemInfo {
+    let unselectableItemInfo: UnselectableItemInfo = new UnselectableItemInfo();
+    let itemType: string = wantParam['itemType'] as string;
+
+    if (itemType === 'thumbnail' || itemType === 'browser') {
+      unselectableItemInfo.mimeType = wantParam['mimeType'] as string;
+      unselectableItemInfo.photoSubType =
+        wantParam['photoSubType'] !== undefined
+          ? wantParam['photoSubType'] as photoAccessHelper.photoSubType
+          : wantParam['subtype'] as photoAccessHelper.photoSubType;
+    } else if (itemType === 'camera') {
+      unselectableItemInfo.mimeType = '';
+      unselectableItemInfo.photoSubType = 0 as photoAccessHelper.photoSubType;
+    } else {
+      console.info('PhotoPickerComponent onReceive: other unSelectable itemType');
+      unselectableItemInfo.mimeType = '';
+      unselectableItemInfo.photoSubType = 0 as photoAccessHelper.photoSubType;
+    }
+
+    return unselectableItemInfo;
+  }
+
   private getClickType(wantParam: Record<string, Object>): ClickType {
     let clickType: ClickType = ClickType.SELECTED;
     let type = wantParam['clickType'] as string;
@@ -635,14 +691,10 @@ export struct PhotoPickerComponent {
         this.onExitPhotoBrowser(photoBrowserInfo);
       }
     }
-    this.pickerController.isPhotoBrowserShowCallback = () => {
-      if (isEnter) {
-        this.pickerController.isPhotoBrowserShow = true;
-        return true;
-      } esle {
-        this.pickerController.isPhotoBrowserShow = false;
-        return false;
-      }
+    if (isEnter) {
+      this.isPhotoBrowserShow = true;
+    } else {
+      this.isPhotoBrowserShow = false;
     }
     console.info('PhotoPickerComponent onReceive: onPhotoBrowserStateChanged = ' + isEnter);
   }
@@ -692,9 +744,9 @@ export struct PhotoPickerComponent {
         return undefined;
     }
     if (isMovingPhotoBadgeShown === true) {
-        this.pickerController.isMovingPhotoBadgeShownValid = true;
+      this.isMovingPhotoBadgeShownValid = true;
     } else {
-        this.pickerController.isMovingPhotoBadgeShownValid = false;
+      this.isMovingPhotoBadgeShownValid = false;
     }
     return isMovingPhotoBadgeShown;
   }
@@ -933,8 +985,7 @@ export class PickerController {
   saveCallbackMap: Map<number, Object> = new Map<number, Object>();
   createCallbackMap: Map<number, Object> = new Map<number, Object>();
   saveCallbackPromises: Map<number, Object> = new Map<number, Object>();
-  isPhotoBrowserShow: boolean = false;
-  isMovingPhotoBadgeShownValid: boolean = false;
+  getMovingPhotoState?: () => PhotoStateProps;
   completedPromises: Map<number, Object> = new Map<number, Object>();
 
   setData(type: DataType, data: Object) {
@@ -1007,10 +1058,12 @@ export class PickerController {
       if (e !== MovingPhotoBadgeStateType.ADD_DATA && e !== MovingPhotoBadgeStateType.DELETE_DATA) {
           throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
       }
-      console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(this.isPhotoBrowserShow) +
-        ', this.isMovingPhotoBadgeShownValid=' + this.isMovingPhotoBadgeShownValid);
-      if (!this.isPhotoBrowserShow || this.isMovingPhotoBadgeShownValid) {
-          throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+
+      const props: PhotoStateProps = this.getMovingPhotoState();
+      console.info('SET_MOVINGPHOTO_STATE, props.isPhotoBrowserShow : ' + JSON.stringify(props.isPhotoBrowserShow) +
+        ', props.isMovingPhotoBadgeShownValid=' + props.isMovingPhotoBadgeShownValid);
+      if (!props.isPhotoBrowserShow || props.isMovingPhotoBadgeShownValid) {
+        throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
       }
       if (e !== undefined) {
           this.data = new Map([['SET_MOVINGPHOTO_STATE', e]]);
@@ -1042,7 +1095,10 @@ export class PickerController {
     return new Promise((resolve, reject) => {
       if (e !== undefined) {
         this.data = new Map([['UPDATE_CONFIG', updateConfig]]);
-        console.info('PhotoPickerComponent UPDATE_CONFIG ' + JSON.stringify(updateConfig));
+        const bundleInfo = bundleManager.getBundleInfoForSelfSync(
+          bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION
+        );
+        console.info('PhotoPickerComponent UPDATE_CONFIG bundleName: ' + bundleInfo.name + ', config: ' + JSON.stringify(updateConfig));
       }
       resolve();
     });
@@ -1298,6 +1354,11 @@ export class BaseItemInfo {
 
 export class ItemInfo extends BaseItemInfo {
   itemType?: ItemType;
+}
+
+export class UnselectableItemInfo {
+  mimeType?: string;
+  photoSubType?: photoAccessHelper.photoSubType;
 }
 
 export class PhotoBrowserInfo {

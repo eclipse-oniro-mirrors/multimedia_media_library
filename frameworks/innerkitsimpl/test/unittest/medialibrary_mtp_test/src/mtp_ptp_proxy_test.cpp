@@ -14,6 +14,8 @@
  */
 
 #include "mtp_ptp_proxy_test.h"
+#include <thread>
+#include "medialibrary_mock_tocken.h"
 #include "mtp_ptp_proxy.h"
 #include "medialibrary_errno.h"
 #include "iservice_registry.h"
@@ -28,17 +30,47 @@ namespace OHOS {
 namespace Media {
 
 static constexpr int STORAGE_MANAGER_UID_TEST = 5003;
+static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
+static uint64_t g_shellToken = 0;
+MediaLibraryMockHapToken* g_mockTokenProxy = nullptr;
 
 void MtpPtpProxyTest::SetUpTestCase(void)
 {
-    std::shared_ptr<MtpMediaLibrary> g_mtpMediaLibrary = MtpMediaLibrary::GetInstance();
-    g_mtpMediaLibrary->Clear();
+    auto mtpMediaLibrary = MtpMediaLibrary::GetInstance();
+    ASSERT_NE(mtpMediaLibrary, nullptr);
+    mtpMediaLibrary->Clear();
+
+    // mock hap token
+    g_shellToken = IPCSkeleton::GetSelfTokenID();
+    MediaLibraryMockTokenUtils::RestoreShellToken(g_shellToken);
+
+    vector<string> perms;
+    perms.push_back("ohos.permission.READ_IMAGEVIDEO");
+    perms.push_back("ohos.permission.WRITE_IMAGEVIDEO");
+    perms.push_back("ohos.permission.GET_BUNDLE_INFO_PRIVILEGED");
+    perms.push_back("ohos.permission.GET_BUNDLE_INFO");
+    g_mockTokenProxy = new MediaLibraryMockHapToken("com.ohos.medialibrary.medialibrarydata", perms);
+    for (auto &perm : perms) {
+        MediaLibraryMockTokenUtils::GrantPermissionByTest(IPCSkeleton::GetSelfTokenID(), perm, 0);
+    }
 }
 
 void MtpPtpProxyTest::TearDownTestCase(void)
 {
-    std::shared_ptr<MtpMediaLibrary> g_mtpMediaLibrary = MtpMediaLibrary::GetInstance();
-    g_mtpMediaLibrary->Clear();
+    std::shared_ptr<MtpMediaLibrary> mtpMediaLibrary = MtpMediaLibrary::GetInstance();
+    ASSERT_NE(mtpMediaLibrary, nullptr);
+    mtpMediaLibrary->Clear();
+
+    // recovery shell token id
+    if (g_mockTokenProxy != nullptr) {
+        delete g_mockTokenProxy;
+        g_mockTokenProxy = nullptr;
+    }
+
+    SetSelfTokenID(g_shellToken);
+    MediaLibraryMockTokenUtils::ResetToken();
+    EXPECT_EQ(g_shellToken, IPCSkeleton::GetSelfTokenID());
+    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
 }
 
 void MtpPtpProxyTest::SetUp() {}

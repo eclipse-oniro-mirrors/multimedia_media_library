@@ -61,6 +61,14 @@ public:
     EXPORT int32_t GetAnalysisAlbumAttribute(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumChangeSetHiddenAttribute(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumChangeSetAlbumNameByFile(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ModifyAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ModifyHiddenAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SetShareAlbumName(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteSharePhotoAlbums(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t AddShareMember(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t UpdateShareMemberStatus(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteShareMember(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteMemberShareAlbum(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAlbumsControllerService() = default;
@@ -72,6 +80,7 @@ public:
 
 private:
     static int32_t CheckOperateAttributeThumbDbPermission(int32_t deniedCode);
+    static int32_t CheckOperateAttributeWriteImageVideoPermission(int32_t deniedCode);
 };
 } // namespace OHOS::Media
 #endif  // OHOS_MEDIA_ALBUMS_CONTROLLER_SERVICE_H

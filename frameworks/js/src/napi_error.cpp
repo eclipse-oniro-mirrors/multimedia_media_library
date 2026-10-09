@@ -95,6 +95,14 @@ void NapiError::SaveError(int32_t ret)
             if (ret == E_FILE_OPER_FAIL) {
                 errorMsg = "File operation failed";
             }
+        } else if (error == OHOS_INVALID_PARAM_CODE) {
+            if (ret == E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR) {
+                errorMsg = "This operation is not supported for assets in shared albums";
+            }
+        } else if (error == JS_ERR_PARAMETER_INVALID) {
+            if (ret == E_SHARE_ALBUM_NOT_SUPPORT_PARAM_INVALID) {
+                errorMsg = "This operation is not supported for this album type";
+            }
         }
     }
 }
@@ -151,25 +159,86 @@ void NapiError::SaveMoveError(int32_t ret)
         error = MediaLibraryNapiUtils::TransMoveErrorCode(apiName, ret);
         if (error == JS_E_PARAM_INVALID) {
             if (ret == E_PATH_NOT_SUPPORT) {
-                errorMsg = "Path not support";
+                errorMsg = "Path not supported.";
             } else if (ret == E_FILE_NOT_EXIST) {
-                errorMsg = "File not exist";
+                errorMsg = "File does not exist.";
             } else if (ret == E_RENAME) {
-                errorMsg = "The file with the same name already exists";
-            } else if (ret == E_MEDIA_TYPE) {
-                errorMsg = "This file type is not supported.";
+                errorMsg = "File with the same name already exists.";
+            } else if (ret == E_MEDIA_TYPE_INVAILD) {
+                errorMsg = "File type is not supported.";
             } else if (ret == E_CANCEL_TASK) {
-                errorMsg = "Task has been canceled";
+                errorMsg = "Task has been canceled.";
+            } else if (ret == E_TARGET_ALBUM_INVAILD) {
+                errorMsg = "Target album does not exist.";
+            } else if (ret == E_FILE_HIDDEN_OR_TRASHED) {
+                errorMsg = "File has been hidden or trashed.";
+            } else if (ret == E_FILE_IS_PENDING_STATU) {
+                errorMsg = "File is in pending status.";
             }
         }
     }
     NAPI_ERR_LOG("SaveMoveErr errCode:%{public}d error:%{public}d", ret, error);
 }
 
-void NapiError::HandleError(napi_env env, napi_value &errorObj)
+void NapiError::HandleError(napi_env env, napi_value &errorObj, bool isIntCode)
 {
     // deal with context->error
-    MediaLibraryNapiUtils::HandleError(env, error, errorObj, apiName, realErr, errorMsg);
+    if (isIntCode) {
+        AsyncErrorInfo errInfo = { error, realErr, apiName, errorMsg };
+        MediaLibraryNapiUtils::HandleErrorWithIntCode(env, errorObj, errInfo);
+    } else {
+        MediaLibraryNapiUtils::HandleError(env, error, errorObj, apiName, realErr, errorMsg);
+    }
+}
+
+void NapiError::ThrowErrorWithIntCode(napi_env env, int32_t errCode, const std::string &errMsg)
+{
+    string message = errMsg;
+    if (message.empty()) {
+        message = "operation not support";
+        if (jsErrMap.count(errCode) > 0) {
+            message = jsErrMap.at(errCode);
+        }
+    }
+
+    NAPI_DEBUG_LOG("ThrowError errCode:%{public}d errMsg:%{public}s", errCode, message.c_str());
+    napi_value napiMessage = nullptr;
+    napi_value code = nullptr;
+    napi_value result = nullptr;
+    napi_create_string_utf8(env, message.c_str(), NAPI_AUTO_LENGTH, &napiMessage);
+    napi_create_error(env, nullptr, napiMessage, &result);
+    napi_create_int32(env, errCode, &code);
+    napi_set_named_property(env, result, "code", code);
+    NAPI_CALL_RETURN_VOID(env, napi_throw(env, result));
+}
+
+void NapiError::ThrowErrorWithIntCode(napi_env env, int32_t errCode, const char *funcName, int32_t line,
+    const std::string &errMsg)
+{
+    string message = errMsg;
+    if (errCode == JS_E_INNER_FAIL || errCode == JS_INNER_FAIL) {
+        std::string combineMsg = jsErrMap.count(errCode) > 0 ? jsErrMap.at(errCode) : "operation not support";
+        if (!message.empty()) {
+            message = combineMsg + ":" + message;
+        }
+    }
+    if (message.empty()) {
+        message = "operation not support";
+        if (jsErrMap.count(errCode) > 0) {
+            message = jsErrMap.at(errCode);
+        }
+
+        if (errCode == JS_INNER_FAIL) {
+            std::string specificMsg = GetSpecificErrorMessage(errCode, funcName);
+            if (!specificMsg.empty()) {
+                message = message + ", " + specificMsg;
+            }
+        }
+    }
+
+    NAPI_ERR_LOG("{%{public}s:%d} ThrowError errCode:%{public}d errMsg:%{public}s", funcName, line,
+        errCode, message.c_str());
+    ThrowErrorWithIntCode(env, errCode, message);
 }
 
 void NapiError::ThrowError(napi_env env, int32_t err, const std::string &errMsg)
@@ -189,7 +258,7 @@ void NapiError::ThrowError(napi_env env, int32_t err, const std::string &errMsg)
 void NapiError::ThrowError(napi_env env, int32_t err, const char *funcName, int32_t line, const std::string &errMsg)
 {
     string message = errMsg;
-    if (err == JS_E_INNER_FAIL) {
+    if (err == JS_E_INNER_FAIL || err == JS_INNER_FAIL) {
         std::string combineMsg = jsErrMap.count(err) > 0 ? jsErrMap.at(err) : "operation not support";
         if (!message.empty()) {
             message = combineMsg + ":" + message;
@@ -204,7 +273,7 @@ void NapiError::ThrowError(napi_env env, int32_t err, const char *funcName, int3
         if (err == JS_INNER_FAIL) {
             std::string specificMsg = GetSpecificErrorMessage(err, funcName);
             if (!specificMsg.empty()) {
-                message = specificMsg;
+                message = message + ", " + specificMsg;
             }
         }
     }

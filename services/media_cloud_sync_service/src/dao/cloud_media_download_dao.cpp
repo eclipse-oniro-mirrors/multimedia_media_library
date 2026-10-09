@@ -16,6 +16,7 @@
 #define MLOG_TAG "Media_Cloud_Dao"
 
 #include "cloud_media_download_dao.h"
+#include "cloud_media_context.h"
 
 #include <string>
 #include <utime.h>
@@ -36,11 +37,17 @@
 #include "metadata_extractor.h"
 #include "exif_rotate_utils.h"
 #include "media_string_utils.h"
+#include "thumbnail_const.h"
+#include "thumbnail_source_loading.h"
+#include "thumbnail_utils.h"
+#include "medialibrary_tracer.h"
+#include "photo_album_column.h"
+#include "cloud_media_context.h"
 
 namespace OHOS::Media::CloudSync {
-NativeRdb::AbsRdbPredicates CloudMediaDownloadDao::GetDownloadThmsConditions(const int32_t type)
+NativeRdb::RdbPredicates CloudMediaDownloadDao::GetDownloadThmsConditions(const int32_t type)
 {
-    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    NativeRdb::RdbPredicates predicates = NativeRdb::RdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
     predicates.NotEqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL))
@@ -67,7 +74,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThmNum(const int32_t type, int32_t &to
     MEDIA_INFO_LOG("GetDownloadThmNum begin %{public}d", type);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Query Thumbs to Download Failed to get rdbStore.");
-    NativeRdb::AbsRdbPredicates predicates = this->GetDownloadThmsConditions(type);
+    NativeRdb::RdbPredicates predicates = this->GetDownloadThmsConditions(type);
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, {"COUNT(1) AS count"});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
     bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
@@ -84,7 +91,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
     MEDIA_INFO_LOG("QueryThumbsToDownload begin %{public}s", queryDto.ToString().c_str());
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Query Thumbs to Download Failed to get rdbStore.");
-    NativeRdb::AbsRdbPredicates predicates = this->GetDownloadThmsConditions(queryDto.type);
+    NativeRdb::RdbPredicates predicates = this->GetDownloadThmsConditions(queryDto.type);
     if (queryDto.isDownloadDisplayFirst) {
         predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, 0);       // NOT_IN_TRASH
         predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);       // NOT_IN_PENDING
@@ -92,6 +99,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
         predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);            // NOT_TEMP_FILE
         predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);  // IS_BURST_COVER
     }
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.Limit(queryDto.offset, queryDto.size);
     predicates.OrderByDesc(PhotoColumn::MEDIA_DATE_TAKEN);
 
@@ -102,9 +110,43 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
     return E_OK;
 }
 
+int32_t CloudMediaDownloadDao::GetDownloadThmsShare(const DownloadThumbnailQueryDto &queryDto,
+    std::vector<PhotosPo> &photos)
+{
+    MEDIA_INFO_LOG("QueryThumbsToDownload begin %{public}s", queryDto.ToString().c_str());
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Query Thumbs to Download Failed to get rdbStore.");
+    NativeRdb::RdbPredicates predicates = this->GetDownloadThmsConditions(queryDto.type);
+
+    std::vector<std::string> onClause = {
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_OWNER_ALBUM_ID + " = " +
+        PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+    };
+    predicates.LeftOuterJoin(PhotoAlbumColumns::TABLE)->On(onClause);
+
+    if (queryDto.isDownloadDisplayFirst) {
+        predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, 0);       // NOT_IN_TRASH
+        predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);       // NOT_IN_PENDING
+        predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);             // NOT_HIDDEN
+        predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);            // NOT_TEMP_FILE
+        predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);  // IS_BURST_COVER
+    }
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
+    predicates.Limit(queryDto.offset, queryDto.size);
+    // 先按PhotoAlbum.date_added降序，再按Photos.share_group降序、Photos.date_added降序
+    predicates.OrderByDesc(PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SHARE_GROUP);
+    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_ADDED);
+
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, this->DOWNLOAD_THUMBNAIL_COLUMNS);
+    int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photos);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Query Thumbs to Download Failed to read records, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("GetDownloadThmsShare, photos size: %{public}zu", photos.size());
+    return E_OK;
+}
+
 int32_t CloudMediaDownloadDao::GetDownloadAsset(const std::vector<int32_t> &fileIds, std::vector<PhotosPo> &photos)
 {
-    MEDIA_INFO_LOG("enter GetDownloadAsset");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "GetDownloadAsset Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates queryPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -121,7 +163,6 @@ int32_t CloudMediaDownloadDao::GetDownloadAsset(const std::vector<int32_t> &file
 
 int32_t CloudMediaDownloadDao::UpdateDownloadThm(const std::vector<std::string> &cloudIds)
 {
-    MEDIA_INFO_LOG("enter UpdateDownloadThm");
     CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_OK, "UpdateDownloadThm cloudIds is empty.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -144,7 +185,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadThm(const std::vector<std::string> 
 
 int32_t CloudMediaDownloadDao::UpdateDownloadLcd(const std::vector<std::string> &cloudIds)
 {
-    MEDIA_INFO_LOG("enter UpdateDownloadLcd");
     CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_OK, "UpdateDownloadLcd cloudIds is empty.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -166,7 +206,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadLcd(const std::vector<std::string> 
 
 int32_t CloudMediaDownloadDao::UpdateDownloadThmAndLcd(const std::vector<std::string> &cloudIds)
 {
-    MEDIA_INFO_LOG("enter UpdateDownloadThmAndLcd");
     CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_OK, "UpdateDownloadThmAndLcd cloudIds is empty.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -249,7 +288,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAssetExifRotateFix(
 
 int32_t CloudMediaDownloadDao::UpdateTransCodeInfo(const std::string &path)
 {
-    MEDIA_INFO_LOG("enter UpdateTransCodeInfo");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -309,11 +347,18 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAsset(const OnDownloadAssetData &as
     }
     if (scanResult.scanSuccess) {
         values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, scanResult.shootingMode);
-        values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, scanResult.shootingModeTag);
+        bool isCinematicVideoV2 = assetData.localPhotosPoOp.has_value() &&
+            assetData.localPhotosPoOp.value().subtype.value_or(0) ==
+            static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
+        if (!isCinematicVideoV2) {
+            values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, scanResult.shootingModeTag);
+        }
         values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, scanResult.frontCamera);
+        values.PutInt(PhotoColumn::MUSIC_MASTER_MODE, scanResult.musicMasterMode);
     }
     
     this->FillScanedHeightWidth(values, scanResult);
+    this->HandleExtraDataVersion(scanResult, values, assetData.localPhotosPoOp);
     this->HandleAdditionalFileInfo(assetData, values);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
@@ -357,6 +402,122 @@ int32_t CloudMediaDownloadDao::HandleAdditionalFileInfo(
     if (!assetData.lakeInfo.displayName.empty()) {
         values.PutString(MediaColumn::MEDIA_NAME, assetData.lakeInfo.displayName);
     }
+    return E_OK;
+}
+
+int32_t CloudMediaDownloadDao::UpdateLcdFileSize(const std::vector<std::string> &cloudIds)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("UpdateLcdFileSize");
+    CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_ERR, "UpdateLcdFileSize cloudIds is empty.");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+
+    std::vector<LcdFileInfoDto> lcdFileDataList;
+    int32_t ret = QueryLcdFileInfoByCloudIds(cloudIds, lcdFileDataList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "QueryLcdFileInfoByCloudIds failed, ret: %{public}d", ret);
+
+    std::vector<std::pair<int32_t, int64_t>> fileIdAndSizeList;
+    for (const auto &data : lcdFileDataList) {
+        size_t lcdFileSize = ThumbnailUtils::CalcLcdFileSize(data.lcdExPath, data.lcdPath);
+        if (lcdFileSize > 0) {
+            fileIdAndSizeList.emplace_back(std::make_pair(data.fileId, static_cast<int64_t>(lcdFileSize)));
+        }
+    }
+
+    CHECK_AND_RETURN_RET(!fileIdAndSizeList.empty(), E_OK);
+
+    std::string updateSql = "UPDATE Photos SET lcd_file_size = CASE file_id ";
+    std::string fileIdList = "";
+    for (const auto &item : fileIdAndSizeList) {
+        updateSql += " WHEN " + std::to_string(item.first) + " THEN " + std::to_string(item.second);
+        fileIdList += std::to_string(item.first) + ",";
+    }
+    fileIdList.pop_back();
+    updateSql += " ELSE lcd_file_size END WHERE file_id IN (" + fileIdList + ");";
+
+    ret = rdbStore->ExecuteSql(updateSql);
+    MEDIA_INFO_LOG("execute completed, ret: %{public}d, cloudId size: %{public}zu, fileIdAndSizeList size: %{public}zu",
+        ret, cloudIds.size(), fileIdAndSizeList.size());
+    return ret;
+}
+
+int32_t CloudMediaDownloadDao::QueryLcdFileInfoByCloudIds(
+    const std::vector<std::string> &cloudIds, std::vector<LcdFileInfoDto> &result)
+{
+    CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_ERR, "cloudIds is empty.");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+
+    NativeRdb::AbsRdbPredicates queryPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    queryPredicates.In(PhotoColumn::PHOTO_CLOUD_ID, cloudIds);
+    std::vector<std::string> queryColumns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH};
+    auto resultSet = rdbStore->Query(queryPredicates, queryColumns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        LcdFileInfoDto data;
+        data.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+        data.filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        data.lcdExPath = GetThumbnailPath(data.filePath, THUMBNAIL_LCD_EX_SUFFIX);
+        data.lcdPath = GetThumbnailPath(data.filePath, THUMBNAIL_LCD_SUFFIX);
+        result.emplace_back(data);
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
+int32_t CloudMediaDownloadDao::UpdateLcdFileSizeAndLcdSize(const std::vector<std::string> &cloudIds)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("UpdateLcdFileSizeAndLcdSize");
+    CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_ERR, "cloudIds is empty.");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+
+    std::vector<LcdFileInfoDto> lcdFileDataList;
+    int32_t ret = QueryLcdFileInfoByCloudIds(cloudIds, lcdFileDataList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "QueryLcdFileInfoByCloudIds failed, ret: %{public}d", ret);
+
+    for (const auto &data : lcdFileDataList) {
+        NativeRdb::ValuesBucket values;
+        size_t lcdFileSize = ThumbnailUtils::CalcLcdFileSize(data.lcdExPath, data.lcdPath);
+        if (lcdFileSize > 0) {
+            values.PutLong(PhotoColumn::PHOTO_LCD_FILE_SIZE, static_cast<int64_t>(lcdFileSize));
+        }
+        std::string lcdSizeStr;
+        if (ThumbnailUtils::CalcLcdSize(data.lcdPath, lcdSizeStr)) {
+            values.PutString(PhotoColumn::PHOTO_LCD_SIZE, lcdSizeStr);
+        }
+        if (values.IsEmpty()) {
+            MEDIA_WARN_LOG("no data to update for fileId: %{public}d", data.fileId);
+            continue;
+        }
+        NativeRdb::AbsRdbPredicates updatePredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+        updatePredicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(data.fileId));
+        int32_t changedRows = DEFAULT_VALUE;
+        ret = rdbStore->Update(changedRows, values, updatePredicates);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "failed to update fileId: %{public}d, ret: %{public}d", data.fileId, ret);
+    }
+    return E_OK;
+}
+
+int32_t CloudMediaDownloadDao::HandleExtraDataVersion(
+    const CloudMediaScanService::ScanResult &scanResult, NativeRdb::ValuesBucket &values,
+    const std::optional<PhotosPo> &localPhotosPoOp)
+{
+    bool isValid = scanResult.scanSuccess && scanResult.extraDataVersion == LIVE_PHOTO_4D_VERSION;
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    // If local already has a 4D effect status (4-9), skip update to protect the correct local value
+    if (localPhotosPoOp.has_value()) {
+        int32_t localStatus = localPhotosPoOp.value().livePhoto4dStatus.value_or(0);
+        if (MediaFileUtils::IsLivePhoto4dEffect(localStatus)) {
+            MEDIA_INFO_LOG("HandleExtraDataVersion: local status %{public}d is 4d effect, skip update", localStatus);
+            return E_OK;
+        }
+    }
+    values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+               static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
     return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

@@ -74,6 +74,8 @@ struct MediaAssetManagerAniContext : AniError {
     ReturnDataType returnDataType;
     bool hasReadPermission;
     bool needsExtraInfo;
+    bool isCompositeAuxiliary = false;
+    int compositeFd = -1;
     MultiStagesCapturePhotoStatus photoQuality = MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
     PhotoSubType subType;
     bool hasProcessPhoto;
@@ -122,6 +124,7 @@ public:
     static void RegisterTaskObserver(ani_env *env, unique_ptr<MediaAssetManagerAniContext> &context);
     static void GetByteArrayAniObject(const std::string &requestUri, ani_object &arrayBuffer, bool isSource,
         ani_env *env);
+    static void GetByteArrayAniObjectByFd(ani_object &arrayBuffer, int imageFd, ani_env *env);
     static void GetImageSourceAniObject(const std::string &fileUri, ani_object &imageSourceAniObj, bool isSource,
         ani_env *env);
     static void GetPictureAniObject(const std::string &fileUri, ani_object &imageSourceAniObj, bool isSource,
@@ -136,12 +139,16 @@ private:
         ani_object param);
     static ani_status ParseEfficentRequestMediaArgs(ani_env *env, unique_ptr<MediaAssetManagerAniContext> &context,
         ani_object asset, ani_object requestOptions, ani_object dataHandler);
+    static bool ParseAndValidateCompositeAuxiliaryArgs(ani_env *env, ani_object context,
+        ani_object asset, ani_object dataHandler, unique_ptr<MediaAssetManagerAniContext> &aniContext);
     static ani_string RequestImage(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_object asset, ani_object requestOptions, ani_object dataHandler);
     static ani_string RequestEfficientImage(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_object asset, ani_object requestOptions, ani_object dataHandler);
     static ani_string RequestImageData(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_object asset, ani_object requestOptions, ani_object dataHandler);
+    static ani_string RequestCompositeAuxiliaryImageData(ani_env *env, [[maybe_unused]] ani_class clazz,
+        ani_object context, ani_object asset, ani_object dataHandler);
     static ani_string RequestMovingPhoto(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_object asset, ani_object requestOptions, ani_object dataHandler);
     static void CancelRequest(ani_env *env, [[maybe_unused]] ani_class clazz,

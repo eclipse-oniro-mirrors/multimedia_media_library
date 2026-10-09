@@ -46,6 +46,14 @@
         }                                                                                       \
     } while (0)
 
+#define CHECK_PARAMETER_WITH_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            AniError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_COND_WITH_RET_MESSAGE(env, cond, ret, msg)                                        \
     do {                                                                                        \
         if (!(cond)) {                                                                          \
@@ -245,6 +253,7 @@ public:
             {PhotoColumn::PHOTO_THUMB_SIZE, {TYPE_STRING, "thmSize"}},
             {PhotoColumn::PHOTO_OWNER_ALBUM_ID, {TYPE_INT32, "ownerAlbumId"}},
             {PhotoColumn::ATTACHMENT_SIZE, {TYPE_INT64, "attachmentSize"}},
+            {PhotoColumn::MUSIC_MASTER_MODE, {TYPE_INT32, "musicMasterMode"}},
             {CONST_MEDIA_DATA_DB_COUNT, {TYPE_INT32, "count"}},
             {PhotoAlbumColumns::ALBUM_ID, {TYPE_INT32, "albumId"}},
             {PhotoAlbumColumns::ALBUM_TYPE, {TYPE_INT32, "albumType"}},
@@ -484,6 +493,9 @@ public:
         VarMap &result);
     static ani_status ToAniVariantArray(ani_env *env, const std::vector<VarMap> &array, ani_object &aniArray);
     static string GetUserIdFromUri(const string &uri);
+    static bool HasSharedAlbumAsset(const std::vector<std::string>& fileIds);
+    static bool HasSharedAlbum(const std::vector<std::string>& albumIds);
+    static void ExtractFileIdsFromUris(const std::vector<std::string>& uriArray, std::vector<std::string>& fileIdArray);
 private:
     static ani_status VariantMapToAniMap(ani_env *env, const VarMap &map, ani_object &aniMap);
 };

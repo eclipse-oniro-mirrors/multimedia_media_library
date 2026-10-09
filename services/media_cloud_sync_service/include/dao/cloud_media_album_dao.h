@@ -70,13 +70,9 @@ public:
     int32_t IsEmptyAlbum(std::shared_ptr<MediaLibraryRdbStore> rdbStore, const std::string &cloudId);
     int32_t OnMdirtyAlbumRecords(const std::string &cloudId);
     int32_t OnDeleteAlbumRecords(const std::string &cloudId);
-    int32_t GetCopyAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList);
     void InsertAlbumInsertFailedRecord(const std::string &lPath);
     void InsertAlbumCreateFailedRecord(const std::string &cloudId);
     void InsertAlbumModifyFailedRecord(const std::string &cloudId);
-    void RemoveAlbumInsertFailedRecord(const std::string &cloudId);
-    void RemoveAlbumCreateFailedRecord(const std::string &cloudId);
-    void RemoveAlbumModifyFailedRecord(const std::string &cloudId);
     int32_t ClearAlbumFailedRecords();
     bool IsCoverIdExist(const std::string &cloudId);
     bool IsNeedPullCoverByDateModified(const std::string &lPath, const std::string &coverCloudId);
@@ -89,6 +85,7 @@ public:
     void FillAlbumBaseValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
     int32_t GetPhotoAlbum(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfoOp);
     int32_t GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count);
+    int32_t GetShareAlbumsIsSdirty(std::vector<int32_t> &albumIds);
 
 private:
     int32_t InsertAlbums(const PhotoAlbumDto &record,
@@ -111,6 +108,13 @@ private:
         std::unordered_map<std::string, MediaAlbumPluginRowData> &writeListMap);
     int32_t QueryCreatedAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList);
     int32_t QueryDeleteAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList);
+    bool IsCloudCoverDateModifiedUpdated(const std::string &lPath, const std::string &coverCloudIdFromCloud,
+        const std::string &coverCloudIdFromLocal);
+    bool FillAlbumCoverIfNeedUpdate(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
+        NativeRdb::ValuesBucket &values);
+    void AddShareTypeCondition(NativeRdb::AbsRdbPredicates &predicates);
+    void UpdateAlbumUploadStatusValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
 
 private:
     /* album failure records */
@@ -161,7 +165,8 @@ private:
             local_language, \
             cover_uri_source, \
             cover_cloud_id, \
-            unique_id \
+            unique_id, \
+            share_album_owner \
         FROM PhotoAlbum \
         WHERE \
             dirty = 1 AND \

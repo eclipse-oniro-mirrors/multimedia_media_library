@@ -56,6 +56,8 @@ public:
     EXPORT static bool CheckFileManagerLPath(const std::string &lPath);
     EXPORT static std::string GetFileManagerLPathFromRealPath(const std::string &path);
     EXPORT static std::string GetFileManagerDirFromLPath(const std::string &lPath);
+    EXPORT static bool ValidateDateAddedYearMonthDay(const std::string &dateAddedYear,
+        const std::string &dateAddedMonth, const std::string &dateAddedDay, int64_t dateAdded);
 
 protected:
     EXPORT static std::string GetThumbDir(const std::string &photoPath, int32_t userId = -1);

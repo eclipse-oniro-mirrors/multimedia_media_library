@@ -31,6 +31,8 @@ const std::string ALBUM_RELATIONSHIP = "relationship";
 const std::string ANALYSIS_STATUS = "analysis_status";
 const std::string EDIT_OPERATION = "edit_operation";
 const std::string EXTRA_INFO = "extra_info";
+const std::string FRIEND_ID = "friend_id";
+const std::string CONTACT_INFO = "contact_info";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_ALBUM_COLUMN_H

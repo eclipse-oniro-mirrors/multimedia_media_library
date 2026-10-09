@@ -522,6 +522,17 @@ void FileAsset::SetResultNapiType(const ResultNapiType type)
     resultNapiType_ = type;
 }
 
+int32_t FileAsset::GetCompressionQuality() const
+{
+    return GetInt32Member(PhotoColumn::COMPRESSION_QUALITY);
+}
+
+void FileAsset::SetCompressionQuality(int32_t compressionQuality)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::COMPRESSION_QUALITY] = compressionQuality;
+}
+
 int32_t FileAsset::GetPhotoSubType() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_SUBTYPE);
@@ -591,6 +602,16 @@ void FileAsset::SetFrontCamera(const string &frontCamera)
     member_[PhotoColumn::PHOTO_FRONT_CAMERA] = frontCamera;
 }
 
+const std::string &FileAsset::GetXtStyleTemplateName() const
+{
+    return GetStrMember(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME);
+}
+
+void FileAsset::SetXtStyleTemplateName(const string &xtStyleTemplateName)
+{
+    member_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = xtStyleTemplateName;
+}
+
 const std::string &FileAsset::GetUserComment() const
 {
     return GetStrMember(PhotoColumn::PHOTO_USER_COMMENT);
@@ -600,6 +621,17 @@ void FileAsset::SetUserComment(const string &userComment)
 {
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_USER_COMMENT] = userComment;
+}
+
+const std::string &FileAsset::GetShootingModeTag() const
+{
+    return GetStrMember(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+}
+ 
+void FileAsset::SetShootingModeTag(const string &shootingModeTag)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_SHOOTING_MODE_TAG] = shootingModeTag;
 }
 
 const std::string &FileAsset::GetFilePath() const
@@ -933,6 +965,16 @@ void FileAsset::SetHiddenTime(int64_t hiddenTime)
     member_[PhotoColumn::PHOTO_HIDDEN_TIME] = hiddenTime;
 }
 
+int32_t FileAsset::GetEditDataExist() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_EDIT_DATA_EXIST);
+}
+
+void FileAsset::SetEditDataExist(int32_t editDataExist)
+{
+    member_[PhotoColumn::PHOTO_EDIT_DATA_EXIST] = editDataExist;
+}
+
 void FileAsset::SetResultTypeMap(const string &colName, ResultSetDataType type)
 {
     lock_guard<mutex> lock(resultTypeMapMutex_);
@@ -1064,6 +1106,61 @@ void FileAsset::SetAttachmentSize(int64_t attachmentSize)
 {
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::ATTACHMENT_SIZE] = attachmentSize;
+}
+
+int32_t FileAsset::GetMusicMasterMode() const
+{
+    return GetInt32Member(PhotoColumn::MUSIC_MASTER_MODE);
+}
+
+void FileAsset::SetMusicMasterMode(int32_t mode)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::MUSIC_MASTER_MODE] = mode;
+}
+
+void FileAsset::SetThumbStatus(int32_t thumbStatus)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_THUMB_STATUS] = thumbStatus;
+}
+ 
+int32_t FileAsset::GetThumbStatus() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_THUMB_STATUS);
+}
+ 
+void FileAsset::SetLcdFileSize(int32_t lcdFileSize)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_LCD_FILE_SIZE] = lcdFileSize;
+}
+ 
+int32_t FileAsset::GetLcdFileSize() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_LCD_FILE_SIZE);
+}
+
+void FileAsset::SetC2paConfigInfo(const std::string &c2paConfigInfo)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::C2PA_CONFIG_INFO] = c2paConfigInfo;
+}
+
+const std::string &FileAsset::GetC2paConfigInfo() const
+{
+    return GetStrMember(PhotoColumn::C2PA_CONFIG_INFO);
+}
+
+void FileAsset::SetIsShared(int32_t isShared)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_IS_SHARED] = isShared;
+}
+
+int32_t FileAsset::GetIsShared() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_IS_SHARED);
 }
 }  // namespace Media
 }  // namespace OHOS

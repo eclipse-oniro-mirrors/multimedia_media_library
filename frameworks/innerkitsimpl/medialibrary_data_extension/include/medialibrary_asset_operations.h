@@ -28,7 +28,9 @@
 #include "datashare_values_bucket.h"
 #include "file_asset.h"
 #include "imedia_scanner_callback.h"
+#include "media_asset_bucket_type.h"
 #include "media_column.h"
+#include "media_uri_utils.h"
 #include "medialibrary_async_worker.h"
 #include "medialibrary_command.h"
 #include "photo_album.h"
@@ -101,7 +103,7 @@ public:
         std::shared_ptr<TransactionOperations> trans = nullptr);
     EXPORT static int32_t CreateAssetUniqueIds(int32_t type, int32_t num, int32_t &startUniqueNumber);
     EXPORT static int32_t CreateAssetPathById(int32_t fileId, int32_t mediaType, const std::string &extension,
-        std::string &filePath);
+        std::string &filePath, AssetBucketType bucketType = AssetBucketType::NORMAL);
     EXPORT static int32_t DeleteFromDisk(NativeRdb::AbsRdbPredicates &predicates, const bool isAging,
         const bool compatible = false);
     EXPORT static int32_t DeletePermanently(NativeRdb::AbsRdbPredicates &predicates, const bool isAging,
@@ -116,10 +118,6 @@ public:
     EXPORT static int32_t QueryTotalAlbum(std::vector<std::shared_ptr<PhotoAlbum>> &PhotoAlbumVector);
     EXPORT static std::shared_ptr<FileAsset> QuerySinglePhoto(int32_t rowId);
     EXPORT static std::vector<std::string> QueryPhotosTableColumnInfo();
-    EXPORT static bool GetInt32FromValuesBucket(const NativeRdb::ValuesBucket &values, const std::string &column,
-        int32_t &value);
-    EXPORT static bool GetStringFromValuesBucket(const NativeRdb::ValuesBucket &values, const std::string &column,
-        std::string &value);
     static std::shared_ptr<FileAsset> GetAssetFromResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         const std::vector<std::string> &columns);
     EXPORT static std::shared_ptr<FileAsset> GetFileAssetFromDb(const std::string &column, const std::string &value,
@@ -136,6 +134,9 @@ public:
     EXPORT static void SaveDeletedFile(const std::vector<std::string> &ids,
         const std::vector<std::string> &paths, const std::string &table, const std::vector<std::string> &dateTakens,
         std::vector<int32_t> &subTypes);
+    EXPORT static bool CleanupMediaAssets(const std::vector<std::string> &ids,
+        const std::vector<std::string> &paths, const std::vector<std::string> &dateTakens,
+        const std::vector<int32_t> &subtypes, const std::vector<int32_t> &effectModes);
     EXPORT static void TaskDataFileProcess(const std::vector<std::string> &ids,
         const std::vector<std::string> &paths, const std::string &table, const std::vector<std::string> &dateTakens,
         std::vector<int32_t> &subTypes);
@@ -183,7 +184,8 @@ protected:
     static void UpdateVirtualPath(MediaLibraryCommand &cmd, const std::shared_ptr<FileAsset> &fileAsset);
     static int32_t UpdateFileInDb(MediaLibraryCommand &cmd);
     EXPORT static int32_t OpenAsset(const std::shared_ptr<FileAsset> &fileAsset, const std::string &mode,
-        MediaLibraryApi api, bool isMovingPhotoVideo = false, int32_t type = -1, bool noNeedWatchNotify = false);
+        MediaLibraryApi api, bool isMovingPhotoVideo = false, int32_t type = -1, bool noNeedWatchNotify = false,
+        bool isCloseMovingPhotoStatusSharing = false);
     static int32_t OpenHighlightCover(MediaLibraryCommand &cmd, const std::string &mode);
     static int32_t OpenHighlightVideo(MediaLibraryCommand &cmd, const std::string &mode);
     EXPORT static int32_t CloseAsset(const std::shared_ptr<FileAsset> &fileAsset, bool isCreateThumbSync = false);
@@ -203,6 +205,8 @@ protected:
     EXPORT static std::string CreateExtUriForV10Asset(FileAsset &fileAsset);
     EXPORT static int32_t OpenFileWithPrivacy(const std::string &filePath, const std::string &mode,
         const std::string &fileId, int32_t type = -1);
+    EXPORT static int32_t OpenFileMagerFileWithPrivacy(const std::string &filePath, const std::string &mode,
+        const std::string &fileId, int32_t type = -1, bool isCloseMovingPhotoStatusSharing = false);
 
     static std::string GetAssetCacheDir();
     static std::string GetAssetCompressJsonPath(const std::string &path);

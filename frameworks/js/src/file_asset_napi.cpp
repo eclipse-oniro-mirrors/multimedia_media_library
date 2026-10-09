@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 
 #include "accesstoken_kit.h"
+#include "dfx_system_photo_keys.h"
 #include "exif_rotate_utils.h"
 #include "fetch_result.h"
 #include "file_uri.h"
@@ -34,6 +35,7 @@
 #include "medialibrary_client_errno.h"
 #include "medialibrary_napi_enum_comm.h"
 #include "medialibrary_tracer.h"
+#include "permission_utils.h"
 #include "sandbox_helper.h"
 #include "thumbnail_utils.h"
 #include "vision_aesthetics_score_column.h"
@@ -48,6 +50,7 @@
 #include "vision_saliency_detect_column.h"
 #include "vision_segmentation_column.h"
 #include "vision_total_column.h"
+#include "userfile_client.h"
 #include "vision_video_label_column.h"
 #include "vision_multi_crop_column.h"
 #include "album_operation_uri.h"
@@ -63,6 +66,8 @@
 #include "is_edited_vo.h"
 #include "get_edit_data_vo.h"
 #include "convert_format_vo.h"
+#include "generate_unique_id_vo.h"
+#include "preferred_compatible_mode_check_utils.h"
 #include "qos.h"
 
 using OHOS::HiviewDFX::HiLog;
@@ -107,11 +112,6 @@ constexpr int32_t NOT_HIDDEN = 0;
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 constexpr int64_t SECONDS_LEVEL_LIMIT = 1e10;
 
-const int32_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
-const int32_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
-const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
-const int32_t HIGH_PIXEL_SCALE = 2;
-
 using CompleteCallback = napi_async_complete_callback;
 
 thread_local napi_ref FileAssetNapi::userFileMgrConstructor_ = nullptr;
@@ -122,6 +122,13 @@ public:
     std::shared_ptr<FileAsset> fileAsset = nullptr;
     ~TransferFileAsset() = default;
 };
+
+static bool HasReadPermission()
+{
+    AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
+    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, PERM_READ_IMAGEVIDEO);
+    return result == PermissionState::PERMISSION_GRANTED;
+}
 
 FileAssetNapi::FileAssetNapi()
     : env_(nullptr) {}
@@ -255,6 +262,7 @@ napi_value FileAssetNapi::PhotoAccessHelperInit(napi_env env, napi_value exports
             DECLARE_NAPI_FUNCTION("getThumbnailData", PhotoAccessHelperGetThumbnailData),
             DECLARE_NAPI_FUNCTION("getKeyFrameThumbnail", PhotoAccessHelperGetKeyFrameThumbnail),
             DECLARE_NAPI_FUNCTION("getReadOnlyFd", JSGetReadOnlyFd),
+            DECLARE_NAPI_FUNCTION("getReadOnlyFdWithCached", JSGetReadOnlyFdWithCached),
             DECLARE_NAPI_FUNCTION("setHidden", PhotoAccessHelperSetHidden),
             DECLARE_NAPI_FUNCTION("setPending", PhotoAccessHelperSetPending),
             DECLARE_NAPI_FUNCTION("getExif", JSGetExif),
@@ -269,6 +277,7 @@ napi_value FileAssetNapi::PhotoAccessHelperInit(napi_env env, napi_value exports
             DECLARE_NAPI_FUNCTION("getAnalysisData", PhotoAccessHelperGetAnalysisData),
             DECLARE_NAPI_FUNCTION("getEditData", PhotoAccessHelperGetEditData),
             DECLARE_NAPI_FUNCTION("createTemporaryCompatibleDuplicate", PhotoAccessHelperCreateTmpCompatibleDup),
+            DECLARE_NAPI_FUNCTION("generateUniqueId", PhotoAccessHelperGenerateUniqueId),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -531,9 +540,19 @@ std::string FileAssetNapi::GetFrontCamera() const
     return fileAssetPtr->GetFrontCamera();
 }
 
+std::string FileAssetNapi::GetXtStyleTemplateName() const
+{
+    return fileAssetPtr->GetXtStyleTemplateName();
+}
+
 std::string FileAssetNapi::GetUserComment() const
 {
     return fileAssetPtr->GetUserComment();
+}
+
+std::string FileAssetNapi::GetShootingModeTag() const
+{
+    return fileAssetPtr->GetShootingModeTag();
 }
 
 napi_status GetNapiObject(napi_env env, napi_callback_info info, FileAssetNapi **obj)
@@ -1306,20 +1325,20 @@ static bool CheckDisplayNameInCommitModify(FileAssetAsyncContext *context)
         if (context->objectPtr->GetMediaType() != MediaType::MEDIA_TYPE_FILE) {
             if (MediaFileUtils::CheckDisplayName(context->objectPtr->GetDisplayName(), true) != E_OK) {
                 context->error = JS_E_DISPLAYNAME;
-                context->errorMsg = "Invalid displayName.";
+                context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
                 return false;
             }
         } else {
             if (MediaFileUtils::CheckFileDisplayName(context->objectPtr->GetDisplayName()) != E_OK) {
                 context->error = JS_E_DISPLAYNAME;
-                context->errorMsg = "Invalid displayName.";
+                context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
                 return false;
             }
         }
     } else {
         if (MediaFileUtils::CheckTitleCompatible(context->objectPtr->GetTitle()) != E_OK) {
             context->error = JS_E_DISPLAYNAME;
-            context->errorMsg = "Title is invalid.";
+            context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
             return false;
         }
     }
@@ -1466,6 +1485,11 @@ napi_value FileAssetNapi::JSCommitModify(napi_env env, napi_callback_info info)
         ASSERT_NULLPTR_CHECK(env, result);
         asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
         CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, result, "FileAsset is nullptr");
+        if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                "This operation is not supported for assets in shared albums");
+            return nullptr;
+        }
 
         result = MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSCommitModify", JSCommitModifyExecute,
             JSCommitModifyCompleteCallback);
@@ -1613,29 +1637,32 @@ static bool CheckFileOpenStatus(FileAssetAsyncContext *context, int fd)
     return true;
 }
 
+static string GetCloseAssetUri(FileAssetAsyncContext *context)
+{
+#ifdef MEDIALIBRARY_COMPATIBILITY
+    if (MediaFileUtils::IsFileTablePath(context->objectPtr->GetPath()) ||
+        MediaStringUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOC_DIR_VALUES) ||
+        MediaStringUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+        return MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CLOSEASSET;
+    } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
+        context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
+        return CONST_URI_CLOSE_PHOTO;
+    } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
+        return CONST_URI_CLOSE_AUDIO;
+    }
+    return CONST_URI_CLOSE_FILE;
+#else
+    return CONST_URI_CLOSE_FILE;
+#endif
+}
+
 static void JSCloseExecute(FileAssetAsyncContext *context)
 {
     MediaLibraryTracer tracer;
     tracer.Start("JSCloseExecute");
 
-#ifdef MEDIALIBRARY_COMPATIBILITY
-    string closeUri;
-    if (MediaFileUtils::IsFileTablePath(context->objectPtr->GetPath()) ||
-        MediaStringUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOC_DIR_VALUES) ||
-        MediaStringUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
-        closeUri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CLOSEASSET;
-    } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
-        context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        closeUri = CONST_URI_CLOSE_PHOTO;
-    } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        closeUri = CONST_URI_CLOSE_AUDIO;
-    } else {
-        closeUri = CONST_URI_CLOSE_FILE;
-    }
-#else
-    string closeUri = CONST_URI_CLOSE_FILE;
-#endif
-    Uri closeAssetUri(closeUri);
+    Uri closeAssetUri(GetCloseAssetUri(context));
+
     bool isValid = false;
     int32_t mediaFd = context->valuesBucket.Get(MEDIA_FILEDESCRIPTOR, isValid);
     if (!isValid) {
@@ -1645,6 +1672,11 @@ static void JSCloseExecute(FileAssetAsyncContext *context)
     }
 
     if (!CheckFileOpenStatus(context, mediaFd)) {
+        return;
+    }
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        context->SaveError(E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR);
+        NAPI_ERR_LOG("This operation is not supported for assets in shared albums");
         return;
     }
     UniqueFd uniFd(mediaFd);
@@ -2009,7 +2041,7 @@ napi_value GetJSArgsForGetThumbnail(napi_env env, size_t argc, const napi_value 
             argc -= 1;
         }
     }
-    
+
     for (size_t i = PARAM0; i < argc; i++) {
         napi_valuetype valueType = napi_undefined;
         napi_typeof(env, argv[i], &valueType);
@@ -2989,7 +3021,7 @@ static void PhotoAccessHelperCreateTmpCompatibleDupExecute(napi_env env, void *d
 
     auto context = static_cast<FileAssetAsyncContext*>(data);
     if (context == nullptr || context->objectPtr == nullptr) {
-        NapiError::ThrowError(env, E_INNER_FAIL, "context or objectPtr is null");
+        NapiError::ThrowError(env, E_INNER_FAIL, "The asset parameter is not a valid PhotoAsset object");
         return;
     }
 
@@ -3059,7 +3091,13 @@ napi_value FileAssetNapi::PhotoAccessHelperCreateTmpCompatibleDup(napi_env env, 
 
     asyncContext->objectPtr = changeRequest->fileAssetPtr;
     auto fileAsset = asyncContext->objectPtr;
-    CHECK_COND(env, fileAsset != nullptr, JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID,
+        "The asset parameter is not a valid PhotoAsset object");
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     if (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_IMAGE) {
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Only image file type is supported");
@@ -3068,6 +3106,83 @@ napi_value FileAssetNapi::PhotoAccessHelperCreateTmpCompatibleDup(napi_env env, 
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperCreateTmpCompatibleDup",
         PhotoAccessHelperCreateTmpCompatibleDupExecute, PhotoAccessHelperCreateTmpCompatibleDupComplete);
+}
+
+static void PhotoAccessHelperGenerateUniqueIdExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessHelperGenerateUniqueIdExecute");
+
+    auto *context = static_cast<FileAssetAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
+
+    GenerateUniqueIdReqBody reqBody;
+    GenerateUniqueIdRespBody respBody;
+    reqBody.fileId = context->objectPtr->GetId();
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID);
+    int32_t errCode = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (errCode == E_GET_ASSET_FAIL) {
+        context->error = JS_E_ASSET_NOT_EXIST;
+        NAPI_ERR_LOG("Asset not exist, fileId: %{public}d", reqBody.fileId);
+        return;
+    }
+    if (errCode != E_OK) {
+        context->SaveError(errCode);
+        NAPI_ERR_LOG("Failed to generateUniqueId, errCode: %{public}d", errCode);
+        return;
+    }
+    context->objectPtr->SetUniqueId(respBody.uniqueId);
+    context->uniqueId = respBody.uniqueId;
+    NAPI_INFO_LOG("generateUniqueId success");
+}
+
+static void PhotoAccessHelperGenerateUniqueIdComplete(napi_env env, napi_status status, void *data)
+{
+    auto *context = static_cast<FileAssetAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+
+    if (context->error == ERR_DEFAULT) {
+        napi_create_string_utf8(env, context->uniqueId.c_str(), NAPI_AUTO_LENGTH, &jsContext->data);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error, true);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value FileAssetNapi::PhotoAccessHelperGenerateUniqueId(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessHelperGenerateUniqueId");
+    NAPI_INFO_LOG("enter PhotoAccessHelperGenerateUniqueId");
+
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    auto asyncContext = make_unique<FileAssetAsyncContext>();
+    CHECK_COND_WITH_INT_CODE(env, asyncContext != nullptr, JS_E_PARAM_INVALID);
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    CHECK_COND_WITH_MESSAGE_INT_CODE(env,
+        MediaLibraryNapiUtils::ParseArgsOnlyCallBack(env, info, asyncContext) == napi_ok, "Failed to parse js args");
+    asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    napi_value ret = nullptr;
+    CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperGenerateUniqueId",
+        PhotoAccessHelperGenerateUniqueIdExecute, PhotoAccessHelperGenerateUniqueIdComplete);
 }
 
 void FileAssetNapi::UpdateFileAssetInfo()
@@ -3080,70 +3195,78 @@ shared_ptr<FileAsset> FileAssetNapi::GetFileAssetInstance() const
     return fileAssetPtr;
 }
 
+namespace {
+    const set<string> &GetSystemApiKeys()
+    {
+        static const set<string> SYSTEM_API_KEYS = {
+            MediaColumn::MEDIA_DATE_TRASHED,
+            MediaColumn::MEDIA_HIDDEN,
+            PhotoColumn::PHOTO_USER_COMMENT,
+            PhotoColumn::CAMERA_SHOT_KEY,
+            PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
+            PhotoColumn::SUPPORTED_WATERMARK_TYPE,
+            PhotoColumn::PHOTO_IS_AUTO,
+            PhotoColumn::PHOTO_IS_RECENT_SHOW,
+            PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
+            PhotoColumn::PHOTO_APPLINK,
+            PhotoColumn::PHOTO_HAS_APPLINK,
+            PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
+            PhotoColumn::PHOTO_CLOUD_ID,
+            PENDING_STATUS,
+            CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
+            CONST_MEDIA_SUM_SIZE,
+            PhotoColumn::PHOTO_EXIF_ROTATE,
+            PhotoColumn::PHOTO_STORAGE_PATH,
+            PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+            MediaColumn::MEDIA_OWNER_PACKAGE,
+            PhotoColumn::PHOTO_DATE_ADDED_YEAR,
+            PhotoColumn::PHOTO_DATE_ADDED_MONTH,
+            PhotoColumn::PHOTO_DATE_ADDED_DAY,
+            PhotoColumn::UNIQUE_ID,
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+            PhotoColumn::PHOTO_HIDDEN_TIME,
+            PhotoColumn::PHOTO_RISK_STATUS,
+            PhotoColumn::ATTACHMENT_SIZE,
+            PhotoColumn::PHOTO_LCD_FILE_SIZE,
+            PhotoColumn::PHOTO_THUMB_STATUS,
+            PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+            PhotoColumn::PHOTO_TRANSCODE_TIME,
+            PhotoColumn::MUSIC_MASTER_MODE,
+        };
+        return SYSTEM_API_KEYS;
+    }
+
+    const set<string> &GetSystemApiKeysSinceApi26()
+    {
+        static const set<string> SYSTEM_API_KEYS_SINCE_API26 = {
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+        };
+        return SYSTEM_API_KEYS_SINCE_API26;
+    }
+}
+
 int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
 {
-    static const set<string> SYSTEM_API_KEYS = {
-        MediaColumn::MEDIA_DATE_TRASHED,
-        MediaColumn::MEDIA_HIDDEN,
-        PhotoColumn::PHOTO_USER_COMMENT,
-        PhotoColumn::CAMERA_SHOT_KEY,
-        PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
-        PhotoColumn::SUPPORTED_WATERMARK_TYPE,
-        PhotoColumn::PHOTO_IS_AUTO,
-        PhotoColumn::PHOTO_IS_RECENT_SHOW,
-        PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
-        PhotoColumn::PHOTO_APPLINK,
-        PhotoColumn::PHOTO_HAS_APPLINK,
-        PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
-        PhotoColumn::PHOTO_CLOUD_ID,
-        PENDING_STATUS,
-        CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
-        CONST_MEDIA_SUM_SIZE,
-        PhotoColumn::PHOTO_EXIF_ROTATE,
-        PhotoColumn::PHOTO_STORAGE_PATH,
-        PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
-        MediaColumn::MEDIA_OWNER_PACKAGE,
-        PhotoColumn::PHOTO_DATE_ADDED_YEAR,
-        PhotoColumn::PHOTO_DATE_ADDED_MONTH,
-        PhotoColumn::PHOTO_DATE_ADDED_DAY,
-        PhotoColumn::UNIQUE_ID,
-        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-        PhotoColumn::PHOTO_HIDDEN_TIME,
-        PhotoColumn::ATTACHMENT_SIZE,
-    };
+    const auto &SYSTEM_API_KEYS = GetSystemApiKeys();
+    const auto &SYSTEM_API_KEYS_SINCE_API26 = GetSystemApiKeysSinceApi26();
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryNapiUtils::IsSystemApp()) {
+        return E_SUCCESS;
+    }
 
-    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
+    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
+        if (SYSTEM_API_KEYS_SINCE_API26.count(key) > 0) {
+            NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+                "This key can only be used by system apps");
+        } else {
+            NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
+        }
         return E_CHECK_SYSTEMAPP_FAIL;
     }
+
+    DfxSystemPhotoKeys::ReportIfSystemKey("napi", key);
+
     return E_SUCCESS;
-}
-
-static bool IsHighPixelPicture(int32_t width, int32_t height)
-{
-    if (width * height >= HIGH_PIXEL_START_SIZE) {
-        return true;
-    }
-    return false;
-}
-
-static bool GetDesireSize(int32_t &width, int32_t &height)
-{
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
-
-    while (IsHighPixelPicture(width, height)) {
-        width /= HIGH_PIXEL_SCALE;
-        height /= HIGH_PIXEL_SCALE;
-    }
-
-    if (width * height > HIGH_PIXEL_STOP_SIZE) {
-        width /= HIGH_PIXEL_RESIZE_SCALE;
-        height /= HIGH_PIXEL_RESIZE_SCALE;
-    }
-    
-    return true;
 }
 
 bool FileAssetNapi::IsSpecialKey(const string &key)
@@ -3151,9 +3274,6 @@ bool FileAssetNapi::IsSpecialKey(const string &key)
     static const set<string> SPECIAL_KEY = {
         PENDING_STATUS,
         PhotoColumn::PHOTO_EXIF_ROTATE,
-        PhotoColumn::PHOTO_WIDTH,
-        PhotoColumn::PHOTO_HEIGHT,
-        PhotoColumn::MEDIA_SIZE
     };
 
     if (SPECIAL_KEY.find(key) != SPECIAL_KEY.end()) {
@@ -3180,31 +3300,6 @@ napi_value FileAssetNapi::HandleGettingSpecialKey(napi_env env, const string &ke
         int32_t value = fileAssetPtr->GetVideoMode();
         int32_t videoMode = value == -1 ? static_cast<int32_t>(VideoMode::NOT_LOG_VIDEO) : value;
         napi_create_int32(env, videoMode, &jsResult);
-    } else if (key == PhotoColumn::PHOTO_WIDTH) {
-        int32_t width = fileAssetPtr->GetWidth();
-        if (fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE) != 0) {
-            int32_t height = fileAssetPtr->GetHeight();
-            GetDesireSize(width, height);
-            napi_create_int32(env, width, &jsResult);
-        } else {
-            napi_create_int32(env, width, &jsResult);
-        }
-    } else if (key == PhotoColumn::PHOTO_HEIGHT) {
-        int32_t height = fileAssetPtr->GetHeight();
-        if (fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE) != 0) {
-            int32_t width = fileAssetPtr->GetWidth();
-            GetDesireSize(width, height);
-            napi_create_int32(env, height, &jsResult);
-        } else {
-            napi_create_int32(env, height, &jsResult);
-        }
-    } else if (key == PhotoColumn::MEDIA_SIZE) {
-        if (fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE) != 0) {
-            napi_create_int64(env,
-                fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE), &jsResult);
-        } else {
-            napi_create_int64(env, fileAssetPtr->GetSize(), &jsResult);
-        }
     }
 
     return jsResult;
@@ -3304,7 +3399,7 @@ napi_value FileAssetNapi::HandleDateTransitionKey(napi_env env, const string &ke
 {
     napi_value jsResult = nullptr;
     if (fileAssetPtr->GetMemberMap().count(key) == 0) {
-        NapiError::ThrowError(env, JS_E_FILE_KEY);
+        NapiError::ThrowError(env, JS_E_FILE_KEY, "The member name does not exist");
         return jsResult;
     }
 
@@ -3312,7 +3407,7 @@ napi_value FileAssetNapi::HandleDateTransitionKey(napi_env env, const string &ke
     if (m.index() == MEMBER_TYPE_INT64) {
         napi_create_int64(env, get<int64_t>(m), &jsResult);
     } else {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The member value type does not match");
         return jsResult;
     }
     return jsResult;
@@ -3352,7 +3447,7 @@ napi_value FileAssetNapi::UserFileMgrGet(napi_env env, napi_callback_info info)
 
     if (obj->fileAssetPtr->GetMemberMap().count(inputKey) == 0) {
         // no exist throw error
-        NapiError::ThrowError(env, JS_E_FILE_KEY);
+        NapiError::ThrowError(env, JS_E_FILE_KEY, "The member name does not exist");
         return jsResult;
     }
 
@@ -3372,7 +3467,7 @@ napi_value FileAssetNapi::UserFileMgrGet(napi_env env, napi_callback_info info)
     } else if (m.index() == MEMBER_TYPE_DOUBLE) {
         napi_create_double(env, get<double>(m), &jsResult);
     } else {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The member value type does not match");
         return jsResult;
     }
     return jsResult;
@@ -3426,8 +3521,13 @@ napi_value FileAssetNapi::UserFileMgrSet(napi_env env, napi_callback_info info)
     napi_value jsResult = nullptr;
     napi_get_undefined(env, &jsResult);
     auto obj = asyncContext->objectInfo;
+    if (obj->fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return jsResult;
+    }
     if (!obj->HandleParamSet(inputKey, value, obj->fileAssetPtr->GetResultNapiType())) {
-        NapiError::ThrowError(env, JS_E_FILE_KEY);
+        NapiError::ThrowError(env, JS_E_FILE_KEY, "The member name does not exist");
         return jsResult;
     }
     return jsResult;
@@ -3445,6 +3545,11 @@ napi_value FileAssetNapi::UserFileMgrCommitModify(napi_env env, napi_callback_in
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "UserFileMgrCommitModify",
         JSCommitModifyExecute, JSCommitModifyCompleteCallback);
@@ -3689,7 +3794,7 @@ napi_value FileAssetNapi::UserFileMgrOpen(napi_env env, napi_callback_info info)
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrOpen(env, info, asyncContext, false));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -3703,13 +3808,145 @@ napi_value FileAssetNapi::JSGetReadOnlyFd(napi_env env, napi_callback_info info)
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrOpen(env, info, asyncContext, true));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetPhotoAssets", UserFileMgrOpenExecute,
         UserFileMgrOpenCallbackComplete);
+}
+
+static napi_value ParseArgsUserFileMgrWithCachedOpen(napi_env env, napi_callback_info info,
+    unique_ptr<FileAssetAsyncContext> &context, bool isReadOnly)
+{
+    if (!isReadOnly && !MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    size_t minArgs = ARGS_ZERO;
+    size_t maxArgs = ARGS_ONE;
+    if (!isReadOnly) {
+        minArgs++;
+        maxArgs++;
+    }
+    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_E_PARAM_INVALID);
+    auto fileUri = context->objectInfo->GetFileUri();
+    MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
+
+    if (isReadOnly) {
+        context->valuesBucket.Put(MEDIA_FILEMODE, MEDIA_FILEMODE_READONLY);
+    } else {
+        string mode;
+        CHECK_ARGS(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[PARAM0], mode),
+            JS_E_PARAM_INVALID);
+        transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+        if (!MediaFileUtils::CheckMode(mode)) {
+            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
+            return nullptr;
+        }
+        context->valuesBucket.Put(MEDIA_FILEMODE, mode);
+    }
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+    return result;
+}
+
+static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSOpenWithCachedExecute");
+
+    FileAssetAsyncContext *context = static_cast<FileAssetAsyncContext*>(data);
+    bool isValid = false;
+    string mode = context->valuesBucket.Get(MEDIA_FILEMODE, isValid);
+    if (!isValid) {
+        context->SaveError(-EINVAL);
+        return;
+    }
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
+    if (!isValid) {
+        context->SaveError(-EINVAL);
+        return ;
+    }
+
+    MediaFileUtils::UriAppendKeyValue(fileUri, MediaColumn::MEDIA_TIME_PENDING,
+        to_string(context->objectPtr->GetTimePending()));
+    MediaFileUtils::UriAppendKeyValue(fileUri, "fdWithCached", "1");
+    Uri openFileUri(fileUri);
+    int32_t retVal = UserFileClient::OpenFile(openFileUri, mode);
+    if (retVal <= 0) {
+        context->SaveError(E_FILE_OPEN_FAIL);
+        NAPI_ERR_LOG("file system exception, ret: %{public}d", retVal);
+    } else {
+        context->fd = retVal;
+        if (mode.find('w') != string::npos) {
+            context->objectPtr->SetOpenStatus(retVal, OPEN_TYPE_WRITE);
+        } else {
+            context->objectPtr->SetOpenStatus(retVal, OPEN_TYPE_READONLY);
+        }
+        if (context->objectPtr->GetTimePending() == UNCREATE_FILE_TIMEPENDING) {
+            context->objectPtr->SetTimePending(UNCLOSE_FILE_TIMEPENDING);
+        }
+    }
+}
+
+static void UserFileMgrOpenCallbackWithCachedComplete(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("UserFileMgrOpenCallbackWithCachedComplete");
+
+    auto *context = static_cast<FileAssetAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_OPEN_FILE_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_OPEN_FILE_FAIL);
+    if (context->error == ERR_DEFAULT) {
+        CHECK_ARGS_RET_VOID(env, napi_create_int32(env, context->fd, &jsContext->data), JS_E_INNER_OPEN_FILE_FAIL);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error, true);
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_info info)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "Permission verification failed. A non-system application calls a system API");
+        return nullptr;
+    }
+    if (!HasReadPermission()) {
+        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE,
+            "Permission verification failed. The application does not have permission required to call the API");
+        return nullptr;
+    }
+
+    unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
+    CHECK_NULLPTR_RET(ParseArgsUserFileMgrWithCachedOpen(env, info, asyncContext, true));
+    if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID,
+            "The asset parameter is not a valid PhotoAsset object");
+        return nullptr;
+    }
+    asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetReadOnlyFdWithCached",
+        UserFileMgrOpenWithCachedExecute, UserFileMgrOpenCallbackWithCachedComplete);
 }
 
 static napi_value ParseArgsUserFileMgrClose(napi_env env, napi_callback_info info,
@@ -3722,9 +3959,10 @@ static napi_value ParseArgsUserFileMgrClose(napi_env env, napi_callback_info inf
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
 
     int32_t fd = 0;
-    CHECK_COND(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd), JS_ERR_PARAMETER_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd),
+        JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
     if (fd <= 0) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
         return nullptr;
     }
     context->fd = fd;
@@ -3805,10 +4043,15 @@ napi_value FileAssetNapi::UserFileMgrClose(napi_env env, napi_callback_info info
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrClose(env, info, asyncContext));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetPhotoAssets", UserFileMgrCloseExecute,
         UserFileMgrCloseCallbackComplete);
@@ -3878,6 +4121,11 @@ napi_value FileAssetNapi::UserFileMgrSetHidden(napi_env env, napi_callback_info 
         JS_ERR_PARAMETER_INVALID);
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULLPTR_RET(asyncContext->objectPtr);
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "UserFileMgrSetHidden",
         UserFileMgrSetHiddenExecute, UserFileMgrSetHiddenComplete);
@@ -3954,6 +4202,11 @@ napi_value FileAssetNapi::UserFileMgrSetPending(napi_env env, napi_callback_info
         MediaLibraryNapiUtils::ParseArgsBoolCallBack(env, info, asyncContext, asyncContext->isPending));
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULLPTR_RET(asyncContext->objectPtr);
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "UserFileMgrSetPending",
         UserFileMgrSetPendingExecute, UserFileMgrSetPendingComplete);
@@ -4080,7 +4333,13 @@ napi_value FileAssetNapi::UserFileMgrSetUserComment(napi_env env, napi_callback_
         JS_ERR_PARAMETER_INVALID);
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     if (asyncContext->objectPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
+        return nullptr;
+    }
+
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return nullptr;
     }
 
@@ -4181,6 +4440,14 @@ static void PhotoAccessHelperOpenCallbackComplete(napi_env env, napi_status stat
     auto context = static_cast<FileAssetAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
 
+    if (context->objectPtr == nullptr) {
+        NAPI_ERR_LOG("FileAsset is nullptr");
+        delete context;
+        return;
+    }
+    NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", context->fd,
+        MediaFileUtils::DesensitizePath(context->objectPtr->GetUri()).c_str());
+
     unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
     jsContext->status = false;
 
@@ -4206,7 +4473,7 @@ napi_value FileAssetNapi::PhotoAccessHelperOpen(napi_env env, napi_callback_info
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsPhotoAccessHelperOpen(env, info, asyncContext, false));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
@@ -4224,9 +4491,10 @@ static napi_value ParseArgsPhotoAccessHelperClose(napi_env env, napi_callback_in
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
 
     int32_t fd = 0;
-    CHECK_COND(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd), JS_ERR_PARAMETER_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd),
+        JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
     if (fd <= 0) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The fd parameter is invalid");
         return nullptr;
     }
     context->fd = fd;
@@ -4244,6 +4512,11 @@ static void PhotoAccessHelperCloseExecute(napi_env env, void *data)
     auto *context = static_cast<FileAssetAsyncContext*>(data);
     int32_t mediaFd = context->fd;
     if (!CheckFileOpenStatus(context, mediaFd)) {
+        return;
+    }
+    if (context->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        context->SaveError(E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR);
+        NAPI_ERR_LOG("This operation is not supported for assets in shared albums");
         return;
     }
     UniqueFd uniFd(mediaFd);
@@ -4300,12 +4573,19 @@ static void PhotoAccessHelperCloseCallbackComplete(napi_env env, napi_status sta
 napi_value FileAssetNapi::PhotoAccessHelperClose(napi_env env, napi_callback_info info)
 {
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
+    if (asyncContext == nullptr) {
+        NAPI_ERR_LOG("Async context is null");
+        return nullptr;
+    }
+
     CHECK_NULLPTR_RET(ParseArgsPhotoAccessHelperClose(env, info, asyncContext));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", asyncContext->fd,
+        MediaFileUtils::DesensitizePath(asyncContext->objectPtr->GetUri()).c_str());
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperClose",
         PhotoAccessHelperCloseExecute, PhotoAccessHelperCloseCallbackComplete);
@@ -4326,6 +4606,7 @@ static shared_ptr<FileAsset> getFileAsset(const std::string fileAssetId, const i
     }
     auto fetchResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
     shared_ptr<FileAsset> newFileAsset = fetchResult->GetFirstObject();
+    CHECK_AND_RETURN_RET_LOG(newFileAsset != nullptr, nullptr, "newFileAsset is nullptr");
     string newFileAssetUri = MediaFileUtils::GetFileAssetUri(newFileAsset->GetPath(), newFileAsset->GetDisplayName(),
         newFileAsset->GetId());
     newFileAsset->SetUri(newFileAssetUri);
@@ -4423,14 +4704,21 @@ napi_value FileAssetNapi::PhotoAccessHelperCloneAsset(napi_env env, napi_callbac
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_INNER_FAIL,
+        "The asset parameter is not a valid PhotoAsset object");
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     string title;
     MediaLibraryNapiUtils::GetParamStringPathMax(env, asyncContext->argv[ARGS_ZERO], title);
 
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title + "." + extension;
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK, "Input title is invalid");
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
+        "The title contains unsupported characters or exceeds the length limit");
 
     asyncContext->title = title;
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "CloneAssetHandlerExecute",
@@ -4575,7 +4863,13 @@ napi_value FileAssetNapi::PhotoAccessHelperConvertFormat(napi_env env, napi_call
 
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
-    CHECK_COND(env, fileAsset != nullptr, JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID,
+        "The asset parameter is not a valid PhotoAsset object");
+    if (fileAsset->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     string title;
     MediaLibraryNapiUtils::GetParamStringPathMax(env, asyncContext->argv[ARGS_ZERO], title);
@@ -4610,6 +4904,11 @@ napi_value FileAssetNapi::PhotoAccessHelperCommitModify(napi_env env, napi_callb
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperCommitModify",
         JSCommitModifyExecute, JSCommitModifyCompleteCallback);
@@ -4716,6 +5015,12 @@ napi_value FileAssetNapi::PhotoAccessHelperFavorite(napi_env env, napi_callback_
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperFavorite",
         PhotoAccessHelperFavoriteExecute, PhotoAccessHelperFavoriteComplete);
@@ -4874,6 +5179,12 @@ napi_value FileAssetNapi::PhotoAccessHelperCancelPhotoRequest(napi_env env, napi
     string requestKey;
     CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ONE,
         ARGS_ONE), OHOS_INVALID_PARAM_CODE);
+    if (asyncContext->objectInfo->fileAssetPtr != nullptr &&
+        asyncContext->objectInfo->fileAssetPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
     CHECK_ARGS(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, asyncContext->argv[ARGS_ZERO], requestKey),
         OHOS_INVALID_PARAM_CODE);
     napi_value jsResult = nullptr;
@@ -4977,6 +5288,11 @@ napi_value FileAssetNapi::PhotoAccessHelperSetHidden(napi_env env, napi_callback
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperSetHidden",
         PhotoAccessHelperSetHiddenExecute, PhotoAccessHelperSetHiddenComplete);
@@ -5086,6 +5402,11 @@ napi_value FileAssetNapi::PhotoAccessHelperSetPending(napi_env env, napi_callbac
         "Failed to parse js args");
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "FileAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperSetPending",
         PhotoAccessHelperSetPendingExecute, PhotoAccessHelperSetPendingComplete);
@@ -5203,7 +5524,13 @@ napi_value FileAssetNapi::PhotoAccessHelperSetUserComment(napi_env env, napi_cal
         JS_ERR_PARAMETER_INVALID);
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     if (asyncContext->objectPtr == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The asset parameter is not a valid PhotoAsset object");
+        return nullptr;
+    }
+
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
         return nullptr;
     }
 
@@ -5936,6 +6263,11 @@ napi_value FileAssetNapi::PhotoAccessHelperCommitEditedAsset(napi_env env, napi_
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     napi_value ret = nullptr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
@@ -6021,6 +6353,11 @@ napi_value FileAssetNapi::PhotoAccessHelperRevertToOriginal(napi_env env, napi_c
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     napi_value ret = nullptr;
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
+    if (asyncContext->objectPtr->GetIsShared() == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "This operation is not supported for assets in shared albums");
+        return nullptr;
+    }
     asyncContext->valuesBucket.Put(MediaColumn::MEDIA_ID, asyncContext->objectPtr->GetId());
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperRevertToOriginal",
         PhotoAccessHelperRevertToOriginalExecute, PhotoAccessHelperRevertToOriginalComplete);

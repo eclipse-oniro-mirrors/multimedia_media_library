@@ -85,6 +85,10 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const std::string &path)
 #endif
     auto fileAsset = GetFileAssetFromDb(MediaColumn::MEDIA_FILE_PATH, path);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, path, "get file asset from db failed");
+    if (fileAsset->GetPosition() == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_DEBUG_LOG("cloud asset, return data path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+        return path;
+    }
     CHECK_AND_RETURN_RET(fileAsset->GetFileSourceType() == static_cast<int32_t>(FILE_MANAGER), path);
     CHECK_AND_RETURN_RET(!CheckBurstMemberDataExist(static_cast<PhotoSubType>(fileAsset->GetPhotoSubType()),
         static_cast<BurstCoverLevelType>(fileAsset->GetBurstCoverLevel()), path), path);
@@ -106,6 +110,20 @@ std::string MediaFileAccessUtils::GetAssetRealPathById(const std::string &fileId
     info.sourceType = static_cast<FileSourceType>(fileAsset->GetFileSourceType());
     info.subType = static_cast<PhotoSubType>(fileAsset->GetPhotoSubType());
     info.burstCoverLevel = static_cast<BurstCoverLevelType>(fileAsset->GetBurstCoverLevel());
+    info.position = fileAsset->GetPosition();
+    return GetAssetRealPath(info);
+}
+
+std::string MediaFileAccessUtils::GetAssetRealPath(const std::shared_ptr<FileAsset> &fileAsset)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, "", "fileAsset is nullptr");
+    AssetPathConvertInfo info;
+    info.assetPath = fileAsset->GetFilePath();
+    info.storagePath = fileAsset->GetStoragePath();
+    info.sourceType = static_cast<FileSourceType>(fileAsset->GetFileSourceType());
+    info.subType = static_cast<PhotoSubType>(fileAsset->GetPhotoSubType());
+    info.burstCoverLevel = static_cast<BurstCoverLevelType>(fileAsset->GetBurstCoverLevel());
+    info.position = fileAsset->GetPosition();
     return GetAssetRealPath(info);
 }
 
@@ -118,6 +136,11 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const AssetPathConvertInfo &i
         return info.storagePath;
     }
 #endif
+    if (info.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_DEBUG_LOG("cloud asset, return data path: %{public}s",
+            MediaFileUtils::DesensitizePath(info.assetPath).c_str());
+        return info.assetPath;
+    }
     CHECK_AND_RETURN_RET(info.sourceType == FileSourceType::FILE_MANAGER, info.assetPath);
     CHECK_AND_RETURN_RET(!CheckBurstMemberDataExist(info.subType, info.burstCoverLevel, info.assetPath),
         info.assetPath);
@@ -157,6 +180,8 @@ int32_t MediaFileAccessUtils::MoveFileInEditScene(const std::string &oldPath, co
     CHECK_AND_RETURN_RET_LOG(!newPath.empty(), E_ERR, "empty destPath");
     std::string srcPath = GetAssetRealPath(oldPath);
     std::string destPath = GetAssetRealPath(newPath);
+    CHECK_AND_RETURN_RET_LOG(!srcPath.empty(), E_ERR, "empty srcPath after path resolution");
+    CHECK_AND_RETURN_RET_LOG(!destPath.empty(), E_ERR, "empty destPath after path resolution");
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     bool hasLakePath = IsZeroBucketPath(oldPath) || IsZeroBucketPath(newPath);
     CHECK_AND_RETURN_RET(!hasLakePath, FileScanUtils::MoveFileInEditScene(srcPath, destPath));
@@ -204,7 +229,6 @@ bool MediaFileAccessUtils::IsDirectoryEmpty(const std::string& dirPath)
 void MediaFileAccessUtils::UpdateModifyTime(const std::string &path, int64_t localMtime)
 {
     CHECK_AND_RETURN_LOG(!path.empty(), "empty path");
-    CHECK_AND_RETURN_LOG(PhotoFileUtils::CheckFileManagerRealPath(path), "not file manager path");
 
     struct timeval times[2];
     // set atime
@@ -235,6 +259,10 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const AssetOperationInfo &obj
     info.sourceType = obj.GetFileSourceType();
     info.subType = obj.GetSubType();
     info.burstCoverLevel = obj.GetBurstCoverLevel();
+    auto assetInfo = obj.GetAssetInfo();
+    CHECK_AND_PRINT_LOG(assetInfo != nullptr, "assetInfo is nullptr");
+    info.position = (assetInfo != nullptr) ? assetInfo->GetPosition()
+        : static_cast<int32_t>(PhotoPositionType::LOCAL);
     return GetAssetRealPath(info);
 }
 
@@ -264,9 +292,28 @@ MoveResult MediaFileAccessUtils::MoveAsset(const AssetOperationInfo &srcObj, con
 int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
     std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
 {
+    return HandleSameNameRenameImpl(sameNamePath, renamePath, renameTitle, renameDisplayName,
+        [](const std::string &path) {
+            return MediaFileUtils::IsFileExists(path);
+        });
+}
+
+int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
+{
+    return HandleSameNameRenameImpl(sameNamePath, renamePath, renameTitle, renameDisplayName,
+        isPathOccupiedChecker);
+}
+
+int32_t MediaFileAccessUtils::HandleSameNameRenameImpl(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
+{
     MEDIA_DEBUG_LOG("HandleSameNameRename sameNamePath: %{public}s",
         MediaFileUtils::DesensitizePath(sameNamePath).c_str());
     CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    CHECK_AND_RETURN_RET_LOG(static_cast<bool>(isPathOccupiedChecker), E_ERR, "empty conflict checker");
     std::string tempPath = sameNamePath;
     std::string tempDisplayName = MediaFileUtils::GetFileName(sameNamePath);
     size_t dotPos = tempDisplayName.rfind('.');
@@ -279,7 +326,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePa
     std::string baseName = tempTitle;
 
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT && MediaFileUtils::IsFileExists(tempPath)) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && isPathOccupiedChecker(tempPath)) {
         ++retryCount;
         tempTitle = baseName + "(" + std::to_string(retryCount) + ")";
         tempDisplayName = tempTitle + fileExtension;
@@ -287,7 +334,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePa
         MEDIA_DEBUG_LOG("path conflict, try new path: %{public}s", MediaFileUtils::DesensitizePath(tempPath).c_str());
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!isPathOccupiedChecker(tempPath), E_ERR, "path still conflict after retry");
     }
     renamePath = tempPath;
     renameTitle = tempTitle;
@@ -296,9 +343,11 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePa
 }
 
 int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameNamePath,
-    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
 {
     CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    CHECK_AND_RETURN_RET_LOG(static_cast<bool>(isPathOccupiedChecker), E_ERR, "empty conflict checker");
     std::string displayName = MediaFileUtils::GetFileName(sameNamePath);
     std::string parentPath = MediaFileUtils::GetParentPath(sameNamePath);
     CHECK_AND_RETURN_RET_LOG(!parentPath.empty(), E_ERR, "empty parent path");
@@ -307,7 +356,7 @@ int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameN
     size_t dotPos = displayName.rfind('.');
     std::string tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT && MediaFileUtils::IsFileExists(tempPath)) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && isPathOccupiedChecker(tempPath)) {
         PhotoAssetInfo photoAssetInfo;
         photoAssetInfo.displayName = displayName;
         photoAssetInfo.subtype = static_cast<int32_t>(PhotoSubType::BURST);
@@ -322,7 +371,7 @@ int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameN
         ++retryCount;
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!isPathOccupiedChecker(tempPath), E_ERR, "path still conflict after retry");
     }
 
     renamePath = tempPath;
@@ -341,6 +390,7 @@ bool MediaFileAccessUtils::NeedCheckSameNameRename(FileSourceType destSourceType
 int32_t MediaFileAccessUtils::MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
     bool deleteSrc)
 {
+    CHECK_AND_RETURN_RET_LOG(!srcPath.empty(), E_ERR, "Empty srcPath");
     CHECK_AND_RETURN_RET_LOG(!destPath.empty(), E_ERR, "Empty destPath");
     MEDIA_INFO_LOG("MoveFile src: %{public}s, dest: %{public}s", MediaFileUtils::DesensitizePath(srcPath).c_str(),
         MediaFileUtils::DesensitizePath(destPath).c_str());
@@ -439,6 +489,35 @@ MoveResult MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(const std::string
     return result;
 }
 
+string MediaFileAccessUtils::GetLivePhotoTempImage(const std::string &srcPath,
+    const std::string &dataPath, bool isDeleteTempVideo)
+{
+    std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(dataPath);
+    std::string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(dataPath);
+    std::string extraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(dataPath);
+    std::string cacheDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(dataPath);
+    std::string tempImage = cacheDir + "/share_livephoto_temp_image." + MediaPathUtils::GetExtension(dataPath);
+    if (!MediaFileUtils::CreateDirectory(cacheDir)) {
+        MEDIA_ERR_LOG("Cannot create dir %{private}s, errno %{public}d", cacheDir.c_str(), errno);
+        return "";
+    }
+    if (!MediaFileUtils::IsFileExists(extraPathDir) && !MediaFileUtils::CreateDirectory(extraPathDir)) {
+        MEDIA_ERR_LOG("Failed to create local extra data dir");
+        return "";
+    }
+    int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcPath, tempImage, videoPath, extraDataPath);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to convert live photo, ret:%{public}d", ret);
+        (void)MediaFileUtils::DeleteFile(tempImage);
+        (void)MediaFileUtils::DeleteFile(videoPath);
+        (void)MediaFileUtils::DeleteDir(extraPathDir);
+        return "";
+    }
+    if (isDeleteTempVideo) {
+        (void)MediaFileUtils::DeleteFile(videoPath);
+    }
+    return tempImage;
+}
 
 static std::string GetCloudPath(const std::string &path)
 {
@@ -466,9 +545,8 @@ static MoveResult HandleRemoveVideo(const std::string &srcPath)
     std::vector<std::string> args = { GetCloudPath(srcPath) };
     auto resultSet = rdbStore->QuerySql(sql, args);
     if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        std::string photoId = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_ID);
-        int32_t stageVideoTaskStatus = MediaLibraryRdbStore::GetInt(resultSet,
-            PhotoColumn::STAGE_VIDEO_TASK_STATUS);
+        std::string photoId = GetStringVal(PhotoColumn::PHOTO_ID, resultSet);
+        int32_t stageVideoTaskStatus = GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet);
         resultSet->Close();
         if (!photoId.empty() && stageVideoTaskStatus ==
             static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
@@ -481,8 +559,8 @@ static MoveResult HandleRemoveVideo(const std::string &srcPath)
     return result;
 }
 
-MoveResult MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(const std::string &srcPath,
-    const std::string &destPath, FileSourceType destSourceType, bool deleteSrc)
+MoveResult MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(const std::string &srcPath, const std::string &destPath,
+    FileSourceType destSourceType, bool deleteSrc, std::shared_ptr<AssetAccurateRefresh> assetRefresh)
 {
     MoveResult result;
     std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(srcPath);
@@ -503,7 +581,12 @@ MoveResult MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(const std::string
         return result;
     }
 
-    AssetOperationInfo srcpath = AssetOperationInfo::CreateFromPath(livePhotoPath);
+    AssetOperationInfo srcpath = AssetOperationInfo::CreateFromPath(srcPath);
+    if (assetRefresh == nullptr) {
+        assetRefresh = make_shared<AssetAccurateRefresh>();
+    }
+    srcpath.SetAssetRefresh(assetRefresh);
+    srcpath.SetStoragePath(livePhotoPath);
     result = MediaFileAccessUtils::MoveNormalAsset(srcpath, destPath, destSourceType, deleteSrc);
     if (result.errCode != E_OK) {
         MEDIA_ERR_LOG("failed to move live photo file, ret: %{public}d", ret);
@@ -538,7 +621,7 @@ MoveResult MediaFileAccessUtils::MoveMovingPhotoAsset(const AssetOperationInfo &
     if (isSrcLivePhoto) {
         return ProcessLivePhotoToMovingPhoto(srcPath, destPath, deleteSrc);
     } else {
-        return ProcessMovingPhotoToLivePhoto(srcPath, destPath, destSourceType, deleteSrc);
+        return ProcessMovingPhotoToLivePhoto(srcPath, destPath, destSourceType, deleteSrc, srcObj.GetAssetRefresh());
     }
 
     result.errCode = E_OK;
@@ -575,6 +658,9 @@ bool MediaFileAccessUtils::DeleteAsset(const AssetOperationInfo &obj)
 {
     CHECK_AND_RETURN_RET_LOG(obj.IsValid(), false, "obj is not valid");
     std::string assetPath = GetAssetRealPath(obj);
+    CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), false, "assetPath is empty after resolution");
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileValid(assetPath), false,
+        "asset file invalid or not exist: %{public}s", DfxUtils::GetSafePath(assetPath).c_str());
     return (remove(assetPath.c_str()) == E_SUCCESS);
 }
 } // namespace OHOS::Media

@@ -27,6 +27,9 @@
 #include "medialibrary_data_manager.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
+#include "analysis_album_attribute_validator.h"
+#include "analysis_album_attribute_const.h"
+#include "analysis_album_attribute_spec.h"
 #include "result_set_utils.h"
 #include "rdb_utils.h"
 #include "uri.h"
@@ -36,6 +39,7 @@
 #include "vision_album_column.h"
 #include "vision_face_tag_column.h"
 #include "vision_photo_map_column.h"
+#include "vision_db_sqls_more.h"
 #include "photo_album_column.h"
 #include "media_analysis_data_service.h"
 #include "analysis_net_connect_observer.h"
@@ -58,6 +62,7 @@ static void CleanTestTables()
     std::vector<std::string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
         PhotoAlbumColumns::TABLE,
+        ANALYSIS_ALBUM_TABLE,
     };
     for (auto &dropTable : dropTableList) {
         std::string dropSql = "DROP TABLE IF EXISTS " + dropTable + ";";
@@ -75,6 +80,7 @@ static void SetTables()
     std::vector<std::string> createTableSqlList = {
         PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
+        CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
@@ -159,6 +165,22 @@ static int32_t QueryAlbumIdByAlbumName(const std::string &albumName)
     int32_t album_id = GetInt32Val(ALBUM_ID, resultSet);
     resultSet->Close();
     return album_id;
+}
+
+// 辅助函数：根据album_id查询is_removed
+static int32_t QueryIsRemovedByAlbumId(int32_t albumId)
+{
+    std::vector<std::string> columns = {IS_REMOVED};
+    NativeRdb::RdbPredicates rdbPredicates(ANALYSIS_ALBUM_TABLE);
+    rdbPredicates.EqualTo(ALBUM_ID, albumId);
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicates, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Can not get isRemoved");
+        return E_HAS_DB_ERROR;
+    }
+    int32_t isRemoved = GetInt32Val(IS_REMOVED, resultSet);
+    resultSet->Close();
+    return isRemoved;
 }
 
 // 辅助函数：清理AnalysisAlbum表
@@ -827,6 +849,251 @@ HWTEST_F(MediaAnalysisDataServiceTest, ChangeRequestDismiss_NormalFlow, TestSize
         PhotoAlbumSubType::GROUP_PHOTO);
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("end ChangeRequestDismiss_NormalFlow");
+}
+
+// 用例说明：测试 ChangeRequestDismiss 无效 albumSubtype
+// - 覆盖场景：ChangeRequestDismiss 函数中传入无效的 albumSubtype
+// - 覆盖分支点：CHECK_AND_RETURN_RET_LOG(albumSubtype == GROUP_PHOTO || albumSubtype == PORTRAIT) 失败分支
+// - 触发条件：传入不是 GROUP_PHOTO 或 PORTRAIT 的 albumSubtype
+// - 业务验证：函数应返回 E_INVALID_VALUES
+HWTEST_F(MediaAnalysisDataServiceTest, ChangeRequestDismiss_InvalidAlbumSubtype, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start ChangeRequestDismiss_InvalidAlbumSubtype");
+    int32_t albumId = 1;
+    
+    int32_t ret = MediaAnalysisDataService::GetInstance().ChangeRequestDismiss(albumId,
+        PhotoAlbumSubType::HIGHLIGHT); // 无效的subtype
+    EXPECT_EQ(ret, E_INVALID_VALUES);
+    MEDIA_INFO_LOG("end ChangeRequestDismiss_InvalidAlbumSubtype");
+}
+
+// 用例说明：测试 ChangeRequestDismiss GROUP_PHOTO 类型
+// - 覆盖场景：ChangeRequestDismiss 函数中 albumSubtype 为 GROUP_PHOTO
+// - 覆盖分支点：albumSubtype == PhotoAlbumSubType::GROUP_PHOTO 分支
+// - 触发条件：设置 albumSubtype 为 GROUP_PHOTO
+// - 业务验证：函数应调用 DismissGroupPhotoAlbum 并返回 E_OK
+HWTEST_F(MediaAnalysisDataServiceTest, ChangeRequestDismiss_GroupPhotoType, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start ChangeRequestDismiss_GroupPhotoType");
+    CleanAnalysisAlbum();
+    
+    // 插入测试数据
+    InsertAnalysisAlbum("test_dismiss_group", static_cast<int32_t>(PhotoAlbumSubType::GROUP_PHOTO), "test_group_tag");
+    int32_t albumId = QueryAlbumIdByAlbumName("test_dismiss_group");
+    ASSERT_GT(albumId, 0);
+    
+    // 检查初始状态
+    int32_t initialIsRemoved = QueryIsRemovedByAlbumId(albumId);
+    EXPECT_EQ(initialIsRemoved, 0);
+    
+    int32_t ret = MediaAnalysisDataService::GetInstance().ChangeRequestDismiss(albumId,
+        PhotoAlbumSubType::GROUP_PHOTO);
+    EXPECT_EQ(ret, E_OK);
+    
+    // 检查是否被设置为removed
+    int32_t finalIsRemoved = QueryIsRemovedByAlbumId(albumId);
+    EXPECT_EQ(finalIsRemoved, 1);
+    MEDIA_INFO_LOG("end ChangeRequestDismiss_GroupPhotoType");
+}
+
+// 用例说明：测试 ChangeRequestDismiss PORTRAIT 类型
+// - 覆盖场景：ChangeRequestDismiss 函数中 albumSubtype 为 PORTRAIT
+// - 覆盖分支点：albumSubtype == PhotoAlbumSubType::PORTRAIT 分支 (else分支)
+// - 触发条件：设置 albumSubtype 为 PORTRAIT
+// - 业务验证：函数应调用 SetPortraitAlbumIsRemoved 并返回 E_OK
+HWTEST_F(MediaAnalysisDataServiceTest, ChangeRequestDismiss_PortraitType, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start ChangeRequestDismiss_PortraitType");
+    CleanAnalysisAlbum();
+    
+    // 插入测试数据
+    InsertAnalysisAlbum("test_dismiss_portrait", static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT),
+        "test_portrait_group");
+    int32_t albumId = QueryAlbumIdByAlbumName("test_dismiss_portrait");
+    ASSERT_GT(albumId, 0);
+    
+    // 检查初始状态
+    int32_t initialIsRemoved = QueryIsRemovedByAlbumId(albumId);
+    EXPECT_EQ(initialIsRemoved, 0);
+    
+    int32_t ret = MediaAnalysisDataService::GetInstance().ChangeRequestDismiss(albumId,
+        PhotoAlbumSubType::PORTRAIT);
+    EXPECT_EQ(ret, E_OK);
+    
+    // 检查是否被设置为removed
+    int32_t finalIsRemoved = QueryIsRemovedByAlbumId(albumId);
+    EXPECT_EQ(finalIsRemoved, 1);
+    MEDIA_INFO_LOG("end ChangeRequestDismiss_PortraitType");
+}
+
+
+// 用例说明：测试 IsSupportedAnalysisAlbumOperationValue 支持的值
+// - 覆盖场景：IsSupportedAnalysisAlbumOperationValue 函数验证支持的值
+// - 覆盖分支点：值在支持列表中
+// - 触发条件：传入"0"或"1"
+// - 业务验证：函数返回true
+HWTEST_F(MediaAnalysisDataServiceTest, IsSupportedAnalysisAlbumOperationValue_ValidValues, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start IsSupportedAnalysisAlbumOperationValue_ValidValues");
+
+    const AnalysisAlbumAttributeSpec *spec = FindAnalysisAlbumAttributeSpec(ANALYSIS_ALBUM_ATTR_IS_REMOVED);
+    ASSERT_NE(spec, nullptr);
+
+    // 测试支持的值 "0"
+    bool result0 = IsSupportedAnalysisAlbumOperationValue(*spec, "0");
+    EXPECT_TRUE(result0);
+
+    // 测试支持的值 "1"
+    bool result1 = IsSupportedAnalysisAlbumOperationValue(*spec, "1");
+    EXPECT_TRUE(result1);
+
+    MEDIA_INFO_LOG("end IsSupportedAnalysisAlbumOperationValue_ValidValues");
+}
+
+// 用例说明：测试 IsSupportedAnalysisAlbumOperationValue 不支持的值
+// - 覆盖场景：IsSupportedAnalysisAlbumOperationValue 函数验证不支持的值
+// - 覆盖分支点：值不在支持列表中
+// - 触发条件：传入"2"或其他无效值
+// - 业务验证：函数返回false
+HWTEST_F(MediaAnalysisDataServiceTest, IsSupportedAnalysisAlbumOperationValue_InvalidValues, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start IsSupportedAnalysisAlbumOperationValue_InvalidValues");
+
+    const AnalysisAlbumAttributeSpec *spec = FindAnalysisAlbumAttributeSpec(ANALYSIS_ALBUM_ATTR_IS_REMOVED);
+    ASSERT_NE(spec, nullptr);
+
+    // 测试不支持的值 "2"
+    bool result2 = IsSupportedAnalysisAlbumOperationValue(*spec, "2");
+    EXPECT_FALSE(result2);
+
+    // 测试不支持的值 "invalid"
+    bool resultInvalid = IsSupportedAnalysisAlbumOperationValue(*spec, "invalid");
+    EXPECT_FALSE(resultInvalid);
+
+    MEDIA_INFO_LOG("end IsSupportedAnalysisAlbumOperationValue_InvalidValues");
+}
+
+// 用例说明：测试 IsSupportedAnalysisAlbumOperationValues 有效值列表
+// - 覆盖场景：IsSupportedAnalysisAlbumOperationValues 函数验证有效值列表
+// - 覆盖分支点：值数量符合要求且所有值都有效
+// - 触发条件：传入符合要求的有效值列表
+// - 业务验证：函数返回true
+HWTEST_F(MediaAnalysisDataServiceTest, IsSupportedAnalysisAlbumOperationValues_ValidList, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start IsSupportedAnalysisAlbumOperationValues_ValidList");
+
+    const AnalysisAlbumAttributeSpec *spec = FindAnalysisAlbumAttributeSpec(ANALYSIS_ALBUM_ATTR_IS_REMOVED);
+    ASSERT_NE(spec, nullptr);
+
+    // 测试有效值列表 ["0"]
+    std::vector<std::string> validList1 = {"0"};
+    bool result1 = IsSupportedAnalysisAlbumOperationValues(*spec, validList1);
+    EXPECT_TRUE(result1);
+
+    // 测试有效值列表 ["1"]
+    std::vector<std::string> validList2 = {"1"};
+    bool result2 = IsSupportedAnalysisAlbumOperationValues(*spec, validList2);
+    EXPECT_TRUE(result2);
+
+    MEDIA_INFO_LOG("end IsSupportedAnalysisAlbumOperationValues_ValidList");
+}
+
+// 用例说明：测试 IsSupportedAnalysisAlbumOperationValues 无效值列表
+// - 覆盖场景：IsSupportedAnalysisAlbumOperationValues 函数验证无效值列表
+// - 覆盖分支点：值数量不符合要求或包含无效值
+// - 触发条件：传入不符合要求的无效值列表
+// - 业务验证：函数返回false
+HWTEST_F(MediaAnalysisDataServiceTest, IsSupportedAnalysisAlbumOperationValues_InvalidList, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start IsSupportedAnalysisAlbumOperationValues_InvalidList");
+
+    const AnalysisAlbumAttributeSpec *spec = FindAnalysisAlbumAttributeSpec(ANALYSIS_ALBUM_ATTR_IS_REMOVED);
+    ASSERT_NE(spec, nullptr);
+
+    // 测试值数量超过限制 (maxValueCount=1)
+    std::vector<std::string> tooManyValues = {"0", "1"};
+    bool resultTooMany = IsSupportedAnalysisAlbumOperationValues(*spec, tooManyValues);
+    EXPECT_FALSE(resultTooMany);
+
+    // 测试包含无效值
+    std::vector<std::string> invalidValues = {"2"};
+    bool resultInvalid = IsSupportedAnalysisAlbumOperationValues(*spec, invalidValues);
+    EXPECT_FALSE(resultInvalid);
+
+    // 测试空列表
+    std::vector<std::string> emptyList = {};
+    bool resultEmpty = IsSupportedAnalysisAlbumOperationValues(*spec, emptyList);
+    EXPECT_FALSE(resultEmpty);
+
+    MEDIA_INFO_LOG("end IsSupportedAnalysisAlbumOperationValues_InvalidList");
+}
+
+// 用例说明：测试 CheckAnalysisAlbumOperationSupport 支持的操作
+// - 覆盖场景：CheckAnalysisAlbumOperationSupport 函数验证支持的操作
+// - 覆盖分支点：操作类型和值都支持
+// - 触发条件：传入有效的attr、type和values
+// - 业务验证：函数返回E_OK
+HWTEST_F(MediaAnalysisDataServiceTest, CheckAnalysisAlbumOperationSupport_ValidOperation, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start CheckAnalysisAlbumOperationSupport_ValidOperation");
+
+    std::vector<std::string> validValues = {"1"};
+    int32_t result = CheckAnalysisAlbumOperationSupport(ANALYSIS_ALBUM_ATTR_IS_REMOVED,
+        ANALYSIS_ALBUM_OP_UPDATE, validValues);
+    EXPECT_EQ(result, E_OK);
+
+    MEDIA_INFO_LOG("end CheckAnalysisAlbumOperationSupport_ValidOperation");
+}
+
+// 用例说明：测试 CheckAnalysisAlbumOperationSupport 不支持的操作类型
+// - 覆盖场景：CheckAnalysisAlbumOperationSupport 函数验证不支持的操作类型
+// - 覆盖分支点：操作类型不支持
+// - 触发条件：传入不支持的type
+// - 业务验证：函数返回E_OPERATION_NOT_SUPPORT
+HWTEST_F(MediaAnalysisDataServiceTest, CheckAnalysisAlbumOperationSupport_UnsupportedType, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start CheckAnalysisAlbumOperationSupport_UnsupportedType");
+
+    std::vector<std::string> values = {"1"};
+    int32_t result = CheckAnalysisAlbumOperationSupport(ANALYSIS_ALBUM_ATTR_IS_REMOVED,
+        ANALYSIS_ALBUM_OP_ADD, values); // IS_REMOVED只支持UPDATE
+    EXPECT_EQ(result, E_OPERATION_NOT_SUPPORT);
+
+    MEDIA_INFO_LOG("end CheckAnalysisAlbumOperationSupport_UnsupportedType");
+}
+
+// 用例说明：测试 CheckAnalysisAlbumOperationSupport 无效值
+// - 覆盖场景：CheckAnalysisAlbumOperationSupport 函数验证无效值
+// - 覆盖分支点：值不支持
+// - 触发条件：传入无效的values
+// - 业务验证：函数返回E_OPERATION_NOT_SUPPORT
+HWTEST_F(MediaAnalysisDataServiceTest, CheckAnalysisAlbumOperationSupport_InvalidValues, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start CheckAnalysisAlbumOperationSupport_InvalidValues");
+
+    std::vector<std::string> invalidValues = {"2"};
+    int32_t result = CheckAnalysisAlbumOperationSupport(ANALYSIS_ALBUM_ATTR_IS_REMOVED,
+        ANALYSIS_ALBUM_OP_UPDATE, invalidValues);
+    EXPECT_EQ(result, E_OPERATION_NOT_SUPPORT);
+
+    MEDIA_INFO_LOG("end CheckAnalysisAlbumOperationSupport_InvalidValues");
+}
+
+// 用例说明：测试 CheckAnalysisAlbumOperationSupport 未知属性
+// - 覆盖场景：CheckAnalysisAlbumOperationSupport 函数验证未知属性
+// - 覆盖分支点：spec为nullptr
+// - 触发条件：传入不存在的attr
+// - 业务验证：函数返回E_INVALID_VALUES
+HWTEST_F(MediaAnalysisDataServiceTest, CheckAnalysisAlbumOperationSupport_UnknownAttr, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("start CheckAnalysisAlbumOperationSupport_UnknownAttr");
+
+    std::vector<std::string> values = {"1"};
+    int32_t result = CheckAnalysisAlbumOperationSupport("unknown_attr",
+        ANALYSIS_ALBUM_OP_UPDATE, values);
+    EXPECT_EQ(result, E_INVALID_VALUES);
+
+    MEDIA_INFO_LOG("end CheckAnalysisAlbumOperationSupport_UnknownAttr");
 }
 
 // 用例说明：测试 GetFaceId 无效 albumId

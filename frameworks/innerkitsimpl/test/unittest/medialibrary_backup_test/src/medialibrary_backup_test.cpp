@@ -44,6 +44,7 @@
 #undef private
 #undef protected
 #include "mimetype_utils.h"
+#include "restore_map_code_utils.h"
 
 using namespace std;
 using namespace OHOS;

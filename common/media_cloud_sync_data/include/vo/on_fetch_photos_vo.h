@@ -24,6 +24,7 @@
 #include "photos_vo.h"
 #include "media_itypes_utils.h"
 #include "cloud_media_define.h"
+#include "sca_detail_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT OnFetchPhotosVo : public IPC::IMediaParcelable {
@@ -35,6 +36,7 @@ public:
     std::string firstVisitTime;  // MDKRecord first_update_time
     std::string detailTime;
     std::string frontCamera;
+    std::string xtStyleTemplateName;
     std::string editDataCamera;
     std::string title;
     std::string relativePath;
@@ -66,6 +68,10 @@ public:
     int32_t videoMode;
     int32_t movingPhotoEffectMode;
     int32_t supportedWatermarkType;
+    int32_t musicMasterMode;
+    int32_t isStylePhoto;
+    int32_t supportedDeferredEffects;
+    int32_t deferredEffectStatus;
     int32_t strongAssociation;
     int64_t fixVersion;
     int64_t version;
@@ -95,6 +101,14 @@ public:
     // Safe Album: risk status for children's watch
     int32_t photoRiskStatus{0};
     int32_t isCritical{0};
+    int32_t compressionQuality{-1};
+    int32_t isShared{0};
+    std::string shareOwnerInfo;
+    int64_t shareDateDay{0};
+    int64_t shareGroup{0};
+    std::string shareAlbumOwner;
+    SharePhotoDetailVo sharePhotoDetail;
+    int32_t editDataExist;
 
 public:  // functions of Parcelable.
     virtual ~OnFetchPhotosVo() = default;
@@ -112,6 +126,8 @@ private:
     void GetBasicInfo(std::stringstream &ss) const;
     void GetAttributesInfo(std::stringstream &ss) const;
     void GetAttributesHashMap(std::stringstream &ss) const;
+    bool WriteShareAlbumInfo(Parcel &parcel) const;
+    bool ReadShareAlbumInfo(Parcel &parcel);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_ON_FETCH_PHOTOS_VO_H

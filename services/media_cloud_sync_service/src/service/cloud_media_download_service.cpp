@@ -53,7 +53,6 @@
 #include "lcd_aging_dao.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_manager.h"
-#include "media_file_utils.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
@@ -76,6 +75,16 @@ int32_t CloudMediaDownloadService::GetDownloadThms(
 {
     std::vector<PhotosPo> photosPos;
     int32_t ret = this->dao_.GetDownloadThms(queryDto, photosPos);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetDownloadThms failed, ret:%{public}d", ret);
+    photosDtos = this->processor_.GetPhotosDto(photosPos);
+    return ret;
+}
+
+int32_t CloudMediaDownloadService::GetDownloadThmsShare(
+    const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosDto> &photosDtos)
+{
+    std::vector<PhotosPo> photosPos;
+    int32_t ret = this->dao_.GetDownloadThmsShare(queryDto, photosPos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetDownloadThms failed, ret:%{public}d", ret);
     photosDtos = this->processor_.GetPhotosDto(photosPos);
     return ret;
@@ -111,6 +120,7 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadThmsByUri(
         photosDto.modifiedTime = downloadAssetData.editTime;
         photosDto.fileName = fileName;
         photosDto.originalCloudId = downloadAssetData.originalCloudId;
+        photosDto.shareAlbumOwner = downloadAssetData.shareAlbumOwner;
         int32_t retThm = E_OK;
         int32_t retLcd = E_OK;
         if (static_cast<uint32_t>(type) & TYPE_THM_MASK) {
@@ -140,6 +150,8 @@ int32_t CloudMediaDownloadService::OnDownloadThm(
     if (ret == E_OK && !thmVector.empty()) {
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_THUMB_SUCCESS, thmVector.size());
     }
+    int32_t out = this->dao_.UpdateLcdFileSize(thmVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSize, out: %{public}d", out);
     for (auto &thm : thmVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -159,6 +171,8 @@ int32_t CloudMediaDownloadService::OnDownloadLcd(
     if (ret == E_OK && !lcdVector.empty()) {
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_LCD_SUCCESS, lcdVector.size());
     }
+    int32_t out = this->dao_.UpdateLcdFileSizeAndLcdSize(lcdVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSizeAndLcdSize, out: %{public}d", out);
     for (auto &thm : lcdVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -179,6 +193,8 @@ int32_t CloudMediaDownloadService::OnDownloadThmAndLcd(
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_THUMB_SUCCESS, bothVector.size());
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_LCD_SUCCESS, bothVector.size());
     }
+    int32_t out = this->dao_.UpdateLcdFileSizeAndLcdSize(bothVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSizeAndLcdSize, out: %{public}d", out);
     for (auto &thm : bothVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -283,6 +299,7 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadAsset(const std::ve
         photosDto.dateTrashed = downloadAssetData.dateTrashed;
         photosDto.fileSourceType = downloadAssetData.fileSourceType;
         photosDto.storagePath = downloadAssetData.storagePath;
+        photosDto.shareAlbumOwner = downloadAssetData.shareAlbumOwner;
 
         CHECK_AND_RETURN_RET_LOG(
             CloudMediaAttachmentUtils::GetAttachment("content", downloadAssetData, photosDto) == E_OK,
@@ -860,6 +877,7 @@ void CloudMediaDownloadService::HandleDownloadThms(const std::unordered_map<std:
         PhotoColumn::PHOTO_CLOUD_ID };
     std::vector<PhotosPo> photoInfoList;
     int32_t ret = this->commonDao_.QueryLocalByCloudId(cloudIds, queryColums, photoInfoList);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "QueryLocalByCloudId failed, ret: %{public}d", ret);
     std::vector<DownloadThumbInfo> downloadThumbInfos;
     std::vector<std::string> fileIds;
     for (const auto &photoInfo : photoInfoList) {

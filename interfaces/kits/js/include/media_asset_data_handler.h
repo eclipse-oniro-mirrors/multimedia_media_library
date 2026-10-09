@@ -64,11 +64,16 @@ class NapiMediaAssetDataHandler {
 public:
     NapiMediaAssetDataHandler(napi_env env, napi_ref dataHandler, ReturnDataType dataType, const std::string &uri,
         const std::string &destUri, SourceMode sourceMode);
+    ~NapiMediaAssetDataHandler();
     void DeleteNapiReference(napi_env env);
     ReturnDataType GetReturnDataType();
     std::string GetRequestUri();
     std::string GetDestUri();
     SourceMode GetSourceMode();
+    bool IsCompositeAuxiliary();
+    void SetCompositeAuxiliary(bool isCompositeAuxiliary);
+    int GetCompositeFd();
+    void SetCompositeFd(int compositeFd);
     void SetNotifyMode(NotifyMode trigger);
     NotifyMode GetNotifyMode();
     void JsOnDataPrepared(napi_env env, napi_value exports, napi_value extraInfo);
@@ -90,7 +95,6 @@ public:
     {
         threadsafeFunction_ = threadsafeFunction;
     }
-
 private:
     napi_env env_ = nullptr;
     napi_ref dataHandlerRef_ = nullptr;
@@ -105,6 +109,8 @@ private:
     std::string requestId_;
     static std::mutex dataHandlerRefMutex_;
     bool cinematicResult_ = false; // for Cinematic Video
+    bool isCompositeAuxiliary_ = false;
+    int compositeFd_ = -1;
 };
 } // Media
 } // OHOS

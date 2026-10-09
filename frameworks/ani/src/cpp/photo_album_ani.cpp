@@ -766,6 +766,8 @@ static ani_status ParseArgsAddAssets(ani_env *env, ani_object object, ani_object
         AniError::ThrowError(env, JS_INNER_FAIL);
         return ANI_INVALID_ARGS;
     }
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(assetsArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     context->assetsArray = assetsArray;
     int32_t albumId = photoAlbum->GetAlbumId();
     for (const auto &assetId : assetsArray) {
@@ -937,6 +939,10 @@ static ani_status ParseArgsRemoveAssets(ani_env *env, ani_object object, ani_obj
         AniError::ThrowError(env, JS_INNER_FAIL);
         return ANI_INVALID_ARGS;
     }
+    vector<string> fileIdArray;
+    MediaLibraryAniUtils::ExtractFileIdsFromUris(assetsArray, fileIdArray);
+    CHECK_COND_WITH_RET_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset(fileIdArray), ANI_INVALID_ARGS,
+        "This operation is not supported for assets in shared albums");
     context->assetsArray = assetsArray;
     context->predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
     auto andPredicates = context->predicates.And();
@@ -1238,6 +1244,10 @@ static ani_status ParseArgsSetCoverUri(ani_env *env, ani_object object, ani_stri
     auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
     if (photoAlbum == nullptr) {
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return ANI_INVALID_ARGS;
+    }
+    if (PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "This operation is not supported for this album type");
         return ANI_INVALID_ARGS;
     }
     context->businessCode = static_cast<int32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI);
@@ -1672,8 +1682,9 @@ ani_object PhotoAlbumAni::GetAttribute(ani_env *env, ani_object object, ani_obje
     CHECK_ARGS_WITH_RET_MSG(env, !HasDuplicate(attributeArray), JS_E_PARAM_INVALID,
         nullptr, "Duplicate attributes found");
     for (const auto& attribute : attributeArray) {
-        CHECK_ARGS_WITH_RET_MSG(env, attribute == ANALYSIS_ALBUM_ATTR_EXTRA_INFO, JS_E_PARAM_INVALID, nullptr,
-            "Invalid attribute: " + attribute);
+        CHECK_ARGS_WITH_RET_MSG(env,
+            attribute == ANALYSIS_ALBUM_ATTR_EXTRA_INFO || attribute == ANALYSIS_ALBUM_ATTR_FRIEND_ID,
+            JS_E_PARAM_INVALID, nullptr, "Invalid attribute: " + attribute);
     }
     asyncContext->attributeArray = std::move(attributeArray);
 

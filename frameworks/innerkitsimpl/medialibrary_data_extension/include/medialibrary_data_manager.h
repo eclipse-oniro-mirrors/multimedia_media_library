@@ -114,6 +114,8 @@ public:
 
     EXPORT std::shared_ptr<MediaLibraryRdbStore> rdbStore_;
 
+    void CloseRdbStore(bool async, int32_t timeOut);
+    void OpenRdbStore(bool async);
     EXPORT int32_t InitMediaLibraryMgr(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context,
         const std::shared_ptr<OHOS::AbilityRuntime::Context> &extensionContext,
         int32_t &sceneCode, bool isNeedCreateDir = true, bool isInMediaLibraryOnStart = false);
@@ -146,6 +148,9 @@ public:
     EXPORT static int32_t GetAssetCompressVersion();
     EXPORT int32_t UpdateTabPhotosExt(MediaLibraryCommand &cmd, NativeRdb::ValuesBucket &value,
                 const DataShare::DataSharePredicates &predicates);
+    EXPORT int32_t InitReverseMediaLibraryRdbStore();
+    EXPORT void InitDatabaseACLPermission();
+    EXPORT void HandleSpecialOpen(Uri &uri);
 
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
     using GetInstanceNewFunc = WatchSystemService::CloudAuditImpl *(*)(void);
@@ -153,8 +158,9 @@ public:
     GetInstanceNewFunc func_;
     void* handler_;
     EXPORT WatchSystemService::CloudAuditImpl* GetCloudAuditInstance();
+
 private:
- 	WatchSystemService::CloudAuditImpl* cloudAuditInstance_;
+    WatchSystemService::CloudAuditImpl* cloudAuditInstance_;
 #endif
 
 private:
@@ -175,7 +181,6 @@ private:
     std::shared_ptr<NativeRdb::ResultSet> QuerySet(MediaLibraryCommand &cmd, const std::vector<std::string> &columns,
         const DataShare::DataSharePredicates &predicates, int &errCode);
     void InitACLPermission();
-    void InitDatabaseACLPermission();
     std::shared_ptr<NativeRdb::ResultSet> QueryInternal(MediaLibraryCommand &cmd,
         const std::vector<std::string> &columns, const DataShare::DataSharePredicates &predicates);
     EXPORT std::shared_ptr<ThumbnailService> thumbnailService_;

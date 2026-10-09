@@ -36,10 +36,11 @@
 
 namespace OHOS {
 namespace Media {
+class BackgroundGenerateManager;
 #define EXPORT __attribute__ ((visibility ("default")))
 class ThumbnailService {
 public:
-    EXPORT virtual ~ThumbnailService() = default;
+    EXPORT virtual ~ThumbnailService();
     EXPORT static std::shared_ptr<ThumbnailService> GetInstance();
     EXPORT void ReleaseService();
 
@@ -74,7 +75,6 @@ public:
     int32_t QueryNewThumbnailCount(const int64_t &time, int &count);
     void DeleteAstcWithFileIdAndDateTaken(const std::string &fileId, const std::string &dateTaken);
     EXPORT int32_t CreateAstcCloudDownload(const std::string &id, bool isCloudInsertTaskPriorityHigh = false);
-    EXPORT int32_t LocalThumbnailGeneration();
     EXPORT int32_t CreateAstcBatchOnDemand(NativeRdb::RdbPredicates &rdbPredicate, int32_t requestId, pid_t pid = 0);
     EXPORT void CancelAstcBatchTask(int32_t requestId, pid_t pid = 0);
     EXPORT bool CreateAstcMthAndYear(const std::string &id);
@@ -113,6 +113,7 @@ private:
     static std::mutex instanceLock_;
     std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr_;
     std::shared_ptr<OHOS::AbilityRuntime::Context> context_;
+    std::unique_ptr<BackgroundGenerateManager> bgGenerateManager_;
     std::shared_ptr<NativeRdb::RdbPredicates> rdbPredicatePtr_;
     Size screenSize_;
     int32_t currentRequestId_ = 0;

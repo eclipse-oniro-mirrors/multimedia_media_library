@@ -31,8 +31,6 @@
 using namespace std;
 namespace OHOS::Media {
 const int32_t PAGE_SIZE = 200;
-const std::string SELECTION_TABLE = "tab_analysis_selection";
-const std::string ATOM_EVENT_TABLE = "tab_analysis_atom_event";
 
 // 超时控制配置
 const int64_t THRESHOLD_DATA_SIZE = 30000;   // 3万条数据阈值
@@ -41,6 +39,8 @@ const int64_t DEFAULT_FAULT_TIME = 0;
 const int64_t BASIC_NUMBER = 10000;                      // 1万条
 const int64_t SUPPORT_NUMBER = 9999;                     // 余量
 const int64_t SINGLE_OVER_THRESHOLD_DATA_TIME = 216000;  // 216秒 (每1万条数据)
+const std::string SELECTION_TABLE = "tab_analysis_selection";
+const std::string ATOM_EVENT_TABLE = "tab_analysis_atom_event";
 
 void CloneRestoreSelection::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
@@ -55,12 +55,9 @@ void CloneRestoreSelection::Init(int32_t sceneCode, const std::string &taskId,
     this->isCloudRestoreSatisfied_ = isCloudRestoreSatisfied;
 }
 
-void CloneRestoreSelection::Preprocess()
+bool CloneRestoreSelection::RefreshTotalNumber()
 {
-    MEDIA_INFO_LOG("Preprocess");
-    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
-
-    CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdbStore is nullptr.");
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, true, "rdbStore is nullptr.");
     std::string querySql = "SELECT count(1) AS count FROM " + SELECTION_TABLE;
     std::string whereClause;
     AppendExtraWhereClause(whereClause);
@@ -73,10 +70,20 @@ void CloneRestoreSelection::Preprocess()
 
     totalAtomEventNumber_ = BackupDatabaseUtils::QueryInt(mediaRdb_, queryEventSql, "count");
     MEDIA_INFO_LOG("QueryAtomEvent totalNumber = %{public}d", totalAtomEventNumber_);
+    return totalSelectionNumber_ <= 0 && totalAtomEventNumber_ <= 0;
+}
+
+bool CloneRestoreSelection::Preprocess()
+{
+    MEDIA_INFO_LOG("Preprocess");
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    RefreshTotalNumber();
     CHECK_AND_EXECUTE(!(totalSelectionNumber_ > 0 || totalAtomEventNumber_ > 0), DeleteExistingSelectionInfos());
 
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     migrateSelectionTotalTimeCost_ += end - start;
+    return totalSelectionNumber_ <= 0 && totalAtomEventNumber_ <= 0;
 }
 
 void CloneRestoreSelection::DeleteExistingSelectionInfos()
@@ -133,9 +140,23 @@ void CloneRestoreSelection::DeleteExistingAtomEventTable()
 
     std::string deleteSql = "DELETE FROM " + ATOM_EVENT_TABLE;
     BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, deleteSql);
+    // 当旧机没有精选数据，不会走到当前函数，无操作；旧机有数据，进入到当前函数并在此处将scene置位
+    SetSceneBitForClone();
 
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("DeleteExistingAtomEventTable cost %{public}lld", (long long)(end - start));
+}
+
+void CloneRestoreSelection::SetSceneBitForClone()
+{
+    MEDIA_INFO_LOG("SetSceneBitForClone start");
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "SetSceneBitForClone failed, rdbStore is nullptr");
+    const int32_t SCENE_CLONE_BIT_VALUE = 1 << SCENE_BIT_POSITION_CLONE;
+    std::string updateSql = "UPDATE tab_analysis_total SET " + TOTAL_COL_SCENE + " = " +
+        std::to_string(SCENE_CLONE_BIT_VALUE);
+    int32_t errCode = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateSql);
+    CHECK_AND_PRINT_LOG(errCode >= 0, "SetSceneBitForClone update failed, ret=%{public}d", errCode);
+    MEDIA_INFO_LOG("SetSceneBitForClone end");
 }
 
 void CloneRestoreSelection::AppendExtraWhereClause(std::string &whereClause)

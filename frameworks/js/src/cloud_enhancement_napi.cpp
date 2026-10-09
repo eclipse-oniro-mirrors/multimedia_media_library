@@ -22,6 +22,9 @@
 #include "medialibrary_tracer.h"
 #include "userfile_client.h"
 #include "result_set_utils.h"
+#include "userfilemgr_uri.h"
+#include "media_column.h"
+#include "media_string_utils.h"
 #include "cloud_enhancement_task_state_napi.h"
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 #include "media_enhance_constants_c_api.h"
@@ -456,7 +459,7 @@ static napi_value ParseArgsSubmitCloudEnhancementTasks(napi_env env, napi_callba
 
     CHECK_COND_WITH_MESSAGE(env, !uris.empty(), "Failed to check empty array");
     for (const auto& uri : uris) {
-        CHECK_COND_WITH_MSG(env, uri.find(PhotoColumn::PHOTO_URI_PREFIX) != string::npos, JS_E_URI,
+        CHECK_COND_WITH_MSG(env, MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX), JS_E_URI,
             "cloud enhancement task uri mush start with " + PhotoColumn::PHOTO_URI_PREFIX);
     }
     
@@ -594,6 +597,9 @@ napi_value CloudEnhancementNapi::JSPrioritizeCloudEnhancementTask(napi_env env, 
     auto asyncContext = make_unique<CloudEnhancementAsyncContext>();
     CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgPrioritize(env, info, asyncContext) == napi_ok, "Failed to parse args");
+    std::vector<std::string> fileIds = { std::to_string(asyncContext->fileId) };
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSPrioritizeCloudEnhancementTask",
         PrioritizeCloudEnhancementTaskExecute, PrioritizeCloudEnhancementTaskCompleteCallback);
 }
@@ -890,7 +896,9 @@ napi_value CloudEnhancementNapi::JSQueryCloudEnhancementTaskState(napi_env env, 
     auto asyncContext = make_unique<CloudEnhancementAsyncContext>();
     CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(env, info, asyncContext) == napi_ok, "Failed to parse args");
-    
+    std::vector<std::string> fileIds = { std::to_string(asyncContext->fileId) };
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "QueryCloudEnhancementTaskState",
         QueryCloudEnhancementTaskStateExecute, QueryCloudEnhancementTaskStateCompleteCallback);
 }
@@ -1059,6 +1067,9 @@ napi_value CloudEnhancementNapi::JSGetCloudEnhancementPair(napi_env env, napi_ca
 
     CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
     CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(env, info, asyncContext) == napi_ok, "Failed to parse args");
+    std::vector<std::string> fileIds = { std::to_string(asyncContext->fileId) };
+    CHECK_COND_WITH_MESSAGE(env, !MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds),
+        "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "GetCloudEnhancementPair",
         GetCloudEnhancementPairExecute, GetCloudEnhancementPairCompleteCallback);
 }

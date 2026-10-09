@@ -31,6 +31,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_kvstore_manager.h"
 #include "backup_database_utils.h"
+#include "field_config/clone_field_writer.h"
 #include "photo_album_clone.h"
 #include "photos_clone.h"
 #include "clone_restore_highlight.h"
@@ -79,6 +80,12 @@ struct CloneRestoreConfigInfo {
 
 struct DstDeviceBackupInfo {
     bool hdcEnabled = false;
+    bool shareEnabled = false;
+};
+
+struct TempDbBackupOptions {
+    bool needInvalidateHdcData = false;
+    bool needInvalidateShareData = false;
 };
 
 class CloneRestore : public BaseRestore {
@@ -100,14 +107,16 @@ public:
 protected:
     void MoveMigrateCloudFile(std::vector<FileInfo> &fileInfos, int32_t &fileMoveCount, int32_t &videoFileMoveCount,
         int32_t sceneCode) override;
+    void MergeCloudDuplicateThumbnail(FileInfo &fileInfo);
     void GetCloudPhotoFileExistFlag(const FileInfo &fileInfo, CloudPhotoFileExistFlag &resultExistFlag);
     void CloudPhotoFilesVerify(const std::vector<FileInfo> &fileInfos, std::vector<FileInfo> &LCDNotFound,
         std::vector<FileInfo> &THMNotFound, unordered_map<string, CloudPhotoFileExistFlag> &resultExistMap);
     bool HasExThumbnail(const FileInfo &info) override;
     void BackupRelease() override;
     bool IsCloudRestoreSatisfied() override;
+    int32_t PreprocessBeforeClone(const string &backupRestoreDir, const string &upgradePath);
 
-private:
+protected:
     void RestorePhoto(void) override;
     void RestorePhotoForCloud(void);
     void HandleRestData(void) override;
@@ -115,6 +124,8 @@ private:
     std::vector<FileInfo> QueryCloudFileInfos(int32_t offset, int32_t isRelatedToPhotoMap = 0);
     bool ParseResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info,
         std::string dbName = "") override;
+    bool ParseReverseResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info,
+        std::string dbName = "");
     bool ParseResultSetForAudio(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info) override;
     void AnalyzeSource() override;
     void RestoreAlbum(void);
@@ -147,6 +158,7 @@ private:
     void GetQueryWhereClause(const std::string &tableName,
         const std::unordered_map<std::string, std::string> &columnInfoMap);
     void BatchQueryPhoto(std::vector<FileInfo> &fileInfos);
+    void PreQueryLcdUsingStatus(std::vector<FileInfo> &fileInfos);
     void UpdateAlbumOrderColumns(AlbumInfo &albumInfo, const string &tableName);
     void UpdateSystemAlbumColumns(const string &tableName);
     void PopulateSystemAlbumIdMap();
@@ -172,7 +184,7 @@ private:
     void RestoreMusic();
     std::vector<FileInfo> QueryFileInfos(const std::string &tableName, int32_t offset);
     bool ParseResultSet(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
-        FileInfo &fileInfo);
+        FileInfo &fileInfo, bool isReverse = false);
     void InsertAudio(std::vector<FileInfo> &fileInfos);
     int32_t QueryTotalNumberByMediaType(std::shared_ptr<NativeRdb::RdbStore> rdbStore, const std::string &tableName,
         MediaType mediaType);
@@ -195,8 +207,11 @@ private:
     void SetSpecialAttributes(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         FileInfo &fileInfo);
     bool IsSameFileForClone(const std::string &tableName, FileInfo &fileInfo);
+    void HandleLakeDuplicateMigration(FileInfo &fileInfo, const PhotosDao::PhotosRowData &rowData);
+    void FillLakeMergedValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    std::string ResolveLocalPath(FileInfo &fileInfo);
     int32_t MovePicture(FileInfo &fileInfo);
-    int32_t MoveMovingPhotoVideo(FileInfo &fileInfo);
+    int32_t MoveMovingPhotoVideo(FileInfo &fileInfo, bool isFromMergeDuplicate = false);
     int32_t MoveEditedData(FileInfo &fileInfo);
     int32_t MoveThumbnail(FileInfo &fileInfo);
     int32_t MoveThumbnailDir(FileInfo &fileInfo);
@@ -205,7 +220,7 @@ private:
     int32_t MergeDuplicateAsset(FileInfo &fileInfo);
     int32_t MergeDuplicateThumbnail(FileInfo &fileInfo);
     void RemoveMergedDentryForSamePhoto(const FileInfo &fileInfo);
-    void UpdateMergedThumbnailStatusForSamePhotos(vector<FileInfo> &fileInfos);
+    void UpdateMergedStatusForSamePhotos(vector<FileInfo> &fileInfos, bool updatePosition);
     void InitThumbnailStatus();
     bool InitAllKvStore();
     void CloseAllKvStore();
@@ -215,7 +230,7 @@ private:
     void SetRestoreFailedAndErrorCount(uint64_t &failed, uint64_t &error) override;
     int32_t GetNoNeedMigrateCount() override;
     void GetAccountValid() override;
-    int32_t GetHighlightCloudMediaCnt();
+    int32_t GetHighlightCloudMediaCnt(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
     void RestoreHighlightAlbums();
     void AddToPhotosFailedOffsets(int32_t offset);
     void ProcessPhotosBatchFailedOffsets(int32_t isRelatedToPhotoMap = 0);
@@ -227,11 +242,13 @@ private:
     void RestorePortraitNickNameData();
     void RestoreAnalysisClassify();
     void RestoreAnalysisPortrait();
-    void RestoreAnalysisPet();
     void RestoreAnalysisGeo();
-    void RestoreGroupPhoto();
-    void PopulateAnalysisAlbumIdMap();
+    void PopulateAnalysisAlbumIdMap(const std::vector<int32_t>& subtypes);
+    std::string BuildSourceQuerySql(const std::vector<int32_t>& subtypes) const;
+    std::optional<int32_t> FindMatchingAlbum(int32_t albumType, int32_t albumSubtype,
+        const std::string& albumName, const std::string& tagId) const;
     void StoreHighlightAlbumMappings(CloneRestoreHighlight& cloneRestoreHighlight);
+    void RestoreGroupPhoto();
     void RestoreBeautyScoreData();
     void RestoreVideoFaceData();
     void PrepareShootingModeVal(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
@@ -239,16 +256,18 @@ private:
     void GetInsertValueFromValMap(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     void SetAggregateBitThird();
     bool ShouldRestoreFromCloud();
-    void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
-    void UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &fileInfos);
-    void PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos);
+    void UpdatePreStatusForSamePhotos(vector<FileInfo> &fileInfos);
+    void SetAttachmentSizeForCloudDuplicate(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
     int64_t CorrectTimestamp(int64_t originalTime);
     void UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos);
     void RestoreAnalysisSelection();
+    void UpdatePhotoMapAssetDateTaken();
     void RestoreAnalysisDupSim();
     void UpdateTotalScore();
+    void RestoreTabCoverRecord();
+    void RestoreGalleryExecyte();
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
@@ -259,7 +278,11 @@ private:
         const std::optional<T>& optionalValue, const U& defaultValue);
     bool NeedSkipMergedThumbnailUpdate(const FileInfo &fileInfo);
     void ResolveMergedThumbExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
-    bool FillMergedLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedThumbnailValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedPhotoValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillRiskStatusValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillUniqueIdValues(FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     std::string GetThumbnailLocalPath(const string path);
     void BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         unordered_map<string, CloudPhotoFileExistFlag> &resultExistMap);
@@ -280,10 +303,16 @@ private:
     bool UpdateConfigInfo();
     void CheckSrcDstSwitchStatusMatch();
     bool BackupPreprocess();
+    bool CreateTempDbBackup(const TempDbBackupOptions &options);
+    bool PrepareTempDbBackupForRestore(const TempDbBackupOptions &options);
+    static bool IsEnoughFreeSpaceForBackup(int64_t freeSize, int64_t sourceDbSize, int64_t sourceWalSize);
+    bool CleanupTempBackupDir();
+    bool ReportBackupDbPerf(int64_t backupDbSize, int64_t elapsedMs, bool success);
     void ParseDstDeviceBackupInfo();
     void ParseSrcDevFileListCloneConfig();
     void ParseDstDevFileTransferConfig();
     bool InvalidateHdcCloudData(std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
+    bool MarkShareAssetsInvalid(std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     CloneRestoreConfigInfo GetCurrentDeviceCloneConfigInfo();
     CloneRestoreConfigInfo GetCloneConfigInfoFromOriginDB();
     bool CheckSouthDeviceTypeMatchSwitchStatus(SwitchStatus switchStatus);
@@ -291,18 +320,18 @@ private:
     void UpdateDuplicateNumber(const FileInfo &fileInfo);
     void QueryAndSetLakeFileFailCount();
     void ReportRestoreTaskofLakeFiles();
-    void QueryAndSetFileManagerFileFailCount();
-    void ReportRestoreTaskofFileManagerFiles();
     bool CheckAlbumNameUnique(std::string albumName, const std::vector<string> &repetedAlbumName);
     void UpdateSourceAlbumName(bool &isUinque, vector<AlbumInfo> &albumInfos, vector<string> &repetedAlbumName,
         size_t index);
-    void CreateCloneFileInfoDb();
+    void RestoreAiRetouchData(void);
     void CloneActiveLcdAgingFromOldDevice();
+    void CreateCloneFileInfoDb();
 
-private:
+protected:
     std::atomic<uint64_t> migrateDatabaseAlbumNumber_{0};
     std::atomic<uint64_t> migrateDatabaseMapNumber_{0};
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
+    std::unique_ptr<NativeRdb::RdbStoreConfig> mediaRdbConfig_;
     std::string filePath_;
     std::string dbPath_;
     std::string tmpDbPath_;
@@ -332,6 +361,7 @@ private:
     CloneRestoreAnalysisData cloneRestoreAnalysisData_;
     int64_t maxSearchId_ {0};
     int64_t maxBeautyFileId_ {0};
+    int64_t maxTotalFileId_ {0};
     std::unordered_map<int32_t, PhotoInfo> photoInfoMap_;
     std::unordered_set<std::string> existNewAddColumnSet_;
     bool isSrcDstSwitchStatusMatch_ {false};
@@ -342,6 +372,8 @@ private:
     DstDevFileTransferConfig dstDevFileTransferConfig_;
     RestorePhotosAlbumHidden restorePhotosAlbumHidden_;
     std::unordered_map<int32_t, uint32_t> scoreMaskMap_;
+    int32_t preprocessErrorCode_ {E_OK};
+    int32_t oldDbVersion_ {0}; // 旧机数据库的版本号
 
 private:
     const std::string SQL_QUERY_CLASSIFY_ALBUM_EXIST = " \
@@ -358,30 +390,14 @@ template<typename T>
 void CloneRestore::PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue)
 {
-    if (optionalValue.has_value()) {
-        if constexpr (std::is_same_v<std::decay_t<T>, int32_t>) {
-            values.PutInt(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, int64_t>) {
-            values.PutLong(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-            values.PutString(columnName, optionalValue.value());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, double>) {
-            values.PutDouble(columnName, optionalValue.value());
-        }  else if constexpr (std::is_same_v<std::decay_t<T>, std::vector<uint8_t>>) {
-            values.PutBlob(columnName, optionalValue.value());
-        }
-    }
+    CloneFieldWriter::PutIfPresent<T>(values, columnName, optionalValue);
 }
 
 template<typename T, typename U>
 void CloneRestore::PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
     const std::optional<T>& optionalValue, const U& defaultValue)
 {
-    if (optionalValue.has_value()) {
-        PutIfPresent(values, columnName, optionalValue);
-    } else {
-        PutIfPresent(values, columnName, std::optional<T>(static_cast<T>(defaultValue)));
-    }
+    CloneFieldWriter::PutWithDefault<T, U>(values, columnName, optionalValue, defaultValue);
 }
 } // namespace Media
 } // namespace OHOS

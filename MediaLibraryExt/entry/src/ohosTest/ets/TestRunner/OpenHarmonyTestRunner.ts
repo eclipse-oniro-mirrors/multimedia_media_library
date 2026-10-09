@@ -23,7 +23,7 @@ function translateParamsToString(parameters): string {
   const keySet = new Set([
     '-s class', '-s notClass', '-s suite', '-s it',
     '-s level', '-s testType', '-s size', '-s timeout'
-  ])
+  ]);
   let targetParams = '';
   for (const key in parameters) {
     if (keySet.has(key)) {

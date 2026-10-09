@@ -16,6 +16,9 @@
 
 #include "media_datashare_ext_ability.h"
 
+#include <sys/resource.h>
+#include <sys/ioctl.h>
+
 #include "app_mgr_client.h"
 #include "cloud_media_asset_manager.h"
 #include "cloud_sync_utils.h"
@@ -69,6 +72,8 @@
 #include "media_audio_column.h"
 #include "qos.h"
 #include "concurrent_task_client.h"
+#include "media_string_utils.h"
+#include "media_share_assets_service.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -83,6 +88,8 @@ namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
 using DataObsMgrClient = OHOS::AAFwk::DataObsMgrClient;
+#define HMDFS_IOC_SET_KEEP_CACHE _IOW(0xF2, 0x82, int32_t)
+
 const std::string PERM_CLOUD_SYNC_MANAGER = "ohos.permission.CLOUDFILE_SYNC_MANAGER";
 constexpr const char *MTP_DISABLE = "persist.edm.mtp_server_disable";
 static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
@@ -137,8 +144,14 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
     OperationObject::VISION_WATERMARK,
     OperationObject::TAB_PHOTOS_EXT_OPERATE,
     OperationObject::VISION_CAPTION,
+    OperationObject::TAB_COVER_RECORD,
 };
 constexpr int64_t MAX_EXECUTE_TIME = 200;
+
+static const std::string MEDIA_BACKUP_LIB = "libmediabackup.z.so";
+static const std::string CHECK_AND_START_RESUME_FUNC_NAME = "CheckAndStartResume";
+static const std::string HIGHLIGHT_VIDEO_URI_PREFIX = "file://media/highlight/video/";
+static const std::string HIGHLIGHT_COVER_URI_PREFIX = "file://media/highlight/cover";
 
 MediaDataShareExtAbility* MediaDataShareExtAbility::Create(const unique_ptr<Runtime>& runtime)
 {
@@ -205,6 +218,46 @@ void MediaDataShareExtAbility::OnStartSub(const AAFwk::Want &want)
     EnhancementManager::GetInstance().InitAsync();
 #endif
     CloneStatusListener::GetInstance()->RegisterCloneStatusChangeListener();
+}
+
+bool MediaDataShareExtAbility::InvokeReverseCloneRestoreResume()
+{
+    const std::string markerXml = "/data/storage/el2/base/preferences/reverse_restore_marker.xml";
+    int errCode = 0;
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(markerXml, errCode);
+    if (preferences == nullptr || errCode != 0) {
+        MEDIA_INFO_LOG("Reverse clone restore marker file does not exist, skip resume");
+        return true;
+    }
+    const std::string KEY_STAGE = "stage";
+    int stage = preferences->GetInt(KEY_STAGE, -1);
+    if (stage == -1) {
+        MEDIA_INFO_LOG("Reverse clone restore marker stage does not exist, skip resume");
+        return true;
+    }
+    std::thread([&] {
+        MEDIA_INFO_LOG("enter InvokeReverseCloneRestoreResume async.");
+        void* handle = dlopen(MEDIA_BACKUP_LIB.c_str(), RTLD_NOW | RTLD_NODELETE);
+        if (!handle) {
+            MEDIA_ERR_LOG("Failed to open %{public}s", MEDIA_BACKUP_LIB.c_str());
+            return;
+        }
+
+        using CheckAndStartResumeFuncType = void (*)();
+        auto checkAndStartResumeFunc = reinterpret_cast<CheckAndStartResumeFuncType>(
+            dlsym(handle, CHECK_AND_START_RESUME_FUNC_NAME.c_str()));
+        if (!checkAndStartResumeFunc) {
+            MEDIA_ERR_LOG("Failed to find %{public}s, %{public}s", CHECK_AND_START_RESUME_FUNC_NAME.c_str(), dlerror());
+            dlclose(handle);
+            return;
+        }
+
+        MEDIA_INFO_LOG("Calling ReverseCloneRestoreResume::CheckAndStartResume via dlopen");
+        checkAndStartResumeFunc();
+        dlclose(handle);
+    }).detach();
+
+    return true;
 }
 
 static bool CheckUnlockScene(int64_t startTime)
@@ -295,8 +348,6 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
         return;
     }
     dataManager->SetOwner(static_pointer_cast<MediaDataShareExtAbility>(shared_from_this()));
-
-    // Start media fuse daemon
     MediaFuseManager::GetInstance().Start();
 
     DfxManager::GetInstance();
@@ -310,10 +361,12 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
     Media::MedialibrarySubscriber::SubscribeAsync();
     Media::HeifTranscodingCheckUtils::InitCheckList();
     dataManager->SetStartupParameter();
-    DfxReporter::ReportStartResult(DfxType::START_SUCCESS, 0, startTime);
     CloudMediaAssetManager::GetInstance().RestartForceRetainCloudAssets();
+    MediaShareAssetsService::GetInstance().RestartRemoveShareAlbumAndAsset();
     dataManager->RestoreInvalidHDCCloudDataPos();
     PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable();
+    // New startup logic should be added BEFORE this line to ensure START_SUCCESS captures the full startup time
+    DfxReporter::ReportStartResult(DfxType::START_SUCCESS, 0, startTime);
 }
 
 void MediaDataShareExtAbility::OnStop()
@@ -478,6 +531,7 @@ static int32_t SystemApiCheck(MediaLibraryCommand &cmd)
         OperationObject::ALL_DEVICE,
         OperationObject::ACTIVE_DEVICE,
         OperationObject::PAH_FORM_MAP,
+        OperationObject::MEDIA_APP_URI_PERMISSION,
     };
 
     static const set<string> SYSTEM_API_URIS = {
@@ -523,19 +577,10 @@ static int32_t HandleNoPermCheck(MediaLibraryCommand &cmd)
 {
     static const set<string> NO_NEED_PERM_CHECK_URI = {
         CONST_URI_CLOSE_FILE,
-        CONST_MEDIALIBRARY_DIRECTORY_URI,
-    };
-
-    static const set<OperationObject> NO_NEED_PERM_CHECK_OBJ = {
-        OperationObject::ALL_DEVICE,
-        OperationObject::ACTIVE_DEVICE,
-        OperationObject::MISCELLANEOUS
     };
 
     string uri = cmd.GetUri().ToString();
-    OperationObject obj = cmd.GetOprnObject();
-    if (NO_NEED_PERM_CHECK_URI.find(uri) != NO_NEED_PERM_CHECK_URI.end() ||
-        NO_NEED_PERM_CHECK_OBJ.find(obj) != NO_NEED_PERM_CHECK_OBJ.end()) {
+    if (NO_NEED_PERM_CHECK_URI.find(uri) != NO_NEED_PERM_CHECK_URI.end()) {
         return E_SUCCESS;
     }
     return E_NEED_FURTHER_CHECK;
@@ -625,6 +670,16 @@ static int32_t PhotoAccessHelperPermCheck(MediaLibraryCommand &cmd, const bool i
     return PermissionUtils::CheckCallerPermission(perms) ? E_SUCCESS : E_PERMISSION_DENIED;
 }
 
+static int32_t HandleMiscellaneous(MediaLibraryCommand &cmd)
+{
+    if (cmd.GetOprnType() == Media::OperationType::LOG_MOVING_PHOTO) {
+        return PermissionUtils::CheckCallerPermission(PERM_READ_IMAGEVIDEO) ? E_SUCCESS : E_PERMISSION_DENIED;
+    } else if (cmd.GetOprnType() == Media::OperationType::LOG_MEDIALIBRARY_API) {
+        return PermissionUtils::CheckCallerPermission(PERMISSION_NAME_WRITE_MEDIA) ? E_SUCCESS : E_PERMISSION_DENIED;
+    }
+    return E_PERMISSION_DENIED;
+}
+
 static int32_t HandleSpecialObjectPermission(MediaLibraryCommand &cmd, bool isWrite)
 {
     int err = HandleNoPermCheck(cmd);
@@ -637,6 +692,8 @@ static int32_t HandleSpecialObjectPermission(MediaLibraryCommand &cmd, bool isWr
         return HandleMediaVolumePerm(cmd);
     } else if (obj == OperationObject::BUNDLE_PERMISSION) {
         return HandleBundlePermCheck(cmd);
+    } else if (obj == OperationObject::MISCELLANEOUS) {
+        return HandleMiscellaneous(cmd);
     }
 
     return E_NEED_FURTHER_CHECK;
@@ -786,12 +843,17 @@ static void SetOprnObjectWithOperationValue(MediaLibraryCommand &cmd,
         cmd.SetOprnObject(OperationObject::THUMBNAIL);
     } else if (operationValue == CONST_MEDIA_DATA_DB_THUMB_ASTC) {
         cmd.SetOprnObject(OperationObject::THUMBNAIL_ASTC);
+    } else if (operationValue == MEDIA_DATA_DB_KEY_FRAME) {
+        cmd.SetOprnObject(OperationObject::KEY_FRAME);
     }
 }
 
 static void SetOprnObjectWithUriQueryKeys(MediaLibraryCommand &cmd)
 {
     std::string uriString = cmd.GetUri().ToString();
+    if (!MediaStringUtils::StartsWith(uriString, PhotoColumn::PHOTO_URI_PREFIX)) {
+        return;
+    }
     string::size_type pos = uriString.find_last_of('?');
     CHECK_AND_RETURN(pos != string::npos);
 
@@ -800,47 +862,87 @@ static void SetOprnObjectWithUriQueryKeys(MediaLibraryCommand &cmd)
     SetOprnObjectWithOperationValue(cmd, queryKeys);
 }
 
-int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
+Media::MediaLibraryCommand MediaDataShareExtAbility::CreateOpenFileCommand(const Uri &uri)
 {
 #ifdef MEDIALIBRARY_COMPATIBILITY
     string realUriStr = MediaFileUtils::GetRealUriFromVirtualUri(uri.ToString());
     Uri realUri(realUriStr);
-    MediaLibraryCommand command(realUri, Media::OperationType::OPEN);
-
+    return MediaLibraryCommand(realUri, Media::OperationType::OPEN);
 #else
-    MediaLibraryCommand command(uri, Media::OperationType::OPEN);
+    return MediaLibraryCommand(uri, Media::OperationType::OPEN);
 #endif
+}
+
+void MediaDataShareExtAbility::SetOperationObjectFromUri(Media::MediaLibraryCommand &command)
+{
+    SetOprnObjectWithUriQueryKeys(command);
+
+    CHECK_AND_EXECUTE(!MediaStringUtils::StartsWith(command.GetUri().ToString(), PhotoColumn::PHOTO_CACHE_URI_PREFIX),
+        command.SetOprnObject(OperationObject::FILESYSTEM_PHOTO));
+
+    if (MediaStringUtils::StartsWith(command.GetUri().ToString(), HIGHLIGHT_VIDEO_URI_PREFIX)) {
+        command.SetOprnObject(OperationObject::HIGHLIGHT_URI);
+    } else if (MediaStringUtils::StartsWith(command.GetUri().ToString(), HIGHLIGHT_COVER_URI_PREFIX)) {
+        command.SetOprnObject(OperationObject::HIGHLIGHT_COVER);
+    }
+
+    CHECK_AND_EXECUTE(!MediaStringUtils::StartsWith(command.GetUri().ToString(), PhotoColumn::PHOTO_REQUEST_PICTURE),
+        command.SetOprnObject(OperationObject::REQUEST_PICTURE));
+
+    CHECK_AND_EXECUTE(
+        !MediaStringUtils::StartsWith(command.GetUri().ToString(), PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER),
+        command.SetOprnObject(OperationObject::PHOTO_REQUEST_PICTURE_BUFFER));
+
+    MEDIA_DEBUG_LOG("OpenFile before process, oprnObject: %{public}d",
+        static_cast<int32_t>(command.GetOprnObject()));
+}
+
+void MediaDataShareExtAbility::HandleHmdfsCachePersist(int32_t fd, Media::MediaLibraryCommand &command)
+{
+    if (command.GetUri().ToString().find("fdWithCached") != string::npos) {
+        if (command.GetQuerySetParam("fdWithCached") != "1") {
+            return;
+        }
+        MEDIA_DEBUG_LOG("find fdWithCached");
+        int32_t keep = 1;
+        int32_t ret = ioctl(fd, HMDFS_IOC_SET_KEEP_CACHE, &keep);
+        if (ret < 0) {
+            MEDIA_INFO_LOG("failed to send persist, fd: %{public}d, ret: %{public}d, persist: %{public}d,"
+                "erron: %{public}d", fd, ret, keep, errno);
+        } else {
+            MEDIA_DEBUG_LOG("persist send success, fd: %{public}d, persist: %{public}d", fd, keep);
+        }
+    }
+}
+
+int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
+{
+    Uri trueUri = uri;
+    MediaLibraryDataManager::GetInstance()->HandleSpecialOpen(trueUri);
+    MediaLibraryCommand command = CreateOpenFileCommand(trueUri);
 
     string unifyMode = mode;
     transform(unifyMode.begin(), unifyMode.end(), unifyMode.begin(), ::tolower);
-    int err = CheckPermissionForOpenFile(uri, command, unifyMode);
-    CHECK_AND_RETURN_RET_LOG(err >= 0, err, "permission deny: %{public}d", err);
+    MediaLibraryTracer tracer;
+    tracer.Start("ExtAbility::CheckPermissionForOpenFile");
+    int err = CheckPermissionForOpenFile(trueUri, command, unifyMode);
+    tracer.Finish();
+    if (err < 0) {
+        MEDIA_ERR_LOG("permission deny: %{public}d", err);
+        return err;
+    }
+
     int32_t object = static_cast<int32_t>(command.GetOprnObject());
     int32_t type = static_cast<int32_t>(command.GetOprnType());
     DfxTimer dfxTimer(type, object, OPEN_FILE_TIME_OUT, true);
 
-    SetOprnObjectWithUriQueryKeys(command);
+    SetOperationObjectFromUri(command);
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_CACHE_URI_PREFIX) == string::npos,
-        command.SetOprnObject(OperationObject::FILESYSTEM_PHOTO));
-
-    if (command.GetUri().ToString().find(PhotoColumn::HIGHTLIGHT_URI) != string::npos) {
-        command.SetOprnObject(OperationObject::HIGHLIGHT_URI);
-    } else if (command.GetUri().ToString().find(MEDIA_DATA_DB_HIGHLIGHT) != string::npos) {
-        command.SetOprnObject(OperationObject::HIGHLIGHT_COVER);
-    }
-
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_REQUEST_PICTURE) == string::npos,
-        command.SetOprnObject(OperationObject::REQUEST_PICTURE));
-
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER) == string::npos,
-        command.SetOprnObject(OperationObject::PHOTO_REQUEST_PICTURE_BUFFER));
-
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(MEDIA_DATA_DB_KEY_FRAME) == string::npos,
-        command.SetOprnObject(OperationObject::KEY_FRAME));
-    int32_t ret = MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
+    int32_t fd = MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
+    MEDIA_DEBUG_LOG("send persist, fd: %{public}d, url: %{public}s", fd, command.GetUri().ToString().c_str());
+    HandleHmdfsCachePersist(fd, command);
     DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
-    return ret;
+    return fd;
 }
 
 //LCOV_EXCL_START

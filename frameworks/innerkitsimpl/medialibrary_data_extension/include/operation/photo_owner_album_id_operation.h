@@ -37,6 +37,8 @@ public:
         std::string lPath;
         std::string bundleName;
         int32_t priority = 1;
+        int32_t hidden = 0;
+        std::string uniqueId;
         // Photos fields
         std::string fileId;
     };
@@ -59,10 +61,13 @@ public:  // getter & setter
 
 public:
     int32_t FixPhotoRelation();
-    int32_t BuildAlbumBySourcePath(const std::string &sourcePath);
+    int32_t BuildAlbumBySourcePath(const std::string &sourcePath, bool isHidden = false);
     EXPORT std::string ToStringWithComma(const std::vector<std::string> &fileIds) const;
     EXPORT std::string ToStringWithCommaAndQuote(const std::vector<std::string> &fileIds) const;
     EXPORT std::string FillParams(const std::string &sql, const std::vector<std::string> &bindArgs);
+    EXPORT std::string ParseSourcePathToLPath(const std::string &sourcePath);
+    EXPORT void GetAlbumTypeAndSubType(const std::string &lPath, int32_t &albumType, int32_t &albumSubType);
+    EXPORT int32_t CreateAlbumAndGetId(const MediaData &albumInfo);
 
 private:
     std::string ToStringWithComma(const std::vector<NativeRdb::ValueObject> &bindArgs) const;
@@ -77,10 +82,9 @@ private:
         const std::vector<std::string> &fileIds, std::unordered_set<std::string> &lPathSet);
     MediaData GetPhotoAlbum(const std::string &lPath);
     std::unordered_map<std::string, MediaData> GetPhotoAlbums(const std::unordered_set<std::string> &lPathSet);
-    std::string ParseSourcePathToLPath(const std::string &sourcePath);
     MediaData BuildAlbumInfoByLPath(const std::string &lPath);
     MediaData BuildAlbumInfoByLPath(const std::string &lPath, const int32_t albumType, const int32_t albumSubType);
-    int32_t CreateAlbums(const std::unordered_set<std::string> &lPathSet);
+    int32_t CreateAlbums(const std::unordered_set<std::string> &lPathSet, bool isHidden = false);
     int32_t CreateAlbum(const MediaData &albumInfo);
     // std::unordered_map<std::string, std::vector<MediaData>> GetAssetExpectedAlbums(
     // const std::vector<std::string> &fileIds, const std::vector<std::string> lPaths);
@@ -96,10 +100,9 @@ private:
 
 private:  // sqls
     const int32_t MEDIA_TYPE_VIDEO = 2;
-    const std::string LPATH_SCREEN_RECORDS = "/Pictures/Screenrecords";
-    const std::string LPATH_SCREEN_SHOTS = "/Pictures/Screenshots";
-    const std::string GALLERT_ROOT_PATH = "/storage/emulated/";
+    const std::string GALLERY_ROOT_PATH = "/storage/emulated/";
     const std::string FILE_SEPARATOR = "/";
+    const std::string LPATH_DEFAULT_OTHER = "/Pictures/其它";
     const std::string SQL_NO_ALBUM_FILE_IDS = "\
         SELECT file_id, \
             media_type, \
@@ -157,7 +160,9 @@ private:  // sqls
             priority, \
             date_modified, \
             date_added, \
-            upload_status \
+            upload_status, \
+            hidden, \
+            unique_id \
         ) \
         SELECT \
             INPUT.album_type, \
@@ -190,7 +195,9 @@ private:  // sqls
                 WHEN EXISTS \
                 (SELECT 1 FROM PhotoAlbum WHERE album_type IN (0, 2048) AND dirty <> 4 AND upload_status = 0) THEN 0 \
                 ELSE 1 \
-            END AS upload_status \
+            END AS upload_status, \
+            INPUT.hidden AS hidden, \
+            INPUT.unique_id AS unique_id \
         FROM \
         ( \
             SELECT \
@@ -199,7 +206,9 @@ private:  // sqls
                 ? AS album_name, \
                 ? AS bundle_name, \
                 ? AS lpath, \
-                ? AS priority \
+                ? AS priority, \
+                ? AS hidden, \
+                ? AS unique_id \
         ) AS INPUT \
         LEFT JOIN album_plugin \
             ON LOWER(INPUT.lpath)=LOWER(album_plugin.lpath) \

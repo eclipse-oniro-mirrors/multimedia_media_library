@@ -45,9 +45,10 @@ private:
     int32_t RunBackwardPhoto(ScenarioContext &context);
     int32_t RunBackwardAlbum(ScenarioContext &context);
 
-    ConsistencyCheck::ScenarioProgress LoadProgress();
-    void SaveCurrentProgress(const ConsistencyCheck::ScenarioProgress &progress);
-    void SaveFinishedProgress();
+    void LoadStatus(ConsistencyCheck::ScenarioProgress &progress, ConsistencyCheck::DfxStats &dfxStats);
+    void SaveCurrentStatus(const ConsistencyCheck::ScenarioProgress &progress,
+        const ConsistencyCheck::DfxStats &dfxStats);
+    void SaveFinishedStatus(int64_t endTimeInMs);
 
     std::vector<ConsistencyCheck::PhotoRecord> GetPhotoRecords(ScenarioContext &context);
     PhotoCandidates SelectPhotoCandidates(ScenarioContext &context,

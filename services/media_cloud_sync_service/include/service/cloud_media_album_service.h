@@ -27,6 +27,7 @@
 #include "on_fetch_records_album_vo.h"
 #include "dataobs_mgr_changeinfo.h"
 #include "cloud_media_album_dao.h"
+#include "cloud_media_share_album_member_service.h"
 #include "cloud_media_define.h"
 #include "media_operate_result.h"
 
@@ -74,6 +75,7 @@ private:
     int32_t PullInsert(const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp);
     int32_t PullUpdate(const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp);
     int32_t PullDelete(const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp);
+    void BuildAlbumManualCoverPredicate(NativeRdb::AbsRdbPredicates &predicates);
 
 private:
     CloudMediaAlbumDao albumDao_;

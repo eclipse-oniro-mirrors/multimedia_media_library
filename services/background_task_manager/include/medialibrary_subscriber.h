@@ -18,6 +18,7 @@
 #include <atomic>
 #include <future>
 #include <thread>
+#include <shared_mutex>
 
 #include "common_event_manager.h"
 #include "common_event_subscribe_info.h"
@@ -96,6 +97,7 @@ public:
 
     EXPORT virtual void OnReceiveEvent(const EventFwk::CommonEventData &eventData) override;
     EXPORT static bool IsCurrentStatusOn();
+    EXPORT static bool IsMainUser();
     EXPORT static bool IsCriticalTypeStatusOn();
     EXPORT static bool IsCharging();
     EXPORT static bool IsBackgroundTaskAllowed();
@@ -116,6 +118,7 @@ private:
     bool checkInLakeStatus_{false};
     bool timerStatus_{false};
     bool isBackgroundTaskAllowed_{true};
+    bool checkInFileManagerStatus_{false};
     static bool isCellularNetConnected_;
     std::mutex mutex_;
     int32_t agingCount_ {0};
@@ -128,6 +131,7 @@ private:
     static std::future<bool> subscribeAsyncTask_;
     static std::mutex subscribeLock_;
     static std::mutex subscribeAsyncTaskLock_;
+    static std::shared_mutex backgroundTaskMutex_;
 
     DelayTask backgroundDelayTask_{"backgroundTask"};
     DelayTask thumbnailBgDelayTask_{"thumbnailBgTask"};
@@ -186,6 +190,9 @@ private:
     void InitFaCardAfterDataShareReady(const std::string &action);
 #endif
     int32_t RegisterDefaultNetObserver();
+#ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
+    void UpdateFileManagerCheckInStatus();
+#endif
     std::mutex registerDefaultNetObsLock_;
 };
 }  // namespace Media

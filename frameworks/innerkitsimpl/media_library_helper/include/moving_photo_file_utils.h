@@ -61,6 +61,8 @@ public:
     EXPORT static int32_t GetLivePhotoCoverPosition(const std::string &videoPath,
         const std::string &livePhotoPath, int64_t &coverPosition);
     EXPORT static int32_t GetLivePhotoCoverPosition(const std::string livePhotoPath, int64_t &coverPosition);
+    EXPORT static int32_t GetLivePhotoCoverPositionAndDuration(const std::string livePhotoPath,
+        int64_t &coverPosition, int32_t &duration);
     EXPORT static int32_t GetCoverPositionFromExtraData(const std::string &videoPath,
         const std::string &extraDataPath, int64_t &coverPosition);
     EXPORT static int32_t GetVersionAndFrameNum(const std::string &tag,
@@ -92,16 +94,16 @@ public:
         std::vector<std::string> &cloudPathList);
     EXPORT static int32_t ModifyExtraDataVersion(const std::string& extraPath, uint32_t newVersion);
     EXPORT static int32_t GetExtraDataVersion(const std::string& extraPath, uint32_t& version);
-    EXPORT static bool CheckMovingPhotoVideo(const std::string &path);
+    EXPORT static bool CheckMovingPhotoVideo(const std::string &path, bool checkDuration = true);
     EXPORT static bool CheckMovingPhotoVideo(const UniqueFd &uniqueFd);
     EXPORT static int32_t GetMovingPhotoVideoDuration(const std::string &path);
     EXPORT static int32_t GetMovingPhotoVideoDuration(const UniqueFd &uniqueFd);
     EXPORT static bool CheckMovingPhotoVideoDuration(int32_t duration);
+    EXPORT static int32_t GetExtraDataVersionByFilePath(const std::string &filePath, uint32_t &version);
     EXPORT static void GetLocalAssetSize(const int32_t movingPhotoEffectMode, const std::string& filePath,
         const int64_t size, int64_t& localAssetSize);
     EXPORT static bool CheckMovingPhotoDetailedSize(const int32_t fd);
-    // EXPORT static int32_t ParseLivePhotoCoverPosition(const UniqueFd &uniqueFd, int64_t &coverPosition,
-    //     std::shared_ptr<AVMetadataHelper> &helper);
+    EXPORT static bool DecomposeLivePhoto(const std::string &filePath);
 };
 } // namespace OHOS::Media
 

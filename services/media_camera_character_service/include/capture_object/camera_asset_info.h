@@ -64,6 +64,9 @@ public:
     const std::string& GetMimeType() const;
     void SetMimeType(const std::string& mimeType);
 
+    int32_t GetCompressionQuality() const;
+    void SetCompressionQuality(const int32_t &compressionQuality);
+
     MediaType GetMediaType() const;
 
     // subtype 不可修改（仅特殊情况：动态照片降格）
@@ -91,6 +94,11 @@ public:
     EXPORT TakeEffectStatus GetTakeEffectStatus() const;
     void SetTakeEffectStatus(const TakeEffectStatus& takeEffectStatus);
 
+    // c2pa
+    EXPORT const C2PAConfigInfo& GetC2PAConfigInfo() const;
+    void SetC2PAConfigInfo(const C2PAConfigInfo& c2paConfigInfo);
+    EXPORT void ParseToC2PAConfigInfo(const std::string& c2paInfo, C2PAConfigInfo& c2paConfigInfo);
+
     EXPORT bool IsLifeFinished() const;
     void SetFirstStageFinished(bool isFirstStageFinished);
     void SetSecondStageFinished(bool isSecondStageFinished);
@@ -103,10 +111,11 @@ private:
     std::string photoId_;
     std::string path_;
     std::string displayName_;
-    MediaType mediaType_;
+    MediaType mediaType_ = MediaType::MEDIA_TYPE_IMAGE;
     std::string mimeType_;
     int32_t subtype_{-1};
     int32_t burstCoverLevel_{static_cast<int32_t>(BurstCoverLevelType::COVER)};
+    int32_t compressionQuality_{-1};
 
     // file data
     std::string editData_;
@@ -119,6 +128,9 @@ private:
     TakeEffectStatus takeEffectStatus_{TakeEffectStatus::UNDEFINED};        // 水印状态
     bool isFirstStageFinished_{false};
     bool isSecondStageFinished_{false};
+
+    // c2pa
+    C2PAConfigInfo c2paConfigInfo_;
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LIBRARY_CAMERA_ASSET_INFO_H

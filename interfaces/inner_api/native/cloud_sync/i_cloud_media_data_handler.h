@@ -36,6 +36,7 @@ public:  // getter & setter
     virtual void SetCloudType(const int32_t cloudType) = 0;
     virtual void SetCloudSpaceFull(bool isCloudSpaceFull) = 0;
     virtual bool IsCloudSpaceFull() = 0;
+    virtual void SetSceneType(int32_t sceneType) = 0;
 
 public:
     virtual int32_t GetCheckRecords(const std::vector<std::string> &cloudIds,
@@ -55,6 +56,7 @@ public:
         std::vector<int32_t> &stats) = 0;
     virtual int32_t OnDentryFileInsert(std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords) = 0;
     virtual int32_t GetRetryRecords(std::vector<std::string> &records) = 0;
+    virtual int32_t GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords) = 0;
     virtual int32_t OnStartSync() = 0;
     virtual int32_t OnCompleteSync() = 0;
     virtual int32_t OnCompletePull(const MediaOperateResult &optRet) = 0;

@@ -18,7 +18,9 @@
 #include "media_backup_report_data_type.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "medialibrary_data_manager_utils.h"
 #include "result_set_utils.h"
+#include "rom_low_space_guard.h"
 #include "upgrade_restore_task_report.h"
 
 namespace OHOS::Media {
@@ -26,6 +28,15 @@ const int32_t PAGE_SIZE = 200;
 const std::string FILE_ID = "file_id";
 const int32_t ANALYSIS_STATUS_SUCCESS = 1;
 static const uint8_t BINARY_FEATURE_END_FLAG = 0x01;
+const int64_t CAPTION_THRESHOLD_DATA_SIZE = 30000;
+const int64_t CAPTION_THRESHOLD_DATA_TIME = 600000;
+const int64_t CAPTION_DEFAULT_FAULT_TIME = 0;
+const int64_t CAPTION_BASIC_NUMBER = 10000;
+const int64_t CAPTION_SUPPORT_NUMBER = 9999;
+const int64_t CAPTION_SINGLE_OVER_THRESHOLD_DATA_TIME = 216000;
+const int32_t NORMAL_EXIT_CODE = 0;
+const int32_t MIDDLE_EXIT_CODE = 1;
+const int32_t BEGIN_EXIT_CODE = 2;
 const unordered_map<string, ResultSetDataType> COLUMN_TYPE_MAP = {
     { "INT", ResultSetDataType::TYPE_INT32 },
     { "INTEGER", ResultSetDataType::TYPE_INT32 },
@@ -38,13 +49,12 @@ const unordered_map<string, ResultSetDataType> COLUMN_TYPE_MAP = {
 
 void CloneRestoreAnalysisData::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
-    std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, const std::string &totalTableName)
+    std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb)
 {
     sceneCode_ = sceneCode;
     taskId_ = taskId;
     mediaRdb_ = mediaRdb;
     mediaLibraryRdb_ = mediaLibraryRdb;
-    totalTableName_ = totalTableName;
 }
 
 std::unordered_map<std::string, std::string> CloneRestoreAnalysisData::GetTableCommonColumns(
@@ -135,6 +145,7 @@ void CloneRestoreAnalysisData::GetAnalysisDataRowInfo(AnalysisDataInfo &info,
     const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     info.fileId = GetInt32Val(FILE_ID, resultSet);
+    info.fileIdOld = info.fileId;
     for (auto it = tableCommonColumns_.begin(); it != tableCommonColumns_.end(); ++it) {
         std::string columnName = it->first;
         std::string columnType = it->second;
@@ -165,35 +176,8 @@ void CloneRestoreAnalysisData::PrepareCommonColumnVal(NativeRdb::ValuesBucket &v
     const std::string &columnType,
     const std::variant<int32_t, int64_t, double, std::string, std::vector<uint8_t>> &columnVal)
 {
-    ResultSetDataType dataType = GetValueFromMap(COLUMN_TYPE_MAP, columnType, ResultSetDataType::TYPE_NULL);
-    switch (dataType) {
-        case ResultSetDataType::TYPE_INT32: {
-            value.PutInt(columnName, get<int32_t>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_INT64: {
-            value.PutLong(columnName, get<int64_t>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_DOUBLE: {
-            value.PutDouble(columnName, get<double>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_BLOB: {
-            value.PutBlob(columnName, get<std::vector<uint8_t>>(columnVal));
-            break;
-        }
-        case ResultSetDataType::TYPE_STRING: {
-            if (std::holds_alternative<std::string>(columnVal)) {
-                value.PutString(columnName, get<std::string>(columnVal));
-            } else {
-                value.PutBlob(columnName, get<std::vector<uint8_t>>(columnVal));
-            }
-            break;
-        }
-        default:
-            MEDIA_ERR_LOG("No such column type: %{public}s", columnType.c_str());
-    }
+    (void)columnType;
+    CloneFieldWriter::PutFromVariant(value, columnName, columnVal);
 }
 
 void CloneRestoreAnalysisData::GetAnalysisDataInsertValue(NativeRdb::ValuesBucket &value,
@@ -277,6 +261,27 @@ void CloneRestoreAnalysisData::DeleteDuplicateInfos()
     RemoveDuplicateInfos(existingFileIds);
 }
 
+void CloneRestoreAnalysisData::DropFusedBatchSourceRows(const std::vector<NativeRdb::ValuesBucket> &values,
+    int32_t errCode, int64_t rowNum, size_t offset)
+{
+    if (values.empty() || errCode != E_OK || rowNum != static_cast<int64_t>(values.size())) {
+        MEDIA_INFO_LOG("drop fused batch source rows errCode: %{public}d, rowNum: %{public}" PRId64
+            ", valuesSize: %{public}zu", errCode, rowNum, values.size());
+        return;
+    }
+    RomCheckMode mode = RomLowSpaceGuard::EvaluateCheckpoint(ROM_CHECK_RDB_DIR);
+    if (mode != RomCheckMode::DROP_LATCHED || !AnalysisDataDropper::IsDropTable(table_)) {
+        MEDIA_INFO_LOG("drop fused batch source rows, mode: %{public}d, table: %{public}s", static_cast<int32_t>(mode),
+            table_.c_str());
+        return;
+    }
+    std::vector<int32_t> batchFileIds;
+    for (size_t index = 0; index < PAGE_SIZE && index + offset < analysisDataInfos_.size(); index++) {
+        batchFileIds.push_back(analysisDataInfos_[index + offset].fileIdOld);
+    }
+    AnalysisDataDropper::DropRowsBuffered(mediaRdb_, table_, batchFileIds);
+}
+
 void CloneRestoreAnalysisData::InsertIntoAnalysisTable()
 {
     DeleteDuplicateInfos();
@@ -300,9 +305,12 @@ void CloneRestoreAnalysisData::InsertIntoAnalysisTable()
             cloneRestoreAnalysisTotal_.UpdateRestoreStatusAsFailed();
             UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).ReportError(errorInfo);
         }
+        DropFusedBatchSourceRows(values, errCode, rowNum, offset);
         offset += PAGE_SIZE;
         successCnt_ += rowNum;
     } while (offset < analysisDataInfos_.size());
+    // flush remaining buffered source rows (< ROM_DROP_ANALYSIS_BATCH_ROWS) of this table
+    AnalysisDataDropper::FlushRows(mediaRdb_, table_);
 }
 
 void CloneRestoreAnalysisData::RestoreAnalysisDataMaps()
@@ -337,12 +345,21 @@ void CloneRestoreAnalysisData::AnalysisDataRestoreBatch()
 
 void CloneRestoreAnalysisData::ReportRestoreTaskOfTotal()
 {
-    RestoreTaskInfo info;
-    cloneRestoreAnalysisTotal_.SetRestoreTaskInfo(info);
-    info.type = "CLONE_RESTORE_" + ToUpper(analysisType_) +"_TOTAL";
-    info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
-    info.errorInfo = "timeCost: " + std::to_string(restoreTimeCost_);
-    UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
+    const auto &typeSuccessCnt = cloneRestoreAnalysisTotal_.GetTypeSuccessCnt();
+    const auto &types = cloneRestoreAnalysisTotal_.GetTypes();
+    for (const auto &type : types) {
+        RestoreTaskInfo info;
+        cloneRestoreAnalysisTotal_.SetRestoreTaskInfo(info);
+        auto it = typeSuccessCnt.find(type);
+        info.successCount = (it != typeSuccessCnt.end()) ? it->second : 0;
+        info.type = "CLONE_RESTORE_" + ToUpper(type) + "_TOTAL";
+        info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
+        info.errorInfo = "timeCost: " + std::to_string(restoreTimeCost_);
+        if (enableTimeout_) {
+            info.errorInfo += ", exitCode: " + std::to_string(exitCode_);
+        }
+        UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
+    }
 }
 
 void CloneRestoreAnalysisData::ReportRestoreTaskofData()
@@ -351,6 +368,9 @@ void CloneRestoreAnalysisData::ReportRestoreTaskofData()
     info.type = "CLONE_RESTORE_" + ToUpper(analysisType_) +"_DATA";
     info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
     info.errorInfo = "max_id: " + std::to_string(maxId_);
+    if (enableTimeout_) {
+        info.errorInfo += ", exitCode: " + std::to_string(exitCode_);
+    }
     info.successCount = successCnt_;
     info.failedCount = failCnt_;
     info.duplicateCount = duplicateCnt_;
@@ -368,26 +388,56 @@ void CloneRestoreAnalysisData::GetMaxIds()
     maxId_ = BackupDatabaseUtils::QueryMaxId(mediaLibraryRdb_, table_, "rowid");
 }
 
-void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const std::string &type,
-    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, const std::unordered_set<std::string> &excludedColumns)
+int64_t CloneRestoreAnalysisData::GetShouldEndTime(
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+{
+    CHECK_AND_RETURN_RET_LOG(!taskId_.empty() && MediaLibraryDataManagerUtils::IsNumber(taskId_),
+        CAPTION_DEFAULT_FAULT_TIME, "taskId: %{public}s invalid", taskId_.c_str());
+    int64_t backupStartTime = std::stoll(taskId_) * 1000;
+    int64_t dataSize = static_cast<int64_t>(photoInfoMap.size());
+    MEDIA_INFO_LOG("dataSize: %{public}" PRId64 ", backupStartTime: %{public}s",
+        dataSize, std::to_string(backupStartTime).c_str());
+    CHECK_AND_RETURN_RET(dataSize > CAPTION_THRESHOLD_DATA_SIZE, backupStartTime + CAPTION_THRESHOLD_DATA_TIME);
+    return backupStartTime + (dataSize + CAPTION_SUPPORT_NUMBER) / CAPTION_BASIC_NUMBER
+        * CAPTION_SINGLE_OVER_THRESHOLD_DATA_TIME;
+}
+
+void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const std::vector<std::string> &types,
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
+    const std::unordered_set<std::string> &excludedColumns, bool enableTimeout)
 {
     totalCnt_ = 0;
     successCnt_ = 0;
     failCnt_ = 0;
     duplicateCnt_ = 0;
     table_ = table;
-    analysisType_ = type;
+    analysisType_ = types.empty() ? "" : types.front();
     photoInfoMap_ = photoInfoMap;
+    enableTimeout_ = enableTimeout;
 
     CloneRestoreAnalysisTotal cloneRestoreAnalysisTotal;
-    cloneRestoreAnalysisTotal.Init(analysisType_, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_, totalTableName_);
+    cloneRestoreAnalysisTotal.Init(types, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_);
     cloneRestoreAnalysisTotal_ = cloneRestoreAnalysisTotal;
-    
+
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t shouldEndTime = enableTimeout ? GetShouldEndTime(photoInfoMap) : INT64_MAX;
+    bool firstBatch = true;
+    exitCode_ = NORMAL_EXIT_CODE;
     tableCommonColumns_ = GetTableCommonColumns(excludedColumns);
     int32_t totalNumber = cloneRestoreAnalysisTotal_.GetTotalNumber();
     for (int32_t offset = 0; offset < totalNumber; offset += PAGE_SIZE) {
+        if (enableTimeout) {
+            int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
+            CHECK_AND_EXECUTE(currentTime <= shouldEndTime || !firstBatch, exitCode_ = BEGIN_EXIT_CODE);
+            CHECK_AND_EXECUTE(currentTime <= shouldEndTime || firstBatch, exitCode_ = MIDDLE_EXIT_CODE);
+            CHECK_AND_BREAK_INFO_LOG(currentTime <= shouldEndTime,
+                "current time: %{public}s, over shouldEndTime: %{public}s, "
+                "CloneAnalysisData(%{public}s) cost: %{public}" PRId64,
+                std::to_string(currentTime).c_str(), std::to_string(shouldEndTime).c_str(),
+                table_.c_str(), currentTime - start);
+        }
         AnalysisDataRestoreBatch();
+        firstBatch = false;
     }
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     restoreTimeCost_ = end - start;

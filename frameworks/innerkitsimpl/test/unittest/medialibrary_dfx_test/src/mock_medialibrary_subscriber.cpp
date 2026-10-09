@@ -13,13 +13,37 @@
  * limitations under the License.
  */
 
+#include "mock_medialibrary_subscriber.h"
+
 #include "medialibrary_subscriber.h"
+
+namespace {
+int32_t g_trueLimit = -1;  // -1 = always true
+int32_t g_callCount = 0;
+}
 
 namespace OHOS {
 namespace Media {
+namespace test {
+void SetSubscriberTrueLimit(int32_t limit)
+{
+    g_trueLimit = limit;
+    g_callCount = 0;
+}
+
+void ResetSubscriberMock()
+{
+    g_trueLimit = -1;
+    g_callCount = 0;
+}
+}  // namespace test
+
 bool MedialibrarySubscriber::IsCurrentStatusOn()
 {
-    return true;
+    if (g_trueLimit < 0) {
+        return true;
+    }
+    return g_callCount++ < g_trueLimit;
 }
 }  // namespace Media
 }  // namespace OHOS

@@ -97,6 +97,7 @@ public:
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetEditData(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t RequestEditData(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t QueryCompositeAuxiliaryImage(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t IsEdited(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAlbumsByAlbumIds(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GrantPhotoUriPermission(MessageParcel &data, MessageParcel &reply);
@@ -127,6 +128,7 @@ public:
     EXPORT int32_t CloseAsset(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CheckUriPermissionInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetUrisByOldUrisInner(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetClonedAssetUrisInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t Restore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AsyncRestore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StopRestore(MessageParcel &data, MessageParcel &reply);
@@ -137,6 +139,9 @@ public:
     EXPORT int32_t ReleaseDebugDatabase(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StartChangeScanAssetInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetFusionAssetsInfo(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SlowMotionTranscode(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SlowMotionTranscodeProgress(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CancelSlowMotionTranscode(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteLocalAssetsWithUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteCloudAssetsWithUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteAssetsPermanentlyWithUri(MessageParcel &data, MessageParcel &reply);
@@ -160,6 +165,7 @@ public:
     EXPORT int32_t CloneToDir(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CloneAssetByPath(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CloneToAlbumCancel(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CloneWithShareAlbum(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CancelTask(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MoveAssetsToDir(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MoveAssetsByPath(MessageParcel &data, MessageParcel &reply);
@@ -167,7 +173,13 @@ public:
     EXPORT int32_t StartDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StopDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CloneIsActiveLcdAging(MessageParcel &data, MessageParcel &reply);
-    
+    EXPORT int32_t QueryDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t BatchUpdateMetaDataModified(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SetPhotoCritical(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GenerateUniqueId(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ValidateLatestPair(MessageParcel &data, MessageParcel &reply);
+
 public:
     virtual ~MediaAssetsControllerService() = default;
     bool Accept(uint32_t code) override;

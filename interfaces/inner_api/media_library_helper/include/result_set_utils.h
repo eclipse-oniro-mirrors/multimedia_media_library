@@ -15,8 +15,16 @@
 #ifndef INTERFACES_INNERAPI_MEDIA_LIBRARY_HELPER_INCLUDE_RESULT_SET_UTILS_H_
 #define INTERFACES_INNERAPI_MEDIA_LIBRARY_HELPER_INCLUDE_RESULT_SET_UTILS_H_
 
+#include <string>
+#include <variant>
+#include <memory>
+#include <vector>
+
+#include "result_set.h"
+
 #include "medialibrary_common_log.h"
-#include "fetch_result.h"
+// it will be optimized later
+#include "medialibrary_type_const.h"
 
 namespace OHOS {
 namespace Media {
@@ -128,22 +136,22 @@ private:
 template<typename ResultSet>
 static inline std::string GetStringVal(const std::string &field, const ResultSet &result)
 {
-    return get<std::string>(ResultSetUtils::GetValFromColumn(field, result, TYPE_STRING));
+    return std::get<std::string>(ResultSetUtils::GetValFromColumn(field, result, TYPE_STRING));
 }
 template<typename ResultSet>
 static inline int32_t GetInt32Val(const std::string &field, const ResultSet &result)
 {
-    return get<int32_t>(ResultSetUtils::GetValFromColumn(field, result, TYPE_INT32));
+    return std::get<int32_t>(ResultSetUtils::GetValFromColumn(field, result, TYPE_INT32));
 }
 template<typename ResultSet>
 static inline int64_t GetInt64Val(const std::string &field, const ResultSet &result)
 {
-    return get<int64_t>(ResultSetUtils::GetValFromColumn(field, result, TYPE_INT64));
+    return std::get<int64_t>(ResultSetUtils::GetValFromColumn(field, result, TYPE_INT64));
 }
 template<typename ResultSet>
 static inline double GetDoubleVal(const std::string &field, const ResultSet &result)
 {
-    return get<double>(ResultSetUtils::GetValFromColumn(field, result, TYPE_DOUBLE));
+    return std::get<double>(ResultSetUtils::GetValFromColumn(field, result, TYPE_DOUBLE));
 }
 
 template <typename ResultSet>

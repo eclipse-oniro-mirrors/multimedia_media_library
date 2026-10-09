@@ -16,7 +16,7 @@
 
 #include <regex>
 
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"
 #include "media_file_utils.h"
@@ -144,9 +144,11 @@ std::vector<PhotoAlbumDao::PhotoAlbumRowData> PhotoAlbumDao::GetPhotoAlbums()
  */
 PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetPhotoAlbum(const std::string &lPath)
 {
+    PhotoAlbumDao::PhotoAlbumRowData albumRowData;
+    CHECK_AND_RETURN_RET(!lPath.empty(), albumRowData);
+
     std::unique_lock<std::mutex> lock(this->cacheLock_);
     // find the PhotoAlbum info by lPath in cache
-    PhotoAlbumDao::PhotoAlbumRowData albumRowData;
     CHECK_AND_RETURN_RET(!this->photoAlbumCache_.Find(StringUtils::ToLower(lPath), albumRowData), albumRowData);
     MEDIA_INFO_LOG("Media_Restore: can not find the PhotoAlbum info by lPath in cache."
                    " lPath=%{public}s, lPath in cache=%{public}s",
@@ -161,6 +163,7 @@ PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetPhotoAlbum(const std::string 
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumRowData, "Media_Restore: can not find the PhotoAlbum info by"
         " lPath [%{public}s] in PhotoAlbum table.", lPath.c_str());
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
         MEDIA_ERR_LOG("Media_Restore: can not find the PhotoAlbum info by"
             " lPath [%{public}s] in PhotoAlbum table.", lPath.c_str());
         return albumRowData;

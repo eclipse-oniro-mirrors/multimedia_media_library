@@ -93,6 +93,22 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHECK_DB_AVAILABILITY), { {READ_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::NOTIFY_CLONE_STATUS),
         { {SYSTEMAPI_PERM, WRITE_PERM, READ_PERM} }},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_ALBUM_DEFAULT_COVER_ORDER),
+        { {SYSTEMAPI_PERM, WRITE_PERM} }},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER),
+        { {SYSTEMAPI_PERM, WRITE_PERM, PRIVATE_PERM} }},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM),
+        {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
 };
 
 static std::unordered_set<uint32_t> mediaAlbumsPermissionDbBypass = {
@@ -119,6 +135,13 @@ int32_t MediaAlbumsControllerService::CheckOperateAttributeThumbDbPermission(int
 {
     CHECK_AND_RETURN_RET_LOG(PermissionUtils::CheckCallerPermission(PERM_ACCESS_MEDIALIB_THUMB_DB), deniedCode,
         "operate album attribute thumb db permission denied");
+    return E_OK;
+}
+
+int32_t MediaAlbumsControllerService::CheckOperateAttributeWriteImageVideoPermission(int32_t deniedCode)
+{
+    CHECK_AND_RETURN_RET_LOG(PermissionUtils::CheckCallerPermission(PERM_WRITE_IMAGEVIDEO), deniedCode,
+        "operate album attribute write image video permission denied");
     return E_OK;
 }
 

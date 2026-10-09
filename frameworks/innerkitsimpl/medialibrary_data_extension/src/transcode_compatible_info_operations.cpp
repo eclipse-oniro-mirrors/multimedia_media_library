@@ -26,14 +26,16 @@
 #include "medialibrary_errno.h"
 #include "media_log.h"
 #include "media_compatible_info_column.h"
+#include "result_set_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Media;
 
 const string TranscodeCompatibleInfoOperation::ENCODINGS_SEPARATOR = ",";
+OHOS::SafeMap<std::string, CompatibleInfo> TranscodeCompatibleInfoOperation::compatibleInfoCache_;
 constexpr int32_t INVALID_HIGH_RESOLUTION = -1;
-std::unordered_map<std::string, CompatibleInfo> TranscodeCompatibleInfoOperation::compatibleInfoCache_ = {};
+std::mutex TranscodeCompatibleInfoOperation::compatibleInfoCacheMutex_;
 
 string TranscodeCompatibleInfoOperation::VectorToString(const std::vector<std::string> &vec)
 {
@@ -99,7 +101,10 @@ int32_t TranscodeCompatibleInfoOperation::InsertCompatibleInfo(CompatibleInfo& c
     int32_t ret = rdbStore->ExecuteSql(sql, values);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_DB_FAIL,
         "Insert compatibleInfo failed, ret : %{public}d", ret);
-    
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.Erase(compatibleInfo.bundleName);
+    }
     MEDIA_INFO_LOG("Insert compatibleInfo success");
     return E_OK;
 }
@@ -166,7 +171,10 @@ int32_t TranscodeCompatibleInfoOperation::UpsertCompatibleInfo(const std::string
     compatibleInfo.bundleName = bundleName;
     compatibleInfo.highResolution = highResolution;
     compatibleInfo.encodings = encodings;
-    compatibleInfoCache_.erase(bundleName);
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.Erase(bundleName);
+    }
     MEDIA_INFO_LOG("Upsert compatibleInfo success");
     return E_OK;
 }
@@ -200,7 +208,10 @@ int32_t TranscodeCompatibleInfoOperation::UpsertPreferredCompatibleMode(const st
     CompatibleInfo compatibleInfo;
     compatibleInfo.bundleName = bundleName;
     compatibleInfo.preferredCompatibleMode = preferredCompatibleMode;
-    compatibleInfoCache_.erase(bundleName);
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.Erase(bundleName);
+    }
     MEDIA_INFO_LOG("Upsert preferredCompatibleMode success");
     return E_OK;
 }
@@ -225,11 +236,14 @@ int32_t TranscodeCompatibleInfoOperation::DeleteCompatibleInfo(const std::string
 int32_t TranscodeCompatibleInfoOperation::QueryCompatibleInfo(
     const std::string &bundleName, CompatibleInfo& compatibleInfo)
 {
-    auto it = compatibleInfoCache_.find(bundleName);
-    if (it != compatibleInfoCache_.end()) {
-        compatibleInfo = it->second;
-        MEDIA_INFO_LOG("Query compatibleInfo success");
-        return E_OK;
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        CompatibleInfo info;
+        if (compatibleInfoCache_.Find(bundleName, info)) {
+            compatibleInfo = info;
+            MEDIA_INFO_LOG("Query compatibleInfo success");
+            return E_OK;
+        }
     }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
@@ -256,26 +270,17 @@ int32_t TranscodeCompatibleInfoOperation::QueryCompatibleInfo(
         return E_OK;
     }
 
-    int index;
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::BUNDLE_NAME, index);
-    resultSet->GetString(index, compatibleInfo.bundleName);
-    
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::HIGH_RESOLUTION, index);
-    int32_t highResolution;
-    resultSet->GetInt(index, highResolution);
-    compatibleInfo.highResolution = highResolution;
-
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::ENCODINGS, index);
-    string encodingsStr;
-    resultSet->GetString(index, encodingsStr);
-    compatibleInfo.encodings = StringToVector(encodingsStr);
-
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::PREFERRED_COMPATIBLE_MODE, index);
-    int32_t preferredCompatibleMode = static_cast<int32_t>(PreferredCompatibleMode::DEFAULT);
-    resultSet->GetInt(index, preferredCompatibleMode);
-    compatibleInfo.preferredCompatibleMode = static_cast<PreferredCompatibleMode>(preferredCompatibleMode);
+    compatibleInfo.bundleName = GetStringVal(TabCompatibleInfoColumn::BUNDLE_NAME, resultSet);
+    compatibleInfo.highResolution = GetInt32Val(TabCompatibleInfoColumn::HIGH_RESOLUTION, resultSet);
+    compatibleInfo.encodings = StringToVector(GetStringVal(TabCompatibleInfoColumn::ENCODINGS, resultSet));
+    compatibleInfo.preferredCompatibleMode =
+        static_cast<PreferredCompatibleMode>(GetInt32Val(TabCompatibleInfoColumn::PREFERRED_COMPATIBLE_MODE,
+            resultSet));
     resultSet->Close();
-    compatibleInfoCache_.emplace(compatibleInfo.bundleName, compatibleInfo);
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.EnsureInsert(compatibleInfo.bundleName, compatibleInfo);
+    }
     MEDIA_INFO_LOG("Query compatibleInfo success");
 
     return E_OK;

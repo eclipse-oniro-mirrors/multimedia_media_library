@@ -69,7 +69,7 @@ static void GenerateSql(const std::unordered_map<std::string, uint32_t> &infoMap
     sql += "ELSE 0 END, " + visitTime + " = " + std::to_string(MediaFileUtils::UTCTimeMilliSeconds()) +
         " WHERE file_id IN (";
     fileIdList.pop_back();
-    sql += fileIdList + ")";
+    sql += fileIdList + ") AND " + PhotoColumn::PHOTO_IS_SHARED + " != 1";
 }
 
 static void ExcuteSqls(std::queue<std::pair<VisitType, std::string>> &queue)

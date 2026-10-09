@@ -176,17 +176,6 @@ static void DeleteCloudAssetsFuzzer()
     MEDIA_INFO_LOG("DeleteCloudAssetsFuzzer end");
 }
 
-static void DeleteLocalAssetSingleFuzzer()
-{
-    MEDIA_INFO_LOG("DeleteLocalAssetSingleFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    std::optional<PhotosPo> targetPhotoInfoOp;
-    auto photoRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    deleteService.DeleteLocalAssetSingle(photoInfo, targetPhotoInfoOp, photoRefresh);
-    MEDIA_INFO_LOG("DeleteLocalAssetSingleFuzzer end");
-}
-
 static void DeleteCloudAssetSingleFuzzer()
 {
     MEDIA_INFO_LOG("DeleteCloudAssetSingleFuzzer start");
@@ -198,127 +187,12 @@ static void DeleteCloudAssetSingleFuzzer()
     MEDIA_INFO_LOG("DeleteCloudAssetSingleFuzzer end");
 }
 
-static void SetDateTrashedFuzzer()
-{
-    MEDIA_INFO_LOG("SetDateTrashedFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    int64_t dateTrashed = provider->ConsumeIntegral<int64_t>();
-    deleteService.SetDateTrashed(photoInfo, dateTrashed);
-    MEDIA_INFO_LOG("SetDateTrashedFuzzer end");
-}
-
-static void SetPositionFuzzer()
-{
-    MEDIA_INFO_LOG("SetPositionFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    int32_t position = provider->ConsumeIntegral<int32_t>();
-    deleteService.SetPosition(photoInfo, position);
-    MEDIA_INFO_LOG("SetPositionFuzzer end");
-}
-
-static void SetFilePathFuzzer()
-{
-    MEDIA_INFO_LOG("SetFilePathFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    string filePath = provider->ConsumeBytesAsString(NUM_BYTES);
-    deleteService.SetFilePath(photoInfo, filePath);
-    MEDIA_INFO_LOG("SetFilePathFuzzer end");
-}
-
-static void SetFileIdFuzzer()
-{
-    MEDIA_INFO_LOG("SetFileIdFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    int32_t fileId = provider->ConsumeIntegral<int32_t>();
-    deleteService.SetFileId(photoInfo, fileId);
-    MEDIA_INFO_LOG("SetFileIdFuzzer end");
-}
-
-static void ResetFileIdFuzzer()
-{
-    MEDIA_INFO_LOG("ResetFileIdFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.ResetFileId(photoInfo);
-    MEDIA_INFO_LOG("ResetFileIdFuzzer end");
-}
-
-static void ResetVirtualPathFuzzer()
-{
-    MEDIA_INFO_LOG("ResetVirtualPathFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.ResetVirtualPath(photoInfo);
-    MEDIA_INFO_LOG("ResetVirtualPathFuzzer end");
-}
-
-static void EraseCloudInfoFuzzer()
-{
-    MEDIA_INFO_LOG("EraseCloudInfoFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.EraseCloudInfo(photoInfo);
-    MEDIA_INFO_LOG("EraseCloudInfoFuzzer end");
-}
-
-static void ClearCloudInfoFuzzer()
-{
-    MEDIA_INFO_LOG("ClearCloudInfoFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.ClearCloudInfo(photoInfo);
-    MEDIA_INFO_LOG("ClearCloudInfoFuzzer end");
-}
-
-static void SetMdirtyFuzzer()
-{
-    MEDIA_INFO_LOG("SetMdirtyFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.SetMdirty(photoInfo);
-    MEDIA_INFO_LOG("SetMdirtyFuzzer end");
-}
-
-static void ResetFileSourceTypeFuzzer()
-{
-    MEDIA_INFO_LOG("ResetFileSourceTypeFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.ResetFileSourceType(photoInfo);
-    MEDIA_INFO_LOG("ResetFileSourceTypeFuzzer end");
-}
-
-static void ResetSouthDeviceTypeFuzzer()
-{
-    MEDIA_INFO_LOG("ResetSouthDeviceTypeFuzzer start");
-    MediaAssetsDeleteService deleteService;
-    PhotosPo photoInfo = CreatePhotosPo();
-    deleteService.ResetSouthDeviceType(photoInfo);
-    MEDIA_INFO_LOG("ResetSouthDeviceTypeFuzzer end");
-}
-
 static void MediaAssetsDeleteServiceFuzzer()
 {
     MEDIA_INFO_LOG("MediaAssetsDeleteServiceFuzzer start");
     DeleteLocalAssetsFuzzer();
     DeleteCloudAssetsFuzzer();
-    DeleteLocalAssetSingleFuzzer();
     DeleteCloudAssetSingleFuzzer();
-    SetDateTrashedFuzzer();
-    SetPositionFuzzer();
-    SetFilePathFuzzer();
-    SetFileIdFuzzer();
-    ResetFileIdFuzzer();
-    ResetVirtualPathFuzzer();
-    EraseCloudInfoFuzzer();
-    ClearCloudInfoFuzzer();
-    SetMdirtyFuzzer();
-    ResetFileSourceTypeFuzzer();
-    ResetSouthDeviceTypeFuzzer();
     MEDIA_INFO_LOG("MediaAssetsDeleteServiceFuzzer end");
 }
 

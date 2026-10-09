@@ -19,6 +19,8 @@
 
 #include <sstream>
 
+#include "media_file_utils.h"
+
 namespace OHOS::Media::CloudSync {
 std::string PhotoAlbumDto::ToString() const
 {
@@ -27,8 +29,8 @@ std::string PhotoAlbumDto::ToString() const
        << "\"albumId\": \"" << this->albumId << "\", "
        << "\"albumType\": " << this->albumType << ", "
        << "\"albumSubType\": " << this->albumSubType << ","
-       << "\"albumName\": \"" << this->albumName << "\","
-       << "\"lPath\": \"" << this->lPath << "\","
+       << "\"albumName\": \"" << MediaFileUtils::DesensitizeName(this->albumName) << "\","
+       << "\"lPath\": \"" << MediaFileUtils::DesensitizePath(this->lPath) << "\","
        << "\"bundleName\": \"" << this->bundleName << "\","
        << "\"priority\": " << this->priority << ","
        << "\"cloudId\": " << this->cloudId << ","
@@ -43,6 +45,7 @@ std::string PhotoAlbumDto::ToString() const
        << "\"uniqueId\": " << this->uniqueId << ","
        << "\"shareType\": \"" << this->shareType << "\", "
        << "\"sceneId\": \"" << this->sceneId << "\", "
+       << "\"shareAlbumOwner\": \"" << this->shareAlbumOwner << "\", "
        << "\"serverErrorCode\": " << serverErrorCode << ","
        << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
        << "\"errorDetails\": [";
@@ -52,7 +55,56 @@ std::string PhotoAlbumDto::ToString() const
             ss << ",";
         }
     }
-    ss << "]}";
+    ss << "],";
+    if (this->shareAlbumDetailDtoOp.has_value()) {
+        ss << "\"shareAlbumDetail\": " << this->shareAlbumDetailDtoOp.value().ToString() << ",";
+    }
+    ss << "}";
+    return ss.str();
+}
+
+std::string ShareMemberDataDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"userId\": \"" << userId << "\", "
+       << "\"status\": \"" << status << "\", "
+       << "}";
+    return ss.str();
+}
+
+std::string ShareAlbumDetailDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"shareMemberDataList\": [";
+    for (size_t i = 0; i < shareMemberDataList.size(); i++) {
+        ss << shareMemberDataList[i].ToString();
+        if (i != shareMemberDataList.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "]"
+       << ","
+       << "\"scaDetailDataList\": [";
+    for (size_t i = 0; i < scaDetailDataList.size(); i++) {
+        ss << scaDetailDataList[i].ToString();
+        if (i != scaDetailDataList.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "]"
+       << "}";
+    return ss.str();
+}
+
+std::string ScaDetailDataDto::ToString() const
+{
+    std::stringstream ss;
+    ss << "{"
+       << "\"usage\": \"" << usage << "\", "
+       << "\"riskResult\": \"" << riskResult << "\", "
+       << "}";
     return ss.str();
 }
 }  // namespace OHOS::Media::CloudSync

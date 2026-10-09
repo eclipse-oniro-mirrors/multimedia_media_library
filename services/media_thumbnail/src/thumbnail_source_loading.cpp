@@ -39,6 +39,7 @@
 #endif
 #include "thumbnail_generate_helper.h"
 #include "media_file_access_utils.h"
+#include "cloud_dentry_helper.h"
 
 using namespace std;
 
@@ -126,7 +127,9 @@ const std::unordered_map<SourceState, SourceState> SourceLoader::CLOUD_THM_OR_LC
 
 std::string GetLocalThumbnailPath(const std::string &path, const std::string &key)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
+        MEDIA_ERR_LOG("Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
         return "";
     }
     std::string suffix = (key == "") ? "" : "/" + key + ".jpg";
@@ -741,6 +744,8 @@ bool CloudThumbSource::IsSizeLargeEnough(ThumbnailData &data, int32_t &minSize)
 std::string CloudLcdSource::GetSourcePath(ThumbnailData &data, int32_t &error)
 {
     std::string tmpPath;
+    std::string localPath = GetLocalThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
+    bool isLocalThumbnailAvailable = access(localPath.c_str(), F_OK) == 0;
     if (ThumbnailUtils::IsExCloudThumbnail(data)) {
         tmpPath = GetLcdExPath(data.path);
     } else {
@@ -749,6 +754,11 @@ std::string CloudLcdSource::GetSourcePath(ThumbnailData &data, int32_t &error)
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     if (!IsCloudSourceAvailable(tmpPath)) {
         return "";
+    }
+    if (tmpPath.find(THUMBNAIL_LCD_SUFFIX) != std::string::npos &&
+        !isLocalThumbnailAvailable) {
+        int32_t ret = ThumbnailGenerateHelper::UpdateLcdFileSizeAndThumbStatus(data.id, data.path);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Fail to UpdateLcdThumbStatus");
     }
     int32_t totalCost = static_cast<int32_t>(MediaFileUtils::UTCTimeMilliSeconds() - startTime);
     data.stats.openLcdCost = totalCost;
@@ -781,6 +791,9 @@ std::string CloudOriginSource::GetSourcePath(ThumbnailData &data, int32_t &error
         return data.path;
     }
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    if (!data.isLocalFile && !data.cloudId.empty()) {
+        CloudDentryHelper::CreateDentryForOrigin(data.id, data.path);
+    }
     if (!IsCloudSourceAvailable(data.path)) {
         return "";
     }

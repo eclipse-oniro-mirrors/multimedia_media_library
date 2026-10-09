@@ -14,10 +14,13 @@
  */
 #define MLOG_TAG "MediaPermissionCheck"
 #include "media_permission_header_req.h"
+
+#include "media_column.h"
+
 #include <sstream>
 
 namespace OHOS::Media {
-const std::string PermissionHeaderReq::FILE_ID_KEY = "fileId";
+const std::string PermissionHeaderReq::FILE_ID_KEY = MediaColumn::MEDIA_ID;
 const std::string PermissionHeaderReq::URI_TYPE_KEY = "uriType";
 const std::string PermissionHeaderReq::OPEN_URI_KEY = "openUri";
 const std::string PermissionHeaderReq::OPEN_MODE_KEY = "openMode";

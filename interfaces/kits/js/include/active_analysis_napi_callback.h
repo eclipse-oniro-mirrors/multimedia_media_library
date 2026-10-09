@@ -55,7 +55,10 @@ public:
         napi_env env, napi_value callback, std::shared_ptr<ActiveAnalysisJsCallbackHolder> &holder);
 
     int32_t NotifyResult(int32_t result, const char *source = "unknown");
+    int32_t NotifyToolResult(int32_t code, const std::string &result, const char *source = "unknown");
+
     void HandleSaDied();
+    void MarkAsToolCallback();
     ActiveAnalysisSaBindResult BindSaRemote(const sptr<IRemoteObject> &saRemote);
     void Release();
     void SetRegistryId(uint64_t registryId);
@@ -69,6 +72,7 @@ private:
     bool released_ = false;
     bool resultReceived_ = false;
     bool resultPostedToJs_ = false;
+    bool isToolCallback_ = false;
     std::atomic<uint64_t> registryId_ {0};
     napi_threadsafe_function threadSafeFunc_ = nullptr;
     sptr<IRemoteObject> saRemote_;
@@ -80,6 +84,7 @@ public:
     explicit ActiveAnalysisJsCallbackStub(std::shared_ptr<ActiveAnalysisJsCallbackHolder> holder);
 
     int32_t OnAnalysisFinished(const ActiveAnalysisCallbackResult &result) override;
+    int32_t OnToolFinished(const AnalysisToolCallbackResult &result) override;
 
 private:
     std::shared_ptr<ActiveAnalysisJsCallbackHolder> holder_;

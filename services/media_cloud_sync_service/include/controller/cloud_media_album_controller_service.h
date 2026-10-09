@@ -31,6 +31,7 @@
 #include "media_empty_obj_vo.h"
 #include "user_define_ipc.h"
 #include "cloud_media_album_service.h"
+#include "cloud_media_share_album_service.h"
 #include "cloud_media_album_controller_processor.h"
 #include "cloud_media_define.h"
 #include "cloud_media_context.h"
@@ -90,6 +91,7 @@ public:
         uint32_t code, MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context) override
     {
         CloudMediaContext::GetInstance().SetCloudType(context);
+        CloudMediaContext::GetInstance().SetSceneType(context);
         auto it = this->HANDLERS.find(code);
         CHECK_AND_RETURN_RET(
             it != this->HANDLERS.end(), IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND));
@@ -105,6 +107,7 @@ public:
 
 private:
     CloudMediaAlbumService albumService_;
+    CloudMediaShareAlbumService shareAlbumService_;
     CloudMediaAlbumControllerProcessor processor_;
 };
 }  // namespace OHOS::Media::CloudSync

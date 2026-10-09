@@ -189,6 +189,7 @@ static std::tuple<int64_t, std::string> TryGetFromGPSTime(const unique_ptr<Image
     }
 
     SetSubSecondTime(imageSource, PHOTO_DATA_IMAGE_SUBSEC_TIME_ORIGINAL, dateTaken);
+    detailTime = MediaFileUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DETAIL_TIME_FORMAT, dateTaken);
     MEDIA_DEBUG_LOG("get dateTaken:%{public}lld, detailTime:%{public}s from GPS time",
         static_cast<long long>(dateTaken),
         detailTime.c_str());
@@ -378,19 +379,23 @@ static void ExtractLocationMetadata(unique_ptr<ImageSource>& imageSource, unique
 {
     string propertyStr;
     string refStr;
-    double tempLocation = -1;
+    optional<double> longValue;
     uint32_t err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LONGITUDE, propertyStr);
     uint32_t refErr = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LONGITUDE_REF, refStr);
     if (err == 0 && refErr == 0) {
-        tempLocation = GetLongitudeLatitude(propertyStr, refStr);
-        data->SetLongitude(tempLocation);
+        longValue = GetLongitudeLatitude(propertyStr, refStr);
     }
 
+    optional<double> latValue;
     err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LATITUDE, propertyStr);
     refErr = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_GPS_LATITUDE_REF, refStr);
     if (err == 0 && refErr == 0) {
-        tempLocation = GetLongitudeLatitude(propertyStr, refStr);
-        data->SetLatitude(tempLocation);
+        latValue = GetLongitudeLatitude(propertyStr, refStr);
+    }
+
+    if (longValue.has_value() && latValue.has_value()) {
+        data->SetLongitude(longValue.value());
+        data->SetLatitude(latValue.value());
     }
 }
 
@@ -785,8 +790,39 @@ int32_t MetadataExtractor::ExtractAVLogMetadata(std::shared_ptr<Meta> &meta)
     if (iterCus != customInfo.end()) {
         videoMode = static_cast<int32_t>(VideoMode::LOG_VIDEO);
     }
-    MEDIA_INFO_LOG("ExtractAVLogMetadata videoMode=%{public}d", videoMode);
+    MEDIA_DEBUG_LOG("ExtractAVLogMetadata videoMode=%{public}d", videoMode);
     return videoMode;
+}
+
+int32_t MetadataExtractor::ExtractMusicMasterMetadata(std::shared_ptr<Meta> &meta)
+{
+    constexpr int32_t MUSIC_MASTER_MODE_DEFAULT = 0;
+    constexpr int32_t MUSIC_MASTER_MODE_EDIT = 2;
+    int32_t musicMasterMode = MUSIC_MASTER_MODE_DEFAULT;
+    CHECK_AND_RETURN_RET_LOG(meta != nullptr, musicMasterMode, "meta is nullptr");
+    Meta musicMasterMeta = *meta;
+    shared_ptr<Meta> customInfoMeta;
+    if (!musicMasterMeta.GetData("customInfo", customInfoMeta) || customInfoMeta == nullptr) {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata customInfo not found, return default 0");
+        return musicMasterMode;
+    }
+    Meta customInfo = *customInfoMeta;
+    string flagStr;
+    int32_t flagValue = MUSIC_MASTER_MODE_DEFAULT;
+    if (customInfo.GetData("com.openharmony.musicMaster.Flag", flagStr)) {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata find Flag as string: %{public}s", flagStr.c_str());
+        if (CanConvertToInt32(flagStr)) {
+            flagValue = static_cast<int32_t>(std::stoi(flagStr));
+        }
+    } else if (customInfo.GetData("com.openharmony.musicMaster.Flag", flagValue)) {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata find Flag as int: %{public}d", flagValue);
+    } else {
+        MEDIA_INFO_LOG("ExtractMusicMasterMetadata key com.openharmony.musicMaster.Flag not found in customInfo");
+    }
+    if (flagValue >= MUSIC_MASTER_MODE_DEFAULT && flagValue <= MUSIC_MASTER_MODE_EDIT) {
+        musicMasterMode = flagValue;
+    }
+    return musicMasterMode;
 }
 
 int32_t MetadataExtractor::BuildMetaData(
@@ -833,6 +869,8 @@ int32_t MetadataExtractor::BuildMetaData(
     }
     int32_t extVideoMode = ExtractAVLogMetadata(meta);
     data->SetVideoMode(extVideoMode);
+    int32_t musicMasterMode = ExtractMusicMasterMetadata(meta);
+    data->SetMusicMasterMode(musicMasterMode);
     (void)close(fd);
     return E_OK;
 }
@@ -879,8 +917,7 @@ int32_t MetadataExtractor::CombineMovingPhotoMetadata(std::unique_ptr<Metadata> 
 
     data->SetCoverPosition(videoData->GetCoverPosition());
 
-    uint32_t frameIndex = MovingPhotoFileUtils::GetFrameIndex(videoData->GetCoverPosition(),
-        UniqueFd(open(videoPath.c_str(), O_RDONLY)));
+    uint32_t frameIndex = videoData->GetFrameIndex();
     off_t extraDataSize{0};
     if (MovingPhotoFileUtils::GetExtraDataLen(data->GetFilePath(), videoPath,
         frameIndex, videoData->GetCoverPosition(), extraDataSize, isCameraShotMovingPhoto) != E_OK) {
@@ -912,7 +949,7 @@ int32_t MetadataExtractor::CombineMovingPhotoMetadata(std::unique_ptr<Metadata> 
     return E_OK;
 }
 
-int32_t MetadataExtractor::Extract(std::unique_ptr<Metadata> &data, bool isCameraShotMovingPhoto)
+int32_t MetadataExtractor::Extract(std::unique_ptr<Metadata> &data, bool isCameraShotMovingPhoto, int32_t scene)
 {
     if (data->GetFileMediaType() == MEDIA_TYPE_IMAGE) {
         int32_t ret = ExtractImageMetadata(data);
@@ -922,7 +959,7 @@ int32_t MetadataExtractor::Extract(std::unique_ptr<Metadata> &data, bool isCamer
         }
         return ret;
     } else {
-        return ExtractAVMetadata(data);
+        return ExtractAVMetadata(data, scene);
     }
 }
 // LCOV_EXCL_STOP

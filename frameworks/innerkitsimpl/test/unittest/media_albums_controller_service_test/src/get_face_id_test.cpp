@@ -38,6 +38,7 @@
 #include "media_file_uri.h"
 #include "vision_db_sqls_more.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

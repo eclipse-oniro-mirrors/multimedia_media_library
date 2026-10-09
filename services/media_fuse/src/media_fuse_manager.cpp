@@ -25,7 +25,7 @@
 #include "dfx_reporter.h"
 #include "iservice_registry.h"
 #include "media_cloud_permission_check.h"
-#include "media_fuse_high_daemon.h"
+#include "media_fuse_daemon.h"
 #include "media_fuse_hdc_operations.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -203,7 +203,7 @@ void MediaFuseManager::Start()
 
     UMountFuse();
 
-    CHECK_AND_RETURN_INFO_LOG(fuseHighDaemon_ == nullptr, "Fuse daemon already started");
+    CHECK_AND_RETURN_INFO_LOG(fuseDaemon_ == nullptr, "Fuse daemon already started");
 
     /* init current device is in linux or not */
     isInLinux_ = CheckDeviceInLinux();
@@ -217,9 +217,9 @@ void MediaFuseManager::Start()
     }
 
     MEDIA_INFO_LOG("Mount fuse successfully, mountpoint = %{public}s", mountpoint.c_str());
-    fuseHighDaemon_ = std::make_shared<MediaFuseHighDaemon>(mountpoint);
-    CHECK_AND_RETURN_LOG(fuseHighDaemon_ != nullptr, "Create fuse low level daemon failed");
-    ret = fuseHighDaemon_->StartFuse();
+    fuseDaemon_ = std::make_shared<MediaFuseDaemon>(mountpoint);
+    CHECK_AND_RETURN_LOG(fuseDaemon_ != nullptr, "Create fuse daemon failed");
+    ret = fuseDaemon_->StartFuse();
     if (ret != E_OK) {
         DfxReporter::ReportStartResult(DfxType::START_FUSE_DAEMON_FAIL, ret, startTime);
         MEDIA_INFO_LOG("Start fuse daemon failed");
@@ -230,7 +230,7 @@ void MediaFuseManager::Start()
 void MediaFuseManager::Stop()
 {
     UMountFuse();
-    fuseHighDaemon_ = nullptr;
+    fuseDaemon_ = nullptr;
     MEDIA_INFO_LOG("Stop finished successfully");
 }
 
@@ -362,12 +362,12 @@ static int32_t GetPathFromFileId(string &filePath, const string &fileId)
     }
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
-        int32_t sourceType = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+        int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
         filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
-            MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_STORAGE_PATH) :
-            MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+            GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
+            GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
 #else
-        filePath = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+        filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
 #endif
     }
     return E_SUCCESS;
@@ -400,18 +400,18 @@ static int32_t GetPathFromFileIdForGetAttr(string &filePath, const string &fileI
     CHECK_AND_RETURN_RET_LOG(!cond, E_ERR, "Failed to get filePath");
 
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t sourceType = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+        int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
         filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
-            MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_STORAGE_PATH) :
-            MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
-        cloudAssetTimeQueryParams.position = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_POSITION);
+            GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
+            GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        cloudAssetTimeQueryParams.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
         cloudAssetTimeQueryParams.accesstime = GetInt64Val(PhotoColumn::PHOTO_LAST_VISIT_TIME, resultSet);
         cloudAssetTimeQueryParams.changeTime = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
         pathValidationParams.storageName =
-            GetStorageNameFromFilePath(MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH));
-        pathValidationParams.displayName = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_NAME);
+            GetStorageNameFromFilePath(GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet));
+        pathValidationParams.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
         pathValidationParams.fileSourceType = sourceType;
-        pathValidationParams.ownerAlbumId = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_OWNER_ALBUM_ID);
+        pathValidationParams.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
     }
     resultSet->Close();
     return E_SUCCESS;
@@ -490,8 +490,8 @@ static int32_t GetCompatibleModeFromFileId(int32_t &compatibleMode, std::string 
         return E_ERR;
     }
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        mimeType = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_MIME_TYPE);
-        compatibleMode = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE);
+        mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
+        compatibleMode = GetInt32Val(PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, resultSet);
     }
     return E_SUCCESS;
 }
@@ -518,10 +518,10 @@ static bool IsHighPixelPicture(const string &fileId)
     int32_t width = 0;
     int32_t height = 0;
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        width = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_WIDTH);
-        height = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_HEIGHT);
+        width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
+        height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
     }
-    if (width * height >= HIGH_PIXEL_SIZE) {
+    if (IsHighPixel(width, height)) {
         return true;
     }
     return false;
@@ -566,9 +566,19 @@ static void SetTranscodeType(bool isHighPixel, bool isHeif, TranscodeType& trans
     }
 }
 
-static int32_t GetTranscodeUri(string &filePath, const string &fileId, const string &mode,
-    const int uid, TranscodeType& transcodeType)
+static bool IsUriTranscoded(const string &realUri, const string &inputUri)
 {
+    if (inputUri.empty()) {
+        return false;
+    }
+    return MediaFileUtils::GetExtensionFromPath(realUri) != MediaFileUtils::GetExtensionFromPath(inputUri);
+}
+
+static int32_t GetTranscodeUri(string &filePath, const string &mode,
+    const int uid, TranscodeType& transcodeType, const string &uri)
+{
+    string fileId;
+    GetFileIdFromUri(fileId, uri);
     string bundleName;
     PermissionUtils::GetClientBundle(uid, bundleName);
     CHECK_AND_RETURN_RET_LOG(mode == MEDIA_FILEMODE_READONLY, E_INNER_FAIL,
@@ -588,6 +598,13 @@ static int32_t GetTranscodeUri(string &filePath, const string &fileId, const str
     MEDIA_INFO_LOG("GetTranscodeUri path: %{private}s", path.c_str());
     string tempPath = path + "/transcode.jpg";
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists((tempPath)), E_INNER_FAIL, "transcode.jpg is not exist");
+
+    if (IsUriTranscoded(filePath, uri)) {
+        MEDIA_INFO_LOG("fileAsset uri is transcoded, fileAsset uri: %{public}s", uri.c_str());
+        filePath = tempPath;
+        SetTranscodeType(isHighPixel, isHeif, transcodeType);
+        return E_OK;
+    }
 
     auto ret = HeifTranscodingCheckUtils::CheckTranscodeMode(bundleName, isHighPixel, isHeif);
     CHECK_AND_RETURN_RET_INFO_LOG(ret != TranscodeMode::CURRENT,
@@ -649,7 +666,7 @@ int32_t MediaFuseManager::DoGetAttr(const char *path, struct stat *stbuf)
         CHECK_AND_RETURN_RET_LOG(permGranted > 0, E_PERMISSION_DENIED, "permission denied");
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(target), FILE_FAIL, "file is not exist.");
         TranscodeType type;
-        GetTranscodeUri(target, fileId, MEDIA_FILEMODE_READONLY, ctx->uid, type);
+        GetTranscodeUri(target, MEDIA_FILEMODE_READONLY, ctx->uid, type, path);
         ret = lstat(target.c_str(), stbuf);
         if (ret == E_SUCCESS && cloudAssetTimeQueryParams.position == PHOTO_POSITION_TYPE_CLOUD) {
             stbuf->st_atim.tv_sec = cloudAssetTimeQueryParams.accesstime;
@@ -734,7 +751,7 @@ static int32_t DbCheckPermission(const string &filePath, const string &mode, con
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_PERMISSION_DENIED, "Failed to get permission type");
     vector<int32_t> permissionTypes;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t permissionType = MediaLibraryRdbStore::GetInt(resultSet, FIELD_PERMISSION_TYPE);
+        int32_t permissionType = GetInt32Val(FIELD_PERMISSION_TYPE, resultSet);
         permissionTypes.push_back(permissionType);
         MEDIA_INFO_LOG("get permissionType %{public}d", permissionType);
     }
@@ -804,7 +821,7 @@ static int32_t OpenFile(const string &filePath, const string &fileId, const stri
     }
     TranscodeType transcodeType = TranscodeType::DEFAULT;
     string path = filePath;
-    int32_t err = GetTranscodeUri(path, fileId, mode, uid, transcodeType);
+    int32_t err = GetTranscodeUri(path, mode, uid, transcodeType, uri);
     int32_t ret = MediaPrivacyManager(path, mode, fileId, appId, bundleName, uid, tokenCaller).Open();
     if (err == 0 && ret >= 0) {
         MEDIA_INFO_LOG("libc open transcode file success");
@@ -1158,14 +1175,5 @@ int32_t MediaFuseManager::DoHdcReadDir(const char *path, void *buf, fuse_fill_di
     return -EINVAL;
 }
 
-void MediaFuseManager::SetUid(uid_t uid)
-{
-    uid_.store(uid);
-}
-
-uid_t MediaFuseManager::GetUid()
-{
-    return uid_.load();
-}
 } // namespace Media
 } // namespace OHOS

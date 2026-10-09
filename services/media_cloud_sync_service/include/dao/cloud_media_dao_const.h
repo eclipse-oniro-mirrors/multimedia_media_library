@@ -41,6 +41,7 @@ const std::vector<std::string> ALL_SYSTEM_PHOTO_ALBUM = {
     std::to_string(PhotoAlbumSubType::CAMERA),
     std::to_string(PhotoAlbumSubType::IMAGE),
     std::to_string(PhotoAlbumSubType::CLOUD_ENHANCEMENT),
+    std::to_string(PhotoAlbumSubType::LIVEPHOTO_4D),
 };
 const std::vector<std::string> PULL_QUERY_COLUMNS = {
     PhotoColumn::MEDIA_FILE_PATH,
@@ -71,6 +72,7 @@ const std::vector<std::string> PULL_QUERY_COLUMNS = {
     PhotoColumn::PHOTO_EXIF_ROTATE,
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
     PhotoColumn::PHOTO_STORAGE_PATH,
+    PhotoColumn::MUSIC_MASTER_MODE,
 };
 
 struct KeyData {
@@ -84,16 +86,6 @@ struct KeyData {
     std::string sourceAlbum;
     std::string lPath;
     int64_t dateTrashed;
-};
-
-//联调临时代码
-enum class PrintfFieldType {
-    PFIELD_TYPE_NULL = 0,
-    PFIELD_TYPE_INT32,      // int32_t
-    PFIELD_TYPE_INT64,      // int64_t
-    PFIELD_TYPE_DOUBLE,     // double
-    PFIELD_TYPE_STRING,     // std::string
-    PFIELD_TYPE_BOOL,       // bool
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DAO_CONST_H

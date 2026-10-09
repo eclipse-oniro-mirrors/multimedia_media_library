@@ -10,7 +10,8 @@
       "phone",
       "tablet",
       "wearable",
-      "2in1"
+      "2in1",
+      "car"
     ],
     "compressNativeLibs": true,
     "deliveryWithInstall": true,
@@ -24,11 +25,15 @@
       },
       {
         "name": "SupportLivePhoto",
-        "value": "1"
+        "value": "3"
       },
       {
         "name": "SupportAncoClone",
         "value": "3"
+      },
+      {
+        "name": "ohos.ability.loadNativeLibraryForApplication",
+        "value": "true"
       }
     ],
     "abilities": [
@@ -290,6 +295,39 @@
       {
         "name": "ohos.permission.MANAGE_MEDIA_SHARED_RESOURCE",
         "reason": "$string:permission_manage_media_shared_resource",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
+      },
+      {
+        "name": "ohos.permission.ACCESS_MEDIALIB_SANDBOX",
+        "reason": "$string:permission_access_medialib_sandbox",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
+      },
+      {
+        "name": "ohos.permission.CREATE_SIGN_CONTENT_TRUST",
+        "reason": "$string:permission_create_sign_content_trust",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
+      },
+      {
+        "name": "ohos.permission.APPEND_SIGN_CONTENT_TRUST",
+        "reason": "$string:permission_append_sign_content_trust",
         "usedScene":{
           "abilities":[
             "MainAbility",

@@ -51,7 +51,7 @@ public:
     static void RunSameNameRenameCase(const std::string &sameNamePath, const std::vector<std::string> &existingPaths,
         const std::string &expectedPath);
 private:
-    static void CleanInitAssetResource();
+    static void CleanAssetResource();
     static std::mutex Mutex_;
     static bool isValid_;
     static bool dbIsSupported_;

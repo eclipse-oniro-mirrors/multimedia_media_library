@@ -77,16 +77,16 @@
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_meta_recovery.h"
 #include "medialibrary_object_utils.h"
+#include "medialibrary_photo_operations.h"
 #include "medialibrary_ptp_operations.h"
 #include "medialibrary_restore.h"
 #include "medialibrary_subscriber.h"
-#include "medialibrary_tab_old_photos_operations.h"
-#include "medialibrary_tab_old_albums_operations.h"
 #include "medialibrary_tab_asset_and_album_operations.h"
+#include "medialibrary_tab_old_albums_operations.h"
+#include "medialibrary_tab_old_photos_operations.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_uripermission_operations.h"
 #include "medialibrary_urisensitive_operations.h"
-#include "medialibrary_tab_asset_and_album_operations.h"
 #include "mimetype_utils.h"
 #include "multistages_capture_manager.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
@@ -108,8 +108,8 @@
 #include "medialibrary_facard_operations.h"
 #endif
 #include "vision_db_sqls_more.h"
-#include "parameters.h"
 #include "uuid.h"
+#include "parameters.h"
 #ifdef DEVICE_STANDBY_ENABLE
 #include "medialibrary_standby_service_subscriber.h"
 #endif
@@ -125,10 +125,8 @@
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "custom_record_operations.h"
 #endif
-#include "medialibrary_photo_operations.h"
 #include "medialibrary_upgrade_utils.h"
 #include "media_library_upgrade_manager.h"
-#include "media_library_upgrade_macros.h"
 #include "settings_data_manager.h"
 #include "media_image_framework_utils.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
@@ -139,9 +137,12 @@
 #include "media_upgrade.h"
 #include <functional>
 #include "lcd_aging_manager.h"
+#include "media_library_upgrade_macros.h"
+#include "lcd_aging_service.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "parameter_utils.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -197,6 +198,7 @@ static const int MAX_LOOP_CNT = 10;
 static const std::string MEDIA_LIBRARY_PREF_XML = "/data/storage/el2/base/preferences/media_library_preferences.xml";
 static const std::string MEDIA_LIBRARY_RECOVERY_FLAG_KEY = "media_library_preferences_recovery_flag";
 static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
+static const int32_t SPECIAL_OPEN_SUFFIX_LENGHT = 9;
 
 #ifdef DEVICE_STANDBY_ENABLE
 static const std::string SUBSCRIBER_NAME = "POWER_USAGE";
@@ -225,6 +227,11 @@ const std::vector<std::string> E_POLICY_DIRS = {
 
 MediaLibraryDataManager::MediaLibraryDataManager(void)
 {
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+    cloudAuditInstance_ = nullptr;
+    func_ = nullptr;
+    handler_ = nullptr;
+#endif
 }
 
 MediaLibraryDataManager::~MediaLibraryDataManager(void)
@@ -390,7 +397,10 @@ __attribute__((no_sanitize("cfi"))) int32_t MediaLibraryDataManager::InitMediaLi
     if (access(KVDB_DIR.c_str(), F_OK) != E_OK) {
         ExecuteInitThumnailWork();
     } else {
-        if (!MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER)) {
+        int64_t kvdbStartTime = MediaFileUtils::UTCTimeMilliSeconds();
+        bool kvdbResult = MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
+        DfxReporter::ReportStartResult(DfxType::START_KVDB_INIT, kvdbResult ? E_OK : E_ERR, kvdbStartTime);
+        if (!kvdbResult) {
             MEDIA_ERR_LOG("failed at InitMonthAndYearKvStore");
         }
     }
@@ -896,6 +906,19 @@ static int32_t UpdateCinematicVideoAlbum(RdbStore& store)
 }
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, "Album", UpdateCinematicVideoAlbum);
 
+static int32_t UpdateLivePhoto4DAlbum(RdbStore& store)
+{
+    MEDIA_INFO_LOG("Start update live photo 4d album");
+    const std::vector<std::string> subtypes = { to_string(PhotoAlbumSubType::LIVEPHOTO_4D) };
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, NativeRdb::E_ERROR, "Failed to get rdbStore.");
+    MediaLibraryRdbUtils::UpdateSystemAlbumInternal(rdbStore, subtypes, true);
+    MediaLibraryRdbUtils::UpdateSysAlbumHiddenState(rdbStore, subtypes);
+    MEDIA_INFO_LOG("End update live photo 4d album");
+    return NativeRdb::E_OK;
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_LIVEPHOTO_4D_ALBUM, "Album", UpdateLivePhoto4DAlbum);
+
 static int32_t UpdatePhotoChangeTime(RdbStore &rdbStore, int32_t version, int32_t index)
 {
     MEDIA_INFO_LOG("Start updating photo change time");
@@ -983,6 +1006,17 @@ static int32_t AddFileManagerRelatedIndex(RdbStore& store)
 }
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_FILE_MANAGER_RELATED, "Album", AddFileManagerRelatedIndex);
 
+static int32_t UpdateTabPhotosExt(RdbStore& store)
+{
+    MEDIA_INFO_LOG("start update tab_photos_ext");
+    auto rawStore = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(rawStore != nullptr, E_HAS_DB_ERROR, "rdbStore_ is null");
+    LcdAgingService::GetInstance().MarkRecentLcdPhotos(rawStore);
+    MEDIA_INFO_LOG("end update tab_photos_ext");
+    return NativeRdb::E_OK;
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_UPDATE_TAB_PHOTOS_EXT, "Photos", UpdateTabPhotosExt);
+
 static void MultiStagesInitOperation()
 {
     MultiStagesPhotoCaptureManager::GetInstance().Init();
@@ -998,17 +1032,22 @@ void MediaLibraryDataManager::HandleUpgradeRdbAsync(bool isInMediaLibraryOnStart
 
         auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr!");
-        int32_t oldVersion = rdbStore->GetOldVersion();
+        int32_t oldVersion = RdbUpgradeUtils::GetOldVersion();
         int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
         if (oldVersion != -1 && oldVersion < MEDIA_RDB_VERSION) {
             // 使用新的数据库异步升级框架
             UpgradeManagerConfig config(false, RDB_UPGRADE_EVENT, RDB_CONFIG, oldVersion, MEDIA_RDB_VERSION);
             UpgradeManager::GetInstance().Initialize(config);
-            UpgradeManager::GetInstance().UpgradeAsync(*rdbStore->GetRaw().get());
+            auto rawStore = rdbStore->GetRawChecked();
+            if (rawStore == nullptr) {
+                MEDIA_ERR_LOG("rdbStore_ is null, skip UpgradeAsync");
+            } else {
+                UpgradeManager::GetInstance().UpgradeAsync(*rawStore.get());
+            }
         }
         // !! Do not add index here !!
         MediaLibraryRdbStore::AddUpgradeTable(rdbStore);
-        MediaLibraryRdbStore::CheckAndAddColumns(rdbStore);
+        MediaLibraryRdbStore::CheckAndAddPhotoAlbumColumns(rdbStore);
         MediaLibraryRdbStore::CheckAndAddPhotoTableColumns(rdbStore);
         MediaLibraryRdbStore::AddUpgradeIndex(rdbStore);
         RdbUpgradeUtils::ReportUpgradeDfxMessages(startTime, oldVersion, MEDIA_RDB_VERSION,
@@ -1076,8 +1115,86 @@ __attribute__((no_sanitize("cfi"))) void MediaLibraryDataManager::ClearMediaLibr
 #endif
 }
 
+void MediaLibraryDataManager::CloseRdbStore(bool async, int32_t timeOut)
+{
+    if (!async) {
+        MEDIA_INFO_LOG("ReOpenRdbStore: CloseRdbStore begin");
+        MediaLibraryUnistoreManager::GetInstance().CloseDatabase(async, timeOut);
+        return;
+    }
+    std::thread([this, async, timeOut]() {
+        MEDIA_INFO_LOG("ReOpenRdbStore: detach thread begin");
+        // 释放现有 UnistoreManager 缓存的旧主库句柄
+        MediaLibraryUnistoreManager::GetInstance().CloseDatabase(async, timeOut);
+        rdbStore_ = nullptr;
+        const std::string CLOSE_READY = "0";
+        std::string value;
+        int32_t ret = SettingsDataManager::GetCloseDatabaseStatus(value);
+        if (ret == E_OK && value == CLOSE_READY) {
+            // 正常关库结束，等10s后再开库，防止异常场景
+            int32_t OPEN_DATABASE_TIME = 1000 * 10;
+            std::this_thread::sleep_for(std::chrono::milliseconds(OPEN_DATABASE_TIME));
+        }
+        // 无论是否超时，都需要重新开库
+        OpenRdbStore(true);
+    }).detach();
+}
+
+void MediaLibraryDataManager::OpenRdbStore(bool async)
+{
+    // 重新初始化 UnistoreManager，打开新的主库文件
+    int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(context_);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ReOpenRdbStore: Init failed, ret=%{public}d", ret);
+        return;
+    }
+    rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore_ == nullptr) {
+        MEDIA_ERR_LOG("ReOpenRdbStore: GetRdbStore failed");
+        return;
+    }
+
+    // 异步场景方才处理
+    if (async) {
+        const std::string OPEN_READY = "1";
+        ret = SettingsDataManager::SetCloseDatabaseStatus(OPEN_READY);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("OpenRdbStore: SetCloseDatabaseStatus failed, ret=%{public}d", ret);
+        } else {
+            MEDIA_INFO_LOG("OpenRdbStore: SetCloseDatabaseStatus success");
+        }
+    }
+
+    // 重置缩略图服务，使其使用新的 rdbStore
+    if (thumbnailService_ != nullptr) {
+        thumbnailService_->ReleaseService();
+        thumbnailService_ = nullptr;
+    }
+    // 重新初始化缩略图服务（使用当前应用上下文）
+    InitialiseThumbnailService(context_);
+}
+
 int32_t MediaLibraryDataManager::InitMediaLibraryRdbStore()
 {
+    if (rdbStore_) {
+        return E_OK;
+    }
+
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(context_);
+    DfxReporter::ReportStartResult(DfxType::START_RDB_INIT, ret, startTime);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "init MediaLibraryUnistoreManager failed");
+
+    rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, E_ERR, "rdbStore is nullptr");
+
+    return E_OK;
+}
+
+int32_t MediaLibraryDataManager::InitReverseMediaLibraryRdbStore()
+{
+    MediaLibraryUnistoreManager::GetInstance().Stop();
+    rdbStore_ = nullptr;
     if (rdbStore_) {
         return E_OK;
     }
@@ -1087,7 +1204,6 @@ int32_t MediaLibraryDataManager::InitMediaLibraryRdbStore()
 
     rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, E_ERR, "rdbStore is nullptr");
-
     return E_OK;
 }
 
@@ -1489,8 +1605,11 @@ int32_t MediaLibraryDataManager::Delete(MediaLibraryCommand &cmd, const DataShar
     MediaLibraryTracer tracer;
     tracer.Start("CheckWhereClause");
     auto whereClause = predicates.GetWhereClause();
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause), E_SQL_CHECK_FAIL,
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause,
+        PermissionUtils::IsNativeSAApp()), E_INVALID_VALUES,
         "illegal query whereClause input %{private}s", whereClause.c_str());
+    CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_SQL_CHECK_FAIL,
+        "illegal query key");
     tracer.Finish();
 
     // CONST_MEDIALIBRARY_TABLE just for RdbPredicates
@@ -1580,6 +1699,22 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicatesMore(MediaLibraryCommand &
     return DeleteInRdbPredicatesAnalysis(cmd, rdbPredicate);
 }
 
+static void DealWithAnalysisAssetSdMap(NativeRdb::RdbPredicates &rdbPredicate)
+{
+    vector<string> columns = { MAP_ASSET_SOURCE, MAP_ASSET_DESTINATION };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("query analysis asset sd map failed");
+        return;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t mapAssetDestination = GetInt32Val(MAP_ASSET_DESTINATION, resultSet);
+        string highlightVideoPath = "/storage/cloud/files/highlight/video/" + to_string(mapAssetDestination);
+        bool deleteRet = MediaFileUtils::DeleteDir(highlightVideoPath);
+        MEDIA_INFO_LOG("Delete highlight, destination: %{public}d, ret: %{public}d", mapAssetDestination, deleteRet);
+    }
+}
+
 int32_t MediaLibraryDataManager::DeleteInRdbPredicatesAnalysis(MediaLibraryCommand &cmd,
     NativeRdb::RdbPredicates &rdbPredicate)
 {
@@ -1601,6 +1736,11 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicatesAnalysis(MediaLibraryComma
         case OperationObject::STORY_PLAY:
         case OperationObject::USER_PHOTOGRAPHY:
         case OperationObject::ANALYSIS_PROGRESS:
+        case OperationObject::ANALYSIS_ALBUM_ASSET_MAP:
+            return MediaLibraryStoryOperations::DeleteOperation(cmd);
+
+        case OperationObject::ANALYSIS_ASSET_SD_MAP:
+            DealWithAnalysisAssetSdMap(rdbPredicate);
             return MediaLibraryStoryOperations::DeleteOperation(cmd);
 
         case OperationObject::SEARCH_TOTAL:
@@ -1629,6 +1769,12 @@ int32_t MediaLibraryDataManager::Update(MediaLibraryCommand &cmd, const DataShar
         MEDIA_ERR_LOG("MediaLibraryDataManager Update:Input parameter is invalid ");
         return E_INVALID_VALUES;
     }
+
+    auto whereClause = predicates.GetWhereClause();
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryCommonUtils::CheckWhereClause(whereClause), E_INVALID_VALUES,
+        "illegal query whereClause input %{private}s", whereClause.c_str());
+    CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, E_INVALID_VALUES,
+        "illegal query key");
 
 #ifdef MEDIALIBRARY_COMPATIBILITY
     ChangeUriFromValuesBucket(value);
@@ -2346,7 +2492,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QuerySet(MediaLibraryC
     tracer.Start("CheckWhereClause");
     MEDIA_DEBUG_LOG("CheckWhereClause start %{public}s", cmd.GetUri().ToString().c_str());
     auto whereClause = predicates.GetWhereClause();
-    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause)) {
+    if (!MediaLibraryCommonUtils::CheckWhereClause(whereClause, PermissionUtils::IsNativeSAApp())) {
         errCode = E_INVALID_VALUES;
         MEDIA_ERR_LOG("illegal query whereClause input %{private}s", whereClause.c_str());
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, errCode},
@@ -2354,6 +2500,8 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QuerySet(MediaLibraryC
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_OPT_ERR, map);
         return nullptr;
     }
+    CHECK_AND_RETURN_RET_LOG(ParameterUtils::HandleIllegalKey(predicates) == E_OK, nullptr,
+        "illegal query key");
     MEDIA_DEBUG_LOG("CheckWhereClause end");
     tracer.Finish();
 
@@ -2902,6 +3050,7 @@ static void SetParameterForClone()
 void MediaLibraryDataManager::SetStartupParameter()
 {
     MEDIA_INFO_LOG("Start to set parameter.");
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("InitCheckList Excute");
     static constexpr uint32_t BASE_USER_RANGE = 200000; // for get uid
@@ -2922,6 +3071,7 @@ void MediaLibraryDataManager::SetStartupParameter()
     }
 
     SetParameterForClone();
+    DfxReporter::ReportStartResult(DfxType::START_SYS_PARAM, E_OK, startTime);
 }
 
 int32_t MediaLibraryDataManager::ProcessThumbnailBatchCmd(const MediaLibraryCommand &cmd,
@@ -2947,8 +3097,6 @@ int32_t MediaLibraryDataManager::ProcessThumbnailBatchCmd(const MediaLibraryComm
             valueObject.GetInt(restoreAstcCount);
         }
         return thumbnailService_->RestoreThumbnailDualFrame(restoreAstcCount);
-    } else if (cmd.GetOprnType() == OperationType::LOCAL_THUMBNAIL_GENERATION) {
-        return thumbnailService_->LocalThumbnailGeneration();
     } else {
         MEDIA_ERR_LOG("invalid mediaLibrary command");
         return E_INVALID_ARGUMENTS;
@@ -2965,6 +3113,11 @@ void MediaLibraryDataManager::UploadDBFileInner(int64_t totalFileSize)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr!");
+    std::string clearContactInfoSql = "UPDATE AnalysisAlbum SET contact_info = NULL";
+    int32_t clearResult = rdbStore->ExecuteSql(clearContactInfoSql);
+    if (clearResult != 0) {
+        MEDIA_ERR_LOG("Failed to clear contact_info in AnalysisAlbum, err: %{public}d", clearResult);
+    }
     std::string tmpPath = std::string(CONST_MEDIA_DB_DIR) + "/rdb/media_library_tmp.db";
     int32_t errCode = rdbStore->Backup(tmpPath);
     CHECK_AND_RETURN_LOG(errCode == 0, "rdb backup fail: %{public}d", errCode);
@@ -3344,7 +3497,8 @@ static void Update500EditDataSize(const shared_ptr<MediaLibraryRdbStore> rdbStor
             continue;
         }
 
-        ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, editDataFilePath);
+        ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, editDataFilePath,
+            EditAndAttachmentUpdateType::EDIT_ONLY);
         if (ret == E_OK) {
             successCount++;
         } else {
@@ -3647,6 +3801,11 @@ static int32_t BackupDebugDatabase(const std::string &path)
     tracer.Start("BackupDebugDatabase");
     auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_OPR_DEBUG_DB_FAIL, "RdbStore is nullptr");
+    std::string clearContactInfoSql = "UPDATE AnalysisAlbum SET contact_info = NULL";
+    int32_t clearResult = rdbStore->ExecuteSql(clearContactInfoSql);
+    if (clearResult != 0) {
+        MEDIA_ERR_LOG("Failed to clear contact_info in AnalysisAlbum, err: %{public}d", clearResult);
+    }
     int32_t errCode = rdbStore->Backup(path);
     CHECK_AND_RETURN_RET(errCode == 0, E_BACK_UP_DB_FAIL);
     return E_SUCCESS;
@@ -3853,6 +4012,8 @@ bool MediaLibraryDataManager::IsSupportHmos()
 
 void MediaLibraryDataManager::SetIsLakeAssetScanned(bool isScanned)
 {
+    CHECK_AND_RETURN_LOG(FileScanUtils::IsDefaultAccount(), "Privacy account no need to set lake asset scan status");
+
     scanStatus_ = isScanned ? "true" : "false";
     auto ret = system::SetParameter("multimedia.medialibrary.lake_asset.scan_status", scanStatus_);
     MEDIA_INFO_LOG("anco_media SetIsLakeAssetScanned[%{public}d], ret: %{public}d", isScanned, ret);
@@ -3867,7 +4028,7 @@ void MediaLibraryDataManager::ScanLakeAsset()
         return;
     }
 
-    if (IsLakeAssetScanned()) {
+    if (FileScanUtils::IsDefaultAccount() && IsLakeAssetScanned()) {
         return;
     }
 
@@ -3896,7 +4057,7 @@ void MediaLibraryDataManager::ScanLakeAsset()
         int64_t startLoadTime = MediaFileUtils::UTCTimeMilliSeconds();
         GlobalScanner::GetInstance().RunLakeScan(LAKE_SCAN_DIR.c_str());
         int64_t endLoadTime = MediaFileUtils::UTCTimeMilliSeconds();
-        AncoDfxManager::GetInstance().ReportFirstLoadInfo(startLoadTime, endLoadTime);
+        AncoDfxManager::GetInstance().ReportFirstLoadInfo(startLoadTime, endLoadTime, LoadType::LAKE_FIRST_LOAD);
         this->SetIsLakeAssetScanned(true);
         MEDIA_INFO_LOG("ScanLakeAsset thread end.");
     });
@@ -3962,5 +4123,37 @@ int32_t MediaLibraryDataManager::GetAssetCompressVersion()
     MEDIA_INFO_LOG("GetAssetCompressVersion is called, version: %{public}d", compressVersion);
     return compressVersion;
 }
+
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+WatchSystemService::CloudAuditImpl* MediaLibraryDataManager::GetCloudAuditInstance()
+{
+    return cloudAuditInstance_;
+}
+#endif
+
+void MediaLibraryDataManager::HandleSpecialOpen(Uri &uri)
+{
+    std::string uriString = uri.ToString();
+    MEDIA_INFO_LOG("Special Open, uri: %{public}s", uriString.c_str());
+    if (MediaStringUtils::EndsWith(uriString, "caller=1")) {
+        uriString = uriString.substr(0, uriString.size() - SPECIAL_OPEN_SUFFIX_LENGHT);
+        uri = Uri(uriString);
+        return;
+    }
+    size_t cutPoint = uriString.find('#');
+    if (cutPoint != string::npos) {
+        uriString = uriString.substr(0, cutPoint);
+    }
+    MediaFileUri mediaUri(uriString);
+    std::string operation = mediaUri.GetQuery();
+    if (operation.empty()) {
+        return;
+    }
+    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    MEDIA_INFO_LOG("Special Open, Bundlename: %{public}s, Operation: %{public}s",
+        bundleName.c_str(), operation.c_str());
+    DfxManager::GetInstance()->HandleSpecialOpen(bundleName, operation);
+}
+// LCOV_EXCL_STOP
 }  // namespace Media
 }  // namespace OHOS

@@ -59,13 +59,18 @@ public:
     static int32_t UpdateOrInsertAllPhotosAlbumUpload();
     EXPORT static int32_t UpdateOrInsertCloneSearchStatus();
     EXPORT static void ComfirmUploadStatus();
+    EXPORT static int32_t SetCloseDatabaseStatus(const std::string& value);
+    EXPORT static int32_t GetCloseDatabaseStatus(std::string& value);
 
 private:
     static int32_t QueryParamInSettingData(const std::string &key, std::string &value);
     static int32_t UpdateParamInSettingData(const std::string &key, const std::string &value);
     static int32_t InsertParamInSettingData(const std::string &key, const std::string &value);
     static int32_t NotifyPhotosSyncSwitchInitByUpdate();
-    static std::optional<SwitchStatus> GetPhotosSyncSwitchUserStatus();
+    static SwitchStatus GetPhotosSyncSwitchUserStatus();
+    static int32_t CheckAndInitUserSettings();
+    static AlbumUploadSwitchStatus GetAllAlbumUploadUserStatus();
+    static AlbumUploadSwitchStatus GetAllAlbumUploadDeviceStatus();
 };
 
 } // OHOS

@@ -51,6 +51,7 @@ std::vector<PhotosDto> CloudMediaDownloadServiceProcessor::GetPhotosDto(std::vec
         photosDto.cloudId = photosPo.cloudId.value_or("");
         photosDto.size = photosPo.size.value_or(0);
         photosDto.mediaType = photosPo.mediaType.value_or(0);
+        photosDto.shareAlbumOwner = photosPo.shareAlbumOwner.value_or("");
         int32_t orientation = photosPo.orientation.value_or(0);
         int32_t thumbState = photosPo.thumbStatus.value_or(0);
         int32_t exifRotate = photosPo.exifRotate.value_or(0);
@@ -78,6 +79,7 @@ void CloudMediaDownloadServiceProcessor::GetDownloadAssetData(
     downloadAssetData.hidden = photosPo.hidden.value_or(0);
     downloadAssetData.dateTrashed = photosPo.dateTrashed.value_or(0);
     downloadAssetData.subtype = photosPo.subtype.value_or(0);
+    downloadAssetData.shareAlbumOwner = photosPo.shareAlbumOwner.value_or("");
     return;
 }
 

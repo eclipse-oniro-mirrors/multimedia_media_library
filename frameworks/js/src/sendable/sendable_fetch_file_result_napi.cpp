@@ -23,6 +23,11 @@
 #include "sendable_medialibrary_napi_utils.h"
 #include "smart_album_napi.h"
 #include "media_file_utils.h"
+#include "user_define_ipc_client.h"
+#include "compatible_info_vo.h"
+#include "userfile_client.h"
+#include "medialibrary_business_code.h"
+#include "preferred_compatible_mode_check_utils.h"
 
 using OHOS::HiviewDFX::HiLog;
 using OHOS::HiviewDFX::HiLogLabel;
@@ -38,6 +43,38 @@ SendableFetchFileResultNapi::SendableFetchFileResultNapi()
 SendableFetchFileResultNapi::~SendableFetchFileResultNapi()
 {
     propertyPtr = nullptr;
+}
+
+static void SetTranscodeInfo(FetchFileResultSendableAsyncContext* context)
+{
+    if (context->objectPtr->fetchResType_ == FetchResType::TYPE_FILE &&
+        (context->objectPtr->fetchFileResult_->supportedHeif == -1 ||
+        context->objectPtr->fetchFileResult_->supportedHighResolution == -1)) {
+        GetTranscodeCheckInfoReqBody reqBody;
+        GetTranscodeCheckInfoRespBody respBody;
+        reqBody.bundleName = UserFileClient::GetBundleName();
+        int32_t ret = IPC::UserDefineIPCClient().Call(
+            static_cast<uint32_t>(MediaLibraryBusinessCode::GET_TRANSCODE_CHECK_INFO), reqBody, respBody);
+        if (ret != 0) {
+            NAPI_ERR_LOG("UserDefineIPCClient().Call failed, ret: %{public}d", ret);
+            return;
+        }
+        if (respBody.preferredCompatibleMode == static_cast<int32_t>(PreferredCompatibleMode::CURRENT)) {
+            context->objectPtr->fetchFileResult_->supportedHeif = 1;
+            context->objectPtr->fetchFileResult_->supportedHighResolution = 1;
+            return;
+        }
+        if (respBody.preferredCompatibleMode == static_cast<int32_t>(PreferredCompatibleMode::COMPATIBLE)) {
+            context->objectPtr->fetchFileResult_->supportedHeif = 0;
+            context->objectPtr->fetchFileResult_->supportedHighResolution = 0;
+            return;
+        }
+        auto types = respBody.supportedMimeTypes;
+        context->objectPtr->fetchFileResult_->supportedHeif =
+            (std::find(types.begin(), types.end(), "image/heic") != types.end() ||
+            std::find(types.begin(), types.end(), "image/heif") != types.end());
+        context->objectPtr->fetchFileResult_->supportedHighResolution = respBody.supportedHighResolution;
+    }
 }
 
 void SendableFetchFileResultNapi::FetchFileResultNapiDestructor(napi_env env, void *nativeObject, void *finalize_hint)
@@ -479,6 +516,7 @@ napi_value SendableFetchFileResultNapi::JSGetFirstObject(napi_env env, napi_call
         status = napi_create_async_work(
             env, nullptr, resource, [](napi_env env, void *data) {
                 auto context = static_cast<FetchFileResultSendableAsyncContext*>(data);
+                SetTranscodeInfo(context);
                 context->GetFirstAsset();
             },
             reinterpret_cast<napi_async_complete_callback>(GetPositionObjectCompleteCallback),
@@ -527,6 +565,7 @@ napi_value SendableFetchFileResultNapi::JSGetNextObject(napi_env env, napi_callb
         status = napi_create_async_work(
             env, nullptr, resource, [](napi_env env, void *data) {
                 auto context = static_cast<FetchFileResultSendableAsyncContext*>(data);
+                SetTranscodeInfo(context);
                 context->GetNextObject();
             },
             reinterpret_cast<napi_async_complete_callback>(GetPositionObjectCompleteCallback),
@@ -694,6 +733,7 @@ napi_value SendableFetchFileResultNapi::JSGetAllObject(napi_env env, napi_callba
         status = napi_create_async_work(
             env, nullptr, resource, [](napi_env env, void *data) {
                 auto context = static_cast<FetchFileResultSendableAsyncContext*>(data);
+                SetTranscodeInfo(context);
                 GetAllObjectFromFetchResult(*context);
             },
             reinterpret_cast<napi_async_complete_callback>(GetAllObjectCompleteCallback),
@@ -972,6 +1012,7 @@ napi_value SendableFetchFileResultNapi::JSGetLastObject(napi_env env, napi_callb
         status = napi_create_async_work(
             env, nullptr, resource, [](napi_env env, void *data) {
                 auto context = static_cast<FetchFileResultSendableAsyncContext*>(data);
+                SetTranscodeInfo(context);
                 context->GetLastObject();
             },
             reinterpret_cast<napi_async_complete_callback>(GetPositionObjectCompleteCallback),
@@ -1033,6 +1074,7 @@ napi_value SendableFetchFileResultNapi::JSGetPositionObject(napi_env env, napi_c
         status = napi_create_async_work(
             env, nullptr, resource, [](napi_env env, void *data) {
                 auto context = static_cast<FetchFileResultSendableAsyncContext*>(data);
+                SetTranscodeInfo(context);
                 context->GetObjectAtPosition();
             },
             reinterpret_cast<napi_async_complete_callback>(GetPositionObjectCompleteCallback),
@@ -1044,7 +1086,6 @@ napi_value SendableFetchFileResultNapi::JSGetPositionObject(napi_env env, napi_c
             asyncContext.release();
         }
     } else {
-        NAPI_ERR_LOG("JSGetPositionObject obj == nullptr, status: %{public}d", status);
         NAPI_ASSERT(env, false, "JSGetPositionObject obj == nullptr");
     }
 

@@ -20,7 +20,9 @@
 #include <algorithm>
 
 #include "cloud_file_data_convert.h"
+#include "cloud_share_album_define.h"
 #include "cloud_media_operation_code.h"
+#include "cloud_media_photo_handler_processor.h"
 #include "cloud_mdkrecord_photos_vo.h"
 #include "get_retey_records_vo.h"
 #include "medialibrary_errno.h"
@@ -62,6 +64,18 @@ std::string CloudMediaPhotoHandler::GetTraceId() const
 void CloudMediaPhotoHandler::SetCloudType(const int32_t cloudType)
 {
     this->cloudType_ = cloudType;
+    this->header_[PhotoColumn::CLOUD_TYPE] = std::to_string(cloudType);
+}
+
+void CloudMediaPhotoHandler::SetSceneType(int32_t sceneType)
+{
+    this->sceneType_ = IntToSceneType(sceneType);
+    this->header_[SCENE_TYPE] = std::to_string(sceneType);
+}
+
+std::unordered_map<std::string, std::string> &CloudMediaPhotoHandler::GetHeader()
+{
+    return header_;
 }
 
 int32_t CloudMediaPhotoHandler::OnFetchRecordsInner(
@@ -76,7 +90,7 @@ int32_t CloudMediaPhotoHandler::OnFetchRecordsInner(
         ret = IPC::UserDefineIPCClient()
                   .SetUserId(userId_)
                   .SetTraceId(this->traceId_)
-                  .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+                  .SetHeader(GetHeader())
                   .Post(operationCode, nodeReqBody, nodeRespBody);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "OnFetchRecordsInner failed, ret: %{public}d", ret);
         for (const auto &data : nodeRespBody.fdirtyDatas) {
@@ -138,7 +152,7 @@ int32_t CloudMediaPhotoHandler::OnDentryFileInsertInner(
         ret = IPC::UserDefineIPCClient()
                   .SetUserId(userId_)
                   .SetTraceId(this->traceId_)
-                  .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+                  .SetHeader(GetHeader())
                   .Post(operationCode, nodeReqBody, nodeRespBody);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "OnDentryFileInsertInner failed, ret: %{public}d", ret);
         respBody.MergeRespBody(nodeRespBody);
@@ -175,11 +189,29 @@ int32_t CloudMediaPhotoHandler::GetRetryRecords(std::vector<std::string> &record
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_RETRY_RECORDS);
     GetRetryRecordsRespBody respBody;
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Get(operationCode, respBody);
-    records = respBody.cloudIds;
+    for (const auto &[key, value] : respBody.retryDataList) {
+        records.emplace_back(key);
+    }
     MEDIA_INFO_LOG("GetRetryRecords completed, result-size: %{public}zu", records.size());
     return ret;
+}
+
+int32_t CloudMediaPhotoHandler::GetRetryRecords(std::unordered_map<std::string, CloudMetaData> &retryRecords)
+{
+    MEDIA_INFO_LOG("enter CloudMediaPhotoHandler::GetRetryRecords");
+    uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_RETRY_RECORDS);
+    GetRetryRecordsRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+        .SetHeader(GetHeader())
+        .Get(operationCode, respBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to GetRetryRecords, ret:%{public}d", ret);
+    MEDIA_INFO_LOG("GetRetryRecords GetRetryRecordsRespBody: %{public}s", respBody.ToString().c_str());
+    retryRecords.clear();
+    ret = photoHandlerProcessor_.ConvertFromRetryRecordsRespBodyToCloudMetaData(respBody, retryRecords);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to ConvertFromRetryRecordsRespBodyToCloudMetaData");
+    return E_OK;
 }
 
 int32_t CloudMediaPhotoHandler::GetCheckRecords(
@@ -192,7 +224,7 @@ int32_t CloudMediaPhotoHandler::GetCheckRecords(
     reqBody.cloudIds = cloudIds;
     GetCheckRecordsRespBody respBody;
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Failed to GetCheckRecords");
@@ -215,6 +247,7 @@ int32_t CloudMediaPhotoHandler::GetCheckRecords(
         cloudCheckData.thmStatus = info.thmStatus;
         cloudCheckData.fileSourceType = info.fileSourceType;
         cloudCheckData.storagePath = info.storagePath;
+        cloudCheckData.shareAlbumOwner = info.shareAlbumOwner;
         for (const auto &[key, value] : info.attachment) {
             CloudFileData fileData;
             fileData.fileName = value.fileName;
@@ -236,7 +269,7 @@ int32_t CloudMediaPhotoHandler::GetCreatedRecordsInternal(
     CloudMdkRecordPhotosRespBody respBody;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_CREATED_RECORDS);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetCreatedRecords fail to call service function");
@@ -247,6 +280,7 @@ int32_t CloudMediaPhotoHandler::GetCreatedRecordsInternal(
     for (const auto &record : createdRecords) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
+        MEDIA_DEBUG_LOG("ret: %{public}d, record: %{public}s", ret, record.ToString().c_str());
         if (ret == E_OK) {
             records.push_back(dkRecord);
         } else {
@@ -277,7 +311,7 @@ int32_t CloudMediaPhotoHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &r
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_META_MODIFIED_RECORDS);
     int32_t ret =
         IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("CloudMediaPhotoHandler::GetMetaModifiedRecords Call IPC Error");
@@ -287,8 +321,8 @@ int32_t CloudMediaPhotoHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &r
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_METADATA_MODIFY, userId_};
     for (const auto &record : metaModifiedRecord) {
         MDKRecord dkRecord;
-        MEDIA_DEBUG_LOG("CloudMdkRecordPhotosVo: %{public}s", record.ToString().c_str());
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
+        MEDIA_DEBUG_LOG("ret: %{public}d, record: %{public}s", ret, record.ToString().c_str());
         if (ret == E_OK) {
             records.push_back(dkRecord);
             if (!record.removeAlbumCloudId.empty()) {
@@ -321,7 +355,7 @@ int32_t CloudMediaPhotoHandler::GetFileModifiedRecordsInternal(
     CloudMdkRecordPhotosRespBody respBody;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_FILE_MODIFIED_RECORDS);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetFileModifiedRecords fail to call service function");
@@ -332,6 +366,7 @@ int32_t CloudMediaPhotoHandler::GetFileModifiedRecordsInternal(
     for (const auto &record : fileModifiedRecord) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
+        MEDIA_DEBUG_LOG("ret: %{public}d, record: %{public}s", ret, record.ToString().c_str());
         if (ret == E_OK) {
             records.push_back(dkRecord);
             if (!record.removeAlbumCloudId.empty()) {
@@ -364,7 +399,7 @@ int32_t CloudMediaPhotoHandler::GetDeletedRecords(std::vector<MDKRecord> &record
     CloudMdkRecordPhotosRespBody respBody;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_DELETED_RECORDS);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetDeletedRecords fail to call service function");
@@ -403,7 +438,7 @@ int32_t CloudMediaPhotoHandler::GetCopyRecords(std::vector<MDKRecord> &records, 
     CloudMdkRecordPhotosRespBody respBody;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_COPY_RECORDS);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetCopyRecords fail to call service function");
@@ -465,7 +500,7 @@ int32_t CloudMediaPhotoHandler::OnCreateRecords(
     FailedSizeResp resp;
     resp.failedSize = 0;
     ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
     MEDIA_INFO_LOG("OnCreateRecords Resp:%{public}s", resp.ToString().c_str());
@@ -491,7 +526,7 @@ int32_t CloudMediaPhotoHandler::OnMdirtyRecords(
     FailedSizeResp resp;
     resp.failedSize = 0;
     ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
     MEDIA_INFO_LOG("OnMdirtyRecords Resp:%{public}s", resp.ToString().c_str());
@@ -519,7 +554,7 @@ int32_t CloudMediaPhotoHandler::OnFdirtyRecords(
     FailedSizeResp resp;
     resp.failedSize = 0;
     ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
     MEDIA_INFO_LOG("OnFdirtyRecords Resp:%{public}s", resp.ToString().c_str());
@@ -546,7 +581,7 @@ int32_t CloudMediaPhotoHandler::OnDeleteRecords(
     }
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_DELETE_RECORDS);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody, resp);
     failSize = resp.failSize;
     return ret;
@@ -570,7 +605,7 @@ int32_t CloudMediaPhotoHandler::OnCopyRecords(const std::map<std::string, MDKRec
     FailedSizeResp resp;
     resp.failedSize = 0;
     ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
     MEDIA_INFO_LOG("OnCopyRecords Resp:%{public}s", resp.ToString().c_str());
@@ -582,7 +617,7 @@ int32_t CloudMediaPhotoHandler::OnStartSync()
     MEDIA_INFO_LOG("OnStartSync enter");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_START_SYNC);
     return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode);
 }
 
@@ -591,7 +626,7 @@ int32_t CloudMediaPhotoHandler::OnCompleteSync()
     MEDIA_DEBUG_LOG("OnCompleteSync enter");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_COMPLETE_SYNC);
     return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode);
 }
 
@@ -604,7 +639,7 @@ int32_t CloudMediaPhotoHandler::OnCompletePull(const MediaOperateResult &optRet)
     reqBody.errorMsg = optRet.errorMsg;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_COMPLETE_PULL);
     return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody);
 }
 
@@ -613,7 +648,7 @@ int32_t CloudMediaPhotoHandler::OnCompletePush()
     MEDIA_INFO_LOG("OnCompletePush enter");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_COMPLETE_PUSH);
     return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode);
 }
 
@@ -622,7 +657,7 @@ int32_t CloudMediaPhotoHandler::OnCompleteCheck()
     MEDIA_INFO_LOG("OnCompleteCheck begin");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_COMPLETE_CHECK);
     return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode);
 }
 
@@ -631,7 +666,7 @@ int32_t CloudMediaPhotoHandler::ReportFailure(const ReportFailureReqBody &reqBod
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_REPORT_FAILURE);
     MEDIA_INFO_LOG("ReportFailure begin, reqBody: %{public}s", reqBody.ToString().c_str());
     return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
+        .SetHeader(GetHeader())
         .Post(operationCode, reqBody);
 }
 

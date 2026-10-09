@@ -243,7 +243,7 @@ static void HandleMetaChanged(const vector<string> &metaChangedFileIds)
     }
 
     if (!moveAssetsFromLakeList.empty()) {
-        LakeFileOperations::MoveAssetsFromLake(moveAssetsFromLakeList);
+        LakeFileOperations::MoveAssetsFromLake(assetRefresh, moveAssetsFromLakeList);
     }
     if (!moveAssetsToLakeList.empty()) {
         LakeFileOperations::MoveAssetsToLake(assetRefresh, moveAssetsToLakeList);

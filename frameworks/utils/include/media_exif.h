@@ -68,6 +68,7 @@ const std::string PHOTO_DATA_IMAGE_COMPRESSED_BITS_PER_PIXEL = "CompressedBitsPe
 const std::string PHOTO_DATA_IMAGE_EXPOSURE_BIAS_VALUE = "ExposureBiasValue";
 const std::string PHOTO_DATA_IMAGE_ISO_SPEED_LATITUDE_ZZZ = "ISOSpeedLatitudezzz";
 const std::string PHOTO_DATA_IMAGE_FRONT_CAMERA = "HwMnoteFrontCamera";
+const std::string PHOTO_DATA_IMAGE_XT_STYLE_TEMPLATE_NAME = "HwMnoteXtStyleTemplateName";
 const std::string PHOTO_DATA_VIDEO_CUSTOM_INFO = "customInfo";
 const std::string PHOTO_DATA_VIDEO_COVER_TIME = "com.openharmony.covertime";
 const std::string PHOTO_DATA_VIDEO_IOS_CREATION_DATE = "com.apple.quicktime.creationdate";

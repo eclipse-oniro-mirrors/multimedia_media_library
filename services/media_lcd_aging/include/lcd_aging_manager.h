@@ -21,6 +21,9 @@
 #include <mutex>
 #include <queue>
 
+#include <timer.h>
+
+#include "cloud_sync_common.h"
 #include "deep_optimize_space_callback.h"
 #include "iremote_object.h"
 #include "lcd_aging_dao.h"
@@ -48,7 +51,7 @@ public:
 
 private:
     LcdAgingManager() {}
-    ~LcdAgingManager() {}
+    ~LcdAgingManager();
     LcdAgingManager(const LcdAgingManager &manager) = delete;
     const LcdAgingManager &operator=(const LcdAgingManager &manager) = delete;
 
@@ -56,7 +59,7 @@ private:
         const std::atomic<bool> &shouldStop);
 
     int32_t InitAgingTask(int64_t &taskSize);
-    int32_t ExecuteAgingLoop(int64_t taskSize, const std::atomic<bool> &shouldStop);
+    int32_t ExecuteAgingLoop(const std::atomic<bool> &shouldStop);
     int32_t ExecuteSingleBatch(const int32_t batchSize, bool &hasTrashedData, const std::atomic<bool> &shouldStop);
     
     int32_t BatchAgingLcdFileTrashed(const int32_t size, const std::atomic<bool> &shouldStop);
@@ -88,6 +91,13 @@ private:
     void HandleAfterAgingProgress(const int32_t errorCode);
     bool LoadIsActiveLcdAgingFromPrefs();
     void SaveIsActiveLcdAgingToPrefs(bool isActive);
+    int32_t InsertDentryFileWithRetry(const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryFileInfos,
+        std::vector<std::string> &failCloudIds);
+    int32_t CheckLcdAgingTargetReached(int32_t &excessSize);
+
+    void StartCallbackTimer();
+    void StopCallbackTimer();
+    void ApplyEfficiencyQuota(int64_t fileNum);
 
 private:
     LcdAgingDao lcdAgingDao_;
@@ -103,6 +113,12 @@ private:
     std::mutex deleteLcdFilesTaskMutex_;
     std::condition_variable deleteLcdFilesTaskCv_;
     std::atomic<bool> isDeleteLcdFilesWorkerRunning_ {false};
+    int64_t freeSizeOld_{0};
+    int64_t startTime_{0};
+
+    std::mutex progressMutex_;
+    Utils::Timer callbackTimer_{"DeepOptCallback"};
+    uint32_t callbackTimerId_{0};
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LCD_AGING_MANAGER_H

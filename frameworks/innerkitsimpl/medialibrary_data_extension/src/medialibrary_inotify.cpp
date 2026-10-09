@@ -159,7 +159,7 @@ int32_t MediaLibraryInotify::RemoveByFileUri(const string &uri, MediaLibraryApi 
         if (iter->second.uri_ == uri && iter->second.api_ == api) {
             wd = iter->first;
             MEDIA_DEBUG_LOG("remove uri:%{public}s wd:%{public}d path:%{public}s",
-                iter->second.uri_.c_str(), wd, iter->second.path_.c_str());
+                MediaFileUtils::DesensitizeUri(iter->second.uri_).c_str(), wd, iter->second.path_.c_str());
             break;
         }
     }

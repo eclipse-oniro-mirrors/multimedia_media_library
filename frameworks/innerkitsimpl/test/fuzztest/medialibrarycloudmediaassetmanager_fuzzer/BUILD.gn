@@ -34,6 +34,7 @@ ohos_fuzztest("MediaLibraryCloudMediaAssetManagerFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -59,8 +60,7 @@ ohos_fuzztest("MediaLibraryCloudMediaAssetManagerFuzzTest") {
     "hitrace:hitrace_meter",
     "image_framework:image_native",
     "ipc:ipc_single",
-    "kv_store:distributeddata_inner",
-    "napi:ace_napi",
+    "kv_store:distributeddata_inner",   
     "netmanager_base:net_conn_manager_if",
     "preferences:native_preferences",
     "relational_store:native_rdb",

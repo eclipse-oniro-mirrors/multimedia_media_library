@@ -20,7 +20,6 @@
 
 #include "backup_file_utils.h"
 #include "backup_restore_service.h"
-#include "ffrt_inner.h"
 #include "media_log.h"
 #include "cloud_backup_restore.h"
 #include "clone_restore.h"
@@ -28,10 +27,14 @@
 #include "others_clone_restore.h"
 #include "rdb_sql_statistic.h"
 #include "rdb_types.h"
+#include "reverse_clone_restore.h"
 #include "parameters.h"
+#include "settings_data_manager.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS {
 namespace Media {
+// LCOV_EXCL_START
 class MediaLibraryBackupObserver : public DistributedRdb::SqlObserver {
 public:
     virtual ~MediaLibraryBackupObserver() {}
@@ -59,6 +62,9 @@ BackupRestoreService &BackupRestoreService::GetInstance(void)
     static BackupRestoreService inst;
     return inst;
 }
+
+static const std::string DEFAULT_BACKUP_EX_INFO = \
+    "{'type': 'ErrorInfo', 'errorCode': '13500099', 'errorInfo': 'Get BackupEx info failed'}";
 
 std::string GetDualDirName()
 {
@@ -99,7 +105,7 @@ void BackupRestoreService::Init(const RestoreInfo &info)
             restoreService_ = std::make_unique<OthersCloneRestore>(info.sceneCode, info.mediaAppName);
             break;
         default:
-            restoreService_ = std::make_unique<CloneRestore>();
+            restoreService_ = std::make_unique<ReverseCloneRestore>();
     }
     restoreService_->restoreInfo_ = info.bundleInfo;
 }
@@ -136,6 +142,14 @@ void BackupRestoreService::StartRestoreEx(const std::shared_ptr<AbilityRuntime::
     CHECK_AND_EXECUTE(context == nullptr, BackupFileUtils::CreateDataShareHelper(context->GetToken()));
     restoreService_->SetIsRestore(true);
     restoreService_->StartRestoreEx(serviceBackupDir_, UPGRADE_FILE_DIR, restoreExInfo);
+
+    // Clear reverse restore status at the end of StartRestoreEx
+    int32_t ret = SettingsDataManager::ClearReverseRestoreStatus();
+    if (ret != E_OK) {
+        MEDIA_WARN_LOG("Failed to clear reverse restore status, ret: %{public}d", ret);
+    } else {
+        MEDIA_INFO_LOG("Reverse restore status cleared successfully");
+    }
 }
 
 void BackupRestoreService::GetBackupInfo(int32_t sceneCode, std::string &backupInfo)
@@ -146,7 +160,7 @@ void BackupRestoreService::GetBackupInfo(int32_t sceneCode, std::string &backupI
         backupInfo = "";
         return;
     }
-    auto backupService = std::make_unique<CloneRestore>();
+    auto backupService = std::make_unique<ReverseCloneRestore>();
     if (backupService == nullptr) {
         MEDIA_ERR_LOG("Create media restore service failed.");
         backupInfo = "";
@@ -186,7 +200,7 @@ void BackupRestoreService::StartBackupEx(int32_t sceneCode, const std::string &g
     MEDIA_INFO_LOG("Start backupEx service: %{public}d", sceneCode);
     if (sceneCode != CLONE_RESTORE_ID) {
         MEDIA_ERR_LOG("StartBackupEx current scene is not supported");
-        backupExInfo = "";
+        backupExInfo = DEFAULT_BACKUP_EX_INFO;
         return;
     }
     if (restoreService_ != nullptr) {
@@ -197,7 +211,7 @@ void BackupRestoreService::StartBackupEx(int32_t sceneCode, const std::string &g
     Init({CLONE_RESTORE_ID, galleryAppName, mediaAppName, "", backupInfo});
     if (restoreService_ == nullptr) {
         MEDIA_ERR_LOG("Create media backup service failed.");
-        backupExInfo = "";
+        backupExInfo = DEFAULT_BACKUP_EX_INFO;
         return;
     }
     restoreService_->StartBackupEx(backupExInfo);
@@ -228,5 +242,6 @@ void BackupRestoreService::Release(const std::shared_ptr<AbilityRuntime::Context
     CHECK_AND_EXECUTE(context == nullptr, BackupFileUtils::CreateDataShareHelper(context->GetToken()));
     restoreService_->Release(releaseScene);
 }
+// LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

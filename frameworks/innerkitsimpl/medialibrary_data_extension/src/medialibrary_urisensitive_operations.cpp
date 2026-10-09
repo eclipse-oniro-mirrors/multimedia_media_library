@@ -54,7 +54,7 @@ int32_t UriSensitiveOperations::UpdateOperation(MediaLibraryCommand &cmd,
     if (trans == nullptr) {
         updateRows = MediaLibraryRdbStore::UpdateWithDateTime(cmd.GetValueBucket(), rdbPredicate);
     } else {
-        updateRows = trans->Update(cmd.GetValueBucket(), rdbPredicate);
+        updateRows = trans->UpdateWithDateTime(cmd.GetValueBucket(), rdbPredicate);
     }
     CHECK_AND_RETURN_RET_LOG(updateRows >= 0, E_HAS_DB_ERROR,
         "UriSensitive Update db failed, errCode = %{public}d", updateRows);
@@ -66,16 +66,19 @@ static void DeleteAllSensitiveOperation(AsyncTaskData *data)
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "UriSensitive delete operation fail, rdbStore is null.");
 
+    MEDIA_DEBUG_LOG("UriSensitive sql: %{public}s", AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE.c_str());
     int32_t ret = rdbStore->ExecuteSql(AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE);
-    CHECK_AND_RETURN_LOG(ret >= 0, "UriSensitive table delete all temporary Sensitive failed");
+    CHECK_AND_RETURN_LOG(ret >= 0, "UriSensitive create table failed, ret: %{public}d", ret);
 
+    MEDIA_DEBUG_LOG("UriSensitive sql: %{public}s", AppUriSensitiveColumn::CREATE_URI_URITYPE_APPID_INDEX.c_str());
     ret = rdbStore->ExecuteSql(AppUriSensitiveColumn::CREATE_URI_URITYPE_APPID_INDEX);
-    CHECK_AND_RETURN_LOG(ret >= 0, "UriSensitive table delete all temporary Sensitive failed");
+    CHECK_AND_RETURN_LOG(ret >= 0, "UriSensitive create index failed, ret: %{public}d", ret);
 
+    MEDIA_DEBUG_LOG("UriSensitive sql: %{public}s", AppUriSensitiveColumn::DELETE_APP_URI_SENSITIVE_TABLE.c_str());
     ret = rdbStore->ExecuteSql(AppUriSensitiveColumn::DELETE_APP_URI_SENSITIVE_TABLE);
-    CHECK_AND_RETURN_LOG(ret >= 0, "UriSensitive table delete all temporary Sensitive failed");
+    CHECK_AND_RETURN_LOG(ret >= 0, "UriSensitive delete all rows failed, ret: %{public}d", ret);
 
-    MEDIA_INFO_LOG("UriSensitive table delete all %{public}d rows temporary Sensitive success", ret);
+    MEDIA_INFO_LOG("UriSensitive delete all temporary rows success, ret: %{public}d", ret);
 }
 
 void UriSensitiveOperations::DeleteAllSensitiveAsync()
@@ -355,7 +358,7 @@ int32_t UriSensitiveOperations::QuerySensitiveType(const uint32_t &tokenId, cons
         return AppUriSensitiveColumn::SENSITIVE_DEFAULT;
     }
     resultSet->GoToFirstRow();
-    return MediaLibraryRdbStore::GetInt(resultSet, AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE);
+    return GetInt32Val(AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE, resultSet);
 }
 
 bool UriSensitiveOperations::QueryForceSensitive(const uint32_t &tokenId,
@@ -380,7 +383,7 @@ bool UriSensitiveOperations::QueryForceSensitive(const uint32_t &tokenId,
         return false;
     }
     resultSet->GoToFirstRow();
-    return MediaLibraryRdbStore::GetInt(resultSet, AppUriSensitiveColumn::IS_FORCE_SENSITIVE) > 0;
+    return GetInt32Val(AppUriSensitiveColumn::IS_FORCE_SENSITIVE, resultSet) > 0;
 }
 }
 }

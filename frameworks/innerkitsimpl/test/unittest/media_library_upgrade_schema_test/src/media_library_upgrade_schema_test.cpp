@@ -42,7 +42,7 @@ using namespace OHOS::NativePreferences;
 
 namespace OHOS::Media {
 
-// ========== 测试配置常量定义 ==========
+// 测试配置常量定义
 
 /** @brief 测试源版本号 */
 constexpr int32_t TEST_SOURCE_VERSION = 350;
@@ -65,7 +65,7 @@ constexpr int32_t WAL_LIMIT_SIZE = 1024 * 1024 * 1024;
 /** @brief 时间戳参数数量 */
 constexpr int32_t STAMP_PARAM = 4;
 
-// ========== 测试文件路径常量定义 ==========
+// 测试文件路径常量定义
 
 /** @brief 创建测试数据库路径 */
 const std::string CREATE_DB_PATH = "/data/test/create_test.db";
@@ -90,7 +90,7 @@ constexpr int32_t UPGRADE_DB_61_VERSION = 561;
 /** @brief RDB配置文件路径 */
 const std::string RDB_CONFIG_PATH_TEST = "/data/test/rdb_config.xml";
 
-// ========== 特殊SQL语句定义 ==========
+// 特殊SQL语句定义
 
 /**
  * @brief 特殊创建表SQL
@@ -118,7 +118,7 @@ const std::string SPECIAL_CREATE_TABLE_SQL_1 = "\
  */
 const std::string SPECIAL_UPGRADE_TABLE_SQL_1 = AppUriSensitiveColumn::DROP_APP_URI_SENSITIVE_TABLE;
 
-// ========== 索引特殊处理配置 ==========
+// 索引特殊处理配置
 
 /**
  * @brief 需要排除的索引列表
@@ -157,7 +157,7 @@ const std::vector<std::string> SPECIAL_FORMAT_TRIGGER = {
     // 如果有需要格式化处理的触发器，在这里添加
 };
 
-// ========== 任务配置常量定义 ==========
+// 任务配置常量定义
 
 /** @brief 任务配置未设置 */
 constexpr int32_t TASK_CONFIG_NOT_SET = -1;
@@ -171,7 +171,7 @@ constexpr int32_t TASK_CONFIG_ASYNC_ONLY = 2;
 /** @brief 任务配置：需要同步和异步任务 */
 constexpr int32_t TASK_CONFIG_SYNC_AND_ASYNC = 3;
 
-// ========== SQL解析常量定义 ==========
+// SQL解析常量定义
 
 /** @brief "INDEX " 关键字长度 */
 constexpr size_t INDEX_KEYWORD_LENGTH = 6;
@@ -179,7 +179,7 @@ constexpr size_t INDEX_KEYWORD_LENGTH = 6;
 /** @brief "IF NOT EXISTS " 关键字长度 */
 constexpr size_t IF_NOT_EXISTS_LENGTH = 12;
 
-// ========== UpgradeSchemaTest 测试类生命周期函数实现 ==========
+// UpgradeSchemaTest 测试类生命周期函数实现
 
 void UpgradeSchemaTest::SetUpTestCase()
 {
@@ -204,7 +204,7 @@ void UpgradeSchemaTest::TearDown()
     MEDIA_INFO_LOG("UpgradeSchemaTest::TearDown end");
 }
 
-// ========== 数据库辅助函数实现 ==========
+// 数据库辅助函数实现
 
 /**
  * @brief 云同步触发函数（测试用）
@@ -246,7 +246,7 @@ static std::string BeginGenerateHighlightThumbnail(const std::vector<std::string
     return "";
 }
 
-// ========== UpgradeSchemaTest 工具函数实现 ==========
+// UpgradeSchemaTest 工具函数实现
 
 void UpgradeSchemaTest::RemoveTestDb(const std::string &dbPath)
 {
@@ -275,7 +275,7 @@ void UpgradeSchemaTest::RemoveTestDb(const std::string &dbPath)
     }
 }
 
-// ========== TestRdbCreateCallback 回调类函数实现 ==========
+// TestRdbCreateCallback 回调类函数实现
 
 int32_t TestRdbCreateCallback::OnCreate(NativeRdb::RdbStore &rdbStore)
 {
@@ -291,7 +291,7 @@ int32_t TestRdbCreateCallback::OnUpgrade(NativeRdb::RdbStore &rdbStore, int32_t 
     return NativeRdb::E_OK;
 }
 
-// ========== TestRdbUpgradeCallback 回调类函数实现 ==========
+// TestRdbUpgradeCallback 回调类函数实现
 
 int32_t TestRdbUpgradeCallback::OnCreate(NativeRdb::RdbStore &rdbStore)
 {
@@ -305,7 +305,7 @@ int32_t TestRdbUpgradeCallback::OnUpgrade(NativeRdb::RdbStore &rdbStore, int32_t
     return NativeRdb::E_OK;
 }
 
-// ========== 数据库升级和创建辅助函数实现 ==========
+// 数据库升级和创建辅助函数实现
 
 /**
  * @brief 测试数据库升级函数
@@ -356,7 +356,7 @@ static std::shared_ptr<NativeRdb::RdbStore> MakeStore(const std::string &path, i
     return NativeRdb::RdbHelper::GetRdbStore(config, version, cb, err);
 }
 
-// ========== 数据库元信息查询函数实现 ==========
+// 数据库元信息查询函数实现
 
 /**
  * @brief 获取数据库中所有表的名称
@@ -450,7 +450,7 @@ static std::vector<std::string> GetColumnNames(NativeRdb::RdbStore &store, const
     return columnNames;
 }
 
-// ========== 索引处理辅助函数实现 ==========
+// 索引处理辅助函数实现
 
 /**
  * @brief 从索引SQL中提取索引名称
@@ -588,7 +588,7 @@ static std::string NormalizeIndexSql(const std::string &indexSql)
     return normalized;
 }
 
-// ========== 数据库结构对比函数实现 ==========
+// 数据库结构对比函数实现
 
 /**
  * @brief 比较两个数据库的表信息
@@ -898,7 +898,7 @@ static bool CompareTableStructure(NativeRdb::RdbStore &store1, NativeRdb::RdbSto
     return differences.empty();
 }
 
-// ========== 测试结果输出函数实现 ==========
+// 测试结果输出函数实现
 
 /**
  * @brief 将测试结果写入文件
@@ -915,9 +915,9 @@ void WriteTestResultToFile(const TestResult &result)
         return;
     }
 
-    outFile << "========================================" << std::endl;
+    outFile << "----------------------------------------" << std::endl;
     outFile << "   数据库升级Schema一致性测试结果" << std::endl;
-    outFile << "========================================" << std::endl;
+    outFile << "----------------------------------------" << std::endl;
     outFile << std::endl;
 
     // 输出Schema对比结果
@@ -990,14 +990,14 @@ void WriteTestResultToFile(const TestResult &result)
         outFile << std::endl;
     }
 
-    outFile << "========================================" << std::endl;
+    outFile << "----------------------------------------" << std::endl;
     outFile << "   测试结束" << std::endl;
-    outFile << "========================================" << std::endl;
+    outFile << "----------------------------------------" << std::endl;
 
     outFile.close();
 }
 
-// ========== 测试用例实现 ==========
+// 测试用例实现
 
 /**
  * @brief 检查指定任务是否为同步任务

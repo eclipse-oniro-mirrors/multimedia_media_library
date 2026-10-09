@@ -73,6 +73,8 @@ const std::vector<std::string> AppUriPermissionColumn::PERMISSION_TYPES_WRITE_ST
 
 const std::string AppUriPermissionColumn::URI_URITYPE_APPID_INDEX = "uri_uritype_appid_index";
 
+const std::string AppUriPermissionColumn::URI_PERMISSION_FILE_TOKEN_INDEX = "idx_uri_permission_file_token";
+
 const std::string AppUriPermissionColumn::APP_URI_PERMISSION_TABLE = "UriPermission";
 
 const std::set<std::string> AppUriPermissionColumn::DEFAULT_FETCH_COLUMNS = {AppUriPermissionColumn::ID};
@@ -101,6 +103,13 @@ const std::string AppUriPermissionColumn::CREATE_URI_URITYPE_TOKENID_INDEX = Bas
     AppUriPermissionColumn::FILE_ID + " DESC," +
     AppUriPermissionColumn::URI_TYPE + "," +
     AppUriPermissionColumn::TARGET_TOKENID + " DESC)";
+
+const std::string AppUriPermissionColumn::CREATE_URI_PERMISSION_FILE_TOKEN_INDEX = "CREATE INDEX IF NOT EXISTS " +
+    AppUriPermissionColumn::URI_PERMISSION_FILE_TOKEN_INDEX + " ON " +
+    AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + " (" +
+    AppUriPermissionColumn::FILE_ID + "," +
+    AppUriPermissionColumn::TARGET_TOKENID + "," +
+    AppUriPermissionColumn::PERMISSION_TYPE + ")";
 
 const std::set<std::string> AppUriPermissionColumn::ALL_COLUMNS = {
     AppUriPermissionColumn::ID, AppUriPermissionColumn::APP_ID, AppUriPermissionColumn::FILE_ID,

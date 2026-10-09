@@ -32,6 +32,10 @@ public:
     EXPORT static std::string GetEditDataSourceTempPath(const std::string &photoPath, int32_t userId = -1);
     EXPORT static bool IsEditDataSourceBackExists(const std::string &photoPath, int32_t userId = -1);
     EXPORT static bool HasEditData(int64_t editTime);
+    EXPORT static std::string GetEnhancementTempMovingPhotoVideoPath(const std::string& photoPath, int32_t userId = -1);
+    EXPORT static std::string GetEnhancementTempLivePhotoImagePath(const std::string& photoPath, int32_t userId = -1);
+    EXPORT static bool CheckAndCreateEditDataDir(const std::string& photoPath);
+    EXPORT static std::string GetCacheDir(const std::string& photoPath, int32_t userId);
 };
 } // namespace OHOS::Media
 

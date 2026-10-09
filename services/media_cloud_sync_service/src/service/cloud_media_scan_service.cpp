@@ -29,6 +29,7 @@
 #include "photo_album_column.h"
 #include "scanner_utils.h"
 #include "shooting_mode_column.h"
+#include "moving_photo_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 
@@ -120,6 +121,7 @@ int32_t CloudMediaScanService::ScanDownloadedFile(const string& path, CloudMedia
     result.orientation = data->GetOrientation();
     result.aspectRatio = data->GetFileAspectRatio();
     result.exifRotate = data->GetExifRotate();
+    result.musicMasterMode = data->GetMusicMasterMode();
     result.scanSuccess = true;
     MEDIA_INFO_LOG("ScanDownloadedFile, result: %{public}s", result.ToString().c_str());
     return E_OK;
@@ -169,7 +171,8 @@ std::string CloudMediaScanService::ScanResult::ToString() const
        << "shootingMode: " << shootingMode << ", "
        << "shootingModeTag" << shootingModeTag << ", "
        << "frontCamera" << frontCamera << ", "
-       << "subType" << subType;
+       << "subType: " << subType << ", "
+       << "extraDataVersion: " << extraDataVersion;
     return ss.str();
 }
 

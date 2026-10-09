@@ -276,6 +276,7 @@ bool MediaLibraryKvStore::GetKvStoreOption(
     options.backup = false;
     options.autoSync = false;
     options.securityLevel = SecurityLevel::S3;
+    options.config.pageSize = 16u;
     options.kvStoreType = KvStoreType::LOCAL_ONLY;
     return true;
 }

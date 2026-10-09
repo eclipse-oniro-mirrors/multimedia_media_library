@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <fstream>
 
-#include "media_fuse_high_daemon.h"
+#include "media_fuse_daemon.h"
 #include "media_fuse_manager.h"
 #include "medialibrary_unittest_utils.h"
 #include "mimetype_utils.h"
@@ -455,16 +455,6 @@ int TestInsert(DataShareValuesBucket &dataShareValue)
     cmd.SetValueBucket(rdbValue);
     int ret = MediaLibraryAppUriPermissionOperations::HandleInsertOperation(cmd);
     return ret;
-}
-
-int32_t MediaLibraryRdbStore::GetInt(const shared_ptr<NativeRdb::ResultSet> &resultSet, const string &column)
-{
-    return get<int32_t>(ResultSetUtils::GetValFromColumn(column, resultSet, TYPE_INT32));
-}
-
-string MediaLibraryRdbStore::GetString(const shared_ptr<NativeRdb::ResultSet> &resultSet, const string &column)
-{
-    return get<string>(ResultSetUtils::GetValFromColumn(column, resultSet, TYPE_STRING));
 }
 
 string PermissionUtils::GetAppIdByBundleName(const string &bundleName, int32_t uid)
@@ -928,7 +918,7 @@ HWTEST_F(MediaLibraryFuseTest, MediaLibrary_CheckDevice_test_001, TestSize.Level
 
 HWTEST_F(MediaLibraryFuseTest, MediaLibrary_Start_Fuse_test_001, TestSize.Level1) {
     std::string mountpoint = "/mnt/test_fuse";
-    MediaFuseHighDaemon daemon(mountpoint);
+    MediaFuseDaemon daemon(mountpoint);
 
     int32_t ret = daemon.StartFuse();
     EXPECT_EQ(ret, E_OK);
@@ -1056,13 +1046,6 @@ HWTEST_F(MediaLibraryFuseTest, MediaLibrary_fuse_DoHdcReadDir_test_002, TestSize
     enum fuse_readdir_flags flags = FUSE_READDIR_PLUS;
     int32_t err = MediaFuseManager::GetInstance().DoHdcReadDir(path.c_str(), buf, filler, offset, flags);
     EXPECT_EQ(err, E_OK);
-}
-
-HWTEST_F(MediaLibraryFuseTest, MediaLibrary_fuse_SetUid_test_001, TestSize.Level1)
-{
-    int32_t testUid = 12345;
-    MediaFuseManager::GetInstance().SetUid(testUid);
-    EXPECT_EQ(MediaFuseManager::GetInstance().GetUid(), testUid);
 }
 
 HWTEST_F(MediaLibraryFuseTest, FUSE_CloudAssetPermission_Test_001, TestSize.Level1)

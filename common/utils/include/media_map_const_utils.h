@@ -31,6 +31,7 @@ public:
     EXPORT MediaMapConstUtils();
     EXPORT ~MediaMapConstUtils();
     EXPORT static const std::unordered_map<std::string, std::vector<std::string>>& GetMimeTypeMap();
+    EXPORT static const std::string MediaTypeToString(const int32_t mediaType);
 };
 } // namespace OHOS::Media
 
