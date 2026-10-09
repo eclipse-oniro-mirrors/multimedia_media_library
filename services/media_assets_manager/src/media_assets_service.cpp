@@ -2256,21 +2256,19 @@ static int32_t GetCompositeAuxiliaryPath(const shared_ptr<FileAsset> &fileAsset,
     const string &path, string &compositeAuxiliaryPath)
 {
     int32_t compositeDisplayStatus = fileAsset->GetCompositeDisplayStatus();
-    if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ORIGINAL)) {
-        compositeAuxiliaryPath = path;
-    } else if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ORIGINAL_EDIT)) {
-        compositeAuxiliaryPath = MediaEditUtils::GetEditDataSourcePath(path);
-    } else if (compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED) ||
-        compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED_EDIT)) {
-        // 云端无独立 source_back 对象（上传仅 FILE_CONTENT+FILE_RAW(source)）；本地有 source_back 直读，
-        // 纯云（无 source_back）回退 source 路径（对应云端 FILE_RAW，可走 dentry 流读）
-        compositeAuxiliaryPath = MediaEditUtils::IsEditDataSourceBackExists(path) ?
-            MediaEditUtils::GetEditDataSourceBackPath(path) : MediaEditUtils::GetEditDataSourcePath(path);
-    } else {
+    bool isCompositePhoto = compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ORIGINAL) ||
+        compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ORIGINAL_EDIT) ||
+        compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED) ||
+        compositeDisplayStatus == static_cast<int32_t>(CompositeDisplayStatus::ENHANCED_EDIT);
+    if (!isCompositePhoto) {
         MEDIA_ERR_LOG("QueryCompositeAuxiliaryImage: not composite photo, fileId=%{public}d",
             fileAsset->GetId());
         return E_INVALID_VALUES;
     }
+    // 只要被云增强了（复合图状态），就统一返回 source_back 文件数据。
+    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::IsEditDataSourceBackExists(path), E_INVALID_VALUES,
+        "QueryCompositeAuxiliaryImage: source_back not exist, fileId=%{public}d", fileAsset->GetId());
+    compositeAuxiliaryPath = MediaEditUtils::GetEditDataSourceBackPath(path);
     return E_OK;
 }
 
@@ -2307,10 +2305,6 @@ int32_t MediaAssetsService::QueryCompositeAuxiliaryImage(const QueryCompositeAux
 
     CHECK_AND_RETURN_RET_LOG(!compositeAuxiliaryPath.empty(), E_INVALID_VALUES,
         "QueryCompositeAuxiliaryImage: composite auxiliary path is empty, fileId=%{public}d", dto.fileId);
-    if (!MediaFileUtils::IsFileExists(compositeAuxiliaryPath)) {
-        MEDIA_INFO_LOG("QueryCompositeAuxiliaryImage: file not exist locally, try cloud stream read, "
-            "path=%{private}s", compositeAuxiliaryPath.c_str());
-    }
 
     int32_t fd = MediaPrivacyManager(compositeAuxiliaryPath, MEDIA_FILEMODE_READONLY,
         to_string(dto.fileId)).Open();
