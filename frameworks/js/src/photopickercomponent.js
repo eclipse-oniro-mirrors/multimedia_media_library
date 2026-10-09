@@ -740,8 +740,8 @@ export class PhotoPickerComponent extends ViewPU {
         } else if ('onPickerStateChanged' === o) {
             if (this.onPickerStateChanged) {
                 this.onPickerStateChanged(e.pickerState);
-        }
-    } 
+            }
+        } 
     }
 
     handleSelectOrDeselect(e) {
