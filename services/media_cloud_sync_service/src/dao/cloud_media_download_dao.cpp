@@ -127,7 +127,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThmsShare(const DownloadThumbnailQuery
     if (queryDto.isDownloadDisplayFirst) {
         predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, 0);       // NOT_IN_TRASH
         predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);       // NOT_IN_PENDING
-        predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);             // NOT_HIDDEN
+        predicates.EqualTo(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_HIDDEN, 0);    // NOT_HIDDEN
         predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);            // NOT_TEMP_FILE
         predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);  // IS_BURST_COVER
     }

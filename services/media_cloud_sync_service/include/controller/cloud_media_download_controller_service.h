@@ -31,6 +31,7 @@
 #include "cloud_media_download_controller_processor.h"
 #include "cloud_media_download_service.h"
 #include "cloud_media_define.h"
+#include "cloud_media_context.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaDownloadControllerService : public IPC::IMediaControllerService {
@@ -74,6 +75,7 @@ public:
     int32_t OnRemoteRequest(
         uint32_t code, MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context) override
     {
+        CloudMediaContext::GetInstance().SetSceneType(context);
         auto it = this->HANDLERS.find(code);
         CHECK_AND_RETURN_RET(
             it != this->HANDLERS.end(), IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND));
