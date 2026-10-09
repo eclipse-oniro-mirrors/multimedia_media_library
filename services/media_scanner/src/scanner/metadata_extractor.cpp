@@ -394,8 +394,10 @@ static void ExtractLocationMetadata(unique_ptr<ImageSource>& imageSource, unique
         latValue = GetLongitudeLatitude(propertyStr, refStr);
     }
 
-    if (longValue.has_value() && latValue.has_value()) {
+    if (longValue.has_value()) {
         data->SetLongitude(longValue.value());
+    }
+    if (latValue.has_value()) {
         data->SetLatitude(latValue.value());
     }
 }

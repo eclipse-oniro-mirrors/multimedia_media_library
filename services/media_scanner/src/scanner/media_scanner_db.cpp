@@ -68,11 +68,14 @@ static inline void SetRemainFileMetadataApi9(const Metadata &metadata, ValuesBuc
     values.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, metadata.GetAlbumName());
     values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, metadata.GetParentId());
     values.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, metadata.GetParentId());
-    if (metadata.HasLatitude() && metadata.HasLongitude()) {
+    if (metadata.HasLatitude()) {
         values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-        values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
     } else {
         values.PutNull(CONST_MEDIA_DATA_DB_LATITUDE);
+    }
+    if (metadata.HasLongitude()) {
+        values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+    } else {
         values.PutNull(CONST_MEDIA_DATA_DB_LONGITUDE);
     }
 }
@@ -88,11 +91,14 @@ static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket 
             values.PutInt(CONST_MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
             values.PutInt(CONST_MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
             values.PutInt(CONST_MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
-            if (metadata.HasLatitude() && metadata.HasLongitude()) {
+            if (metadata.HasLatitude()) {
                 values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-                values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
             } else {
                 values.PutNull(CONST_MEDIA_DATA_DB_LATITUDE);
+            }
+            if (metadata.HasLongitude()) {
+                values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+            } else {
                 values.PutNull(CONST_MEDIA_DATA_DB_LONGITUDE);
             }
             SetVirtualPath(metadata, values);
@@ -304,6 +310,20 @@ static bool IsCinematicVideoV2Asset(const std::shared_ptr<MediaLibraryRdbStore> 
     return isCinematicVideoV2;
 }
 
+static void SetPhotoLocationValues(const Metadata &metadata, ValuesBucket &values)
+{
+    if (metadata.HasLongitude()) {
+        values.PutDouble(PhotoColumn::PHOTO_LONGITUDE, metadata.GetLongitude());
+    } else {
+        values.PutNull(PhotoColumn::PHOTO_LONGITUDE);
+    }
+    if (metadata.HasLatitude()) {
+        values.PutDouble(PhotoColumn::PHOTO_LATITUDE, metadata.GetLatitude());
+    } else {
+        values.PutNull(PhotoColumn::PHOTO_LATITUDE);
+    }
+}
+
 static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, ValuesBucket &values, bool isInsert,
     bool skipPhoto)
 {
@@ -320,13 +340,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     values.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
     values.PutInt(PhotoColumn::PHOTO_ORIENTATION, metadata.GetOrientation());
     values.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, metadata.GetExifRotate());
-    if (metadata.HasLongitude() && metadata.HasLatitude()) {
-        values.PutDouble(PhotoColumn::PHOTO_LONGITUDE, metadata.GetLongitude());
-        values.PutDouble(PhotoColumn::PHOTO_LATITUDE, metadata.GetLatitude());
-    } else {
-        values.PutNull(PhotoColumn::PHOTO_LONGITUDE);
-        values.PutNull(PhotoColumn::PHOTO_LATITUDE);
-    }
+    SetPhotoLocationValues(metadata, values);
     if (skipPhoto && !metadata.GetUserComment().empty()) {
         values.PutString(PhotoColumn::PHOTO_USER_COMMENT, metadata.GetUserComment());
     }
