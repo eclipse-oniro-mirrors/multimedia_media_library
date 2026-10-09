@@ -719,7 +719,15 @@ export class PhotoPickerComponent extends ViewPU {
             if (this.onPinchGridSwitched) {
                 this.onPinchGridSwitched(e.gridLevel);
             }
-        } else if ('onRecommendedLabelClicked' === o) {
+        } else {
+            this.handleOtherOnReceive2(e)
+            console.info('PhotoPickerComponent onReceive: other case');
+        }
+    }
+
+    handleOtherOnReceive2(e){
+        let o = e.dataType;
+        if ('onRecommendedLabelClicked' === o) {
             if (this.onRecommendedLabelClicked) {
                 let smartEntity = new this.SmartEntity();
                 smartEntity.id = e.id;
@@ -732,10 +740,8 @@ export class PhotoPickerComponent extends ViewPU {
         } else if ('onPickerStateChanged' === o) {
             if (this.onPickerStateChanged) {
                 this.onPickerStateChanged(e.pickerState);
-            }
-        } else {
-            console.info('PhotoPickerComponent onReceive: other case');
         }
+    } 
     }
 
     handleSelectOrDeselect(e) {
@@ -1449,13 +1455,16 @@ export class PickerError {
 
 }
 
-export class SearchInfo{
+export class SearchInfo {
+
 }
 
-export class SmartEntity{
+export class SmartEntity {
+
 }
 
-export class RecommendedLabel{
+export class RecommendedLabel {
+
 }
 
 class PhotoBrowserRangeInfo {
@@ -1606,7 +1615,8 @@ export var PickerState;
     e[e.SEARCH = 1] = 'SEARCH';
 }(PickerState || (PickerState = {}));
 
-export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, PhotoBrowserInfo, UnselectableItemInfo, AnimatorParams,
-    MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, PhotoBrowserRange, PhotoBrowserUIElement,
-    VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType, BadgeConfig, UpdatablePickerConfigs, MovingPhotoBadgeStateType, 
-    PickerError, CompletedResult, SearchInfo, SmartEntity, RecommendedLabel, PickerState };
+export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, PhotoBrowserInfo, UnselectableItemInfo, 
+    AnimatorParams, MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, 
+    PhotoBrowserRange, PhotoBrowserUIElement, VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType,
+    BadgeConfig, UpdatablePickerConfigs, MovingPhotoBadgeStateType, PickerError, CompletedResult, SearchInfo, SmartEntity, 
+    RecommendedLabel, PickerState };
