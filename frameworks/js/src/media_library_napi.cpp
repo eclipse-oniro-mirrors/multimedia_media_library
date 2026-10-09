@@ -182,7 +182,6 @@ const int32_t MAX_FILE_FD = 1023;
 const std::string CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
 const std::string TARGET_DIR = "/storage/media/local/files";
 const int32_t MAX_ASSETS_NUMBER = 200;
-constexpr int32_t SHARED_ASSET_FLAG = 1;
 const std::string DOCS_DIR = "/Docs/";
 const std::string DOCS_DIR_PRE = "/Docs";
 const std::string FILE_MANAGEMENT_PREFIX = "/storage/media/local/files";
@@ -8209,29 +8208,6 @@ napi_value MediaLibraryNapi::PhotoAccessStartCreateThumbnailTask(napi_env env, n
     tracer.Start("PhotoAccessStartCreateThumbnailTask");
     std::unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsStartCreateThumbnailTask(env, info, asyncContext));
-    GetAssetsReqBody reqBody;
-    reqBody.predicates = asyncContext->predicates;
-    reqBody.columns = { PhotoColumn::PHOTO_IS_SHARED };
-    GetAssetsRespBody respBody;
-    uint32_t sharedAssetsCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS);
-    int32_t errCode = IPC::UserDefineIPCClient().SetUserId(asyncContext->userId).Call(sharedAssetsCode, reqBody, respBody);
-    bool hasSharedAsset = false;
-    if (errCode == E_OK && respBody.resultSet != nullptr) {
-        while (respBody.resultSet->GoToNextRow() == NativeRdb::E_OK) {
-            int32_t isShared = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_SHARED,
-                respBody.resultSet, TYPE_INT32));
-            if (isShared == SHARED_ASSET_FLAG) {
-                hasSharedAsset = true;
-                break;
-            }
-        }
-        respBody.resultSet->Close();
-    }
-    if (hasSharedAsset) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
-            "This operation is not supported for assets in shared albums");
-        return nullptr;
-    }
 
     lock_guard<mutex> lock(thumbnailMutex_);
     ReleaseThumbnailTask(GetRequestId());
