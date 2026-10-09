@@ -724,7 +724,6 @@ export class PhotoPickerComponent extends ViewPU {
                 let smartEntity = new this.SmartEntity();
                 smartEntity.id = e.id;
                 smartEntity.name = e.name;
-                this.onRecommendedLabelClicked(smartEntity);
                 if (e.thumbnail) {
                     smartEntity.thumbnail = e.thumbnail;
                 }

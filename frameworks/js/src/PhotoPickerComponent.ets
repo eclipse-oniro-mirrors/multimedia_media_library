@@ -547,10 +547,10 @@ export struct PhotoPickerComponent {
         let smartEntity = new this.SmartEntity();
         smartEntity.id = e.id;
         smartEntity.name = e.name;
-        this.onRecommendedLabelClicked(smartEntity);
         if (e.thumbnail) {
             smartEntity.thumbnail = e.thumbnail;
         }
+        this.onRecommendedLabelClicked(smartEntity);
       } 
     } else if (dataType === 'onPickerStateChanged') {
       if (this.onPickerStateChanged) {
