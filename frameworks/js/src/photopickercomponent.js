@@ -725,7 +725,7 @@ export class PhotoPickerComponent extends ViewPU {
         }
     }
 
-    handleOtherOnReceive2(e){
+    handleOtherOnReceive2(e) {
         let o = e.dataType;
         if ('onRecommendedLabelClicked' === o) {
             if (this.onRecommendedLabelClicked) {
