@@ -1322,15 +1322,15 @@ let PickerController = class {
         return encryptedData;
     }
 
-    async enterSearch() {
+    async enterSearchPage() {
         this.data = new Map([['ENTER_SEARCH', '']]);
     }
 
-    async exitSearch() {
+    async exitSearchPage() {
         this.data = new Map([['EXIT_SEARCH', '']]);
     }
 
-    async goBackInSearch() {
+    async navigateBackInSearchPage() {
         this.data = new Map([['BACK_IN_SEARCH', '']]);
     }
 
