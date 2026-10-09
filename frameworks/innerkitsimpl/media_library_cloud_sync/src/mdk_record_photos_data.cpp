@@ -889,9 +889,9 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetPhotoShareGroup(const int64_t share
     return *this;
 }
 
-std::string MDKRecordPhotosData::GetMediaCreatedId() const
+std::optional<std::string> MDKRecordPhotosData::GetMediaCreateId() const
 {
-    return this->record_.GetOwnerId();
+    return this->recordReader_.GetStringValue(this->fields_, KEY_MEDIA_CREATE_ID);
 }
 
 std::string MDKRecordPhotosData::GetCurrentUserId() const
