@@ -3100,5 +3100,27 @@ string MediaFileUtils::RemoveExtension(const string &path)
     CHECK_AND_RETURN_RET(!cond, "");
     return path.substr(0, splitIndex);
 }
+
+bool MediaFileUtils::GetFileStat(const std::string& path, FileStatInfo& out)
+{
+    struct stat statbuf;
+    if (lstat(path.c_str(), &statbuf) == -1) {
+        MEDIA_WARN_LOG("Failed to get file stat, errno: %{public}d, path: %{private}s", errno,
+            MediaFileUtils::DesensitizePath(path).c_str());
+        out = FileStatInfo{};
+        return false;
+    }
+    if (statbuf.st_size < 0) {
+        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+        out = FileStatInfo{};
+        return false;
+    }
+    out.exists = true;
+    out.size = static_cast<int64_t>(statbuf.st_size);
+    out.ctimeMs = Timespec2Millisecond(statbuf.st_ctim);
+    out.mtimeMs = Timespec2Millisecond(statbuf.st_mtim);
+    out.atimeMs = Timespec2Millisecond(statbuf.st_atim);
+    return true;
+}
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP

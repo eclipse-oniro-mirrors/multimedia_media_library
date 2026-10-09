@@ -526,6 +526,7 @@ const static vector<string> PHOTO_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
     PhotoColumn::PHOTO_IS_SHARED,
     PhotoColumn::PHOTO_STORAGE_PATH,
+    PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE,
 };
 
 bool CheckOpenMovingPhoto(int32_t photoSubType, int32_t effectMode, const string& request)

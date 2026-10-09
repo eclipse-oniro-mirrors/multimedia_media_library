@@ -41,3 +41,15 @@ _Avoid_: 来源类型（与 south_device_type 混淆）
 **媒体类型（media_type）**：
 资产内容类型——`1`=图片、`2`=视频。
 _Avoid_: 类型（泛化）
+
+### 时间信息（维测）
+
+DFX 维测中的时间信息来自**两个来源**：数据库（下列 5 列，`BIGINT`/ms）与文件（`stat`/`lstat` 的 atime/ctime/mtime）。两来源独立，勿混。
+
+**DB 时间列（date_added / date_taken / date_modified / meta_date_modified / change_time）**：
+`Photos` 表的时间列——`date_added`←文件 `st_atim`（入库）、`date_modified`←`st_mtim`（内容修改）、`date_taken`←EXIF 拍摄时间、`meta_date_modified`←元数据级变更、`change_time`←综合变更触发列（升级时由 `date_modified` 播种）。
+_Avoid_: 与文件 atime/ctime/mtime 混淆
+
+**文件 atime / ctime / mtime（filesystem）**：
+磁盘字节层时间，取自 `struct stat` 的 `st_atim`/`st_ctim`/`st_mtim`——atime=访问、ctime=inode 变更、mtime=内容修改；与 DB 列 `change_time` 无关（atime 与 DB `date_added` 的入库快照对应）。
+_Avoid_: 与 DB change_time 混淆

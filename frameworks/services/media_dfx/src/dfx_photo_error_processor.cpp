@@ -18,8 +18,10 @@
 #include "dfx_photo_error_processor.h"
 
 #include "dfx_photo_error_helper.h"
+#include "dfx_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "moving_photo_file_utils.h"
@@ -67,14 +69,14 @@ int32_t DfxPhotoErrorProcessor::ProcessRow(const PhotoErrorRow& row)
     CHECK_AND_RETURN_RET_LOG(!path.empty(), static_cast<int32_t>(PhotoErrorType::CONSISTENT),
         "ResolveRealPath empty, skip. fileId=%{public}d fst=%{public}d", row.fileId, row.fileSourceType);
 
-    size_t primarySize = 0;
-    bool exists = MediaFileUtils::GetFileSize(path, primarySize);
+    FileStatInfo statInfo;
+    bool exists = MediaFileUtils::GetFileStat(path, statInfo);
     int64_t diskSize = 0;
     if (exists) {
         if (MovingPhotoFileUtils::IsMovingPhoto(row.subtype, row.movingPhotoEffectMode, row.originalSubtype)) {
             diskSize = static_cast<int64_t>(MovingPhotoFileUtils::GetMovingPhotoSize(path));
         } else {
-            diskSize = static_cast<int64_t>(primarySize);
+            diskSize = statInfo.size;
         }
     }
     // 当文件不存在时再检查缩略图
@@ -83,7 +85,15 @@ int32_t DfxPhotoErrorProcessor::ProcessRow(const PhotoErrorRow& row)
     CHECK_AND_RETURN_RET(err != PhotoErrorType::CONSISTENT, static_cast<int32_t>(PhotoErrorType::CONSISTENT));
 
     PhotoErrorDimension dim{row.fileSourceType, row.southDeviceType, row.position, row.mediaType, err};
-    return DfxPhotoErrorHelper::EncodePhotoErrorType(dim);
+    int32_t type = DfxPhotoErrorHelper::EncodePhotoErrorType(dim);
+    MEDIA_WARN_LOG("type: [%{public}d], row: [%{public}d, %{public}s, %{public}s, %{public}" PRId64 ", %{public}" PRId64
+        ", %{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 "; %{public}d, %{public}d, "
+        "%{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 "]",
+        type, row.fileId, MediaPathUtils::DesensitizePath(row.data).c_str(),
+        DfxUtils::GetSafeDiaplayNameWhenChinese(row.displayName).c_str(), row.size, row.dateAdded, row.dateTaken,
+        row.dateModified, row.metaDateModified, row.changeTime, exists, thumbExists, diskSize, statInfo.ctimeMs,
+        statInfo.mtimeMs, statInfo.atimeMs);
+    return type;
 }
 } // namespace Media
 } // namespace OHOS

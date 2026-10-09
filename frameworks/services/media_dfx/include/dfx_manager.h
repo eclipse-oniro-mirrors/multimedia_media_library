@@ -46,6 +46,7 @@ struct PhotoErrorData {
     int32_t mediaType {0};
     std::string path;
     std::string displayName;
+    std::string bundleName;
 };
 
 struct PhotoErrorTask : public DfxData {

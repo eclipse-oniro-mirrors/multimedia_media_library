@@ -1162,5 +1162,10 @@ int32_t FileAsset::GetIsShared() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_IS_SHARED);
 }
+
+int32_t FileAsset::GetSouthDeviceType() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE);
+}
 }  // namespace Media
 }  // namespace OHOS
