@@ -99,6 +99,8 @@ group("test") {
     "unittest/delete_share_member_test:unittest",
     "unittest/set_share_album_name_test:unittest",
     "unittest/update_share_member_status_test:unittest",
+    "unittest/reset_share_cover_uri_test:unittest",
+    "unittest/set_share_cover_uri_test:unittest",
   ]
 
   deps_cloud_sync_unittest = [

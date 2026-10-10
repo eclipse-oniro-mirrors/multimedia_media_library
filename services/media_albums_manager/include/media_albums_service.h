@@ -65,6 +65,8 @@
 #include "add_share_member_vo.h"
 #include "delete_share_member_vo.h"
 #include "delete_member_share_album_vo.h"
+#include "set_share_cover_uri_vo.h"
+#include "reset_share_cover_uri_vo.h"
 
 namespace OHOS::Media {
 class MediaAlbumsService {
@@ -117,6 +119,8 @@ public:
     int32_t UpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody);
     int32_t DeleteShareMember(const DeleteShareMemberReqBody &reqBody);
     int32_t DeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody);
+    int32_t SetShareCoverUri(const SetShareCoverUriReqBody &reqBody);
+    int32_t ResetShareCoverUri(const ResetShareCoverUriReqBody &reqBody);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

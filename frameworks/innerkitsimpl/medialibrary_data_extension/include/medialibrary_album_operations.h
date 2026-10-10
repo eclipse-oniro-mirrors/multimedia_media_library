@@ -185,6 +185,8 @@ public:
         bool disable, bool isAsyncRefreshAlbum);
     static int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
         bool disable, bool isAsyncRefreshAlbum);
+    static int32_t SetShareCoverUri(const int32_t &albumId, const std::string &owner, const std::string &coverUri);
+    static int32_t ResetShareCoverUri(const int32_t &albumId, const std::string &owner);
 private:
     static int32_t ValidateAddShareMember(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
         int32_t albumId, const std::string &owner, const std::string &member);

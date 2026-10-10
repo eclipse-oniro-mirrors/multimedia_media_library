@@ -34,6 +34,8 @@
 #include "add_share_member_vo.h"
 #include "delete_share_member_vo.h"
 #include "delete_member_share_album_vo.h"
+#include "set_share_cover_uri_vo.h"
+#include "reset_share_cover_uri_vo.h"
 #include "permission_utils.h"
 #include "photo_album_napi.h"
 #include "user_define_ipc_client.h"
@@ -57,6 +59,8 @@ napi_value MediaShareAlbumChangeRequestNapi::Init(napi_env env, napi_value expor
             DECLARE_NAPI_FUNCTION("addShareMember", JSAddShareMember),
             DECLARE_NAPI_FUNCTION("deleteShareMember", JSDeleteShareMember),
             DECLARE_NAPI_FUNCTION("updateShareMemberStatus", JSUpdateShareMemberStatus),
+            DECLARE_NAPI_FUNCTION("setShareCoverUri", JSSetShareCoverUri),
+            DECLARE_NAPI_FUNCTION("resetShareCoverUri", JSResetShareCoverUri),
             DECLARE_NAPI_STATIC_FUNCTION("deleteShareAlbum", JSDeleteShareAlbums),
             DECLARE_NAPI_STATIC_FUNCTION("deleteMemberShareAlbum", JSDeleteMemberShareAlbum),
         } };
@@ -221,7 +225,7 @@ static bool AddShareMemberExecute(MediaShareAlbumChangeRequestAsyncContext& cont
     MediaLibraryTracer tracer;
     tracer.Start("AddShareMemberExecute");
  
-    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "addShareMember: album is invalid");
  
     AddShareMemberReqBody reqBody;
     reqBody.albumId = context.albumId;
@@ -247,7 +251,7 @@ static bool UpdateShareMemberStatusExecute(MediaShareAlbumChangeRequestAsyncCont
     MediaLibraryTracer tracer;
     tracer.Start("UpdateShareMemberStatusExecute");
  
-    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "updateShareMemberStatus: album is invalid");
  
     UpdateShareMemberStatusReqBody reqBody;
     reqBody.albumId = context.albumId;
@@ -273,7 +277,7 @@ static bool DeleteShareMemberExecute(MediaShareAlbumChangeRequestAsyncContext& c
     MediaLibraryTracer tracer;
     tracer.Start("DeleteShareMemberExecute");
  
-    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareAlbumName: album is invalid");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "deleteShareMember: album is invalid");
  
     DeleteShareMemberReqBody reqBody;
     reqBody.albumId = context.albumId;
@@ -292,6 +296,49 @@ static bool DeleteShareMemberExecute(MediaShareAlbumChangeRequestAsyncContext& c
     return true;
 }
 
+static bool SetShareCoverUriExecute(MediaShareAlbumChangeRequestAsyncContext &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("SetShareCoverUriExecute");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "setShareCoverUri: album is invalid");
+
+    SetShareCoverUriReqBody reqBody;
+    reqBody.albumId = context.albumId;
+    reqBody.owner = context.shareCoverOwner;
+    reqBody.coverUri = context.coverUri;
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_COVER_URI);
+    int ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (ret != E_OK) {
+        context.SaveError(ret);
+        NAPI_ERR_LOG("Failed to set share cover uri, ret: %{public}d", ret);
+        return false;
+    }
+    NAPI_INFO_LOG("SetShareCoverUri done, albumId=%{public}d", context.albumId);
+    return true;
+}
+
+static bool ResetShareCoverUriExecute(MediaShareAlbumChangeRequestAsyncContext& context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ResetShareCoverUriExecute");
+    CHECK_COND_RET(RefreshShareAlbumId(context), false, "resetShareCoverUri: album is invalid");
+
+    ResetShareCoverUriReqBody reqBody;
+    reqBody.albumId = context.albumId;
+    reqBody.owner = context.shareCoverOwner;
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_RESET_SHARE_COVER_URI);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (ret != E_OK) {
+        context.SaveError(ret);
+        NAPI_ERR_LOG("ResetShareCoverUriExecute failed, err: %{public}d", ret);
+        return false;
+    }
+    NAPI_INFO_LOG("ResetShareCoverUri done, albumId=%{public}d", context.albumId);
+    return true;
+}
+
 // ===================== ApplyChanges mode =====================
 using ShareAlbumExecFunc = bool (*)(MediaShareAlbumChangeRequestAsyncContext&);
 static const unordered_map<ShareAlbumChangeOperation, ShareAlbumExecFunc> SHARE_EXEC_MAP = {
@@ -299,6 +346,8 @@ static const unordered_map<ShareAlbumChangeOperation, ShareAlbumExecFunc> SHARE_
     { ShareAlbumChangeOperation::ADD_SHARE_MEMBER, AddShareMemberExecute },
     { ShareAlbumChangeOperation::UPDATE_SHARE_MEMBER_STATUS, UpdateShareMemberStatusExecute },
     { ShareAlbumChangeOperation::DELETE_SHARE_MEMBER, DeleteShareMemberExecute },
+    { ShareAlbumChangeOperation::SET_SHARE_COVER_URI, SetShareCoverUriExecute },
+    { ShareAlbumChangeOperation::RESET_SHARE_COVER_URI, ResetShareCoverUriExecute },
 };
 
 static void ApplyShareAlbumChangeRequestExecute(napi_env env, void *data)
@@ -387,16 +436,13 @@ napi_value MediaShareAlbumChangeRequestNapi::ApplyChanges(napi_env env, napi_cal
         "Failed to check share album change request operations");
     asyncContext->albumChangeOperations = albumChangeOperations_;
     albumChangeOperations_.clear();
-    auto photoAlbum = GetPhotoAlbumInstance();
-    if (photoAlbum != nullptr) {
-        asyncContext->albumId = photoAlbum->GetAlbumId();
-        asyncContext->hasValidAlbum = true;
-    }
     asyncContext->shareOwnerInfo = shareOwnerInfo_;
     asyncContext->albumName = albumName_;
     asyncContext->memberOwner = shareMemberOwner_;
     asyncContext->member = shareMemberMember_;
     asyncContext->memberStatus = shareMemberStatus_;
+    asyncContext->coverUri = coverUri_;
+    asyncContext->shareCoverOwner = shareCoverOwner_;
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ApplyShareAlbumChangeRequest",
         ApplyShareAlbumChangeRequestExecute, ApplyShareAlbumChangeRequestCompleteCallback);
 }
@@ -447,7 +493,7 @@ napi_value MediaShareAlbumChangeRequestNapi::JSSetShareAlbumName(napi_env env, n
     napi_value thisVar = nullptr;
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
     if (argc != ARGS_TWO) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
+        NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
         return nullptr;
     }
     MediaShareAlbumChangeRequestNapi *changeRequest = nullptr;
@@ -473,6 +519,11 @@ static napi_value ParseArgsDeleteShareAlbums(napi_env env, napi_value argv[], De
     if (MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM1], param.owner) != napi_ok) {
         NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
             "fail to get owner");
+        return nullptr;
+    }
+    bool isArray = false;
+    if (napi_is_array(env, argv[PARAM2], &isArray) != napi_ok || !isArray) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "albums is not an array");
         return nullptr;
     }
     vector<napi_value> albumArray;
@@ -527,7 +578,7 @@ napi_value MediaShareAlbumChangeRequestNapi::JSDeleteShareAlbums(napi_env env, n
     size_t argc = ARGS_THREE;
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr), JS_INNER_FAIL);
     if (argc != ARGS_THREE) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
+        NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
         return nullptr;
     }
  
@@ -593,7 +644,7 @@ napi_value MediaShareAlbumChangeRequestNapi::JSAddShareMember(napi_env env, napi
     napi_value argv[ARGS_THREE] = { nullptr };
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
     if (argc != ARGS_THREE) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
+        NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
         return nullptr;
     }
     MediaShareAlbumChangeRequestNapi* request = nullptr;
@@ -656,7 +707,7 @@ napi_value MediaShareAlbumChangeRequestNapi::JSUpdateShareMemberStatus(napi_env 
     napi_value argv[ARGS_THREE] = { nullptr };
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
     if (argc != ARGS_THREE) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
+        NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
         return nullptr;
     }
     MediaShareAlbumChangeRequestNapi* request = nullptr;
@@ -710,7 +761,7 @@ napi_value MediaShareAlbumChangeRequestNapi::JSDeleteShareMember(napi_env env, n
     napi_value argv[ARGS_TWO] = { nullptr };
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
     if (argc != ARGS_TWO) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
+        NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
         return nullptr;
     }
     MediaShareAlbumChangeRequestNapi* request = nullptr;
@@ -779,6 +830,11 @@ static napi_value ParseArgsDeleteMemberShareAlbum(napi_env env, napi_value argv[
         NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "failed to get owner");
         return nullptr;
     }
+    bool isArray = false;
+    if (napi_is_array(env, argv[PARAM2], &isArray) != napi_ok || !isArray) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "albums is not an array");
+        return nullptr;
+    }
     vector<napi_value> napiValues;
     CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, argv[PARAM2], napiValues));
     CHECK_WITH_INT_ERR_MESSAGE(env, !napiValues.empty(),
@@ -804,7 +860,7 @@ napi_value MediaShareAlbumChangeRequestNapi::JSDeleteMemberShareAlbum(napi_env e
     size_t argc = ARGS_THREE;
     CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr), JS_INNER_FAIL);
     if (argc != ARGS_THREE) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
+        NapiError::ThrowErrorWithIntCode(env, JS_ERR_PARAMETER_INVALID, "The number of parameters is incorrect");
         return nullptr;
     }
  
@@ -824,5 +880,126 @@ napi_value MediaShareAlbumChangeRequestNapi::JSDeleteMemberShareAlbum(napi_env e
  
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSDeleteMemberShareAlbum",
         DeleteMemberShareAlbumExecute, DeleteMemberShareAlbumComplete);
+}
+
+static napi_value ParseArgsSetShareCoverUri(napi_env env, napi_value argv[],
+    SetShareCoverUriParam &param, MediaShareAlbumChangeRequestNapi *changeRequest)
+{
+    NAPI_INFO_LOG("enter ParseArgsSetShareCoverUri");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can only be called by system apps");
+        return nullptr;
+    }
+    if (changeRequest == nullptr) {
+        NAPI_ERR_LOG("setShareCoverUri: changeRequest is null");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "changeRequest is null");
+        return nullptr;
+    }
+    auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
+    if (photoAlbum == nullptr) {
+        NAPI_ERR_LOG("setShareCoverUri: photoAlbum is null");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "photoAlbum is null");
+        return nullptr;
+    }
+    if (!PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NAPI_ERR_LOG("setShareCoverUri: the album is not a share album");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "the album is not a share album");
+        return nullptr;
+    }
+    if (MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM0], param.owner) != napi_ok ||
+        param.owner.empty()) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "failed to get owner");
+        return nullptr;
+    }
+    if (MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM1], param.coverUri) != napi_ok ||
+        param.coverUri.empty()) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "failed to get cover uri");
+        return nullptr;
+    }
+    RETURN_NAPI_TRUE(env);
+}
+
+napi_value MediaShareAlbumChangeRequestNapi::JSSetShareCoverUri(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSSetShareCoverUri");
+    NAPI_INFO_LOG("enter JSSetShareCoverUri");
+    napi_value argv[ARGS_TWO] = { nullptr };
+    size_t argc = ARGS_TWO;
+    napi_value thisVar = nullptr;
+    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
+    if (argc != ARGS_TWO) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "The number of parameters is incorrect");
+        return nullptr;
+    }
+    MediaShareAlbumChangeRequestNapi *changeRequest = nullptr;
+    napi_unwrap(env, thisVar, reinterpret_cast<void **>(&changeRequest));
+    SetShareCoverUriParam param;
+    CHECK_PARAMETER_WITH_MESSAGE(env, ParseArgsSetShareCoverUri(env, argv, param, changeRequest) != nullptr,
+        "Failed to parse args");
+    changeRequest->shareCoverOwner_ = param.owner;
+    changeRequest->coverUri_ = param.coverUri;
+    changeRequest->albumChangeOperations_.push_back(ShareAlbumChangeOperation::SET_SHARE_COVER_URI);
+    RETURN_NAPI_UNDEFINED(env);
+}
+
+static napi_value ParseArgsResetShareCoverUri(napi_env env, napi_value argv[],
+    ResetShareCoverUriParam &param, MediaShareAlbumChangeRequestNapi *changeRequest)
+{
+    NAPI_INFO_LOG("enter ParseArgsResetShareCoverUri");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can only be called by system apps");
+        return nullptr;
+    }
+    if (changeRequest == nullptr) {
+        NAPI_ERR_LOG("resetShareCoverUri: changeRequest is null");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "changeRequest is null");
+        return nullptr;
+    }
+    auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
+    if (photoAlbum == nullptr) {
+        NAPI_ERR_LOG("resetShareCoverUri: photoAlbum is null");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "photoAlbum is null");
+        return nullptr;
+    }
+    if (!PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NAPI_ERR_LOG("resetShareCoverUri: the album is not a share album");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "the album is not a share album");
+        return nullptr;
+    }
+    if (MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM0], param.owner) != napi_ok ||
+        param.owner.empty()) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "failed to get owner");
+        return nullptr;
+    }
+    RETURN_NAPI_TRUE(env);
+}
+
+napi_value MediaShareAlbumChangeRequestNapi::JSResetShareCoverUri(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSResetShareCoverUri");
+    NAPI_INFO_LOG("enter JSResetShareCoverUri");
+    napi_value argv[ARGS_ONE] = { nullptr };
+    size_t argc = ARGS_ONE;
+    napi_value thisVar = nullptr;
+    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
+    if (argc != ARGS_ONE) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "The number of parameters is incorrect");
+        return nullptr;
+    }
+    MediaShareAlbumChangeRequestNapi *changeRequest = nullptr;
+    napi_unwrap(env, thisVar, reinterpret_cast<void **>(&changeRequest));
+    ResetShareCoverUriParam param;
+    CHECK_PARAMETER_WITH_MESSAGE(env, ParseArgsResetShareCoverUri(env, argv, param, changeRequest) != nullptr,
+        "Failed to parse args");
+    changeRequest->shareCoverOwner_ = param.owner;
+    changeRequest->albumChangeOperations_.push_back(ShareAlbumChangeOperation::RESET_SHARE_COVER_URI);
+    RETURN_NAPI_UNDEFINED(env);
 }
 } // namespace OHOS::Media

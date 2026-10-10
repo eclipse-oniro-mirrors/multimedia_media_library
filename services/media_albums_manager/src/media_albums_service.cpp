@@ -1216,4 +1216,14 @@ int32_t MediaAlbumsService::DeleteMemberShareAlbum(const DeleteMemberShareAlbumR
 {
     return MediaLibraryAlbumOperations::DeleteMemberShareAlbum(reqBody.owner, reqBody.albumIds);
 }
+
+int32_t MediaAlbumsService::SetShareCoverUri(const SetShareCoverUriReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::SetShareCoverUri(reqBody.albumId, reqBody.owner, reqBody.coverUri);
+}
+
+int32_t MediaAlbumsService::ResetShareCoverUri(const ResetShareCoverUriReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::ResetShareCoverUri(reqBody.albumId, reqBody.owner);
+}
 } // namespace OHOS::Media
