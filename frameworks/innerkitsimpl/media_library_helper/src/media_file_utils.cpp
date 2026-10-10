@@ -3101,7 +3101,7 @@ string MediaFileUtils::RemoveExtension(const string &path)
     return path.substr(0, splitIndex);
 }
 
-bool MediaFileUtils::GetFileStat(const std::string& path, FileStatInfo& out)
+bool MediaFileUtils::GetFileStat(const std::string &path, FileStatInfo &out)
 {
     struct stat statbuf;
     if (lstat(path.c_str(), &statbuf) == -1) {

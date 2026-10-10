@@ -279,7 +279,7 @@ public:
     EXPORT static std::string GenerateUUID();
     static int32_t CloneToAlbumCancel(const std::string &requestId);
     static bool CheckCancelCopy(const std::string &requestId);
-    EXPORT static bool GetFileStat(const std::string& path, FileStatInfo& out);
+    EXPORT static bool GetFileStat(const std::string &path, FileStatInfo &out);
 
 private:
     static bool Mkdir(const std::string &subStr, std::shared_ptr<int> errCodePtr);
