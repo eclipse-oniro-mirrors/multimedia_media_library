@@ -729,13 +729,15 @@ export class PhotoPickerComponent extends ViewPU {
         let o = e.dataType;
         if ('onRecommendedLabelClicked' === o) {
             if (this.onRecommendedLabelClicked) {
-                let smartEntity = new this.SmartEntity();
+                let recommendedLabel = new RecommendedLabel();
+                let smartEntity = new SmartEntity();
                 smartEntity.id = e.id;
                 smartEntity.name = e.name;
                 if (e.thumbnail) {
                     smartEntity.thumbnail = e.thumbnail;
                 }
-                this.onRecommendedLabelClicked(smartEntity);
+                recommendedLabel.smartEntity = smartEntity;
+                this.onRecommendedLabelClicked(recommendedLabel);
             }
         } else if ('onPickerStateChanged' === o) {
             if (this.onPickerStateChanged) {

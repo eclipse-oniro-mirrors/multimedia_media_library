@@ -544,14 +544,16 @@ export struct PhotoPickerComponent {
       }
     } else if (dataType === 'onRecommendedLabelClicked') {
       if (this.onRecommendedLabelClicked) {
-        let smartEntity = new this.SmartEntity();
-        smartEntity.id = e.id;
-        smartEntity.name = e.name;
-        if (e.thumbnail) {
-            smartEntity.thumbnail = e.thumbnail;
-        }
-        this.onRecommendedLabelClicked(smartEntity);
-      } 
+          let recommendedLabel = new RecommendedLabel();
+          let smartEntity = new SmartEntity();
+          smartEntity.id = e.id;
+          smartEntity.name = e.name;
+          if (e.thumbnail) {
+              smartEntity.thumbnail = e.thumbnail;
+          }
+          recommendedLabel.smartEntity = smartEntity;
+          this.onRecommendedLabelClicked(recommendedLabel);
+      }
     } else if (dataType === 'onPickerStateChanged') {
       if (this.onPickerStateChanged) {
           this.onPickerStateChanged(e.pickerState);
