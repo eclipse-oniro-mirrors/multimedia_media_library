@@ -7046,6 +7046,7 @@ static ani_status ParseSupportedMimeTypesFromConfig(ani_env *env, ani_object con
 void MediaLibraryAni::unregisterAssetExecute(ani_env *env, ani_object object,
     ani_fn_object callbackOff, std::string type)
 {
+    ANI_INFO_LOG("SubEvent op=off_all kit=MediaLibraryKit event=%{public}s", type.c_str());
     CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
 
     MediaLibraryAni *obj = Unwrap(env, object);
