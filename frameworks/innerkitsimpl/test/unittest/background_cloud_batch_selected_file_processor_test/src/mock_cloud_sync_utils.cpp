@@ -30,6 +30,11 @@ bool CloudSyncUtils::IsCloudSyncSwitchOn()
     return true;
 }
 
+bool CloudSyncUtils::IsSharedAlbumCloudSyncSwitchOn()
+{
+    return true;
+}
+
 bool CloudSyncUtils::IsUnlimitedTrafficStatusOn()
 {
     return true;

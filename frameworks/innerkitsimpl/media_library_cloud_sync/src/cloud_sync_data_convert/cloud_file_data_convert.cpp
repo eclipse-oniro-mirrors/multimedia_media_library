@@ -48,6 +48,7 @@ const std::string CloudFileDataConvert::recordType_ = "media";
 constexpr off_t THUMB_LIMIT_SIZE = 2 * 1024 * 1024;
 constexpr int32_t USER_COMMENT_LIMIT_SIZE = 1024;
 const int32_t FILE_SOURCE_TYPE_MEDIA = 0;
+const int32_t FILE_SOURCE_TYPE_MEDIA_SHARE_ALBUM = 5;
 
 CloudFileDataConvert::CloudFileDataConvert(CloudOperationType type, int32_t userId) : userId_(userId), type_(type)
 {}
@@ -455,7 +456,8 @@ int32_t CloudFileDataConvert::CheckContentLivePhoto(const CloudMdkRecordPhotosVo
     bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(
         upLoadRecord.subtype, upLoadRecord.movingPhotoEffectMode, upLoadRecord.originalSubtype);
     bool isGraffiti = MovingPhotoFileUtils::IsGraffiti(upLoadRecord.subtype, upLoadRecord.originalSubtype);
-    bool isMediaLivePhoto = upLoadRecord.fileSourceType == FILE_SOURCE_TYPE_MEDIA;
+    bool isMediaLivePhoto = upLoadRecord.fileSourceType == FILE_SOURCE_TYPE_MEDIA ||
+        upLoadRecord.fileSourceType == FILE_SOURCE_TYPE_MEDIA_SHARE_ALBUM;
     isMediaLivePhoto = isMediaLivePhoto && isMovingPhoto && !isGraffiti;
     if (isMediaLivePhoto) {
         std::string localPath = CloudMediaClientUtils::FindLocalPathFromCloudPath(path, userId_);
@@ -1147,7 +1149,8 @@ std::string CloudFileDataConvert::GetContentRelatedLog(const CloudMdkRecordPhoto
     bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(
         upLoadRecord.subtype, upLoadRecord.movingPhotoEffectMode, upLoadRecord.originalSubtype);
     bool isGraffiti = MovingPhotoFileUtils::IsGraffiti(upLoadRecord.subtype, upLoadRecord.originalSubtype);
-    bool isMediaLivePhoto = upLoadRecord.fileSourceType == FILE_SOURCE_TYPE_MEDIA;
+    bool isMediaLivePhoto = upLoadRecord.fileSourceType == FILE_SOURCE_TYPE_MEDIA ||
+        upLoadRecord.fileSourceType == FILE_SOURCE_TYPE_MEDIA_SHARE_ALBUM;
     std::stringstream log;
     log << "fileId: " << upLoadRecord.fileId << ", ";
     log << "cloudId: " << upLoadRecord.cloudId << ", ";

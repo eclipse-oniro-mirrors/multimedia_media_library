@@ -361,9 +361,13 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_GetStorageFreeRa
     ret = BackgroundCloudBatchSelectedFileProcessor::GetStorageFreeRatio(freeRatio);
     BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadResourceCheck();
     BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadResourceCheck();
-    BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition();
+    bool restoreNormal = true;
+    bool restoreShare = true;
+    BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition(restoreNormal, restoreShare);
     BatchDownloadAutoPauseReasonType autoPauseReason;
-    BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason);
+    bool stopNormal = true;
+    bool stopShare = true;
+    BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason, stopNormal, stopShare);
     InsertBatchDownloadTask(1, "file://media/Photo/1/1.jpg", "1.jpg",
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     int32_t dbReason;
@@ -950,7 +954,7 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_AutoStopAction_T
     EXPECT_EQ(waitingCount, 10);
 
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_POWER_LOW;
-    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason);
+    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason, true, true);
     int32_t pauseCount = QueryTasksCountByStatus(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE);
     EXPECT_EQ(pauseCount, 10);
     MEDIA_INFO_LOG("Bcbsfpt_AutoStopAction_Test_001 End");
@@ -961,13 +965,13 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_AutoResumeAction
     MEDIA_INFO_LOG("Bcbsfpt_AutoResumeAction_Test_001 Start");
     PrepareBatchDownloadTask(10);
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
-    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason);
+    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason, true, true);
     int32_t pauseCount = QueryTasksCountByStatus(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE);
     EXPECT_EQ(pauseCount, 10);
     BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadProcessRunningStatus(true);
     BackgroundCloudBatchSelectedFileProcessor::StopBatchDownloadResourcesTimer(false);
     BackgroundCloudBatchSelectedFileProcessor::LaunchAutoResumeBatchDownloadProcessor();
-    BackgroundCloudBatchSelectedFileProcessor::AutoResumeAction();
+    BackgroundCloudBatchSelectedFileProcessor::AutoResumeAction(true, true);
     int32_t waitingCount = QueryTasksCountByStatus(Media::BatchDownloadStatusType::TYPE_WAITING);
     EXPECT_EQ(waitingCount, 10);
     MEDIA_INFO_LOG("Bcbsfpt_AutoResumeAction_Test_001 End");
@@ -978,7 +982,7 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_AllAutoPauseToDo
     MEDIA_INFO_LOG("Bcbsfpt_AllAutoPauseToDownloading_Test_001 Start");
     PrepareBatchDownloadTask(10);
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
-    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason);
+    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason, true, true);
     BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToDownloading();
     int32_t downloadingCount = QueryTasksCountByStatus(Media::BatchDownloadStatusType::TYPE_DOWNLOADING);
     EXPECT_EQ(downloadingCount, 0);
@@ -990,7 +994,7 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_AllAutoPauseToWa
     MEDIA_INFO_LOG("Bcbsfpt_AllAutoPauseToWaiting_Test_001 Start");
     PrepareBatchDownloadTask(10);
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
-    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason);
+    BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(autoPauseReason, true, true);
     BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToWaiting();
     int32_t waitingCount = QueryTasksCountByStatus(Media::BatchDownloadStatusType::TYPE_WAITING);
     EXPECT_EQ(waitingCount, 10);
