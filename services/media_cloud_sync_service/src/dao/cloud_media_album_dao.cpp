@@ -435,6 +435,10 @@ int32_t CloudMediaAlbumDao::OnDeleteAlbums(std::vector<std::string> &failedAlbum
 int32_t CloudMediaAlbumDao::HandleNotExistAlbumRecord(const PhotoAlbumDto &album)
 {
     MEDIA_INFO_LOG("enter OnCreateNotExistRecord Album id %{public}s", album.cloudId.c_str());
+    if (CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE)) {
+        MEDIA_INFO_LOG("OnCreateNotExistRecord Album in share scene, do nothing.");
+        return E_OK;
+    }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL,
         "OnCreateNotExistRecord Album Failed to get rdbStore.");
