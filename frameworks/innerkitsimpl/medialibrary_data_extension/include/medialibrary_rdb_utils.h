@@ -166,7 +166,7 @@ public:
         std::unordered_map<std::string, std::vector<int32_t>> &portraitGroupMap);
     EXPORT static void GetAlbumCountAndCoverPredicates(const UpdateAlbumData& albumInfo,
         NativeRdb::RdbPredicates &predicates, const bool hiddenState, const bool isUpdateAlbum = false,
-        bool filterVisibility = false);
+        bool filterVisibility = true);
     EXPORT static void DetermineQueryOrder(NativeRdb::RdbPredicates& predicates, const UpdateAlbumData& data,
         bool hiddenState, std::vector<std::string>& columns);
     EXPORT static std::string GetCover(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);

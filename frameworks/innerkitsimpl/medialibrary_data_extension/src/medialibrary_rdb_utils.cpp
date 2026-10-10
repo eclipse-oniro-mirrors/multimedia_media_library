@@ -747,7 +747,7 @@ static int32_t QueryAlbumHiddenCount(const shared_ptr<MediaLibraryRdbStore> rdbS
     UpdateAlbumData albumInfo;
     albumInfo.albumId = albumId;
     albumInfo.albumSubtype = static_cast<int32_t>(subtype);
-    // hidden_count 不需要 photo_visibility 过滤（与 count 规则一致，包含封禁图片）
+    // hidden_count 需要 photo_visibility 过滤（与 count 规则一致，不包含封禁图片）
     MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(albumInfo, predicates, true);
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET(fetchResult != nullptr, E_HAS_DB_ERROR);
@@ -1587,7 +1587,7 @@ static int32_t SetUpdateValues(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
         PhotoColumn::MEDIA_DATE_TAKEN
     };
     bool isShareAlbum = (subtype == PhotoAlbumSubType::SHARE_GENERIC);
-    bool filterVisibility = false;  // count 查询不过滤 photo_visibility
+    bool filterVisibility = true;  // count 查询过滤 photo_visibility
 
     // 先查 count
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
