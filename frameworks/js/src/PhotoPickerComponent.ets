@@ -85,6 +85,8 @@ export struct PhotoPickerComponent {
   onScrollStopAtStart: onScrollStopAtStartCallback;
   onScrollStopAtEnd: onScrollStopAtEndCallback;
   onPinchGridSwitched = undefined;
+  onRecommendedLabelClicked = undefined;
+  onPickerStateChanged = undefined;
   dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
   badgeConfigIsSending: boolean = false;
   @ObjectLink @Watch('onChanged') pickerController: PickerController;
@@ -180,6 +182,14 @@ export struct PhotoPickerComponent {
     if (data?.has('COMPLETED')) {
       this.onComplete(data)
       console.info('PhotoPickerComponent onChanged: COMPLETED');
+    } else if (data?.has('ENTER_SEARCH')) {
+      this.proxy.send({ 'enterSearch': ''});
+    } else if (data?.has('EXIT_SEARCH')) {
+      this.proxy.send({ 'exitSearch': ''});
+    } else if (data?.has('BACK_IN_SEARCH')) {
+      this.proxy.send({ 'goBackInSearch': ''});
+    } else if (data?.has('SEARCH')) {
+      this.proxy.send({ 'searchInfo': o.get('SEARCH')});
     } else {
       console.info('PhotoPickerComponent onChanged: other case');
     }
@@ -349,6 +359,8 @@ export struct PhotoPickerComponent {
             maxVideoSelectNumber: this.pickerOptions?.maxVideoSelectNumber as number,
             isOnItemClickedSet: this.onItemClicked ? true : false,
             isOnItemClickedNotifySet: this.onItemClickedNotify ? true : false,
+            isOnRecommendedLabelClickedSet: this.onRecommendedLabelClicked ? true : false,
+            isOnPickerStateChangedSet: this.onPickerStateChanged ? true : false,
             isUnSelectableItemClickedSet: this.onUnselectableItemClicked ? true : false,
             isPreviewForSingleSelectionSupported: this.pickerOptions?.isPreviewForSingleSelectionSupported as boolean,
             singleSelectionMode: this.pickerOptions?.singleSelectionMode as number,
@@ -529,6 +541,22 @@ export struct PhotoPickerComponent {
     } else if (dataType === 'onScrollStopAtEnd') {
       if (this.onScrollStopAtEnd) {
         this.onScrollStopAtEnd();
+      }
+    } else if (dataType === 'onRecommendedLabelClicked') {
+      if (this.onRecommendedLabelClicked) {
+          let recommendedLabel = new RecommendedLabel();
+          let smartEntity = new SmartEntity();
+          smartEntity.id = e.id;
+          smartEntity.name = e.name;
+          if (e.thumbnail) {
+              smartEntity.thumbnail = e.thumbnail;
+          }
+          recommendedLabel.smartEntity = smartEntity;
+          this.onRecommendedLabelClicked(recommendedLabel);
+      }
+    } else if (dataType === 'onPickerStateChanged') {
+      if (this.onPickerStateChanged) {
+          this.onPickerStateChanged(e.pickerState);
       }
     } else {
       console.info('PhotoPickerComponent onReceive: other case');
@@ -1244,6 +1272,25 @@ export class PickerController {
     encryptedData = encryptedData.replace(/"displayName":"([^"]|\")*"/g, '"displayName":"******"');
     return encryptedData;
   }
+
+  async enterSearchPage() {
+    this.data = new Map([['ENTER_SEARCH', '']]);
+  }
+
+  async exitSearchPage() {
+    this.data = new Map([['EXIT_SEARCH', '']]);
+  }
+
+  async navigateBackInSearchPage() {
+    this.data = new Map([['BACK_IN_SEARCH', '']]);
+  }
+
+  async search(searchInfo) {
+    if (!searchInfo) {
+        return;
+    }
+    this.data = new Map([['SEARCH', searchInfo]]);
+  }
 }
 
 export class PickerOptions extends photoAccessHelper.BaseSelectOptions {
@@ -1343,6 +1390,23 @@ export class ContextRecoveryInfo {
   gridLevel?: GridLevel;
   sortRule?: string;
   fileSize?: int;
+}
+
+
+export class SearchInfo{
+  text?: string,
+  smartEntityIds?: Array<int>
+}
+
+export class SmartEntity{
+  id: int,
+  name?: string,
+  thumbnail?: image.PixelMap
+}
+
+export class RecommendedLabel{
+  text?: string,
+  smartEntity?: SmartEntity
 }
 
 export class SingleLineConfig {
@@ -1495,4 +1559,9 @@ export enum MovingPhotoBadgeStateType {
 export enum SceneType {
   GRID_TO_PHOTO_BROWSER = 0;
   PHOTO_BROWSER_SWIPE = 1;
+}
+
+export enum PickerState {
+  DEFAULT = 0;
+  SEARCH = 1;
 }
