@@ -1825,10 +1825,10 @@ static std::string BuildWhereClause(const std::vector<std::string>& dismissAsset
         whereClause += "'" + fileId + "'";
     }
 
-    whereClause += ") AND EXISTS (SELECT 1 FROM " + ANALYSIS_ALBUM_TABLE +
-        " WHERE " + ANALYSIS_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID +
-        " = " + std::to_string(albumId) + " AND " +
-        ANALYSIS_ALBUM_TABLE + ".tag_id = " + VISION_IMAGE_FACE_TABLE + ".tag_id)";
+    whereClause += ") AND tag_id IN (SELECT member.tag_id FROM " + ANALYSIS_ALBUM_TABLE +
+        " AS member INNER JOIN " + ANALYSIS_ALBUM_TABLE + " AS current" +
+        " ON member.group_tag = current.group_tag WHERE current." +
+        PhotoAlbumColumns::ALBUM_ID + " = " + std::to_string(albumId) + ")";
 
     return whereClause;
 }
