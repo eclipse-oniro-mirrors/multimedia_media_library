@@ -84,13 +84,13 @@ bool ShareAlbumInfoCalculation::IsShareAlbumAsset(const PhotoAssetChangeInfo &as
 {
     return assetInfo.ownerAlbumId_ == albumId
         && assetInfo.isShared_ == 1
+        && assetInfo.photoVisibility_ == 0
         && AlbumAssetHelper::IsCommonSystemAsset(assetInfo, false, 1);
 }
 
 bool ShareAlbumInfoCalculation::IsShareAlbumCoverAsset(const PhotoAssetChangeInfo &assetInfo, int32_t albumId)
 {
-    return IsShareAlbumAsset(assetInfo, albumId)
-        && assetInfo.photoVisibility_ == 0;
+    return IsShareAlbumAsset(assetInfo, albumId);
 }
 
 bool ShareAlbumInfoCalculation::IsShareAlbumHiddenAsset(const PhotoAssetChangeInfo &assetInfo, int32_t albumId)
