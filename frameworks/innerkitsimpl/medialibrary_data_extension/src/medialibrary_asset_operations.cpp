@@ -1807,6 +1807,8 @@ static bool IsNotMusicFile(const std::string &path)
 
 static void AddPhotoErrorDfx(const shared_ptr<FileAsset> &fileAsset, const std::string &assetPath)
 {
+    CHECK_AND_RETURN(fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE ||
+        fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_VIDEO);
     auto dfxManager = DfxManager::GetInstance();
     CHECK_AND_RETURN_LOG(dfxManager != nullptr, "Failed to get dfxManager");
     std::string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
