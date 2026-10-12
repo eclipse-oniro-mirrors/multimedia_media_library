@@ -3778,12 +3778,18 @@ static void GetFileAssetsForPermanentDeletion(AbsRdbPredicates &predicates,
         PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
         PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
         PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_STORAGE_PATH,
+        PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_QUALITY, PhotoColumn::STAGE_VIDEO_TASK_STATUS,
     };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is nullptr");
     auto errCode = GetAssetVectorFromResultSet(resultSet, columns, fileAssetVector);
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("GetAssetVectorFromResultSet failed, errCode: %{public}d", errCode);
+    }
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        do {
+            MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, false);
+        } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
     }
     MEDIA_INFO_LOG("fileAssetVector size is %{public}zu, predicates args size is %{public}zu",
         fileAssetVector.size(), predicates.GetWhereArgs().size());
