@@ -89,7 +89,7 @@ int32_t DfxPhotoErrorProcessor::ProcessRow(const PhotoErrorRow& row)
     MEDIA_WARN_LOG("type: [%{public}d], row: [%{public}d, %{public}s, %{public}s, %{public}" PRId64 ", %{public}" PRId64
         ", %{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 "; %{public}d, %{public}d, "
         "%{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 ", %{public}" PRId64 "]",
-        type, row.fileId, MediaPathUtils::DesensitizePath(row.data).c_str(),
+        type, row.fileId, MediaFileUtils::DesensitizePath(row.data).c_str(),
         DfxUtils::GetSafeDiaplayNameWhenChinese(row.displayName).c_str(), row.size, row.dateAdded, row.dateTaken,
         row.dateModified, row.metaDateModified, row.changeTime, exists, thumbExists, diskSize, statInfo.ctimeMs,
         statInfo.mtimeMs, statInfo.atimeMs);
