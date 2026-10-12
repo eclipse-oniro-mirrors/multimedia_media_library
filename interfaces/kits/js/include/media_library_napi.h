@@ -598,6 +598,7 @@ private:
     static thread_local napi_ref sLivePhoto4dStatusEnumRef_;
     static thread_local napi_ref sAvailabilityStatusEnumRef_;
     static thread_local napi_ref sDeepOptimizeStateRef_;
+    static thread_local napi_ref sShareAlbumRiskStatusEnumRef_;
 
     static std::mutex sOnOffMutex_;
     static std::mutex thumbnailMutex_;
