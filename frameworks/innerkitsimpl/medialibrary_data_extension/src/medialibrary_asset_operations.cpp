@@ -3779,7 +3779,6 @@ static void GetFileAssetsForPermanentDeletion(AbsRdbPredicates &predicates,
         PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
         PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_STORAGE_PATH,
         PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_QUALITY, PhotoColumn::STAGE_VIDEO_TASK_STATUS,
-        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
     };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is nullptr");
