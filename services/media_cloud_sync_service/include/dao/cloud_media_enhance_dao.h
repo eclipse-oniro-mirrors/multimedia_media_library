@@ -39,6 +39,7 @@ public:
 
 public:
     int32_t GetCloudSyncUnPreparedDataCount(int32_t &result);
+    int32_t GetThumbnailMissingCount(int32_t &result);
     std::tuple<std::string, std::string> GetNextUnPreparedData();
 };
 }  // namespace OHOS::Media::CloudSync

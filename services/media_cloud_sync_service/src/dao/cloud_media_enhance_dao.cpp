@@ -29,6 +29,7 @@
 #include "result_set.h"
 #include "result_set_utils.h"
 #include "medialibrary_rdb_utils.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaEnhanceDao::GetCloudSyncUnPreparedDataCount(int32_t &result)
@@ -51,6 +52,29 @@ int32_t CloudMediaEnhanceDao::GetCloudSyncUnPreparedDataCount(int32_t &result)
     result = GetInt32Val("count", resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("GetCloudSyncUnPreparedDataCount end %{public}d", result);
+    return E_OK;
+}
+
+int32_t CloudMediaEnhanceDao::GetThumbnailMissingCount(int32_t &result)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+
+    NativeRdb::AbsRdbPredicates queryPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    queryPredicates.EqualTo(PhotoColumn::PHOTO_QUALITY,
+        std::to_string(static_cast<int32_t>(MultiStagesPhotoQuality::LOW)));
+    queryPredicates.EqualTo(MediaColumn::MEDIA_TYPE,
+        std::to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)));
+    queryPredicates.And()->IsNotNull(PhotoColumn::PHOTO_ID);
+    vector<string> queryColums = {"COUNT(1) AS count"};
+    auto resultSet = rdbStore->Query(queryPredicates, queryColums);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+    bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "failed to get row");
+    result = GetInt32Val("count", resultSet);
+    resultSet->Close();
+    MEDIA_INFO_LOG("GetThumbnailMissingCount end %{public}d", result);
     return E_OK;
 }
 

@@ -21,8 +21,23 @@
 
 #include "i_media_parcelable.h"
 #include "cloud_media_define.h"
+#include "cloud_sync_prepare_data_type.h"
 
 namespace OHOS::Media::CloudSync {
+
+class EXPORT CloudSyncUnPreparedDataReqBody : public IPC::IMediaParcelable {
+public:
+    int32_t type;
+
+public:  // functions of Parcelable.
+    virtual ~CloudSyncUnPreparedDataReqBody() = default;
+    bool Unmarshalling(MessageParcel &parcel) override;
+    bool Marshalling(MessageParcel &parcel) const override;
+
+public:  // basic functions
+    std::string ToString() const;
+};
+
 class EXPORT CloudSyncUnPreparedDataRespBody : public IPC::IMediaParcelable {
 public:
     int32_t count;

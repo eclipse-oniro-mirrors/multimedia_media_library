@@ -78,8 +78,8 @@ public:
     int32_t UpdateLocalFileDirty(std::vector<MDKRecord> &records) override;
     int32_t UpdateSyncStatus(const std::string &cloudId, int32_t syncStatus) override;
 
-    int32_t GetCloudSyncUnPreparedData(int32_t &result) override;
-    int32_t SubmitCloudSyncPreparedDataTask() override;
+    int32_t GetCloudSyncUnPreparedData(CloudSyncPrepareDataType type, int32_t &result) override;
+    int32_t SubmitCloudSyncPreparedDataTask(CloudSyncPrepareDataType type) override;
 
     int32_t CheckAndFixAlbum() override;
     int32_t QueryData(const DataShare::DataSharePredicates &predicates, const std::vector<std::string> &columnNames,

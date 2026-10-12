@@ -504,15 +504,18 @@ int32_t CloudMediaDataClientHandler::UpdateLocalFileDirty(std::vector<MDKRecord>
     return ret;
 }
 
-int32_t CloudMediaDataClientHandler::GetCloudSyncUnPreparedData(int32_t &result)
+int32_t CloudMediaDataClientHandler::GetCloudSyncUnPreparedData(CloudSyncPrepareDataType type, int32_t &result)
 {
-    MEDIA_INFO_LOG("CloudMediaDataClientHandler::GetCloudSyncUnPreparedData begin");
+    MEDIA_INFO_LOG("CloudMediaDataClientHandler::GetCloudSyncUnPreparedData begin, type: %{public}d",
+        static_cast<int32_t>(type));
     // request info.
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_GET_CLOUD_SYNC_UNPREPARED_DATA);
+    CloudSyncUnPreparedDataReqBody reqBody;
+    reqBody.type = static_cast<int32_t>(type);
     CloudSyncUnPreparedDataRespBody respBody;
     respBody.count = 0;
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-            .SetHeader(GetHeader()).Get(operationCode, respBody);
+            .SetHeader(GetHeader()).Post(operationCode, reqBody, respBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Failed to GetCloudSyncUnPreparedData, ret: %{public}d", ret);
     }
@@ -520,13 +523,16 @@ int32_t CloudMediaDataClientHandler::GetCloudSyncUnPreparedData(int32_t &result)
     return ret;
 }
 
-int32_t CloudMediaDataClientHandler::SubmitCloudSyncPreparedDataTask()
+int32_t CloudMediaDataClientHandler::SubmitCloudSyncPreparedDataTask(CloudSyncPrepareDataType type)
 {
-    MEDIA_INFO_LOG("CloudMediaDataClientHandler::SubmitCloudSyncPreparedDataTask begin");
+    MEDIA_INFO_LOG("CloudMediaDataClientHandler::SubmitCloudSyncPreparedDataTask begin, type: %{public}d",
+        static_cast<int32_t>(type));
     // request info.
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_SUBMIT_CLOUD_SYNC_UNPREPARED_DATA_TASK);
+    CloudSyncUnPreparedDataReqBody reqBody;
+    reqBody.type = static_cast<int32_t>(type);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-            .SetHeader(GetHeader()).Post(operationCode);
+            .SetHeader(GetHeader()).Post(operationCode, reqBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Failed to SubmitCloudSyncPreparedDataTask, ret: %{public}d", ret);
     }
