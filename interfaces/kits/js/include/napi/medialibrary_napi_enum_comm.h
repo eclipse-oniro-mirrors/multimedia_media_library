@@ -241,6 +241,10 @@ const std::vector<std::string> deepOptimizeStateEnum {
     "RUNNING", "COMPLETED", "FAILED", "STOPPED", "INTERRUPTED"
 };
 
+const std::vector<std::string> shareAlbumRiskStatusEnum {
+    "UNDER_REVIEW", "LOW_REVIEW_RISK", "HIGH_REVIEW_RISK"
+};
+
 const std::vector<std::pair<std::string, int32_t>> PHOTO_SUB_TYPE_ENUM_PROPERTIES = {
     std::make_pair("DEFAULT",           static_cast<int32_t>(PhotoSubType::DEFAULT)),
     std::make_pair("SCREENSHOT",        static_cast<int32_t>(PhotoSubType::SCREENSHOT)),

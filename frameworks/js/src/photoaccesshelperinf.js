@@ -1657,4 +1657,5 @@ export default {
   DeepOptimizeState: photoAccessHelper.DeepOptimizeState,
   PickerColorMode: PickerColorMode,
   ShareMemberStatus: photoAccessHelper.ShareMemberStatus,
+  ShareAlbumRiskStatus: photoAccessHelper.ShareAlbumRiskStatus,
 };

@@ -307,6 +307,7 @@ private:
     EXPORT static napi_value CreateLivePhoto4dStatusEnum(napi_env env);
     EXPORT static napi_value CreateAvailabilityStatusEnum(napi_env env);
     EXPORT static napi_value CreateDeepOptimizeStateEnum(napi_env env);
+    EXPORT static napi_value CreateShareAlbumRiskStatusEnum(napi_env env);
 
     EXPORT static napi_value CreatePhotoKeysEnum(napi_env env);
     EXPORT static napi_value CreateHiddenPhotosDisplayModeEnum(napi_env env);

@@ -152,6 +152,10 @@ const std::vector<std::string> deepOptimizeStateEnum {
     "RUNNING", "COMPLETED", "FAILED", "STOPPED", "INTERRUPTED"
 };
 
+const std::vector<std::string> shareAlbumRiskStatusEnum {
+    "UNDER_REVIEW", "LOW_REVIEW_RISK", "HIGH_REVIEW_RISK"
+};
+
 const std::vector<std::pair<std::string, std::string>> FILE_KEY_ENUM_PROPERTIES = {
     std::make_pair("ID",                        CONST_MEDIA_DATA_DB_ID),
     std::make_pair("RELATIVE_PATH",             CONST_MEDIA_DATA_DB_RELATIVE_PATH),
