@@ -428,7 +428,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessInternal(const
     }
     int32_t ret = pipeline->OnProcessImageDone(param);
     //无论成功失败: 删除raw图
-    MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(photoId, false);
+    MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(imageId, false);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("failed execute pipeline->OnProcessImageDone.");
         return;
