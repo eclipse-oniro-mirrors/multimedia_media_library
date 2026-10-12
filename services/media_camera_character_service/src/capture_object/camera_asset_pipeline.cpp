@@ -459,9 +459,6 @@ int32_t CameraAssetPipeline::OnProcessImageDone(const OnProcessImageWrapper &wra
     MultiStagesCaptureDfxResult::Report(photoId,
         static_cast<int32_t>(MultiStagesCaptureResultErrCode::SUCCESS), static_cast<int32_t>(metadata_.dfxMediaType));
 
-    // 9.落盘后: 删除raw图
-    MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(photoId, false);
-
     // 结束标记
     OnProcessFinished();
     MEDIA_INFO_LOG("CameraAssetPipeline::OnProcessImageDone success: %{public}s.", assetInfo_.ToString().c_str());

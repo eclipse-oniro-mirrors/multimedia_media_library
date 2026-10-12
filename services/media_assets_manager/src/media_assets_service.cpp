@@ -214,6 +214,9 @@ int32_t MediaAssetsService::DeletePhotosCompleted(const std::vector<std::string>
 {
     DataShare::DataSharePredicates predicates;
     MEDIA_INFO_LOG("The count of delete fileIds is %{public}zu", fileIds.size());
+    for (auto fileId : fileIds) {
+        MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(fileId, false);
+    }
     predicates.In(PhotoColumn::MEDIA_ID, fileIds);
     predicates.NotEqualTo(PhotoColumn::PHOTO_IS_SHARED, std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
     return MediaLibraryAlbumOperations::DeletePhotoAssetsCompleted(predicates, false);
