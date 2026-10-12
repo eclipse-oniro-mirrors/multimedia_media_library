@@ -132,6 +132,7 @@ struct ReverseCloneResourcePlan {
     ReverseCloneAssetResource fallbackSource;
     bool hasFallbackSource {false};
     bool inheritOrigin {false};
+    // Blocks duplicate donor origin only; the absorbed asset's own fallback remains usable.
     bool blockOriginInheritance {false};
     bool inheritLcdThumbnail {false};
     bool inheritThumbnail {false};
