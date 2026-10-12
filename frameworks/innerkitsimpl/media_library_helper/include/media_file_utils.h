@@ -94,6 +94,14 @@ struct TmpCompatibleDupInfo {
     TmpCompatibleDupInfo() = default;
 };
 
+struct FileStatInfo {
+    bool exists{false};
+    int64_t size{0};
+    int64_t ctimeMs{0};
+    int64_t mtimeMs{0};
+    int64_t atimeMs{0};
+};
+
 /**
  * @brief Utility class for file operations
  *
@@ -271,6 +279,7 @@ public:
     EXPORT static std::string GenerateUUID();
     static int32_t CloneToAlbumCancel(const std::string &requestId);
     static bool CheckCancelCopy(const std::string &requestId);
+    EXPORT static bool GetFileStat(const std::string &path, FileStatInfo &out);
 
 private:
     static bool Mkdir(const std::string &subStr, std::shared_ptr<int> errCodePtr);

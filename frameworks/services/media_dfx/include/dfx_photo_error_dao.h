@@ -35,6 +35,12 @@ struct PhotoErrorRow {
     int32_t subtype{0};
     int32_t movingPhotoEffectMode{0};
     int32_t originalSubtype{0};
+    std::string displayName;
+    int64_t dateAdded{0};
+    int64_t dateTaken{0};
+    int64_t dateModified{0};
+    int64_t metaDateModified{0};
+    int64_t changeTime{0};
     std::string ToString() const;
 };
 

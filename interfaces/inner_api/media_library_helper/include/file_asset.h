@@ -341,6 +341,8 @@ public:
     EXPORT void SetIsShared(int32_t isShared);
     EXPORT int32_t GetIsShared() const;
 
+    EXPORT int32_t GetSouthDeviceType() const;
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;

@@ -223,6 +223,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::C2PA_CONFIG_INFO, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_IS_SHARED, MEMBER_TYPE_INT32 },
     { PhotoColumn::MUSIC_MASTER_MODE, MEMBER_TYPE_INT32 },
+    { PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, MEMBER_TYPE_INT32 },
 };
 
 const std::unordered_map<std::string, int>& GetFileAssetMemberMap()
@@ -1806,10 +1807,15 @@ static bool IsNotMusicFile(const std::string &path)
 
 static void AddPhotoErrorDfx(const shared_ptr<FileAsset> &fileAsset, const std::string &assetPath)
 {
+    CHECK_AND_RETURN(fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE ||
+        fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_VIDEO);
     auto dfxManager = DfxManager::GetInstance();
     CHECK_AND_RETURN_LOG(dfxManager != nullptr, "Failed to get dfxManager");
-    PhotoErrorData data = {fileAsset->GetId(), fileAsset->GetFileSourceType(), 0, fileAsset->GetPosition(),
-        static_cast<int32_t>(fileAsset->GetMediaType()), assetPath, fileAsset->GetDisplayName()};
+    std::string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    bundleName = bundleName.empty() ? to_string(IPCSkeleton::GetCallingUid()) : bundleName;
+    PhotoErrorData data = {fileAsset->GetId(), fileAsset->GetFileSourceType(),
+        fileAsset->GetSouthDeviceType(), fileAsset->GetPosition(),
+        static_cast<int32_t>(fileAsset->GetMediaType()), assetPath, fileAsset->GetDisplayName(), bundleName};
     dfxManager->HandlePhotoError(data);
 }
 

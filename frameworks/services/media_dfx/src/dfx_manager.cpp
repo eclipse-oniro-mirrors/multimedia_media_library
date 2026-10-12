@@ -1684,6 +1684,44 @@ void DfxManager::HandleVisitLcd()
     dfxAnalyzer_->FlushVisitLcd();
 }
 
+static std::string GetPhotoErrorAuditLogExtend(int32_t typeCode, const PhotoErrorData &data)
+{
+    int64_t size = 0;
+    int64_t dateAdded = 0;
+    int64_t dateTaken = 0;
+    int64_t dateModified = 0;
+    int64_t metaDateModified = 0;
+    int64_t changeTime = 0;
+    do {
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        CHECK_AND_BREAK(rdbStore != nullptr);
+        const std::string sql = "SELECT size, date_added, date_taken, date_modified, meta_date_modified, change_time "
+            "FROM Photos WHERE file_id = ?";
+        std::vector<NativeRdb::ValueObject> args = { data.fileId };
+        auto resultSet = rdbStore->QuerySql(sql, args);
+        CHECK_AND_BREAK(resultSet != nullptr);
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            size = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
+            dateAdded = GetInt64Val(MediaColumn::MEDIA_DATE_ADDED, resultSet);
+            dateTaken = GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet);
+            dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
+            metaDateModified = GetInt64Val(PhotoColumn::PHOTO_META_DATE_MODIFIED, resultSet);
+            changeTime = GetInt64Val(PhotoColumn::PHOTO_CHANGE_TIME, resultSet);
+        }
+        resultSet->Close();
+    } while (0);
+
+    FileStatInfo statInfo;
+    MediaFileUtils::GetFileStat(data.path, statInfo);
+
+    std::ostringstream extend;
+    extend << "caller=" << data.bundleName << ";tc=" << typeCode << ";size=" << size
+        << ";da=" << dateAdded << ";dt=" << dateTaken << ";dm=" << dateModified
+        << ";mdm=" << metaDateModified << ";ct=" << changeTime << ";fsize=" << statInfo.size
+        << ";fct=" << statInfo.ctimeMs << ";fmt=" << statInfo.mtimeMs << ";fat=" << statInfo.atimeMs;
+    return extend.str();
+}
+
 static void LogPhotoError(DfxData *data)
 {
     CHECK_AND_RETURN(data != nullptr);
@@ -1691,8 +1729,10 @@ static void LogPhotoError(DfxData *data)
     CHECK_AND_RETURN(taskData != nullptr);
     const int32_t typeCode = taskData->typeCode_;
     const PhotoErrorData &photoErrorData = taskData->photoErrorData_;
+
+    std::string extend = GetPhotoErrorAuditLogExtend(typeCode, photoErrorData);
     AuditLog auditLog = { false, "DFX", "OPEN_EMPTY_CREATE", "io", 1, "success",
-        to_string(typeCode), to_string(photoErrorData.fileId), DfxType::OLD_API_OPEN, 0,
+        extend, to_string(photoErrorData.fileId), DfxType::OLD_API_OPEN, 0,
         DfxUtils::GetSafePath(photoErrorData.path), DfxUtils::GetSafeDiaplayNameWhenChinese(photoErrorData.displayName),
         "", MediaMapConstUtils::MediaTypeToString(photoErrorData.mediaType) };
     HiAudit::GetInstance().Write(auditLog);
