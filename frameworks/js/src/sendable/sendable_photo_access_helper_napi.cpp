@@ -71,6 +71,7 @@ thread_local napi_ref SendablePhotoAccessHelper::sAlbumType_ = nullptr;
 thread_local napi_ref SendablePhotoAccessHelper::sAlbumSubType_ = nullptr;
 thread_local napi_ref SendablePhotoAccessHelper::sMovingPhotoEffectModeEnumRef_ = nullptr;
 thread_local napi_ref SendablePhotoAccessHelper::sDynamicRangeTypeEnumRef_ = nullptr;
+thread_local napi_ref SendablePhotoAccessHelper::sShareAlbumRiskStatusEnumRef_ = nullptr;
 
 SendablePhotoAccessHelper::SendablePhotoAccessHelper()
     : env_(nullptr) {}
@@ -115,6 +116,7 @@ napi_value SendablePhotoAccessHelper::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_PROPERTY("PhotoSubtype", CreatePhotoSubTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("MovingPhotoEffectMode", CreateMovingPhotoEffectModeEnum(env)),
         DECLARE_NAPI_PROPERTY("DynamicRangeType", CreateDynamicRangeTypeEnum(env)),
+        DECLARE_NAPI_PROPERTY("ShareAlbumRiskStatus", CreateShareAlbumRiskStatusEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -988,6 +990,11 @@ napi_value SendablePhotoAccessHelper::CreatePositionTypeEnum(napi_env env)
 napi_value SendablePhotoAccessHelper::CreatePhotoSubTypeEnum(napi_env env)
 {
     return CreateNumberEnumProperty(env, photoSubTypeEnum, sPhotoSubType_);
+}
+
+napi_value SendablePhotoAccessHelper::CreateShareAlbumRiskStatusEnum(napi_env env)
+{
+    return CreateNumberEnumProperty(env, shareAlbumRiskStatusEnum, sShareAlbumRiskStatusEnumRef_);
 }
 
 napi_value ParseHiddenPhotosDisplayMode(napi_env env,

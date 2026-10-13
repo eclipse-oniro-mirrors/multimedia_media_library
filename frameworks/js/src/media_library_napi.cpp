@@ -416,6 +416,7 @@ thread_local napi_ref MediaLibraryNapi::sLivePhoto4dStatusEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sAvailabilityStatusEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sDeepOptimizeStateRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sShareMemberStatusEnumRef_ = nullptr;
+thread_local napi_ref MediaLibraryNapi::sShareAlbumRiskStatusEnumRef_ = nullptr;
 
 constexpr int32_t DEFAULT_REFCOUNT = 1;
 constexpr int32_t DEFAULT_ALBUM_COUNT = 1;
@@ -706,6 +707,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
         DECLARE_NAPI_PROPERTY("DynamicRangeType", CreateDynamicRangeTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("AvailabilityStatus", CreateAvailabilityStatusEnum(env)),
         DECLARE_NAPI_PROPERTY("ShareMemberStatus", CreateShareMemberStatusEnum(env)),
+        DECLARE_NAPI_PROPERTY("ShareAlbumRiskStatus", CreateShareAlbumRiskStatusEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -11320,6 +11322,11 @@ napi_value MediaLibraryNapi::CreateAppLinkStateEnum(napi_env env)
 napi_value MediaLibraryNapi::CreateDeepOptimizeStateEnum(napi_env env)
 {
     return CreateNumberEnumProperty(env, deepOptimizeStateEnum, sDeepOptimizeStateRef_);
+}
+
+napi_value MediaLibraryNapi::CreateShareAlbumRiskStatusEnum(napi_env env)
+{
+    return CreateNumberEnumProperty(env, shareAlbumRiskStatusEnum, sShareAlbumRiskStatusEnumRef_);
 }
 
 static bool CheckTitleCompatible(MediaLibraryAsyncContext* context)
