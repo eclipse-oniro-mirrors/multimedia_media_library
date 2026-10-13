@@ -1547,6 +1547,10 @@ int32_t CloudMediaPhotosDao::OnCopyPhotoRecord(
 int32_t CloudMediaPhotosDao::ClearCloudInfo(
     const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
+    if (CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE)) {
+        MEDIA_INFO_LOG("ClearCloudInfo not in share scene, do nothing.");
+        return E_OK;
+    }
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "ClearCloudInfo Failed to get rdbStore.");
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);

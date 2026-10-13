@@ -1179,7 +1179,7 @@ void CloudFileDataConvert::ConvertScaDetailToVo(MDKRecordPhotosData &data, OnFet
     CHECK_AND_RETURN(onFetchPhotoVo.sharePhotoDetailDtoOp.has_value());
     auto &sharePhotoDetailVo = onFetchPhotoVo.sharePhotoDetailDtoOp.value();
     sharePhotoDetailVo.currentUserId = data.GetCurrentUserId();
-    sharePhotoDetailVo.mediaCreateId = data.GetMediaCreatedId();
+    sharePhotoDetailVo.mediaCreateId = data.GetMediaCreateId().value_or("");
     data.GetScadetailList(sharePhotoDetailVo.scaDetailList);
 }
 } // namespace OHOS::Media::CloudSync

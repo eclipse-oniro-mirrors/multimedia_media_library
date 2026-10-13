@@ -207,7 +207,7 @@ public:  // attributes getter & setter
     std::optional<int64_t> GetPhotoShareGroup() const;
     MDKRecordPhotosData &SetPhotoShareGroup(const int64_t shareGroup);
     void GetScadetailList(std::vector<ScaDetailVo> &scaDetailList);
-    std::string GetMediaCreatedId() const;
+    std::optional<std::string> GetMediaCreateId() const;
     std::string GetCurrentUserId() const;
     std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
     std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
@@ -267,7 +267,7 @@ private:
     const std::string KEY_RECYCLED_TIME = "recycledTime";
     const std::string KEY_FAVORITE = "favorite";
     const std::string KEY_DESCRIPTION = "description";
-    const std::string KEY_MEDIA_CREATE_ID = "mediaCreateId";
+    const std::string KEY_MEDIA_CREATE_ID = "mediaCreatorId";
     const std::string KEY_SCA_DETAIL = "scaDetail";
     const std::string KEY_SOURCE_PATH = "sourcePath";
     const std::string KEY_SOURCE_FILE_NAME = "sourceFileName";
