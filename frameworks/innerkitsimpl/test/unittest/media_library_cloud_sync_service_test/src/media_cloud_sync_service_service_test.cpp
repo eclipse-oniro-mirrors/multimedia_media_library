@@ -776,7 +776,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadThmsByU
     SetValuesBucketInPhotosTable(PhotoColumn::MEDIA_ID, "1", values1);
     SetValuesBucketInPhotosTable(PhotoColumn::PHOTO_SYNC_STATUS, "0", values1);
     SetValuesBucketInPhotosTable(PhotoColumn::PHOTO_CLEAN_FLAG, "0", values1);
-    SetValuesBucketInPhotosTable(PhotoColumn::MEDIA_FILE_PATH, "/storage1/cloud1/files1/filename1.txt", values1);
+    SetValuesBucketInPhotosTable(PhotoColumn::MEDIA_FILE_PATH, "/storage/cloud/files/filename1.txt", values1);
     InsertTable(g_rdbStore, PhotoColumn::PHOTOS_TABLE, values1);
     ValuesBucket values2;
     SetValuesBucketInPhotosTable(PhotoColumn::MEDIA_ID, "2", values2);
