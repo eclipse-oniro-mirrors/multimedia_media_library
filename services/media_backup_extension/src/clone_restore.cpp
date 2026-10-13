@@ -520,6 +520,7 @@ bool CloneRestore::BackupPreprocess()
         srcCloneRestoreConfigInfo_.switchStatus == SwitchStatus::HDC);
     // 判断单到单克隆场景:新单克旧单(不支持共享相册)
     options.needInvalidateShareData = !dstDeviceBackupInfo_.shareEnabled;
+    CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, false, "mediaLibraryRdb_ is nullptr!");
     CHECK_AND_PRINT_LOG(CleanupTempBackupDir(), "cleanup old temp backup dir failed");
     bool success = CreateTempDbBackup(options);
     if (success) {

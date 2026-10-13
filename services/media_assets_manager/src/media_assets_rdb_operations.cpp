@@ -623,8 +623,6 @@ int32_t MediaAssetsRdbOperations::StartThumbnailCreationTask(NativeRdb::RdbPredi
     pid_t pid)
 {
     MEDIA_INFO_LOG("MediaAssetsRdbOperations::StartThumbnailCreationTask requestId:%{public}d", requestId);
-    rdbPredicate.NotEqualTo(PhotoColumn::PHOTO_IS_SHARED,
-        std::to_string(static_cast<int32_t>(PhotoSharedType::SHARED)));
     return ThumbnailService::GetInstance()->CreateAstcBatchOnDemand(rdbPredicate, requestId, pid);
 }
 
