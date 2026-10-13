@@ -828,6 +828,11 @@ bool IThumbnailHelper::GenThumbnail(ThumbRdbOpt &opts, ThumbnailData &data, cons
             return false;
         }
     } else if (type == ThumbnailType::MTH_ASTC || type == ThumbnailType::YEAR_ASTC) {
+        // 共享相册资产不支持生成年月纹理图
+        if (data.isShared == static_cast<int32_t>(PhotoSharedType::SHARED)) {
+            MEDIA_DEBUG_LOG("share asset not support create month/year astc, id: %{public}s", data.id.c_str());
+            return true;
+        }
         CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::CheckDateTaken(opts, data), false,
             "CheckDateTaken failed in GenThumbnail");
         CHECK_AND_RETURN_RET_LOG(GenMonthAndYearAstcData(data, type), false,
