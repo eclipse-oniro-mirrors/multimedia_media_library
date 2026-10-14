@@ -27,6 +27,7 @@
 #include "fetch_result.h"
 #include "get_self_permissions.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_smart_map_column.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -44,8 +45,10 @@
 #include "media_upgrade.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_rdbstore.h"
+#include "medialibrary_restore.h"
 #include "file_asset.h"
 #include "photo_album.h"
+#include "rdb_helper.h"
 #include "nlohmann/json.hpp"
 
 #define private public
@@ -105,7 +108,11 @@ void MediaLibraryMetaRecoveryUnitTest::TearDownTestCase(void)
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
 }
 
-void MediaLibraryMetaRecoveryUnitTest::SetUp(void) {}
+void MediaLibraryMetaRecoveryUnitTest::SetUp(void)
+{
+    // Each case starts a new background window; synchronous metadata work has already returned.
+    MediaLibraryMetaRecovery::GetInstance().ResetRecoveryInterrupt();
+}
 
 void MediaLibraryMetaRecoveryUnitTest::TearDown(void) {}
 
@@ -194,9 +201,11 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_Backup_001, TestSize.Lev
     auto ret = MediaLibraryPhotoOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
 
-    MediaLibraryMetaRecovery::GetInstance().recoveryState_ = MediaLibraryMetaRecoveryState::STATE_BACKING_UP;
-    MediaLibraryMetaRecovery::GetInstance().DoBackupMetadata();
-    MediaLibraryMetaRecovery::GetInstance().recoveryState_ = MediaLibraryMetaRecoveryState::STATE_NONE;
+    auto &recovery = MediaLibraryMetaRecovery::GetInstance();
+    recovery.ResetRecoveryInterrupt();
+    recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_BACKING_UP;
+    recovery.DoBackupMetadata();
+    recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_NONE;
 
     // meta file exist
     string path = GetFilePath(fileId);
@@ -231,7 +240,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_Backup_002, TestSize.Lev
     MediaLibraryMetaRecovery::GetInstance().recoveryState_ = MediaLibraryMetaRecoveryState::STATE_NONE;
     MediaLibraryMetaRecovery::GetInstance().CheckRecoveryState();
     sleep(1); // for async backup
-    EXPECT_EQ(access(META_RECOVERY_ALBUM_PATH.c_str(), F_OK), -1);
+    EXPECT_EQ(access(META_RECOVERY_ALBUM_PATH.c_str(), F_OK), 0);
     EXPECT_EQ(access(metaPath.c_str(), F_OK), 0);
     MEDIA_INFO_LOG("MetaRecovery_Backup_002::End");
 }
@@ -831,7 +840,8 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_CheckRecoveryState_Test_
     MediaLibraryMetaRecovery::GetInstance().recoveryState_ = MediaLibraryMetaRecoveryState::STATE_NONE;
     MediaLibraryMetaRecovery::GetInstance().CheckRecoveryState();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().recoveryState_.load(),
+        MediaLibraryMetaRecoveryState::STATE_NONE);
 
     MediaLibraryMetaRecovery::GetInstance().InterruptRecovery();
 
@@ -845,7 +855,8 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_InterruptRecovery_Test_0
     MediaLibraryMetaRecovery::GetInstance().recoveryState_ = MediaLibraryMetaRecoveryState::STATE_BACKING_UP;
     MediaLibraryMetaRecovery::GetInstance().InterruptRecovery();
     EXPECT_EQ(static_cast<int32_t>(MediaLibraryMetaRecovery::GetInstance().recoveryState_.load()),
-             static_cast<int32_t>(MediaLibraryMetaRecoveryState::STATE_NONE));
+             static_cast<int32_t>(MediaLibraryMetaRecoveryState::STATE_BACKING_UP));
+    EXPECT_TRUE(MediaLibraryMetaRecovery::GetInstance().cancelCurrentWork_.load());
 
     MediaLibraryMetaRecovery::GetInstance().recoveryState_ = MediaLibraryMetaRecoveryState::STATE_RECOVERING;
     MediaLibraryMetaRecovery::GetInstance().InterruptRecovery();
@@ -1517,6 +1528,359 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_GetInstance_Test_001, Te
     EXPECT_EQ(&instance1, &instance2);
 
     MEDIA_INFO_LOG("MetaRecovery_GetInstance_Test_001::End");
+}
+
+class RecoveryReadinessCallback final : public NativeRdb::RdbOpenCallback {
+public:
+    int OnCreate(NativeRdb::RdbStore &store) override
+    {
+        return store.Execute("CREATE TABLE PhotoAlbum(album_id INTEGER PRIMARY KEY)").first;
+    }
+    int OnUpgrade(NativeRdb::RdbStore &, int, int) override
+    {
+        return NativeRdb::E_OK;
+    }
+};
+
+/** @tc.desc: Readiness uses an isolated database and both required tables, never the shared fixture. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, RecoveryReadiness_ActualDatabase, TestSize.Level1)
+{
+    const int32_t version = 1;
+    NativeRdb::RdbStoreConfig config("/data/test/recovery-readiness-" + MediaFileUtils::GenerateUUID() + ".db");
+    config.SetHaMode(NativeRdb::HAMode::MANUAL_TRIGGER);
+    config.SetSecurityLevel(NativeRdb::SecurityLevel::S3);
+    config.SetAllowRebuild(true);
+    RecoveryReadinessCallback callback;
+    int error = E_OK;
+    auto store = NativeRdb::RdbHelper::GetRdbStore(config, version, callback, error);
+    ASSERT_EQ(error, E_OK);
+    ASSERT_NE(store, nullptr);
+    EXPECT_NE(MediaLibraryMetaRecovery::CheckDatabaseUsability(*store, version), E_OK); // Photos is missing.
+    ASSERT_EQ(store->Execute("CREATE TABLE Photos(file_id INTEGER PRIMARY KEY)").first, E_OK);
+    EXPECT_EQ(MediaLibraryMetaRecovery::CheckDatabaseUsability(*store, version), E_OK); // Empty is valid.
+    EXPECT_EQ(MediaLibraryMetaRecovery::CheckDatabaseUsability(*store, version, false), E_OK);
+    EXPECT_EQ(MediaLibraryMetaRecovery::CheckDatabaseUsability(*store, 0), NativeRdb::E_INVALID_ARGS);
+    EXPECT_NE(MediaLibraryMetaRecovery::CheckDatabaseUsability(*store, version + 1), E_OK);
+    ASSERT_EQ(store->Execute("DROP TABLE PhotoAlbum").first, E_OK);
+    EXPECT_NE(MediaLibraryMetaRecovery::CheckDatabaseUsability(*store, version), E_OK);
+    store.reset();
+    EXPECT_EQ(NativeRdb::RdbHelper::DeleteRdbStore(config), E_OK);
+}
+
+static nlohmann::json RecoveryMetadataFixture()
+{
+    return {{"data", ROOT_MEDIA_DIR + "Photo/legacy.jpg"}, {"media_type", MEDIA_TYPE_IMAGE},
+        {"size", 100}, {"date_modified", 7000}, {"hidden", 0}, {"date_trashed", 0}, {"date_deleted", 0},
+        {"time_pending", 0}, {"position", 1}, {"cloud_id", ""}, {"file_source_type", 0}, {"is_temp", 0}};
+}
+
+/** @tc.desc: Legacy metadata needs no risk fields; explicit unsafe or malformed values remain rejected. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalMetadata_LegacyAndSafety, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    auto metadata = RecoveryMetadataFixture();
+    FileAsset asset;
+    ASSERT_TRUE(recovery.DecodeIncrementalMetadata(metadata, asset));
+    EXPECT_TRUE(recovery.IsOrdinaryLocalMetadata(asset));
+    for (const auto &key : {"hidden", "date_trashed", "date_deleted", "file_source_type"}) {
+        auto missing = metadata;
+        missing.erase(key);
+        EXPECT_FALSE(recovery.DecodeIncrementalMetadata(missing, asset)) << key;
+    }
+    metadata["width"] = "invalid optional field";
+    EXPECT_TRUE(recovery.DecodeIncrementalMetadata(metadata, asset));
+    for (const auto &key : {"is_shared", "is_critical", "photo_risk_status", "hidden"}) {
+        auto invalid = metadata;
+        invalid[key] = "invalid safety field";
+        EXPECT_FALSE(recovery.DecodeIncrementalMetadata(invalid, asset)) << key;
+        invalid[key] = 4294967296LL;
+        EXPECT_FALSE(recovery.DecodeIncrementalMetadata(invalid, asset)) << key;
+    }
+    for (const auto &[key, value] : std::map<std::string, int32_t>{{"is_shared", 1}, {"is_critical", 1},
+        {"photo_risk_status", 2}, {"date_deleted", 1}, {"file_source_type", 1}, {"time_pending", 1}}) {
+        auto unsafe = metadata;
+        unsafe[key] = value;
+        FileAsset decoded;
+        ASSERT_TRUE(recovery.DecodeIncrementalMetadata(unsafe, decoded));
+        EXPECT_FALSE(recovery.IsOrdinaryLocalMetadata(decoded)) << key;
+    }
+}
+
+/** @tc.desc: Retain visibility and dates, but never replay stale IDs, cloud state or thumbnail caches. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalMetadata_IdentityAndValues, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    FileAsset asset;
+    auto metadata = RecoveryMetadataFixture();
+    metadata["is_critical"] = 0;
+    metadata["hidden"] = 1;
+    metadata["date_trashed"] = 1000;
+    ASSERT_TRUE(recovery.DecodeIncrementalMetadata(metadata, asset));
+    ASSERT_TRUE(recovery.IsOrdinaryLocalMetadata(asset));
+    EXPECT_TRUE(recovery.IsMetadataMatchingAsset(asset.GetFilePath(), asset));
+    EXPECT_FALSE(recovery.IsMetadataMatchingAsset(asset.GetFilePath() + ".other", asset));
+    asset.SetMediaType(MEDIA_TYPE_VIDEO);
+    EXPECT_FALSE(recovery.IsMetadataMatchingAsset(asset.GetFilePath(), asset));
+    auto values = recovery.BuildRecoveryPhotoValues(asset);
+    for (const auto &name : {"data", "hidden", "date_trashed", "owner_album_id", "detail_time", "date_year",
+        "date_added_year"}) {
+        EXPECT_TRUE(values.HasColumn(name)) << name;
+    }
+    for (const auto &name : {"file_id", "cloud_id", "dirty", "thumbnail_ready", "sync_status", "latitude",
+        "longitude"}) {
+        EXPECT_FALSE(values.HasColumn(name)) << name;
+    }
+    NativeRdb::ValueObject hidden, trashed;
+    ASSERT_TRUE(values.GetObject("hidden", hidden));
+    ASSERT_TRUE(values.GetObject("date_trashed", trashed));
+    int32_t hiddenValue = 0;
+    int64_t trashedValue = 0;
+    EXPECT_EQ(hidden.GetInt(hiddenValue), E_OK);
+    EXPECT_EQ(trashed.GetLong(trashedValue), E_OK);
+    EXPECT_EQ(hiddenValue, 1);
+    EXPECT_EQ(trashedValue, 1000);
+}
+
+/** @tc.desc: A legacy SOURCE album is created/reused by lpath; explicit sharing and ambiguous IDs are rejected. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalAlbum_LegacyMapping, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    const std::string lpath = "/Pictures/recovery-" + MediaFileUtils::GenerateUUID();
+    nlohmann::json metadata = {{"album_id", 999999}, {"album_type", PhotoAlbumType::SOURCE},
+        {"album_subtype", PhotoAlbumSubType::SOURCE_GENERIC}, {"lpath", lpath}};
+    auto album = std::make_shared<PhotoAlbum>();
+    ASSERT_TRUE(recovery.GetPhotoAlbumFromJson(metadata, *album));
+    EXPECT_EQ(album->GetShareType(), SHARE_TYPE_NONEALBUM);
+    ASSERT_EQ(recovery.EnsureAlbumAndMapId(album), E_OK);
+    int32_t id = recovery.lpathToNewAlbumId.at(lpath);
+    EXPECT_GT(id, 0);
+    EXPECT_EQ(recovery.EnsureAlbumAndMapId(album), E_OK);
+    EXPECT_EQ(recovery.lpathToNewAlbumId.at(lpath), id);
+    album->SetLPath(lpath + "Other");
+    EXPECT_NE(recovery.EnsureAlbumAndMapId(album), E_OK);
+    album->SetLPath(lpath);
+    album->SetShareType(SHARE_TYPE_SHAREALBUM);
+    EXPECT_EQ(recovery.EnsureAlbumAndMapId(album), E_OPERATION_NOT_SUPPORT);
+    metadata["share_type"] = "unknown";
+    EXPECT_FALSE(recovery.GetPhotoAlbumFromJson(metadata, *album));
+    EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM PhotoAlbum WHERE album_id=?", {id}), E_OK);
+}
+
+/** @tc.desc: Repair only a missing owner, preserve healthy fields, and never overwrite explicit deletion. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalPhoto_OwnerAndDeletion, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    auto album = std::make_shared<PhotoAlbum>();
+    album->SetAlbumId(999999);
+    album->SetLPath("/Pictures/recovery-" + MediaFileUtils::GenerateUUID());
+    ASSERT_EQ(recovery.EnsureAlbumAndMapId(album), E_OK);
+    FileAsset asset;
+    asset.SetFilePath(ROOT_MEDIA_DIR + "Photo/" + MediaFileUtils::GenerateUUID() + ".jpg");
+    asset.SetDisplayName("keep.jpg");
+    asset.SetMediaType(MEDIA_TYPE_IMAGE);
+    auto initial = recovery.BuildRecoveryPhotoValues(asset);
+    int64_t initialId = 0;
+    ASSERT_EQ(g_rdbStore->Insert(initialId, PhotoColumn::PHOTOS_TABLE, initial), E_OK);
+    int32_t id = 0;
+    bool hasAlbum = false;
+    ASSERT_EQ(recovery.QueryPhotoRecoveryState(asset.GetFilePath(), id, hasAlbum), E_OK);
+    ASSERT_GT(id, 0);
+    EXPECT_FALSE(hasAlbum);
+    asset.SetOwnerAlbumId(recovery.lpathToNewAlbumId.at(album->GetLPath()));
+    asset.SetDisplayName("stale.jpg");
+    EXPECT_EQ(recovery.WriteRecoveredPhotoRecord(asset, id), E_OK);
+    EXPECT_EQ(recovery.RepairPhotoRecord(asset.GetFilePath()), E_OK); // No file/meta read for a healthy row.
+    auto result = g_rdbStore->QuerySql("SELECT display_name FROM Photos WHERE file_id=?", std::vector<std::string>{
+        std::to_string(id)});
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result->GoToFirstRow(), E_OK);
+    EXPECT_EQ(GetStringVal(MediaColumn::MEDIA_NAME, result), "keep.jpg");
+    result->Close();
+    EXPECT_EQ(g_rdbStore->ExecuteSql("UPDATE Photos SET date_deleted=1 WHERE file_id=?", {id}), E_OK);
+    EXPECT_EQ(recovery.RepairPhotoRecord(asset.GetFilePath()), E_DELETE_DENIED);
+    EXPECT_EQ(recovery.WriteRecoveredPhotoRecord(asset, id), E_DELETE_DENIED);
+    EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM Photos WHERE file_id=?", {id}), E_OK);
+    EXPECT_NE(recovery.WriteRecoveredPhotoRecord(asset, id), E_OK);
+    EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM PhotoAlbum WHERE album_id=?", {asset.GetOwnerAlbumId()}), E_OK);
+}
+
+/** @tc.desc: Current sidecar deletion is terminal; no historical evidence directory can resurrect it. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalMetadata_DeletedOrMissingSidecar, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    const std::string original = ROOT_MEDIA_DIR + "Photo/" + MediaFileUtils::GenerateUUID() + ".jpg";
+    std::string path;
+    ASSERT_EQ(PhotoFileUtils::GetMetaPathFromOrignalPath(original, path), E_OK);
+    FileAsset asset;
+    EXPECT_EQ(recovery.ReadIncrementalMetadata(original, asset), E_OPERATION_NOT_SUPPORT);
+    auto metadata = RecoveryMetadataFixture();
+    metadata["data"] = original;
+    metadata["date_deleted"] = 1000;
+    ASSERT_TRUE(recovery.WriteJsonFile(path, metadata));
+    EXPECT_EQ(recovery.ReadIncrementalMetadata(original, asset), E_DELETE_DENIED);
+    metadata["date_deleted"] = 0;
+    metadata["dirty"] = static_cast<int32_t>(DirtyTypes::TYPE_DELETED);
+    ASSERT_TRUE(recovery.WriteJsonFile(path, metadata));
+    EXPECT_EQ(recovery.ReadIncrementalMetadata(original, asset), E_DELETE_DENIED);
+    EXPECT_EQ(remove(path.c_str()), 0);
+}
+
+/** @tc.desc: Stop/reset belongs to the background owner; invalid/contended requests never enter recovery. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalRecovery_BackgroundLifecycle, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    recovery.incrementalStore_ = MediaLibraryRdbStore::GetRaw();
+    ASSERT_NE(recovery.incrementalStore_, nullptr);
+    recovery.recoveryRequest_ = {recovery.incrementalStore_->GetPath(), MEDIA_RDB_VERSION, "test-date"};
+    EXPECT_EQ(recovery.CheckMetadataBackup(), NativeRdb::E_DATABASE_BUSY);
+    recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_REPAIRING;
+    recovery.InterruptRecovery();
+    EXPECT_FALSE(recovery.IsIncrementalRecoveryAllowed());
+    recovery.RecoverPendingRecords();
+    EXPECT_EQ(recovery.recoveryRequest_.date, "test-date");
+    EXPECT_NE(recovery.StartAsyncRecovery(), E_OK);
+    recovery.CheckRecoveryState();
+    EXPECT_EQ(recovery.recoveryState_.load(), MediaLibraryMetaRecoveryState::STATE_REPAIRING);
+    recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_NONE;
+    recovery.ResetRecoveryInterrupt();
+    recovery.PrepareIncrementalRecovery(nullptr, "");
+    EXPECT_EQ(recovery.recoveryRequest_.date, "test-date");
+    std::lock_guard<std::mutex> lock(recovery.metadataMutex_);
+    recovery.RecoverPendingRecords();
+    EXPECT_EQ(recovery.recoveryRequest_.date, "test-date");
+    EXPECT_EQ(recovery.recoveryState_.load(), MediaLibraryMetaRecoveryState::STATE_NONE);
+}
+
+static std::vector<NativeRdb::ValuesBucket> ProtectedMetadataRows(const std::string &prefix, int32_t count)
+{
+    std::vector<NativeRdb::ValuesBucket> rows;
+    for (int32_t i = 0; i < count; ++i) {
+        NativeRdb::ValuesBucket values;
+        values.PutString(MediaColumn::MEDIA_FILE_PATH, prefix + "-" + std::to_string(i) + ".jpg");
+        values.PutString(MediaColumn::MEDIA_NAME, "pending.jpg");
+        values.PutInt(MediaColumn::MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+        values.PutInt(PhotoColumn::PHOTO_POSITION, 1);
+        values.PutInt(PhotoColumn::PHOTO_METADATA_FLAGS, static_cast<int32_t>(MetadataFlags::TYPE_NEW));
+        rows.push_back(values);
+    }
+    return rows;
+}
+
+static void ExpectProtectedMetadataRows(const std::string &prefix, int32_t expected)
+{
+    auto result = g_rdbStore->QuerySql("SELECT COUNT(*) FROM Photos WHERE data LIKE ? AND metadata_flags=?",
+        std::vector<std::string>{prefix + "%", std::to_string(static_cast<int32_t>(MetadataFlags::TYPE_NEW))});
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result->GoToFirstRow(), E_OK);
+    int64_t count = 0;
+    EXPECT_EQ(result->GetLong(0, count), E_OK);
+    EXPECT_EQ(count, expected);
+    result->Close();
+}
+
+/** @tc.desc: Protected rows remain dirty without starving later healthy metadata in the same window. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetadataBackup_ProtectedBatchDoesNotStarveHealthyRows, TestSize.Level1)
+{
+    for (int32_t protectedCount : {499, 500, 1000}) {
+        const std::string prefix = ROOT_MEDIA_DIR + "Photo/0/recovery-batch-" + MediaFileUtils::GenerateUUID();
+        auto rows = ProtectedMetadataRows(prefix, protectedCount);
+        int64_t inserted = 0;
+        ASSERT_EQ(g_rdbStore->BatchInsert(inserted, PhotoColumn::PHOTOS_TABLE, rows), E_OK);
+        ASSERT_EQ(inserted, protectedCount);
+        MediaLibraryMetaRecovery recovery;
+        auto album = std::make_shared<PhotoAlbum>();
+        album->SetAlbumId(999999);
+        album->SetLPath("/Pictures/recovery-" + MediaFileUtils::GenerateUUID());
+        ASSERT_EQ(recovery.EnsureAlbumAndMapId(album), E_OK);
+        NativeRdb::ValuesBucket healthy = rows.back();
+        const std::string healthyPath = prefix + "-healthy.jpg";
+        healthy.PutString(MediaColumn::MEDIA_FILE_PATH, healthyPath);
+        healthy.PutInt(PhotoColumn::PHOTO_METADATA_FLAGS, static_cast<int32_t>(MetadataFlags::TYPE_DIRTY));
+        int32_t albumId = recovery.lpathToNewAlbumId.at(album->GetLPath());
+        healthy.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumId);
+        int64_t healthyId = 0;
+        ASSERT_EQ(g_rdbStore->Insert(healthyId, PhotoColumn::PHOTOS_TABLE, healthy), E_OK);
+        auto store = MediaLibraryRdbStore::GetRaw();
+        ASSERT_NE(store, nullptr);
+        recovery.recoveryRequest_ = {store->GetPath(), MEDIA_RDB_VERSION, "test-date"};
+        recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_BACKING_UP;
+        recovery.PhotoBackupBatch();
+        auto photo = MediaLibraryAssetOperations::QuerySinglePhoto(healthyId);
+        ASSERT_NE(photo, nullptr);
+        EXPECT_EQ(photo->GetInt32Member(PhotoColumn::PHOTO_METADATA_FLAGS),
+            static_cast<int32_t>(MetadataFlags::TYPE_UPTODATE));
+        std::string metaPath;
+        ASSERT_EQ(PhotoFileUtils::GetMetaPathFromOrignalPath(healthyPath, metaPath), E_OK);
+        EXPECT_EQ(access(metaPath.c_str(), R_OK), 0);
+        ExpectProtectedMetadataRows(prefix, protectedCount);
+        EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM Photos WHERE data LIKE ?", {prefix + "%"}), E_OK);
+        EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM PhotoAlbum WHERE album_id=?", {albumId}), E_OK);
+        EXPECT_EQ(remove(metaPath.c_str()), 0);
+    }
+}
+
+/** @tc.desc: Hard DB errors remain failures even when recovery has stopped the current pass. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalRecovery_ReportErrorPrecedence, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    recovery.InterruptRecovery();
+    recovery.recoveryReport_.failed = 1;
+    // An empty DATE prevents event submission; this test checks classification and raw errors only.
+    int64_t begin = MediaFileUtils::UTCTimeMilliSeconds();
+    for (int32_t error : {NativeRdb::E_SQLITE_CORRUPT, NativeRdb::E_SQLITE_IOERR,
+        NativeRdb::E_ALREADY_CLOSED, E_HAS_DB_ERROR}) {
+        EXPECT_EQ(recovery.RecordRecoveryScanResult(error, begin), error);
+        EXPECT_EQ(recovery.recoveryReport_.result, DatabaseRecoveryResult::FAILED);
+        EXPECT_EQ(recovery.recoveryReport_.error, error);
+        EXPECT_EQ(recovery.recoveryReport_.failed, 1);
+    }
+    for (int32_t error : {NativeRdb::E_DATABASE_BUSY, NativeRdb::E_SQLITE_BUSY, NativeRdb::E_SQLITE_LOCKED}) {
+        EXPECT_EQ(recovery.RecordRecoveryScanResult(error, begin), error);
+        EXPECT_EQ(recovery.recoveryReport_.result, DatabaseRecoveryResult::WAITING);
+    }
+    EXPECT_EQ(recovery.RecordRecoveryScanResult(E_ERR, begin), E_ERR);
+    EXPECT_EQ(recovery.recoveryReport_.result, DatabaseRecoveryResult::PAUSED);
+    recovery.ResetRecoveryInterrupt();
+    recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_REPAIRING;
+    recovery.recoveryReport_.failed = 0;
+    recovery.recoveryReport_.deferred = 1;
+    EXPECT_EQ(recovery.RecordRecoveryScanResult(E_OK, begin), E_OK);
+    EXPECT_EQ(recovery.recoveryReport_.result, DatabaseRecoveryResult::PARTIAL);
+}
+
+/** @tc.desc: Resume by re-enumeration and committed rows, without a separate directory cursor or page cache. */
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalProgress_CommittedRows, TestSize.Level1)
+{
+    MediaLibraryMetaRecovery recovery;
+    const std::string cloud = ROOT_MEDIA_DIR + "Photo/recovery-" + MediaFileUtils::GenerateUUID() + "/test.jpg";
+    const std::string local = MediaPathUtils::ConvertCloudPathToLocalPath(cloud);
+    const std::string directory = MediaPathUtils::GetParentPath(local);
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(directory));
+    ASSERT_TRUE(MediaFileUtils::CreateFile(local));
+    recovery.incrementalStore_ = MediaLibraryRdbStore::GetRaw();
+    recovery.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_REPAIRING;
+    EXPECT_EQ(recovery.RepairPhotoRecordsInDirectory(directory), E_OK);
+    EXPECT_GT(recovery.recoveryReport_.deferred, 0);
+    auto album = std::make_shared<PhotoAlbum>();
+    album->SetAlbumId(999999);
+    album->SetLPath("/Pictures/recovery-" + MediaFileUtils::GenerateUUID());
+    ASSERT_EQ(recovery.EnsureAlbumAndMapId(album), E_OK);
+    FileAsset asset;
+    asset.SetFilePath(cloud);
+    asset.SetOwnerAlbumId(recovery.lpathToNewAlbumId.at(album->GetLPath()));
+    asset.SetMediaType(MEDIA_TYPE_IMAGE);
+    ASSERT_EQ(recovery.WriteRecoveredPhotoRecord(asset, 0), E_OK);
+    recovery.recoveryReport_ = {};
+    EXPECT_EQ(recovery.RepairPhotoRecordsInDirectory(directory), E_OK);
+    EXPECT_EQ(recovery.RepairPhotoRecordsInDirectory(directory), E_OK);
+    EXPECT_EQ(recovery.recoveryReport_.repaired, 0);
+    EXPECT_NE(recovery.RepairPhotoRecordsInDirectory(local), E_OK);
+    recovery.InterruptRecovery();
+    EXPECT_NE(recovery.RepairPhotoRecordsInDirectory(directory), E_OK);
+    EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM Photos WHERE data=?", {cloud}), E_OK);
+    EXPECT_EQ(g_rdbStore->ExecuteSql("DELETE FROM PhotoAlbum WHERE album_id=?", {asset.GetOwnerAlbumId()}), E_OK);
+    EXPECT_EQ(remove(local.c_str()), 0);
+    EXPECT_EQ(rmdir(directory.c_str()), 0);
 }
 
 } // namespace Media

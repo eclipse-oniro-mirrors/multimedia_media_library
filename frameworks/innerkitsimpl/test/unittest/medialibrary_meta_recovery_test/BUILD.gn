@@ -30,6 +30,7 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "../get_self_permissions/include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
   ]
@@ -40,6 +41,8 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "./src/medialibrary_meta_recovery_test.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_meta_recovery.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_incremental_recovery.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/replica_recovery_policy.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
@@ -66,7 +69,9 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "data_share:datashare_common",
     "data_share:datashare_provider",
     "hilog:libhilog",
+    "media_foundation:media_foundation",
     "image_framework:image_native",
+    "player_framework:media_client",
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
@@ -78,6 +83,9 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
 
   defines = []
   defines += [ "META_RECOVERY_SUPPORT=1" ]
+  if (media_library_feature_secure_album) {
+    defines += [ "MEDIALIBRARY_SECURE_ALBUM_ENABLE=1" ]
+  }
 
   sanitize = {
     cfi = true

@@ -58,9 +58,7 @@
 #endif
 #include "medialibrary_inotify.h"
 #include "medialibrary_kvstore_manager.h"
-#ifdef META_RECOVERY_SUPPORT
 #include "medialibrary_meta_recovery.h"
-#endif
 #include "medialibrary_restore.h"
 #include "medialibrary_subscriber_database_utils.h"
 #include "media_lake_check_manager.h"
@@ -234,6 +232,8 @@ MedialibrarySubscriber::MedialibrarySubscriber(const EventFwk::CommonEventSubscr
 
 MedialibrarySubscriber::~MedialibrarySubscriber()
 {
+    MediaLibraryMetaRecovery::GetInstance().InterruptRecovery();
+    backgroundDelayTask_.EndBackgroundOperationThread();
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     if (cloudHelper_ != nullptr && CloudMediaAssetUnlimitObserver_ != nullptr) {
         cloudHelper_->UnregisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_);
@@ -514,8 +514,11 @@ void MedialibrarySubscriber::UpdateCurrentStatus()
     MEDIA_INFO_LOG("update status current:%{public}d, new:%{public}d, %{public}d, %{public}d, %{public}d, %{public}d",
         currentStatus_, newStatus, isScreenOff_, isCharging_, isPowerSufficient, newTemperatureLevel_);
     currentStatus_ = newStatus;
+    MediaLibraryMetaRecovery::GetInstance().InterruptRecovery();
     backgroundDelayTask_.EndBackgroundOperationThread();
     if (currentStatus_) {
+        // The previous worker and its synchronous metadata backup have both exited.
+        MediaLibraryMetaRecovery::GetInstance().ResetRecoveryInterrupt();
         backgroundDelayTask_.SetOperationThread([this] { this->DoBackgroundOperation(); });
     } else {
         StopBackgroundOperation();
@@ -1182,16 +1185,26 @@ void MedialibrarySubscriber::DoFillUUIDOfPhotoAndAlbums()
 
 void MedialibrarySubscriber::DoBackgroundOperation()
 {
-    std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
+    auto &recovery = MediaLibraryMetaRecovery::GetInstance();
     bool cond = (!backgroundDelayTask_.IsDelayTaskTimeOut() || !currentStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
+    recovery.RecoverPendingRecords();
+    CHECK_AND_RETURN(!MediaLibraryRestore::GetInstance().IsRestoring());
+    CHECK_AND_RETURN(currentStatus_);
+    {
+        std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
+        CHECK_AND_RETURN(currentStatus_);
+        DoBackgroundMaintenance();
+    }
+    // Keep metadata backup on this worker, after the existing maintenance instead of blocking its later tasks.
+    recovery.CheckRecoveryState();
+}
+
+void MedialibrarySubscriber::DoBackgroundMaintenance()
+{
     Background::MediaCloudDentryBatchTask::CheckDentryCreation();
     PeriodicAnalyzePhotosData();
     Background::LcdDownloadTask::HandleLcdDownload();
-#ifdef META_RECOVERY_SUPPORT
-    // check metadata recovery state
-    MediaLibraryMetaRecovery::GetInstance().CheckRecoveryState();
-#endif
     MediaLibraryDataManager::GetInstance()->RestoreInvalidPosData();
     AgingTmpCompatibleDuplicates(true);
     // delete temporary photos
@@ -1218,6 +1231,11 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     // add permission for cloud enhancement photo
     CloudEnhancementChecker::AddPermissionForCloudEnhancement();
 #endif
+    DoBackgroundOperationStepOne();
+}
+
+void MedialibrarySubscriber::DoBackgroundOperationStepOne()
+{
     // migration highlight info to new path
     if (MediaFileUtils::IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
         MEDIA_INFO_LOG("Migration highlight info to new path");
@@ -1230,7 +1248,7 @@ void MedialibrarySubscriber::DoBackgroundOperation()
             }
         }
     }
-    ret = DoUpdateBurstCoverLevelFromGallery();
+    int32_t ret = DoUpdateBurstCoverLevelFromGallery();
     CHECK_AND_PRINT_LOG(ret == E_OK, "DoUpdateBurstCoverLevelFromGallery faild");
     DoUpdatePhotoHdrMode();
     RecoverBackgroundDownloadCloudMediaAsset();
@@ -1532,9 +1550,6 @@ void MedialibrarySubscriber::DelayTask::EndBackgroundOperationThread()
         isTaskWaiting = false;
         MEDIA_INFO_LOG("DelayTask %{public}s EndBackgroundOperationThread", taskName.c_str());
     }
-#ifdef META_RECOVERY_SUPPORT
-    MediaLibraryMetaRecovery::GetInstance().InterruptRecovery();
-#endif
     MovingPhotoProcessor::StopProcess();
     cv.notify_all();
     if (!operationThread.joinable()) {
