@@ -92,10 +92,10 @@ static void CleanCompositeFiles()
 }
 
 // 造一条照片记录，data/hidden/timePending/compositeDisplayStatus 均可定制。
-// 覆盖分支说明（QueryCompositeAuxiliaryImage，2026-09-01 支持纯云 source_back 流读后）：
+// 覆盖分支说明（QueryCompositeAuxiliaryImage，2026-10-08 路径校正后：复合状态统一取 source_back）：
 //   B1 fileAsset==nullptr; B2 timePending!=0; B4 path 为空;
-//   B5 GetCompositeAuxiliaryPath 非法状态; B6 各合法状态取路径;
-//   B7 本地目标文件存在直读; B8 本地目标文件不存在放行云流读;
+//   B5 非复合状态（含非法值）直接拒绝; B6 复合状态统一取 source_back 路径;
+//   B7 source_back 本地存在直读; B8 source_back 不存在直接拒绝;
 //   B9 open 成功返回 fd; B10 open 失败。
 static int32_t InsertPhoto(const string &path, int32_t hidden, int32_t timePending,
     int32_t compositeDisplayStatus)
@@ -235,10 +235,9 @@ HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_004,
 }
 
 /**
- * @tc.name  : QueryCompositeAuxiliaryImage_ShouldNotPreReject_WhenSourceBackNotExist
+ * @tc.name  : QueryCompositeAuxiliaryImage_ShouldReturnError_WhenSourceBackNotExist
  * @tc.number: QueryCompositeAuxiliaryImageTest_005
- * @tc.desc  : ENHANCED 状态本地无 source_back 时回退 source 路径并放行到 Open（B6/B8 分支），
- *             ut 环境无云框架 Open 失败返回 E_INVALID_VALUES（B10 分支）
+ * @tc.desc  : ENHANCED 状态本地无 source_back 时直接拒绝（B6/B8 分支），Open 前拦截返回 E_INVALID_VALUES
  */
 HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_005, TestSize.Level0)
 {
@@ -249,15 +248,7 @@ HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_005,
 
     QueryCompositeAuxiliaryImageRespBody respBody;
     int32_t ret = QueryCompositeAuxiliaryImage(fileId, respBody);
-    if (ret == E_OK) {
-        EXPECT_GE(respBody.fd, 0);
-        if (respBody.fd >= 0) {
-            close(respBody.fd);
-        }
-    } else {
-        MEDIA_WARN_LOG("QueryCompositeAuxiliaryImage open may fail in ut env, ret: %{public}d", ret);
-        EXPECT_EQ(ret, E_INVALID_VALUES);
-    }
+    EXPECT_EQ(ret, E_INVALID_VALUES);
 }
 
 /**
@@ -279,9 +270,9 @@ HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_006,
 }
 
 /**
- * @tc.name  : QueryCompositeAuxiliaryImage_ShouldReturnError_WhenOriginalTargetMissing
+ * @tc.name  : QueryCompositeAuxiliaryImage_ShouldReturnFd_WhenOriginal
  * @tc.number: QueryCompositeAuxiliaryImageTest_007
- * @tc.desc  : ORIGINAL 状态取主文件路径，主文件本地不存在放行云流读（B6/B8），ut 环境 Open 失败（B10）
+ * @tc.desc  : ORIGINAL 状态统一取 source_back 路径，主文件缺失不影响（B6/B7），Open 成功返回 fd（B9）
  */
 HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_007, TestSize.Level0)
 {
@@ -294,13 +285,17 @@ HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_007,
 
     QueryCompositeAuxiliaryImageRespBody respBody;
     int32_t ret = QueryCompositeAuxiliaryImage(fileId, respBody);
-    EXPECT_EQ(ret, E_INVALID_VALUES);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GE(respBody.fd, 0);
+    if (respBody.fd >= 0) {
+        close(respBody.fd);
+    }
 }
 
 /**
- * @tc.name  : QueryCompositeAuxiliaryImage_ShouldReturnError_WhenOriginalEditSourceMissing
+ * @tc.name  : QueryCompositeAuxiliaryImage_ShouldReturnFd_WhenOriginalEdit
  * @tc.number: QueryCompositeAuxiliaryImageTest_008
- * @tc.desc  : ORIGINAL_EDIT 状态取 source.ext 路径，本地不存在放行云流读（B6/B8），ut 环境 Open 失败（B10）
+ * @tc.desc  : ORIGINAL_EDIT 状态统一取 source_back 路径，主文件缺失不影响（B6/B7），Open 成功返回 fd（B9）
  */
 HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_008, TestSize.Level0)
 {
@@ -313,7 +308,11 @@ HWTEST_F(QueryCompositeAuxiliaryImageTest, QueryCompositeAuxiliaryImageTest_008,
 
     QueryCompositeAuxiliaryImageRespBody respBody;
     int32_t ret = QueryCompositeAuxiliaryImage(fileId, respBody);
-    EXPECT_EQ(ret, E_INVALID_VALUES);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GE(respBody.fd, 0);
+    if (respBody.fd >= 0) {
+        close(respBody.fd);
+    }
 }
 
 /**
