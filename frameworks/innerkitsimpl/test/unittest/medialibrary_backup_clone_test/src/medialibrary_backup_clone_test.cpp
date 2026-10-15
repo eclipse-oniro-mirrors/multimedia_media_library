@@ -7519,6 +7519,102 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_merged_store_false_029, Te
     EXPECT_FALSE(values.GetObject(PhotoColumn::PHOTO_STORAGE_PATH, dummy));
 }
 
+// Branch: cross-lake (inside lake static → outside moving) → delete source lake file
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_delete_source_030, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.subtype = 0;
+    fileInfo.effectMode = 0;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = LAKE_TEST_DIR + "cross_del.jpg";
+    fileInfo.filePath = LAKE_TEST_DIR + "cross_del.jpg";
+    fileInfo.isStoragePathExistInDb = false;
+    LakeCreateTestFile(fileInfo.filePath);
+    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "";
+    rowData.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
+    rowData.effectMode = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
+    EXPECT_FALSE(fileInfo.needUpdatePositionToLocalAndCloud);
+    EXPECT_TRUE(fileInfo.needMergeThumbnail);
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+}
+
+// Branch: cross-lake but isStoragePathExistInDb=true → keep source lake file
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_keep_if_in_db_031, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.subtype = 0;
+    fileInfo.effectMode = 0;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = LAKE_TEST_DIR + "cross_keep.jpg";
+    fileInfo.filePath = LAKE_TEST_DIR + "cross_keep.jpg";
+    fileInfo.isStoragePathExistInDb = true;
+    LakeCreateTestFile(fileInfo.filePath);
+    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "";
+    rowData.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
+    rowData.effectMode = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    MediaFileUtils::DeleteFile(fileInfo.filePath);
+}
+
+// Branch: cross-lake mismatch but source is non-lake → no deletion
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_non_lake_source_032, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
+    FileInfo fileInfo;
+    fileInfo.needMove = true;
+    fileInfo.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
+    fileInfo.effectMode = 0;
+    fileInfo.fileSourceType = 0;
+    fileInfo.storagePath = "";
+    fileInfo.filePath = LAKE_TEST_BACKUP_DIR + "Photo/0/nondel.jpg";
+    LakeCreateTestFile(fileInfo.filePath);
+    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
+    rowData.subtype = 0;
+    rowData.effectMode = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    MediaFileUtils::DeleteFile(fileInfo.filePath);
+}
+
+// Branch: needMove=false (IsSameAssetForCloudIdMove=false), no mismatch → delete source lake file
+HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_content_mismatch_033, TestSize.Level2)
+{
+    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    FileInfo fileInfo;
+    fileInfo.needMove = false;
+    fileInfo.subtype = 0;
+    fileInfo.effectMode = 0;
+    fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+    fileInfo.storagePath = LAKE_TEST_DIR + "content_mismatch.jpg";
+    fileInfo.filePath = LAKE_TEST_DIR + "content_mismatch.jpg";
+    fileInfo.isStoragePathExistInDb = false;
+    LakeCreateTestFile(fileInfo.filePath);
+    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    PhotosDao::PhotosRowData rowData;
+    rowData.storagePath = "";
+    rowData.subtype = 0;
+    rowData.effectMode = 0;
+    restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
+    EXPECT_FALSE(fileInfo.needMove);
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+}
+
 static shared_ptr<NativeRdb::RdbStore> CreateDualCloneTestStore()
 {
     MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
