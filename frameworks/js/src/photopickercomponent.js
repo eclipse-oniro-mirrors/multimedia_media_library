@@ -571,7 +571,8 @@ export class PhotoPickerComponent extends ViewPU {
                     globalMovingPhotoState:  null === (state = this.pickerOptions) || void 0 === state ? void 0 : state.globalMovingPhotoState,
                     showDateOnScrollbar:  null === (i = this.pickerOptions) || void 0 === i ? void 0 : i.showDateOnScrollbar,
                     backgroundOpacity:  null === (N = this.pickerOptions) || void 0 === N ? void 0 : N.backgroundOpacity,
-                    contextRecoveryInfo: null === (recovery = this.pickerOptions) || void 0 === recovery ? void 0 : recovery.contextRecoveryInfo
+                    contextRecoveryInfo: null === (recovery = this.pickerOptions) || void 0 === recovery ? void 0 : recovery.contextRecoveryInfo,
+                    textColor: null === (s = this.pickerOptions) || void 0 === s ? void 0 : s.textColor,
                 }
             }
             , {

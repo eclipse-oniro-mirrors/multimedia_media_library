@@ -387,7 +387,8 @@ export struct PhotoPickerComponent {
             globalMovingPhotoState: this.pickerOptions?.globalMovingPhotoState,
             showDateOnScrollbar: this.pickerOptions?.showDateOnScrollbar,
             backgroundOpacity: this.pickerOptions?.backgroundOpacity,
-            contextRecoveryInfo: this.pickerOptions?.contextRecoveryInfo
+            contextRecoveryInfo: this.pickerOptions?.contextRecoveryInfo,
+            textColor: this.pickerOptions?.textColor,
           }
         },
         {
