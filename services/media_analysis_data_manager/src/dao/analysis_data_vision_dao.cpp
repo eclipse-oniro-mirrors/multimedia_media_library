@@ -420,6 +420,24 @@ int32_t AnalysisDataVisionDao::DelAllStatusFromAestheticsScoreByFileId(const str
     MEDIA_INFO_LOG("#test DelAllStatusFromAestheticsScoreByFileId success");
     return E_OK;
 }
+
+int32_t AnalysisDataVisionDao::ResetGeoByFileId(const string &fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is null");
+    string RESET_STATUS_AND_GEO = "\
+        UPDATE tab_analysis_total \
+        SET status = 0, geo = 0 \
+        WHERE \
+            file_id = ? AND geo != 0;";
+    const std::vector<NativeRdb::ValueObject> bindArgs = {fileId};
+    int64_t changedRowCount = 0;
+    auto errCode = rdbStore->ExecuteForChangedRowCount(changedRowCount,
+        RESET_STATUS_AND_GEO, bindArgs);
+    CHECK_AND_RETURN_RET_LOG(changedRowCount > 0, errCode,
+        "Failed to reset geo, fileId: %{public}s", fileId.c_str());
+    return E_OK;
+}
 } // namespace OHOS::Media::AnalysisData
 // LCOV_EXCL_STOP
 

@@ -37,6 +37,7 @@ public:
     static int32_t DeleteFromPoseByFileId(const std::string &fileId);
     static int32_t DeleteFromVisionProfileByFileId(const std::string &fileId);
     static int32_t DelAllStatusFromAestheticsScoreByFileId(const std::string &fileId);
+    static int32_t ResetGeoByFileId(const std::string &fileId);
 };
 }  // namespace OHOS::Media::AnalysisData
 #endif  // OHOS_ANALYSIS_DATA_VISION_DAO_H
