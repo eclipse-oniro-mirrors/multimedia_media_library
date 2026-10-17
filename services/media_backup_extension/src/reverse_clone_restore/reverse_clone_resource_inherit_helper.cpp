@@ -276,6 +276,30 @@ bool DeletePathIfExists(const std::string &path)
     return deleted;
 }
 
+bool CleanupBlockedDonorLakeOrigin(const ReverseCloneResourcePlan &plan,
+    const ReverseCloneAssetResource &donor)
+{
+    if (!plan.blockOriginInheritance || !HasExistingLakeOrigin(donor)) {
+        return true;
+    }
+
+    const auto &path = donor.storagePath;
+    if (path == plan.absorbed.storagePath) {
+        return true;
+    }
+    if (plan.hasFallbackSource &&
+        (path == plan.fallbackSource.storagePath ||
+         path == plan.fallbackSource.originPath)) {
+        return true;
+    }
+
+    bool success = DeletePathIfExists(path);
+    MEDIA_INFO_LOG("RevRes cleanup blocked donor lake origin, donorFileId=%{public}d, "
+        "absorbedFileId=%{public}d, success=%{public}d",
+        donor.fileId, plan.absorbed.fileId, success);
+    return success;
+}
+
 bool CleanupDuplicateDonorResources(
     const ReverseCloneAssetResource &absorbed, const ReverseCloneAssetResource &donor)
 {
@@ -992,6 +1016,7 @@ void ReverseCloneResourceInheritHelper::CleanupDuplicateDonorResourcesAfterAbsor
             continue;
         }
         if (IsDonorUsedForInheritance(planIt->second, donor.fileId)) {
+            failedCount += CleanupBlockedDonorLakeOrigin(planIt->second, donor) ? 0 : 1;
             skippedCount++;
             continue;
         }
@@ -1006,7 +1031,6 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosBatch(ReverseClonePhotoBatch
     const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows)
 {
     if (targetRdb == nullptr) {
-        ReleaseDuplicateDonorReservations(batch);
         MEDIA_ERR_LOG("CommitPhotosBatch: targetRdb is null");
         return false;
     }
@@ -1014,7 +1038,6 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosBatch(ReverseClonePhotoBatch
         QueryDuplicateDonorResources(batch.duplicateDonorMap, targetRdb);
     std::vector<int32_t> deletedDonorFileIds;
     if (!CommitPhotosInTransaction(batch, targetRdb, insertedRows, deletedDonorFileIds)) {
-        ReleaseDuplicateDonorReservations(batch);
         return false;
     }
 
