@@ -244,7 +244,8 @@ bool ShouldUseLakeStorageAsTarget(const ReverseCloneAssetResource &resource)
 
 bool IsLakeTargetAlreadyOwnedByDonor(const ReverseCloneResourcePlan &plan)
 {
-    return CanUseLakeStorageAsSource(plan.donor) && plan.donor.storagePath == plan.absorbed.storagePath;
+    return !plan.blockOriginInheritance && CanUseLakeStorageAsSource(plan.donor) &&
+        plan.donor.storagePath == plan.absorbed.storagePath;
 }
 
 int32_t PrepareLakeStorageTarget(ReverseCloneResourcePlan &plan)
@@ -502,10 +503,11 @@ bool HasMovingPhotoVideo(const ReverseCloneAssetResource &resource)
         resource.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY);
 }
 
-std::vector<const ReverseCloneAssetResource *> GetResourceCandidates(const ReverseCloneResourcePlan &plan)
+std::vector<const ReverseCloneAssetResource *> GetResourceCandidates(const ReverseCloneResourcePlan &plan,
+    bool includeDonor = true)
 {
     std::vector<const ReverseCloneAssetResource *> candidates;
-    if (plan.donor.HasResourcePath()) {
+    if (includeDonor && plan.donor.HasResourcePath()) {
         candidates.emplace_back(&plan.donor);
     }
     if (plan.hasFallbackSource && plan.fallbackSource.HasResourcePath()) {
@@ -542,7 +544,8 @@ bool IsExistingLakeOriginCandidate(const ReverseCloneResourcePlan &plan, const R
 
 const ReverseCloneAssetResource *FindExistingLakeOriginCandidate(const ReverseCloneResourcePlan &plan)
 {
-    if (HasRealLakeStoragePath(plan.donor) && IsExistingLakeOriginCandidate(plan, plan.donor)) {
+    if (!plan.blockOriginInheritance && HasRealLakeStoragePath(plan.donor) &&
+        IsExistingLakeOriginCandidate(plan, plan.donor)) {
         return &plan.donor;
     }
     if (plan.hasFallbackSource && HasRealLakeStoragePath(plan.fallbackSource) &&
@@ -645,7 +648,8 @@ int32_t TransferOrigin(const ReverseCloneResourcePlan &plan, const ReverseCloneR
     ResourceExecuteResult &result = session.Result();
     std::string dstPath = paths.GetTargetOriginPath();
     CHECK_AND_RETURN_RET_LOG(!dstPath.empty(), E_FAIL, "RevRes Reverse clone origin path is invalid");
-    std::vector<const ReverseCloneAssetResource *> candidates = GetResourceCandidates(plan);
+    std::vector<const ReverseCloneAssetResource *> candidates =
+        GetResourceCandidates(plan, !plan.blockOriginInheritance);
     if (MediaFileUtils::IsFileExists(dstPath)) {
         result.origin.MarkExisting();
         MEDIA_INFO_LOG("RevRes Reverse clone origin target already exists, skip copy: %{public}s",
