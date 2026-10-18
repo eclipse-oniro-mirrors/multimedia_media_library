@@ -73,7 +73,7 @@ const PickerFilterPhotoKeys = {
     WIDTH: 'width',
     
     HEIGHT: 'height',
-    
+
     ORIENTATION: 'orientation',
     
     FAVORITE: 'is_favorite',
@@ -85,25 +85,25 @@ const PickerFilterPhotoKeys = {
     PHOTO_SUBTYPE: 'subtype',
     
     DYNAMIC_RANGE_TYPE: 'dynamic_range_type',
-    
+
     COVER_POSITION: 'cover_position',
-    
+
     BURST_KEY: 'burst_key',
-    
+
     LCD_SIZE: 'lcd_size',
-    
+
     THM_SIZE: 'thm_size',
-    
+
     DETAIL_TIME: 'detail_time',
-    
+
     OWNER_ALBUM_ID: 'owner_album_id',
-    
+
     MEDIA_SUFFIX: 'media_suffix',
-    
+
     ASPECT_RATIO: 'aspect_ratio',
-    
+
     DATE_TAKEN_MS: 'date_taken_ms',
-  };
+};
 
 const PARAMETERS_VALIDATE_FAILED_MESSAGE = 
 'Scene parameters validate failed, possible causes:' +
@@ -115,6 +115,14 @@ const ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE =
 '  1. The API is called outside the photo browsing scenario.' +
 '  2. The API is called when isMovingPhotoBadgeShown is already set to true.';
 
+const ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE = 
+'Invalid call context. That is, one of the following conditions is met:' +
+'     1. The picker is not ready (onPickerControllerReady has not been invoked).' +
+'     2. The search UI is rendered by the picker itself (that is, `isSearchSupported` is set to `true`).' +
+'     3. The picker is in the photo browsing view.';
+const SEARCH_EMPTY_INFO_MESSAGE =
+    'Scene parameter check failed: empty search info or invalid entity id.';
+const SEARCH_NOT_IN_SEARCH_STATE_MESSAGE = 'Invalid call context: the picker is not in the search state.';
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
 const PERMISSION_DENNIED = 401;
@@ -124,6 +132,38 @@ class BusinessError extends Error {
         super(msg);
         this.code = code || PERMISSION_DENNIED;
     }
+}
+
+function isValidSearchInfo(searchInfo, validSmartEntityIds) {
+    if (searchInfo === undefined || searchInfo === null) {
+        return false;
+    }
+    if (typeof searchInfo === 'object') {
+        const text = searchInfo.text;
+        const ids = searchInfo.smartEntityIds;
+        const hasText = typeof text === 'string' && text.trim().length > 0;
+        const idsProvided = ids !== undefined && ids !== null;
+        const idsValid = Array.isArray(ids) && ids.length > 0;
+        if (idsProvided && !idsValid) {
+            return false;
+        }
+        if (!hasText && !idsValid) {
+            return false;
+        }
+        if (hasText && /[\x00-\x1f\x7f]/.test(text)) {
+            return false;
+        }
+        if (idsValid) {
+            if (ids.some((id) => typeof id !== 'number' || !Number.isInteger(id))) {
+                return false;
+            }
+            if (validSmartEntityIds && ids.some((id) => !validSmartEntityIds.has(id))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 export class PhotoPickerComponent extends ViewPU {
@@ -147,6 +187,7 @@ export class PhotoPickerComponent extends ViewPU {
         this.onCurrentAlbumDeleted = void 0;
         this.onVideoPlayStateChanged = void 0;
         this.onRecommendedLabelClicked = void 0;
+        this.pickerState = PickerState.DEFAULT;
         this.onPickerStateChanged = void 0;
         this.onMovingPhotoBadgeStateChanged = void 0;
         this.badgeConfig = void 0;
@@ -160,6 +201,8 @@ export class PhotoPickerComponent extends ViewPU {
         this.onPinchGridSwitched = void 0;
         this.isPhotoBrowserShow = false,
         this.isMovingPhotoBadgeShownValid = false,
+        this.isPickerReady = false,
+        this.validSmartEntityIds = new Set(),
         this.setPhotoStateProps(o);
         this.__pickerController = new SynchedPropertyNesedObjectPU(o.pickerController, this, 'pickerController');
         this.proxy = void 0;
@@ -218,8 +261,16 @@ export class PhotoPickerComponent extends ViewPU {
             return {
                 isPhotoBrowserShow: this.isPhotoBrowserShow,
                 isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
-            };
-        };
+            }
+        }
+        o.pickerController.getPickerStateContext = () => {
+            return {
+                pickerState: this.pickerState,
+                isPhotoBrowserShow: this.isPhotoBrowserShow,
+                isPickerReady: this.isPickerReady,
+                validSmartEntityIds: this.validSmartEntityIds
+            }
+        }
     }
 
     updateStateVars(e) {
@@ -317,7 +368,7 @@ export class PhotoPickerComponent extends ViewPU {
             this.proxy.send({ movingPhotoState: null === o ? void 0 : o.get('SET_MOVINGPHOTO_STATE')});
             console.info('PhotoPickerComponent onChanged: SET_MOVINGPHOTO_STATE');
         } else {
-            this.handleAnotherOnChanges(o);           
+            this.handleAnotherOnChanges(o);
         }
     }
 
@@ -340,7 +391,7 @@ export class PhotoPickerComponent extends ViewPU {
     onChangeSelectedInfo(o) {
         this.preselectedInfos = null === o ? void 0 : o.get('SET_SELECTED_INFO');
         console.log(`preselectedInfos start send1 ${o.get('SET_SELECTED_INFO').slice(0, this.batchPreselectedInfos).length}`);
-        this.proxy({ uriAndPickerIndexLists: null === o ? void 0 : o.get('SET_SELECTED_INFO').slice(0, this.batchPreselectedInfos),
+        this.proxy.send({ uriAndPickerIndexLists: null === o ? void 0 : o.get('SET_SELECTED_INFO').slice(0, this.batchPreselectedInfos),
              index: 0, preselectedInfosIsOver: this.preselectedInfos.length <= this.batchPreselectedInfos });
     }
 
@@ -353,9 +404,9 @@ export class PhotoPickerComponent extends ViewPU {
     }
 
     onComplete(o) {
-        this.proxy.send({ 
+        this.proxy.send({
             completed: o.get('COMPLETED'),
-            date: o.get('COMPLETE_DATE') 
+            date: o.get('COMPLETE_DATE')
         });
         console.info('PhotoPickerComponent onChanged: COMPLETED');
     }
@@ -544,7 +595,6 @@ export class PhotoPickerComponent extends ViewPU {
                     isOnItemClickedSet: !!this.onItemClicked,
                     isOnItemClickedNotifySet: !!this.onItemClickedNotify,
                     isOnRecommendedLabelClickedSet: !!this.onRecommendedLabelClicked,
-                    isOnPickerStateChangedSet: !!this.onPickerStateChanged,
                     isUnSelectableItemClickedSet: !!this.onUnselectableItemClicked,
                     isPreviewForSingleSelectionSupported: null === (_ = this.pickerOptions) || void 0 === _ ? void 0 : _.isPreviewForSingleSelectionSupported,
                     singleSelectionMode: null === (_ = this.pickerOptions) || void 0 === _ ? void 0 : _.singleSelectionMode,
@@ -620,6 +670,7 @@ export class PhotoPickerComponent extends ViewPU {
         } else if ('onPhotoBrowserStateChanged' === o) {
             this.handleEnterOrExitPhotoBrowser(e);
         } else if ('remoteReady' === o) {
+            this.isPickerReady = true;
             if (this.onPickerControllerReady) {
                 this.onPickerControllerReady();
                 if (this.badgeConfig && this.badgeConfig?.uris?.length > 0) {
@@ -642,8 +693,8 @@ export class PhotoPickerComponent extends ViewPU {
         } else if ('saveCallback' === o) {
             this.handleSaveCallback(e);
         } else if ('completed' === o) {
- 	        this.handleCompletedCallback(e);
- 	    } else if ('onBackground' === o) {
+            this.handleCompletedCallback(e);
+        } else if ('onBackground' === o) {
             console.info('PhotoPickerComponent onReceive: onBackground');
         } else if ('onPhotoBrowserChanged' === o) {
             this.handlePhotoBrowserChange(e);
@@ -738,13 +789,15 @@ export class PhotoPickerComponent extends ViewPU {
                     smartEntity.thumbnail = e.thumbnail;
                 }
                 recommendedLabel.smartEntity = smartEntity;
+                this.validSmartEntityIds.add(e.id);
                 this.onRecommendedLabelClicked(recommendedLabel);
             }
         } else if ('onPickerStateChanged' === o) {
+            this.pickerState = e.pickerState;
             if (this.onPickerStateChanged) {
                 this.onPickerStateChanged(e.pickerState);
             }
-        } 
+        }
     }
 
     handleSelectOrDeselect(e) {
@@ -848,11 +901,11 @@ export class PhotoPickerComponent extends ViewPU {
         t.animatorParams.duration = e.duration;
         t.animatorParams.curve = e.curve;
         o ? this.onEnterPhotoBrowser && this.onEnterPhotoBrowser(t) : this.onExitPhotoBrowser && this.onExitPhotoBrowser(t);
-        if (o) {	 
+        if (o) {
             this.isPhotoBrowserShow = true;
-        } else {	 
+         } else {
             this.isPhotoBrowserShow = false;
-        }
+         }
         console.info('PhotoPickerComponent onReceive: onPhotoBrowserStateChanged = ' + o);
     }
 
@@ -946,11 +999,11 @@ export class PhotoPickerComponent extends ViewPU {
         if (isMovingPhotoBadgeShown === undefined || void 0 === isMovingPhotoBadgeShown) {
             return undefined;
         }
-        if (isMovingPhotoBadgeShown === true) {	 
+        if (isMovingPhotoBadgeShown === true) {
             this.isMovingPhotoBadgeShownValid = true;
-        } else {	 
+         } else {
             this.isMovingPhotoBadgeShownValid = false;
-        }
+         }
         return isMovingPhotoBadgeShown;
     }
 
@@ -1197,7 +1250,7 @@ let PickerController = class {
 
         const props = this.getMovingPhotoState();
         console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(props.isPhotoBrowserShow) +
-         ', this.isMovingPhotoBadgeShownValid=' + props.isMovingPhotoBadgeShownValid);
+            ', this.isMovingPhotoBadgeShownValid=' + props.isMovingPhotoBadgeShownValid);
         if (!props.isPhotoBrowserShow || props.isMovingPhotoBadgeShownValid) {
             throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
         }
@@ -1400,20 +1453,36 @@ let PickerController = class {
     }
 
     async enterSearchPage() {
+        const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+        if (ctx.pickerState === PickerState.SEARCH || !ctx.isPickerReady || ctx.isPhotoBrowserShow) {
+            throw new BusinessError(ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+        }
         this.data = new Map([['ENTER_SEARCH', '']]);
     }
 
     async exitSearchPage() {
+        const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+        if (ctx.pickerState !== PickerState.SEARCH) {
+            throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+        }
         this.data = new Map([['EXIT_SEARCH', '']]);
     }
 
     async navigateBackInSearchPage() {
+        const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+        if (ctx.pickerState !== PickerState.SEARCH) {
+            throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+        }
         this.data = new Map([['BACK_IN_SEARCH', '']]);
     }
 
     async search(searchInfo) {
-        if (!searchInfo) {
-            return;
+        const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+        if (ctx.pickerState !== PickerState.SEARCH) {
+            throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+        }
+        if (!isValidSearchInfo(searchInfo, ctx.validSmartEntityIds)) {
+            throw new BusinessError(SEARCH_EMPTY_INFO_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
         }
         this.data = new Map([['SEARCH', searchInfo]]);
     }
@@ -1479,7 +1548,7 @@ class PhotoBrowserUIElementVisibility {
 class PreselectedInfo {    
 }
 
-class ClickResult {    
+class ClickResult {
 }
 
 export class SingleLineConfig {

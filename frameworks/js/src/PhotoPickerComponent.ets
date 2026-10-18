@@ -37,6 +37,16 @@ const ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE =
 '  1. The API is called outside the photo browsing scenario.' +
 '  2. The API is called when isMovingPhotoBadgeShown is already set to true.'
 
+const ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE = 
+'Invalid call context. That is, one of the following conditions is met:' +
+'     1. The picker is not ready (onPickerControllerReady has not been invoked).' +
+'     2. The search UI is rendered by the picker itself (that is, `isSearchSupported` is set to `true`).' +
+'     3. The picker is in the photo browsing view.';
+const SEARCH_EMPTY_INFO_MESSAGE =
+    'Scene parameter check failed: empty search info or invalid entity id.';
+const SEARCH_NOT_IN_SEARCH_STATE_MESSAGE = 'Invalid call context: the picker is not in the search state.';
+
+
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
 const PERMISSION_DENNIED = 401;
@@ -56,6 +66,39 @@ interface MimeTypeFilter {
 interface PhotoStateProps {
   isPhotoBrowserShow: boolean;
   isMovingPhotoBadgeShownValid: boolean;
+}
+
+
+function isValidSearchInfo(searchInfo, validSmartEntityIds) {
+    if (searchInfo === undefined || searchInfo === null) {
+        return false;
+    }
+    if (typeof searchInfo === 'object') {
+        const text = searchInfo.text;
+        const ids = searchInfo.smartEntityIds;
+        const hasText = typeof text === 'string' && text.trim().length > 0;
+        const idsProvided = ids !== undefined && ids !== null;
+        const idsValid = Array.isArray(ids) && ids.length > 0;
+        if (idsProvided && !idsValid) {
+            return false;
+        }
+        if (!hasText && !idsValid) {
+            return false;
+        }
+        if (hasText && /[\x00-\x1f\x7f]/.test(text)) {
+            return false;
+        }
+        if (idsValid) {
+            if (ids.some((id) => typeof id !== 'number' || !Number.isInteger(id))) {
+                return false;
+            }
+            if (validSmartEntityIds && ids.some((id) => !validSmartEntityIds.has(id))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 @Component
@@ -95,6 +138,9 @@ export struct PhotoPickerComponent {
   private proxy: UIExtensionProxy | undefined;
   private isPhotoBrowserShow: boolean = false;
   private isMovingPhotoBadgeShownValid: boolean = false;
+  @State pickerState = PickerState.DEFAULT;
+  @State isPickerReady = false;
+  private validSmartEntityIds = new Set();
 
   private setPhotoStateProps(): void {
     this.pickerController.getMovingPhotoState = (): PhotoStateProps => {
@@ -103,6 +149,14 @@ export struct PhotoPickerComponent {
         isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
       };
     };
+    this.pickerController.getPickerStateContext = () => {
+        return {
+            pickerState: this.pickerState,
+            isPhotoBrowserShow: this.isPhotoBrowserShow,
+            isPickerReady: this.isPickerReady,
+            validSmartEntityIds: this.validSmartEntityIds
+        }
+    }
   }
 
   aboutToAppear(): void {
@@ -131,7 +185,7 @@ export struct PhotoPickerComponent {
       this.onChangeSelectedInfo(data)
       console.info('PhotoPickerComponent onChanged: SET_SELECTED_INFO');
     } else if (data?.has('SET_MOVINGPHOTO_STATE')) {
-      this.proxy.send({movingPhotoState: data?.get('SET_MOVINGPHOTO_STATE)});
+      this.proxy.send({movingPhotoState: data?.get('SET_MOVINGPHOTO_STATE')});
       console.info('PhotoPickerComponent onChanged: SET_SELECTED_INFO');
     } else if (data?.has('SET_MAX_SELECT_COUNT')) {
       this.onSetMaxSelectCount(data);
@@ -360,7 +414,6 @@ export struct PhotoPickerComponent {
             isOnItemClickedSet: this.onItemClicked ? true : false,
             isOnItemClickedNotifySet: this.onItemClickedNotify ? true : false,
             isOnRecommendedLabelClickedSet: this.onRecommendedLabelClicked ? true : false,
-            isOnPickerStateChangedSet: this.onPickerStateChanged ? true : false,
             isUnSelectableItemClickedSet: this.onUnselectableItemClicked ? true : false,
             isPreviewForSingleSelectionSupported: this.pickerOptions?.isPreviewForSingleSelectionSupported as boolean,
             singleSelectionMode: this.pickerOptions?.singleSelectionMode as number,
@@ -398,6 +451,7 @@ export struct PhotoPickerComponent {
           .width('100%')
           .onRemoteReady((proxy) => {
             this.proxy = proxy;
+            this.isPickerReady = true;
             console.info('PhotoPickerComponent onRemoteReady');
           })
           .onReceive((data) => {
@@ -552,10 +606,12 @@ export struct PhotoPickerComponent {
           if (e.thumbnail) {
               smartEntity.thumbnail = e.thumbnail;
           }
+          this.validSmartEntityIds.add(e.id);
           recommendedLabel.smartEntity = smartEntity;
           this.onRecommendedLabelClicked(recommendedLabel);
       }
     } else if (dataType === 'onPickerStateChanged') {
+      this.pickerState = e.pickerState;
       if (this.onPickerStateChanged) {
           this.onPickerStateChanged(e.pickerState);
       }
@@ -1275,18 +1331,37 @@ export class PickerController {
   }
 
   async enterSearchPage() {
+    const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+    if (ctx.pickerState === PickerState.SEARCH || !ctx.isPickerReady || ctx.isPhotoBrowserShow) {
+        throw new BusinessError(ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+    }
     this.data = new Map([['ENTER_SEARCH', '']]);
   }
 
   async exitSearchPage() {
+    const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+    if (ctx.pickerState !== PickerState.SEARCH) {
+        throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+    }
     this.data = new Map([['EXIT_SEARCH', '']]);
   }
 
   async navigateBackInSearchPage() {
+    const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+    if (ctx.pickerState !== PickerState.SEARCH) {
+        throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+    }
     this.data = new Map([['BACK_IN_SEARCH', '']]);
   }
 
   async search(searchInfo) {
+    const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
+    if (ctx.pickerState !== PickerState.SEARCH) {
+        throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+    }
+    if (!isValidSearchInfo(searchInfo, ctx.validSmartEntityIds)) {
+        throw new BusinessError(SEARCH_EMPTY_INFO_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
+    }
     if (!searchInfo) {
         return;
     }
