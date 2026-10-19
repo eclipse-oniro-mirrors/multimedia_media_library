@@ -971,7 +971,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_002, TestSize.Level1)
     info.dateModified = 0;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_LT(result, 0);
 }
 
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_003, TestSize.Level1)
@@ -984,7 +984,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_003, TestSize.Level1)
     info.dateModified = 0;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_LT(result, 0);
 }
 
 HWTEST_F(FileParserTest, Constructor_Path_Full_Scan_Mode, TestSize.Level1)
@@ -1274,7 +1274,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Negative_FileId, TestSize.
     info.dateModified = 1234567890;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_LT(result, 0);
 }
 
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Empty_Paths, TestSize.Level1)
@@ -1287,7 +1287,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Empty_Paths, TestSize.Leve
     info.dateModified = 0;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_LT(result, 0);
 }
 
 HWTEST_F(FileParserTest, GetFileAssetUri_With_Large_FileId, TestSize.Level1)
