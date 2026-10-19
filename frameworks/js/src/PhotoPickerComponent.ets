@@ -135,6 +135,8 @@ export struct PhotoPickerComponent {
   @ObjectLink @Watch('onChanged') pickerController: PickerController;
   @State revokeIndex = 0;
   isPickerKilled = false;
+  preventUpdateSelectUris: boolean = false;
+  pendingSelectUrisData?: string[] = undefined;
   private proxy: UIExtensionProxy | undefined;
   private isPhotoBrowserShow: boolean = false;
   private isMovingPhotoBadgeShownValid: boolean = false;
@@ -176,8 +178,13 @@ export struct PhotoPickerComponent {
     }
     let data = this.pickerController?.data;
     if (data?.has('SET_SELECTED_URIS')) {
-      this.proxy.send({ 'selectUris': data?.get('SET_SELECTED_URIS') as Array<string> });
-      console.info('PhotoPickerComponent onChanged: SET_SELECTED_URIS');
+      if (!this.preventUpdateSelectUris) {
+        this.proxy.send({ 'selectUris': data?.get('SET_SELECTED_URIS') as Array<string> });
+        console.info('PhotoPickerComponent onChanged: SET_SELECTED_URIS');
+      } else {
+        this.pendingSelectUrisData = data?.get('SET_SELECTED_URIS');
+        console.info('PhotoPickerComponent pending onChanged: SET_SELECTED_URIS');
+      }
     } else if (data?.has('SET_ALBUM_URI')) {
       this.proxy.send({ 'albumUri': data?.get('SET_ALBUM_URI') as string });
       console.info('PhotoPickerComponent onChanged: SET_ALBUM_URI');
@@ -542,11 +549,21 @@ export struct PhotoPickerComponent {
         this.onPhotoBrowserChangeStart(e);
     } else if (dataType === 'onError') {
         this.onError(e);
+    }  else if (dataType === 'updatePreventUpdateSelectUris') {
+        this.updatePreventUpdateSelectUris(wantParam);
     } else {
       this.handleOtherOnReceive(wantParam);
       console.info('PhotoPickerComponent onReceive: other case');
     }
     console.info('PhotoPickerComponent onReceive' + this.pickerController.encrypt(JSON.stringify(wantParam)));
+  }
+
+  private updatePreventUpdateSelectUris(wantParam: Record<string, Object>): void {
+    this.preventUpdateSelectUris = wantParam.value as boolean;
+    if (!wantParam.value && this.pendingSelectUrisData) {
+      this.proxy.send({ selectUris: this.pendingSelectUrisData });
+      this.pendingSelectUrisData = undefined;
+    }
   }
 
   private handleBadgeConfigSend(wantParam: Record<string, Object>): void {
