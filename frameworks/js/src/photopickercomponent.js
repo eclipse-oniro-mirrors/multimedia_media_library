@@ -1545,10 +1545,10 @@ class PhotoBrowserRangeInfo {
 class PhotoBrowserUIElementVisibility {
 }
 
-class PreselectedInfo {    
+export class PreselectedInfo {    
 }
 
-class ClickResult {
+export class ClickResult {
 }
 
 export class SingleLineConfig {
@@ -1691,4 +1691,4 @@ export default { PhotoPickerComponent, PickerController, PickerOptions, DataType
     AnimatorParams, MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, 
     PhotoBrowserRange, PhotoBrowserUIElement, VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType,
     BadgeConfig, UpdatablePickerConfigs, MovingPhotoBadgeStateType, PickerError, CompletedResult, SearchInfo, SmartEntity, 
-    RecommendedLabel, PickerState };
+    RecommendedLabel, PickerState, ClickResult, PreselectedInfo };
