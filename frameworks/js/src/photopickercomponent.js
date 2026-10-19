@@ -262,7 +262,7 @@ export class PhotoPickerComponent extends ViewPU {
                 isPhotoBrowserShow: this.isPhotoBrowserShow,
                 isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
             }
-        }
+        };
         o.pickerController.getPickerStateContext = () => {
             return {
                 pickerState: this.pickerState,
@@ -270,7 +270,7 @@ export class PhotoPickerComponent extends ViewPU {
                 isPickerReady: this.isPickerReady,
                 validSmartEntityIds: this.validSmartEntityIds
             }
-        }
+        };
     }
 
     updateStateVars(e) {
