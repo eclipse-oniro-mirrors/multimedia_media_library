@@ -210,7 +210,7 @@ export class PhotoPickerComponent extends ViewPU {
         this.__revokeIndex = new ObservedPropertySimplePU(0, this, 'revokeIndex');
         this.isPickerKilled = false;
         this.preventUpdateSelectUris = false;
-+       this.pendingSelectUrisData = void 0;
+        this.pendingSelectUrisData = void 0;
         this.setInitiallyProvidedValue(o);
         this.declareWatch('pickerController', this.onChanged);
     }
