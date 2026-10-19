@@ -197,6 +197,7 @@ static const std::unordered_set<std::string> FILE_KEY_WHITE_LIST {
     PhotoColumn::PHOTO_DATE_ADDED_DAY,
     PhotoColumn::PHOTO_DATE_ADDED_MONTH,
     PhotoColumn::PHOTO_DATE_ADDED_YEAR,
+    PhotoColumn::PHOTO_IS_SHARED,
 
     // Analysis aesthetics score
     AESTHETICS_ALL_VERSION,
