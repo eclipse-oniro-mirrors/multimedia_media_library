@@ -209,6 +209,8 @@ export class PhotoPickerComponent extends ViewPU {
         this.dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
         this.__revokeIndex = new ObservedPropertySimplePU(0, this, 'revokeIndex');
         this.isPickerKilled = false;
+        this.preventUpdateSelectUris = false;
++       this.pendingSelectUrisData = void 0;
         this.setInitiallyProvidedValue(o);
         this.declareWatch('pickerController', this.onChanged);
     }
@@ -313,8 +315,13 @@ export class PhotoPickerComponent extends ViewPU {
         }
         let o = null === (e = this.pickerController) || void 0 === e ? void 0 : e.data;
         if (null == o ? void 0 : o.has('SET_SELECTED_URIS')) {
-            this.proxy.send({ selectUris: null == o ? void 0 : o.get('SET_SELECTED_URIS') });
-            console.info('PhotoPickerComponent onChanged: SET_SELECTED_URIS');
+            if (!this.preventUpdateSelectUris) {
+                this.proxy.send({ selectUris: null == o ? void 0 : o.get('SET_SELECTED_URIS') });
+                console.info('PhotoPickerComponent onChanged: SET_SELECTED_URIS');
+            } else {
+                this.pendingSelectUrisData = o.get('SET_SELECTED_URIS');
+                console.info('PhotoPickerComponent pending onChanged: SET_SELECTED_URIS');
+            }
         } else if (null == o ? void 0 : o.has('SET_ALBUM_URI')) {
             this.proxy.send({ albumUri: null == o ? void 0 : o.get('SET_ALBUM_URI') });
             console.info('PhotoPickerComponent onChanged: SET_ALBUM_URI');
@@ -797,6 +804,19 @@ export class PhotoPickerComponent extends ViewPU {
             if (this.onPickerStateChanged) {
                 this.onPickerStateChanged(e.pickerState);
             }
+        } else if ('updatePreventUpdateSelectUris' === o) {
+            this.updatePreventUpdateSelectUris(e);
+        } else {
+            console.info('PhotoPickerComponent onReceive: other case');
+            console.info('PhotoPickerComponent onReceive' + this.pickerController.encrypt(JSON.stringify(e)));
+        }
+    }
+
+    updatePreventUpdateSelectUris(e) {
+        this.preventUpdateSelectUris = e.value;
+        if (!e.value && this.pendingSelectUrisData) {
+            this.proxy.send({ selectUris: this.pendingSelectUrisData });
+            this.pendingSelectUrisData = void 0;
         }
     }
 
