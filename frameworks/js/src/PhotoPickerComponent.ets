@@ -150,13 +150,13 @@ export struct PhotoPickerComponent {
       };
     };
     this.pickerController.getPickerStateContext = () => {
-        return {
-            pickerState: this.pickerState,
-            isPhotoBrowserShow: this.isPhotoBrowserShow,
-            isPickerReady: this.isPickerReady,
-            validSmartEntityIds: this.validSmartEntityIds
-        }
-    }
+      return {
+          pickerState: this.pickerState,
+          isPhotoBrowserShow: this.isPhotoBrowserShow,
+          isPickerReady: this.isPickerReady,
+          validSmartEntityIds: this.validSmartEntityIds
+      };
+    };
   }
 
   aboutToAppear(): void {
