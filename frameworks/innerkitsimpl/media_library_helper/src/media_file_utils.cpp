@@ -38,6 +38,7 @@
 #include <utime.h>
 
 #include "avmetadatahelper.h"
+#include "c2pa_utils.h"
 #include "directory_ex.h"
 #include "hmdfs.h"
 #include "ipc_skeleton.h"
@@ -1035,6 +1036,7 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
             if (isEqual) {
                 dstFilePath = dstDir + "/source." + extension;
                 ret = ConvertFormatCopy(srcFilePath, dstFilePath, extension);
+                C2paUtils::SignForTranscode(srcFilePath, dstFilePath);
             } else {
                 ret = CopyFileUtil(srcFilePath, dstFilePath);
             }
