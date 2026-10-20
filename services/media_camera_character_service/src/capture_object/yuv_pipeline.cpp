@@ -309,6 +309,11 @@ int32_t YuvPipeline::SavePictureForFirstStage(bool needDfx)
     auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
     if (c2paConfigInfo.enableC2PA) {
         C2paUtils::SignForCreate(path, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+        if (!editData.empty()) {
+            std::string editDataSourcePath;
+            CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, path, editDataSourcePath);
+            C2paUtils::SignForCreate(editDataSourcePath, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+        }
     }
 
     // 3.若落盘高质量, 需要更新photo_quality && dirty
@@ -676,6 +681,7 @@ int32_t YuvPipeline::SaveTwoPictureForOnProcess(
     auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
     if (c2paConfigInfo.enableC2PA) {
         C2paUtils::SignForCreate(assetInfo.GetPath(), c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+        C2paUtils::SignForCreate(editDataSourcePath, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
     }
     resultPictureForOnProcess_ = picture;
     return E_OK;
