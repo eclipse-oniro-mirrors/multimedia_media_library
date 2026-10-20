@@ -456,6 +456,9 @@ int32_t InitQueryParentResultSet(int32_t dirId, int32_t &parentIdVal, string &di
     cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(dirId));
     shared_ptr<NativeRdb::ResultSet> queryParentResultSet = uniStore->Query(cmd, {});
     if (queryParentResultSet == nullptr || queryParentResultSet->GoToNextRow() != NativeRdb::E_OK) {
+        if (queryParentResultSet != nullptr) {
+            queryParentResultSet->Close();
+        }
         return E_SUCCESS;
     }
     int32_t colIndex = 0;
@@ -463,7 +466,7 @@ int32_t InitQueryParentResultSet(int32_t dirId, int32_t &parentIdVal, string &di
     queryParentResultSet->GetInt(colIndex, parentIdVal);
     queryParentResultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_FILE_PATH, colIndex);
     queryParentResultSet->GetString(colIndex, dirVal);
-    queryParentResultSet.reset();
+    queryParentResultSet->Close();
     if (parentIdVal == 0) {
         return E_SUCCESS;
     }
@@ -1190,10 +1193,13 @@ shared_ptr<FileAsset> MediaLibraryObjectUtils::GetFileAssetFromId(const string &
     shared_ptr<FetchResult<FileAsset>> fetchFileResult = make_shared<FetchResult<FileAsset>>();
     if (fetchFileResult == nullptr) {
         MEDIA_ERR_LOG("Failed to obtain fetch file result");
+        resultSet->Close();
         return nullptr;
     }
     fetchFileResult->SetNetworkId(networkId);
-    return fetchFileResult->GetObjectFromRdb(resultSet, 0);
+    auto asset = fetchFileResult->GetObjectFromRdb(resultSet, 0);
+    resultSet->Close();
+    return asset;
 }
 
 shared_ptr<FileAsset> MediaLibraryObjectUtils::GetFileAssetFromUri(const string &uriStr)
@@ -1218,6 +1224,7 @@ void MediaLibraryObjectUtils::GetDefaultRelativePath(const int32_t mediaType, st
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
         relativePath = get<string>(ResultSetUtils::GetValFromColumn(DIRECTORY_DB_DIRECTORY, resultSet, TYPE_STRING));
     }
+    resultSet->Close();
 }
 
 string GetRelativePathFromFilePath(const string &path)
@@ -1307,14 +1314,27 @@ string MediaLibraryObjectUtils::GetStringColumnByIdFromDb(const string &id, cons
     CHECK_AND_RETURN_RET_LOG(queryResultSet != nullptr, value, "Failed to obtain value from database");
 
     auto ret = queryResultSet->GoToFirstRow();
-    CHECK_AND_RETURN_RET_LOG(ret == 0, value, "Failed to shift at first row");
+    if (ret != 0) {
+        queryResultSet->Close();
+        MEDIA_ERR_LOG("Failed to shift at first row");
+        return value;
+    }
     int32_t columnIndex = 0;
     ret = queryResultSet->GetColumnIndex(column, columnIndex);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, value, "Failed to obtain column index");
+    if (ret != 0) {
+        queryResultSet->Close();
+        MEDIA_ERR_LOG("Failed to obtain column index");
+        return value;
+    }
 
     ret = queryResultSet->GetString(columnIndex, value);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, value, "Failed to obtain value");
+    if (ret != 0) {
+        queryResultSet->Close();
+        MEDIA_ERR_LOG("Failed to obtain value");
+        return value;
+    }
 
+    queryResultSet->Close();
     return value;
 }
 
@@ -1347,14 +1367,26 @@ int32_t MediaLibraryObjectUtils::GetIdByPathFromDb(const string &path)
     CHECK_AND_RETURN_RET_LOG(queryResultSet != nullptr, fileId, "Failed to obtain path from database");
 
     auto ret = queryResultSet->GoToFirstRow();
-    CHECK_AND_RETURN_RET(ret == 0, fileId);
+    if (ret != 0) {
+        queryResultSet->Close();
+        return fileId;
+    }
 
     ret = queryResultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_ID, columnIndex);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, fileId, "Failed to obtain column index");
+    if (ret != 0) {
+        queryResultSet->Close();
+        MEDIA_ERR_LOG("Failed to obtain column index");
+        return fileId;
+    }
 
     ret = queryResultSet->GetInt(columnIndex, fileId);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, fileId, "Failed to obtain file id");
+    if (ret != 0) {
+        queryResultSet->Close();
+        MEDIA_ERR_LOG("Failed to obtain file id");
+        return fileId;
+    }
 
+    queryResultSet->Close();
     return fileId;
 }
 
@@ -1516,6 +1548,7 @@ bool MediaLibraryObjectUtils::IsColumnValueExist(const string &value, const stri
     if (queryResultSet != nullptr) {
         int32_t count = 0;
         queryResultSet->GetRowCount(count);
+        queryResultSet->Close();
         if (count > 0) {
             return true;
         }
@@ -1538,10 +1571,12 @@ bool MediaLibraryObjectUtils::IsAssetExistInDb(const int32_t id, const bool isIn
     }
     vector<string> columns;
     auto queryResultSet = QueryWithCondition(cmd, columns);
-    if (queryResultSet != nullptr && queryResultSet->GoToNextRow() == NativeRdb::E_OK) {
-        return true;
+    bool exists = false;
+    if (queryResultSet != nullptr) {
+        exists = (queryResultSet->GoToNextRow() == NativeRdb::E_OK);
+        queryResultSet->Close();
     }
-    return false;
+    return exists;
 }
 
 bool MediaLibraryObjectUtils::IsFileExistInDb(const string &path)
@@ -1558,11 +1593,13 @@ bool MediaLibraryObjectUtils::IsFileExistInDb(const string &path)
     vector<string> columns;
     columns.push_back(CONST_MEDIA_DATA_DB_FILE_PATH);
     auto queryResultSet = QueryWithCondition(cmd, columns);
-    if (queryResultSet != nullptr && queryResultSet->GoToNextRow() == NativeRdb::E_OK) {
-        return true;
+    bool exists = false;
+    if (queryResultSet != nullptr) {
+        exists = (queryResultSet->GoToNextRow() == NativeRdb::E_OK);
+        queryResultSet->Close();
     }
 
-    return false;
+    return exists;
 }
 
 bool MediaLibraryObjectUtils::CheckUriPending(const std::string &uri)
@@ -1810,7 +1847,9 @@ bool MediaLibraryObjectUtils::IsSmartAlbumExistInDb(const int32_t id)
     querySmartAlbumCmd.GetAbsRdbPredicates()->EqualTo(SMARTALBUM_DB_ID, to_string(id));
     auto queryResultSet = QuerySmartAlbum(querySmartAlbumCmd);
     if (queryResultSet != nullptr) {
-        if (queryResultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        bool exists = (queryResultSet->GoToFirstRow() == NativeRdb::E_OK);
+        queryResultSet->Close();
+        if (exists) {
             return true;
         }
     } else {
@@ -1827,9 +1866,10 @@ bool MediaLibraryObjectUtils::IsParentSmartAlbum(const int32_t id, const bool is
         auto queryResultSet = QuerySmartAlbum(querySmartAlbumCmd);
         if (queryResultSet != nullptr) {
             if (queryResultSet->GoToFirstRow() != NativeRdb::E_OK) {
+                queryResultSet->Close();
                 return true;
             }
-            queryResultSet.reset();
+            queryResultSet->Close();
         } else {
             MEDIA_ERR_LOG("QuerySmartAlbum failed");
             return false;
@@ -1838,7 +1878,9 @@ bool MediaLibraryObjectUtils::IsParentSmartAlbum(const int32_t id, const bool is
     querySmartAlbumCmd.GetAbsRdbPredicates()->IsNotNull(SMARTALBUMMAP_DB_CHILD_ALBUM_ID);
     auto queryResultSet = QuerySmartAlbum(querySmartAlbumCmd);
     if (queryResultSet != nullptr) {
-        if (queryResultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        bool exists = (queryResultSet->GoToFirstRow() == NativeRdb::E_OK);
+        queryResultSet->Close();
+        if (exists) {
             return true;
         }
     }

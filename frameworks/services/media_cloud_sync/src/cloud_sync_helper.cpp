@@ -114,6 +114,55 @@ bool CloudSyncHelper::InitDataShareHelper()
     return true;
 }
 
+
+static bool ParseSwitchStatusFromResultSet(
+    shared_ptr<DataShare::DataShareResultSet> &resultSet, const std::string &switchStatusKey, bool &isOpen)
+{
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("Media_Cloud: resultSet is null, maybe never login");
+        return false;
+    }
+
+    int32_t rowCount = -1;
+    int32_t ret = resultSet->GetRowCount(rowCount);
+    if (ret != 0 || rowCount < 0) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Media_Cloud: get cloud status fail ret is %{public}d, rowcount is %{public}d", ret, rowCount);
+        return false;
+    }
+    if (rowCount == 0) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Media_Cloud: rowCount is 0");
+        return false;
+    }
+
+    ret = resultSet->GoToFirstRow();
+    if (ret != 0) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Media_Cloud: goto first err");
+        return false;
+    }
+
+    int32_t columnIndex = -1;
+    ret = resultSet->GetColumnIndex(switchStatusKey, columnIndex);
+    if (ret != 0) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Media_Cloud: Get Column index err");
+        return false;
+    }
+
+    int64_t status = 0;
+    ret = resultSet->GetLong(columnIndex, status);
+    if (ret != 0) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Media_Cloud: get long err");
+        return false;
+    }
+    resultSet->Close();
+    isOpen = status == 1;
+    return true;
+}
+
 bool CloudSyncHelper::IsSyncSwitchOpen()
 {
     auto switchStatus = SettingsDataManager::GetPhotosSyncSwitchStatus();
@@ -136,29 +185,12 @@ bool CloudSyncHelper::IsSyncSwitchOpen()
         std::vector<std::string> columns = {SWITCH_STATUS_KEY};
         resultSet = dataShareHelper_->Query(uri, predicates, columns);
     }
-    
-    bool errConn = resultSet == nullptr;
-    CHECK_AND_RETURN_RET_LOG(!errConn, false, "Media_Cloud: resultSet is null, maybe never login");
 
-    int32_t rowCount = -1;
-    int32_t ret = resultSet->GetRowCount(rowCount);
-    errConn = ret != 0 || rowCount < 0;
-    CHECK_AND_RETURN_RET_LOG(
-        !errConn, false, "Media_Cloud: get cloud status fail ret is %{public}d, rowcount is %{public}d", ret, rowCount);
-    errConn = rowCount == 0;
-    CHECK_AND_RETURN_RET_LOG(!errConn, false, "Media_Cloud: rowCount is 0");
-
-    int64_t status = 0;
-    int32_t columnIndex = -1;
-    ret = resultSet->GoToFirstRow();
-    CHECK_AND_RETURN_RET_LOG(ret == 0, false, "Media_Cloud: goto first err");
-
-    ret = resultSet->GetColumnIndex(SWITCH_STATUS_KEY, columnIndex);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, false, "Media_Cloud: Get Column index err");
-
-    ret = resultSet->GetLong(columnIndex, status);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, false, "Media_Cloud: get long err");
-    return status == 1;
+    bool isOpen = false;
+    if (!ParseSwitchStatusFromResultSet(resultSet, SWITCH_STATUS_KEY, isOpen)) {
+        MEDIA_ERR_LOG("Media_Cloud: ParseSwitchStatusFromResultSet failed");
+    }
+    return isOpen;
 }
 
 void CloudSyncHelper::OnTimerCallback()

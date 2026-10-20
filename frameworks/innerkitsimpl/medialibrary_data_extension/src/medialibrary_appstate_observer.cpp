@@ -130,7 +130,12 @@ static int32_t CountTemporaryPermission(const std::shared_ptr<MediaLibraryRdbSto
 
     int32_t count = 0;
     auto ret = resultSet->GetRowCount(count);
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_ERR, "GetRowCount failed ret:%{public}d", ret);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("GetRowCount failed ret:%{public}d", ret);
+        resultSet->Close();
+        return E_ERR;
+    }
+    resultSet->Close();
     return count;
 }
 
@@ -143,7 +148,12 @@ static int32_t CountHideSensitive(const std::shared_ptr<MediaLibraryRdbStore> rd
 
     int32_t count = 0;
     auto ret = resultSet->GetRowCount(count);
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_ERR, "GetRowCount failed ret:%{public}d", ret);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("GetRowCount failed ret:%{public}d", ret);
+        resultSet->Close();
+        return E_ERR;
+    }
+    resultSet->Close();
     return count;
 }
 

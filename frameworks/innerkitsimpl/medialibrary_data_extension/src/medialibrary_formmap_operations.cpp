@@ -122,6 +122,7 @@ void MediaLibraryFormMapOperations::GetFormMapFormId(const string &uri, vector<i
             formIds.push_back(std::stoll(formId));
         }
     }
+    queryResult->Close();
 }
 
 void MediaLibraryFormMapOperations::GetFormIdsByUris(const vector<string> &notifyUris, vector<int64_t> &formIds)
@@ -170,9 +171,14 @@ string MediaLibraryFormMapOperations::GetFilePathById(const string &fileId)
     auto queryResult = uniStore->Query(queryCmd, columns);
     if (queryResult == nullptr || queryResult->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Get path by Id failed , id is %{private}s", fileId.c_str());
+        if (queryResult != nullptr) {
+            queryResult->Close();
+        }
         return "";
     }
-    return GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, queryResult);
+    string path = GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, queryResult);
+    queryResult->Close();
+    return path;
 }
 
 void MediaLibraryFormMapOperations::ModifyFormMapMessage(const string &uri, const int64_t &formId, const bool &isSave)
@@ -282,7 +288,9 @@ bool MediaLibraryFormMapOperations::CheckQueryIsInDb(const OperationObject &oper
     }
     auto queryResultSet = uniStore->Query(queryFormMapCmd, columns);
     if (queryResultSet != nullptr) {
-        if (queryResultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        bool exists = (queryResultSet->GoToFirstRow() == NativeRdb::E_OK);
+        queryResultSet->Close();
+        if (exists) {
             MEDIA_INFO_LOG("The id queried already exists!");
             return true;
         }
