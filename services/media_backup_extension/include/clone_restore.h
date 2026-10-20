@@ -208,6 +208,7 @@ protected:
         FileInfo &fileInfo);
     bool IsSameFileForClone(const std::string &tableName, FileInfo &fileInfo);
     void HandleLakeDuplicateMigration(FileInfo &fileInfo, const PhotosDao::PhotosRowData &rowData);
+    void DeleteCrossLakeSourceFile(FileInfo &fileInfo);
     void FillLakeMergedValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     std::string ResolveLocalPath(FileInfo &fileInfo);
     int32_t MovePicture(FileInfo &fileInfo);

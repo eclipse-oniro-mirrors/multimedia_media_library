@@ -3635,6 +3635,23 @@ void CloneRestore::HandleLakeDuplicateMigration(FileInfo &fileInfo, const Photos
         fileInfo.needUpdatePositionToLocalAndCloud = false;
         fileInfo.needMergeThumbnail = true;
     }
+    // 删除不需要迁移的东湖路径文件
+    DeleteCrossLakeSourceFile(fileInfo);
+}
+
+void CloneRestore::DeleteCrossLakeSourceFile(FileInfo &fileInfo)
+{
+    // needMove=true 表示文件仍需迁移，不删除
+    // 非东湖文件的 filePath 在临时路径，无需处理
+    // isStoragePathExistInDb=true 表示目标库已有同 storagePath 行，不删除
+    if (fileInfo.needMove || !FileAdapter::IsLakeFile(fileInfo) || fileInfo.isStoragePathExistInDb) {
+        return;
+    }
+    MEDIA_INFO_LOG("Cross-lake migration skip: delete source lake file, filePath: %{public}s",
+        BackupFileUtils::GarbleFilePath(fileInfo.filePath, CLONE_RESTORE_ID, garbagePath_).c_str());
+    bool isSuccess = MediaFileUtils::DeleteFile(fileInfo.filePath);
+    CHECK_AND_PRINT_LOG(isSuccess, "failed to delete file, filePath: %{public}s, errno:%{public}d",
+        BackupFileUtils::GarbleFilePath(fileInfo.filePath, CLONE_RESTORE_ID, garbagePath_).c_str(), errno);
 }
 
 void CloneRestore::FillLakeMergedValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
