@@ -52,6 +52,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/lake_file_handler.cpp",
   ]
   media_file_scan_common_source = [
+    "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_audit_reporter.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_dfx_collector.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/check_scene_helper.cpp",

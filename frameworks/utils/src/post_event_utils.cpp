@@ -377,6 +377,24 @@ void PostEventUtils::PostDatabaseCorruption(const VariantMap &errMap)
     }
 }
 
+void PostEventUtils::PostDatabaseRecovery(const DatabaseRecoveryReport &report)
+{
+    CHECK_AND_RETURN_LOG(!report.date.empty(), "Recovery report has no detection time");
+    int ret = HiSysEventWrite(MEDIA_LIBRARY, "MEDIALIB_META_RECOVERY_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "DATE", report.date,
+        "RECOVERY_STAGE", static_cast<int32_t>(report.stage),
+        "RECOVERY_RESULT", static_cast<int32_t>(report.result), "ERROR_CODE", report.error,
+        "RESTORE_DECISION", report.decision,
+        "PRIMARY_DB_BYTES", report.primarySize, "REPLICA_DB_BYTES", report.replicaSize,
+        "PRIMARY_PHOTO_COUNT", report.primaryPhotoCount, "REPLICA_PHOTO_COUNT", report.replicaPhotoCount,
+        "PRIMARY_ALBUM_COUNT", report.primaryAlbumCount, "REPLICA_ALBUM_COUNT", report.replicaAlbumCount,
+        "PRIMARY_TIME_MS", report.primaryTimeMs, "REPLICA_TIME_MS", report.replicaTimeMs,
+        "DURATION_MS", report.durationMs, "SCAN_VISITED", report.visited, "SCAN_REPAIRED", report.repaired,
+        "SCAN_FAILED", report.failed, "SCAN_DEFERRED", report.deferred, "ALBUMS_CREATED", report.albumsCreated);
+    CHECK_AND_PRINT_LOG(ret == 0, "Recovery reporting incomplete, code=%{public}d", ret);
+}
+
 void PostEventUtils::PostErrorProcess(const uint32_t &errType, const VariantMap &error)
 {
     switch (errType) {
