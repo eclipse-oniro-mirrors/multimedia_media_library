@@ -114,7 +114,6 @@ bool CloudSyncHelper::InitDataShareHelper()
     return true;
 }
 
-
 static bool ParseSwitchStatusFromResultSet(
     shared_ptr<DataShare::DataShareResultSet> &resultSet, const std::string &switchStatusKey, bool &isOpen)
 {
