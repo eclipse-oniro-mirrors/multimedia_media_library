@@ -275,10 +275,17 @@ int32_t MediaLibraryPtpOperations::GetBurstPhotosInfo(const std::string &burstKe
     auto resultSet = rdbStore->Query(queryPredicates, columns);
     int32_t count = 0;
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr");
-    CHECK_AND_RETURN_RET_LOG(
-        resultSet->GetRowCount(count) == NativeRdb::E_OK, E_HAS_DB_ERROR, "Cannot get row count of resultset");
+    if (resultSet->GetRowCount(count) != NativeRdb::E_OK) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Cannot get row count of resultset");
+        return E_HAS_DB_ERROR;
+    }
     isLastBurstPhoto = count == 1;
-    CHECK_AND_RETURN_RET_LOG(resultSet->GoToFirstRow() == NativeRdb::E_OK, E_HAS_DB_ERROR, "have no photo asset");
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("have no photo asset");
+        return E_HAS_DB_ERROR;
+    }
     do {
         burstFileIds.push_back(GetInt32Val(MediaColumn::MEDIA_ID, resultSet));
     } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
@@ -367,8 +374,14 @@ std::shared_ptr<FileAsset> MediaLibraryPtpOperations::QueryPhotoInfo(NativeRdb::
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nullptr, "rdbStore is null");
     auto resultSet = rdbStore->Query(rdbPredicate, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "QueryPhotoInfo fail");
-    CHECK_AND_RETURN_RET_LOG(resultSet->GoToFirstRow() == NativeRdb::E_OK, nullptr, "have no photos");
-    return GetAssetFromResultSet(resultSet, columns);
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("have no photos");
+        return nullptr;
+    }
+    auto asset = GetAssetFromResultSet(resultSet, columns);
+    resultSet->Close();
+    return asset;
 }
 
 int32_t MediaLibraryPtpOperations::UpdateBurstPhotoInfo(const std::string &burstKey, const bool isCover,
@@ -403,7 +416,11 @@ int32_t MediaLibraryPtpOperations::DeletePtpAlbum(NativeRdb::RdbPredicates &pred
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is nullptr");
     auto albumResultSet = rdbStore->Query(predicates, queryAlbumColumns);
     CHECK_AND_RETURN_RET_LOG(albumResultSet != nullptr, E_ERR, "albumResultSet is nullptr");
-    CHECK_AND_RETURN_RET_LOG(albumResultSet->GoToFirstRow() == NativeRdb::E_OK, E_ERR, "get albumResultSet failed");
+    if (albumResultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        albumResultSet->Close();
+        MEDIA_ERR_LOG("get albumResultSet failed");
+        return E_ERR;
+    }
     int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, albumResultSet);
     albumResultSet->Close();
     NativeRdb::RdbPredicates queryPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -423,9 +440,11 @@ int32_t MediaLibraryPtpOperations::DeletePtpAlbum(NativeRdb::RdbPredicates &pred
         if (position == static_cast<int32_t>(PhotoPositionType::CLOUD) ||
             position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
             MediaLibraryAssetOperations::DeletePermanently(deletePhotoPredicates, true);
+            photosResultSet->Close();
             return E_OK;
         }
     }
+    photosResultSet->Close();
     MediaLibraryAssetOperations::DeletePermanently(deletePhotoPredicates, true);
     AccurateRefresh::AlbumAccurateRefresh albumRefresh(AccurateRefresh::DELETE_PTP_ALBUM_BUSSINESS_NAME);
     int deleteRow = -1;

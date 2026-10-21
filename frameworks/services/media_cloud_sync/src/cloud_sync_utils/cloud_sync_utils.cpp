@@ -65,6 +65,7 @@ bool CloudSyncUtils::IsUnlimitedTrafficStatusOn()
     if (resultSet->GoToNextRow() == E_OK) {
         resultSet->GetString(0, switchOn);
     }
+    resultSet->Close();
     return switchOn == MOBILE_NETWORK_STATUS_ON;
 }
 
@@ -91,6 +92,7 @@ bool CloudSyncUtils::IsCloudSyncSwitchOn()
     if (resultSet->GoToNextRow() == E_OK) {
         resultSet->GetString(0, switchOn);
     }
+    resultSet->Close();
     return switchOn == MOBILE_NETWORK_STATUS_ON;
 }
 
@@ -109,6 +111,7 @@ bool CloudSyncUtils::IsCloudDataAgingPolicyOn()
     if (resultSet->GoToNextRow() == E_OK) {
         resultSet->GetString(0, switchOn);
     }
+    resultSet->Close();
     return switchOn == MOBILE_NETWORK_STATUS_ON;
 }
 

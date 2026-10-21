@@ -678,10 +678,12 @@ int32_t MediaLibraryAssetOperations::CheckExist(const std::string &path)
     int rowCount = 0;
     if (resultSet->GetRowCount(rowCount) != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("GetRowCount error\n");
+        resultSet->Close();
         return E_HAS_DB_ERROR;
     }
 
     MEDIA_INFO_LOG("query media_file_path end, rowCount=%{public}d\n", rowCount);
+    resultSet->Close();
     return (rowCount > 0) ? E_OK : E_FAIL;
 }
 
@@ -711,7 +713,7 @@ std::vector<std::string> MediaLibraryAssetOperations::QueryPhotosTableColumnInfo
         }
         columnInfo.emplace_back(columnName);
     }
-
+    resultSet->Close();
     return columnInfo;
 }
 
@@ -742,6 +744,7 @@ int32_t MediaLibraryAssetOperations::QueryTotalPhoto(vector<shared_ptr<FileAsset
     GetAssetVectorFromResultSet(resultSet, columnInfo, fileAssetVector);
 
     MEDIA_INFO_LOG("query total photo end\n");
+    resultSet->Close();
     return E_OK;
 }
 
@@ -763,7 +766,9 @@ std::shared_ptr<FileAsset> MediaLibraryAssetOperations::QuerySinglePhoto(int32_t
         return nullptr;
     }
 
-    return GetAssetFromResultSet(resultSet, columnInfo);
+    auto asset = GetAssetFromResultSet(resultSet, columnInfo);
+    resultSet->Close();
+    return asset;
 }
 
 int32_t MediaLibraryAssetOperations::QueryTotalAlbum(vector<shared_ptr<PhotoAlbum>> &photoAlbumVector)
@@ -3463,8 +3468,11 @@ static int32_t GetAlbumTypeSubTypeById(const string &albumId, PhotoAlbumType &ty
         MEDIA_ERR_LOG("album id %{private}s is not exist", albumId.c_str());
         return E_INVALID_ARGUMENTS;
     }
-    CHECK_AND_RETURN_RET_LOG(resultSet->GoToFirstRow() == NativeRdb::E_OK, E_INVALID_ARGUMENTS,
-        "album id is not exist");
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("album id is not exist");
+        return E_INVALID_ARGUMENTS;
+    }
     type = static_cast<PhotoAlbumType>(GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, resultSet));
     subType = static_cast<PhotoAlbumSubType>(GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet));
     resultSet->Close();
