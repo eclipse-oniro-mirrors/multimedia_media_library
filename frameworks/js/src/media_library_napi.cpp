@@ -2290,11 +2290,7 @@ static void JSCreateUriArrayInCallback(napi_env env, MediaLibraryAsyncContext *c
         int count = 0;
         for (const auto &uri : context->uriArray) {
             napi_value uriObject = nullptr;
-            if (uri.empty()) {
-                napi_get_null(env, &uriObject);
-            } else {
-                status = napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &uriObject);
-            }
+            status = napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &uriObject);
             if (status != napi_ok || uriObject == nullptr) {
                 NAPI_ERR_LOG("Failed to get file asset uri array napi object");
                 napi_get_undefined(env, &jsContext->data);
