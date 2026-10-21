@@ -467,6 +467,11 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAlbumsService::AlbumGetAsset
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     NativeRdb::RdbPredicates predicates =
         RdbDataShareAdapter::RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    if (passCode == E_DOUBLE_CHECK) {
+        uint64_t tokenId = IPCSkeleton::GetCallingFullTokenID();
+        CHECK_AND_RETURN_RET_LOG(tokenId > 0, nullptr, "Get tokenId failed");
+        MediaLibraryRdbUtils::BuildDoubleCheckPredicates(predicates, static_cast<uint32_t>(tokenId), passCode);
+    }
     if (passCode == E_READ_CLOUD_PERMISSION_CHECK) {
         CloudReadPermissionCheck::AddCloudAssetFilter(predicates);
     }
