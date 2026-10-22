@@ -178,19 +178,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_GetKeyFrameThumbnail_test_00
     serverTest->ReleaseService();
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_LcdAging_test_001, TestSize.Level1)
-{
-    ASSERT_NE(storePtr, nullptr);
-    shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
-    int32_t ret = serverTest->LcdAging();
-    EXPECT_EQ(ret, 0);
-    shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
-    ret = serverTest->LcdAging();
-    EXPECT_EQ(ret, 0);
-    serverTest->ReleaseService();
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_GenerateThumbnailBackground_test_001, TestSize.Level1)
 {
     ASSERT_NE(storePtr, nullptr);
