@@ -229,17 +229,19 @@ bool MediaFileMonitorRdbUtils::UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbSt
     return true;
 }
 
-bool MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+bool MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
     const std::vector<int32_t> &albumIds, const FileSourceType &fileSourceType)
 {
     CHECK_AND_RETURN_RET_LOG(!albumIds.empty(), false, "Function called with empty albumIds");
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
+    CHECK_AND_RETURN_RET_LOG(assetRefresh != nullptr, false, "assetRefresh is nullptr");
 
     RdbPredicates assetPredicates = BuildQueryPredicatesByAlbumIds(albumIds, fileSourceType);
-    int deletedCount = 0;
-    int err = rdbStore->Delete(deletedCount, assetPredicates);
-    CHECK_AND_RETURN_RET_LOG(err == E_OK, false, "Failed to delete assets, err: %{public}d, albumCount: %{public}zu",
-        err, albumIds.size());
+    int32_t deletedCount = 0;
+    int32_t ret = assetRefresh->Delete(deletedCount, assetPredicates);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, false,
+        "Failed to delete assets, ret: %{public}d, deletedRows: %{public}d, albumCount: %{public}zu",
+        ret, deletedCount, albumIds.size());
 
     MEDIA_INFO_LOG("Batch deleted %{public}d assets for %{public}zu albumIds", deletedCount, albumIds.size());
     return true;
@@ -439,8 +441,9 @@ bool MediaFileMonitorRdbUtils::DeleteLakeDirByLakePath(const std::string &path,
     MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets(fileIds, analysisAlbumSet);
 
     // 5. 批量删除资产
-    CHECK_AND_PRINT_LOG(DeleteAssetsByOwnerAlbumIds(rdbStore, albumIds, FileSourceType::MEDIA_HO_LAKE),
-        "DeleteAssetsByOwnerAlbumIds failed");
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds, FileSourceType::MEDIA_HO_LAKE),
+        false, "DeleteAssetsByOwnerAlbumIds failed, lPath: %{public}s", DfxUtils::GetSafePath(lPath).c_str());
 
     // 6. 删除该图片对应湖外资源
     for (auto data : dataList) {
@@ -449,16 +452,22 @@ bool MediaFileMonitorRdbUtils::DeleteLakeDirByLakePath(const std::string &path,
     if (delNum != nullptr) {
         *delNum = static_cast<int32_t>(dataList.size());
     }
-    // 7. 刷新相册并发送相册通知
-    UpdateAlbumInfo(rdbStore, albumIds);
+
+    // 7. 更新相册信息并发送精准通知
+    assetRefresh->RefreshAlbum();
+    assetRefresh->Notify();
+
+    // 8. 智慧相册采用传统刷新+通知（删除资产清理映射关系，精准刷新无法覆盖）
     HandleAnalysisAlbum(rdbStore, analysisAlbumSet);
 
-    // 8. 删除空相册
+    // 9. 补充旧通知，包括资产、相册
+    MediaFileMonitorRdbUtils::NotifyAlbums(ToStringVector(albumIds), AlbumNotifyType::COMMON_ALBUM);
+    NotifyAssetChange(fileIds, NotifyType::NOTIFY_REMOVE);
+
+    // 10. 删除空相册
     CHECK_AND_RETURN_RET_LOG(DeleteEmptyAlbumsByLPath(rdbStore, lPath),
         false, "DeleteEmptyAlbumsByLPath failed");
 
-    // 9. 发送资产变更通知
-    NotifyAssetChange(fileIds, NotifyType::NOTIFY_REMOVE);
     return true;
 }
 

@@ -495,14 +495,17 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_ValidData_Ret
 
     string insertPhotoSql = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
         MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
-        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ") VALUES (" +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
         to_string(TEST_FILE_ID_1) + ", " + to_string(TEST_ALBUM_ID_1) + ", " +
-        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "')";
+        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ")";
     int32_t retPhoto = g_rdbStore->ExecuteSql(insertPhotoSql);
     EXPECT_EQ(retPhoto, E_OK);
 
     vector<int32_t> albumIds = {TEST_ALBUM_ID_1};
-    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(g_rdbStore, albumIds,
+    auto assetRefresh = std::make_shared<AssetAccurateRefresh>();
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds,
         FileSourceType::MEDIA_HO_LAKE);
 
     EXPECT_TRUE(result);
@@ -529,21 +532,26 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_MultipleAlbum
 
     string insertPhotoSql1 = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
         MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
-        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ") VALUES (" +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
         to_string(TEST_FILE_ID_1) + ", " + to_string(TEST_ALBUM_ID_1) + ", " +
-        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "')";
+        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ")";
     string insertPhotoSql2 = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
         MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
-        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ") VALUES (" +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
         to_string(TEST_FILE_ID_2) + ", " + to_string(TEST_ALBUM_ID_2) + ", " +
-        to_string(TEST_DATE_TAKEN) + ", '/testMultipleAlbums.jpg')";
+        to_string(TEST_DATE_TAKEN) + ", '/testMultipleAlbums.jpg', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ")";
     int32_t retPhoto1 = g_rdbStore->ExecuteSql(insertPhotoSql1);
     int32_t retPhoto2 = g_rdbStore->ExecuteSql(insertPhotoSql2);
     EXPECT_EQ(retPhoto1, E_OK);
     EXPECT_EQ(retPhoto2, E_OK);
 
     vector<int32_t> albumIds = {TEST_ALBUM_ID_1, TEST_ALBUM_ID_2};
-    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(g_rdbStore, albumIds,
+    auto assetRefresh = std::make_shared<AssetAccurateRefresh>();
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds,
         FileSourceType::MEDIA_HO_LAKE);
 
     EXPECT_TRUE(result);
@@ -556,7 +564,8 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_EmptyAlbumIds
     MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_EmptyAlbumIds_ReturnFalse start");
 
     vector<int32_t> albumIds;
-    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(g_rdbStore, albumIds,
+    auto assetRefresh = std::make_shared<AssetAccurateRefresh>();
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds,
         FileSourceType::MEDIA_HO_LAKE);
 
     EXPECT_FALSE(result);
@@ -564,18 +573,18 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_EmptyAlbumIds
     MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_EmptyAlbumIds_ReturnFalse end");
 }
 
-HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_NullRdbStore_ReturnFalse, TestSize.Level1)
+HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_NullAssetRefresh_ReturnFalse, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_NullRdbStore_ReturnFalse start");
+    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_NullAssetRefresh_ReturnFalse start");
 
-    std::shared_ptr<MediaLibraryRdbStore> nullRdbStore;
+    std::shared_ptr<AssetAccurateRefresh> nullAssetRefresh;
     vector<int32_t> albumIds = {TEST_ALBUM_ID_1};
-    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(nullRdbStore, albumIds,
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(nullAssetRefresh, albumIds,
         FileSourceType::MEDIA_HO_LAKE);
 
     EXPECT_FALSE(result);
 
-    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_NullRdbStore_ReturnFalse end");
+    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_NullAssetRefresh_ReturnFalse end");
 }
 
 HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteEmptyAlbumsByLPath_ValidData_ReturnSuccess, TestSize.Level1)
@@ -1210,7 +1219,8 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_NoAssets_Retu
     EXPECT_EQ(retAlbum, E_OK);
 
     vector<int32_t> albumIds = {TEST_ALBUM_ID_1};
-    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(g_rdbStore, albumIds,
+    auto assetRefresh = std::make_shared<AssetAccurateRefresh>();
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds,
         FileSourceType::MEDIA_HO_LAKE);
 
     EXPECT_TRUE(result);
@@ -1645,6 +1655,154 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, QueryAlbumByLPath_ExcludePaths_ReturnSucc
     EXPECT_FALSE(result);
 
     MEDIA_INFO_LOG("QueryAlbumByLPath_ExcludePaths_ReturnSuccess end");
+}
+
+HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_ValidData_VerifyAssetsDeleted, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_ValidData_VerifyAssetsDeleted start");
+
+    string insertAlbumSql = "INSERT INTO " + PhotoAlbumColumns::TABLE + " (" +
+        PhotoAlbumColumns::ALBUM_ID + ", " + PhotoAlbumColumns::ALBUM_TYPE + ", " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + ", " + PhotoAlbumColumns::ALBUM_NAME + ") VALUES (" +
+        to_string(TEST_ALBUM_ID_1) + ", " + to_string(TEST_ALBUM_TYPE) + ", " +
+        to_string(TEST_ALBUM_SUBTYPE) + ", 'test')";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertAlbumSql), E_OK);
+
+    string insertPhotoSql = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
+        MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
+        to_string(TEST_FILE_ID_1) + ", " + to_string(TEST_ALBUM_ID_1) + ", " +
+        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ")";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertPhotoSql), E_OK);
+
+    vector<int32_t> albumIds = {TEST_ALBUM_ID_1};
+    auto assetRefresh = std::make_shared<AssetAccurateRefresh>();
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds,
+        FileSourceType::MEDIA_HO_LAKE);
+    EXPECT_TRUE(result);
+
+    RdbPredicates queryPred(PhotoColumn::PHOTOS_TABLE);
+    queryPred.EqualTo(MediaColumn::MEDIA_ID, to_string(TEST_FILE_ID_1));
+    auto resultSet = g_rdbStore->QueryByStep(queryPred, { MediaColumn::MEDIA_ID });
+    ASSERT_NE(resultSet, nullptr);
+    int rowCount = -1;
+    EXPECT_EQ(resultSet->GetRowCount(rowCount), E_OK);
+    EXPECT_EQ(rowCount, 0);
+
+    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_ValidData_VerifyAssetsDeleted end");
+}
+
+HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteAssetsByOwnerAlbumIds_NonMatchingType_AssetsNotDeleted, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_NonMatchingType_AssetsNotDeleted start");
+
+    string insertAlbumSql = "INSERT INTO " + PhotoAlbumColumns::TABLE + " (" +
+        PhotoAlbumColumns::ALBUM_ID + ", " + PhotoAlbumColumns::ALBUM_TYPE + ", " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + ", " + PhotoAlbumColumns::ALBUM_NAME + ") VALUES (" +
+        to_string(TEST_ALBUM_ID_1) + ", " + to_string(TEST_ALBUM_TYPE) + ", " +
+        to_string(TEST_ALBUM_SUBTYPE) + ", 'test')";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertAlbumSql), E_OK);
+
+    string insertPhotoSql = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
+        MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
+        to_string(TEST_FILE_ID_1) + ", " + to_string(TEST_ALBUM_ID_1) + ", " +
+        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA)) + ")";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertPhotoSql), E_OK);
+
+    vector<int32_t> albumIds = {TEST_ALBUM_ID_1};
+    auto assetRefresh = std::make_shared<AssetAccurateRefresh>();
+    bool result = MediaFileMonitorRdbUtils::DeleteAssetsByOwnerAlbumIds(assetRefresh, albumIds,
+        FileSourceType::MEDIA_HO_LAKE);
+    EXPECT_TRUE(result);
+
+    RdbPredicates queryPred(PhotoColumn::PHOTOS_TABLE);
+    queryPred.EqualTo(MediaColumn::MEDIA_ID, to_string(TEST_FILE_ID_1));
+    auto resultSet = g_rdbStore->QueryByStep(queryPred, { MediaColumn::MEDIA_ID });
+    ASSERT_NE(resultSet, nullptr);
+    int rowCount = -1;
+    EXPECT_EQ(resultSet->GetRowCount(rowCount), E_OK);
+    EXPECT_EQ(rowCount, 1);
+
+    MEDIA_INFO_LOG("DeleteAssetsByOwnerAlbumIds_NonMatchingType_AssetsNotDeleted end");
+}
+
+HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteLakeDirByLakePath_ValidData_VerifyDeletionAndDelNum, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DeleteLakeDirByLakePath_ValidData_VerifyDeletionAndDelNum start");
+
+    string insertAlbumSql = "INSERT INTO " + PhotoAlbumColumns::TABLE + " (" +
+        PhotoAlbumColumns::ALBUM_ID + ", " + PhotoAlbumColumns::ALBUM_TYPE + ", " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + ", " + PhotoAlbumColumns::ALBUM_NAME + ", " +
+        PhotoAlbumColumns::ALBUM_LPATH + ") VALUES (" +
+        to_string(TEST_ALBUM_ID_1) + ", " + to_string(TEST_ALBUM_TYPE) + ", " +
+        to_string(TEST_ALBUM_SUBTYPE) + ", 'album', '" + TEST_LPATH + "')";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertAlbumSql), E_OK);
+
+    string insertPhotoSql = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
+        MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
+        to_string(TEST_FILE_ID_1) + ", " + to_string(TEST_ALBUM_ID_1) + ", " +
+        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) + ")";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertPhotoSql), E_OK);
+
+    int32_t delNum = -1;
+    bool result = MediaFileMonitorRdbUtils::DeleteLakeDirByLakePath(TEST_HO_PATH, g_rdbStore, &delNum);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(delNum, 1);
+
+    RdbPredicates queryPred(PhotoColumn::PHOTOS_TABLE);
+    queryPred.EqualTo(MediaColumn::MEDIA_ID, to_string(TEST_FILE_ID_1));
+    auto resultSet = g_rdbStore->QueryByStep(queryPred, { MediaColumn::MEDIA_ID });
+    ASSERT_NE(resultSet, nullptr);
+    int rowCount = -1;
+    EXPECT_EQ(resultSet->GetRowCount(rowCount), E_OK);
+    EXPECT_EQ(rowCount, 0);
+
+    MEDIA_INFO_LOG("DeleteLakeDirByLakePath_ValidData_VerifyDeletionAndDelNum end");
+}
+
+HWTEST_F(MediaLakeMonitorRdbUtilsTest, DeleteLakeDirByLakePath_NoMatchingAssets_DelNumStaysZero, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DeleteLakeDirByLakePath_NoMatchingAssets_DelNumStaysZero start");
+
+    string insertAlbumSql = "INSERT INTO " + PhotoAlbumColumns::TABLE + " (" +
+        PhotoAlbumColumns::ALBUM_ID + ", " + PhotoAlbumColumns::ALBUM_TYPE + ", " +
+        PhotoAlbumColumns::ALBUM_SUBTYPE + ", " + PhotoAlbumColumns::ALBUM_NAME + ", " +
+        PhotoAlbumColumns::ALBUM_LPATH + ") VALUES (" +
+        to_string(TEST_ALBUM_ID_1) + ", " + to_string(TEST_ALBUM_TYPE) + ", " +
+        to_string(TEST_ALBUM_SUBTYPE) + ", 'album', '" + TEST_LPATH + "')";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertAlbumSql), E_OK);
+
+    string insertPhotoSql = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + " (" +
+        MediaColumn::MEDIA_ID + ", " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + ", " +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE + ") VALUES (" +
+        to_string(TEST_FILE_ID_1) + ", " + to_string(TEST_ALBUM_ID_1) + ", " +
+        to_string(TEST_DATE_TAKEN) + ", '" + TEST_PHOTO_PATH + "', " +
+        to_string(static_cast<int32_t>(FileSourceType::MEDIA)) + ")";
+    EXPECT_EQ(g_rdbStore->ExecuteSql(insertPhotoSql), E_OK);
+
+    int32_t delNum = -1;
+    bool result = MediaFileMonitorRdbUtils::DeleteLakeDirByLakePath(TEST_HO_PATH, g_rdbStore, &delNum);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(delNum, 0);
+
+    RdbPredicates queryPred(PhotoColumn::PHOTOS_TABLE);
+    queryPred.EqualTo(MediaColumn::MEDIA_ID, to_string(TEST_FILE_ID_1));
+    auto resultSet = g_rdbStore->QueryByStep(queryPred, { MediaColumn::MEDIA_ID });
+    ASSERT_NE(resultSet, nullptr);
+    int rowCount = -1;
+    EXPECT_EQ(resultSet->GetRowCount(rowCount), E_OK);
+    EXPECT_EQ(rowCount, 1);
+
+    MEDIA_INFO_LOG("DeleteLakeDirByLakePath_NoMatchingAssets_DelNumStaysZero end");
 }
 
 } // namespace Media

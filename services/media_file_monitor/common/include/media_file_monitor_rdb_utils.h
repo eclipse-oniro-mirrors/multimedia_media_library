@@ -72,7 +72,7 @@ public:
         const FileSourceType &fileSourceType);
     static bool DeleteAssetByStoragePath(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
         const std::string& filePath);
-    static bool DeleteAssetsByOwnerAlbumIds(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    static bool DeleteAssetsByOwnerAlbumIds(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
         const std::vector<int32_t> &albumIds, const FileSourceType &fileSourceType);
     static bool DeleteEmptyAlbumsByLPath(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
         const std::string &lPath);
