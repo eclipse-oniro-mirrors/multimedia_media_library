@@ -61,6 +61,8 @@ public:
     EXPORT static void ComfirmUploadStatus();
     EXPORT static int32_t SetCloseDatabaseStatus(const std::string& value);
     EXPORT static int32_t GetCloseDatabaseStatus(std::string& value);
+    EXPORT static int32_t GetKvDbCloseStatus(std::string &value);
+    EXPORT static int32_t SetKvDbCloseStatus(const std::string &value);
 
 private:
     static int32_t QueryParamInSettingData(const std::string &key, std::string &value);

@@ -411,4 +411,21 @@ int32_t MediaLibraryKvStore::PutAllValueToNewKvStore(std::shared_ptr<MediaLibrar
     MEDIA_INFO_LOG("End PutAllValueToNewKvStore");
     return static_cast<int32_t>(status);
 }
+
+int32_t MediaLibraryKvStore::DeleteKvStoreByStoreId(const std::string &storeId, const std::string &baseDir)
+{
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
+    CHECK_AND_RETURN_RET(!storeId.empty() && !baseDir.empty(), E_ERR);
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaLibraryKvStore::DeleteKvStoreByStoreId");
+    Status status = dataManager_.DeleteKvStore(KVSTORE_APPID, {storeId}, baseDir);
+    if (status != Status::SUCCESS && status != Status::NOT_FOUND) {
+        MEDIA_ERR_LOG("DeleteKvStoreByStoreId failed, storeId=%{public}s, status=%{public}d",
+            storeId.c_str(), static_cast<int32_t>(status));
+        return static_cast<int32_t>(status);
+    }
+    MEDIA_INFO_LOG("DeleteKvStoreByStoreId success, storeId=%{public}s", storeId.c_str());
+    kvStorePtr_ = nullptr;
+    return E_OK;
+}
 } // namespace OHOS::Media

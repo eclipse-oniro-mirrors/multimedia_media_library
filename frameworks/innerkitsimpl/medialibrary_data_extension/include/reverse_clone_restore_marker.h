@@ -17,6 +17,7 @@
 #define FRAMEWORKS_INNERKITSIMPL_MEDIALIBRARY_DATA_EXTENSION_INCLUDE_REVERSE_CLONE_RESTORE_MARKER_H
 
 #include <cstdint>
+#include <string>
 
 namespace OHOS {
 namespace Media {
@@ -24,15 +25,22 @@ namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 #endif
 
+enum class ReverseCloneMarkerType {
+    RDB,
+    KVDB,
+};
+
 class ReverseCloneRestoreMarker {
 public:
-    EXPORT static bool Recreate();
-    EXPORT static bool Delete();
-    EXPORT static bool DeleteIfExpired(int64_t currentTimeMilliseconds);
+    EXPORT static bool Recreate(ReverseCloneMarkerType type);
+    EXPORT static bool Delete(ReverseCloneMarkerType type);
+    EXPORT static bool DeleteIfExpired(ReverseCloneMarkerType type, int64_t currentTimeMilliseconds);
+    EXPORT static bool Exists(ReverseCloneMarkerType type);
 
 private:
-    static bool GetRecordTime(int64_t &recordTimeMilliseconds);
-    static bool IsExpired(int64_t currentTimeMilliseconds);
+    static bool GetRecordTime(ReverseCloneMarkerType type, int64_t &recordTimeMilliseconds);
+    static bool IsExpired(ReverseCloneMarkerType type, int64_t currentTimeMilliseconds);
+    static std::string GetMarkerPath(ReverseCloneMarkerType type);
 };
 } // namespace Media
 } // namespace OHOS
