@@ -51,6 +51,18 @@ inline bool IsPortraitAlbumAttributeTarget(const std::shared_ptr<PhotoAlbum> &ph
         PhotoAlbum::IsSmartPortraitPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType());
 }
 
+inline bool IsUserPhotoAlbumAttributeTarget(const std::shared_ptr<PhotoAlbum> &photoAlbum)
+{
+    return photoAlbum != nullptr &&
+        PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType());
+}
+
+inline bool IsSourcePhotoAlbumAttributeTarget(const std::shared_ptr<PhotoAlbum> &photoAlbum)
+{
+    return photoAlbum != nullptr &&
+        PhotoAlbum::IsSourceAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType());
+}
+
 template<typename RequestBody>
 inline bool PrepareAnalysisAlbumOperationReqBody(const std::shared_ptr<PhotoAlbum> &photoAlbum,
     const AnalysisAlbumOperation &operation, RequestBody &reqBody)

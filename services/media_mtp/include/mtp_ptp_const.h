@@ -32,6 +32,7 @@ const std::string FILEMODE_READONLY     = "r";
 const std::string DELIMETER_NAME        = ".";
 const std::string DEFAULT_FORMAT_MP4    = ".mp4";
 const std::string PATH_LOCAL_STR        = "/local";
+const std::string VALID_TRUE_STR        = "1";
 constexpr uint32_t ALL_HANDLE_ID        = 0xFFFFFFFF;
 constexpr uint32_t BASE_USER_RANGE      = 200000;
 
@@ -47,6 +48,20 @@ enum STORAGE_ID : uint32_t {
     SD_END_ID = SD_START_ID + 127
 };
 
+struct EmptyAlbumInfo {
+    int32_t userAlbumId{0};
+    int32_t sourceAlbumId{0};
+    int32_t sourceHiddenCount{0};
+    std::string sourceLpath{""};
+};
+
+const std::unordered_map<std::string, int> SPECIAL_SOURCE_ALBUM =  {
+    {"/Pictures/Screenrecords", 0},
+    {"/Pictures/Screenshots", 0},
+    {"/Pictures/hiddenAlbum", 0},
+    {"/DCIM/Camera", 0},
+    {"/FromDocs/Download", 0},
+};
 } // namespace Media
 } // namespace OHOS
 #endif // MTP_PTP_CONST_H

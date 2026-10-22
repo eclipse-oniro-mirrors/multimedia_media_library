@@ -117,6 +117,11 @@ constexpr int32_t NO_FIRST_PAGE_SINGLE_PORTRAIT = -2;
 constexpr int32_t NO_FIRST_PAGE_SINGLE_PORTRAIT_MANUAL = 2;
 constexpr int32_t ANALYSISED_DISPLAY_LEVEL_HIDDEN = -1;
 constexpr int32_t ANALYSISED_DISPLAY_LEVEL_SECOND_PAGE = -2;
+constexpr int32_t VALUE_YES = 1;
+constexpr int32_t VALUE_NO = 0;
+constexpr size_t ALBUM_ID_MAX_LEN = 19;
+const std::string VALUE_YES_STR = "1";
+const std::string VALUE_NO_STR = "0";
 const std::string USER_ALBUM_LPATH_PREFIX = "/Pictures/Users/";
 const std::string SOURCE_ALBUM_LPATH_PREFIX = "/Pictures/";
 const std::string SOURCE_PATH_PREFIX = "/storage/emulated/0";
@@ -4244,6 +4249,140 @@ int64_t MediaLibraryAlbumOperations::CreateSourceAlbum(const string &albumName,
     MEDIA_INFO_LOG("Create new source album success, album id: %{public}" PRId64 ", album name is %{public}s",
         newAlbumId, DfxUtils::GetSafeAlbumName(albumName).c_str());
     return newAlbumId;
+}
+
+int32_t MediaLibraryAlbumOperations::UpdateAlbumHiddenAttribute(const std::string &albumId, const std::string &hidden)
+{
+    MEDIA_INFO_LOG("UpdateAlbumHiddenAttribute, albumId: %{public}s, hidden: %{public}s",
+        albumId.c_str(), hidden.c_str());
+    CHECK_AND_RETURN_RET_LOG(!albumId.empty() && std::all_of(albumId.begin(), albumId.end(), ::isdigit),
+        E_INVALID_VALUES, "Invalid album id");
+    CHECK_AND_RETURN_RET_LOG(albumId.size() <= ALBUM_ID_MAX_LEN, E_INVALID_VALUES, "Invalid album id length");
+    CHECK_AND_RETURN_RET_LOG(!hidden.empty(), E_INVALID_VALUES, "Invalid hidden attribute");
+
+    CHECK_AND_RETURN_RET_LOG(hidden == VALUE_YES_STR || hidden == VALUE_NO_STR, E_INVALID_VALUES,
+        "Invalid hidden attribute, must be %{public}s or %{public}s", VALUE_YES_STR.c_str(), VALUE_NO_STR.c_str());
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+
+    bool isHidden = hidden == VALUE_YES_STR;
+    NativeRdb::ValuesBucket albumValues;
+    albumValues.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, isHidden ? VALUE_YES : VALUE_NO);
+
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::USER));
+    if (isHidden) {
+        predicates.EqualTo(PhotoAlbumColumns::ALBUM_COUNT, 0);
+    }
+
+    AlbumAccurateRefresh albumRefresh;
+    int32_t changedRows = albumRefresh.UpdateWithDateTime(albumValues, predicates);
+    CHECK_AND_RETURN_RET_LOG(changedRows > 0, E_HAS_DB_ERROR, "No album is updated");
+    albumRefresh.Notify();
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_HAS_DB_ERROR, "Can not get MediaLibraryNotify Instance");
+    string prefix = isHidden ? PhotoAlbumColumns::HIDDEN_ALBUM_URI_PREFIX : PhotoAlbumColumns::ALBUM_URI_PREFIX;
+    int32_t ret = watch->Notify(MediaFileUtils::GetUriByExtrConditions(prefix, albumId),
+        NotifyType::NOTIFY_UPDATE);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Notify album update failed");
+    return E_OK;
+}
+
+static int32_t CheckAbsorbAlbum(int32_t albumId, int32_t absorbAlbumId,
+    const std::shared_ptr<MediaLibraryRdbStore>& rdbStore, std::string& albumName)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INVALID_VALUES, "rdbStore is nullptr");
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_INVALID_VALUES, "[absorb] albumId <= 0");
+    CHECK_AND_RETURN_RET_LOG(absorbAlbumId > 0, E_INVALID_VALUES, "[absorb] absorbAlbumId <= 0");
+
+    std::vector<NativeRdb::ValueObject> params = { albumId, absorbAlbumId };
+    static const std::vector<int32_t> absorbAlbumTypes = {
+        static_cast<int32_t>(PhotoAlbumType::USER), static_cast<int32_t>(PhotoAlbumType::SOURCE)
+    };
+    std::string sql = "SELECT a1.album_name as album_name FROM PhotoAlbum a1 JOIN PhotoAlbum a2 ON a1.album_id = ? AND "
+        "a2.album_id = ? AND a1.album_type = a2.album_type AND a1.album_type IN (";
+
+    for (const auto &albumType : absorbAlbumTypes) {
+        sql.append(std::to_string(albumType)).append(", ");
+    }
+    sql.pop_back();
+    sql.pop_back();
+
+    sql.append(") WHERE a1.hidden = 1 AND a1.count = 0 AND a2.hidden = 0 AND a2.lpath NOT IN (");
+    for (const auto &lpath : NOT_CHANGEABLE_ALBUM) {
+        sql.append("'").append(lpath).append("', ");
+    }
+    sql.pop_back();
+    sql.pop_back();
+    sql.append(") LIMIT 1");
+    MEDIA_DEBUG_LOG("[absorb] BuildAbsorbCheckSql: %{public}s", sql.c_str());
+
+    auto resultSet = rdbStore->QuerySql(sql, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR,
+        "[absorb] Query album hidden attribute and type failed");
+
+    auto result = resultSet->GoToFirstRow();
+    if (result == NativeRdb::E_OK) {
+        albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(result == NativeRdb::E_OK && !albumName.empty(), E_HAS_DB_ERROR,
+        "[absorb] Album is not hidden or type is not user or source");
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::AbsorbAlbum(int32_t albumId, int32_t absorbAlbumId)
+{
+    // albumId : current album, must be hidden and type is user or source
+    // absorbAlbumId : album to absorb, not hidden, type must be user or source, and same type to albumId
+    MEDIA_INFO_LOG("[absorb] AbsorbAlbum: [%{public}d].AbsorbAlbum[%{public}d]", albumId, absorbAlbumId);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "[absorb] get rdbStore failed");
+    std::string albumName("");
+    CHECK_AND_RETURN_RET_LOG(CheckAbsorbAlbum(albumId, absorbAlbumId, rdbStore, albumName) == E_OK, E_HAS_DB_ERROR,
+        "[absorb] Check absorb album failed");
+
+    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    auto albumRefresh = make_shared<AccurateRefresh::AlbumAccurateRefresh>(
+        AccurateRefresh::RENAME_USER_ALBUM_BUSSINESS_NAME, trans);
+    auto dfxRefreshManager = albumRefresh->GetDfxRefreshManager();
+    albumRefresh->CloseDfxReport();
+    auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
+        AccurateRefresh::RENAME_USER_ALBUM_BUSSINESS_NAME, trans);
+    if (dfxRefreshManager != nullptr) {
+        assetRefresh->SetDfxRefreshManager(dfxRefreshManager);
+    }
+
+    std::string oldAlbumPath("");
+    int32_t ret = MediaDuplicateCheckerUtils::getAlbumActualPathByAlbumId(to_string(absorbAlbumId), oldAlbumPath);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "get old album path failed.");
+
+    std::vector<std::string> fileIdsInAlbum = GetAssetIdsFromOldAlbum(rdbStore, absorbAlbumId);
+    NativeRdb::ValuesBucket newNameValues {};
+    bool isCloudAlbum {};
+    auto success = BuildNewNameValuesBucket(rdbStore, absorbAlbumId, newNameValues, albumName, isCloudAlbum);
+    CHECK_AND_RETURN_RET_LOG(success, E_INNER_FAIL, "Build new name values bucket failed");
+
+    MediaLibraryAlbumFusionUtils::ExecuteObject executeObject{
+        rdbStore, trans, albumRefresh, assetRefresh};
+    NewNameExecuteInfo executeInfo{absorbAlbumId, albumId, isCloudAlbum};
+    std::function<int(void)> trySetUserAlbumName = [&]() -> int {
+        CHECK_AND_RETURN_RET_LOG(SetNewNameExecute(executeObject, executeInfo, newNameValues, fileIdsInAlbum),
+            E_HAS_DB_ERROR, "Set new name execute failed");
+        return E_OK;
+    };
+    ret = trans->RetryTrans(trySetUserAlbumName);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_INNER_FAIL, "[absorb] Failed to absorb album");
+
+    FileManagerAlbumOperations::RenameFileManagerAlbum(oldAlbumPath, albumId, albumName);
+    HandleLakeAssets(fileIdsInAlbum, albumId);
+    UpdateAnalysisIndexAfterRename(fileIdsInAlbum);
+    MediaLibraryRdbUtils::UpdateCommonAlbumCover(rdbStore, { std::to_string(albumId) }, true);
+    ret = NotifyForRenameUserAlbum(albumRefresh, dfxRefreshManager, albumId, assetRefresh);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "failed to send notification for rename user album");
+    return E_OK;
 }
 
 int32_t MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(int32_t albumId, bool fileHidden, bool inherited)

@@ -32,6 +32,7 @@
 #include "change_request_operate_album_attribute_dto.h"
 #include "change_request_set_album_name_dto.h"
 #include "medialibrary_data_manager_utils.h"
+#include "change_request_absorb_album_vo.h"
 #include "change_request_add_assets_vo.h"
 #include "change_request_remove_assets_vo.h"
 #include "change_request_move_assets_vo.h"
@@ -309,6 +310,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_RESET_SHARE_COVER_URI),
         &MediaAlbumsControllerService::ResetShareCoverUri
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM),
+        &MediaAlbumsControllerService::ChangeRequestAbsorbAlbum
     },
 };
 
@@ -1447,6 +1452,21 @@ int32_t MediaAlbumsControllerService::ResetShareCoverUri(MessageParcel &data, Me
     }
     ret = MediaAlbumsService::GetInstance().ResetShareCoverUri(reqBody);
     MEDIA_INFO_LOG("ResetShareCoverUri albumId=%{public}d, result=%{public}d", reqBody.albumId, ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::ChangeRequestAbsorbAlbum(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    ChangeRequestAbsorbAlbumReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ChangeRequestAbsorbAlbumReqBody Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = MediaAlbumsService::GetInstance().ChangeRequestAbsorbAlbum(reqBody.albumId, reqBody.absorbAlbumId);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media

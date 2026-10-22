@@ -64,6 +64,8 @@ enum class AlbumChangeOperation {
     UPDATE_CONTACT_INFO,
 	SET_HIDDEN_ATTRIBUTE,
     SET_ALBUM_NAME_BY_FILE,
+    UPDATE_HIDDEN,
+    ABSORB_ALBUM,
 };
 
 enum class ParameterType {
@@ -124,6 +126,7 @@ public:
     void SetExtraInfoOperationData(AnalysisAlbumOperation &operations);
     void SetFriendIdOperationData(AnalysisAlbumOperation &operations);
     void SetContactInfoOperationData(AnalysisAlbumOperation &operations);
+    bool SetHiddenOperationData(AnalysisAlbumOperation &operation, const std::shared_ptr<PhotoAlbum> &photoAlbum);
     void ClearMoveMap();
     napi_value ApplyChanges(napi_env env, napi_callback_info info) override;
     bool hiddenInherited_ = false;
@@ -157,6 +160,7 @@ private:
     EXPORT static napi_value JSPlaceBefore(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetDisplayLevel(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSMergeAlbum(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSAbsorbAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSDismissAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetRelationship(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetIsMe(napi_env env, napi_callback_info info);

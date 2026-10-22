@@ -5920,6 +5920,8 @@ export class ContextRecoveryInfo {
 
     native mergeAlbum(album: Album): void;
 
+    native absorbAlbum(album: Album): void;
+
     native placeBefore(album: Album): void;
 
     native dismiss(): void;
@@ -5972,6 +5974,7 @@ export class ContextRecoveryInfo {
     EXTRA_INFO_ATTR = "extra_info",
     FRIEND_ID_ATTR = "friend_id",
     CONTACT_INFO_ATTR = "contact_info",
+    HIDDEN_ATTR = "hidden",
   }
 
   export interface AlbumAttributeInfo {

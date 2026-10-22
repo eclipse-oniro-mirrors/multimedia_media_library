@@ -36,6 +36,7 @@
 #include "album_operation_uri.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_business_code.h"
+#include "change_request_absorb_album_vo.h"
 #include "change_request_operate_album_attribute_vo.h"
 #include "delete_albums_vo.h"
 #include "change_request_set_album_name_vo.h"
@@ -109,6 +110,7 @@ ani_status MediaAlbumChangeRequestAni::Init(ani_env *env)
         ani_native_function {"moveAssets", nullptr, reinterpret_cast<void *>(MoveAssets)},
         ani_native_function {"moveAssetsWithUri", nullptr, reinterpret_cast<void *>(MoveAssetsWithUri)},
         ani_native_function {"mergeAlbum", nullptr, reinterpret_cast<void *>(MergeAlbum)},
+        ani_native_function {"absorbAlbum", nullptr, reinterpret_cast<void *>(AbsorbAlbum)},
         ani_native_function {"setAlbumName", nullptr, reinterpret_cast<void *>(SetAlbumName)},
         ani_native_function {"setCoverUri", nullptr, reinterpret_cast<void *>(SetCoverUri)},
         ani_native_function {"removeAssets", nullptr, reinterpret_cast<void *>(RemoveAssets)},
@@ -125,10 +127,7 @@ ani_status MediaAlbumChangeRequestAni::Init(ani_env *env)
         ani_native_function {"setAlbumNameByFile", nullptr, reinterpret_cast<void *>(SetAlbumNameByFile)},
     };
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
-    if (status != ANI_OK) {
-        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
-        return status;
-    }
+    CHECK_COND_RET(status == ANI_OK, status, "Failed to bind native methods to: %{public}s", className);
 
     std::array staticMethods = {
         ani_native_function {"createAlbumRequest", nullptr, reinterpret_cast<void *>(CreateAlbumRequest)},
@@ -464,6 +463,18 @@ void MediaAlbumChangeRequestAni::SetContactInfoOperationData(AnalysisAlbumOperat
     albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_CONTACT_INFO);
 }
 
+bool MediaAlbumChangeRequestAni::SetHiddenOperationData(AnalysisAlbumOperation &operation,
+    const std::shared_ptr<PhotoAlbum> &photoAlbum)
+{
+    CHECK_COND_RET(IsUserPhotoAlbumAttributeTarget(photoAlbum), false, "Invalid album type");
+    CHECK_COND_RET(operation.values.size() == ALBUM_MAX_HIDDEN_COUNT, false, "Invalid hidden value size");
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_HIDDEN);
+    return true;
+}
+
 static ani_status ApplyOperateAttribute(ani_env *env,
     const std::unique_ptr<MediaAlbumChangeRequestContext>& aniContext,
     AnalysisAlbumOperation& analysisOperation)
@@ -480,10 +491,19 @@ static ani_status ApplyOperateAttribute(ani_env *env,
         aniContext->objectInfo->SetFriendIdOperationData(analysisOperation);
     } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_CONTACT_INFO) {
         aniContext->objectInfo->SetContactInfoOperationData(analysisOperation);
+    } else if (analysisOperation.attr == ALBUM_ATTR_HIDDEN) {
+        CHECK_ARGS_WITH_RET_MSG(env, aniContext->objectInfo->SetHiddenOperationData(analysisOperation,
+            aniContext->objectInfo->GetPhotoAlbumInstance()), JS_E_PARAM_INVALID, ANI_ERROR, "Invalid hidden value");
     } else {
         ANI_ERR_LOG("Unsupported operateAttribute attr: %{public}s", analysisOperation.attr.c_str());
     }
     return ANI_OK;
+}
+
+static inline bool IsValidAttributeTarget(const std::shared_ptr<PhotoAlbum> &photoAlbum)
+{
+    CHECK_COND_RET(photoAlbum != nullptr, false, "photoAlbum is null");
+    return IsPortraitAlbumAttributeTarget(photoAlbum) || IsUserPhotoAlbumAttributeTarget(photoAlbum);
 }
 
 ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object object, ani_object operation)
@@ -503,8 +523,8 @@ ani_status MediaAlbumChangeRequestAni::OperateAttribute(ani_env *env, ani_object
         AniError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for this album type");
         return ANI_ERROR;
     }
-    if (!IsPortraitAlbumAttributeTarget(photoAlbum)) {
-        AniError::ThrowError(env, JS_E_OPR_TYPE_NOT_SUPPORT, "Only portrait album can operate attribute");
+    if (!IsValidAttributeTarget(photoAlbum)) {
+        AniError::ThrowError(env, JS_E_OPR_TYPE_NOT_SUPPORT, "Only portrait or user album can operate attribute");
         return ANI_ERROR;
     }
 
@@ -560,6 +580,40 @@ ani_status MediaAlbumChangeRequestAni::MergeAlbum(ani_env *env, ani_object objec
         (PhotoAlbum::IsPetAlbum(targetAlbum->GetPhotoAlbumType(), targetAlbum->GetPhotoAlbumSubType()))),
         ANI_INVALID_ARGS, "Only portrait or only pet album can merge");
     aniContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::MERGE_ALBUM);
+    return ANI_OK;
+}
+
+ani_status MediaAlbumChangeRequestAni::AbsorbAlbum(ani_env *env, ani_object object, ani_object albumHandle)
+{
+    ANI_INFO_LOG("[absorb] AbsorbAlbum enter");
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is null");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    auto aniContext = make_unique<MediaAlbumChangeRequestContext>();
+    CHECK_COND_WITH_RET_MESSAGE(env, aniContext != nullptr, ANI_ERROR, "aniContext is null");
+
+    aniContext->objectInfo = Unwrap(env, object);
+    auto objectInfo = aniContext->objectInfo;
+    CHECK_COND_WITH_RET_MESSAGE(env, objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
+
+    auto albumAni = PhotoAlbumAni::UnwrapPhotoAlbumObject(env, albumHandle);
+    CHECK_COND_WITH_RET_MESSAGE(env, albumAni != nullptr, ANI_INVALID_ARGS, "albumAni is nullptr");
+    objectInfo->targetAlbum_ = albumAni->GetPhotoAlbumInstance();
+    auto photoAlbum = objectInfo->photoAlbum_;
+    auto targetAlbum = objectInfo->targetAlbum_;
+    CHECK_COND_WITH_RET_MESSAGE(env,
+        (photoAlbum != nullptr) && (targetAlbum != nullptr), ANI_INVALID_ARGS, "PhotoAlbum or TargetAlbum is null");
+
+    CHECK_ARGS_WITH_RET_MSG(env,
+        photoAlbum->GetHidden() != 0, JS_E_PARAM_INVALID, ANI_INVALID_ARGS, "photoAlbum is not hidden");
+    CHECK_ARGS_WITH_RET_MSG(env,
+        (IsUserPhotoAlbumAttributeTarget(photoAlbum) && IsUserPhotoAlbumAttributeTarget(targetAlbum)) ||
+        (IsSourcePhotoAlbumAttributeTarget(photoAlbum) && IsSourcePhotoAlbumAttributeTarget(targetAlbum)),
+        JS_E_PARAM_INVALID, ANI_INVALID_ARGS, "Only user/user or source/source album can be absorbed");
+    objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ABSORB_ALBUM);
+    ANI_INFO_LOG("[absorb] AbsorbAlbum end");
     return ANI_OK;
 }
 
@@ -1653,6 +1707,27 @@ static bool MergeAlbumExecute(MediaAlbumChangeRequestContext& context)
     return true;
 }
 
+static bool AbsorbAlbumExecute(MediaAlbumChangeRequestContext& context)
+{
+    CHECK_COND_RET(context.objectInfo != nullptr, false, "objectInfo is nullptr");
+    auto photoAlbum = context.objectInfo->GetPhotoAlbumInstance();
+    CHECK_COND_RET(photoAlbum != nullptr, false, "photoAlbum is null");
+    auto targetAlum = context.objectInfo->GetTargetPhotoAlbumInstance();
+    CHECK_COND_RET(targetAlum != nullptr, false, "targetAlum is null");
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM);
+    ChangeRequestAbsorbAlbumReqBody reqBody;
+    reqBody.albumId = photoAlbum->GetAlbumId();
+    reqBody.absorbAlbumId = targetAlum->GetAlbumId();
+    int result = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (result < 0) {
+        context.SaveError(result);
+        ANI_ERR_LOG("Failed to absorb albums err: %{public}d", result);
+        return false;
+    }
+    return true;
+}
+
 static bool DismissAssetExecute(MediaAlbumChangeRequestContext& context)
 {
     CHECK_COND_RET(context.objectInfo != nullptr, false, "objectInfo is nullptr");
@@ -1794,6 +1869,7 @@ static const unordered_map<AlbumChangeOperation, bool (*)(MediaAlbumChangeReques
     { AlbumChangeOperation::SET_DEFAULT_COVER_URI, SetDefaultCoverUriExecute },
     { AlbumChangeOperation::ORDER_ALBUM, OrderAlbumExecute },
     { AlbumChangeOperation::MERGE_ALBUM, MergeAlbumExecute },
+    { AlbumChangeOperation::ABSORB_ALBUM, AbsorbAlbumExecute },
     { AlbumChangeOperation::DISMISS_ASSET, DismissAssetExecute },
     { AlbumChangeOperation::SET_ORDER_POSITION, SetOrderPositionExecute },
     { AlbumChangeOperation::SET_HIDDEN_ATTRIBUTE, SetHiddenAttributeExecute },
@@ -2122,6 +2198,7 @@ static void ApplyAlbumChangeRequestExecute(std::unique_ptr<MediaAlbumChangeReque
                    changeOperation == AlbumChangeOperation::RESET_COVER_URI ||
                    changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO ||
                    changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID ||
+                   changeOperation == AlbumChangeOperation::UPDATE_HIDDEN ||
                    changeOperation == AlbumChangeOperation::UPDATE_CONTACT_INFO) {
             valid = SetAlbumPropertyExecute(aniContext, changeOperation);
         } else {

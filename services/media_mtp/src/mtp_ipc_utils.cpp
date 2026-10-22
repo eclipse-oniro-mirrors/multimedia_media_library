@@ -23,7 +23,9 @@
 
 #include "album_get_assets_vo.h"
 #include "asset_change_vo.h"
+#include "change_request_absorb_album_vo.h"
 #include "change_request_move_assets_vo.h"
+#include "change_request_operate_album_attribute_vo.h"
 #include "change_request_set_album_name_vo.h"
 #include "create_album_vo.h"
 #include "create_asset_vo.h"
@@ -217,6 +219,44 @@ int32_t MtpIpcUtils::DeleteAlbums(ConstHelper &dataShareHelper, const std::vecto
     int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, req);
     CHECK_AND_RETURN_RET_LOG(errCode >= E_OK, errCode, "after IPC Call, errCode: %{public}d.", errCode);
     MEDIA_INFO_LOG("MtpIpcUtils::DeleteAlbums end");
+    return MTP_SUCCESS;
+}
+
+int32_t MtpIpcUtils::ChangeUserAlbumVisible(ConstHelper &dataShareHelper, int32_t albumId)
+{
+    MEDIA_INFO_LOG("MtpIpcUtils::ChangeUserAlbumVisible start, albumId: %{public}d", albumId);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "dataShareHelper is null");
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_ERR, "albumId is invalid");
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = std::to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "update";
+    reqBody.values.push_back("0");
+    reqBody.albumType = PhotoAlbumType::USER;
+    reqBody.albumSubType = PhotoAlbumSubType::USER_GENERIC;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_OPERATE_ALBUM_ATTRIBUTE);
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+    CHECK_AND_RETURN_RET_LOG(errCode >= E_OK, errCode, "after IPC Call, errCode: %{public}d.", errCode);
+    MEDIA_INFO_LOG("ChangeUserAlbumVisible success end");
+    return MTP_SUCCESS;
+}
+
+int32_t MtpIpcUtils::AbsorbAlbum(ConstHelper &dataShareHelper, int32_t albumId, int32_t absorbAlbumId)
+{
+    MEDIA_INFO_LOG("MtpIpcUtils::AbsorbAlbum start, albumId: %{public}d, absorbAlbumId: %{public}d",
+        albumId, absorbAlbumId);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "dataShareHelper is null");
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_ERR, "albumId is invalid");
+    CHECK_AND_RETURN_RET_LOG(absorbAlbumId > 0, E_ERR, "absorbAlbumId is invalid");
+
+    ChangeRequestAbsorbAlbumReqBody reqBody;
+    reqBody.albumId = albumId;
+    reqBody.absorbAlbumId = absorbAlbumId;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM);
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+    CHECK_AND_RETURN_RET_LOG(errCode >= E_OK, errCode, "after IPC Call, errCode: %{public}d.", errCode);
+    MEDIA_INFO_LOG("AbsorbAlbum success end");
     return MTP_SUCCESS;
 }
 } // namespace Media

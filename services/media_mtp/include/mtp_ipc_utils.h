@@ -57,6 +57,10 @@ public:
 
     EXPORT static int32_t DeleteAlbums(ConstHelper &dataShareHelper,
         const std::vector<std::string> &deleteAlbumIds);
+
+    EXPORT static int32_t ChangeUserAlbumVisible(ConstHelper &dataShareHelper, int32_t albumId);
+
+    EXPORT static int32_t AbsorbAlbum(ConstHelper &dataShareHelper, int32_t albumId, int32_t absorbAlbumId);
 };
 } // namespace Media
 } // namespace OHOS
