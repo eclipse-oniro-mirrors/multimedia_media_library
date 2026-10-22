@@ -181,6 +181,7 @@ ohos_shared_library("mediabackup") {
     "./src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
     "./src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
     "./src/reverse_clone_restore/reverse_clone_resource_plan_builder.cpp",
+    "./src/reverse_clone_restore/kvstore_swap_operator.cpp",
     "./src/restore/tab_old_albums_clone.cpp",
     "./src/restore/tab_old_photos_restore.cpp",
     "./src/video_ringtone_processor/video_ringtone_processor.cpp",

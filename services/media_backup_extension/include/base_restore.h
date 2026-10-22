@@ -57,6 +57,7 @@ public:
     void InsertVideoMode(std::unique_ptr<Metadata> &metadata, NativeRdb::ValuesBucket &value);
     void SetIsRestore(bool isRestore);
     void NotifyDbStatusForClone(int32_t reverseCloneStatus = 0);
+    static void NotifyKvDbStatusForClone(int32_t reverseCloneStatus = 0);
 
     std::string restoreInfo_;
 
