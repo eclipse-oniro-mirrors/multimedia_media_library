@@ -650,7 +650,7 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     StopParameterForClone();
     SetMediaAnalysisClearDirtyDataParameter();
     CloneActiveLcdAgingFromOldDevice();
-    CloseAllKvStore();
+    CloseOldKvStore();
     LcdAgingService::GetInstance().MarkRecentLcdPhotos(mediaLibraryRdb_);
     MEDIA_INFO_LOG("End clone restore");
 }
@@ -3734,12 +3734,22 @@ bool CloneRestore::InitAllKvStore()
     return true;
 }
 
+void CloneRestore::CloseOldKvStore()
+{
+    oldMonthKvStorePtr_ != nullptr && oldMonthKvStorePtr_->Close();
+    oldYearKvStorePtr_ != nullptr && oldYearKvStorePtr_->Close();
+}
+
 void CloneRestore::CloseAllKvStore()
 {
     oldMonthKvStorePtr_ != nullptr && oldMonthKvStorePtr_->Close();
     oldYearKvStorePtr_ != nullptr && oldYearKvStorePtr_->Close();
     newMonthKvStorePtr_ != nullptr && newMonthKvStorePtr_->Close();
     newYearKvStorePtr_ != nullptr && newYearKvStorePtr_->Close();
+    oldMonthKvStorePtr_.reset();
+    oldYearKvStorePtr_.reset();
+    newMonthKvStorePtr_.reset();
+    newYearKvStorePtr_.reset();
 }
 
 void CloneRestore::CreateCloneFileInfoDb()

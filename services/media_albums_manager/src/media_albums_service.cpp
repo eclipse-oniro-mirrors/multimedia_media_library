@@ -33,7 +33,10 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_rdbstore.h"
+#include "medialibrary_kvstore_manager.h"
+#include "medialibrary_kvstore.h"
 #include "photo_album_column.h"
+#include "settings_data_manager.h"
 #include "media_file_utils.h"
 #include "hi_audit.h"
 #include "result_set_utils.h"
@@ -1133,6 +1136,8 @@ void MediaAlbumsService::ReportCloneDbStatus(int32_t reverseCloneStatus)
     const int32_t REVERSE_OPEN_DATABASE = 2;
     const int32_t REVERSE_ROLLBACK_CLOSE_DATABASE = 3;
     const int32_t REVERSE_ROLLBACK_OPEN_DATABASE = 4;
+    const int32_t REVERSE_KVDB_CLOSE = 5;
+    const int32_t REVERSE_KVDB_OPEN = 6;
     // 清理云切家XML
     const std::string smartdataRetainPath = "/data/storage/el2/base/preferences/smartdata_retain.xml";
     if (MediaFileUtils::IsFileExists(smartdataRetainPath)) {
@@ -1156,6 +1161,44 @@ void MediaAlbumsService::ReportCloneDbStatus(int32_t reverseCloneStatus)
     } else if (reverseCloneStatus == REVERSE_ROLLBACK_OPEN_DATABASE) {
         MEDIA_INFO_LOG("Media_Reverse_Restore: rollback open database");
         MediaLibraryDataManager::GetInstance()->OpenRdbStore(false);
+    } else if (reverseCloneStatus == REVERSE_KVDB_CLOSE) {
+        HandleReverseKvDbClose();
+    } else if (reverseCloneStatus == REVERSE_KVDB_OPEN) {
+        HandleReverseKvDbOpen();
+    }
+}
+
+void MediaAlbumsService::HandleReverseKvDbClose()
+{
+    MEDIA_INFO_LOG("Media_Reverse_Restore: closing all kvdb handles");
+    bool allClosed = MediaLibraryKvStoreManager::GetInstance().ForceCloseAllKvStore();
+    if (!allClosed) {
+        MEDIA_ERR_LOG("Media_Reverse_Restore: close kvdb faild, skip notifying");
+        return;
+    }
+    const std::string CLOSE_READY = "0";
+    int32_t ret = SettingsDataManager::SetKvDbCloseStatus(CLOSE_READY);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Media_Reverse_Restore: SetKvDbCloseStatus failed, ret=%{public}d", ret);
+    } else {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: SetKvDbCloseStatus success");
+    }
+}
+
+void MediaAlbumsService::HandleReverseKvDbOpen()
+{
+    MEDIA_INFO_LOG("Media_Reverse_Restore: reopening kvdb handles");
+    bool dbRet = MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
+    if (!dbRet) {
+        MEDIA_ERR_LOG("Media_Reverse_Restore: open kvdb faild, skip notifying");
+        return;
+    }
+    const std::string OPEN_READY = "1";
+    int32_t ret = SettingsDataManager::SetKvDbCloseStatus(OPEN_READY);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Media_Reverse_Restore: SetKvDbCloseStatus failed, ret=%{public}d", ret);
+    } else {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: SetKvDbCloseStatus success");
     }
 }
 

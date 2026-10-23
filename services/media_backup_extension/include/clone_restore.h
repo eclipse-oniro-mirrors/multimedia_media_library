@@ -227,6 +227,7 @@ protected:
     void UpdateMergedStatusForSamePhotos(vector<FileInfo> &fileInfos, bool updatePosition);
     void InitThumbnailStatus();
     bool InitAllKvStore();
+    void CloseOldKvStore();
     void CloseAllKvStore();
     bool BackupKvStore();
     void GetThumbnailInsertValue(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
