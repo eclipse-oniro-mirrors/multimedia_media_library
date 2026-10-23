@@ -1629,12 +1629,10 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition(bool &re
         currentNotRestoreReasons.push_back(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_ROM_LOW));
     }
     // 开关检查按场景区分 普通任务走普通开关 共享任务走共享开关
-    int32_t normalNum = QueryBatchSelectedFilesNumInAutoPause(0);
-    int32_t shareNum = QueryBatchSelectedFilesNumInAutoPause(1);
     bool isNormalSwitchOn = IsSceneCloudSyncSwitchOn(CloudSync::SceneType::NORMAL);
     bool isShareSwitchOn = IsSceneCloudSyncSwitchOn(CloudSync::SceneType::SHARE);
-    restoreNormal = isNetworkAvailable && isPowerSufficient && isDiskEnough && normalNum > 0 && isNormalSwitchOn;
-    restoreShare = isNetworkAvailable && isPowerSufficient && isDiskEnough && shareNum > 0 && isShareSwitchOn;
+    restoreNormal = isNetworkAvailable && isPowerSufficient && isDiskEnough && isNormalSwitchOn;
+    restoreShare = isNetworkAvailable && isPowerSufficient && isDiskEnough && isShareSwitchOn;
     bool ableAutoRestoreDownload = restoreNormal || restoreShare;
     MEDIA_DEBUG_LOG("BatchSelectFileDownloadAuto AutoRestoreCondition ableAutoRestoreDownload: %{public}d, "
         "restoreNormal: %{public}d, restoreShare: %{public}d, isNetworkAvailable: %{public}d, power: %{public}d, "
