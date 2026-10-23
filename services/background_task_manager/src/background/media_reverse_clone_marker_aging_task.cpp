@@ -33,8 +33,11 @@ void MediaReverseCloneMarkerAgingTask::Execute()
 {
     CHECK_AND_RETURN_INFO_LOG(Accept(), "reverse clone marker aging condition not met");
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
-    CHECK_AND_RETURN_INFO_LOG(ReverseCloneRestoreMarker::DeleteIfExpired(currentTime),
-        "reverse clone marker is absent or not expired");
-    MEDIA_INFO_LOG("reverse clone marker expired and deleted");
+    CHECK_AND_RETURN_INFO_LOG(ReverseCloneRestoreMarker::DeleteIfExpired(ReverseCloneMarkerType::RDB, currentTime),
+        "reverse clone rdb marker is absent or not expired");
+    MEDIA_INFO_LOG("reverse clone rdb marker expired and deleted");
+    CHECK_AND_RETURN_INFO_LOG(ReverseCloneRestoreMarker::DeleteIfExpired(ReverseCloneMarkerType::KVDB, currentTime),
+        "reverse clone kvdb marker is absent or not expired");
+    MEDIA_INFO_LOG("reverse clone kvdb marker expired and deleted");
 }
 } // namespace OHOS::Media::Background
