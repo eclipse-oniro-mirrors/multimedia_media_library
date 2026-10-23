@@ -44,6 +44,7 @@
 #include "medialibrary_business_code.h"
 #include "delete_albums_vo.h"
 #include "analysis_album_attribute_const.h"
+#include "change_request_absorb_album_vo.h"
 #include "change_request_operate_album_attribute_vo.h"
 #include "change_request_set_album_name_vo.h"
 #include "change_request_set_cover_uri_vo.h"
@@ -119,6 +120,7 @@ napi_value MediaAlbumChangeRequestNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_FUNCTION("setHiddenAttribute", JSSetHiddenAttribute),
             DECLARE_NAPI_FUNCTION("setAlbumNameByFile", JSSetAlbumNameByFile),
             DECLARE_NAPI_STATIC_FUNCTION("setUploadStatus", JSSetUploadStatus),
+            DECLARE_NAPI_FUNCTION("absorbAlbum", JSAbsorbAlbum),
         } };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
     return exports;
@@ -1466,6 +1468,18 @@ void MediaAlbumChangeRequestNapi::SetContactInfoOperationData(AnalysisAlbumOpera
     albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_CONTACT_INFO);
 }
 
+bool MediaAlbumChangeRequestNapi::SetHiddenOperationData(AnalysisAlbumOperation &operation,
+    const std::shared_ptr<PhotoAlbum> &photoAlbum)
+{
+    CHECK_COND_RET(IsUserPhotoAlbumAttributeTarget(photoAlbum), false, "Invalid album type");
+    CHECK_COND_RET(operation.values.size() == ALBUM_MAX_HIDDEN_COUNT, false, "Invalid hidden value size");
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_HIDDEN);
+    return true;
+}
+
 static bool ParseAnalysisAlbumOperation(napi_env env, napi_value arg, AnalysisAlbumOperation &operation)
 {
     napi_valuetype valueType = napi_undefined;
@@ -1488,6 +1502,12 @@ static bool ParseAnalysisAlbumOperation(napi_env env, napi_value arg, AnalysisAl
     return ParseAnalysisAlbumOperation(parseStringProperty, parseArrayProperty, operation);
 }
 
+static inline bool IsValidAttributeTarget(const std::shared_ptr<PhotoAlbum> &photoAlbum)
+{
+    CHECK_COND_RET(photoAlbum != nullptr, false, "photoAlbum is null");
+    return IsPortraitAlbumAttributeTarget(photoAlbum) || IsUserPhotoAlbumAttributeTarget(photoAlbum);
+}
+
 napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_callback_info info)
 {
     if (!CheckOperateAttributePermissionForCall(env)) {
@@ -1503,8 +1523,8 @@ napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_ca
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "This operation is not supported for this album type");
         return nullptr;
     }
-    CHECK_COND_WITH_ERR_MESSAGE(env, IsPortraitAlbumAttributeTarget(photoAlbum), JS_E_OPR_TYPE_NOT_SUPPORT,
-        "Only portrait album can operate attribute");
+    CHECK_COND_WITH_ERR_MESSAGE(env, IsValidAttributeTarget(photoAlbum), JS_E_OPR_TYPE_NOT_SUPPORT,
+        "Only portrait or user album can operate attribute");
 
     AnalysisAlbumOperation operation;
     CHECK_COND_WITH_ERR_MESSAGE(env, ParseAnalysisAlbumOperation(env, asyncContext->argv[ARGS_ZERO], operation),
@@ -1534,6 +1554,9 @@ napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_ca
         asyncContext->objectInfo->SetFriendIdOperationData(operation);
     } else if (operation.attr == ANALYSIS_ALBUM_ATTR_CONTACT_INFO) {
         asyncContext->objectInfo->SetContactInfoOperationData(operation);
+    } else if (operation.attr == ALBUM_ATTR_HIDDEN) {
+        CHECK_COND_WITH_ERR_MESSAGE(env, asyncContext->objectInfo->SetHiddenOperationData(operation, photoAlbum),
+            JS_E_PARAM_INVALID, "Invalid hidden value");
     } else {
         NAPI_WARN_LOG("Unknown operation attr.");
     }
@@ -2340,6 +2363,32 @@ static bool MergeAlbumExecute(MediaAlbumChangeRequestAsyncContext& context)
     return true;
 }
 
+static bool AbsorbAlbumExecute(MediaAlbumChangeRequestAsyncContext& context)
+{
+    NAPI_INFO_LOG("[absorb] AbsorbAlbumExecute");
+    MediaLibraryTracer tracer;
+    tracer.Start("AbsorbAlbumExecute");
+
+    auto objectInfo = context.objectInfo;
+    CHECK_COND_RET(objectInfo != nullptr, false, "objectInfo is nullptr");
+    auto photoAlbum = objectInfo->GetPhotoAlbumInstance();
+    auto absorbAlum = objectInfo->GetTargetPhotoAlbumInstance();
+    CHECK_COND_RET(photoAlbum != nullptr && absorbAlum != nullptr, false, "photoAlbum or absorbPhotoAlbum is nullptr");
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM);
+    ChangeRequestAbsorbAlbumReqBody reqBody;
+    reqBody.albumId = photoAlbum->GetAlbumId();
+    reqBody.absorbAlbumId = absorbAlum->GetAlbumId();
+    int result = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (result < 0) {
+        context.SaveError(result);
+        NAPI_ERR_LOG("[absorb] Failed to absorb albums err: %{public}d", result);
+        return false;
+    }
+    NAPI_INFO_LOG("[absorb] AbsorbAlbumExecute success");
+    return true;
+}
+
 static bool SetAlbumNameExecute(MediaAlbumChangeRequestAsyncContext& context)
 {
     MediaLibraryTracer tracer;
@@ -2430,6 +2479,14 @@ static bool UpdateFriendIdExecute(MediaAlbumChangeRequestAsyncContext& context)
 }
 
 static bool UpdateContactInfoExecute(MediaAlbumChangeRequestAsyncContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, ALBUM_ATTR_HIDDEN,
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
+static bool UpdateHiddenExecute(MediaAlbumChangeRequestAsyncContext& context)
 {
     auto changeRequest = context.objectInfo;
     CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
@@ -2636,6 +2693,7 @@ static const unordered_map<AlbumChangeOperation,
     { AlbumChangeOperation::UPDATE_EXTRA_INFO, UpdateExtraInfoExecute },
     { AlbumChangeOperation::UPDATE_FRIEND_ID, UpdateFriendIdExecute },
     { AlbumChangeOperation::UPDATE_CONTACT_INFO, UpdateContactInfoExecute },
+    { AlbumChangeOperation::UPDATE_HIDDEN, UpdateHiddenExecute },
 };
 
 static bool SetAlbumPropertyExecute(
@@ -2803,6 +2861,7 @@ static const unordered_map<AlbumChangeOperation, bool (*)(MediaAlbumChangeReques
     { AlbumChangeOperation::DELETE_ASSETS_WITH_URI, DeleteAssetsExecuteWithUri },
     { AlbumChangeOperation::ORDER_ALBUM, OrderAlbumExecute },
     { AlbumChangeOperation::MERGE_ALBUM, MergeAlbumExecute },
+    { AlbumChangeOperation::ABSORB_ALBUM, AbsorbAlbumExecute },
     { AlbumChangeOperation::DISMISS_ASSET, DismissAssetExecute },
     { AlbumChangeOperation::SET_ORDER_POSITION, SetOrderPositionExecute },
     { AlbumChangeOperation::SET_RELATIONSHIP, SetRelationshipExecute },
@@ -2842,6 +2901,7 @@ static void ApplyAlbumChangeRequestExecute(napi_env env, void* data)
                    changeOperation == AlbumChangeOperation::RESET_COVER_URI ||
                    changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO ||
                    changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID ||
+                   changeOperation == AlbumChangeOperation::UPDATE_HIDDEN ||
                    changeOperation == AlbumChangeOperation::UPDATE_CONTACT_INFO) {
             valid = SetAlbumPropertyExecute(*context, changeOperation);
         } else {
@@ -2920,6 +2980,48 @@ napi_value MediaAlbumChangeRequestNapi::ApplyChanges(napi_env env, napi_callback
     albumChangeOperations_.clear();
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ApplyMediaAlbumChangeRequest",
         ApplyAlbumChangeRequestExecute, ApplyAlbumChangeRequestCompleteCallback);
+}
+
+napi_value MediaAlbumChangeRequestNapi::JSAbsorbAlbum(napi_env env, napi_callback_info info)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    auto asyncContext = std::make_unique<MediaAlbumChangeRequestAsyncContext>();
+    CHECK_WITH_INT_ERR_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(
+        env, info, asyncContext, ARGS_ONE, ARGS_ONE) == napi_ok, OHOS_INVALID_PARAM_CODE, "Failed to get object info");
+
+    napi_valuetype valueType;
+    CHECK_ARGS_WITH_CODE(env, napi_typeof(env, asyncContext->argv[PARAM0], &valueType), JS_E_PARAM_INVALID);
+    CHECK_WITH_INT_ERR_MESSAGE(env, valueType == napi_object, OHOS_INVALID_PARAM_CODE, "Invalid argument type");
+
+    PhotoAlbumNapi* photoAlbumNapi;
+    CHECK_ARGS_WITH_CODE(env, napi_unwrap(env, asyncContext->argv[PARAM0],
+        reinterpret_cast<void**>(&photoAlbumNapi)), JS_E_PARAM_INVALID);
+    CHECK_WITH_INT_ERR_MESSAGE(env, photoAlbumNapi != nullptr, OHOS_INVALID_PARAM_CODE,
+        "Failed to get PhotoAlbumNapi object");
+    auto objectInfo = asyncContext->objectInfo;
+    CHECK_WITH_INT_ERR_MESSAGE(env, objectInfo != nullptr, OHOS_INVALID_PARAM_CODE,
+        "Failed to get asyncContext object info");
+    objectInfo->targetAlbum_ = photoAlbumNapi->GetPhotoAlbumInstance();
+
+    auto photoAlbum = objectInfo->photoAlbum_;
+    auto targetAlbum = objectInfo->targetAlbum_;
+    CHECK_WITH_INT_ERR_MESSAGE(env,
+        (photoAlbum != nullptr) && (targetAlbum != nullptr), OHOS_INVALID_PARAM_CODE,
+        "photoAlbum or targetAlbum is nullptr");
+    CHECK_WITH_INT_ERR_MESSAGE(env, photoAlbum->GetHidden() != 0, JS_E_PARAM_INVALID, "photoAlbum is not hidden");
+    CHECK_WITH_INT_ERR_MESSAGE(env,
+        (IsUserPhotoAlbumAttributeTarget(photoAlbum) && IsUserPhotoAlbumAttributeTarget(targetAlbum)) ||
+        (IsSourcePhotoAlbumAttributeTarget(photoAlbum) && IsSourcePhotoAlbumAttributeTarget(targetAlbum)),
+        JS_E_PARAM_INVALID, "Only user/user or source/source album can be absorbed");
+    objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::ABSORB_ALBUM);
+    napi_value result = nullptr;
+    CHECK_ARGS_WITH_CODE(env, napi_get_undefined(env, &result), JS_E_INNER_FAIL);
+    return result;
 }
 
 static napi_value ParseArgsCreateAnalysisAlbum(

@@ -239,6 +239,7 @@ static void SetDefaultPredicatesCondition(DataShare::DataSharePredicates &predic
     predicates.NotEqualTo(CONST_MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
     predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
     predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_HIDDEN, ZERO);
     predicates.BeginWrap();
     predicates.NotEqualTo(CONST_MEDIA_DATA_DB_IS_LOCAL, IS_LOCAL);
     predicates.Or();
@@ -247,6 +248,7 @@ static void SetDefaultPredicatesCondition(DataShare::DataSharePredicates &predic
     predicates.EndWrap();
     predicates.Or();
     predicates.In(PhotoAlbumColumns::ALBUM_ID, ownerAlbumIds);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_HIDDEN, ZERO);
     predicates.IsNotNull(CONST_MEDIA_DATA_DB_ALBUM_NAME);
 }
 
@@ -319,7 +321,7 @@ shared_ptr<DataShare::DataShareResultSet> MtpMedialibraryManager::GetPhotosInfo(
         "MtpMedialibraryManager::GetPhotosInfo fail to get datashare");
     DataShare::DataSharePredicates predicates;
     if (isAlbum) {
-        SetPredicatesByParent(predicates, handle);
+        SetPredicatesByParent(predicates, HandleConvertToAdded(handle));
     } else {
         int32_t file_id = static_cast<int32_t>(HandleConvertToAdded(handle) % COMMON_PHOTOS_OFFSET);
         predicates.EqualTo(PhotoColumn::MEDIA_ID, to_string(file_id));
@@ -1155,6 +1157,134 @@ int32_t MtpMedialibraryManager::GetIdByPath(const std::string &path, uint32_t &o
     return E_SUCCESS;
 }
 
+void MtpMedialibraryManager::QueryEmptyAlbumInfo(const std::string &albumName, EmptyAlbumInfo &emptyAlbumInfo)
+{
+    static const std::vector<std::string> columns = {
+        PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::HIDDEN_COUNT, PhotoAlbumColumns::ALBUM_TYPE,
+        PhotoAlbumColumns::ALBUM_LPATH
+    };
+
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_NAME, albumName);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_COUNT, ZERO);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_HIDDEN, VALID_TRUE_STR);
+
+    predicates.BeginWrap();
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::USER);
+    predicates.Or();
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
+    predicates.EndWrap();
+
+    auto resultSet = MtpIpcUtils::GetAlbums(dataShareHelper_, predicates, columns);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "fail to get albums");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t id = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        int32_t albumType = GetInt32Val(PhotoAlbumColumns::ALBUM_TYPE, resultSet);
+        if (albumType == static_cast<int32_t>(PhotoAlbumType::USER)) {
+            emptyAlbumInfo.userAlbumId = id;
+        } else if (albumType == static_cast<int32_t>(PhotoAlbumType::SOURCE)) {
+            int32_t hiddenCount = GetInt32Val(PhotoAlbumColumns::HIDDEN_COUNT, resultSet);
+            emptyAlbumInfo.sourceAlbumId = id;
+            emptyAlbumInfo.sourceHiddenCount = hiddenCount;
+            emptyAlbumInfo.sourceLpath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
+        }
+    }
+    resultSet->Close();
+    return;
+}
+
+// album_type | hidden_count | action
+// user       |  >=0         | set hidden=0, then reuse album
+// source     |    0         | delete source album, caller will create new one
+// source     |  > 0         | error: cannot delete album with hidden assets
+int32_t MtpMedialibraryManager::CreateAlbumImpl(const std::string &albumName, uint32_t &outHandle)
+{
+    CHECK_AND_RETURN_RET_LOG(!albumName.empty(), MTP_ERROR_INVALID_OBJECTHANDLE, "albumName is empty");
+
+    EmptyAlbumInfo emptyAlbumInfo;
+    QueryEmptyAlbumInfo(albumName, emptyAlbumInfo);
+    if (emptyAlbumInfo.userAlbumId > 0 || emptyAlbumInfo.sourceAlbumId > 0) {
+        // change user album visible to 0, then reuse user album
+        if (emptyAlbumInfo.userAlbumId > 0) {
+            auto ret = MtpIpcUtils::ChangeUserAlbumVisible(dataShareHelper_, emptyAlbumInfo.userAlbumId);
+            CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS, MTP_ERROR_INVALID_OBJECTHANDLE,
+                "fail to change user album visible");
+            outHandle = static_cast<uint32_t>(emptyAlbumInfo.userAlbumId);
+            return MTP_SUCCESS;
+        }
+
+        // source album hidden count large than 0, error, can't create
+        CHECK_AND_RETURN_RET_LOG(emptyAlbumInfo.sourceHiddenCount == 0, MTP_ERROR_INVALID_OBJECTHANDLE,
+            "source album hidden count is not 0");
+        CHECK_AND_RETURN_RET_LOG(SPECIAL_SOURCE_ALBUM.count(emptyAlbumInfo.sourceLpath) == 0,
+            MTP_ERROR_INVALID_OBJECTHANDLE, "source album is special album");
+
+        // source album hidden count is 0, delete source album
+        auto ret = MtpIpcUtils::DeleteAlbums(dataShareHelper_, {std::to_string(emptyAlbumInfo.sourceAlbumId)});
+        CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS, MTP_ERROR_INVALID_OBJECTHANDLE, "fail to delete source album");
+    }
+
+    int32_t outRowId = 0;
+    auto ret = MtpIpcUtils::CreateAlbum(dataShareHelper_, albumName, outRowId);
+    CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS, MTP_ERROR_STORE_NOT_AVAILABLE, "fail to create album");
+    outHandle = static_cast<uint32_t>(outRowId);
+    return MTP_SUCCESS;
+}
+
+// album_type | hidden_count | action
+// user       |  >=0         | absorb
+// source     |    0         | delete source album, caller will rename
+// source     |  > 0         | error: cannot delete album with hidden assets
+int32_t MtpMedialibraryManager::RenameAlbumImpl(uint32_t handle, const std::string &albumName,
+    int32_t albumType, int32_t albumSubType)
+{
+    MEDIA_ERR_LOG("[absorb] handle:%{public}d, albumName:%{public}s", handle, albumName.c_str());
+    int32_t albumId = static_cast<int32_t>(HandleConvertToAdded(handle));
+    CHECK_AND_RETURN_RET_LOG(!albumName.empty(), MTP_ERROR_INVALID_OBJECTHANDLE, "albumName is empty");
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, MTP_ERROR_INVALID_OBJECTHANDLE, "albumId is invalid");
+
+    EmptyAlbumInfo emptyAlbumInfo;
+    QueryEmptyAlbumInfo(albumName, emptyAlbumInfo);
+    if (emptyAlbumInfo.userAlbumId > 0 || emptyAlbumInfo.sourceAlbumId > 0) {
+        // absorb current album into the empty user album
+        if (emptyAlbumInfo.userAlbumId > 0) {
+            auto ret = MtpIpcUtils::AbsorbAlbum(dataShareHelper_, emptyAlbumInfo.userAlbumId, albumId);
+            CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS, MTP_ERROR_INVALID_OBJECTHANDLE, "fail to absorb user album");
+            auto ptpSpecialHandles = PtpSpecialHandles::GetInstance();
+            CHECK_AND_RETURN_RET_LOG(ptpSpecialHandles != nullptr, MTP_ERROR_INVALID_OBJECTPROP_VALUE,
+                "ptpSpecialHandles is nullptr");
+            ptpSpecialHandles->AddHandleToMap(handle, static_cast<uint32_t>(emptyAlbumInfo.userAlbumId));
+            return MTP_SUCCESS;
+        }
+
+        // source album hidden count large than 0, error, can't rename
+        CHECK_AND_RETURN_RET_LOG(emptyAlbumInfo.sourceHiddenCount == 0, MTP_ERROR_INVALID_OBJECTHANDLE,
+            "source album hidden count is not 0");
+        CHECK_AND_RETURN_RET_LOG(SPECIAL_SOURCE_ALBUM.count(emptyAlbumInfo.sourceLpath) == 0,
+            MTP_ERROR_INVALID_OBJECTHANDLE, "source album is special album");
+
+        // source album hidden count is 0, delete source album
+        auto ret = MtpIpcUtils::DeleteAlbums(dataShareHelper_, {std::to_string(emptyAlbumInfo.sourceAlbumId)});
+        CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS, MTP_ERROR_INVALID_OBJECTHANDLE, "fail to delete source album");
+    }
+
+    // change album name through ipc
+    auto errCode = MtpIpcUtils::ChangeAlbumName(dataShareHelper_,
+        std::to_string(HandleConvertToAdded(handle)), albumName, albumType, albumSubType);
+    CHECK_AND_RETURN_RET_LOG(errCode == MTP_SUCCESS, MTP_ERROR_STORE_NOT_AVAILABLE, "fail to update albumName");
+
+    // query album id after change album name
+    int32_t newAlbumId = 0;
+    CHECK_AND_RETURN_RET_LOG(QueryAlbumIdByName(albumName, newAlbumId) == MTP_SUCCESS,
+        MTP_ERROR_INVALID_OBJECTPROP_VALUE, "have no album [%{public}s]", albumName.c_str());
+
+    auto ptpSpecialHandles = PtpSpecialHandles::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(ptpSpecialHandles != nullptr, MTP_ERROR_INVALID_OBJECTPROP_VALUE,
+        "ptpSpecialHandles is nullptr");
+    ptpSpecialHandles->AddHandleToMap(handle, static_cast<uint32_t>(newAlbumId));
+    return MTP_SUCCESS;
+}
+
 int32_t MtpMedialibraryManager::SendObjectInfo(const std::shared_ptr<MtpOperationContext> &context,
     uint32_t &outStorageID, uint32_t &outParent, uint32_t &outHandle)
 {
@@ -1169,11 +1299,8 @@ int32_t MtpMedialibraryManager::SendObjectInfo(const std::shared_ptr<MtpOperatio
     if (context->parent == 0 || context->parent == MTP_ALL_HANDLE_ID) {
         CHECK_AND_RETURN_RET_LOG(context->format == MTP_FORMAT_ASSOCIATION_CODE,
             MTP_ERROR_INVALID_OBJECTHANDLE, "file type not support");
-        int32_t outRowId = 0;
-        auto ret = MtpIpcUtils::CreateAlbum(dataShareHelper_, context->name, outRowId);
-        CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS,
-            MtpErrorUtils::SolveSendObjectInfoError(E_HAS_DB_ERROR), "fail to create album");
-        outHandle = static_cast<uint32_t>(outRowId);
+        CHECK_AND_RETURN_RET_LOG(CreateAlbumImpl(context->name, outHandle) == MTP_SUCCESS,
+            MTP_ERROR_INVALID_OBJECTHANDLE, "fail to create album");
     } else {
         MediaType mediaType;
         int errCode = MtpDataUtils::GetMediaTypeByName(context->name, mediaType);
@@ -1448,20 +1575,9 @@ int32_t MtpMedialibraryManager::SetAlbumObjectPropValue(const std::shared_ptr<Mt
         "only user album can be renamed");
     CHECK_AND_RETURN_RET_LOG(albumType != static_cast<int32_t>(PhotoAlbumType::SHARE), MTP_ERROR_ACCESS_DENIED,
         "share album can not be renamed");
-    // change album name through ipc
-    auto errCode = MtpIpcUtils::ChangeAlbumName(dataShareHelper_,
-        std::to_string(HandleConvertToAdded(context->handle)), colValueStr, albumType, albumSubType);
-    CHECK_AND_RETURN_RET_LOG(errCode == MTP_SUCCESS, MTP_ERROR_STORE_NOT_AVAILABLE, "fail to update albumName");
 
-    // query album id after change album name
-    int32_t newAlbumId = 0;
-    CHECK_AND_RETURN_RET_LOG(QueryAlbumIdByName(colValueStr, newAlbumId) == MTP_SUCCESS,
-        MTP_ERROR_INVALID_OBJECTPROP_VALUE, "have no album [%{public}s]", colValueStr.c_str());
-    auto ptpSpecialHandles = PtpSpecialHandles::GetInstance();
-    CHECK_AND_RETURN_RET_LOG(ptpSpecialHandles != nullptr, MTP_ERROR_INVALID_OBJECTPROP_VALUE,
-        "ptpSpecialHandles is nullptr");
-    ptpSpecialHandles->AddHandleToMap(context->handle, newAlbumId);
-
+    auto ret = RenameAlbumImpl(context->handle, colValueStr, albumType, albumSubType);
+    CHECK_AND_RETURN_RET_LOG(ret == MTP_SUCCESS, MTP_ERROR_INVALID_OBJECTHANDLE, "rename album fail");
     return MTP_SUCCESS;
 }
 

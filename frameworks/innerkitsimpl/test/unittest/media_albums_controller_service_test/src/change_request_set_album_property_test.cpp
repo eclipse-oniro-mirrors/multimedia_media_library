@@ -1299,4 +1299,121 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_F
 
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_FriendIdOverwrite_001");
 }
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_HiddenAttr_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_HiddenAttr_001");
+    int32_t albumId = ServiceCreateAlbum("Album_Hidden_Invalid_001");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "update";
+    reqBody.values = { "invalid_value" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_HiddenAttr_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_HiddenAttr_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_HiddenAttr_002");
+    int32_t albumId = ServiceCreateAlbum("Album_Hidden_True_001");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "update";
+    reqBody.values = { "1" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_HiddenAttr_002");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_HiddenAttr_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_HiddenAttr_003");
+    int32_t albumId = ServiceCreateAlbum("Album_Hidden_False_001");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "update";
+    reqBody.values = { "0" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_HiddenAttr_003");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_HiddenAttr_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_HiddenAttr_004");
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
+    MediaLibraryCommand cmd(analysisAlbumUri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SOURCE);
+    valuesBucket.Put(ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC);
+    valuesBucket.Put(ALBUM_NAME, "Source_Album_Hidden");
+    valuesBucket.Put(GROUP_TAG, "Source_Album_Hidden");
+    valuesBucket.Put(COUNT, 0);
+    valuesBucket.Put(DATE_MODIFIED, 0);
+    int32_t albumId = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "update";
+    reqBody.values = { "1" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_HAS_DB_ERROR);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_HiddenAttr_004");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_HiddenAttr_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_HiddenAttr_005");
+    int32_t albumId = ServiceCreateAlbum("Album_Hidden_Empty_001");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "update";
+    reqBody.values = {};
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_HiddenAttr_005");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_HiddenAttr_006, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_HiddenAttr_006");
+    int32_t albumId = ServiceCreateAlbum("Album_Hidden_InvalidType_001");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = "hidden";
+    reqBody.type = "invalid_type";
+    reqBody.values = { "1" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_HiddenAttr_006");
+}
 }  // namespace OHOS::Media

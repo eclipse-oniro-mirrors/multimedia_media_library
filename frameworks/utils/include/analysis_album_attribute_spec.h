@@ -78,12 +78,20 @@ inline const AnalysisAlbumAttributeSpec ANALYSIS_ALBUM_CONTACT_INFO_SPEC = {
     true,
 };
 
+inline const AnalysisAlbumAttributeSpec ALBUM_ATTR_HIDDEN_SPEC = {
+    ALBUM_ATTR_HIDDEN,
+    { ANALYSIS_ALBUM_OP_UPDATE },
+    ALBUM_MAX_HIDDEN_COUNT,
+    true,
+    { "0", "1" },
+};
+
 inline const AnalysisAlbumAttributeSpec *FindAnalysisAlbumAttributeSpec(const std::string &attr)
 {
     static const AnalysisAlbumAttributeSpec *specs[] = {
         &ANALYSIS_ALBUM_NICK_NAME_SPEC, &ANALYSIS_ALBUM_IS_REMOVED_SPEC,
         &ANALYSIS_ALBUM_EXTRA_INFO_SPEC, &ANALYSIS_ALBUM_FRIEND_ID_SPEC,
-        &ANALYSIS_ALBUM_CONTACT_INFO_SPEC };
+        &ANALYSIS_ALBUM_CONTACT_INFO_SPEC, &ALBUM_ATTR_HIDDEN_SPEC };
     for (auto spec : specs) {
         if (attr == spec->attr) { return spec; }
     }

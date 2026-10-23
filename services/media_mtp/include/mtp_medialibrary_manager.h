@@ -113,6 +113,11 @@ private:
     bool IsFileManagerAlbum(uint32_t albumId);
     std::shared_ptr<DataShare::DataShareResultSet> GetPhotosInfo(uint32_t handle, bool isAlbum);
     int32_t CreateAsset(uint32_t albumId, const std::string &displayName, MediaType mediaType, int32_t &outRowId);
+
+    void QueryEmptyAlbumInfo(const std::string &albumName, EmptyAlbumInfo &emptyAlbumInfo);
+    int32_t CreateAlbumImpl(const std::string &albumName, uint32_t &outHandle);
+    int32_t RenameAlbumImpl(uint32_t handle, const std::string &albumName,
+        int32_t albumType, int32_t albumSubType);
 private:
     static std::mutex mutex_;
     static std::shared_ptr<MtpMedialibraryManager> instance_;

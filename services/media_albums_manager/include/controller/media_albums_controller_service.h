@@ -71,6 +71,7 @@ public:
     EXPORT int32_t DeleteMemberShareAlbum(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetShareCoverUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ResetShareCoverUri(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ChangeRequestAbsorbAlbum(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAlbumsControllerService() = default;

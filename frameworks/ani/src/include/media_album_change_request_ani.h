@@ -66,6 +66,8 @@ enum class AlbumChangeOperation {
     UPDATE_CONTACT_INFO,
     SET_HIDDEN_ATTRIBUTE,
     SET_ALBUM_NAME_BY_FILE,
+    UPDATE_HIDDEN,
+    ABSORB_ALBUM,
 };
 
 struct PhotoAlbumPtrCompare {
@@ -116,12 +118,14 @@ public:
     void SetExtraInfoOperationData(AnalysisAlbumOperation &operation);
     void SetFriendIdOperationData(AnalysisAlbumOperation &operation);
     void SetContactInfoOperationData(AnalysisAlbumOperation &operation);
+    bool SetHiddenOperationData(AnalysisAlbumOperation &operation, const std::shared_ptr<PhotoAlbum> &photoAlbum);
     static ani_object GetAlbum(ani_env *env, ani_object object);
     static ani_object CreateAlbumRequest(ani_env *env, ani_object object, ani_object aniContext,
         ani_string aniName);
     static ani_status PlaceBefore(ani_env *env, ani_object object, ani_object albumHandle);
     static ani_status DismissAssets(ani_env *env, ani_object object, ani_object arrayPhotoAssetStr);
     static ani_status MergeAlbum(ani_env *env, ani_object object, ani_object albumHandle);
+    static ani_status AbsorbAlbum(ani_env *env, ani_object object, ani_object albumHandle);
     static ani_status SetAlbumName(ani_env *env, ani_object object, ani_string name);
     static ani_status AddAssets(ani_env *env, ani_object object, ani_object arrayPhotoAsset);
     static ani_status RemoveAssets(ani_env *env, ani_object object, ani_object arrayPhotoAsset);

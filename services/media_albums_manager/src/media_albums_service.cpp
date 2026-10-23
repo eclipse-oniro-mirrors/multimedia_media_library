@@ -220,6 +220,13 @@ int32_t MediaAlbumsService::ChangeRequestOperateAlbumAttribute(const ChangeReque
 {
     auto photoAlbum = BuildAnalysisAlbumTarget(dto);
     CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "failed to build analysis album target");
+    if (dto.attr == ALBUM_ATTR_HIDDEN) {
+        CHECK_AND_RETURN_RET_LOG(dto.type == ANALYSIS_ALBUM_OP_UPDATE, E_INVALID_VALUES,
+            "only update operation support set hidden attribute");
+        CHECK_AND_RETURN_RET_LOG(dto.values.size() == ALBUM_MAX_HIDDEN_COUNT, E_INVALID_VALUES,
+            "only one hidden attribute value is allowed");
+        return MediaLibraryAlbumOperations::UpdateAlbumHiddenAttribute(dto.albumId, dto.values[0]);
+    }
     AnalysisAlbumOperation operation { dto.attr, dto.type, dto.values };
     return AnalysisAlbumAttributeDispatcher::Execute(photoAlbum, operation);
 }
@@ -1225,5 +1232,12 @@ int32_t MediaAlbumsService::SetShareCoverUri(const SetShareCoverUriReqBody &reqB
 int32_t MediaAlbumsService::ResetShareCoverUri(const ResetShareCoverUriReqBody &reqBody)
 {
     return MediaLibraryAlbumOperations::ResetShareCoverUri(reqBody.albumId, reqBody.owner);
+}
+
+int32_t MediaAlbumsService::ChangeRequestAbsorbAlbum(int32_t albumId, int32_t absorbAlbumId)
+{
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_INVALID_VALUES, "albumId <= 0");
+    CHECK_AND_RETURN_RET_LOG(absorbAlbumId > 0, E_INVALID_VALUES, "absorbAlbumId <= 0");
+    return MediaLibraryAlbumOperations::AbsorbAlbum(albumId, absorbAlbumId);
 }
 } // namespace OHOS::Media

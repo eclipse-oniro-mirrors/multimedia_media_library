@@ -181,6 +181,8 @@ public:
     // Get column informations of PhotoAlbum table except primary key column
     static const std::unordered_map<std::string, ColumnSchema>& GetPhotoAlbumTableSchema();
 
+    static int32_t UpdateAlbumHiddenAttribute(const std::string &albumId, const std::string &hidden);
+    static int32_t AbsorbAlbum(int32_t albumId, int32_t absorbAlbumId);
     static int32_t ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
         bool disable, bool isAsyncRefreshAlbum);
     static int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
