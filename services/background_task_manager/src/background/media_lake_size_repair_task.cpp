@@ -83,7 +83,7 @@ void MediaLakeSizeRepairTask::RepairCorruptedPhotos()
     }
     int32_t lastFileId = LoadCursor(KEY_REPAIR_CURSOR);
     const int32_t startCursor = lastFileId;
-    int64_t totalRepaired = 0;
+    int64_t processedCount = 0;
     while (Accept()) {
         auto photos = repairDao_.QueryCorruptedLakePhotos(lastFileId, BATCH_SIZE);
         CHECK_AND_BREAK(!photos.empty());
@@ -109,15 +109,14 @@ void MediaLakeSizeRepairTask::RepairCorruptedPhotos()
         }
         LakeFileScanner scanner;
         scanner.Run(notifyInfos);
-        const int64_t repaired = static_cast<int64_t>(scanner.GetUpdateCount());
-        totalRepaired += repaired;
+        processedCount += static_cast<int64_t>(notifyInfos.size());
 
-        LogBatchResult("lake_size_repair", lastFileId, batchLastId, photos.size(), repaired);
+        LogBatchResult("lake_size_repair", lastFileId, batchLastId, photos.size(), processedCount);
         lastFileId = batchLastId;
         SaveCursor(KEY_REPAIR_CURSOR, lastFileId);
     }
-    MEDIA_INFO_LOG("Lake size repair done, start=%{public}d, end=%{public}d, repaired=%{public}" PRId64,
-        startCursor, lastFileId, totalRepaired);
+    MEDIA_INFO_LOG("Lake size repair done, start=%{public}d, end=%{public}d, processed=%{public}" PRId64,
+        startCursor, lastFileId, processedCount);
 }
 
 void MediaLakeSizeRepairTask::LogBatchResult(const char *stage, int32_t startCursor, int32_t endCursor,

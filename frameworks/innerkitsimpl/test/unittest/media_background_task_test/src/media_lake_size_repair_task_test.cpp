@@ -182,7 +182,7 @@ HWTEST_F(MediaLakeSizeRepairTaskTest, QueryCorruptedLakePhotos_ReturnsOnlyHoLake
     InsertPhoto("lake_temp", albumId,
         "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_temp.jpg", tempOpt);
     PhotoInsertOptions syncingOpt;
-    syncingOpt.syncStatus = static_cast<int32_t>(SyncStatusType::TYPE_DIRTY);
+    syncingOpt.syncStatus = static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD);
     InsertPhoto("lake_syncing", albumId,
         "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_syncing.jpg", syncingOpt);
 

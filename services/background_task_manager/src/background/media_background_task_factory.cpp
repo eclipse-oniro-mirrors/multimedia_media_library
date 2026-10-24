@@ -42,12 +42,12 @@
 #include "media_fix_lcd_file_size_task.h"
 #include "dirty_file_report_task.h"
 #include "media_file_manager_offline_cleanup_task.h"
-#ifdef MEDIALIBRARY_LAKE_SUPPORT
-#include "media_lake_size_repair_task.h"
-#endif
 #include "media_migrate_live_photo_4d_pair_task.h"
 #include "media_reverse_clone_marker_aging_task.h"
 #include "media_fix_duplicate_unique_id_task.h"
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+#include "media_lake_size_repair_task.h"
+#endif
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()

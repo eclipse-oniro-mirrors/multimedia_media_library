@@ -17,9 +17,6 @@
 
 #include "media_lake_size_repair_dao.h"
 
-#include <sstream>
-
-#include "media_log_utils.h"
 #include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_type_const.h"
@@ -35,13 +32,6 @@ constexpr int32_t MEDIA_HO_LAKE_SOURCE_TYPE = static_cast<int32_t>(FileSourceTyp
 constexpr int32_t POSITION_LOCAL = static_cast<int32_t>(PhotoPositionType::LOCAL);
 constexpr int32_t POSITION_LOCAL_AND_CLOUD = static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
 }  // namespace
-
-std::string LakeSizeRepairRecord::ToString() const
-{
-    std::stringstream ss;
-    ss << "Photo[" << fileId << ", " << MediaLogUtils::GarbleFilePath(storagePath) << "]";
-    return ss.str();
-}
 
 std::vector<LakeSizeRepairRecord> MediaLakeSizeRepairDao::QueryCorruptedLakePhotos(int32_t lastFileId, int32_t limit)
 {

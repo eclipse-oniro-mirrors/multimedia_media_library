@@ -24,7 +24,6 @@ namespace OHOS::Media::Background {
 struct LakeSizeRepairRecord {
     int32_t fileId{0};
     std::string storagePath;
-    std::string ToString() const;
 };
 
 class MediaLakeSizeRepairDao {
