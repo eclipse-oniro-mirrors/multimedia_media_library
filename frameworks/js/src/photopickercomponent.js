@@ -120,12 +120,28 @@ const ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE =
 '     1. The picker is not ready (onPickerControllerReady has not been invoked).' +
 '     2. The search UI is rendered by the picker itself (that is, `isSearchSupported` is set to `true`).' +
 '     3. The picker is in the photo browsing view.';
+
 const SEARCH_EMPTY_INFO_MESSAGE =
     'Scene parameter check failed: empty search info or invalid entity id.';
+
 const SEARCH_NOT_IN_SEARCH_STATE_MESSAGE = 'Invalid call context: the picker is not in the search state.';
+
+const CAPABILITY_NOT_SUPPORTED_MESSAGE =
+    'Capability not supported. Possible causes:' +
+    ' 1. The hardware does not support the capability.' +
+    ' 2. The chip does not support the capability.' +
+    ' 3. A dependent service feature is not supported.';
+
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
+const CAPABILITY_NOT_SUPPORTED_CODE = 801;
 const PERMISSION_DENNIED = 401;
+
+function checkCarDeviceUnsupported() {
+    if (deviceinfo.deviceType === 'car') {
+        throw new BusinessError(CAPABILITY_NOT_SUPPORTED_MESSAGE, CAPABILITY_NOT_SUPPORTED_CODE);
+    }
+}
 
 class BusinessError extends Error {
     constructor(msg, code) {
@@ -1473,6 +1489,7 @@ let PickerController = class {
     }
 
     async enterSearchPage() {
+        checkCarDeviceUnsupported();
         const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
         if (ctx.pickerState === PickerState.SEARCH || !ctx.isPickerReady || ctx.isPhotoBrowserShow) {
             throw new BusinessError(ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
@@ -1481,6 +1498,7 @@ let PickerController = class {
     }
 
     async exitSearchPage() {
+        checkCarDeviceUnsupported();
         const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
         if (ctx.pickerState !== PickerState.SEARCH) {
             throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
@@ -1489,6 +1507,7 @@ let PickerController = class {
     }
 
     async navigateBackInSearchPage() {
+        checkCarDeviceUnsupported();
         const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
         if (ctx.pickerState !== PickerState.SEARCH) {
             throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
@@ -1497,6 +1516,7 @@ let PickerController = class {
     }
 
     async search(searchInfo) {
+        checkCarDeviceUnsupported();
         const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
         if (ctx.pickerState !== PickerState.SEARCH) {
             throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
