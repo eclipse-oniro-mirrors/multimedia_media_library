@@ -29,9 +29,9 @@
 namespace OHOS {
 namespace Media {
 namespace {
-const std::string RDB_REVERSE_CLONE_RESTORE_MARKER_XML =
+const std::string REVERSE_CLONE_RESTORE_RDB_MARKER_XML =
     "/data/storage/el2/database/rdb/media_library_reverse_restore_marker.xml";
-const std::string KVDB_REVERSE_CLONE_RESTORE_MARKER_XML =
+const std::string REVERSE_CLONE_RESTORE_KVDB_MARKER_XML =
     "/data/storage/el2/database/kvdb/kvdb_reverse_restore_marker.xml";
 const std::string REVERSE_CLONE_RESTORE_MARKER_TIME = "reverse_restore_marker_time";
 constexpr int64_t MILLISECONDS_PER_SECOND = 1000;
@@ -40,8 +40,8 @@ constexpr int64_t REVERSE_CLONE_RESTORE_MARKER_TTL_MILLISECONDS = 48 * 60 * 60 *
 
 std::string ReverseCloneRestoreMarker::GetMarkerPath(ReverseCloneMarkerType type)
 {
-    return type == ReverseCloneMarkerType::RDB ? RDB_REVERSE_CLONE_RESTORE_MARKER_XML :
-        KVDB_REVERSE_CLONE_RESTORE_MARKER_XML;
+    return type == ReverseCloneMarkerType::RDB ? REVERSE_CLONE_RESTORE_RDB_MARKER_XML :
+        REVERSE_CLONE_RESTORE_KVDB_MARKER_XML;
 }
 
 bool ReverseCloneRestoreMarker::GetRecordTime(ReverseCloneMarkerType type, int64_t &recordTimeMilliseconds)
@@ -134,3 +134,4 @@ bool ReverseCloneRestoreMarker::DeleteIfExpired(ReverseCloneMarkerType type, int
 }
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP

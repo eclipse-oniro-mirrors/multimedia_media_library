@@ -1173,7 +1173,7 @@ void MediaAlbumsService::HandleReverseKvDbClose()
     MEDIA_INFO_LOG("Media_Reverse_Restore: closing all kvdb handles");
     bool allClosed = MediaLibraryKvStoreManager::GetInstance().ForceCloseAllKvStore();
     if (!allClosed) {
-        MEDIA_ERR_LOG("Media_Reverse_Restore: close kvdb faild, skip notifying");
+        MEDIA_ERR_LOG("Media_Reverse_Restore: close kvdb failed, skip notifying");
         return;
     }
     const std::string CLOSE_READY = "0";

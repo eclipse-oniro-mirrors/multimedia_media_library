@@ -954,8 +954,7 @@ static int32_t GetAstcsByOffset(const vector<string> &uriBatch, vector<vector<ui
 
     vector<string> newTimeIdBatch;
     MediaAssetRdbStore::GetInstance()->QueryTimeIdBatch(start, count, newTimeIdBatch);
-    MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(
-        KvStoreRoleType::VISITOR, valueType);
+    MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(KvStoreRoleType::VISITOR, valueType);
     auto kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::VISITOR, valueType);
     if (kvStore == nullptr) {
         MEDIA_ERR_LOG("GetAstcsByOffset kvStore is nullptr");
@@ -993,8 +992,7 @@ static int32_t GetAstcsBatch(const vector<string> &uriBatch, vector<vector<uint8
         return E_INVALID_URI;
     }
 
-    MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(
-        KvStoreRoleType::VISITOR, valueType);
+    MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(KvStoreRoleType::VISITOR, valueType);
     auto kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::VISITOR, valueType);
     CHECK_AND_RETURN_RET_LOG(kvStore != nullptr, E_DB_FAIL, "GetAstcsBatch kvStore is nullptr");
     int32_t status = kvStore->BatchQuery(timeIdBatch, astcBatch);

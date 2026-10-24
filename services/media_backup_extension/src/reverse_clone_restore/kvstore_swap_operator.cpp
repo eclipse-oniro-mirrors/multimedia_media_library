@@ -75,8 +75,8 @@ bool KvStoreSwapOperator::NotifyMainProcessReopen()
         std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
         std::string value;
         int32_t ret = SettingsDataManager::GetKvDbCloseStatus(value);
-        const std::string REOPEN_READY = "1";
-        if (ret == E_OK && value == REOPEN_READY) {
+        const std::string OPEN_READY = "1";
+        if (ret == E_OK && value == OPEN_READY) {
             MEDIA_INFO_LOG("NotifyMainProcessReopen success, kvdb reopened");
             return true;
         }

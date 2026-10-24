@@ -28,7 +28,6 @@
 #include "medialibrary_kvstore_manager.h"
 #include "result_set_utils.h"
 #include "reverse_clone_restore/reverse_clone_resource_plan.h"
-#include "values_bucket.h"
 
 namespace OHOS {
 namespace Media {
@@ -71,7 +70,7 @@ ReverseCloneKvStoreAbsorbResult ReverseCloneKvStoreAbsorber::Init()
 
     if (!masterCorrupted && !tempCorrupted) {
         MEDIA_INFO_LOG("Absorber: init success, tempBaseDir=%{public}s",
-            MediaFileUtils::DesensitizePath(tempBaseDir_).c_str());
+            MediaPathUtils::DesensitizePath(tempBaseDir_).c_str());
         return ReverseCloneKvStoreAbsorbResult::SUCCESS;
     }
     if (masterCorrupted) {

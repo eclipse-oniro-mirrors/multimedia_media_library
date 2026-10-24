@@ -3158,7 +3158,7 @@ void ReverseCloneRestore::ResetThumbnailFlags(const std::shared_ptr<NativeRdb::R
         MEDIA_ERR_LOG("ReverseCloneRestore: ResetThumbnailFlags rdb is null");
         return;
     }
-    std::string sql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
+    const std::string sql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
         PhotoColumn::PHOTO_THUMBNAIL_READY + " = 0, " +
         PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + " = 0";
     int32_t result = BackupDatabaseUtils::ExecuteSQL(rdb, sql, {});
