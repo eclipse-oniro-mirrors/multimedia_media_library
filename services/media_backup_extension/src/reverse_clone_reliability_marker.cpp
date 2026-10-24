@@ -26,6 +26,7 @@ const std::string ReverseCloneReliabilityMarker::MARKER_XML =
     "/data/storage/el2/base/preferences/reverse_restore_marker.xml";
 const std::string ReverseCloneReliabilityMarker::KEY_STAGE = "stage";
 const std::string ReverseCloneReliabilityMarker::KEY_TIMESTAMP = "timestamp";
+const std::string ReverseCloneReliabilityMarker::KEY_BACKUP_RESTORE_PATH = "backup_restore_path";
 
 bool ReverseCloneReliabilityMarker::Delete()
 {
@@ -96,6 +97,43 @@ bool ReverseCloneReliabilityMarker::GetStage(ReverseCloneRestoreStage &stage)
 
     stage = static_cast<ReverseCloneRestoreStage>(stageValue);
     MEDIA_INFO_LOG("ReverseCloneReliabilityMarker: Got stage=%{public}d", static_cast<int>(stage));
+    return true;
+}
+
+bool ReverseCloneReliabilityMarker::GetBackupRestorePath(std::string &path)
+{
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(MARKER_XML), false,
+        "ReverseCloneReliabilityMarker: Marker does not exist");
+    int errCode = 0;
+    NativePreferences::PreferencesHelper::RemovePreferencesFromCache(MARKER_XML);
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(MARKER_XML, errCode);
+    if (preferences == nullptr || errCode != 0) {
+        MEDIA_ERR_LOG("ReverseCloneReliabilityMarker: Failed to get preferences, errCode=%{public}d", errCode);
+        return false;
+    }
+    path = preferences->GetString(KEY_BACKUP_RESTORE_PATH, "");
+    CHECK_AND_RETURN_RET_LOG(!path.empty(), false,
+        "ReverseCloneReliabilityMarker: backup restore path not found");
+    MEDIA_INFO_LOG("ReverseCloneReliabilityMarker: Got backupRestorePath");
+    return true;
+}
+
+bool ReverseCloneReliabilityMarker::SetBackupRestorePath(const std::string &path)
+{
+    int errCode = 0;
+    NativePreferences::PreferencesHelper::RemovePreferencesFromCache(MARKER_XML);
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(MARKER_XML, errCode);
+    if (preferences == nullptr || errCode != 0) {
+        MEDIA_ERR_LOG("ReverseCloneReliabilityMarker: Failed to get preferences, errCode=%{public}d", errCode);
+        return false;
+    }
+    int32_t ret = preferences->PutString(KEY_BACKUP_RESTORE_PATH, path);
+    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, false,
+        "ReverseCloneReliabilityMarker: Failed to put backup restore path, ret=%{public}d", ret);
+    ret = preferences->FlushSync();
+    CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, false,
+        "ReverseCloneReliabilityMarker: Failed to flush preferences, ret=%{public}d", ret);
+    MEDIA_INFO_LOG("ReverseCloneReliabilityMarker: Set backupRestorePath");
     return true;
 }
 
