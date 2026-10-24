@@ -55,6 +55,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/utils",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
     "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
     "../medialibrary_unittest_utils/include",
     "./include",
     "./include/highlight",
@@ -181,6 +182,8 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./src/analysis_album/beauty_score_clone_test.cpp",
     "./src/analysis_album/video_face_clone_test.cpp",
     "./src/analysis_album/search_index_clone_test.cpp",
+    "./src/kvstore_swap_operator_test.cpp",
+    "./src/reverse_clone_kvstore_absorber_test.cpp",
   ]
 
   reverse_restore_sources = [
@@ -203,6 +206,15 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/kvstore_swap_operator.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_kvstore_absorber.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_restore_marker.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_reliability_marker.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore_resume.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore_manager.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/reverse_clone_restore_marker.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/settings_data_manager.cpp",
   ]
 
   sources += reverse_restore_sources
