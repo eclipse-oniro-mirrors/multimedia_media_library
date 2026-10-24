@@ -28,6 +28,7 @@
 #include "medialibrary_kvstore_manager.h"
 #include "result_set_utils.h"
 #include "reverse_clone_restore/reverse_clone_resource_plan.h"
+#include "values_bucket.h"
 
 namespace OHOS {
 namespace Media {
@@ -150,7 +151,8 @@ void LogAbsorbStats(const ReverseCloneKvStoreAbsorbStats &stats)
 
 
 void ReverseCloneKvStoreAbsorber::AbsorbRetainedPhoto(int32_t currentFileId, int32_t originalFileId,
-    int64_t dateTaken, ReverseCloneKvStoreAbsorbStats &stats)
+    int64_t dateTaken, ReverseCloneKvStoreAbsorbStats &stats,
+    const std::shared_ptr<NativeRdb::RdbStore> &destRdb)
 {
     std::string dateKey = std::to_string(dateTaken);
     if (originalFileId == currentFileId) {
@@ -183,6 +185,7 @@ void ReverseCloneKvStoreAbsorber::AbsorbRetainedPhoto(int32_t currentFileId, int
         if (pair.master->Insert(newKey, value) != E_OK) {
             MEDIA_WARN_LOG("ReverseCloneKvStoreAbsorber: Insert failed, skip delete, fileId=%{public}d",
                 currentFileId);
+            ResetThumbnailStatus(destRdb, currentFileId);
             GetStoreCounter(pair.name, AbsorbCopyStatus::FAILED, stats)++;
             continue;
         }
@@ -196,7 +199,20 @@ void ReverseCloneKvStoreAbsorber::AbsorbRetainedPhoto(int32_t currentFileId, int
     }
 }
 
-// 旧机偏移数据
+void ReverseCloneKvStoreAbsorber::ResetThumbnailStatus(const std::shared_ptr<NativeRdb::RdbStore> &rdb,
+    int32_t fileId)
+{
+    CHECK_AND_RETURN_LOG(rdb != nullptr, "ReverseCloneKvStoreAbsorber: ResetThumbnailStatus rdb is null");
+    NativeRdb::ValuesBucket values;
+    values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, RESTORE_THUMBNAIL_READY_NO_THUMBNAIL);
+    values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, RESTORE_THUMBNAIL_VISIBLE_FALSE);
+    int32_t changedRows = 0;
+    int32_t ret = rdb->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values,
+        MediaColumn::MEDIA_ID + " = ?", { std::to_string(fileId) });
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
+        "ReverseCloneKvStoreAbsorber: ResetThumbnailStatus failed, fileId=%{public}d, ret=%{public}d", fileId, ret);
+}
+
 int32_t ReverseCloneKvStoreAbsorber::AbsorbRetainedPhotos(
     const std::shared_ptr<NativeRdb::RdbStore> &destRdb, ReverseCloneKvStoreAbsorbStats &stats)
 {
@@ -218,7 +234,7 @@ int32_t ReverseCloneKvStoreAbsorber::AbsorbRetainedPhotos(
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         AbsorbRetainedPhoto(GetInt32Val(MediaColumn::MEDIA_ID, resultSet),
             GetInt32Val("original_file_id", resultSet),
-            GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet), stats);
+            GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet), stats, destRdb);
     }
     resultSet->Close();
     MEDIA_INFO_LOG("ReverseCloneKvStoreAbsorber: AbsorbRetainedPhotos end, copied month=%{public}d year=%{public}d, "

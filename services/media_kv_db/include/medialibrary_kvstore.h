@@ -27,8 +27,8 @@ const std::string MEDIA_LIBRARY_DB_DIR = "/data/medialibrary/database";
 const std::string KV_STORE_OWNER_DIR = MEDIA_LIBRARY_DB_DIR;
 const std::string KV_STORE_VISITOR_DIR = MEDIA_LIBRARY_DB_DIR;
 const std::string KV_STORE_OWNER_DIR_OLD_VERSION = "/storage/cloud/files/.thumbs/Photo";
-const std::string KVDB_SWAP_MARKER_FILE =
-    "/data/storage/el2/database/kvdb/kvdb_reverse_restore_marker.xml";
+const std::string KVDB_SWAP_MARKER_FILE = std::string(MEDIA_LIBRARY_DB_DIR) +
+    "/kvdb/kvdb_reverse_restore_marker.xml";
 
 enum class KvStoreRoleType : int32_t {
     OWNER,

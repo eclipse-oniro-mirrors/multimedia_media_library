@@ -343,7 +343,9 @@ bool KvStoreSwapOperator::Swap(const std::string &backupRestorePath)
         MEDIA_WARN_LOG("KvStoreSwapOperator, NotifyMainProcessReopen failed");
     }
     if (!WriteSwapTimestamp()) {
-        MEDIA_WARN_LOG("KvStoreSwapOperator, WriteSwapTimestamp failed, non-fatal");
+        MEDIA_ERR_LOG("KvStoreSwapOperator, WriteSwapTimestamp failed");
+        Rollback();
+        return false;
     }
     MEDIA_INFO_LOG("KvStoreSwapOperator::Swap success");
     failedStep_ = KvStoreSwapStep::NONE;

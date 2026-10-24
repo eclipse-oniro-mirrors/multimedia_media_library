@@ -68,10 +68,12 @@ public:
 private:
     void DeleteCorruptedStore(const std::string &storeId, const std::string &baseDir);
     void Close();
+    void ResetThumbnailStatus(const std::shared_ptr<NativeRdb::RdbStore> &rdb, int32_t fileId);
     int32_t AbsorbRetainedPhotos(const std::shared_ptr<NativeRdb::RdbStore> &destRdb,
         ReverseCloneKvStoreAbsorbStats &stats);
     void AbsorbRetainedPhoto(int32_t currentFileId, int32_t originalFileId,
-        int64_t dateTaken, ReverseCloneKvStoreAbsorbStats &stats);
+        int64_t dateTaken, ReverseCloneKvStoreAbsorbStats &stats,
+        const std::shared_ptr<NativeRdb::RdbStore> &destRdb);
     int32_t AbsorbDuplicatePhotos(const std::vector<ReverseCloneResourcePlan> &plans,
         ReverseCloneKvStoreAbsorbStats &stats);
     void DeleteDonorKeyFromStores(const std::string &deleteKey, ReverseCloneKvStoreAbsorbStats &stats);

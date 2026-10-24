@@ -1188,7 +1188,12 @@ void MediaAlbumsService::HandleReverseKvDbClose()
 void MediaAlbumsService::HandleReverseKvDbOpen()
 {
     MEDIA_INFO_LOG("Media_Reverse_Restore: reopening kvdb handles");
-    bool dbRet = MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
+    bool dbRet = MediaLibraryKvStoreManager::GetInstance().ForceCloseAllKvStore();
+    if (!dbRet) {
+        MEDIA_ERR_LOG("Media_Reverse_Restore: close kvdb faild before reopen, skip notifying");
+        return;
+    }
+    dbRet = MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
     if (!dbRet) {
         MEDIA_ERR_LOG("Media_Reverse_Restore: open kvdb faild, skip notifying");
         return;
