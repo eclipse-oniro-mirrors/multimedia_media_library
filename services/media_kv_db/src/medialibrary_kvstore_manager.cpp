@@ -75,7 +75,7 @@ void MediaLibraryKvStoreManager::EnsureKvStoreFresh(const KvStoreRoleType &roleT
 {
     struct stat st;
     CHECK_AND_RETURN_LOG(stat(KVDB_SWAP_MARKER_FILE.c_str(), &st) == 0, "KVDB swap marker not found");
-    int64_t markerMtimeMs = static_cast<int64_t>(st.st_mtime);
+    int64_t markerMtimeMs = MediaFileUtils::Timespec2Millisecond(st.st_mtim);
     if (markerMtimeMs <= clientOpenKvdbTime_.load(std::memory_order_relaxed)) {
         return;
     }
@@ -106,7 +106,7 @@ void MediaLibraryKvStoreManager::CloseAllKvStore()
 
 bool MediaLibraryKvStoreManager::ForceCloseAllKvStore()
 {
-    std::lock_guard<std::mutex> lock(kvdbMutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     bool allClosed = true;
     kvStoreMap_.Iterate([&allClosed](const KvStoreValueType &key, KvStoreSharedPtr &ptr) {
         if (ptr != nullptr) {

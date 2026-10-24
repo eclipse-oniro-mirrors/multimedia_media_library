@@ -47,7 +47,7 @@ std::string ReverseCloneRestoreMarker::GetMarkerPath(ReverseCloneMarkerType type
 bool ReverseCloneRestoreMarker::GetRecordTime(ReverseCloneMarkerType type, int64_t &recordTimeMilliseconds)
 {
     std::string markerPath = GetMarkerPath(type);
-    CHECK_AND_RETURN_RET_INFO_LOG(MediaFileUtils::IsFileExists(markerPath), false,
+    CHECK_AND_RETURN_RET_INFO_LOG(MediaPureFileUtils::IsFileExists(markerPath), false,
         "reverse clone restore marker does not exist, type=%{public}d", static_cast<int>(type));
     int32_t errCode = 0;
     auto prefs = NativePreferences::PreferencesHelper::GetPreferences(markerPath, errCode);
@@ -66,7 +66,7 @@ bool ReverseCloneRestoreMarker::Exists(ReverseCloneMarkerType type)
 bool ReverseCloneRestoreMarker::Delete(ReverseCloneMarkerType type)
 {
     std::string markerPath = GetMarkerPath(type);
-    CHECK_AND_RETURN_RET_INFO_LOG(MediaFileUtils::IsFileExists(markerPath), true,
+    CHECK_AND_RETURN_RET_INFO_LOG(MediaPureFileUtils::IsFileExists(markerPath), true,
         "reverse clone restore marker does not exist, type=%{public}d", static_cast<int>(type));
     int32_t errCode = NativePreferences::PreferencesHelper::DeletePreferences(markerPath);
     CHECK_AND_RETURN_RET_LOG(errCode == 0, false,
@@ -112,7 +112,7 @@ bool ReverseCloneRestoreMarker::DeleteIfExpired(ReverseCloneMarkerType type, int
 {
     std::string markerPath = GetMarkerPath(type);
     int64_t recordTime = 0;
-    CHECK_AND_RETURN_RET_INFO_LOG(MediaFileUtils::IsFileExists(markerPath), false,
+    CHECK_AND_RETURN_RET_INFO_LOG(MediaPureFileUtils::IsFileExists(markerPath), false,
         "reverse clone restore marker does not exist, type=%{public}d", static_cast<int>(type));
     if (!GetRecordTime(type, recordTime)) {
         MEDIA_WARN_LOG("reverse clone restore marker is invalid, delete it, type=%{public}d", static_cast<int>(type));
