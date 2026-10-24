@@ -145,55 +145,42 @@ HWTEST_F(MediaLakeSizeRepairTaskTest, QueryCorruptedLakePhotos_ReturnsOnlyHoLake
     MEDIA_INFO_LOG("QueryCorruptedLakePhotos_ReturnsOnlyHoLakeSizeBroken_001 start");
     int32_t albumId = InsertAlbum("LakeRepair", "/LakeRepair",
         static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
-
-    int32_t matchNegId = InsertPhoto("lake_neg", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_neg.jpg");
+    int32_t matchNegId = InsertPhoto("lake_neg", albumId, "/lake/lake_neg.jpg");
     PhotoInsertOptions zeroOpt;
     zeroOpt.size = 0;
-    int32_t matchZeroId = InsertPhoto("lake_zero", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_zero.jpg", zeroOpt);
+    int32_t matchZeroId = InsertPhoto("lake_zero", albumId, "/lake/lake_zero.jpg", zeroOpt);
     PhotoInsertOptions localCloudOpt;
     localCloudOpt.position = static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
-    int32_t matchLocalCloudId = InsertPhoto("lake_local_cloud", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_local_cloud.jpg", localCloudOpt);
+    int32_t matchLocalCloudId = InsertPhoto("lake_lc", albumId, "/lake/lake_lc.jpg", localCloudOpt);
     PhotoInsertOptions okOpt;
     okOpt.size = 1024;
-    InsertPhoto("lake_ok", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_ok.jpg", okOpt);
+    InsertPhoto("lake_ok", albumId, "/lake/lake_ok.jpg", okOpt);
     PhotoInsertOptions mediaOpt;
     mediaOpt.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA);
     mediaOpt.size = 0;
-    InsertPhoto("media_broken", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/media_broken.jpg", mediaOpt);
+    InsertPhoto("media_broken", albumId, "/lake/media_broken.jpg", mediaOpt);
     PhotoInsertOptions cloudOpt;
     cloudOpt.position = static_cast<int32_t>(PhotoPositionType::CLOUD);
-    InsertPhoto("lake_cloud_only", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_cloud_only.jpg", cloudOpt);
+    InsertPhoto("lake_cloud", albumId, "/lake/lake_cloud.jpg", cloudOpt);
     PhotoInsertOptions cleanedOpt;
     cleanedOpt.cleanFlag = static_cast<int32_t>(CleanType::TYPE_OFFLINE_CLEAN);
-    InsertPhoto("lake_cleaned", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_cleaned.jpg", cleanedOpt);
+    InsertPhoto("lake_cleaned", albumId, "/lake/lake_cleaned.jpg", cleanedOpt);
     PhotoInsertOptions pendingOpt;
     pendingOpt.timePending = -4;
-    InsertPhoto("lake_pending", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_pending.jpg", pendingOpt);
+    InsertPhoto("lake_pending", albumId, "/lake/lake_pending.jpg", pendingOpt);
     PhotoInsertOptions tempOpt;
     tempOpt.isTemp = 1;
-    InsertPhoto("lake_temp", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_temp.jpg", tempOpt);
+    InsertPhoto("lake_temp", albumId, "/lake/lake_temp.jpg", tempOpt);
     PhotoInsertOptions syncingOpt;
     syncingOpt.syncStatus = static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD);
-    InsertPhoto("lake_syncing", albumId,
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_syncing.jpg", syncingOpt);
-
+    InsertPhoto("lake_syncing", albumId, "/lake/lake_syncing.jpg", syncingOpt);
     MediaLakeSizeRepairDao dao;
     auto photos = dao.QueryCorruptedLakePhotos(0, TEST_LIMIT);
-
     ASSERT_EQ(photos.size(), static_cast<size_t>(3));
     EXPECT_EQ(photos[0].fileId, matchNegId);
     EXPECT_EQ(photos[1].fileId, matchZeroId);
     EXPECT_EQ(photos[2].fileId, matchLocalCloudId);
-    EXPECT_EQ(photos[0].storagePath, "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/lake_neg.jpg");
+    EXPECT_EQ(photos[0].storagePath, "/lake/lake_neg.jpg");
 }
 
 HWTEST_F(MediaLakeSizeRepairTaskTest, QueryCorruptedLakePhotos_RespectsCursor_002, TestSize.Level1)
