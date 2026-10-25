@@ -206,8 +206,9 @@ void ReverseCloneKvStoreAbsorber::ResetThumbnailStatus(const std::shared_ptr<Nat
     values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, RESTORE_THUMBNAIL_READY_NO_THUMBNAIL);
     values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, RESTORE_THUMBNAIL_VISIBLE_FALSE);
     int32_t changedRows = 0;
+    std::vector<NativeRdb::ValueObject> bindArgs = { std::to_string(fileId) };
     int32_t ret = rdb->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values,
-        MediaColumn::MEDIA_ID + " = ?", { std::to_string(fileId) });
+        MediaColumn::MEDIA_ID + " = ?", bindArgs);
     CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
         "ReverseCloneKvStoreAbsorber: ResetThumbnailStatus failed, fileId=%{public}d, ret=%{public}d", fileId, ret);
 }

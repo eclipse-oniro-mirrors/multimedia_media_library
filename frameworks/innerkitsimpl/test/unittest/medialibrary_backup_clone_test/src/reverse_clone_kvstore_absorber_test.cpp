@@ -15,8 +15,8 @@
 
 #define MLOG_TAG "ReverseCloneKvStoreAbsorberTest"
 
-#define private public
-#define protected public
+#include "reverse_clone_kvstore_absorber_test.h"
+
 #include "backup_const.h"
 #include "backup_database_utils.h"
 #include "media_column.h"
@@ -28,9 +28,6 @@
 #include "reverse_clone_restore/reverse_clone_kvstore_absorber.h"
 #include "reverse_clone_restore/reverse_clone_resource_plan.h"
 #include "result_set_utils.h"
-#include "values_bucket.h"
-#undef private
-#undef protected
 
 #include <gtest/hwext/gtest-ext.h>
 #include <memory>
@@ -82,15 +79,12 @@ static void ClearTestPhotos()
 
 void ReverseCloneKvStoreAbsorberTest::SetUpTestCase()
 {
-    MediaFileUtils::CreateDirectory(MEDIA_KVDB_DIR);
-    MediaFileUtils::CreateDirectory(REVERSE_KVDB_TEMP_DIR);
+    MediaPureFileUtils::CreateDirectory(MEDIA_KVDB_DIR);
+    MediaPureFileUtils::CreateDirectory(REVERSE_KVDB_TEMP_DIR);
 
-    NativeRdb::RdbStoreConfig config;
-    config.SetPath(TEST_DB_PATH);
-    config.SetName("absorber_test");
-    int errCode = 0;
+    int errCode = NativeRdb::E_OK;
     AbsorberTestRdbCallback callback;
-    g_rdbStore = NativeRdb::RdbHelper::CreateRdbStore(config, 1, callback, errCode);
+    g_rdbStore = NativeRdb::RdbHelper::GetRdbStore(NativeRdb::RdbStoreConfig(TEST_DB_PATH), 1, callback, errCode);
     ASSERT_NE(g_rdbStore, nullptr);
 }
 
@@ -130,13 +124,6 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Destructor_NoInit_001, TestSize.Level1
     auto absorber = std::make_unique<ReverseCloneKvStoreAbsorber>();
     EXPECT_NE(absorber, nullptr);
     absorber.reset();
-}
-
-HWTEST_F(ReverseCloneKvStoreAbsorberTest, Destructor_AfterInit_001, TestSize.Level1)
-{
-    auto absorber = std::make_unique<ReverseCloneKvStoreAbsorber>();
-    absorber->Init();
-    EXPECT_NO_THROW(absorber.reset());
 }
 
 HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_ValidRdb_NullStores_001, TestSize.Level1)

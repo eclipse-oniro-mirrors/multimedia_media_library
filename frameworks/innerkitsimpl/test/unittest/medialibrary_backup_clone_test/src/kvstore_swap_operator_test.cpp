@@ -48,7 +48,7 @@ static const std::string NEW_MONTH_HASH = "3ddb6fb8b2fcb38d2f431e86bfb806dab7716
 
 void KvStoreSwapOperatorTest::SetUpTestCase()
 {
-    MediaFileUtils::CreateDirectory(BACKUP_ROOT);
+    MediaPureFileUtils::CreateDirectory(BACKUP_ROOT);
 }
 
 void KvStoreSwapOperatorTest::TearDownTestCase()
@@ -60,7 +60,7 @@ void KvStoreSwapOperatorTest::TearDownTestCase()
 void KvStoreSwapOperatorTest::SetUp()
 {
     MediaFileUtils::DeleteDir(BACKUP_ROOT);
-    MediaFileUtils::CreateDirectory(BACKUP_ROOT);
+    MediaPureFileUtils::CreateDirectory(BACKUP_ROOT);
     MediaFileUtils::DeleteDir(REVERSE_KVDB_TEMP_DIR);
 }
 
@@ -73,7 +73,7 @@ void KvStoreSwapOperatorTest::TearDown()
 static void CreateSingleVer(const std::string &base, const std::string &hash)
 {
     std::string dir = base + "/" + hash + "/single_ver/main";
-    MediaFileUtils::CreateDirectory(dir);
+    MediaPureFileUtils::CreateDirectory(dir);
     FILE *f = fopen((dir + "/gen_natural_store.db").c_str(), "w");
     if (f != nullptr) {
         fputs("test", f);
@@ -88,7 +88,7 @@ static bool FileExists(const std::string &base, const std::string &hash)
 
 static void CreateHashDir(const std::string &base, const std::string &hash)
 {
-    MediaFileUtils::CreateDirectory(base + "/" + hash);
+    MediaPureFileUtils::CreateDirectory(base + "/" + hash);
 }
 
 HWTEST_F(KvStoreSwapOperatorTest, CleanupTempDir_NotExist_001, TestSize.Level1)
