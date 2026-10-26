@@ -709,6 +709,8 @@ std::shared_ptr<NativeRdb::ResultSet> BackgroundCloudFileProcessor::QueryUpdateD
         ->EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE))
         ->And()
         ->EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN))
+        ->And()
+        ->EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA))
         ->And();
     SetPredicates(predicates, isCloud, isVideo);
     return MediaLibraryRdbStore::QueryWithFilter(predicates, columns);

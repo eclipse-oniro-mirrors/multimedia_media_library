@@ -1302,6 +1302,8 @@ ohos_shared_library("medialibrary_data_extension") {
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/lake/src/media_lake_check.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/lake/src/media_lake_check_manager.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/lake/src/product_info.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_lake_size_repair_dao.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_lake_size_repair_task.cpp",
     ]
 
     media_lake_only_file_monitor_source = [

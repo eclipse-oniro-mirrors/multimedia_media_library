@@ -45,6 +45,9 @@
 #include "media_migrate_live_photo_4d_pair_task.h"
 #include "media_reverse_clone_marker_aging_task.h"
 #include "media_fix_duplicate_unique_id_task.h"
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+#include "media_lake_size_repair_task.h"
+#endif
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -77,6 +80,9 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaFileManagerOfflineCleanupTask>(),
         std::make_shared<MediaMigrateLivePhoto4dPairTask>(),
         std::make_shared<MediaFixDuplicateUniqueIdTask>(),
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+        std::make_shared<MediaLakeSizeRepairTask>(),
+#endif
     };
 }
 
