@@ -2482,7 +2482,7 @@ static bool UpdateContactInfoExecute(MediaAlbumChangeRequestAsyncContext& contex
 {
     auto changeRequest = context.objectInfo;
     CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
-    return ExecuteOperateAttributeOperation(context, ALBUM_ATTR_HIDDEN,
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
         changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
 }
 
