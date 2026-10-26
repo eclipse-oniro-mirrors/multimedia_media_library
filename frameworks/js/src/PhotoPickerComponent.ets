@@ -633,12 +633,20 @@ export struct PhotoPickerComponent {
           let recommendedLabel = new RecommendedLabel();
           let smartEntity = new SmartEntity();
           smartEntity.id = e.id;
-          smartEntity.name = e.name;
           if (e.thumbnail) {
-              smartEntity.thumbnail = e.thumbnail;
+              try {
+                  const imageSource = image.createImageSource(e.thumbnail);
+                  smartEntity.thumbnail = imageSource.createPixelMapSync();
+                  imageSource.release();
+              } catch (err) {
+                  console.error('PhotoPickerComponent onRecommendedLabelClicked: base64 to pixelMap failed: '
+                    + (err && err.message ? err.message : err));
+              }
+          } else {
+              smartEntity.name = e.name;
           }
-          this.validSmartEntityIds.add(e.id);
           recommendedLabel.smartEntity = smartEntity;
+          this.validSmartEntityIds.add(e.id);
           this.onRecommendedLabelClicked(recommendedLabel);
       }
     } else if (dataType === 'onPickerStateChanged') {
