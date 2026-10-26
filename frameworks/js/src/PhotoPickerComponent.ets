@@ -629,26 +629,7 @@ export struct PhotoPickerComponent {
         this.onScrollStopAtEnd();
       }
     } else if (dataType === 'onRecommendedLabelClicked') {
-      if (this.onRecommendedLabelClicked) {
-          let recommendedLabel = new RecommendedLabel();
-          let smartEntity = new SmartEntity();
-          smartEntity.id = e.id;
-          if (e.thumbnail) {
-              try {
-                  const imageSource = image.createImageSource(e.thumbnail);
-                  smartEntity.thumbnail = imageSource.createPixelMapSync();
-                  imageSource.release();
-              } catch (err) {
-                  console.error('PhotoPickerComponent onRecommendedLabelClicked: base64 to pixelMap failed: '
-                    + (err && err.message ? err.message : err));
-              }
-          } else {
-              smartEntity.name = e.name;
-          }
-          recommendedLabel.smartEntity = smartEntity;
-          this.validSmartEntityIds.add(e.id);
-          this.onRecommendedLabelClicked(recommendedLabel);
-      }
+      this.handleRecommendedLabelClicked(e);
     } else if (dataType === 'onPickerStateChanged') {
       this.pickerState = e.pickerState;
       if (this.onPickerStateChanged) {
@@ -657,6 +638,34 @@ export struct PhotoPickerComponent {
     } else {
       console.info('PhotoPickerComponent onReceive: other case');
     }
+  }
+
+  handleRecommendedLabelClicked(e) {
+      if (!this.onRecommendedLabelClicked) {
+          return;
+      }
+      let recommendedLabel = new RecommendedLabel();
+      let smartEntity = new SmartEntity();
+      smartEntity.id = e.id;
+      if (e.thumbnail) {
+          this.assignThumbnailFromBase64(smartEntity, e.thumbnail);
+      } else {
+          smartEntity.name = e.name;
+      }
+      this.validSmartEntityIds.add(e.id);
+      recommendedLabel.smartEntity = smartEntity;
+      this.onRecommendedLabelClicked(recommendedLabel);
+    }
+
+  assignThumbnailFromBase64(smartEntity, base64) {
+      try {
+          const imageSource = image.createImageSource(base64);
+          smartEntity.thumbnail = imageSource.createPixelMapSync();
+          imageSource.release();
+      } catch (err) {
+          console.error('PhotoPickerComponent onRecommendedLabelClicked: base64 to pixelMap failed: ' + 
+              (err && err.message ? err.message : err));
+      }
   }
 
   private handleSelectOrDeselect(wantParam: Record<string, Object>): void {
