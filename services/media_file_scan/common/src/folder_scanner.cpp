@@ -26,7 +26,6 @@
 #include "global_scanner.h"
 #include "file_scan_utils.h"
 #include "medialibrary_errno.h"
-#include "media_lake_clone_event_manager.h"
 
 namespace OHOS::Media {
 namespace fs = std::filesystem;
@@ -92,8 +91,7 @@ int32_t FolderScanner::Run()
         FolderScanner folderScanner = BuildSubDirFolderScanner(currentDir);
         int32_t ret = folderScanner.ScanCurrentDirectory(dirQueue);
 
-        bool isRestore = MediaLakeCloneEventManager::GetInstance().IsRestoring();
-        CHECK_AND_RETURN_RET_WARN_LOG(!isRestore, ERR_SUCCESS,
+        CHECK_AND_RETURN_RET_WARN_LOG(!GlobalScanner::GetInstance().ShouldStopScan(), ERR_SUCCESS,
             "Global scan is due to the Restore process stopping at dir[%{public}s] scanning",
             FileScanUtils::GarbleFilePath(currentDir).c_str());
 
@@ -142,8 +140,7 @@ int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue)
     while ((currentFile = readdir(dirPath)) != nullptr) {
         std::string currentFilePath = rootPath_ + "/" + currentFile->d_name;
 
-        bool isRestore = MediaLakeCloneEventManager::GetInstance().IsRestoring();
-        if (isRestore) {
+        if (GlobalScanner::GetInstance().ShouldStopScan()) {
             closedir(dirPath);
             dirPath = nullptr;
             MEDIA_WARN_LOG("Current folder scan stop at file[%{public}s] scanning",

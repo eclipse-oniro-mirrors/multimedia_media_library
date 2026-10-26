@@ -48,6 +48,8 @@ public:
     bool IsGlobalScanning(const std::vector<MediaNotifyInfo> &notifyInfos, const ScanTaskType &type);
     void InterruptScanner();
     ScannerStatus GetScannerStatus();
+    bool ShouldStopScan();
+    void NotifyChargingLost();
     void UpdateTemperatureCondition(bool isHighTemperature);
     void SetCloneScanInfo(bool isLakeCloneRestoring, int64_t cloneEndTime);
     bool IsLakeCloneRestoring();
@@ -72,6 +74,7 @@ private:
     std::queue<std::pair<MediaNotifyInfo, ScanTaskType>> scanTaskQueue_;
     ScannerStatus scannerStatus_{ScannerStatus::IDLE};
     std::atomic<bool> isNotInterruptScanner_{true};
+    std::atomic<bool> isChargingLost_{false};
     std::atomic<bool> isHighTemperature_{false};
     std::atomic<int32_t> deleteCountForCloneRestore_{0};
     std::atomic<bool> isLakeCloneRestoring_{false};

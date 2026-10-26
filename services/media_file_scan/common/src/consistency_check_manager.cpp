@@ -50,6 +50,11 @@ ConsistencyCheckManager::~ConsistencyCheckManager()
 void ConsistencyCheckManager::OnDeviceStatusChanged(const ConsistencyCheck::DeviceStatus &deviceStatus)
 {
     MEDIA_DEBUG_LOG("OnDeviceStatusChanged, %{public}s", deviceStatus.ToString().c_str());
+    bool chargingLost = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        chargingLost = deviceStatus_.isCharging && !deviceStatus.isCharging;
+    }
     StopAction action = HandleDeviceStatusAndGetStopAction(deviceStatus);
     if (action == StopAction::STOP_ALL) {
         StopAll();
@@ -58,6 +63,9 @@ void ConsistencyCheckManager::OnDeviceStatusChanged(const ConsistencyCheck::Devi
     // Note: only stop current scene, other scenes can still be added
     if (action == StopAction::STOP_RUNNING_SCENE) {
         StopRunningScene();
+        if (chargingLost) {
+            GlobalScanner::GetInstance().NotifyChargingLost();
+        }
     }
     for (auto scene : SUPPORTED_SCENES) {
         if (!IsSceneConditionSatisfied(scene, deviceStatus)) {
