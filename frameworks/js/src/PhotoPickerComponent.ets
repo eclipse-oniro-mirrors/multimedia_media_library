@@ -42,14 +42,28 @@ const ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE =
 '     1. The picker is not ready (onPickerControllerReady has not been invoked).' +
 '     2. The search UI is rendered by the picker itself (that is, `isSearchSupported` is set to `true`).' +
 '     3. The picker is in the photo browsing view.';
+
 const SEARCH_EMPTY_INFO_MESSAGE =
     'Scene parameter check failed: empty search info or invalid entity id.';
+
 const SEARCH_NOT_IN_SEARCH_STATE_MESSAGE = 'Invalid call context: the picker is not in the search state.';
 
+const CAPABILITY_NOT_SUPPORTED_MESSAGE =
+    'Capability not supported. Possible causes:' +
+    ' 1. The hardware does not support the capability.' +
+    ' 2. The chip does not support the capability.' +
+    ' 3. A dependent service feature is not supported.';
 
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
+const CAPABILITY_NOT_SUPPORTED_CODE = 801;
 const PERMISSION_DENNIED = 401;
+
+function checkCarDeviceUnsupported() {
+    if (deviceinfo.deviceType === 'car') {
+        throw new BusinessError(CAPABILITY_NOT_SUPPORTED_MESSAGE, CAPABILITY_NOT_SUPPORTED_CODE);
+    }
+}
 
 class BusinessError extends Error {
     constructor(msg, code) {
@@ -615,18 +629,7 @@ export struct PhotoPickerComponent {
         this.onScrollStopAtEnd();
       }
     } else if (dataType === 'onRecommendedLabelClicked') {
-      if (this.onRecommendedLabelClicked) {
-          let recommendedLabel = new RecommendedLabel();
-          let smartEntity = new SmartEntity();
-          smartEntity.id = e.id;
-          smartEntity.name = e.name;
-          if (e.thumbnail) {
-              smartEntity.thumbnail = e.thumbnail;
-          }
-          this.validSmartEntityIds.add(e.id);
-          recommendedLabel.smartEntity = smartEntity;
-          this.onRecommendedLabelClicked(recommendedLabel);
-      }
+      this.handleRecommendedLabelClicked(e);
     } else if (dataType === 'onPickerStateChanged') {
       this.pickerState = e.pickerState;
       if (this.onPickerStateChanged) {
@@ -635,6 +638,34 @@ export struct PhotoPickerComponent {
     } else {
       console.info('PhotoPickerComponent onReceive: other case');
     }
+  }
+
+  handleRecommendedLabelClicked(e) {
+      if (!this.onRecommendedLabelClicked) {
+          return;
+      }
+      let recommendedLabel = new RecommendedLabel();
+      let smartEntity = new SmartEntity();
+      smartEntity.id = e.id;
+      if (e.thumbnail) {
+          this.assignThumbnailFromBase64(smartEntity, e.thumbnail);
+      } else {
+          smartEntity.name = e.name;
+      }
+      this.validSmartEntityIds.add(e.id);
+      recommendedLabel.smartEntity = smartEntity;
+      this.onRecommendedLabelClicked(recommendedLabel);
+    }
+
+  assignThumbnailFromBase64(smartEntity, base64) {
+      try {
+          const imageSource = image.createImageSource(base64);
+          smartEntity.thumbnail = imageSource.createPixelMapSync();
+          imageSource.release();
+      } catch (err) {
+          console.error('PhotoPickerComponent onRecommendedLabelClicked: base64 to pixelMap failed: ' + 
+              (err && err.message ? err.message : err));
+      }
   }
 
   private handleSelectOrDeselect(wantParam: Record<string, Object>): void {
@@ -1348,6 +1379,7 @@ export class PickerController {
   }
 
   async enterSearchPage() {
+    checkCarDeviceUnsupported();
     const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
     if (ctx.pickerState === PickerState.SEARCH || !ctx.isPickerReady || ctx.isPhotoBrowserShow) {
         throw new BusinessError(ENTER_SEARCH_INVALID_CALL_CONTEXT_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
@@ -1356,6 +1388,7 @@ export class PickerController {
   }
 
   async exitSearchPage() {
+    checkCarDeviceUnsupported();
     const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
     if (ctx.pickerState !== PickerState.SEARCH) {
         throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
@@ -1364,6 +1397,7 @@ export class PickerController {
   }
 
   async navigateBackInSearchPage() {
+    checkCarDeviceUnsupported();
     const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
     if (ctx.pickerState !== PickerState.SEARCH) {
         throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
@@ -1372,6 +1406,7 @@ export class PickerController {
   }
 
   async search(searchInfo) {
+    checkCarDeviceUnsupported();
     const ctx = this.getPickerStateContext ? this.getPickerStateContext() : {};
     if (ctx.pickerState !== PickerState.SEARCH) {
         throw new BusinessError(SEARCH_NOT_IN_SEARCH_STATE_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
