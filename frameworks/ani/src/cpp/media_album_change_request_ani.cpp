@@ -1969,6 +1969,14 @@ static bool UpdateContactInfoExecute(MediaAlbumChangeRequestContext& context)
         changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
 }
 
+static bool UpdateHiddenExecute(MediaAlbumChangeRequestContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
 static bool SetCoverUriExecute(MediaAlbumChangeRequestContext& context)
 {
     auto changeRequest = context.objectInfo;
@@ -2089,6 +2097,7 @@ static const unordered_map<AlbumChangeOperation,
     { AlbumChangeOperation::UPDATE_EXTRA_INFO, UpdateExtraInfoExecute },
     { AlbumChangeOperation::UPDATE_FRIEND_ID, UpdateFriendIdExecute },
     { AlbumChangeOperation::UPDATE_CONTACT_INFO, UpdateContactInfoExecute },
+    { AlbumChangeOperation::UPDATE_HIDDEN, UpdateHiddenExecute },
 };
 
 static bool SetAlbumPropertyExecute(
