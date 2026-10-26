@@ -991,7 +991,8 @@ void MediaLibraryRdbStore::AddUpgradeIndex(const shared_ptr<MediaLibraryRdbStore
         PhotoUpgrade::CREATE_PHOTO_BURST_MODE_ALBUM_INDEX,
         PhotoUpgrade::CREATE_PHOTO_FRONT_CAMERA_ALBUM_INDEX,
         PhotoUpgrade::CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX,
-        PhotoUpgrade::INDEX_QUERY_THUMBNAIL_WHITE_BLOCKS
+        PhotoUpgrade::INDEX_QUERY_THUMBNAIL_WHITE_BLOCKS,
+        PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX
     };
     MEDIA_INFO_LOG("start create idx again");
     auto rawStore = store->GetRawChecked();
