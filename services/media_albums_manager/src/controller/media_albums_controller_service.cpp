@@ -931,6 +931,9 @@ int32_t MediaAlbumsControllerService::AlbumGetAssets(
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
         dto.predicates.And()->EqualTo("owner_appid", clientAppId);
+    } else if (context.GetByPassCode() == E_DOUBLE_CHECK) {
+        MEDIA_DEBUG_LOG("AlbumGetAssets by read E_DOUBLE_CHECK");
+        passCode = E_DOUBLE_CHECK;
     } else {
         MEDIA_DEBUG_LOG("AlbumGetAssets by read permission");
         passCode = E_READ_CLOUD_PERMISSION_CHECK;
