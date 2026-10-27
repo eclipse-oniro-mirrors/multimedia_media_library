@@ -64,6 +64,9 @@
 #include "parameters.h"
 #include "cloud_file_error.h"
 #include "medialibrary_related_system_state_manager.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
+#include "medialibrary_vision_operations.h"
+#endif
 
 // LCOV_EXCL_START
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
@@ -198,6 +201,15 @@ int32_t CloudMediaPhotosService::ClearLocalData(const CloudMediaPullDataDto &pul
         CloudMediaSyncUtils::RemoveEditDataSourcePath(cloudPath);
         CloudMediaSyncUtils::RemoveMovingPhoto(photoInfo);
     }
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
+    int64_t cloudEditTime = pullData.attributesEditTime;
+    int64_t localEditTime = photoInfo.editTime.value_or(0);
+    if (pullData.hasAttributes && cloudEditTime != -1 && cloudEditTime != localEditTime) {
+        MEDIA_INFO_LOG("editTime changed, clear vision data, fileId: %{public}d, cloudEditTime: %{public}" PRId64
+            ", localEditTime: %{public}" PRId64, pullData.localFileId, cloudEditTime, localEditTime);
+        MediaLibraryVisionOperations::ClearVisionDataByFileId(pullData.localFileId, false);
+    }
+#endif
     return E_OK;
 }
 
