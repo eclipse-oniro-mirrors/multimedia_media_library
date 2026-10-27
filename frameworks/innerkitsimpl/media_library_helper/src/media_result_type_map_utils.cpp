@@ -125,6 +125,8 @@ const std::unordered_map<std::string, ResultSetDataType> &MediaResultTypeMapUtil
         {PhotoColumn::PHOTO_LCD_FILE_SIZE, TYPE_INT32},
         {PhotoColumn::COMPRESSION_QUALITY, TYPE_INT32},
         {PhotoColumn::PHOTO_IS_SHARED, TYPE_INT32},
+        {PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, TYPE_INT32},
+        {PhotoColumn::LOCAL_ENHANCEMENT_STATUS, TYPE_INT32},
     };
     return RESULT_TYPE_MAP;
 }

@@ -36,7 +36,7 @@ private:
     // 一阶段上报
     virtual bool CloseCameraFileFdWithMutex(const std::string& realPath, const std::string& tempPath,
         const CameraPathType& pathType) override;
-    virtual void OnDelivery(std::shared_ptr<Media::Picture> picture) override;
+    virtual void OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata) override;
 
     // 一阶段落盘
     virtual bool UpdateExtValuesForStageInternal(const SaveCameraPhotoDto &dto, NativeRdb::ValuesBucket &values,
@@ -53,7 +53,7 @@ private:
     virtual bool InitForOnProcessInternal(const OnProcessImageWrapper &wrapper) override;
     virtual bool CheckCanSaveDirectlyInternal(const std::shared_ptr<FileAsset> &fileAsset) override;
     virtual int32_t ProcessMultistagesPhotoInternal(const std::shared_ptr<FileAsset> &fileAsset) override;
-    virtual void ScanFileForOnProcessInternal() override;
+    virtual void AsyncScanFileForCamera(ScanQuality scanQuality) override;
 
     int32_t SaveOneImageForOnProcess(const ImageFileMapper& sourceImage, const std::string& path);
     int32_t AddFiltersForRecheckHighImage(const std::string& path, const std::string& tempHighPath);

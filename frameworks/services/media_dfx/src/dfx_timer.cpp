@@ -97,6 +97,7 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_STOP_THUMBNAIL_CREATION_TASK), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_CLOUD_ENHANCEMENT_PAIR), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_CLOUD_ENHANCEMENT_TASK_STATE), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_SYSTEM_QUERY_LOCAL_ENHANCEMENT_TASK_STATE), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::SYNC_CLOUD_ENHANCEMENT_TASK_STATUS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_ANALYSIS_PROCESS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::MEDIA_BUSINESS_CODE_END), 200},

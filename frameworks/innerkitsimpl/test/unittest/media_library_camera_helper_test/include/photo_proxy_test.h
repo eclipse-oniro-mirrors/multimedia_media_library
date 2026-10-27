@@ -180,6 +180,12 @@ public:
         return videoEnhancementType_;
     }
 
+    // 20、local_enhancement_ability_type
+    LocalEnhancementAbilityType GetLocalEnhancementType() override
+    {
+        return localEnhancementAbilityType_;
+    }
+
 public:
     std::string title_;
     std::string extension_;
@@ -200,6 +206,8 @@ public:
     uint32_t cloudImageEnhanceFlag_ = 0;
     int32_t stageVideoTaskStatus_ = 0;
     int32_t videoEnhancementType_ = 0;
+
+    LocalEnhancementAbilityType localEnhancementAbilityType_ = LocalEnhancementAbilityType::NOT_SUPPORT;
 };
 } // Media
 } // OHOS

@@ -66,6 +66,17 @@ static vector<pair<int32_t, int32_t>> AddAttachmentSizeColumn(NativeRdb::RdbStor
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ATTACHMENT_SIZE_COLUMN, PHOTOS_MODULE_NAME, AddAttachmentSizeColumn);
 
+static vector<pair<int32_t, int32_t>> AddPhotoLocalEnhancementColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_LOCAL_ENHANCEMENT_ABILITY, "INT DEFAULT 0 NOT NULL")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_LOCAL_ENHANCEMENT_STATUS, "INT DEFAULT 0 NOT NULL")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, false);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_LOCAL_ENHANCEMENT_COLUMN,
+    PHOTOS_MODULE_NAME, AddPhotoLocalEnhancementColumn);
+
 static vector<pair<int32_t, int32_t>> UpdateIndexsOnPhotos(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;

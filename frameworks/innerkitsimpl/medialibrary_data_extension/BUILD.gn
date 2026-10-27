@@ -1171,6 +1171,7 @@ ohos_shared_library("medialibrary_data_extension") {
   ]
 
   media_camera_character_service_source = [
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/local_enhancement_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/media_camera_character_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_camera_capture_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_capture_manager.cpp",
@@ -1179,7 +1180,9 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_video_capture_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/camera_asset_info.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/camera_asset_pipeline.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/i_camera_pipeline.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/image_pipeline.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/local_enhancement_pipeline.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/new_image_pipeline.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/yuv_pipeline.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_controller_service.cpp",
@@ -1211,7 +1214,10 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/create_camera_file_fd_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/get_deferred_picture_info_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/get_progress_callback_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/process_image_enhancement_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/process_video_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/query_local_enhancement_status_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/query_local_enhancement_task_state_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/scan_camera_file_vo.cpp",
   ]
 

@@ -16,7 +16,11 @@
 #ifndef FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_EXIF_UTILS_H
 #define FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_EXIF_UTILS_H
 
+#include <map>
+#include <memory>
 #include <string>
+
+#include "picture.h"
 
 namespace OHOS {
 namespace Media {
@@ -24,6 +28,10 @@ namespace Media {
 class ExifUtils {
 public:
     EXPORT static int32_t WriteGpsExifInfo(const std::string &path, double longitude, double latitude);
+    EXPORT static int32_t ModifyExifByPath(const std::string &filePath,
+        const std::map<std::string, std::string> &values);
+    EXPORT static int32_t ModifyExifByPicture(const std::shared_ptr<Media::Picture> &picture,
+        const std::map<std::string, std::string> &values);
 
 private:
     EXPORT static std::string LocationValueToString(double value);

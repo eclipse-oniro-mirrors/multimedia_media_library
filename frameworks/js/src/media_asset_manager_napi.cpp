@@ -39,6 +39,8 @@
 #include "multistages_capture_on_process_observer.h"
 #include "permission_utils.h"
 #include "picture_handle_client.h"
+#include "process_image_enhancement_vo.h"
+#include "query_local_enhancement_status_vo.h"
 #include "query_photo_vo.h"
 #include "slow_motion_transcode_vo.h"
 #include "slow_motion_transcode_progress_vo.h"
@@ -113,6 +115,30 @@ static const std::map<MultistagesCaptureNotifyType, std::vector<ObserverType>> M
     { MultistagesCaptureNotifyType::ON_PROCESS_VIDEO_DONE, {ObserverType::REQUEST_VIDEO} },
     { MultistagesCaptureNotifyType::ON_ERROR_VIDEO, {ObserverType::REQUEST_VIDEO} },
     { MultistagesCaptureNotifyType::YUV_READY, {ObserverType::REQUEST_QUICK_IMAGE} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_IMAGE_DONE, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_INVALID_PHOTO_ID, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_FAILED, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_TIMEOUT, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_ABNORMAL, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_INTERRUPTED, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_MODEL_UNAVAILABLE, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_RESOURCE_REMOVED, {ObserverType::REQUEST_IMAGE_ENHANCEMENT} },
+};
+
+static const std::map<MultistagesCaptureNotifyType, MediaDpsErrorCode> NOTIFY_TYPE_TO_ERRCODE = {
+    { MultistagesCaptureNotifyType::ON_ERROR_IMAGE, MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_ABNORMAL },
+    { MultistagesCaptureNotifyType::ON_ERROR_VIDEO, MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_ABNORMAL },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_INVALID_PHOTO_ID,
+        MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_INVALID_PHOTO_ID },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_FAILED, MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_FAILED },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_TIMEOUT, MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_TIMEOUT },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_ABNORMAL, MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_ABNORMAL },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_INTERRUPTED,
+        MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_INTERRUPTED },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_MODEL_UNAVAILABLE,
+        MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_MODEL_UNAVAILABLE },
+    { MultistagesCaptureNotifyType::ON_ENHANCEMENT_ERROR_RESOURCE_REMOVED,
+        MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_RESOURCE_REMOVED },
 };
 
 napi_value MediaAssetManagerNapi::Init(napi_env env, napi_value exports)
@@ -129,7 +155,8 @@ napi_value MediaAssetManagerNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_STATIC_FUNCTION("requestVideoFile", JSRequestVideoFile),
             DECLARE_NAPI_STATIC_FUNCTION("requestVideo", JSRequestVideo),
             DECLARE_NAPI_STATIC_FUNCTION("loadMovingPhoto", JSLoadMovingPhoto),
-            DECLARE_NAPI_STATIC_FUNCTION("quickRequestImage", JSRequestEfficientIImage)
+            DECLARE_NAPI_STATIC_FUNCTION("quickRequestImage", JSRequestEfficientIImage),
+            DECLARE_NAPI_STATIC_FUNCTION("requestEnhancementImage", JSRequestEnhancementImage)
         }};
         MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
         return exports;
@@ -378,6 +405,17 @@ void MediaAssetManagerNapi::ProcessImage(const int fileId, const int deliveryMod
     UserFileClient::Query(uri, predicates, columns, errCode);
 }
 
+void MediaAssetManagerNapi::ProcessImageEnhancement(MediaAssetManagerAsyncContext *asyncContext)
+{
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_MEM_PROCESS_IMAGE_ENHANCEMENT);
+    ProcessImageEnhancementReqBody reqBody;
+    reqBody.fileId = asyncContext->fileId;
+    reqBody.deliveryMode = static_cast<int32_t>(asyncContext->deliveryMode);
+    reqBody.photoId = asyncContext->photoId;
+    reqBody.requestId = asyncContext->requestId;
+    IPC::UserDefineIPCClient().SetUserId(asyncContext->userId).Call(businessCode, reqBody);
+}
+
 void MediaAssetManagerNapi::AddImage(const int fileId, DeliveryMode deliveryMode)
 {
     Uri updateAssetUri(CONST_PAH_ADD_IMAGE);
@@ -583,6 +621,24 @@ napi_status ParseArgGetPhotoAsset(napi_env env, napi_value arg, unique_ptr<Media
     return napi_ok;
 }
 
+napi_status ParseArgGetPhotoAssetForNew(napi_env env, napi_value arg,
+    unique_ptr<MediaAssetManagerAsyncContext> &asyncContext)
+{
+    if (arg == nullptr) {
+        return napi_invalid_arg;
+    }
+    FileAssetNapi *obj = nullptr;
+    napi_unwrap(env, arg, reinterpret_cast<void**>(&obj));
+    if (obj == nullptr) {
+        return napi_invalid_arg;
+    }
+    asyncContext->fileId = obj->GetFileId();
+    asyncContext->photoUri = obj->GetFileUri();
+    asyncContext->displayName = obj->GetFileDisplayName();
+    asyncContext->userId = obj->GetFileAssetInstance()->GetUserId();
+    return napi_ok;
+}
+
 napi_status ParseArgGetDestPath(napi_env env, napi_value arg, std::string &destPath)
 {
     if (arg == nullptr) {
@@ -735,6 +791,8 @@ void MediaAssetManagerNapi::RegisterTaskNewObserver(napi_env env, MediaAssetMana
         MediaAssetManagerNapi::ProcessImage(asyncContext->fileId, static_cast<int32_t>(asyncContext->deliveryMode));
     } else if (asyncContext->observerType == ObserverType::REQUEST_VIDEO) {
         MediaAssetManagerNapi::ProcessVideo(asyncContext);
+    } else if (asyncContext->observerType == ObserverType::REQUEST_IMAGE_ENHANCEMENT) {
+        MediaAssetManagerNapi::ProcessImageEnhancement(asyncContext);
     }
     NAPI_INFO_LOG("RegisterTaskNewObserver success.");
 }
@@ -1126,6 +1184,75 @@ napi_value MediaAssetManagerNapi::JSRequestImage(napi_env env, napi_callback_inf
         JSRequestComplete);
 }
 
+napi_status MediaAssetManagerNapi::ParseEnhancementRequestMediaArgs(napi_env env, napi_callback_info info,
+    unique_ptr<MediaAssetManagerAsyncContext> &asyncContext)
+{
+    napi_value thisVar = nullptr;
+    GET_JS_ARGS(env, info, asyncContext->argc, asyncContext->argv, thisVar);
+    if (asyncContext->argc != ARGS_THREE) {
+        NAPI_ERR_LOG("requestEnhancementImage argc error");
+        return napi_invalid_arg;
+    }
+    if (ParseArgGetPhotoAssetForNew(env, asyncContext->argv[PARAM1], asyncContext) != napi_ok) {
+        NAPI_ERR_LOG("requestEnhancementImage ParseArgGetPhotoAsset error");
+        return napi_invalid_arg;
+    }
+    if (ParseArgGetDataHandler(env, asyncContext->argv[PARAM2], asyncContext->dataHandler,
+        asyncContext->needsExtraInfo) != napi_ok) {
+        NAPI_ERR_LOG("requestEnhancementImage ParseArgGetDataHandler error");
+        return napi_invalid_arg;
+    }
+    asyncContext->hasReadPermission = HasReadPermission();
+    return napi_ok;
+}
+
+napi_value MediaAssetManagerNapi::JSRequestEnhancementImage(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("Begin JSRequestEnhancementImage");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL, "Called by non-system application.");
+        return nullptr;
+    }
+
+    if (env == nullptr || info == nullptr) {
+        NAPI_ERR_LOG("JSRequestEnhancementImage js arg invalid");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "JSRequestEnhancementImage js arg invalid");
+        return nullptr;
+    }
+
+    MediaLibraryTracer tracer;
+    tracer.Start("JSRequestEnhancementImage");
+
+    unique_ptr<MediaAssetManagerAsyncContext> asyncContext = make_unique<MediaAssetManagerAsyncContext>();
+    asyncContext->returnDataType = ReturnDataType::TYPE_IMAGE_SOURCE;
+    if (ParseEnhancementRequestMediaArgs(env, info, asyncContext) != napi_ok) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "The context is invalid.");
+        return nullptr;
+    }
+    if (!InitUserFileClient(env, info, asyncContext->userId)) {
+        NAPI_ERR_LOG("JSRequestEnhancementImage init user file client failed");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "The context is invalid.");
+        return nullptr;
+    }
+    if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef) != napi_ok
+            || CreateOnDataPreparedThreadSafeFunc(env, asyncContext, asyncContext->onDataPreparedPtr) != napi_ok) {
+        NAPI_ERR_LOG("CreateDataHandlerRef or CreateOnDataPreparedThreadSafeFunc failed");
+        return nullptr;
+    }
+    if (CreateDataHandlerRef(env, asyncContext, asyncContext->dataHandlerRef2) != napi_ok
+            || CreateOnDataPreparedThreadSafeFunc(env, asyncContext, asyncContext->onDataPreparedPtr2) != napi_ok) {
+        NAPI_ERR_LOG("CreateDataHandlerRef or CreateOnDataPreparedThreadSafeFunc failed");
+        return nullptr;
+    }
+
+    asyncContext->requestId = GenerateRequestId();
+    asyncContext->observerType = ObserverType::REQUEST_IMAGE_ENHANCEMENT;
+    asyncContext->needsExtraInfo = true;
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSRequestEnhancementImage",
+        JSRequestEnhancementExecute, JSRequestEnhancementComplete);
+}
+
 napi_value MediaAssetManagerNapi::JSRequestEfficientIImage(napi_env env, napi_callback_info info)
 {
     NAPI_DEBUG_LOG("JSRequestEfficientIImage");
@@ -1448,7 +1575,7 @@ void MediaAssetManagerNapi::OnHandleRequestImage(napi_env env, MediaAssetManager
     CHECK_NULL_PTR_RETURN_VOID(asyncContext, "asyncContext is nullptr");
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} OnHandleRequestImage mode: %{public}d.",
         MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(asyncContext->deliveryMode));
-    QueryPhotoStatusInput param = {
+    IpcCallContext param = {
         .fileId = asyncContext->fileId,
         .mode = asyncContext->deliveryMode,
         .photoUri = asyncContext->photoUri,
@@ -1491,6 +1618,43 @@ void MediaAssetManagerNapi::OnHandleRequestImage(napi_env env, MediaAssetManager
     }
 }
 
+void MediaAssetManagerNapi::OnHandleRequestEnhancementImage(napi_env env, MediaAssetManagerAsyncContext *asyncContext)
+{
+    NAPI_INFO_LOG("OnHandleRequestEnhancementImage enter.");
+
+    IpcCallContext param = {
+        .userId = asyncContext->userId,
+    };
+    QueryLocalEnhancementStatusReqBody reqBody;
+    reqBody.fileId = asyncContext->fileId;
+
+    int32_t status = MediaAssetManagerAdapter::QueryLocalEnhancementStatus(param, reqBody, asyncContext->photoId);
+    if (status < 0) {
+        ReleaseSafeFunc(asyncContext->onDataPreparedPtr);
+        ReleaseSafeFunc(asyncContext->onDataPreparedPtr2);
+        asyncContext->SaveError(status);
+        return;
+    }
+
+    switch (status) {
+        case static_cast<int32_t>(LocalEnhanceStatus::SUCCESS_ENHANCE): {
+            MediaAssetManagerNapi::NotifyDataPreparedWithoutRegister(env, asyncContext);
+            ReleaseSafeFunc(asyncContext->onDataPreparedPtr2);
+            return;
+        }
+        case static_cast<int32_t>(LocalEnhanceStatus::PROCESSING_ENHANCE): {
+            RegisterTaskNewObserver(env, asyncContext);
+            ReleaseSafeFunc(asyncContext->onDataPreparedPtr);
+            return;
+        }
+        default:
+            ReleaseSafeFunc(asyncContext->onDataPreparedPtr);
+            ReleaseSafeFunc(asyncContext->onDataPreparedPtr2);
+            NAPI_ERR_LOG("failed to OnHandleRequestEnhancementImage,status: %{public}d.", status);
+            break;
+    }
+}
+
 static void DfxLogCinematicVideo(bool isHighQaulity, const int32_t &userId)
 {
     CinematicVideoAccessReqBody reqBody;
@@ -1506,7 +1670,7 @@ void MediaAssetManagerNapi::RequestVidoForFastMode(napi_env env, MediaAssetManag
 {
     CHECK_NULL_PTR_RETURN_VOID(asyncContext, "asyncContext is nullptr");
 
-    QueryPhotoStatusInput param = {
+    IpcCallContext param = {
         .fileId = asyncContext->fileId,
         .mode = asyncContext->deliveryMode,
         .photoUri = asyncContext->photoUri,
@@ -1530,7 +1694,7 @@ void MediaAssetManagerNapi::RequestVideoForHighQualityMode(napi_env env, MediaAs
 {
     CHECK_NULL_PTR_RETURN_VOID(asyncContext, "asyncContext is nullptr");
 
-    QueryPhotoStatusInput param = {
+    IpcCallContext param = {
         .fileId = asyncContext->fileId,
         .mode = asyncContext->deliveryMode,
         .photoUri = asyncContext->photoUri,
@@ -1643,6 +1807,22 @@ static napi_value GetInfoMapNapiValue(napi_env env, AssetHandler* assetHandler)
     status = napi_map_set_named_property(env, mapNapiValue, "quality", qualityInfo);
     CHECK_COND_RET(status == napi_ok, nullptr, "Failed to set quality map key-value, napi status: %{public}d",
         static_cast<int>(status));
+
+    if (assetHandler->isError == EnhancementErrorType::ON_ENHANCEMENT_IMAGE_ERROR) {
+        napi_value errorCode {nullptr};
+        status = napi_create_string_utf8(env, std::to_string(assetHandler->multistagesErrCode).c_str(),
+            NAPI_AUTO_LENGTH, &errorCode);
+        CHECK_COND_RET(status == napi_ok && errorCode != nullptr, nullptr,
+            "Failed to create error code value, napi status: %{public}d", static_cast<int>(status));
+
+        status = napi_set_named_property(env, mapNapiValue, "localEnhancementError", errorCode);
+        CHECK_COND_RET(status == napi_ok, nullptr,
+            "Failed to set localEnhancementError property, napi status: %{public}d", static_cast<int>(status));
+        
+        status = napi_map_set_named_property(env, mapNapiValue, "localEnhancementError", errorCode);
+        CHECK_COND_RET(status == napi_ok, nullptr, "Failed to set error map key-value, napi status: %{public}d",
+            static_cast<int>(status));
+    }
 
     return mapNapiValue;
 }
@@ -1768,7 +1948,8 @@ void MediaAssetManagerNapi::OnDataPrepared(napi_env env, napi_value cb, void *co
     }
 
     SetCinematicResult(dataHandler, assetHandler);
-    napi_value napiValueOfMedia = assetHandler->isError ? nullptr : GetNapiValueOfMedia(env, assetHandler);
+    napi_value napiValueOfMedia =
+        (assetHandler->isError == EnhancementErrorType::SUCCESS) ? GetNapiValueOfMedia(env, assetHandler) : nullptr;
     napi_value napiValueOfInfoMap = nullptr;
     if (assetHandler->needsExtraInfo) {
         napiValueOfInfoMap = GetInfoMapNapiValue(env, assetHandler);
@@ -1986,6 +2167,15 @@ bool MultistagesCaptureOnProcessObserver::MatchNotifyToObserver(
     return false;
 }
 
+static int32_t NotifyType2Errcode(const MultistagesCaptureNotifyType notifyType)
+{
+    if (NOTIFY_TYPE_TO_ERRCODE.find(notifyType) == NOTIFY_TYPE_TO_ERRCODE.end()) {
+        MEDIA_ERR_LOG("notifyType is not in map, %{public}d.", static_cast<int32_t>(notifyType));
+        return static_cast<int32_t>(MediaDpsErrorCode::UNDEFINED);
+    }
+    return static_cast<int32_t>(NOTIFY_TYPE_TO_ERRCODE.at(notifyType));
+}
+
 void MultistagesCaptureOnProcessObserver::OnChange(const UserDefineCallbackWrapper &wrapper)
 {
     NAPI_INFO_LOG("MultistagesCapture, OnChange called, %{public}s.", ToString().c_str());
@@ -2008,10 +2198,16 @@ void MultistagesCaptureOnProcessObserver::OnChange(const UserDefineCallbackWrapp
             continue;
         }
         assetHandler->photoQuality = MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
-        if (notifyInfo->notifyType_ == MultistagesCaptureNotifyType::ON_ERROR_IMAGE ||
-            notifyInfo->notifyType_ == MultistagesCaptureNotifyType::ON_ERROR_VIDEO) {
-            NAPI_WARN_LOG("OnChange receive high_temperature");
-            assetHandler->isError = true;
+        if (notifyInfo->notifyType_ > MultistagesCaptureNotifyType::ON_ERROR_START &&
+            notifyInfo->notifyType_ < MultistagesCaptureNotifyType::NOTIFY_END) {
+            if (notifyInfo->notifyType_ == MultistagesCaptureNotifyType::ON_ERROR_IMAGE) {
+                assetHandler->isError = EnhancementErrorType::ON_PROCESS_IMAGE_ERROR;
+            } else if (notifyInfo->notifyType_ == MultistagesCaptureNotifyType::ON_ERROR_VIDEO) {
+                assetHandler->isError = EnhancementErrorType::ON_PROCESS_VIDEO_ERROR;
+            } else {
+                assetHandler->isError = EnhancementErrorType::ON_ENHANCEMENT_IMAGE_ERROR;
+            }
+            assetHandler->multistagesErrCode = NotifyType2Errcode(notifyInfo->notifyType_);
         }
         MediaAssetManagerNapi::NotifyMediaDataPrepared(assetHandler);
         DeleteRecordNoLock(requestUri, requestId);
@@ -2637,6 +2833,54 @@ void MediaAssetManagerNapi::JSRequestExecute(napi_env env, void *data)
     }
 }
 
+void MediaAssetManagerNapi::JSRequestEnhancementExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSRequestEnhancementExecute");
+    MediaAssetManagerAsyncContext *context = static_cast<MediaAssetManagerAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    OnHandleRequestEnhancementImage(env, context);
+}
+
+void MediaAssetManagerNapi::JSRequestEnhancementComplete(napi_env env, napi_status, void *data)
+{
+    MediaAssetManagerAsyncContext *context = static_cast<MediaAssetManagerAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    if (context->dataHandlerRef != nullptr) {
+        napi_delete_reference(env, context->dataHandlerRef);
+    }
+    if (context->dataHandlerRef2 != nullptr) {
+        napi_delete_reference(env, context->dataHandlerRef2);
+    }
+
+    MediaLibraryTracer tracer;
+    tracer.Start("JSRequestEnhancementComplete");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    if (context->error == ERR_DEFAULT) {
+        napi_value requestId;
+        napi_create_string_utf8(env, context->requestId.c_str(), NAPI_AUTO_LENGTH, &requestId);
+        jsContext->data = requestId;
+        napi_get_undefined(env, &jsContext->error);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error, true);
+        napi_get_undefined(env, &jsContext->data);
+    }
+    if (context->assetHandler) {
+        NotifyMediaDataPrepared(context->assetHandler);
+        context->assetHandler = nullptr;
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
 ProgressMode GetProgressMode(napi_env env, MediaAssetManagerAsyncContext *asyncContext)
 {
     if (asyncContext->compatibleMode == CompatibleMode::COMPATIBLE_FORMAT_MODE) {
@@ -2746,7 +2990,7 @@ void MediaAssetManagerNapi::JSRequestVideoFileExecute(napi_env env, void *data)
             DeleteProcessHandlerSafe(context->progressHandler, env);
             context->SaveError(E_INNER_FAIL);
             if (context->assetHandler != nullptr) {
-                context->assetHandler->isError = true;
+                context->assetHandler->isError = EnhancementErrorType::ON_PROCESS_VIDEO_ERROR;
             }
             EraseFromSlowMotionReqs(context->requestId);
             return;

@@ -24,6 +24,7 @@
 #include "camera_character_types.h"
 #include "database_adapter.h"
 #include "file_utils.h"
+#include "local_enhancement_manager.h"
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_file_uri.h"
@@ -92,6 +93,8 @@ static const std::unordered_map<DpsErrorCode, MediaDpsErrorCode> ERROR_CODE_MAP 
     { ERROR_IMAGE_PROC_TIMEOUT,             MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_TIMEOUT },
     { ERROR_IMAGE_PROC_ABNORMAL,            MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_ABNORMAL },
     { ERROR_IMAGE_PROC_INTERRUPTED,         MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_INTERRUPTED },
+    { ERROR_IMAGE_PROC_MODEL_UNAVAILABLE,   MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_MODEL_UNAVAILABLE },
+    { ERROR_IMAGE_PROC_RESOURCE_REMOVED,    MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_RESOURCE_REMOVED },
 };
 
 MultiStagesCaptureDeferredPhotoProcSessionCallback::MultiStagesCaptureDeferredPhotoProcSessionCallback()
@@ -99,6 +102,24 @@ MultiStagesCaptureDeferredPhotoProcSessionCallback::MultiStagesCaptureDeferredPh
 
 MultiStagesCaptureDeferredPhotoProcSessionCallback::~MultiStagesCaptureDeferredPhotoProcSessionCallback()
 {}
+
+static MediaDpsMetadata ConvertDpsMetadata(const DpsMetadata &metadata, bool needDfx)
+{
+    MediaDpsMetadata mediaMetadata;
+    mediaMetadata.isReady = true;
+    metadata.Get(CLOUD_FLAG, mediaMetadata.cloudImageEnhanceFlag);
+    metadata.Get(CPATURE_FLAG, mediaMetadata.captureEnhancementFlag);
+    metadata.Get(EDIT_DATA_FLAG, mediaMetadata.editData);
+
+    metadata.Get(DEFERRED_IMAGE_PROCESS_TYPE_KEY, mediaMetadata.imageProcessType);
+    metadata.Get(DPS_LOCAL_IMAGE_ENHANCE_FLAG_KEY, mediaMetadata.localEnhancementAbilityFlag);
+
+    if (needDfx) {
+        DfxManager::GetInstance()->HandleMultishotInfoMultishotNum(mediaMetadata.captureEnhancementFlag);
+    }
+    MEDIA_INFO_LOG("ConvertDpsMetadata: %{public}s.", mediaMetadata.ToString().c_str());
+    return mediaMetadata;
+}
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::NotifyIfTempFile(
     const std::shared_ptr<FileAsset> &fileAsset, bool isError)
@@ -187,6 +208,23 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::UpdateCEAvailable(const
     }
 }
 
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::UpdateMultiShotValues(
+    const int32_t& fileId, uint32_t captureEnhancementFlag, NativeRdb::ValuesBucket &updateValues)
+{
+    // 更新一拍多得字段值
+    updateValues.PutInt(PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, captureEnhancementFlag);
+    int32_t deferredEffectStatus =  (captureEnhancementFlag >= static_cast<uint32_t>(DeferredEffects::BLUR)
+        && captureEnhancementFlag <= static_cast<uint32_t>(DeferredEffects::BLUR_SNAP_REMOTE))
+        ? static_cast<int32_t>(DeferredEffectsStatus::ASSET_SUPPORT)
+        : static_cast<int32_t>(DeferredEffectsStatus::ASSET_NOT_SUPPORT);
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
+        "UpdateMultiShotValues deferredEffectStatus is %{public}d, "
+        "captureEnhancementFlag is %{public}u",
+        MLOG_TAG, __FUNCTION__, __LINE__,
+        deferredEffectStatus, captureEnhancementFlag);
+    updateValues.PutInt(PhotoColumn::DEFERRED_EFFECT_STATUS, deferredEffectStatus);
+}
+
 static MediaDpsErrorCode ConvertDpsErrorCode(const DpsErrorCode errorCode)
 {
     if (ERROR_CODE_MAP.find(errorCode) == ERROR_CODE_MAP.end()) {
@@ -196,17 +234,9 @@ static MediaDpsErrorCode ConvertDpsErrorCode(const DpsErrorCode errorCode)
     return ERROR_CODE_MAP.at(errorCode);
 }
 
-void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnError(
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnErrorProcessInternal(
     const string &imageId, const DpsErrorCode error)
 {
-    HILOG_COMM_ERROR("%{public}s:{%{public}s:%{public}d} error %{public}d, photoid: %{public}s",
-        MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(error), imageId.c_str());
-
-    if (error == ERROR_SESSION_SYNC_NEEDED) {
-        MultiStagesPhotoCaptureManager::GetInstance().SyncWithDeferredProcSession();
-        return;
-    }
-
     auto errorCode = ConvertDpsErrorCode(error);
     CameraPipelineType type = CameraPipelineType::UNDEFINED;
     auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByPhotoId(imageId, type);
@@ -216,21 +246,71 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnError(
         return;
     }
     bool isMovingPhoto = false;
-    bool ret = pipeline->OnErrorImage(errorCode, isMovingPhoto);
+    bool ret = pipeline->OnProcessImageError(errorCode, isMovingPhoto);
     if (error != ERROR_SESSION_SYNC_NEEDED && ret) {
         int32_t mediaType = isMovingPhoto ? static_cast<int32_t>(MultiStagesCaptureMediaType::MOVING_PHOTO_IMAGE)
                                           : static_cast<int32_t>(MultiStagesCaptureMediaType::IMAGE);
         MultiStagesCaptureDfxResult::Report(imageId, static_cast<int32_t>(error), mediaType);
     }
-}
 
-void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnError(const string &imageId, const DpsErrorCode error)
-{
-    HandleOnError(imageId, error);
-    if (error == ERROR_IMAGE_PROC_INVALID_PHOTO_ID || error == ERROR_IMAGE_PROC_FAILED) {
+    if (error == ERROR_IMAGE_PROC_INVALID_PHOTO_ID || error == ERROR_IMAGE_PROC_FAILED ||
+        error == ERROR_IMAGE_PROC_RESOURCE_REMOVED) {
         size_t count = MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithPhotoId(imageId, false);
         MEDIA_INFO_LOG("DeletePipelineWithPhotoId count: %{public}zu.", count);
     }
+}
+
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnErrorEnhancementInternal(
+    const string &imageId, const DpsErrorCode error)
+{
+    auto errorCode = ConvertDpsErrorCode(error);
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = LocalEnhancementManager::GetInstance().GetLocalEnhancementPipeline(imageId, type);
+    if (pipeline == nullptr) {
+        MEDIA_ERR_LOG("pipeline is nullptr, photoId: %{public}s, pipelineType: %{public}d.",
+            imageId.c_str(), static_cast<int32_t>(type));
+        LocalEnhancementManager::GetInstance().RemoveEnhancementProgress(imageId);
+        return;
+    }
+    bool ret = pipeline->OnEnhancementImageError(errorCode);
+    LocalEnhancementManager::GetInstance().RemoveEnhancementProgress(imageId);
+
+    if (error == ERROR_IMAGE_PROC_INVALID_PHOTO_ID || error == ERROR_IMAGE_PROC_FAILED ||
+        error == ERROR_IMAGE_PROC_RESOURCE_REMOVED) {
+        size_t count = LocalEnhancementManager::GetInstance().DeleteLocalEnhancementPipeline(imageId);
+        MEDIA_INFO_LOG("DeleteLocalEnhancement photoid: %{public}s, count: %{public}zu", imageId.c_str(), count);
+    }
+}
+
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnError(const string &imageId, const DpsErrorCode error,
+    const DpsMetadata &metadata)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("OnError " + imageId);
+    HILOG_COMM_ERROR("%{public}s:{%{public}s:%{public}d} error %{public}d, photoid: %{public}s",
+        MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(error), imageId.c_str());
+    
+    if (error == ERROR_SESSION_SYNC_NEEDED) {
+        MultiStagesPhotoCaptureManager::GetInstance().SyncWithDeferredProcSession();
+    } else {
+        MediaDpsMetadata mediaMetadata = ConvertDpsMetadata(metadata, false);
+        auto errorCode = ConvertDpsErrorCode(error);
+        switch (mediaMetadata.imageProcessType) {
+            case ImageProcessType::DPS_STAGE_TWO: {
+                OnErrorProcessInternal(imageId, error);
+                break;
+            }
+            case ImageProcessType::DPS_LOCAL_IMAGE_ENHANCEMENT: {
+                OnErrorEnhancementInternal(imageId, error);
+                break;
+            }
+            default: {
+                MEDIA_ERR_LOG("invalid process, %{public}d.", mediaMetadata.imageProcessType);
+                break;
+            }
+        }
+    }
+
     CallProcessImageDone(false, imageId);
     MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage();
 }
@@ -254,7 +334,7 @@ static void HandleOrientation(const std::shared_ptr<FileAsset> &fileAsset, std::
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::ProcessAndSaveHighQualityImage(
     const std::shared_ptr<FileAsset> &fileAsset, std::shared_ptr<Media::Picture> picture,
-    uint32_t cloudImageEnhanceFlag)
+    const MediaDpsMetadata &metadata)
 {
     if (fileAsset == nullptr) {
         MEDIA_ERR_LOG("fileAsset is nullptr");
@@ -262,40 +342,39 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::ProcessAndSaveHighQuali
     }
     HandleOrientation(fileAsset, picture);
 
-    string imageId = fileAsset->GetPhotoId();
-    string data = fileAsset->GetPath();
-    bool isEdited = fileAsset->GetPhotoEditTime() > 0;
-    int32_t fileId = fileAsset->GetId();
-    string mimeType = fileAsset->GetMimeType();
-    bool isMovingPhoto = (fileAsset->GetPhotoSubType() ==
-        static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    bool isMovingPhoto = (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     int32_t mediaType = isMovingPhoto ? static_cast<int32_t>(MultiStagesCaptureMediaType::MOVING_PHOTO_IMAGE) :
         static_cast<int32_t>(MultiStagesCaptureMediaType::IMAGE);
+    // 裸picture落盘处理
     std::shared_ptr<Media::Picture> resultPicture = nullptr;
     bool isTakeEffect = false;
     int ret = MediaLibraryPhotoOperations::ProcessMultistagesPhotoForPicture(
         fileAsset, picture, resultPicture, isTakeEffect);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Save high quality image failed. ret: %{public}d, errno: %{public}d", ret, errno);
-        MultiStagesCaptureDfxResult::Report(imageId,
+        MultiStagesCaptureDfxResult::Report(fileAsset->GetPhotoId(),
             static_cast<int32_t>(MultiStagesCaptureResultErrCode::SAVE_IMAGE_FAIL), mediaType);
     }
+
+    bool isEdited = fileAsset->GetPhotoEditTime() > 0;
     bool isTrashed = fileAsset->GetIsTrash() > 0;
     int32_t modifyType = isEdited ? static_cast<int32_t>(FirstStageModifyType::EDITED) :
         (isTrashed ? static_cast<int32_t>(FirstStageModifyType::TRASHED) :
             static_cast<int32_t>(FirstStageModifyType::NOT_MODIFIED));
-    UpdateHighQualityPictureInfo(fileId, cloudImageEnhanceFlag, modifyType);
-    MediaLibraryObjectUtils::ScanFileAsync(
-        data, to_string(fileId), MediaLibraryApi::API_10, isMovingPhoto, resultPicture,
-        HighQualityScanFileCallback::Create(fileId));
-    MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
-    NotifyIfTempFile(fileAsset);
+    UpdateHighQualityPictureInfo(
+        fileAsset->GetId(), metadata.cloudImageEnhanceFlag, modifyType, metadata.captureEnhancementFlag);
 
-    MultiStagesCaptureDfxTotalTime::GetInstance().Report(imageId, mediaType);
-    MultiStagesCaptureDfxResult::Report(imageId,
+    MediaLibraryObjectUtils::ScanFileAsync(
+        fileAsset->GetPath(), to_string(fileAsset->GetId()), MediaLibraryApi::API_10, isMovingPhoto, resultPicture,
+        HighQualityScanFileCallback::Create(fileAsset->GetId()));
+    MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
+    NotifyIfTempFile(fileAsset);     // 不能删除，ani等接口尚未适配
+
+    MultiStagesCaptureDfxTotalTime::GetInstance().Report(fileAsset->GetPhotoId(), mediaType);
+    MultiStagesCaptureDfxResult::Report(fileAsset->GetPhotoId(),
         static_cast<int32_t>(MultiStagesCaptureResultErrCode::SUCCESS), mediaType);
     if (isMovingPhoto) {
-        MultiStagesMovingPhotoCaptureManager::AddVideoFromMovingPhoto(fileId);
+        MultiStagesMovingPhotoCaptureManager::AddVideoFromMovingPhoto(fileAsset->GetId());
     }
 }
 
@@ -309,16 +388,6 @@ std::shared_ptr<Media::Picture> GetPictureFromPictureIntf(std::shared_ptr<Camera
         return nullptr;
     }
     return pictureAdapter->GetPicture();
-}
-
-static MediaDpsMetadata ConvertDpsMetadata(const DpsMetadata &metadata)
-{
-    MediaDpsMetadata mediaMetadata;
-    mediaMetadata.isReady = true;
-    metadata.Get(CLOUD_FLAG, mediaMetadata.cloudImageEnhanceFlag);
-    metadata.Get(CPATURE_FLAG, mediaMetadata.captureEnhancementFlag);
-    metadata.Get(EDIT_DATA_FLAG, mediaMetadata.editData);
-    return mediaMetadata;
 }
 
 // LCOV_EXCL_START
@@ -339,7 +408,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleForNullData(const
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleForIsTemp(
     const std::shared_ptr<FileAsset> &fileAsset, std::shared_ptr<Media::Picture> &picture,
-    uint32_t cloudImageEnhanceFlag)
+    const MediaDpsMetadata &metadata)
 {
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture, this picture is temp.",
         MLOG_TAG, __FUNCTION__, __LINE__);
@@ -351,15 +420,18 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleForIsTemp(
     int32_t modifyType = isEdited ? static_cast<int32_t>(FirstStageModifyType::EDITED) :
         (isTrashed ? static_cast<int32_t>(FirstStageModifyType::TRASHED) :
             static_cast<int32_t>(FirstStageModifyType::NOT_MODIFIED));
-    UpdateHighQualityPictureInfo(fileAsset->GetId(), cloudImageEnhanceFlag, modifyType);
+    UpdateHighQualityPictureInfo(fileAsset->GetId(), metadata.cloudImageEnhanceFlag, modifyType);
     MultiStagesCaptureDao().UpdatePhotoDirtyNew(fileAsset->GetId());
+    MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::YUV_READY);
     NotifyIfTempFile(fileAsset);
 }
-void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnProcessImageDone(const std::string &imageId,
-    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, uint32_t cloudImageEnhanceFlag)
+
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnProcessImageDone(
+    const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, const DpsMetadata &metadata)
 {
     MediaLibraryTracer tracer;
     tracer.Start("OnProcessImageDone with PictureIntf " + imageId);
+    auto mediaMetadata = ConvertDpsMetadata(metadata, true);
     std::shared_ptr<Media::Picture> picture = GetPictureFromPictureIntf(pictureIntf);
     if (picture == nullptr || picture->GetMainPixel() == nullptr) {
         HILOG_COMM_ERROR("%{public}s:{%{public}s:%{public}d} MultistagesCapture picture is null",
@@ -368,8 +440,9 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnProcessImageDon
     }
     // 1. 分段式拍照已经处理完成，保存全质量图
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
-        "MultistagesCapture yuv photoid: %{public}s, cloudImageEnhanceFlag: %{public}u enter",
-        MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str(), cloudImageEnhanceFlag);
+        "OnProcessImageDone MultistagesCapture yuv photoid: %{public}s,  metadata: %{public}s ",
+        MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str(), mediaMetadata.ToString().c_str());
+    
     const std::vector<std::string> columns = { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::MEDIA_TYPE, MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_MIME_TYPE,
         PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_ID,
@@ -384,13 +457,13 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnProcessImageDon
 
     // 2. 如果没有调用SaveCameraPhoto, 则优先缓存picture
     if (fileAsset->GetPhotoIsTemp()) {
-        HandleForIsTemp(fileAsset, picture, cloudImageEnhanceFlag);
+        HandleForIsTemp(fileAsset, picture, mediaMetadata);
         return;
     }
 
     // 3. 高质量图正常落盘、落库
     tracer.Start("ProcessAndSaveHighQualityImage");
-    ProcessAndSaveHighQualityImage(fileAsset, picture, cloudImageEnhanceFlag);
+    ProcessAndSaveHighQualityImage(fileAsset, picture, mediaMetadata);
     tracer.Finish();
 
     CallProcessImageDone(true, imageId);
@@ -408,20 +481,34 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessImageDone(
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture yuv photoid: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str());
 
-    OnProcessInternal(imageId, pictureIntf, metadata);
-    MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage(); // 无论执行结果, 都需要通知
+    // 参数转化
+    OnProcessImageWrapper param = ConvertOnProcessParam(pictureIntf, metadata);
+
+    switch (param.metadata.imageProcessType) {
+        case ImageProcessType::DPS_STAGE_TWO: {
+            OnProcessInternal(imageId, param, CameraPipelineType::YUV);
+            MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage(); // 无论执行结果, 都需要通知
+            break;
+        }
+        case ImageProcessType::DPS_LOCAL_IMAGE_ENHANCEMENT: {
+            OnProcessEnhancementInternal(imageId, param, CameraPipelineType::YUV);
+            break;
+        }
+        default: {
+            MEDIA_ERR_LOG("invalid process, %{public}d.", param.metadata.imageProcessType);
+            break;
+        }
+    }
 }
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessInternal(const std::string &imageId,
-    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, const DpsMetadata &metadata)
+    const OnProcessImageWrapper &param, CameraPipelineType type)
 {
-    // 1.参数转化&校验
-    OnProcessImageWrapper param;
-    CHECK_AND_RETURN_LOG(ConvertOnProcessParam(pictureIntf, metadata, param), "invalid input.");
-
-    // 2.执行
+    CHECK_AND_RETURN_LOG(MultiStagesCaptureRequestTaskManager::IsPhotoInProcess(imageId),
+        "this photo was delete or err photoId: %{public}s", imageId.c_str());
+    // 1.执行
     auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByPhotoIdWithExpected(
-        imageId, CameraPipelineType::YUV);
+        imageId, type);
     if (pipeline == nullptr) {
         MEDIA_ERR_LOG("failed, photoId: %{public}s.", imageId.c_str());
         return;
@@ -434,16 +521,15 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessInternal(const
         return;
     }
 
-    // 3.清理pipeline
+    // 2.清理pipeline
     size_t count = MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithPhotoId(imageId, false);
     CallProcessImageDone(true, imageId);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} success yuv photoid: %{public}s, count: %{public}zu",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str(), count);
 }
 
-bool MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
-    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, const DpsMetadata &metadata,
-    OnProcessImageWrapper& wrapper)
+OnProcessImageWrapper MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
+    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, const DpsMetadata &metadata)
 {
     MediaLibraryTracer tracer;
     tracer.Start("ConvertOnProcessParam");
@@ -451,16 +537,17 @@ bool MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
     // 获取yuv
     OnProcessParamForYuv yuv;
     std::shared_ptr<Media::Picture> picture = GetPictureFromPictureIntf(pictureIntf);
-    CHECK_AND_RETURN_RET_LOG(picture != nullptr && picture->GetMainPixel() != nullptr, false, "picture is nullptr.");
+    if (picture == nullptr || picture->GetMainPixel() == nullptr) {
+        MEDIA_ERR_LOG("picture or main pixel is nullptr.");
+    }
     yuv.picture = std::move(picture);
 
-    // metadata
-    auto mediaMetadata = ConvertDpsMetadata(metadata);
+    OnProcessImageWrapper wrapper;
 
     wrapper.yuv = yuv;
-    wrapper.metadata = mediaMetadata;
+    wrapper.metadata = ConvertDpsMetadata(metadata, true);
     MEDIA_INFO_LOG("ConvertOnProcessParam success, metadata: %{public}s", wrapper.metadata.ToString().c_str());
-    return true;
+    return wrapper;
 }
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::GetCommandByImageId(const std::string &imageId,
@@ -479,7 +566,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::GetCommandByImageId(con
 }
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::UpdateHighQualityPictureInfo(const int32_t &fileId,
-    uint32_t cloudImageEnhanceFlag, int32_t modifyType)
+    uint32_t cloudImageEnhanceFlag, int32_t modifyType, uint32_t captureEnhancementFlag)
 {
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "UpdateHighQualityPictureInfo enter, fileId: %{public}d, "
@@ -495,7 +582,11 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::UpdateHighQualityPictur
             MLOG_TAG, __FUNCTION__, __LINE__);
         UpdateCEAvailable(fileId, cloudImageEnhanceFlag, updateValues, modifyType);
     }
-
+    if (captureEnhancementFlag) {
+        HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} UpdateHighQualityPictureInfo UpdateMultiShotValues enter",
+            MLOG_TAG, __FUNCTION__, __LINE__);
+        UpdateMultiShotValues(fileId, captureEnhancementFlag, updateValues);
+    }
     CHECK_AND_RETURN_LOG(!updateValues.IsEmpty(), "UpdateHighQualityPictureInfo failed, updateValues is null");
     MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
     updateCmd.SetValueBucket(updateValues);
@@ -505,7 +596,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::UpdateHighQualityPictur
 }
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityImage(const std::string &imageId,
-    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf)
+    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, const DpsMetadata& metadata)
 {
     std::shared_ptr<Media::Picture> picture = GetPictureFromPictureIntf(pictureIntf);
     if (picture == nullptr || picture->GetMainPixel() == nullptr) {
@@ -513,6 +604,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityIma
             MLOG_TAG, __FUNCTION__, __LINE__);
         return;
     }
+    MediaDpsMetadata mediaMetadata = ConvertDpsMetadata(metadata, false);
 
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture uri: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str());
@@ -530,7 +622,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityIma
     }
 
     // 2.存入缓存
-    pipeline->OnDelivery(picture);
+    pipeline->OnDelivery(picture, mediaMetadata);
 }
 
 int32_t GetModifyType(std::shared_ptr<FileAsset> fileAsset)
@@ -601,47 +693,31 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessImageDone(cons
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture Image photoid: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str());
 
-    OnProcessInternal(imageId, addr, bytes, cloudImageEnhanceFlag);
-    MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage(); // 无论执行结果, 都需要通知
+    // 参数转化
+    OnProcessImageWrapper param = ConvertOnProcessParam(addr, bytes, cloudImageEnhanceFlag);
+
+    switch (param.metadata.imageProcessType) {
+        case ImageProcessType::DPS_STAGE_TWO: {
+            OnProcessInternal(imageId, param, CameraPipelineType::IMAGE);
+            MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage(); // 无论执行结果, 都需要通知
+            break;
+        }
+        default: {
+            MEDIA_ERR_LOG("invalid process, %{public}d.", param.metadata.imageProcessType);
+            break;
+        }
+    }
 }
 
 // LCOV_EXCL_START
-void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessInternal(const string &imageId, const uint8_t *addr,
-    const long bytes, uint32_t cloudImageEnhanceFlag)
+OnProcessImageWrapper MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
+    const uint8_t *addr, const long bytes, uint32_t cloudImageEnhanceFlag)
 {
-    CHECK_AND_RETURN_LOG(MultiStagesCaptureRequestTaskManager::IsPhotoInProcess(imageId),
-        "this photo was delete or err photoId: %{public}s", imageId.c_str());
-
-    // 1.参数转化&校验
-    OnProcessImageWrapper param;
-    CHECK_AND_RETURN_LOG(ConvertOnProcessParam(addr, bytes, cloudImageEnhanceFlag, param), "invalid input.");
-
-    // 2.执行
-    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByPhotoIdWithExpected(
-        imageId, CameraPipelineType::IMAGE);
-    if (pipeline == nullptr) {
-        MEDIA_ERR_LOG("failed, photoId: %{public}s.", imageId.c_str());
-        return;
-    }
-    int32_t ret = pipeline->OnProcessImageDone(param);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("failed execute pipeline->OnProcessImageDone.");
-        return;
-    }
-
-    // 3.清理数据
-    size_t count = MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithPhotoId(imageId, false);
-    CallProcessImageDone(true, imageId);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} success image photoid: %{public}s, count: %{public}zu",
-        MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str(), count);
-}
-
-bool MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(const uint8_t *addr, const long bytes,
-    uint32_t cloudImageEnhanceFlag, OnProcessImageWrapper& wrapper)
-{
-    CHECK_AND_RETURN_RET_LOG((addr != nullptr) && (bytes > 0), false, "addr is nullptr or bytes is zero.");
     MediaLibraryTracer tracer;
     tracer.Start("ConvertOnProcessParam");
+    if (addr == nullptr || bytes <= 0) {
+        MEDIA_ERR_LOG("addr is nullptr or bytes is zero.");
+    }
 
     // image
     ImageFileMapper fileMapper = {
@@ -655,10 +731,11 @@ bool MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(c
     MediaDpsMetadata mediaMetadata;
     mediaMetadata.cloudImageEnhanceFlag = cloudImageEnhanceFlag;
 
+    OnProcessImageWrapper wrapper;
     wrapper.image = image;
     wrapper.metadata = mediaMetadata;
     MEDIA_INFO_LOG("ConvertOnProcessParam success, metadata: %{public}s", wrapper.metadata.ToString().c_str());
-    return true;
+    return wrapper;
 }
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnStateChanged(const DpsStatusCode state)
@@ -691,6 +768,8 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityLcd
         return;
     }
 
+    MediaDpsMetadata mediaMetadata;
+
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture uri: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str());
     MediaLibraryTracer tracer;
@@ -707,7 +786,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityLcd
     }
 
     // 2.存入缓存
-    pipeline->OnDelivery(lcdPicture);
+    pipeline->OnDelivery(lcdPicture, mediaMetadata);
 }
 
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessImageDone(const std::string &imageId,
@@ -719,39 +798,24 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessImageDone(cons
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture newImage photoid: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str());
 
-    OnProcessInternal(imageId, imageFds, lcdImage, metadata);
-    MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage(); // 无论执行结果, 都需要通知
-}
+    // 参数转化
+    OnProcessImageWrapper param = ConvertOnProcessParam(imageFds, lcdImage, metadata);
 
-void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessInternal(const std::string &imageId,
-    const std::vector<CameraStandard::ImageFd> &imageFds, std::shared_ptr<CameraStandard::PictureIntf> lcdImage,
-    const DpsMetadata& metadata)
-{
-    CHECK_AND_RETURN_LOG(MultiStagesCaptureRequestTaskManager::IsPhotoInProcess(imageId),
-        "this photo was delete or err photoId: %{public}s", imageId.c_str());
-
-    // 1.参数转换&校验
-    OnProcessImageWrapper param;
-    CHECK_AND_RETURN_LOG(ConvertOnProcessParam(imageFds, lcdImage, metadata, param), "invalid input.");
-
-    // 2.执行
-    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByPhotoIdWithExpected(
-        imageId, CameraPipelineType::NEW_IMAGE);
-    if (pipeline == nullptr) {
-        MEDIA_ERR_LOG("failed, photoId: %{public}s.", imageId.c_str());
-        return;
+    switch (param.metadata.imageProcessType) {
+        case ImageProcessType::DPS_STAGE_TWO: {
+            OnProcessInternal(imageId, param, CameraPipelineType::NEW_IMAGE);
+            MultiStagesPhotoCaptureManager::GetInstance().NotifyProcessImage(); // 无论执行结果, 都需要通知
+            break;
+        }
+        case ImageProcessType::DPS_LOCAL_IMAGE_ENHANCEMENT: {
+            OnProcessEnhancementInternal(imageId, param, CameraPipelineType::NEW_IMAGE);
+            break;
+        }
+        default: {
+            MEDIA_ERR_LOG("invalid process, %{public}d.", param.metadata.imageProcessType);
+            break;
+        }
     }
-    int32_t ret = pipeline->OnProcessImageDone(param);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("failed execute pipeline->OnProcessImageDone.");
-        return;
-    }
-
-    // 3.清理pipeline
-    size_t count = MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithPhotoId(imageId, false);
-    CallProcessImageDone(true, imageId);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} success newImage photoid: %{public}s, count: %{public}zu",
-        MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str(), count);
 }
 
 static bool convertImageFileMapper(const CameraStandard::ImageFd& imageFd,
@@ -772,9 +836,9 @@ static bool convertImageFileMapper(const CameraStandard::ImageFd& imageFd,
     return true;
 }
 
-bool MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
+OnProcessImageWrapper MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
     const std::vector<CameraStandard::ImageFd>& imageFds, std::shared_ptr<CameraStandard::PictureIntf> lcdImage,
-    const DpsMetadata& metadata, OnProcessImageWrapper& wrapper)
+    const DpsMetadata& metadata)
 {
     MediaLibraryTracer tracer;
     tracer.Start("ConvertOnProcessParam");
@@ -784,22 +848,62 @@ bool MultiStagesCaptureDeferredPhotoProcSessionCallback::ConvertOnProcessParam(
     for (const auto& imageFd : imageFds) {
         std::string imageType;
         ImageFileMapper imageFileMapper;
-        CHECK_AND_RETURN_RET_LOG(convertImageFileMapper(imageFd, imageType, imageFileMapper), false,
-            "failed to get imageFileMapper.");
+        if (!convertImageFileMapper(imageFd, imageType, imageFileMapper)) {
+            MEDIA_ERR_LOG("failed to get imageFileMapper.");
+        }
         newImage.files.insert(std::make_pair(imageType, imageFileMapper));
     }
     // lcd 的yuv对象
     std::shared_ptr<Media::Picture> lcdPicture = GetPictureFromPictureIntf(lcdImage);
     newImage.lcdImage = std::move(lcdPicture);
 
-    // matedata
-    auto mediaMetadata = ConvertDpsMetadata(metadata);
-
+    OnProcessImageWrapper wrapper;
     wrapper.newImage = newImage;
-    wrapper.metadata = mediaMetadata;
+    wrapper.metadata = ConvertDpsMetadata(metadata, true);
     MEDIA_INFO_LOG("ConvertOnProcessParam success, newImage: %{public}s, metadata: %{public}s",
         wrapper.newImage.ToString().c_str(), wrapper.metadata.ToString().c_str());
-    return true;
+    return wrapper;
+}
+
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessEnhancementInternal(const std::string &imageId,
+    const OnProcessImageWrapper &param, CameraPipelineType type)
+{
+    MEDIA_INFO_LOG("OnProcessEnhancementInternal photoid: %{public}s", imageId.c_str());
+
+    // 1.执行
+    auto pipeline = LocalEnhancementManager::GetInstance().GetLocalEnhancementPipelineWithExpected(
+        imageId, type);
+    if (pipeline == nullptr) {
+        MEDIA_ERR_LOG("failed, photoId: %{public}s.", imageId.c_str());
+        return;
+    }
+    int32_t ret = pipeline->OnProcessImageEnhancementDone(param);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("failed execute pipeline->OnProcessImageDone.");
+        return;
+    }
+
+    // 2.清理pipeline
+    size_t count = LocalEnhancementManager::GetInstance().DeleteLocalEnhancementPipeline(imageId);
+    MEDIA_INFO_LOG("success photoid: %{public}s, count: %{public}zu", imageId.c_str(), count);
+}
+
+void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnImageEnhancementProcessingProgress(
+    const std::string &imageId, float progress)
+{
+    MEDIA_INFO_LOG("OnImageEnhancementProcessingProgress begin, imageId: %{public}s, progress: %{public}f.",
+        imageId.c_str(), progress);
+
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = LocalEnhancementManager::GetInstance().GetLocalEnhancementPipeline(imageId, type);
+    if (pipeline == nullptr) {
+        MEDIA_ERR_LOG("Pipeline not found for imageId: %{public}s", imageId.c_str());
+        return;
+    }
+
+    int32_t fileId = pipeline->GetAssetInfo().GetFileId();
+    int32_t progressValue = static_cast<int32_t>(progress);
+    LocalEnhancementManager::GetInstance().SetEnhancementProgress(fileId, progressValue);
 }
 // LCOV_EXCL_STOP
 } // namespace Media

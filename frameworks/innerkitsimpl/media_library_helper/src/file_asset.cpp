@@ -1163,6 +1163,28 @@ int32_t FileAsset::GetIsShared() const
     return GetInt32Member(PhotoColumn::PHOTO_IS_SHARED);
 }
 
+int32_t FileAsset::GetLocalEnhancementAbility() const
+{
+    return GetInt32Member(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY);
+}
+
+void FileAsset::SetLocalEnhancementAbility(int32_t localEnhancementAbility)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::LOCAL_ENHANCEMENT_ABILITY] = localEnhancementAbility;
+}
+
+int32_t FileAsset::GetLocalEnhancementStatus() const
+{
+    return GetInt32Member(PhotoColumn::LOCAL_ENHANCEMENT_STATUS);
+}
+
+void FileAsset::SetLocalEnhancementStatus(int32_t localEnhancementStatus)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::LOCAL_ENHANCEMENT_STATUS] = localEnhancementStatus;
+}
+
 int32_t FileAsset::GetSouthDeviceType() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE);

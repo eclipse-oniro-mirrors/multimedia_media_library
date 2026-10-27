@@ -22,41 +22,38 @@
 
 #include "asset_accurate_refresh.h"
 #include "camera_asset_info.h"
-#include "camera_character_types.h"
 #include "camera_mapper.h"
 #include "create_camera_file_fd_dto.h"
 #include "file_asset.h"
 #include "get_deferred_picture_info_vo.h"
+#include "i_camera_pipeline.h"
 #include "medialibrary_command.h"
 #include "save_camera_photo_dto.h"
 #include "scan_camera_file_dto.h"
 
 namespace OHOS::Media {
-class EXPORT CameraAssetPipeline {
+
+class EXPORT CameraAssetPipeline : public virtual ICameraPipeline {
 public:
     EXPORT CameraAssetPipeline() {}
-    EXPORT virtual ~CameraAssetPipeline() = default;
+    EXPORT virtual ~CameraAssetPipeline();
 
     // 水印(Image、Yuv)
     EXPORT virtual void SaveEditDataCamera(MediaLibraryCommand &cmd, const std::string& bundleName,
         const std::string& editData = "");
-    // 初始化
-    EXPORT void Init(const CameraAssetInfo& assetInfo);
+
     // 一阶段上报
     EXPORT int32_t CreateCameraFileFd(const CreateCameraFileFdDto &dto);
     EXPORT int32_t CloseCameraFileFd(const ScanCameraFileDto &dto);
-    EXPORT virtual void OnDelivery(std::shared_ptr<Media::Picture> picture) = 0;
+    EXPORT virtual void OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata) = 0;
     // 一阶段落盘
     EXPORT int32_t SaveCameraPhoto(const SaveCameraPhotoDto &dto);
     // 二阶段落盘
     EXPORT virtual int32_t OnProcessImageDone(const OnProcessImageWrapper &wrapper);
     // 二阶段失败
-    EXPORT bool OnErrorImage(const MediaDpsErrorCode error, bool& isMovingPhoto);
+    EXPORT bool OnProcessImageError(const MediaDpsErrorCode error, bool& isMovingPhoto);
 
     // 对外仅允许返回状态
-    EXPORT bool IsValid();
-    EXPORT const CameraAssetInfo GetAssetInfo() const;
-    EXPORT CameraPipelineType GetPipelineType() const;
     EXPORT void SetActiveType(const CameraInfoActiveType& activeType);
     EXPORT bool IsLifeFinished();
     EXPORT void SaveCameraPhotoFinished();
@@ -67,9 +64,7 @@ public:
     EXPORT void GetDeferredPictureInfo(GetDeferredPictureInfoRespBody& respbody);
 
 protected:
-    MediaDpsMetadata GetMediaDpsMetadata() const;
-    void SetMediaDpsMetadata(const MediaDpsMetadata& metadata);
-    void SetPipelineType(const CameraPipelineType& pipelineType);
+    void SetLocalEnhancementAbilityByMetadata(const MediaDpsMetadata& metadata);
     void SetTakeEffectStatus(const TakeEffectStatus& takeEffectStatus);
     void SetEffectiveFileSaved(bool effectiveFileSaved);
     void SetSourceFileSaved(bool sourceFileSaved);
@@ -91,15 +86,11 @@ protected:
     virtual bool InitForOnProcessInternal(const OnProcessImageWrapper &wrapper) = 0;
     virtual bool CheckCanSaveDirectlyInternal(const std::shared_ptr<FileAsset> &fileAsset) = 0;
     virtual int32_t ProcessMultistagesPhotoInternal(const std::shared_ptr<FileAsset> &fileAsset) = 0;
-    virtual void ScanFileForOnProcessInternal() = 0;
 
     // 通知
     void NotifyImageIfTempFile(bool isError);
 
 private:
-    // 初始化
-    void InitCachePath();
-
     // 一阶段流程
     void RecheckEffectStatus();
     int32_t HandleSaveCameraPhoto(const SaveCameraPhotoDto &dto);
@@ -110,17 +101,14 @@ private:
     // 二阶段落盘
     void ProcessMultistagesPhoto(const std::shared_ptr<FileAsset> &fileAsset);
     // 二阶段失败
-    void HandleIrrecoverableErrImage(const CameraAssetInfo& assetInfo);
-    void HandleHighTemperatureImage(const CameraAssetInfo& assetInfo);
-    void HandleRecoverableErrImage(const CameraAssetInfo& assetInfo);
+    void OnProcessIrrecoverableErrImage(const CameraAssetInfo& assetInfo, const MediaDpsErrorCode error);
+    void OnProcessRecoverableErrImage(const CameraAssetInfo& assetInfo, const MediaDpsErrorCode error);
+
+    // 三阶段任务下发
+    void AddLocalEnhancementTask();
 
 private:
     std::mutex dbMutex_;
-    // 不允许添加其他 info 数据
-    CameraAssetInfo assetInfo_;
-    CameraPipelineType pipelineType_{CameraPipelineType::UNDEFINED};
-    // 二阶段入参
-    MediaDpsMetadata metadata_;
 };
 } // namespace OHOS::Media
 #endif // OHOS_MEDIA_CAMERA_ASSET_PIPELINE_H

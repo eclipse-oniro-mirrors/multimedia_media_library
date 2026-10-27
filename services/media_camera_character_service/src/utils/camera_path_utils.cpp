@@ -47,6 +47,9 @@ void CameraPathUtils::GetCameraPath(const CameraPathType& type, const std::strin
         case CameraPathType::EDIT_DATA_CAMERA_PATH:
             GetEditDataCameraPath(inputPath, outputPath);
             break;
+        case CameraPathType::EDIT_DATA_SOURCE_BACK_PATH:
+            GetEditDataSourceBackPath(inputPath, outputPath);
+            break;
         case CameraPathType::TEMP_LOW_PATH:
             GetTempLowPath(inputPath, outputPath);
             break;
@@ -328,6 +331,15 @@ void CameraPathUtils::GetEditDataCameraPath(const std::string& inputPath, std::s
         return;
     }
     outputPath = parentPath + "/editdata_camera";
+}
+
+void CameraPathUtils::GetEditDataSourceBackPath(const std::string& inputPath, std::string& outputPath, int32_t userId)
+{
+    std::string parentPath = GetEditDataDir(inputPath, userId);
+    if (parentPath.empty()) {
+        return;
+    }
+    outputPath = parentPath + "/source_back." + MediaPathUtils::GetExtension(inputPath);
 }
 
 void CameraPathUtils::GetTempLowPath(const std::string& inputPath, std::string& outputPath, int32_t userId)

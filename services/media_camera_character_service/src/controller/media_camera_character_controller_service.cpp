@@ -22,6 +22,9 @@
 
 // JS 接口相关
 #include "cancel_request_vo.h"
+#include "process_image_enhancement_vo.h"
+#include "query_local_enhancement_status_vo.h"
+#include "query_local_enhancement_task_state_vo.h"
 
 // INNER 接口相关
 #include "add_process_video_vo.h"
@@ -64,6 +67,18 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFERRED_PICTURE_INFO),
         &MediaCameraCharacterControllerService::GetDeferredPictureInfo
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_MAM_QUERY_LOCAL_ENHANCEMENT_STATUS),
+        &MediaCameraCharacterControllerService::QueryLocalEnhancementStatus
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_MEM_PROCESS_IMAGE_ENHANCEMENT),
+        &MediaCameraCharacterControllerService::ProcessImageEnhancement
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_SYSTEM_QUERY_LOCAL_ENHANCEMENT_TASK_STATE),
+        &MediaCameraCharacterControllerService::QueryLocalEnhancementTaskState
     },
 };
 
@@ -204,6 +219,56 @@ int32_t MediaCameraCharacterControllerService::GetDeferredPictureInfo(MessagePar
     GetDeferredPictureInfoRespBody respBody;
     ret = MediaCameraCharacterService::GetInstance().GetDeferredPictureInfo(dto, respBody);
     CHECK_AND_PRINT_LOG(ret == E_OK, "GetDeferredPictureInfo failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaCameraCharacterControllerService::QueryLocalEnhancementStatus(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter QueryLocalEnhancementStatus");
+    QueryLocalEnhancementStatusReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryLocalEnhancementStatus Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    QueryLocalEnhancementStatusRespBody respBody;
+    ret = MediaCameraCharacterService::GetInstance().QueryLocalEnhancementStatus(reqBody, respBody);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "QueryLocalEnhancementStatus failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaCameraCharacterControllerService::ProcessImageEnhancement(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter ProcessImageEnhancement");
+    ProcessImageEnhancementReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ProcessImageEnhancement Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaCameraCharacterService::GetInstance().ProcessImageEnhancement(reqBody);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "ProcessImageEnhancement failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaCameraCharacterControllerService::QueryLocalEnhancementTaskState(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter QueryLocalEnhancementTaskState");
+    QueryLocalEnhancementTaskStateReqBody reqBody;
+    QueryLocalEnhancementTaskStateRespBody respBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryLocalEnhancementTaskState Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaCameraCharacterService::GetInstance().QueryLocalEnhancementTaskState(reqBody, respBody);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "QueryLocalEnhancementTaskState failed");
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 } // namespace OHOS::Media

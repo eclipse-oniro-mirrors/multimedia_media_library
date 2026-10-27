@@ -39,11 +39,13 @@ CloudEnhancementGetCount& CloudEnhancementGetCount::GetInstance()
 
 void CloudEnhancementGetCount::AddStartTime(const std::string &photoId)
 {
-    startTimes_.emplace(photoId, MediaFileUtils::UTCTimeMilliSeconds());
+    std::lock_guard<std::mutex> lock(mutex_);
+    startTimes_[photoId] = MediaFileUtils::UTCTimeMilliSeconds();
 }
 
 void CloudEnhancementGetCount::RemoveStartTime(const std::string &photoId)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (startTimes_.empty() || startTimes_.find(photoId) == startTimes_.end()) {
         MEDIA_INFO_LOG("RemoveStartTime startTimes_ is empty or photoId is not in startTimes_");
         return;
@@ -55,6 +57,7 @@ void CloudEnhancementGetCount::RemoveStartTime(const std::string &photoId)
 void CloudEnhancementGetCount::Report(const std::string &completedType, const std::string &photoId,
     const int32_t finishType, const int32_t fileType)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (startTimes_.empty() || startTimes_.find(photoId) == startTimes_.end()) {
         MEDIA_INFO_LOG("startTimes_ is empty or photoId is not in startTimes_");
         return;
@@ -74,6 +77,7 @@ void CloudEnhancementGetCount::Report(const std::string &completedType, const st
 
 std::unordered_map<std::string, int64_t> CloudEnhancementGetCount::GetStartTimes()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     return startTimes_;
 }
 } // namespace Media

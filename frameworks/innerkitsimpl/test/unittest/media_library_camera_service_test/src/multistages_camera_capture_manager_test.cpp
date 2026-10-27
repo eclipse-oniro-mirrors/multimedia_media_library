@@ -252,7 +252,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, InsertCaptureData_FileAsset_test08
     ASSERT_EQ(ret, true);
 
     // fileId 重复
-    auto initPipeline = std::make_shared<NewImagePipeline>();
+    auto initPipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(initPipeline, nullptr);
     size_t count = MultistagesCameraCaptureManager::GetInstance().InsertCaptureData(FILE_ID_INPUT, "new", initPipeline);
     ASSERT_EQ(count, 1);
@@ -499,7 +499,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithFileId_test01, T
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -541,7 +541,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithFileId_test02, T
         .photoId = PHOTO_ID_INPUT,
     };
 
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -574,7 +574,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithFileId_test03, T
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -625,7 +625,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithFileId_test04, T
         .photoId = PHOTO_ID_INPUT,
     };
 
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -660,7 +660,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithFileId_test05, T
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -694,7 +694,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithFileId_test06, T
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -748,7 +748,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithPhotoId_test01, 
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -797,7 +797,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithPhotoId_test02, 
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);
@@ -853,7 +853,7 @@ HWTEST_F(MultistagesCameraCaptureManagerTest, DeletePipelineWithPhotoId_test04, 
         .fileId = FILE_ID_INPUT,
         .photoId = PHOTO_ID_INPUT,
     };
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     ASSERT_NE(pipeline, nullptr);
     FileAsset fileAsset;
     CameraTestUtils::CreateFileAsset(assetInfo, fileAsset);

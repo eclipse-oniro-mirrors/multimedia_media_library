@@ -29,6 +29,12 @@ enum class MultiStagesCapturePhotoStatus : int32_t {
     HIGH_QUALITY_STATUS,
     LOW_QUALITY_STATUS,
 };
+
+enum class LocalEnhanceStatus : int32_t {
+    NOT_SUPPORT_ENHANCE = 1,
+    PROCESSING_ENHANCE,
+    SUCCESS_ENHANCE,
+};
 } // Media
 } // OHOS
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_ASSET_MANAGER_ADAPTER_CONST_H

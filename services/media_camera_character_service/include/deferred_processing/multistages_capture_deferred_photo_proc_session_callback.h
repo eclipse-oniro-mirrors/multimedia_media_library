@@ -49,52 +49,53 @@ public:
     void OnDeliveryLowQualityLcd(const std::string &imageId,
         std::shared_ptr<CameraStandard::PictureIntf> picture) override;
     void OnDeliveryLowQualityImage(const std::string &imageId,
-        std::shared_ptr<CameraStandard::PictureIntf> picture) override;
-    EXPORT void OnError(const std::string &imageId, const CameraStandard::DpsErrorCode error) override;
+        std::shared_ptr<CameraStandard::PictureIntf> picture, const DpsMetadata& metadata) override;
+    EXPORT void OnError(const std::string &imageId, const CameraStandard::DpsErrorCode error,
+        const DpsMetadata &metadata) override;
     void OnStateChanged(const CameraStandard::DpsStatusCode state) override;
 
     void SetProcessImageDoneCallback(const ProcessDoneHandler &func);
 
+    // 端侧AI增强
+    void OnImageEnhancementProcessingProgress(const std::string &imageId, float progress) override;
+
 private:
-    // 非yuv(旧)
-    EXPORT void OnProcessInternal(const string &imageId, const uint8_t *addr, const long bytes,
-        uint32_t cloudImageEnhanceFlag);
-    EXPORT bool ConvertOnProcessParam(const uint8_t *addr, const long bytes, uint32_t cloudImageEnhanceFlag,
-        OnProcessImageWrapper& wrapper);
+    OnProcessImageWrapper ConvertOnProcessParam(const uint8_t *addr, const long bytes, uint32_t cloudImageEnhanceFlag);
 
     // YUV
-    EXPORT void OnProcessInternal(const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
+    OnProcessImageWrapper ConvertOnProcessParam(std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
         const DpsMetadata &metadata);
-    EXPORT bool ConvertOnProcessParam(std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
-        const DpsMetadata &metadata, OnProcessImageWrapper& wrapper);
-
-    // 非yuv(新)
-    EXPORT void OnProcessInternal(const std::string &imageId, const std::vector<CameraStandard::ImageFd> &imageFds,
+    OnProcessImageWrapper ConvertOnProcessParam(const std::vector<CameraStandard::ImageFd>& imageFds,
         std::shared_ptr<CameraStandard::PictureIntf> lcdImage, const DpsMetadata& metadata);
-    EXPORT bool ConvertOnProcessParam(const std::vector<CameraStandard::ImageFd>& imageFds,
-        std::shared_ptr<CameraStandard::PictureIntf> lcdImage, const DpsMetadata& metadata,
-        OnProcessImageWrapper& wrapper);
+
+    void OnProcessInternal(const std::string &imageId, const OnProcessImageWrapper &param, CameraPipelineType type);
+    void OnProcessEnhancementInternal(const std::string &imageId, const OnProcessImageWrapper &param,
+        CameraPipelineType type);
+    
+    EXPORT void OnErrorProcessInternal(const string &imageId, const CameraStandard::DpsErrorCode error);
+    EXPORT void OnErrorEnhancementInternal(const string &imageId, const CameraStandard::DpsErrorCode error);
 
     EXPORT void HandleForNullData(const std::string &imageId, std::shared_ptr<Media::Picture> picture);
     EXPORT void HandleForIsTemp(const std::shared_ptr<FileAsset> &fileAsset, std::shared_ptr<Media::Picture> &picture,
-        uint32_t cloudImageEnhanceFlag);
-    EXPORT void HandleOnError(const string &imageId, const CameraStandard::DpsErrorCode error);
+        const MediaDpsMetadata &metadata);
     EXPORT void HandleOnProcessImageDone(const string &imageId, const uint8_t *addr,
         const long bytes, uint32_t cloudImageEnhanceFlag);
     void HandleOnProcessImageDone(
         const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
-        uint32_t cloudImageEnhanceFlag);
+        const DpsMetadata &metadata);
     EXPORT int32_t UpdatePhotoQuality(const int32_t &fileId);
     EXPORT void UpdatePhotoQuality(const int32_t &fileId, NativeRdb::ValuesBucket &updateValues);
     EXPORT void UpdateCEAvailable(const int32_t &fileId, uint32_t cloudImageEnhanceFlag,
         NativeRdb::ValuesBucket &updateValues, int32_t modifyType = 0);
     EXPORT void GetCommandByImageId(const std::string &imageId, MediaLibraryCommand &cmd);
     EXPORT void UpdateHighQualityPictureInfo(const int32_t &fileId, uint32_t cloudImageEnhanceFlag,
-         int32_t modifyType = 0);
+         int32_t modifyType = 0,  uint32_t captureEnhancementFlag = 0);
     EXPORT void NotifyIfTempFile(const std::shared_ptr<FileAsset> &fileAsset, bool isError = false);
     EXPORT void ProcessAndSaveHighQualityImage(const std::shared_ptr<FileAsset> &fileAsset,
-        std::shared_ptr<Media::Picture> picture, uint32_t cloudImageEnhanceFlag);
+        std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata);
     void CallProcessImageDone(bool success, const std::string &photoId);
+    EXPORT void UpdateMultiShotValues(const int32_t &fileId, uint32_t captureEnhancementFlag,
+        NativeRdb::ValuesBucket &updateValues);
 
 private:
     ProcessDoneHandler processDoneCallback_;

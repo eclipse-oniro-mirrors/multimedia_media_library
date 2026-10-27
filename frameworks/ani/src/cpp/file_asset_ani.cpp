@@ -472,6 +472,8 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::MUSIC_MASTER_MODE,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
     };
 
     if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryAniUtils::IsSystemApp()) {

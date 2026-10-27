@@ -80,19 +80,26 @@ void DeferredPhotoProcessingAdapter::AddImage(const std::string &imageId, DpsMet
     const std::string &packageName)
 {
     MEDIA_INFO_LOG("enter photoid: %{public}s, isTrashed: %{public}d", imageId.c_str(), isTrashed);
-    CHECK_AND_RETURN_LOG(deferredPhotoProcSession_ != nullptr, "AddImage deferredPhotoProcSession_ is nullptr");
+    if (deferredPhotoProcSession_ == nullptr) {
+        MEDIA_ERR_LOG("AddImage deferredPhotoProcSession_ is nullptr");
+        return;
+    }
     deferredPhotoProcSession_->AddImage(imageId, metadata, isTrashed, packageName);
 }
 #endif
 
-void DeferredPhotoProcessingAdapter::RemoveImage(const std::string &imageId, bool isRestorable)
+#ifdef ABILITY_CAMERA_SUPPORT
+void DeferredPhotoProcessingAdapter::RemoveImage(const std::string &imageId, DpsMetadata& metadata,
+    const bool isRestorable)
 {
     MEDIA_INFO_LOG("enter photoid: %{public}s, isRestorable: %{public}d", imageId.c_str(), isRestorable);
-#ifdef ABILITY_CAMERA_SUPPORT
-    CHECK_AND_RETURN_LOG(deferredPhotoProcSession_ != nullptr, "RemoveImage deferredPhotoProcSession_ is nullptr");
-    deferredPhotoProcSession_->RemoveImage(imageId, isRestorable);
-#endif
+    if (deferredPhotoProcSession_ == nullptr) {
+        MEDIA_ERR_LOG("RemoveImage deferredPhotoProcSession_ is nullptr");
+        return;
+    }
+    deferredPhotoProcSession_->RemoveImage(imageId, metadata, isRestorable);
 }
+#endif
 
 void DeferredPhotoProcessingAdapter::RestoreImage(const std::string &imageId)
 {
@@ -106,17 +113,18 @@ void DeferredPhotoProcessingAdapter::RestoreImage(const std::string &imageId)
 #endif
 }
 
-void DeferredPhotoProcessingAdapter::ProcessImage(const std::string &appName, const std::string &imageId)
+#ifdef ABILITY_CAMERA_SUPPORT
+void DeferredPhotoProcessingAdapter::ProcessImage(const std::string &appName, const std::string &imageId,
+    DpsMetadata &metadata)
 {
     MEDIA_INFO_LOG("enter appName: %{public}s, photoid: %{public}s", appName.c_str(), imageId.c_str());
-#ifdef ABILITY_CAMERA_SUPPORT
     if (deferredPhotoProcSession_ == nullptr) {
         MEDIA_ERR_LOG("ProcessImage deferredPhotoProcSession_ is nullptr");
         return;
     }
-    deferredPhotoProcSession_->ProcessImage(appName, imageId);
-#endif
+    deferredPhotoProcSession_->ProcessImage(appName, imageId, metadata);
 }
+#endif
 
 bool DeferredPhotoProcessingAdapter::CancelProcessImage(const std::string &imageId)
 {

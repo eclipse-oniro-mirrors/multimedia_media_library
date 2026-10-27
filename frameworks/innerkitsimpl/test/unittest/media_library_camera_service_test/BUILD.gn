@@ -26,11 +26,12 @@ ohos_unittest("media_library_camera_service_test") {
     "./include/mock",
     "../medialibrary_unittest_utils/include",
   ]
- 
+
   sources = [
     "./src/camera_path_utils_test.cpp",
     "./src/camera_test_utils.cpp",
     "./src/image_pipeline_test.cpp",
+    "./src/local_enhancement_manager_test.cpp",
     "./src/multistages_camera_capture_manager_test.cpp",
     "./src/multistages_capture_deferred_photo_proc_session_callback_test.cpp",
     "./src/new_image_pipeline_test.cpp",

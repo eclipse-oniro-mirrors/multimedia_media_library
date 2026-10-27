@@ -87,7 +87,8 @@ static void MultistagesCaptureDeferredPhotoProcAdapterTest()
     std::string photoId = provider->ConsumeBytesAsString(NUM_BYTES);
     std::string appName = provider->ConsumeBytesAsString(NUM_BYTES);
     deferredProcSession->RestoreImage(photoId);
-    deferredProcSession->ProcessImage(appName, photoId);
+    DpsMetadata metadata;
+    deferredProcSession->ProcessImage(appName, photoId, metadata);
     deferredProcSession->CancelProcessImage(photoId);
     MEDIA_INFO_LOG("MultistagesCaptureDeferredPhotoProcAdapterTest end");
 }

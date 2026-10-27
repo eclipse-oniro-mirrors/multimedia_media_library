@@ -56,6 +56,7 @@ private:
     static ani_object QueryCloudEnhancementTaskState(ani_env *env, ani_object aniObject, ani_object photoAsset);
     static void SyncCloudEnhancementTaskStatus(ani_env *env, ani_object aniObject);
     static ani_object GetCloudEnhancementPair(ani_env *env, ani_object aniObject, ani_object asset);
+    static ani_object QueryLocalEnhancementTaskState(ani_env *env, ani_object aniObject, ani_object photoAsset);
 };
 
 struct CloudEnhancementAniContext : public AniError {
@@ -78,6 +79,7 @@ struct CloudEnhancementAniContext : public AniError {
     int32_t expectedDuration_ {UNDEFINED};
     int32_t statusCode_ {UNDEFINED};
     std::unique_ptr<FetchResult<FileAsset>> fetchFileResult;
+    int32_t localEnhancementProgress_ {0};
     bool GetPairAsset();
 };
 } // namespace Media

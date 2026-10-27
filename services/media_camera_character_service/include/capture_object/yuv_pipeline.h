@@ -20,6 +20,7 @@
 #include <string>
 
 #include "camera_asset_pipeline.h"
+#include "local_enhancement_pipeline.h"
 
 namespace OHOS::Media {
 struct TempModifiedDataForYuv {
@@ -39,9 +40,9 @@ struct TempModifiedDataForYuv {
     }
 };
 
-class YuvPipeline : public CameraAssetPipeline {
+class YuvPipeline : public CameraAssetPipeline, public LocalEnhancementPipeline {
 public:
-    EXPORT YuvPipeline();
+    EXPORT explicit YuvPipeline(CameraBasePipelineType basePipelineType);
     virtual ~YuvPipeline() = default;
 
 private:
@@ -49,7 +50,7 @@ private:
     // 一阶段上报
     virtual bool CloseCameraFileFdWithMutex(const std::string& realPath, const std::string& tempPath,
         const CameraPathType& pathType) override;
-    virtual void OnDelivery(std::shared_ptr<Media::Picture> picture) override;
+    virtual void OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata) override;
 
     // 一阶段落盘
     virtual bool UpdateExtValuesForStageInternal(const SaveCameraPhotoDto &dto, NativeRdb::ValuesBucket &values,
@@ -67,10 +68,24 @@ private:
     virtual bool InitForOnProcessInternal(const OnProcessImageWrapper &wrapper) override;
     virtual bool CheckCanSaveDirectlyInternal(const std::shared_ptr<FileAsset> &fileAsset) override;
     virtual int32_t ProcessMultistagesPhotoInternal(const std::shared_ptr<FileAsset> &fileAsset) override;
-    virtual void ScanFileForOnProcessInternal() override;
+    virtual void AsyncScanFileForCamera(ScanQuality scanQuality) override;
 
     int32_t SaveOnePictureForOnProcess(const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture);
     int32_t SaveTwoPictureForOnProcess(const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture);
+
+// 端侧AI增强落盘
+    virtual bool InitForOnProcessEnhancementInternal(const OnProcessImageWrapper &wrapper) override;
+    virtual int32_t ProcessEnhancementPhotoInternal(
+        const std::shared_ptr<FileAsset> &fileAsset, bool isManual) override;
+
+    int32_t ProcessEnhancementForSaveOneImage(
+        const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture, bool isManual);
+    int32_t ProcessEnhancementForSaveTwoImage(
+        const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture, bool isManual);
+    int32_t ProcessEnhancementForEdit(const std::string &path,
+        const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture);
+
+private:
 
     std::mutex fileMutex_;
 
@@ -84,6 +99,9 @@ private:
     OnProcessParamForYuv yuv_;
     std::shared_ptr<Media::Picture> resultPictureForOnProcess_;
     bool isSaveDirectly_{true};
+
+    // 三阶段数据
+    OnProcessParamForYuv yuvEnhance_;
 };
 } // namespace OHOS::Media
 #endif // OHOS_MEDIA_YUV_PIPELINE_H

@@ -17,8 +17,10 @@
 
 #include "multistages_capture_dao.h"
 
+#include "asset_accurate_refresh.h"
 #include "database_adapter.h"
 #include "file_asset.h"
+#include "media_file_utils.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_command.h"
 #include "media_column.h"
@@ -29,6 +31,8 @@
 #include "multistages_capture_request_task_manager.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_asset_operations.h"
+#include "medialibrary_unistore_manager.h"
+#include "photo_proxy.h"
 #include "refresh_business_name.h"
 #include "rdb_predicates.h"
 #include "userfile_manager_types.h"
@@ -217,12 +221,13 @@ static void UpdateValuesForMetadata(ValuesBucket &updateValues, const MediaDpsMe
 }
 
 // 二阶段落盘: 图片更新数据(可能会被一阶段调用)
-int32_t MultiStagesCaptureDao::UpdateHighQualityInfo(const int32_t &fileId, const MediaDpsMetadata &metadata,
-    bool isOnProcess)
+int32_t MultiStagesCaptureDao::UpdateHighQualityInfo(const CameraAssetInfo &assetInfo, const MediaDpsMetadata &metadata,
+    bool isEdited, bool isOnProcess)
 {
     MediaLibraryTracer tracer;
     tracer.Start("UpdateHighQualityInfo");
     MEDIA_INFO_LOG("UpdateHighQualityInfo begin");
+    int32_t fileId = assetInfo.GetFileId();
 
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
@@ -237,6 +242,11 @@ int32_t MultiStagesCaptureDao::UpdateHighQualityInfo(const int32_t &fileId, cons
     // 2.基于metadata更新values
     UpdateValuesForMetadata(updateValues, metadata);
 
+    // 3.更新三阶段的能力
+    updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, assetInfo.GetLocalEnhancementAbility());
+    if (isEdited) {
+        updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, static_cast<int32_t>(LocalEnhancementStatus::EDIT));
+    }
     int32_t ret = MediaLibraryRdbStore::UpdateWithDateTime(updateValues, predicates);
     CHECK_AND_PRINT_LOG(ret > 0, "Failed to UpdateHighQualityInfo, fileId: %{public}d", fileId);
 
@@ -282,13 +292,27 @@ std::vector<std::shared_ptr<FileAsset>> MultiStagesCaptureDao::QueryForSessionSy
         PhotoColumn::PHOTO_DEFERRED_PROC_TYPE,
         PhotoColumn::COMPRESSION_QUALITY,
         PhotoColumn::C2PA_CONFIG_INFO,
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
     };
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
     cmd.GetAbsRdbPredicates()->EqualTo(
         MediaColumn::MEDIA_TYPE, std::to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)));
-    cmd.GetAbsRdbPredicates()->GreaterThan(PhotoColumn::PHOTO_QUALITY, 0);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);
     cmd.GetAbsRdbPredicates()->IsNotNull(PhotoColumn::PHOTO_ID);
+
+    cmd.GetAbsRdbPredicates()->BeginWrap();
+    cmd.GetAbsRdbPredicates()->GreaterThan(PhotoColumn::PHOTO_QUALITY, 0);
+    cmd.GetAbsRdbPredicates()->Or();
+    cmd.GetAbsRdbPredicates()->BeginWrap();
+    cmd.GetAbsRdbPredicates()->GreaterThan(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT));
+    cmd.GetAbsRdbPredicates()->And();
+    cmd.GetAbsRdbPredicates()->NotEqualTo(PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
+        static_cast<int32_t>(LocalEnhancementStatus::SUCCESS));
+    cmd.GetAbsRdbPredicates()->EndWrap();
+    cmd.GetAbsRdbPredicates()->EndWrap();
 
     std::vector<std::shared_ptr<FileAsset>> fileAssetVec;
     int32_t errCode = MediaLibraryAssetOperations::GetFileAssetVectorFromDb(fileAssetVec, cmd, QUERY_COLUMNS);
@@ -341,6 +365,9 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByFileId(int32_
         PhotoColumn::PHOTO_SUBTYPE,
         PhotoColumn::COMPRESSION_QUALITY,
         PhotoColumn::C2PA_CONFIG_INFO,
+        MediaColumn::MEDIA_OWNER_PACKAGE,
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
     };
 
     // 1.获取数据
@@ -371,6 +398,9 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByPhotoId(const
         PhotoColumn::PHOTO_SUBTYPE,
         PhotoColumn::COMPRESSION_QUALITY,
         PhotoColumn::C2PA_CONFIG_INFO,
+        MediaColumn::MEDIA_OWNER_PACKAGE,
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
     };
 
     // 1.获取数据
@@ -383,5 +413,103 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByPhotoId(const
 
     MEDIA_DEBUG_LOG("RecoverPipelineByPhotoId end");
     return fileAsset;
+}
+
+std::shared_ptr<FileAsset> MultiStagesCaptureDao::QueryForLocalEnhancementStatus(int32_t fileId)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("MultiStagesCaptureDao::QueryForLocalEnhancementStatus");
+    MEDIA_INFO_LOG("QueryForLocalEnhancementStatus begin, fileId: %{public}d.", fileId);
+
+    const std::vector<std::string> QUERY_COLUMNS = {
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
+        PhotoColumn::PHOTO_ID,
+    };
+
+    // 1.获取数据
+    auto fileAsset = MediaLibraryAssetOperations::GetFileAssetFromDb(MediaColumn::MEDIA_ID,
+        std::to_string(fileId), OperationObject::FILESYSTEM_PHOTO, QUERY_COLUMNS);
+    if (fileAsset == nullptr) {
+        MEDIA_ERR_LOG("Failed to QueryForLocalEnhancementStatus");
+        return nullptr;
+    }
+
+    MEDIA_DEBUG_LOG("QueryForLocalEnhancementStatus end");
+    return fileAsset;
+}
+
+// 三阶段落盘: 图片更新数据
+int32_t MultiStagesCaptureDao::UpdateLocalEnhancementInfo(int32_t fileId, int32_t status, bool isManual, bool isEdited)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("UpdateLocalEnhancementInfo");
+    MEDIA_INFO_LOG("UpdateLocalEnhancementInfo begin");
+
+    AccurateRefresh::AssetAccurateRefresh assetRefresh;
+
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
+
+    // 1.更新本地增强数据
+    ValuesBucket updateValues;
+    updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, status);
+    if (status == static_cast<int32_t>(LocalEnhancementStatus::SUCCESS) && isManual && !isEdited) {
+        updateValues.Put(PhotoColumn::PHOTO_STRONG_ASSOCIATION,
+            std::to_string(static_cast<int32_t>(StrongAssociationType::CLOUD_ENHANCEMENT)));
+        updateValues.Put(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
+            static_cast<int32_t>(CompositeDisplayStatus::ENHANCED));
+    }
+
+    int32_t ret = assetRefresh.UpdateWithDateTime(updateValues, predicates);
+    CHECK_AND_PRINT_LOG(ret > 0, "Failed to UpdateLocalEnhancementInfo, fileId: %{public}d", fileId);
+
+    assetRefresh.RefreshAlbum();
+    assetRefresh.Notify();
+    MEDIA_INFO_LOG("UpdateLocalEnhancementInfo end");
+    return ret;
+}
+
+// 三阶段异常场景：ability 始终更新；status 仅当当前值既不是 SUCCESS(3) 也不是 EDIT(4) 时才更新。
+int32_t MultiStagesCaptureDao::UpdateLocalEnhancementAbility(int32_t fileId, int32_t ability, int32_t status)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("UpdateLocalEnhancementAbility");
+    MEDIA_INFO_LOG("UpdateLocalEnhancementAbility begin, fileId: %{public}d, ability: %{public}d, status: %{public}d",
+        fileId, ability, status);
+
+    // 同时复刻 UpdateWithDateTime 的行为：更新 meta_date_modified 与 last_visit_time。
+    // 仅对 LOCAL_ENHANCEMENT_ABILITY != 0 的记录生效。
+    std::string sql = "UPDATE " + PhotoColumn::PHOTOS_TABLE
+        + " SET " + PhotoColumn::LOCAL_ENHANCEMENT_ABILITY + " = ?, "
+        + PhotoColumn::LOCAL_ENHANCEMENT_STATUS + " = CASE WHEN "
+        + PhotoColumn::LOCAL_ENHANCEMENT_STATUS + " != ? AND "
+        + PhotoColumn::LOCAL_ENHANCEMENT_STATUS + " != ? THEN ? ELSE "
+        + PhotoColumn::LOCAL_ENHANCEMENT_STATUS + " END, "
+        + PhotoColumn::PHOTO_META_DATE_MODIFIED + " = ?, "
+        + PhotoColumn::PHOTO_LAST_VISIT_TIME + " = ? WHERE "
+        + PhotoColumn::MEDIA_ID + " = ? AND "
+        + PhotoColumn::LOCAL_ENHANCEMENT_ABILITY + " != ?";
+
+    int64_t now = MediaFileUtils::UTCTimeMilliSeconds();
+    std::vector<ValueObject> bindArgs = {
+        ValueObject(ability),
+        ValueObject(static_cast<int32_t>(LocalEnhancementStatus::SUCCESS)),
+        ValueObject(static_cast<int32_t>(LocalEnhancementStatus::EDIT)),
+        ValueObject(status),
+        ValueObject(now),
+        ValueObject(now),
+        ValueObject(fileId),
+        ValueObject(static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)),
+    };
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
+    int32_t ret = rdbStore->ExecuteSql(sql, bindArgs);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
+        "Failed to UpdateLocalEnhancementAbility, ret: %{public}d, fileId: %{public}d", ret, fileId);
+
+    MEDIA_INFO_LOG("UpdateLocalEnhancementAbility end");
+    return ret;
 }
 }  // namespace OHOS::Media

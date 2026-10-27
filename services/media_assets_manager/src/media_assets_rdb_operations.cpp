@@ -575,6 +575,8 @@ const static vector<string> EDITED_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_EDIT_DATA_EXIST,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::UNIQUE_ID,
+    PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+    PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
 };
 
 // 图库编辑还原

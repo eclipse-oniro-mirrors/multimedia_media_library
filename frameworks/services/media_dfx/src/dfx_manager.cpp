@@ -1518,6 +1518,15 @@ void DfxManager::HandleAccurateRefreshTimeOut(const AccurateRefreshDfxDataPoint&
     dfxReporter_->ReportAccurateRefreshResult(reportData);
 }
 
+void DfxManager::HandleMultishotInfoMultishotNum(uint32_t captureEnhancementFlag)
+{
+    if (!isInitSuccess_) {
+        MEDIA_WARN_LOG("DfxManager not init");
+        return;
+    }
+    dfxCollector_->CollectMultishotInfoMultishotNum(captureEnhancementFlag);
+}
+
 void DfxManager::HandleTranscodeAccessTime(const TranscodeAccessType type, TranscodeType transcodeType)
 {
     MEDIA_INFO_LOG("HandleTranscodeAccessTime type: %{public}d", type);

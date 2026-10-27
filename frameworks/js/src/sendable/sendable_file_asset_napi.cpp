@@ -936,6 +936,8 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
         PhotoColumn::PHOTO_RISK_STATUS,

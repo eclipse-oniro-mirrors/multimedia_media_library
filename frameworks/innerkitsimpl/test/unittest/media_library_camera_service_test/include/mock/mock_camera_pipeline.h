@@ -45,7 +45,7 @@ public:
         return true;
     }
 
-    virtual void OnDelivery(std::shared_ptr<Media::Picture> picture) override
+    virtual void OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata) override
     {
     }
 
@@ -80,7 +80,7 @@ public:
         return 0;
     }
 
-    void ScanFileForOnProcessInternal() override
+    void AsyncScanFileForCamera(ScanQuality scanQuality) override
     {
     }
 

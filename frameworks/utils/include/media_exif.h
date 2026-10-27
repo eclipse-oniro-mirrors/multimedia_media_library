@@ -77,6 +77,7 @@ const std::string PHOTO_DATA_IMAGE_OFFSET_TIME_ORIGINAL = "OffsetTimeOriginal";
 const std::string PHOTO_DATA_IMAGE_SUBSEC_TIME_ORIGINAL = "SubsecTimeOriginal";
 const std::string PHOTO_DATA_IMAGE_OFFSET_TIME = "OffsetTime";
 const std::string PHOTO_DATA_IMAGE_SUBSEC_TIME = "SubsecTime";
+const std::string PHOTO_DATA_CLOUD_ENHANCE_MODE = "HwMnoteCloudEnhancementMode";
 
 const std::vector<std::string> exifInfoKeys = {
     PHOTO_DATA_IMAGE_BITS_PER_SAMPLE,
@@ -117,6 +118,7 @@ const std::vector<std::string> exifInfoKeys = {
     PHOTO_DATA_IMAGE_GPS_DATE_STAMP,
     PHOTO_DATA_IMAGE_COMPRESSED_BITS_PER_PIXEL,
     PHOTO_DATA_IMAGE_EXPOSURE_BIAS_VALUE,
+    PHOTO_DATA_CLOUD_ENHANCE_MODE,
 };
 } // namespace Media
 } // namespace OHOS

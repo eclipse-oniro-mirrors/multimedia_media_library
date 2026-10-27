@@ -1837,6 +1837,8 @@ export class ContextRecoveryInfo {
     FILE_HIDDEN = 'file_hidden',
     ATTACHMENT_SIZE = 'attachment_size',
     MUSIC_MASTER_MODE = 'music_master_mode',
+    LOCAL_ENHANCEMENT_ABILITY = 'local_enhancement_ability',
+    LOCAL_ENHANCEMENT_STATUS = 'local_enhancement_status',
   }
 
   export enum AlbumKeys {
@@ -6510,6 +6512,10 @@ export class ContextRecoveryInfo {
     readonly statusCode?: int;
   }
 
+  export interface LocalEnhancementTaskState {
+    readonly progress: int;
+  }
+
   class CloudEnhancementTaskStateHandle implements CloudEnhancementTaskState {
     readonly taskStage: CloudEnhancementTaskStage = CloudEnhancementTaskStage.TASK_STAGE_EXCEPTION;
     readonly transferredFileSize: int | undefined = undefined;
@@ -6534,6 +6540,20 @@ export class ContextRecoveryInfo {
     private native getTotalFileSize(): int;
     private native getExpectedDuration(): int;
     private native getStatusCode(): int;
+  }
+
+  class LocalEnhancementTaskStateHandle implements LocalEnhancementTaskState {
+    readonly progress: int = 0;
+    private nativeHandle: long = 0;
+
+    private constructor(nativePointer: long) {
+      if (this.nativeHandle == 0) {
+        this.nativeHandle = nativePointer;
+        this.progress = this.getProgress();
+      }
+    }
+
+    private native getProgress(): int;
   }
 
   export class CloudEnhancement {
@@ -6680,6 +6700,33 @@ export class ContextRecoveryInfo {
       });
     }
 
+    queryLocalEnhancementTaskState(photoAsset: PhotoAsset): Promise<LocalEnhancementTaskState> {
+      return new Promise<LocalEnhancementTaskState>((
+        resolve: (v: LocalEnhancementTaskState) => void, reject: RejectString) => {
+        let cb = (): LocalEnhancementTaskState | MediaLibraryAniError => {
+          let result: LocalEnhancementTaskState | MediaLibraryAniError;
+          try {
+            result = this.queryLocalEnhancementTaskStateSync(photoAsset);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if(ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as LocalEnhancementTaskState);
+            }
+          }
+        });
+      });
+    }
+
     syncCloudEnhancementTaskStatus(): Promise<void> {
       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
         let cb = (): MediaLibraryAniError | undefined => {
@@ -6733,6 +6780,7 @@ export class ContextRecoveryInfo {
     private native cancelCloudEnhancementTasksSync(photoAssets: Array<PhotoAsset>): void;
     private native cancelAllCloudEnhancementTasksSync(): void;
     private native queryCloudEnhancementTaskStateSync(photoAsset: PhotoAsset): CloudEnhancementTaskState;
+    private native queryLocalEnhancementTaskStateSync(photoAsset: PhotoAsset): LocalEnhancementTaskState;
     private native syncCloudEnhancementTaskStatusSync(): void;
     private native getCloudEnhancementPairSync(asset: PhotoAsset): PhotoAsset;
   }

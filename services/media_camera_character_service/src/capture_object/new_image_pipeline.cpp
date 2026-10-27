@@ -19,8 +19,11 @@
 
 #include "camera_mapper.h"
 #include "camera_path_utils.h"
+#include "exif_utils.h"
 #include "file_utils.h"
 #include "high_quality_scan_file_callback.h"
+#include "image_source.h"
+#include "media_exif.h"
 #include "media_log.h"
 #include "media_string_utils.h"
 #include "media_values_bucket_utils.h"
@@ -28,6 +31,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
+#include "scan_config_builder.h"
 #include "multistages_capture_dfx_save_camera_photo.h"
 #include "multistages_photo_capture_manager.h"
 #include "picture_manager_thread.h"
@@ -42,8 +46,12 @@ namespace Media {
 constexpr size_t SAVE_ONE_IMAGE = 1;    // 仅包含原图（包含动态照片）
 constexpr size_t SAVE_TWO_IMAGE = 2;    // 原图+效果图（包含动态照片）
 
-NewImagePipeline::NewImagePipeline()
+static const std::string MANUAL_LOCAL_ENHANCEMENT_EXIF_VALUE = "1";
+static const std::string AUTO_LOCAL_ENHANCEMENT_EXIF_VALUE = "2";
+
+NewImagePipeline::NewImagePipeline(CameraBasePipelineType basePipelineType)
 {
+    SetBasePipelineType(basePipelineType);
     SetPipelineType(CameraPipelineType::NEW_IMAGE);
 }
 
@@ -93,7 +101,7 @@ bool NewImagePipeline::CloseCameraFileFdWithMutex(const std::string& realPath, c
     return CameraPathUtils::SaveTemporaryImage(realPath, tempPath);
 }
 
-void NewImagePipeline::OnDelivery(std::shared_ptr<Media::Picture> picture)
+void NewImagePipeline::OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata)
 {
     // NewImagePipeline 把 picture 存入缓存, 用于生成缩略图
     if (picture == nullptr || picture->GetMainPixel() == nullptr) {
@@ -208,6 +216,7 @@ bool NewImagePipeline::InitForOnProcessInternal(const OnProcessImageWrapper &wra
         MEDIA_INFO_LOG("lcdPicture is null, generate thumbnails may take a long time.");
     }
 
+    SetLocalEnhancementAbilityByMetadata(metadata);
     MEDIA_INFO_LOG("InitForOnProcessInternal end, newImage: %{public}s.", newImage_.ToString().c_str());
     return true;
 }
@@ -328,17 +337,186 @@ int32_t NewImagePipeline::ProcessSaveTwoImage(const CameraAssetInfo& assetInfo,
     return ret;
 }
 
-void NewImagePipeline::ScanFileForOnProcessInternal()
+void NewImagePipeline::AsyncScanFileForCamera(ScanQuality scanQuality)
 {
     auto assetInfo = GetAssetInfo();
-    int32_t fileId = assetInfo.GetFileId();
+    MEDIA_INFO_LOG("AsyncScanFileForCamera with lcdPicture.");
 
-    MEDIA_INFO_LOG("ScanFileForOnProcessInternal with lcdPicture.");
-    MediaLibraryObjectUtils::ScanFileAsync(assetInfo.GetPath(), to_string(fileId), MediaLibraryApi::API_10,
-        assetInfo.IsMovingPhoto(), newImage_.lcdImage, HighQualityScanFileCallback::Create(fileId));
+    DefaultScanInfo scanInfo;
+    scanInfo.SetFilePath(assetInfo.GetPath());
+    scanInfo.SetFileId(assetInfo.GetFileId());
+    scanInfo.SetIsMovingPhoto(assetInfo.IsMovingPhoto());
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(ScanQuality::FULL)
+        .SetDefaultScanInfo(scanInfo)
+        .UseThumbnailCallbackPreset(
+        false, true, newImage_.lcdImage, HighQualityScanFileCallback::Create(assetInfo.GetFileId()))
+        .Build();
+    MediaLibraryObjectUtils::ScanFileAsync(config);
 
     // 清理缓存数据
     newImage_.Clear();
+}
+// LCOV_EXCL_STOP
+
+bool NewImagePipeline::InitForOnProcessEnhancementInternal(const OnProcessImageWrapper &wrapper)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("NewImagePipeline::InitForOnProcessEnhancementInternal");
+    MEDIA_INFO_LOG("InitForOnProcessEnhancementInternal enter");
+
+    CHECK_AND_RETURN_RET_LOG(wrapper.newImage.IsValid(), false, "wrapper is inValid");
+    newImageEnhance_ = std::move(wrapper.newImage);
+
+    auto metadata = wrapper.metadata;
+    SetMediaDpsMetadata(std::move(metadata));
+
+    // 缩略图picture，如果为null，则按需生成缩略图
+    std::shared_ptr<Media::Picture> lcdPicture = newImageEnhance_.lcdImage;
+    if (lcdPicture == nullptr || lcdPicture->GetMainPixel() == nullptr) {
+        MEDIA_INFO_LOG("lcdPicture is null, generate thumbnails may take a long time.");
+    }
+
+    MEDIA_INFO_LOG("InitForOnProcessEnhancementInternal end, newImageEnhance: %{public}s.",
+        newImageEnhance_.ToString().c_str());
+    return true;
+}
+
+int32_t NewImagePipeline::ProcessEnhancementPhotoInternal(const std::shared_ptr<FileAsset> &fileAsset, bool isManual)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_ERR, "fileAsset is nullptr.");
+
+    const char* tag = isManual ? "Manual" : "Auto";
+    MediaLibraryTracer tracer;
+    tracer.Start("NewImagePipeline::ProcessEnhancementPhotoInternal");
+    MEDIA_INFO_LOG("ProcessEnhancementPhotoInternal enter, %{public}s", tag);
+
+    auto assetInfo = GetAssetInfo();
+
+    // 已编辑：不论手动还是自动，都只替换原图，没有复合图规格
+    if (fileAsset->GetPhotoEditTime() > 0) {
+        return ProcessEnhancementForEdit(assetInfo.GetPath(), newImageEnhance_.files);
+    }
+
+    size_t fileCount = newImageEnhance_.files.size();
+    if (fileCount == SAVE_ONE_IMAGE) {
+        return ProcessEnhancementForSaveOneImage(assetInfo, fileAsset, newImageEnhance_.files, isManual);
+    } else if (fileCount == SAVE_TWO_IMAGE) {
+        return ProcessEnhancementForSaveTwoImage(assetInfo, fileAsset, newImageEnhance_.files, isManual);
+    }
+
+    MEDIA_ERR_LOG("param is invalid, fileCount: %{public}zu.", fileCount);
+    return E_ERR;
+}
+
+void NewImagePipeline::ModifyExifByPath(const std::string& filePath, bool isManual)
+{
+    LocalEnhancementType type = isManual ? LocalEnhancementType::MANUAL : LocalEnhancementType::AUTO;
+
+    std::map<std::string, std::string> exifMap;
+    bool ret = GetEnhancementExifValue(type, exifMap);
+    if (!ret) {
+        return;
+    }
+    ExifUtils::ModifyExifByPath(filePath, exifMap);
+}
+
+int32_t NewImagePipeline::ProcessEnhancementForSaveOneImage(const CameraAssetInfo& assetInfo,
+    const std::shared_ptr<FileAsset> &fileAsset, const std::map<std::string, ImageFileMapper> &files,
+    bool isManual)
+{
+    CHECK_AND_RETURN_RET_LOG(files.find(IMAGE_FILE_EDITED_TYPE) != files.end(), E_ERR, "edited file is not exist.");
+
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessEnhancementForSaveOneImage");
+    MEDIA_INFO_LOG("ProcessEnhancementForSaveOneImage enter, isManual: %{public}d", isManual);
+
+    ImageFileMapper editedImage = files.at(IMAGE_FILE_EDITED_TYPE);
+    std::string path = assetInfo.GetPath();
+
+    if (isManual) {
+        std::string editDataSourceBackPath;
+        CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_BACK_PATH, path, editDataSourceBackPath);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(path, editDataSourceBackPath), E_ERR,
+            "Fail to move %{private}s to %{private}s", path.c_str(), editDataSourceBackPath.c_str());
+    }
+
+    int32_t ret = FileUtils::SaveImage(path, editedImage.addr, editedImage.bytes);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to ProcessEnhancementForSaveOneImage, ret: %{public}d", ret);
+
+    // 修改 exif 信息
+    ModifyExifByPath(path, isManual);
+    return ret;
+}
+
+int32_t NewImagePipeline::ProcessEnhancementForSaveTwoImage(const CameraAssetInfo& assetInfo,
+    const std::shared_ptr<FileAsset> &fileAsset, const std::map<std::string, ImageFileMapper> &files,
+    bool isManual)
+{
+    CHECK_AND_RETURN_RET_LOG(files.find(IMAGE_FILE_SOURCE_TYPE) != files.end(), E_ERR, "source file is not exist.");
+
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessEnhancementForSaveTwoImage");
+    MEDIA_INFO_LOG("ProcessEnhancementForSaveTwoImage enter, isManual: %{public}d", isManual);
+
+    ImageFileMapper sourceImage = files.at(IMAGE_FILE_SOURCE_TYPE);
+    std::string path = assetInfo.GetPath();
+
+    // 写原图到 .editData/，手动增强时备份
+    std::string editDataSourcePath;
+    CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, path, editDataSourcePath);
+    if (isManual) {
+        std::string editDataSourceBackPath;
+        CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_BACK_PATH, path, editDataSourceBackPath);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(editDataSourcePath, editDataSourceBackPath), E_ERR,
+            "Fail to move %{private}s to %{private}s", editDataSourcePath.c_str(), editDataSourceBackPath.c_str());
+    }
+    int32_t ret = FileUtils::SaveImage(editDataSourcePath, sourceImage.addr, sourceImage.bytes);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to process Edited image, ret: %{public}d", ret);
+    ModifyExifByPath(editDataSourcePath, isManual);
+
+    // 效果图落盘
+    if (files.find(IMAGE_FILE_EDITED_TYPE) == files.end()) {
+        MEDIA_ERR_LOG("edited file not exist.");
+        return E_ERR;
+    }
+    auto editedImage = files.at(IMAGE_FILE_EDITED_TYPE);
+    ret = FileUtils::SaveImage(path, editedImage.addr, editedImage.bytes);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to ProcessSaveTwoImage, ret: %{public}d", ret);
+    ModifyExifByPath(path, isManual);
+    return ret;
+}
+
+int32_t NewImagePipeline::ProcessEnhancementForEdit(const std::string &path,
+    const std::map<std::string, ImageFileMapper> &files)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessEnhancementForEdit");
+    MEDIA_INFO_LOG("ProcessEnhancementForEdit enter.");
+
+    bool isSaveOneImage = files.size() == SAVE_ONE_IMAGE;
+    ImageFileMapper image;
+    if (isSaveOneImage) {
+        auto it = files.find(IMAGE_FILE_EDITED_TYPE);
+        if (it == files.end()) {
+            MEDIA_ERR_LOG("edited file is not exist.");
+            return E_ERR;
+        }
+        image = it->second;
+    } else {
+        auto it = files.find(IMAGE_FILE_SOURCE_TYPE);
+        if (it == files.end()) {
+            MEDIA_ERR_LOG("source file is not exist.");
+            return E_ERR;
+        }
+        image = it->second;
+    }
+
+    std::string editDataSourcePath;
+    CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, path, editDataSourcePath);
+    int32_t ret = FileUtils::SaveImage(editDataSourcePath, image.addr, image.bytes);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to process Edited image, ret: %{public}d", ret);
+    return ret;
 }
 } // Media
 } // OHOS

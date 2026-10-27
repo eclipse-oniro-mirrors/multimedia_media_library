@@ -43,6 +43,13 @@ enum ProgressReturnInfoType : int32_t {
     CAMERA_PROGRESS = 10,
 };
 
+enum class EnhancementErrorType {
+    SUCCESS = 0,
+    ON_PROCESS_IMAGE_ERROR,
+    ON_PROCESS_VIDEO_ERROR,
+    ON_ENHANCEMENT_IMAGE_ERROR
+};
+
 struct AssetHandler {
     std::string photoId;
     std::string requestId;
@@ -51,10 +58,11 @@ struct AssetHandler {
     napi_threadsafe_function threadSafeFunc;
     MultiStagesCapturePhotoStatus photoQuality = MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
     bool needsExtraInfo = false;
-    bool isError = false;
+    EnhancementErrorType isError = EnhancementErrorType::SUCCESS;
     bool isCinematicVideoError = false;
     ObserverType observerType{ObserverType::UNDEFINED};
     bool isPicture = false;
+    int32_t multistagesErrCode = 0;
 
     AssetHandler(const std::string &photoId, const std::string &requestId, const std::string &uri,
         const MediaAssetDataHandlerPtr &handler, napi_threadsafe_function func)
@@ -104,8 +112,8 @@ struct MediaAssetManagerAsyncContext : NapiError {
     DeliveryMode deliveryMode;
     SourceMode sourceMode {SourceMode::EDITED_MODE};
     ReturnDataType returnDataType;
-    bool hasReadPermission;
-    bool needsExtraInfo;
+    bool hasReadPermission = false;
+    bool needsExtraInfo = false;
     bool isCompositeAuxiliary = false;
     int compositeFd = -1;
     bool useIntCodeError = false;
@@ -164,6 +172,8 @@ private:
         unique_ptr<MediaAssetManagerAsyncContext> &asyncContext);
     static napi_status ParseEfficentRequestMediaArgs(napi_env env, napi_callback_info info,
         unique_ptr<MediaAssetManagerAsyncContext> &asyncContext);
+    static napi_status ParseEnhancementRequestMediaArgs(napi_env env, napi_callback_info info,
+        unique_ptr<MediaAssetManagerAsyncContext> &asyncContext);
 
     static napi_value JSRequestImage(napi_env env, napi_callback_info info);
     static napi_value JSRequestEfficientIImage(napi_env env, napi_callback_info info);
@@ -174,12 +184,15 @@ private:
     static napi_value JSRequestVideoFile(napi_env env, napi_callback_info info);
     static napi_value JSRequestVideo(napi_env env, napi_callback_info info);
     static napi_value JSLoadMovingPhoto(napi_env env, napi_callback_info info);
+    static napi_value JSRequestEnhancementImage(napi_env env, napi_callback_info info);
     static void AddImage(const int fileId, DeliveryMode deliveryMode);
 
     static void OnHandleRequestImage(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
     static void OnHandleRequestCompositeAuxiliaryImage(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
+    static void OnHandleRequestEnhancementImage(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
     static void RegisterTaskNewObserver(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
     static void ProcessImage(const int fileId, const int deliveryMode);
+    static void ProcessImageEnhancement(MediaAssetManagerAsyncContext *asyncContext);
 
     static void OnHandleRequestVideo(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
     static void RequestVidoForFastMode(napi_env env, MediaAssetManagerAsyncContext *asyncContext);
@@ -207,6 +220,8 @@ private:
     static void JSRequestVideoFileExecute(napi_env env, void *data);
     static void JSRequestComplete(napi_env env, napi_status, void *data);
     static void JSRequestCompositeAuxiliaryComplete(napi_env env, napi_status, void *data);
+    static void JSRequestEnhancementExecute(napi_env env, void *data);
+    static void JSRequestEnhancementComplete(napi_env env, napi_status, void *data);
     static void JSCancelRequestExecute(napi_env env, void *data);
     static void JSCancelRequestComplete(napi_env env, napi_status, void *data);
 
