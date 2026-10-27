@@ -108,9 +108,14 @@ std::vector<int64_t> LcdDownloadTask::QueryNeedDownloadFiles()
 
 bool LcdDownloadTask::IsNetworkConditionMet()
 {
-    return MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnected() ||
-           (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime() &&
-            CloudSyncUtils::IsUnlimitedTrafficStatusOn());
+    auto mgr = MedialibraryRelatedSystemStateManager::GetInstance();
+    bool isFreeWifi = mgr->IsNetAvailableInOnlyWifiExcludingHotspot();
+    if (isFreeWifi) {
+        return true;
+    }
+    bool isMeteredNetConnected = mgr->IsCellularNetConnectedAtRealTime() ||
+        mgr->IsMeteredHotspotConnectedAtRealTime();
+    return isMeteredNetConnected && CloudSyncUtils::IsUnlimitedTrafficStatusOn();
 }
 
 int32_t LcdDownloadTask::HandleLcdDownload()

@@ -184,6 +184,32 @@ bool MedialibraryRelatedSystemStateManager::IsNetAvailableInOnlyWifiCondition()
     return IsNetValidatedAtRealTime() &&
         (IsWifiConnected() && (!IsCellularNetConnected() || IsWifiNetConnectedAtRealTime()));
 }
+
+// 连接热点，不计入「仅免费 WiFi」放行
+bool MedialibraryRelatedSystemStateManager::IsNetAvailableInOnlyWifiExcludingHotspot()
+{
+    return IsNetValidatedAtRealTime() &&
+        (IsWifiConnected() && !IsMeteredHotspotConnectedAtRealTime() &&
+         (!IsCellularNetConnected() || IsWifiNetConnectedAtRealTime()));
+}
+
+bool MedialibraryRelatedSystemStateManager::IsMeteredHotspotConnectedAtRealTime()
+{
+    bool isMeteredHotspot = false;
+#ifdef HAS_WIFI_MANAGER_PART
+    auto wifiDevicePtr = Wifi::WifiDevice::GetInstance(WIFI_DEVICE_ABILITY_ID);
+    if (wifiDevicePtr == nullptr) {
+        MEDIA_ERR_LOG("wifiDevicePtr is null");
+    } else {
+        ErrCode ret = wifiDevicePtr->IsMeteredHotspot(isMeteredHotspot);
+        if (ret != Wifi::WIFI_OPT_SUCCESS) {
+            MEDIA_ERR_LOG("Get-IsMeteredHotspot-fail: -%{public}d", ret);
+        }
+    }
+#endif
+    MEDIA_DEBUG_LOG("isMeteredHotspot: %{public}d", isMeteredHotspot);
+    return isMeteredHotspot;
+}
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

@@ -301,7 +301,7 @@ void BackgroundCloudFileProcessor::HandleRepairMimeType(const int32_t &lastRecor
                 continue;
             }
             if (position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
-                !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+                !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiExcludingHotspot()) {
                 MEDIA_INFO_LOG("Break repair cause wifi is invalid");
                 terminate = true;
                 break;

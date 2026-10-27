@@ -142,7 +142,7 @@ void RepairFutureDateTask::RepairPhotoDate(int32_t &currentRecord, bool &termina
         }
 
         if (position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
-            !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+            !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiExcludingHotspot()) {
             MEDIA_INFO_LOG("Break repair future date cause wifi is invalid");
             terminate = true;
             return;
