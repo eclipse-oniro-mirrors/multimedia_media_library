@@ -126,7 +126,7 @@ std::vector<std::string> GetColumns()
     const std::vector<std::string> columns = { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH,
         MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_TYPE, PhotoColumn::PHOTO_EDIT_TIME,
         PhotoColumn::STAGE_VIDEO_TASK_STATUS, PhotoColumn::PHOTO_POSITION, PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
-        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_IS_TEMP};
+        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, PhotoColumn::PHOTO_IS_TEMP};
     return columns;
 }
 
