@@ -3295,7 +3295,8 @@ static int32_t DeleteLocalAndCloudPhotos(vector<shared_ptr<FileAsset>> &subFileA
         CHECK_AND_CONTINUE(fileAssetPtr != nullptr);
         notifyMap[fileAssetPtr->GetCloudId()] = fileAssetPtr->GetId();
         string burst_key = fileAssetPtr->GetBurstKey();
-        if (burst_key != "") {
+        int32_t subType = fileAssetPtr->GetPhotoSubType();
+        if (burst_key != "" && subType == static_cast<int32_t>(PhotoSubType::BURST)) {
             GetBurstFileInfo(burst_key, fileInfos);
             continue;
         }
@@ -3582,7 +3583,11 @@ static int32_t DeleteBurstPhotoPermanently(shared_ptr<FileAsset> &fileAsset,
         "Photo Asset is nullptr");
     string burstKey = fileAsset->GetBurstKey();
     MEDIA_DEBUG_LOG("Deleteburst is %{public}s", burstKey.c_str());
-    CHECK_AND_RETURN_RET(burstKey != "", E_OK);
+    int32_t subType = fileAsset->GetPhotoSubType();
+    if (burstKey == "" || subType != static_cast<int32_t>(PhotoSubType::BURST)) {
+        MEDIA_DEBUG_LOG("This is not burst photo, subType is %{public}d", subType);
+        return E_OK;
+    }
 
     vector<shared_ptr<FileAsset>> burstFileAssetVector;
     AbsRdbPredicates rbdPredicates(PhotoColumn::PHOTOS_TABLE);

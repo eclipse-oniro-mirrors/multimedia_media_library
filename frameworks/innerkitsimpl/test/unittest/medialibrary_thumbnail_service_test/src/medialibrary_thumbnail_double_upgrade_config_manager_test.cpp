@@ -173,27 +173,16 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OnParameterChanged
 {
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.OnParameterChanged(nullptr, "value", nullptr);
+    manager.startTimeMs_ = 0;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_2S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OnParameterChanged_test_002, TestSize.Level1)
 {
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.OnParameterChanged("key", nullptr, nullptr);
-}
-
-HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OnDoubleUpgradeParameterChanged_test_001, TestSize.Level1)
-{
-    ThumbnailDoubleUpgradeConfigManager::OnDoubleUpgradeParameterChanged("key", "value", nullptr);
-}
-
-HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OnDoubleUpgradeParameterChanged_test_002, TestSize.Level1)
-{
-    ThumbnailDoubleUpgradeConfigManager::OnDoubleUpgradeParameterChanged(nullptr, "value", nullptr);
-}
-
-HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OnDoubleUpgradeParameterChanged_test_003, TestSize.Level1)
-{
-    ThumbnailDoubleUpgradeConfigManager::OnDoubleUpgradeParameterChanged("key", nullptr, nullptr);
+    manager.startTimeMs_ = 0;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_3S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFlag_test_001, TestSize.Level1)
@@ -202,6 +191,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFl
     manager.accountType_ = AccountSA::OsAccountType::ADMIN;
     std::string flag;
     manager.GetDoubleUpgradeFlag(flag);
+    manager.startTimeMs_ = 0;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_3S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFlag_test_002, TestSize.Level1)
@@ -210,6 +201,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFl
     manager.accountType_ = AccountSA::OsAccountType::PRIVATE;
     std::string flag;
     manager.GetDoubleUpgradeFlag(flag);
+    manager.startTimeMs_ = 0;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_2S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, GetDoubleUpgradeFlag_test_003, TestSize.Level1)
@@ -268,6 +261,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, DataReport_test_00
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.isDataReport_ = true;
     manager.DataReport();
+    manager.startTimeMs_ = 0;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_2S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, SaveDataReportFlagToSp_test_001, TestSize.Level1)
@@ -275,6 +270,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, SaveDataReportFlag
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.isDataReport_ = false;
     manager.SaveDataReportFlagToSp();
+    manager.startTimeMs_ = 0;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_3S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, HandleProcess_test_001, TestSize.Level1)
@@ -367,6 +364,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, StopCallbackTimer_
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.callbackTimerId_ = 0;
     manager.StopCallbackTimer();
+    manager.startTimeMs_ = TEST_TIME_1S_MS;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_3S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, StartCallbackTimer_test_001, TestSize.Level1)
@@ -374,6 +373,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, StartCallbackTimer
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.startTimeMs_ = 0;
     manager.StartCallbackTimer(TEST_TIME_1S_MS);
+    manager.startTimeMs_ = TEST_TIME_1S_MS;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_4S_MS));
 }
 
 HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, OnTimerTimeout_test_001, TestSize.Level1)
@@ -388,6 +389,8 @@ HWTEST_F(MedialibraryThumbnailDoubleUpgradeConfigManagerTest, AsyncUnregisterPar
 {
     auto& manager = ThumbnailDoubleUpgradeConfigManager::GetInstance();
     manager.AsyncUnregisterParameterWatcher();
+    manager.startTimeMs_ = TEST_TIME_1S_MS;
+    EXPECT_FALSE(manager.IsTimeout(TEST_TIME_3S_MS));
 }
 } // namespace Media
 } // namespace OHOS

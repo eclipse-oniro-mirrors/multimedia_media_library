@@ -834,7 +834,8 @@ int32_t MediaAssetsDeleteService::CheckAndFindBurstAssets(
 {
     bool isValid = photoInfo.dateTrashed.value_or(0) == 0;
     const std::string originalBurstKey = photoInfo.burstKey.value_or("");
-    isValid = isValid && !originalBurstKey.empty();
+    const int32_t subType = photoInfo.subtype.value_or(static_cast<int32_t>(PhotoSubType::DEFAULT));
+    isValid = isValid && !originalBurstKey.empty() && subType == static_cast<int32_t>(PhotoSubType::BURST);
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
     // Find burst assets by burst_key.
     return this->FindBurstAssetsAndResetBurstKey(originalBurstKey, coverAssetOp, burstAssets);
