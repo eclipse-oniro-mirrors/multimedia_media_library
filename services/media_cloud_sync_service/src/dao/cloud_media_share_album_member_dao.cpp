@@ -49,8 +49,9 @@ int32_t CloudMediaShareAlbumMemberDao::HandleAlbumMembers(
         CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_RDB, "delete old failed, ret: %{public}d", ret);
         int64_t insertRows = 0;
         ret = rdbStore->BatchInsert(insertRows, ShareMemberColumn::TABLE_NAME, valuesList);
-        MEDIA_INFO_LOG("HandleAlbumMembers completed, "
+        MEDIA_INFO_LOG("HandleAlbumMembers completed, albumId: %{public}d, "
                         "ret: %{public}d, deletedRows: %{public}d, insertRows: %{public}s",
+            albumId,
             ret,
             deletedRows,
             std::to_string(insertRows).c_str());
