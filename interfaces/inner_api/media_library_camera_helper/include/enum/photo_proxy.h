@@ -73,6 +73,12 @@ struct C2PAConfigInfo {
     std::string authorName{""};
 };
 
+enum class LocalEnhancementAbilityType : int32_t {
+    NOT_SUPPORT = 0,            // 不支持
+    SUPPORT_MANUAL = 1,         // 仅支持手动
+    SUPPORT_MANUAL_AUTO = 2,    // 支持手动和自动
+};
+
 class PhotoProxy : public RefBase {
 public:
     PhotoProxy() {}
@@ -118,6 +124,11 @@ public:
         return 0;
     }
 
+    virtual LocalEnhancementAbilityType GetLocalEnhancementType()
+    {
+        return LocalEnhancementAbilityType::NOT_SUPPORT;
+    }
+
     std::string ToString()
     {
         std::stringstream ss;
@@ -125,7 +136,8 @@ public:
            << "\"photoId\": \"" << this->GetPhotoId() << "\","
            << "\"burstKey\": \"" << this->GetBurstKey() << "\","
            << "\"ceAvailable\": \"" << std::to_string(this->GetCloudImageEnhanceFlag()) << "\","
-           << "\"compressionQuality\": \"" << this->GetCompressionQuality() << "\","
+           << "\"compressionQuality\": \"" << std::to_string(this->GetCompressionQuality()) << "\","
+           << "\"localEnhancementAbility\": \"" << std::to_string(static_cast<int32_t>(this->GetCompressionQuality()))
            << "}";
         return ss.str();
     }

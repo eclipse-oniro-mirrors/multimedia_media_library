@@ -19,6 +19,7 @@
 
 #include "camera_path_utils.h"
 #include "high_quality_scan_file_callback.h"
+#include "local_enhancement_manager.h"
 #include "media_column.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
@@ -54,39 +55,29 @@ using namespace OHOS::Media::Notification;
 const std::string HIGH_TEMPERATURE = "high_temperature";
 constexpr int32_t PHONE_8G_CPU_NUMS = 8;
 
-bool CameraAssetPipeline::IsValid()
+constexpr uint32_t MANUAL_LOCAL_ENHANCEMENT = 1;
+constexpr uint32_t AUTO_MANUAL_LOCAL_ENHANCEMENT = 1 << 1;
+ 
+CameraAssetPipeline::~CameraAssetPipeline()
 {
-    return assetInfo_.GetFileId() > 0;
+    AddLocalEnhancementTask();
 }
 
-const CameraAssetInfo CameraAssetPipeline::GetAssetInfo() const
+void CameraAssetPipeline::SetLocalEnhancementAbilityByMetadata(const MediaDpsMetadata& metadata)
 {
-    return assetInfo_;
-}
-
-CameraPipelineType CameraAssetPipeline::GetPipelineType() const
-{
-    return pipelineType_;
-}
-
-void CameraAssetPipeline::SetPipelineType(const CameraPipelineType& pipelineType)
-{
-    pipelineType_ = pipelineType;
+    uint32_t flag = metadata.localEnhancementAbilityFlag;
+    if ((flag & MANUAL_LOCAL_ENHANCEMENT) && (flag & AUTO_MANUAL_LOCAL_ENHANCEMENT)) {
+        SetLocalEnhancementAbility(static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO));
+    } else if (flag & MANUAL_LOCAL_ENHANCEMENT) {
+        SetLocalEnhancementAbility(static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL));
+    } else {
+        SetLocalEnhancementAbility(static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT));
+    }
 }
 
 void CameraAssetPipeline::SetActiveType(const CameraInfoActiveType& activeType)
 {
     assetInfo_.SetActiveType(activeType);
-}
-
-MediaDpsMetadata CameraAssetPipeline::GetMediaDpsMetadata() const
-{
-    return metadata_;
-}
-
-void CameraAssetPipeline::SetMediaDpsMetadata(const MediaDpsMetadata& metadata)
-{
-    metadata_ = metadata;
 }
 
 void CameraAssetPipeline::SetTakeEffectStatus(const TakeEffectStatus& takeEffectStatus)
@@ -117,25 +108,6 @@ void CameraAssetPipeline::SaveCameraPhotoFinished()
 void CameraAssetPipeline::OnProcessFinished()
 {
     assetInfo_.SetSecondStageFinished(true);
-}
-
-// 数据初始化
-void CameraAssetPipeline::Init(const CameraAssetInfo& assetInfo)
-{
-    assetInfo_ = assetInfo;
-    InitCachePath();
-}
-
-void CameraAssetPipeline::InitCachePath()
-{
-    std::string path = assetInfo_.GetPath();
-    CHECK_AND_RETURN_LOG(!path.empty(), "Failed to get asset path");
-
-    std::string cacheDirPath = CameraPathUtils::GetCacheDir(path);
-    CHECK_AND_RETURN_LOG(!cacheDirPath.empty(), "Can not get cache dir path");
-    CHECK_AND_RETURN_LOG(MediaFileUtils::CreateDirectory(cacheDirPath),
-        "Can not create dir %{private}s", cacheDirPath.c_str());
-    MEDIA_INFO_LOG("InitCachePath success, fileId: %{public}d", assetInfo_.GetFileId());
 }
 
 // 保存水印
@@ -222,7 +194,7 @@ int32_t CameraAssetPipeline::CloseCameraFileFd(const ScanCameraFileDto &dto)
 }
 
 // 一阶段落盘
-static void UpdateValuesForCommon(const SaveCameraPhotoDto &dto, ValuesBucket &values)
+static void UpdateValuesForCommon(const SaveCameraPhotoDto &dto, const CameraAssetInfo &assetInfo, ValuesBucket &values)
 {
     MediaLibraryTracer tracer;
     tracer.Start("UpdateValuesForCommon");
@@ -242,6 +214,8 @@ static void UpdateValuesForCommon(const SaveCameraPhotoDto &dto, ValuesBucket &v
         values.Put(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, 1);
         values.Put(PhotoColumn::PHOTO_THUMBNAIL_READY, static_cast<int64_t>(ThumbnailReady::GENERATE_THUMB_RETRY));
     }
+
+    values.Put(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, assetInfo.GetLocalEnhancementAbility());
 }
 
 int32_t CameraAssetPipeline::DoAccurateRefresh(const SaveCameraPhotoDto &dto,
@@ -310,7 +284,7 @@ int32_t CameraAssetPipeline::UpdateIsTempAndDirty(const SaveCameraPhotoDto &dto)
     values.Put(PhotoColumn::PHOTO_IS_TEMP, false);
 
     // 2.需要合并更新的公共数据（客户端添加）
-    UpdateValuesForCommon(dto, values);
+    UpdateValuesForCommon(dto, assetInfo_, values);
 
     // 3.多态：需要额外更新的业务数据（各业务侧添加, 可能涉及到 assetInfo 的变更）
     CameraAssetInfo modifyAssetInfo = assetInfo_;
@@ -408,7 +382,7 @@ void CameraAssetPipeline::RecheckEffectStatus()
 int32_t CameraAssetPipeline::CheckSaveImageForYuv()
 {
     // 仅 YuvPipeline 需要实现
-    MEDIA_INFO_LOG("pipeline: %{public}d no need check.", static_cast<int32_t>(pipelineType_));
+    MEDIA_INFO_LOG("pipeline: %{public}d no need check.", static_cast<int32_t>(GetPipelineType()));
     return E_OK;
 }
 
@@ -441,10 +415,10 @@ int32_t CameraAssetPipeline::OnProcessImageDone(const OnProcessImageWrapper &wra
     ProcessMultistagesPhoto(fileAsset);
 
     // 4.更新二阶段相关信息(不允许失败)
-    MultiStagesCaptureDao::UpdateHighQualityInfo(assetInfo_.GetFileId(), metadata_, true);
+    MultiStagesCaptureDao::UpdateHighQualityInfo(assetInfo_, metadata_, (fileAsset->GetPhotoEditTime() > 0), true);
 
     // 5.异步扫描, 生成缩略图
-    ScanFileForOnProcessInternal();
+    AsyncScanFileForCamera(ScanQuality::FULL);
 
     // 6.通知(可优化)
     MultistagesCaptureNotify::NotifyOnProcess(assetInfo_, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
@@ -479,8 +453,52 @@ void CameraAssetPipeline::ProcessMultistagesPhoto(const std::shared_ptr<FileAsse
     }
 }
 
+// 下发三阶段任务
+void CameraAssetPipeline::AddLocalEnhancementTask()
+{
+    if (GetBasePipelineType() == CameraBasePipelineType::LOCAL_ENHANCEMENT_PIPELINE) {
+        MEDIA_INFO_LOG("skip AddLocalEnhancementTask for localEnhancementPipeline.");
+        return;
+    }
+
+    CameraPipelineType pipelineType = GetPipelineType();
+    if (pipelineType != CameraPipelineType::YUV && pipelineType != CameraPipelineType::NEW_IMAGE) {
+        MEDIA_WARN_LOG("pipeline not support local enhancement, %{public}d.", static_cast<int32_t>(pipelineType));
+        return;
+    }
+
+    CameraAssetInfo assetInfo = GetAssetInfo();
+    int32_t localEnhancementAbility = assetInfo.GetLocalEnhancementAbility();
+    MEDIA_INFO_LOG("handle local enhancement, ability: %{public}d.", localEnhancementAbility);
+
+    if (assetInfo.GetLocalEnhancementType() == LocalEnhancementType::ON_ERROR) {
+        MEDIA_ERR_LOG("local enhancement image has been removed.");
+        MultiStagesCaptureDao::UpdateLocalEnhancementAbility(assetInfo.GetFileId(),
+            static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT),
+            static_cast<int32_t>(LocalEnhancementStatus::IDEL));
+        return;
+    }
+
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)) {
+        return;
+    } else if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL)) {
+        assetInfo.SetLocalEnhancementType(LocalEnhancementType::MANUAL);
+        auto count = LocalEnhancementManager::GetInstance().InsertLocalEnhancementData(
+            pipelineType, assetInfo);
+        return;
+    }
+
+    assetInfo.SetLocalEnhancementType(LocalEnhancementType::AUTO);
+    auto count = LocalEnhancementManager::GetInstance().InsertLocalEnhancementData(pipelineType, assetInfo);
+
+    int32_t status = static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO);
+    MultiStagesCaptureDao::UpdateLocalEnhancementInfo(assetInfo.GetFileId(), status, false, false);
+    MultiStagesPhotoCaptureManager::GetInstance().AddImageEnhancement(assetInfo);
+}
+
 // 不可恢复错误码
-void CameraAssetPipeline::HandleIrrecoverableErrImage(const CameraAssetInfo& assetInfo)
+void CameraAssetPipeline::OnProcessIrrecoverableErrImage(
+    const CameraAssetInfo& assetInfo, const MediaDpsErrorCode error)
 {
     // 1.清理raw图
     MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(assetInfo.GetPhotoId(), false);
@@ -493,45 +511,42 @@ void CameraAssetPipeline::HandleIrrecoverableErrImage(const CameraAssetInfo& ass
     OnProcessFinished();
 }
  
-// 可恢复错误码: 高温场景
-void CameraAssetPipeline::HandleHighTemperatureImage(const CameraAssetInfo& assetInfo)
-{
-    // 1.通知客户端, 之前的高优先级请求失败
-    MultistagesCaptureNotify::NotifyOnProcess(assetInfo, MultistagesCaptureNotifyType::ON_ERROR_IMAGE);
-    NotifyImageIfTempFile(true);     // 不能删除，ani等接口尚未适配
- 
-    // 2.清理高优先级请求, 避免后续无法请求
-    MultiStagesCaptureRequestTaskManager::ClearPhotoInProcessRequestCount(assetInfo.GetPhotoId());
-}
- 
 // 可恢复错误码
-void CameraAssetPipeline::HandleRecoverableErrImage(const CameraAssetInfo& assetInfo)
+void CameraAssetPipeline::OnProcessRecoverableErrImage(const CameraAssetInfo& assetInfo, const MediaDpsErrorCode error)
 {
+    if (error == MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_ABNORMAL) {
+        // 仅高温场景会执行
+        MultistagesCaptureNotify::NotifyOnProcess(assetInfo, MultistagesCaptureNotifyType::ON_ERROR_IMAGE);
+        NotifyImageIfTempFile(true);     // 不能删除，ani等接口尚未适配
+    }
     // 仅清理高优先级请求, 避免后续无法请求
     MultiStagesCaptureRequestTaskManager::ClearPhotoInProcessRequestCount(assetInfo.GetPhotoId());
 }
 
-// 二阶段失败
-bool CameraAssetPipeline::OnErrorImage(const MediaDpsErrorCode error, bool& isMovingPhoto)
+// 二阶段失败分发
+bool CameraAssetPipeline::OnProcessImageError(const MediaDpsErrorCode error, bool& isMovingPhoto)
 {
+    MEDIA_INFO_LOG("OnProcess error: %{public}d, fileId: %{public}d, photoid: %{public}s",
+        static_cast<int32_t>(error), assetInfo_.GetFileId(), assetInfo_.GetPhotoId().c_str());
     isMovingPhoto = assetInfo_.IsMovingPhoto();
     switch (error) {
-        case MediaDpsErrorCode::UNDEFINED:
-            MEDIA_ERR_LOG("errorCode is undefined.");
-            return false;
         case MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_INVALID_PHOTO_ID:
         case MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_FAILED:
-            HandleIrrecoverableErrImage(assetInfo_);
+            OnProcessIrrecoverableErrImage(assetInfo_, error);
             break;
+        case MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_TIMEOUT:
         case MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_ABNORMAL:
-            HandleHighTemperatureImage(assetInfo_);
+        case MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_INTERRUPTED:
+            OnProcessRecoverableErrImage(assetInfo_, error);
+            break;
+        case MediaDpsErrorCode::MEDIA_ERROR_IMAGE_PROC_RESOURCE_REMOVED:
+            // 不下发三阶段任务
+            assetInfo_.SetLocalEnhancementType(LocalEnhancementType::ON_ERROR);
             break;
         default:
-            HandleRecoverableErrImage(assetInfo_);
-            break;
+            MEDIA_ERR_LOG("error: %{public}d is invalid.", static_cast<int32_t>(error));
+            return false;
     }
-    MEDIA_INFO_LOG("error: %{public}d, fileId: %{public}d, photoid: %{public}s",
-        static_cast<int32_t>(error), assetInfo_.GetFileId(), assetInfo_.GetPhotoId().c_str());
     return true;
 }
 

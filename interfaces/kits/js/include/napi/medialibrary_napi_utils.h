@@ -473,6 +473,8 @@ public:
             {PhotoColumn::PHOTO_LCD_SIZE, {TYPE_STRING, "lcdSize"}},
             {PhotoColumn::PHOTO_THUMB_SIZE, {TYPE_STRING, "thmSize"}},
             {PhotoColumn::PHOTO_OWNER_ALBUM_ID, {TYPE_INT32, "ownerAlbumId"}},
+            {PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, {TYPE_INT32, "localEnhancementAbility"}},
+            {PhotoColumn::LOCAL_ENHANCEMENT_STATUS, {TYPE_INT32, "localEnhancementStatus"}},
             {CONST_MEDIA_DATA_DB_COUNT, {TYPE_INT32, "count"}},
             {PhotoAlbumColumns::ALBUM_ID, {TYPE_INT32, "albumId"}},
             {PhotoAlbumColumns::ALBUM_TYPE, {TYPE_INT32, "albumType"}},

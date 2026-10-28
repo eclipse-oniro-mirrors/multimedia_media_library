@@ -29,6 +29,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
+#include "scan_config_builder.h"
 #include "userfile_manager_types.h"
 #include "c2pa_utils.h"
 
@@ -74,7 +75,7 @@ bool ImagePipeline::CloseCameraFileFdWithMutex(const std::string& realPath, cons
     return CameraPathUtils::SaveTemporaryImage(realPath, tempPath);
 }
 
-void ImagePipeline::OnDelivery(std::shared_ptr<Media::Picture> picture)
+void ImagePipeline::OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata)
 {
 }
 
@@ -421,14 +422,21 @@ int32_t ImagePipeline::SaveTwoImageForOnProcess(const ImageFileMapper& sourceIma
     return E_OK;
 }
 
-void ImagePipeline::ScanFileForOnProcessInternal()
+void ImagePipeline::AsyncScanFileForCamera(ScanQuality scanQuality)
 {
     auto assetInfo = GetAssetInfo();
-    int32_t fileId = assetInfo.GetFileId();
+    MEDIA_INFO_LOG("AsyncScanFileForCamera without picture.");
 
-    MEDIA_INFO_LOG("ScanFileForOnProcessInternal without picture.");
-    MediaLibraryObjectUtils::ScanFileAsync(assetInfo.GetPath(), to_string(fileId),
-        MediaLibraryApi::API_10, assetInfo.IsMovingPhoto(), nullptr, HighQualityScanFileCallback::Create(fileId));
+    DefaultScanInfo scanInfo;
+    scanInfo.SetFilePath(assetInfo.GetPath());
+    scanInfo.SetFileId(assetInfo.GetFileId());
+    scanInfo.SetIsMovingPhoto(assetInfo.IsMovingPhoto());
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(ScanQuality::FULL)
+        .SetDefaultScanInfo(scanInfo)
+        .UseThumbnailCallbackPreset(false, true, nullptr, HighQualityScanFileCallback::Create(assetInfo.GetFileId()))
+        .Build();
+    MediaLibraryObjectUtils::ScanFileAsync(config);
 }
 } // Media
 } // OHOS

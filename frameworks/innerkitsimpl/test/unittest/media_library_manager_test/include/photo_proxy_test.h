@@ -198,6 +198,11 @@ public:
         videoEnhancementType_ = videoEnhancementType;
     }
 
+    LocalEnhancementAbilityType GetLocalEnhancementType() override
+    {
+        return localEnhancementAbilityType_;
+    }
+
 private:
     void *fileDataAddr_ = nullptr;
     int32_t fileSize_ = 0;
@@ -209,6 +214,7 @@ private:
     std::string burstKey_;
     bool isCoverPhoto_;
     int32_t videoEnhancementType_;
+    LocalEnhancementAbilityType localEnhancementAbilityType_ = LocalEnhancementAbilityType::NOT_SUPPORT;
 };
 } // Media
 } // OHOS

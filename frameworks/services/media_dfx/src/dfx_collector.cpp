@@ -231,6 +231,14 @@ void DfxCollector::CollectPhotoError(int32_t typeCode)
     photoErrorMap_[typeCode]++;
 }
 
+void DfxCollector::CollectMultishotInfoMultishotNum(int32_t captureEnhancementFlag)
+{
+    if (captureEnhancementFlag >= static_cast<int32_t>(DeferredEffects::BLUR) &&
+        captureEnhancementFlag <= static_cast<int32_t>(DeferredEffects::BLUR_SNAP_REMOTE)) {
+        multishotInfo_.multishotNum++;
+    }
+}
+
 std::map<int32_t, int32_t> DfxCollector::GetPhotoError()
 {
     lock_guard<mutex> lock(photoErrorLock_);

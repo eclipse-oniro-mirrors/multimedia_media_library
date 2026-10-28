@@ -50,6 +50,7 @@ private:
     static void GetEditedPath(const std::string& inputPath, std::string& outputPath, int32_t userId = -1);
     static void GetEditDataSourcePath(const std::string& inputPath, std::string& outputPath, int32_t userId = -1);
     static void GetEditDataCameraPath(const std::string& inputPath, std::string& outputPath, int32_t userId = -1);
+    static void GetEditDataSourceBackPath(const std::string& inputPath, std::string& outputPath, int32_t userId = -1);
 
     // 临时目录
     static void GetTempLowPath(const std::string& inputPath, std::string& outputPath, int32_t userId = -1);

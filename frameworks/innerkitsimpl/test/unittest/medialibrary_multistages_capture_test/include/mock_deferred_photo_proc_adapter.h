@@ -28,7 +28,7 @@ public:
  
     MOCK_METHOD0(BeginSynchronize, void());
     MOCK_METHOD0(EndSynchronize, void());
-    MOCK_METHOD2(RemoveImage, void(const std::string&, const bool));
+    MOCK_METHOD3(RemoveImage, void(const std::string&, DpsMetadata&, const bool));
 };
 } // Media
 } // OHOS

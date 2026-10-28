@@ -89,6 +89,10 @@ const std::unordered_map<int, int> trans2JsError = {
     { -ENOMEM,                JS_ERR_NO_MEM },
     { E_FILE_OPEN_FAIL,       JS_E_INNER_OPEN_FILE_FAIL },
     { E_MEDIATYPE_NOT_ALLOW,  OHOS_INVALID_PARAM_CODE },
+
+    // camera error
+    { E_CAMERA_ASSET_NOT_EXIST,        JS_E_ASSET_NOT_EXIST },
+    { E_NOT_SUPPORT_LOCAL_ENHANCEMENT, JS_E_PARAM_INVALID },
 };
 
 const std::unordered_map<int, int> transMove2JsError = {

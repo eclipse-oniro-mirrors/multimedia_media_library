@@ -34,7 +34,9 @@
 #define COLUMN_PHOTO_SHARE_RISK_TYPE "share_risk_type"
 #define COLUMN_PHOTO_SHARE_DATE_DAY "share_date_day"
 #define COLUMN_PHOTO_SHARE_GROUP "share_group"
-// index name shoule be added here
+#define COLUMN_LOCAL_ENHANCEMENT_ABILITY "local_enhancement_ability"
+#define COLUMN_LOCAL_ENHANCEMENT_STATUS "local_enhancement_status"
+// index name should be added here
 #define INDEX_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX "idx_photo_sort_in_album_date_added"
 #define INDEX_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX "idx_photo_sort_in_album_date_taken"
 #define INDEX_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX "idx_photo_sort_in_album_display_name"

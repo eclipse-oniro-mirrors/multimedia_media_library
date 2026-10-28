@@ -98,6 +98,9 @@ struct MediaDpsMetadata {
     uint32_t captureEnhancementFlag{0};
     std::string editData;
 
+    int32_t imageProcessType{0};
+    uint32_t localEnhancementAbilityFlag{0};
+
     // 二阶段过程中, 一阶段的影响
     FirstStageModifyType modifyType{FirstStageModifyType::NOT_MODIFIED};
     // dfx的类型
@@ -109,6 +112,8 @@ struct MediaDpsMetadata {
         ss << "{"
            << "cloudImageEnhanceFlag: " << std::to_string(cloudImageEnhanceFlag) << ", "
            << "captureEnhancementFlag: " << std::to_string(captureEnhancementFlag) << ", "
+           << "imageProcessType: " << std::to_string(imageProcessType) << ", "
+           << "localEnhancementAbilityFlag: " << std::to_string(localEnhancementAbilityFlag) << ", "
            << "modifyType: " << std::to_string(static_cast<int32_t>(modifyType))
            << "}";
         return ss.str();
@@ -120,17 +125,6 @@ struct OnProcessImageWrapper {
     OnProcessParamForImage image;
     OnProcessParamForYuv yuv;
     MediaDpsMetadata metadata;
-};
-
-enum class MediaDpsErrorCode {
-    UNDEFINED = -1,
-
-    // image process error code
-    MEDIA_ERROR_IMAGE_PROC_INVALID_PHOTO_ID = 2,
-    MEDIA_ERROR_IMAGE_PROC_FAILED = 3,
-    MEDIA_ERROR_IMAGE_PROC_TIMEOUT = 4,
-    MEDIA_ERROR_IMAGE_PROC_ABNORMAL = 5,
-    MEDIA_ERROR_IMAGE_PROC_INTERRUPTED = 6,
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LIBRARY_CAMERA_MAPPER_H

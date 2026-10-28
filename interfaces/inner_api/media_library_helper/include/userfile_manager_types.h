@@ -364,6 +364,14 @@ enum class PhotoSharedType : int32_t {
     NOT_SHARED = 0,
     SHARED = 1
 };
+
+enum class LocalEnhancementStatus : int32_t {
+    IDEL = 0,                   // 空闲
+    PROCESSING_AUTO = 1,        // 自动云增强中
+    PROCESSING_MANUAL = 2,      // 手动云增强中
+    SUCCESS = 3,
+    EDIT = 4,
+};
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H

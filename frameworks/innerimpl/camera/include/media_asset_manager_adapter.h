@@ -20,15 +20,16 @@
 
 #include "datashare_helper.h"
 #include "media_asset_manager_adapter_const.h"
+#include "query_local_enhancement_status_vo.h"
 
 namespace OHOS {
 namespace Media {
-struct QueryPhotoStatusInput {
+struct IpcCallContext {
     int32_t fileId{0};
     DeliveryMode mode = DeliveryMode::FAST;
     std::string photoUri;
-    bool hasReadPermission;
-    bool needsExtraInfo;
+    bool hasReadPermission{false};
+    bool needsExtraInfo{true};
 
     std::shared_ptr<DataShare::DataShareHelper> datashareHelper = nullptr;
     int32_t userId{-1};
@@ -39,8 +40,11 @@ public:
     MediaAssetManagerAdapter() = default;
     ~MediaAssetManagerAdapter() = default;
 
-    static MultiStagesCapturePhotoStatus QueryPhotoStatusWithDfx(
-        const QueryPhotoStatusInput& param, std::string& photoId);
+    static MultiStagesCapturePhotoStatus QueryPhotoStatusWithDfx(const IpcCallContext& param, std::string& photoId);
+
+    // 端侧AI增强
+    static int32_t QueryLocalEnhancementStatus(const IpcCallContext& param,
+        const QueryLocalEnhancementStatusReqBody &reqBody, std::string& photoId);
 };
 } // Media
 } // OHOS

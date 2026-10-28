@@ -202,6 +202,8 @@ public:
     static const std::string PHOTO_LCD_FILE_SIZE;
     static const std::string COMPRESSION_QUALITY;
     static const std::string C2PA_CONFIG_INFO;
+    static const std::string LOCAL_ENHANCEMENT_ABILITY;
+    static const std::string LOCAL_ENHANCEMENT_STATUS;
 
     // Photo-only default fetch columns
     static const std::set<std::string> DEFAULT_FETCH_COLUMNS;

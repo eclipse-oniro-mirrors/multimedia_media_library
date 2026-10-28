@@ -19,11 +19,14 @@
 
 #include <string>
 
+#include "medialibrary_errno.h"
+
 #include "media_asset_rdbstore.h"
 #include "media_column.h"
 #include "media_file_uri.h"
 #include "medialibrary_business_code.h"
 #include "medialibrary_type_const.h"
+#include "query_local_enhancement_status_vo.h"
 #include "query_photo_vo.h"
 #include "user_define_ipc_client.h"
 #include "user_inner_ipc_client.h"
@@ -34,7 +37,8 @@ namespace Media {
 static const std::string URI_TYPE = "uriType";
 static const std::string TYPE_PHOTOS = "1";
 
-static MultiStagesCapturePhotoStatus QueryViaSandBoxWithoutDfx(const QueryPhotoStatusInput& param, std::string& photoId)
+static MultiStagesCapturePhotoStatus QueryPhotoStatusViaSandBoxWithoutDfx(const IpcCallContext& param,
+    std::string& photoId)
 {
     photoId = "";
     DataShare::DataSharePredicates predicates;
@@ -80,7 +84,8 @@ static MultiStagesCapturePhotoStatus QueryViaSandBoxWithoutDfx(const QueryPhotoS
     return MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
 }
 
-static MultiStagesCapturePhotoStatus QueryViaIPCWithDfx(const QueryPhotoStatusInput& param, std::string& photoId)
+static MultiStagesCapturePhotoStatus QueryPhotoStatusViaIPCWithDfx(const IpcCallContext& param,
+    std::string& photoId)
 {
     QueryPhotoReqBody reqBody;
     reqBody.fileId = std::to_string(param.fileId);
@@ -119,19 +124,68 @@ static MultiStagesCapturePhotoStatus QueryViaIPCWithDfx(const QueryPhotoStatusIn
 }
 
 MultiStagesCapturePhotoStatus MediaAssetManagerAdapter::QueryPhotoStatusWithDfx(
-    const QueryPhotoStatusInput& param, std::string& photoId)
+    const IpcCallContext& param, std::string& photoId)
 {
     // 如果在客户端查询, 则不需要dfx能力
-    MultiStagesCapturePhotoStatus status = QueryViaSandBoxWithoutDfx(param, photoId);
+    MultiStagesCapturePhotoStatus status = QueryPhotoStatusViaSandBoxWithoutDfx(param, photoId);
     if (status != MultiStagesCapturePhotoStatus::QUERY_INNER_FAIL) {
         MEDIA_INFO_LOG("QueryViaSandBoxWithoutDfx photo status: %{public}d.", static_cast<int32_t>(status));
         return status;
     }
 
     // 跨IPC的流程是提供给三方使用, 需要dfx
-    status = QueryViaIPCWithDfx(param, photoId);
+    status = QueryPhotoStatusViaIPCWithDfx(param, photoId);
     MEDIA_INFO_LOG("QueryViaIPCWithDfx photo status: %{public}d.", static_cast<int32_t>(status));
     return status;
+}
+
+constexpr int32_t LOCAL_ENHANCE_ABILITY_COUNT = 2;
+constexpr int32_t LOCAL_ENHANCE_STATUS_COUNT = 4;
+constexpr LocalEnhanceStatus PROCESS_IMAGE_ENHANCE_TABLE[LOCAL_ENHANCE_ABILITY_COUNT][LOCAL_ENHANCE_STATUS_COUNT] = {
+    {
+        LocalEnhanceStatus::PROCESSING_ENHANCE,
+        LocalEnhanceStatus::PROCESSING_ENHANCE,
+        LocalEnhanceStatus::PROCESSING_ENHANCE,
+        LocalEnhanceStatus::SUCCESS_ENHANCE,
+    },
+    {
+        LocalEnhanceStatus::PROCESSING_ENHANCE,
+        LocalEnhanceStatus::PROCESSING_ENHANCE,
+        LocalEnhanceStatus::PROCESSING_ENHANCE,
+        LocalEnhanceStatus::SUCCESS_ENHANCE,
+    },
+};
+
+int32_t MediaAssetManagerAdapter::QueryLocalEnhancementStatus(const IpcCallContext& param,
+    const QueryLocalEnhancementStatusReqBody &reqBody, std::string& photoId)
+{
+    QueryLocalEnhancementStatusRespBody respBody;
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_MAM_QUERY_LOCAL_ENHANCEMENT_STATUS);
+    int32_t ret = -1;
+    if (param.datashareHelper == nullptr) {
+        // napi 接口、ani 接口
+        ret = IPC::UserDefineIPCClient().SetUserId(param.userId).Call(businessCode, reqBody, respBody);
+    } else {
+        // inner api
+        ret = IPC::UserInnerIPCClient().SetDataShareHelper(param.datashareHelper).Call(businessCode, reqBody, respBody);
+    }
+    if (ret < 0) {
+        MEDIA_ERR_LOG("ret = %{public}d", ret);
+        return ret;
+    }
+
+    photoId = respBody.photoId;
+    int32_t abilityIndex = respBody.localEnhancementAbility - 1;
+    int32_t statusIndex = respBody.localEnhancementStatus;
+    if (abilityIndex >= LOCAL_ENHANCE_ABILITY_COUNT || abilityIndex < 0 ||
+        statusIndex >= LOCAL_ENHANCE_STATUS_COUNT || statusIndex < 0) {
+        MEDIA_ERR_LOG("ounput is invalid, localEnhancementAbility: %{public}d, localEnhancementStatus: %{public}d",
+            respBody.localEnhancementAbility, respBody.localEnhancementStatus);
+        return static_cast<int32_t>(LocalEnhanceStatus::NOT_SUPPORT_ENHANCE);
+    }
+    auto status = PROCESS_IMAGE_ENHANCE_TABLE[abilityIndex][statusIndex];
+    return static_cast<int32_t>(status);
 }
 } // namespace Media
 } // namespace OHOS

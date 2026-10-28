@@ -34,6 +34,9 @@ public:
     EXPORT int32_t CreateCameraFileFd(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ScanCameraFile(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetDeferredPictureInfo(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t QueryLocalEnhancementStatus(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ProcessImageEnhancement(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t QueryLocalEnhancementTaskState(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaCameraCharacterControllerService() = default;

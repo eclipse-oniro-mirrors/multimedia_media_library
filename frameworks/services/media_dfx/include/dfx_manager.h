@@ -127,6 +127,7 @@ public:
     void HandleCinematicVideoAddStartTime(const CinematicWaitType waitType, const std::string &videoId);
     void HandleCinematicVideoAddEndTime(const CinematicWaitType waitType, const std::string &videoId);
     void HandleCinematicVideoMultistageResult(bool multistageResult);
+    void HandleMultishotInfoMultishotNum(uint32_t captureEnhancementFlag);
     void HandleUpgradeFault(const UpgradeExceptionInfo& reportData);
     int32_t HandleThmInodeCleanInfo(const ThmInodeCleanInfo &info);
     int64_t GetLastIPCTime();

@@ -959,6 +959,8 @@ namespace {
         {PhotoColumn::ATTACHMENT_SIZE, "BIGINT NOT NULL DEFAULT 0"},
         {PhotoColumn::COMPRESSION_QUALITY, "INT NOT NULL DEFAULT -1"},
         {PhotoColumn::C2PA_CONFIG_INFO, "TEXT"},
+        {PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, "INT NOT NULL DEFAULT 0"},
+        {PhotoColumn::LOCAL_ENHANCEMENT_STATUS, "INT NOT NULL DEFAULT 0"},
     };
 
     constexpr size_t PHOTO_TABLE_COLUMN_COUNT = sizeof(PHOTO_TABLE_COLUMNS) / sizeof(ColumnInfo);

@@ -3233,6 +3233,8 @@ namespace {
             PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
             PhotoColumn::PHOTO_TRANSCODE_TIME,
             PhotoColumn::MUSIC_MASTER_MODE,
+            PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+            PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
         };
         return SYSTEM_API_KEYS;
     }
@@ -3241,6 +3243,8 @@ namespace {
     {
         static const set<string> SYSTEM_API_KEYS_SINCE_API26 = {
             PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
+            PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+            PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
         };
         return SYSTEM_API_KEYS_SINCE_API26;
     }

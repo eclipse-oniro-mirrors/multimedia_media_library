@@ -78,6 +78,8 @@ const std::unordered_map<std::string, ResultSetDataType> RESULT_TYPE_MAP = {
     { PhotoColumn::PHOTO_COVER_POSITION, ResultSetDataType::TYPE_INT64 },
     { PhotoColumn::ATTACHMENT_SIZE, ResultSetDataType::TYPE_INT64 },
     { PhotoColumn::MUSIC_MASTER_MODE, ResultSetDataType::TYPE_INT32 },
+    { PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, ResultSetDataType::TYPE_INT32 },
+    { PhotoColumn::LOCAL_ENHANCEMENT_STATUS, ResultSetDataType::TYPE_INT32 },
 };
 } // namespace MediaTool
 } // namespace Media

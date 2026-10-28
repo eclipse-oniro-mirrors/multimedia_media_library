@@ -17,9 +17,13 @@
 
 #include "multistages_capture_manager.h"
 
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
+#include "cloud_enhancement_dfx_get_count.h"
+#endif
 #include "database_adapter.h"
 #include "image_packer.h"
 #include "exif_utils.h"
+#include "local_enhancement_manager.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_command.h"
@@ -335,6 +339,8 @@ void MultiStagesPhotoCaptureManager::AddImageInternal(int32_t fileId, const stri
 #ifdef ABILITY_CAMERA_SUPPORT
     DpsMetadata metadata;
     metadata.Set(CameraStandard::DEFERRED_PROCESSING_TYPE_KEY, deferredProcType);
+    metadata.Set(CameraStandard::DPS_PHOTO_COMPRESSION_QUALITY_KEY, compressionQuality);
+    metadata.Set(CameraStandard::DEFERRED_IMAGE_PROCESS_TYPE_KEY, ImageProcessType::DPS_STAGE_TWO);
     deferredProcSession_->AddImage(photoId, metadata, discardable, packageName);
 #endif
 }
@@ -359,7 +365,6 @@ void MultiStagesPhotoCaptureManager::AddImage(AddImageDto &dto)
         return;
     }
     if (dto.photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::FULL)) {
-        pictureManagerThread->SavePictureWithImageId(dto.photoId);
         UpdatePictureQualityByFileId(dto.fileId);
         return;
     }
@@ -453,6 +458,58 @@ int32_t MultiStagesPhotoCaptureManager::UpdatePictureQualityByFileId(int32_t fil
     return updatePhotoQualityResult;
 }
 
+void MultiStagesPhotoCaptureManager::RecoverOnProcessTask(const std::shared_ptr<FileAsset> &fileAsset)
+{
+    // 恢复二阶段任务
+    MultistagesCameraCaptureManager::GetInstance().RecoverForSessionSync(*fileAsset, true);
+
+    int32_t fileId = fileAsset->GetId();
+    std::string photoId = fileAsset->GetPhotoId();
+    bool isTrashed = (fileAsset->GetIsTrash()) > 0;
+    std::string packageName = fileAsset->GetOwnerPackage();
+    int32_t deferredProcType = fileAsset->GetDeferredProcType();
+    AddImageInternal(fileId, photoId, deferredProcType, isTrashed, packageName);
+}
+
+void MultiStagesPhotoCaptureManager::RecoverOnProcessEnhancemnetTask(const std::shared_ptr<FileAsset> &fileAsset)
+{
+    int32_t fileId = fileAsset->GetId();
+    std::string photoId = fileAsset->GetPhotoId();
+    int32_t localEnhancementAbility = fileAsset->GetLocalEnhancementAbility();
+    int32_t localEnhancementStatus = fileAsset->GetLocalEnhancementStatus();
+    if (localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::SUCCESS) ||
+        localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)) {
+        MEDIA_INFO_LOG("no need localEnhancement, file_id: %{public}d, photoId: %{public}s.", fileId, photoId.c_str());
+        return;
+    }
+
+    CameraAssetInfo assetInfo(*fileAsset);
+    LocalEnhancementManager::GetInstance().InsertLocalEnhancementData(CameraPipelineType::NEW_IMAGE, assetInfo);
+
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO) &&
+        localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::IDEL)) {
+        AddImageEnhancement(assetInfo);
+        MultiStagesCaptureDao::UpdateLocalEnhancementInfo(fileId,
+            static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO), false, false);
+    }
+
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO) &&
+        localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO)) {
+        AddImageEnhancement(assetInfo);
+    }
+
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO) &&
+        localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL)) {
+        AddImageEnhancement(assetInfo);
+        ProcessImageEnhancement(fileId);
+    }
+
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL) &&
+        localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL)) {
+        ProcessImageEnhancement(fileId);
+    }
+}
+
 void MultiStagesPhotoCaptureManager::SyncWithDeferredProcSessionInternal()
 {
     MEDIA_INFO_LOG("enter");
@@ -468,17 +525,12 @@ void MultiStagesPhotoCaptureManager::SyncWithDeferredProcSessionInternal()
         if (fileAsset == nullptr) {
             continue;
         }
-        // 恢复pipeline中的数据
-        MultistagesCameraCaptureManager::GetInstance().RecoverForSessionSync(*fileAsset, true);
 
-        int32_t fileId = fileAsset->GetId();
-        std::string photoId = fileAsset->GetPhotoId();
-        bool isTrashed = (fileAsset->GetIsTrash()) > 0;
-        std::string packageName = fileAsset->GetOwnerPackage();
-        int32_t deferredProcType = fileAsset->GetDeferredProcType();
-
-        // 下发二阶段任务
-        AddImageInternal(fileId, photoId, deferredProcType, isTrashed, packageName);
+        if (fileAsset->GetLocalEnhancementAbility() == static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)) {
+            RecoverOnProcessTask(fileAsset);
+        } else {
+            RecoverOnProcessEnhancemnetTask(fileAsset);
+        }
     }
     deferredProcSession_->EndSynchronize();
     MEDIA_INFO_LOG("exit");
@@ -521,6 +573,7 @@ bool MultiStagesPhotoCaptureManager::CancelProcessRequest(const string &photoId)
         return false;
     }
     auto isCancelSucc = deferredProcSession_->CancelProcessImage(photoId);
+    LocalEnhancementManager::GetInstance().RemoveEnhancementProgress(photoId);
     MEDIA_INFO_LOG("cancel request isCancelSucc: %{public}d", isCancelSucc);
     return true;
 }
@@ -533,7 +586,11 @@ void MultiStagesPhotoCaptureManager::RemoveImage(const string &photoId, bool isR
     }
 
     MultiStagesCaptureRequestTaskManager::RemovePhotoInProgress(photoId, isRestorable);
-    deferredProcSession_->RemoveImage(photoId, isRestorable);
+#ifdef ABILITY_CAMERA_SUPPORT
+    DpsMetadata metadata;
+    metadata.Set(CameraStandard::DEFERRED_IMAGE_PROCESS_TYPE_KEY, ImageProcessType::DPS_STAGE_TWO);
+    deferredProcSession_->RemoveImage(photoId, metadata, isRestorable);
+#endif
 }
 
 void MultiStagesPhotoCaptureManager::RestoreImage(const string &photoId)
@@ -561,7 +618,11 @@ void MultiStagesPhotoCaptureManager::ProcessImage(int fileId, int deliveryMode)
     if ((deliveryMode == static_cast<int32_t>(RequestPolicy::HIGH_QUALITY_MODE) ||
         deliveryMode == static_cast<int32_t>(RequestPolicy::BALANCE_MODE)) &&
         currentRequestCount <= 1) {
-        deferredProcSession_->ProcessImage(callerBundleName, photoId);
+#ifdef ABILITY_CAMERA_SUPPORT
+    DpsMetadata metadata;
+    metadata.Set(CameraStandard::DEFERRED_IMAGE_PROCESS_TYPE_KEY, ImageProcessType::DPS_STAGE_TWO);
+    deferredProcSession_->ProcessImage(callerBundleName, photoId, metadata);
+#endif
     }
 }
 
@@ -579,6 +640,76 @@ void MultiStagesPhotoCaptureManager::NotifyProcessImage()
     MEDIA_INFO_LOG("NotifyProcessImage enter.");
     CHECK_AND_RETURN_LOG(deferredProcSession_ != nullptr, "deferredProcSession is nullptr.");
     deferredProcSession_->NotifyProcessImage();
+}
+
+void MultiStagesPhotoCaptureManager::AddImageEnhancement(const CameraAssetInfo &assetInfo)
+{
+#ifdef ABILITY_CAMERA_SUPPORT
+    DpsMetadata metadata;
+    metadata.Set(CameraStandard::DEFERRED_IMAGE_PROCESS_TYPE_KEY, ImageProcessType::DPS_LOCAL_IMAGE_ENHANCEMENT);
+    deferredProcSession_->AddImage(assetInfo.GetPhotoId(), metadata, false, assetInfo.GetBundleName());
+#endif
+
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
+    CloudEnhancementGetCount::GetInstance().AddStartTime(assetInfo.GetPhotoId());
+#endif
+    MEDIA_INFO_LOG("AddImageEnhancement, photoId: %{public}s", assetInfo.GetPhotoId().c_str());
+}
+
+void MultiStagesPhotoCaptureManager::RemoveImageEnhancement(const std::string &photoId, bool isRestorable)
+{
+    MEDIA_INFO_LOG("RemoveImageEnhancement, photoId: %{public}s, isRestorable: %{public}d",
+        photoId.c_str(), isRestorable);
+    if (!LocalEnhancementManager::GetInstance().IsPhotoInProcessEnhancementByPhotoId(photoId)) {
+        MEDIA_ERR_LOG("photoId is empty or not in local enhancement.");
+        return;
+    }
+#ifdef ABILITY_CAMERA_SUPPORT
+    DpsMetadata metadata;
+    metadata.Set(CameraStandard::DEFERRED_IMAGE_PROCESS_TYPE_KEY, ImageProcessType::DPS_LOCAL_IMAGE_ENHANCEMENT);
+    deferredProcSession_->RemoveImage(photoId, metadata, isRestorable);
+#endif
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
+    CloudEnhancementGetCount::GetInstance().RemoveStartTime(photoId);
+#endif
+}
+
+void MultiStagesPhotoCaptureManager::RestoreImageEnhancement(const std::string &photoId)
+{
+    MEDIA_INFO_LOG("RestoreImageEnhancement, photoId: %{public}s", photoId.c_str());
+    deferredProcSession_->RestoreImage(photoId);
+}
+
+void MultiStagesPhotoCaptureManager::ProcessImageEnhancement(int32_t fileId)
+{
+    auto pipeline = LocalEnhancementManager::GetInstance().GetLocalEnhancementPipeline(fileId);
+    CHECK_AND_RETURN_LOG(pipeline != nullptr, "image is not in Enhancement process, fileId: %{public}d", fileId);
+    pipeline->SetLocalEnhancementType(LocalEnhancementType::MANUAL);
+
+    CameraAssetInfo assetInfo = pipeline->GetAssetInfo();
+    string callerBundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+
+#ifdef ABILITY_CAMERA_SUPPORT
+    DpsMetadata metadata;
+    metadata.Set(CameraStandard::DEFERRED_IMAGE_PROCESS_TYPE_KEY, ImageProcessType::DPS_LOCAL_IMAGE_ENHANCEMENT);
+    deferredProcSession_->ProcessImage(callerBundleName, assetInfo.GetPhotoId(), metadata);
+#endif
+
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
+    CloudEnhancementGetCount::GetInstance().AddStartTime(assetInfo.GetPhotoId());
+#endif
+    MEDIA_INFO_LOG("ProcessImageEnhancement, photoId: %{public}s", assetInfo.GetPhotoId().c_str());
+}
+
+bool MultiStagesPhotoCaptureManager::CancelProcessImageEnhancement(const std::string &photoId)
+{
+    CHECK_AND_RETURN_RET_LOG(
+        LocalEnhancementManager::GetInstance().IsPhotoInProcessEnhancementByPhotoId(photoId), false,
+        "photoId is not in process, photoId: %{public}s.", photoId.c_str());
+
+    auto isCancelSucc = deferredProcSession_->CancelProcessImage(photoId);
+    MEDIA_INFO_LOG("CancelProcessImageEnhancement isCancelSucc: %{public}d", isCancelSucc);
+    return true;
 }
 } // namespace Media
 } // namespace OHOS

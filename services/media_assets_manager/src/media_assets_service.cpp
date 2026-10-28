@@ -101,6 +101,8 @@
 #include "media_string_utils.h"
 #include "medialibrary_rdb_operations.h"
 #include "media_values_bucket_utils.h"
+#include "multistages_capture_dao.h"
+#include "local_enhancement_manager.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -623,6 +625,28 @@ int32_t MediaAssetsService::DiscardCameraPhoto(const int32_t fileId)
     return MediaLibraryPhotoOperations::DiscardCameraPhoto(cmd);
 }
 
+static void UpdateLocalEnhancementValue(int32_t fileId, NativeRdb::ValuesBucket &values)
+{
+    auto fileAsset = MultiStagesCaptureDao::QueryForLocalEnhancementStatus(fileId);
+    CHECK_AND_RETURN_LOG(fileAsset != nullptr, "fileAsset is nullptr");
+    int32_t localEnhancementAbility = fileAsset->GetLocalEnhancementAbility();
+    int32_t localEnhancementStatus = fileAsset->GetLocalEnhancementStatus();
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT) ||
+        localEnhancementStatus != static_cast<int32_t>(LocalEnhancementStatus::EDIT)) {
+        return;
+    }
+
+    if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL)) {
+        values.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, static_cast<int32_t>(LocalEnhancementStatus::IDEL));
+    } else if (localEnhancementAbility == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO)) {
+        values.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
+            static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO));
+        auto pipeline = LocalEnhancementManager::GetInstance().GetLocalEnhancementPipeline(fileId);
+        CHECK_AND_RETURN_LOG(pipeline != nullptr, "image is not in Enhancement process, fileId: %{public}d", fileId);
+        pipeline->SetLocalEnhancementType(LocalEnhancementType::AUTO);
+    }
+}
+
 int32_t MediaAssetsService::SetEffectMode(const int32_t fileId, const int32_t effectMode)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
@@ -632,6 +656,9 @@ int32_t MediaAssetsService::SetEffectMode(const int32_t fileId, const int32_t ef
 
     NativeRdb::ValuesBucket values;
     values.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode);
+    if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT)) {
+        UpdateLocalEnhancementValue(fileId, values);
+    }
 
     cmd.SetValueBucket(values);
     cmd.SetDataSharePred(predicates);

@@ -382,6 +382,9 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("ATTACHMENT_SIZE",           PhotoColumn::ATTACHMENT_SIZE),
     std::make_pair("LCD_FILE_SIZE",             PhotoColumn::PHOTO_LCD_FILE_SIZE),
     std::make_pair("THUMB_STATUS",              PhotoColumn::PHOTO_THUMB_STATUS),
+    std::make_pair("LOCAL_ENHANCEMENT_ABILITY", PhotoColumn::LOCAL_ENHANCEMENT_ABILITY),
+    std::make_pair("LOCAL_ENHANCEMENT_STATUS",  PhotoColumn::LOCAL_ENHANCEMENT_STATUS),
+    //If you have added a public key, please also add it to PUBLIC_PHOTO_KEYS
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {

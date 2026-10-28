@@ -41,6 +41,7 @@ public:
     void CollectCinematicVideoAddEndTime(const CinematicWaitType waitType, const std::string videoId);
     void CollectCinematicVideoMultistageResult(bool multistageResult);
     CinematicVideoInfo GetCinematicVideoInfo();
+    void CollectMultishotInfoMultishotNum(int32_t captureEnhancementFlag);
     void CollectInvalidKey(const std::string &bundleName, const std::string &sql);
     void CollectInvalidPrivateOpen(const std::string &bundleName, const std::string &operation);
     void CollectSpecialOpen(const std::string &bundleName, const std::string &operation);
@@ -71,6 +72,7 @@ private:
     std::mutex invalidSpecialOpenLock_;
     AdaptationToMovingPhotoInfo adaptationToMovingPhotoInfo_;
     CinematicVideoInfo cinematicVideoInfo_;
+    MultishotInfo multishotInfo_;
 };
 } // namespace Media
 } // namespace OHOS

@@ -42,11 +42,11 @@ static std::shared_ptr<CameraAssetPipeline> ConcretePipeline(const CameraPipelin
 
     switch (pipelineType) {
         case CameraPipelineType::NEW_IMAGE:
-            return std::make_shared<NewImagePipeline>();
+            return std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
         case CameraPipelineType::IMAGE:
             return std::make_shared<ImagePipeline>();
         case CameraPipelineType::YUV:
-            return std::make_shared<YuvPipeline>();
+            return std::make_shared<YuvPipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
         case CameraPipelineType::VIDEO:
             MEDIA_INFO_LOG("not support, pipelineType: %{public}d", static_cast<int32_t>(pipelineType));
             return nullptr;
@@ -110,7 +110,7 @@ size_t MultistagesCameraCaptureManager::InsertCaptureData(const int32_t &fileId,
 size_t MultistagesCameraCaptureManager::RecoverForSessionSync(const FileAsset& fileAsset, bool recoverForOnError)
 {
     MEDIA_INFO_LOG("RecoverForSessionSync begin.");
-    auto pipeline = std::make_shared<NewImagePipeline>();
+    auto pipeline = std::make_shared<NewImagePipeline>(CameraBasePipelineType::CAMERA_ASSET_PIPELINE);
     CHECK_AND_RETURN_RET_LOG(pipeline != nullptr, pipeLinesMap_.size(), "failed to create pipeline.");
 
     CameraAssetInfo assetInfo(fileAsset);

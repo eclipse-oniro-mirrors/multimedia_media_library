@@ -195,6 +195,11 @@ public:
     {
         this->burstKey_ = burstKey;
     }
+
+    LocalEnhancementAbilityType GetLocalEnhancementType() override
+    {
+        return LocalEnhancementAbilityType::NOT_SUPPORT;
+    }
 private:
     void *fileDataAddr_ = nullptr;
     int32_t fileSize_ = 0;

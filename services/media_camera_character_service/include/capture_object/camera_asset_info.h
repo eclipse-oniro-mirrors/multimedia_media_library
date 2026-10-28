@@ -44,6 +44,13 @@ enum class TakeEffectStatus : int32_t {
     NEED_TAKE_EFFECT = 2,       // 需要添加水印
 };
 
+enum class LocalEnhancementType : int32_t {
+    NOT_SUPPORT = 0,
+    AUTO = 1,
+    MANUAL = 2,
+    ON_ERROR,
+};
+
 class CameraAssetInfo {
 public:
     EXPORT CameraAssetInfo() {}
@@ -65,7 +72,10 @@ public:
     void SetMimeType(const std::string& mimeType);
 
     int32_t GetCompressionQuality() const;
-    void SetCompressionQuality(const int32_t &compressionQuality);
+    const std::string& GetBundleName() const;
+
+    int32_t GetLocalEnhancementAbility() const;
+    void SetLocalEnhancementAbility(int32_t localEnhancementAbility);
 
     MediaType GetMediaType() const;
 
@@ -100,8 +110,14 @@ public:
     EXPORT void ParseToC2PAConfigInfo(const std::string& c2paInfo, C2PAConfigInfo& c2paConfigInfo);
 
     EXPORT bool IsLifeFinished() const;
+    bool GetFirstStageFinished() const;
     void SetFirstStageFinished(bool isFirstStageFinished);
+    bool GetSecondStageFinished() const;
     void SetSecondStageFinished(bool isSecondStageFinished);
+
+    // 6.local enhancement
+    EXPORT LocalEnhancementType GetLocalEnhancementType() const;
+    void SetLocalEnhancementType(const LocalEnhancementType& localEnhancementType);
 
     std::string ToString() const;
 
@@ -116,6 +132,8 @@ private:
     int32_t subtype_{-1};
     int32_t burstCoverLevel_{static_cast<int32_t>(BurstCoverLevelType::COVER)};
     int32_t compressionQuality_{-1};
+    std::string bundleName_;
+    int32_t localEnhancementAbility_{0};
 
     // file data
     std::string editData_;
@@ -131,6 +149,9 @@ private:
 
     // c2pa
     C2PAConfigInfo c2paConfigInfo_;
+
+    // local enhancement
+    LocalEnhancementType localEnhancementType_{LocalEnhancementType::NOT_SUPPORT};
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LIBRARY_CAMERA_ASSET_INFO_H

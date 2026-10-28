@@ -180,11 +180,18 @@ config("public_napi_config") {
   ]
 
   camera_include_dirs = [
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
     "${MEDIALIB_INNERIMPL_PATH}/camera/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include/enum",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include",
+  ]
+
+  media_ipc_common_include_dirs = [
+    "${MEDIALIB_IPC_COMMON}/include/vo",
   ]
 
   include_dirs += camera_include_dirs
+  include_dirs += media_ipc_common_include_dirs
 }
 
 ohos_shared_library("medialibrary_nutils") {
@@ -215,6 +222,7 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_JS_PATH}/src/fetch_file_result_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/file_asset_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/highlight_album_napi.cpp",
+    "${MEDIALIB_JS_PATH}/src/local_enhancement_task_state_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/media_album_change_request_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/media_share_album_change_request_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/media_asset_change_request_napi.cpp",
@@ -399,7 +407,10 @@ ohos_shared_library("medialibrary_nutils") {
   media_camera_character_service_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/cancel_request_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/get_progress_callback_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/process_image_enhancement_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/process_video_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/query_local_enhancement_status_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/query_local_enhancement_task_state_vo.cpp",
   ]
 
   sources += media_asset_service_vo_source

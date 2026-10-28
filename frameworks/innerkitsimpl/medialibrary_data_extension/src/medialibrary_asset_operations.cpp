@@ -223,6 +223,8 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::C2PA_CONFIG_INFO, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_IS_SHARED, MEMBER_TYPE_INT32 },
     { PhotoColumn::MUSIC_MASTER_MODE, MEMBER_TYPE_INT32 },
+    { PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, MEMBER_TYPE_INT32 },
+    { PhotoColumn::LOCAL_ENHANCEMENT_STATUS, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, MEMBER_TYPE_INT32 },
 };
 
@@ -3062,6 +3064,8 @@ int32_t QueryFileInfoAndHandleRemovePhotos(const AbsRdbPredicates &predicates, D
         columns.push_back(PhotoColumn::PHOTO_BURST_KEY);
         columns.push_back(PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
         columns.push_back(PhotoColumn::PHOTO_STORAGE_PATH);
+        columns.push_back(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY);
+        columns.push_back(PhotoColumn::LOCAL_ENHANCEMENT_STATUS);
     }
 
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);

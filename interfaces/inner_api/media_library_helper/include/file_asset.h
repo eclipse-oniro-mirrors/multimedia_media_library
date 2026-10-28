@@ -343,6 +343,12 @@ public:
 
     EXPORT int32_t GetSouthDeviceType() const;
 
+    EXPORT void SetLocalEnhancementAbility(int32_t localEnhancementAbility);
+    EXPORT int32_t GetLocalEnhancementAbility() const;
+
+    EXPORT void SetLocalEnhancementStatus(int32_t localEnhancementStatus);
+    EXPORT int32_t GetLocalEnhancementStatus() const;
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;

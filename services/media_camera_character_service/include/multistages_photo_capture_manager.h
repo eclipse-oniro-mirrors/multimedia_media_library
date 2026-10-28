@@ -21,12 +21,15 @@
 #include <unordered_map>
 #include <mutex>
 
+#include "add_image_dto.h"
+#include "camera_asset_info.h"
+#include "camera_character_types.h"
 #include "deferred_photo_proc_adapter.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_command.h"
-#include "result_set.h"
 #include "picture_manager_thread.h"
-#include "add_image_dto.h"
+#include "result_set.h"
+
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -52,6 +55,13 @@ public:
     void AddImage(AddImageDto &dto);
     void AddImage(MediaLibraryCommand &cmd);
     void ProcessImage(int fileId, int deliveryMode);
+
+    // 端侧AI增强
+    void AddImageEnhancement(const CameraAssetInfo &assetInfo);
+    void RemoveImageEnhancement(const std::string &photoId, bool isRestorable = true);
+    void RestoreImageEnhancement(const std::string &photoId);
+    void ProcessImageEnhancement(int32_t fileId);
+    bool CancelProcessImageEnhancement(const std::string &photoId);
 
     void AddImageInternal(int32_t fileId, const std::string &photoId, int32_t deferredProcType,
         bool discardable = false, const std::string &packageName = "");
@@ -81,6 +91,9 @@ private:
     void CancelRequestAndRemoveImage(const std::vector<std::string> &columns);
     int32_t UpdatePictureQuality(const std::string &photoId);
     int32_t UpdatePictureQualityByFileId(int32_t fileId);
+
+    void RecoverOnProcessTask(const std::shared_ptr<FileAsset> &fileAsset);
+    void RecoverOnProcessEnhancemnetTask(const std::shared_ptr<FileAsset> &fileAsset);
 
     std::shared_ptr<DeferredPhotoProcessingAdapter> deferredProcSession_;
     

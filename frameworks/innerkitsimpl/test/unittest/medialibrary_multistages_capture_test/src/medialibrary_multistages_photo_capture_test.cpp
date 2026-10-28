@@ -57,6 +57,13 @@
 #undef protected
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+// VO headers
+#include "add_image_vo.h"
+#include "add_process_video_vo.h"
+#include "cancel_request_vo.h"
+#include "get_progress_callback_vo.h"
+#include "process_video_vo.h"
+#include "media_camera_character_controller_service.h"
 #include "fetch_result.h"
 
 using namespace std;
@@ -67,6 +74,7 @@ using namespace testing;
 
 namespace OHOS {
 namespace Media {
+constexpr const char* IMAGE_PROCESS_TYPE_KEY = "imageProcessType";
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
@@ -643,7 +651,8 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_on_error_001,
 
     MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
         new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_FAILED);
+    DpsMetadata metadata;
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_FAILED, metadata);
     delete callback;
 
     vector<string> columns = { PhotoColumn::PHOTO_QUALITY };
@@ -661,40 +670,6 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_on_error_001,
     MEDIA_INFO_LOG("session_callback_on_error_001 End");
 }
 
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_on_error_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("session_callback_on_error_002 Start");
-    auto fileId = PrepareForFirstVisit();
-    EXPECT_GT(fileId, 0);
-
-    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
-        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_ABNORMAL);
-
-    auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
-    shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
-    callback->NotifyIfTempFile(fileAsset, true);
-    delete callback;
-    MEDIA_INFO_LOG("session_callback_on_error_002 End");
-}
-
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_on_error_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("session_callback_on_error_003 Start");
-    auto fileId = PrepareForFirstVisit();
-    EXPECT_GT(fileId, 0);
-
-    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
-        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INVALID_PHOTO_ID);
-
-    auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
-    shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
-    callback->NotifyIfTempFile(fileAsset, true);
-    delete callback;
-    MEDIA_INFO_LOG("session_callback_on_error_003 End");
-}
-
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_error_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("session_callback_Handle_on_error_001 Start");
@@ -703,7 +678,8 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_err
 
     MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
         new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    callback->HandleOnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_FAILED);
+    DpsMetadata metadata;
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_FAILED, metadata);
     delete callback;
 
     vector<string> columns = { PhotoColumn::PHOTO_QUALITY };
@@ -729,7 +705,8 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_err
 
     MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
         new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    callback->HandleOnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_ABNORMAL);
+    DpsMetadata metadata;
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_ABNORMAL, metadata);
 
     auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
     shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
@@ -746,43 +723,14 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_err
 
     MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
         new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    callback->HandleOnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INVALID_PHOTO_ID);
+    DpsMetadata metadata;
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INVALID_PHOTO_ID, metadata);
 
     auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
     shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
     callback->NotifyIfTempFile(fileAsset, true);
     delete callback;
     MEDIA_INFO_LOG("session_callback_Handle_on_error_003 End");
-}
-
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, deferred_proc_adapter_null_session_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("deferred_proc_adapter_null_session_001 Start");
-    std::shared_ptr<DeferredPhotoProcessingAdapter> deferredProcSession = make_shared<DeferredPhotoProcessingAdapter>();
-    EXPECT_NE(deferredProcSession, nullptr);
-    // test deferredProcSession_ is nullptr;
-    deferredProcSession->deferredPhotoProcSession_ = nullptr;
-
-    deferredProcSession->BeginSynchronize();
-    deferredProcSession->EndSynchronize();
-    deferredProcSession->RestoreImage(PHOTO_ID_FOR_TEST);
-    deferredProcSession->ProcessImage("com.test.demo", PHOTO_ID_FOR_TEST);
-    deferredProcSession->CancelProcessImage(PHOTO_ID_FOR_TEST);
-    MEDIA_INFO_LOG("deferred_proc_adapter_null_session_001 End");
-}
-
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, normal_deferred_proc_adapter_session, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("normal_deferred_proc_adapter_session Start");
-    std::shared_ptr<DeferredPhotoProcessingAdapter> deferredProcSession = make_shared<DeferredPhotoProcessingAdapter>();
-    EXPECT_NE(deferredProcSession, nullptr);
-
-    deferredProcSession->BeginSynchronize();
-    deferredProcSession->EndSynchronize();
-    deferredProcSession->RestoreImage(PHOTO_ID_FOR_TEST);
-    deferredProcSession->ProcessImage("com.test.demo", PHOTO_ID_FOR_TEST);
-    deferredProcSession->CancelProcessImage(PHOTO_ID_FOR_TEST);
-    MEDIA_INFO_LOG("normal_deferred_proc_adapter_session End");
 }
 
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, file_utils_save_file_001, TestSize.Level1)
@@ -961,8 +909,9 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdateCEAvailable_test, TestSi
     updateCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, fileId);
     result = DatabaseAdapter::Update(updateCmd1);
 
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_SESSION_SYNC_NEEDED);
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INTERRUPTED);
+    DpsMetadata metadata;
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_SESSION_SYNC_NEEDED, metadata);
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INTERRUPTED, metadata);
     callback->OnStateChanged(CameraStandard::SESSION_STATE_RUNNALBE);
     delete callback;
     MEDIA_INFO_LOG("UpdateCEAvailable_test End");
@@ -981,6 +930,7 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, ProcessAndSaveHighQualityImage
     picture->Create(surfaceBuffer);
 
     DpsMetadata metadata;
+    metadata.Set(IMAGE_PROCESS_TYPE_KEY, 0);
     constexpr const char* CLOUD_FLAG = "cloudImageEnhanceFlag";
     metadata.Set(CLOUD_FLAG, true);
     callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, metadata);
@@ -1002,21 +952,6 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, ProcessAndSaveHighQualityImage
     MEDIA_INFO_LOG("ProcessAndSaveHighQualityImage_test_001 End");
 }
 
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdateHighQualityPictureInfo_test, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("UpdateHighQualityPictureInfo_test Start");
-    auto fileId = PrepareForFirstVisit();
-    EXPECT_GT(fileId, 0);
-
-    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
-        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-
-    callback->UpdateHighQualityPictureInfo(fileId, true);
-    callback->UpdateHighQualityPictureInfo(fileId, false);
-    delete callback;
-    MEDIA_INFO_LOG("UpdateHighQualityPictureInfo_test End");
-}
-
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, OnDeliveryLowQualityImage_test, TestSize.Level1)
 {
     MEDIA_INFO_LOG("OnDeliveryLowQualityImage_test Start");
@@ -1028,10 +963,12 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, OnDeliveryLowQualityImage_test
 
     sptr<SurfaceBuffer> surfaceBuffer = SurfaceBuffer::Create();
     std::shared_ptr<CameraStandard::PictureIntf> picture = std::make_shared<CameraStandard::PictureAdapter>();
-    callback->OnDeliveryLowQualityImage(to_string(fileId), picture);
+
+    DpsMetadata metadata;
+    callback->OnDeliveryLowQualityImage(to_string(fileId), picture, metadata);
     picture->Create(surfaceBuffer);
-    callback->OnDeliveryLowQualityImage(to_string(fileId), picture);
-    callback->OnDeliveryLowQualityImage("fileId", picture);
+    callback->OnDeliveryLowQualityImage(to_string(fileId), picture, metadata);
+    callback->OnDeliveryLowQualityImage("fileId", picture, metadata);
     delete callback;
     MEDIA_INFO_LOG("OnDeliveryLowQualityImage_test End");
 }
@@ -1251,13 +1188,6 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdateDbInfo_test_002, TestSiz
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
 }
 
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, BeginSynchronize_test_001, TestSize.Level1)
-{
-    DeferredPhotoProcessingAdapter adapter;
-    EXPECT_NE(adapter.deferredPhotoProcSession_, nullptr);
-    adapter.BeginSynchronize();
-}
-
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, CheckMovingPhotoFlag_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("CheckMovingPhotoFlag_test_001 Start");
@@ -1280,8 +1210,9 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, CheckMovingPhotoFlag_test_001,
     int32_t result = DatabaseAdapter::Update(updateCmd);
     EXPECT_EQ(result, 0);
 
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_SESSION_SYNC_NEEDED);
-    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INTERRUPTED);
+    DpsMetadata metadata;
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_SESSION_SYNC_NEEDED, metadata);
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INTERRUPTED, metadata);
     callback->OnStateChanged(CameraStandard::SESSION_STATE_RUNNALBE);
     delete callback;
     MEDIA_INFO_LOG("CheckMovingPhotoFlag_test_001 End");

@@ -68,6 +68,8 @@ public:
     static bool InitUserFileClient(napi_env env, napi_callback_info info);
     static napi_status ParseArgGetPhotoAsset(napi_env env, napi_value arg, int &fileId, std::string &uri,
         std::string &displayName);
+    static napi_status ParseArgGetPhotoAssetForLocalEnhancement(napi_env env, napi_value arg, int &fileId,
+        std::string &uri, std::string &displayName);
 
 private:
     EXPORT static napi_value Constructor(napi_env env, napi_callback_info info);
@@ -79,6 +81,7 @@ private:
     EXPORT static napi_value JSCancelCloudEnhancementTasks(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSCancelAllCloudEnhancementTasks(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSQueryCloudEnhancementTaskState(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSQueryLocalEnhancementTaskState(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSyncCloudEnhancementTaskStatus(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetCloudEnhancementPair(napi_env env, napi_callback_info info);
 
@@ -110,10 +113,11 @@ struct CloudEnhancementAsyncContext : public NapiError {
     int32_t totalFileSize_ {UNDEFINED};
     int32_t expectedDuration_ {UNDEFINED};
     int32_t statusCode_ {UNDEFINED};
+    int32_t localEnhancementProgress_ {UNDEFINED};
     std::unique_ptr<FetchResult<FileAsset>> fetchFileResult;
     bool GetPairAsset();
 };
 } // namespace Media
 } // namespace OHOS
 
-#endif // INTERFACES_KITS_JS_MEDIALIBRARY_INCLUDE_CLOUD_ENHANCEMENT_NAPI_H
+#endif // INTERFACES_KITS_JS_MEDIALIBRARY_INCLUDE_CLOUD_ENHANCEMENT_NAPI_H

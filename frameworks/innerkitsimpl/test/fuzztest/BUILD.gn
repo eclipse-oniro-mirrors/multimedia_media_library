@@ -78,7 +78,6 @@ group("media_library_fuzztest") {
 
   deps_cloud_sync_fuzztest = [
     "medialibrarycloudmediavo_fuzzer:MediaLibraryCloudMediaVoFuzzTest",
-    "medialibrarycloudmediacontroller_fuzzer:MediaLibraryCloudMediaControllerFuzzTest",
     "medialibrarycloudmediaalbumdao_fuzzer:MediaLibraryCloudMediaAlbumDaoFuzzTest",
     "medialibrarycloudmediaphotosdao_fuzzer:MediaLibraryCloudMediaPhotosDaoFuzzTest",
     "medialibrarycloudmediaservice_fuzzer:MediaLibraryCloudMediaServiceFuzzTest",

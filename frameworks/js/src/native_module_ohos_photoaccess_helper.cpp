@@ -15,6 +15,7 @@
 
 #include "album_order_napi.h"
 #include "cloud_enhancement_task_state_napi.h"
+#include "local_enhancement_task_state_napi.h"
 #include "cloud_enhancement_napi.h"
 #include "cloud_media_asset_manager_napi.h"
 #include "cloud_media_asset_status_napi.h"
@@ -61,6 +62,7 @@ static napi_value PhotoAccessHelperExport(napi_env env, napi_value exports)
     PhotoProxyNapi::Init(env, exports);
     CloudEnhancementNapi::Init(env, exports);
     CloudEnhancementTaskStateNapi::Init(env, exports);
+    LocalEnhancementTaskStateNapi::Init(env, exports);
     CloudMediaAssetManagerNapi::Init(env, exports);
     CloudMediaAssetStatusNapi::Init(env, exports);
     PhotoAssetCustomRecordManager::Init(env, exports);

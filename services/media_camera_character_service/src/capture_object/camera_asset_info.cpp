@@ -44,6 +44,14 @@ CameraAssetInfo::CameraAssetInfo(const FileAsset& fileAsset)
     subtype_ = fileAsset.GetPhotoSubType();
     compressionQuality_ = fileAsset.GetCompressionQuality();
     ParseToC2PAConfigInfo(fileAsset.GetC2paConfigInfo(), c2paConfigInfo_);
+
+    bundleName_ = fileAsset.GetOwnerPackage();
+    localEnhancementAbility_ = fileAsset.GetLocalEnhancementAbility();
+    if (localEnhancementAbility_ == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO)) {
+        localEnhancementType_ = LocalEnhancementType::AUTO;
+    } else if (localEnhancementAbility_ == static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL)) {
+        localEnhancementType_ = LocalEnhancementType::MANUAL;
+    }
     MEDIA_INFO_LOG("construct CameraAssetInfo: %{public}s.", ToString().c_str());
 }
 
@@ -210,9 +218,19 @@ bool CameraAssetInfo::IsLifeFinished() const
     return true;
 }
 
+bool CameraAssetInfo::GetFirstStageFinished() const
+{
+    return isFirstStageFinished_;
+}
+
 void CameraAssetInfo::SetFirstStageFinished(bool isFirstStageFinished)
 {
     isFirstStageFinished_ = isFirstStageFinished;
+}
+
+bool CameraAssetInfo::GetSecondStageFinished() const
+{
+    return isSecondStageFinished_;
 }
 
 void CameraAssetInfo::SetSecondStageFinished(bool isSecondStageFinished)
@@ -225,9 +243,29 @@ int32_t CameraAssetInfo::GetCompressionQuality() const
     return compressionQuality_;
 }
 
-void CameraAssetInfo::SetCompressionQuality(const int32_t &compressionQuality)
+const std::string& CameraAssetInfo::GetBundleName() const
 {
-    compressionQuality_ = compressionQuality;
+    return bundleName_;
+}
+
+int32_t CameraAssetInfo::GetLocalEnhancementAbility() const
+{
+    return localEnhancementAbility_;
+}
+
+void CameraAssetInfo::SetLocalEnhancementAbility(int32_t localEnhancementAbility)
+{
+    localEnhancementAbility_ = localEnhancementAbility;
+}
+
+LocalEnhancementType CameraAssetInfo::GetLocalEnhancementType() const
+{
+    return localEnhancementType_;
+}
+
+void CameraAssetInfo::SetLocalEnhancementType(const LocalEnhancementType& localEnhancementType)
+{
+    localEnhancementType_ = localEnhancementType;
 }
 
 std::string CameraAssetInfo::ToString() const
@@ -243,6 +281,9 @@ std::string CameraAssetInfo::ToString() const
        << "\"enableC2PA\": \"" << (c2paConfigInfo_.enableC2PA ? "true" : "false") << "\", "
        << "\"authorId\": \"" << c2paConfigInfo_.authorId << "\", "
        << "\"authorName\": \"" << c2paConfigInfo_.authorName << "\""
+       << "\"bundleName\": \"" << bundleName_ << "\", "
+       << "\"localEnhancementAbility\": \"" << std::to_string(localEnhancementAbility_) << "\", "
+       << "\"localEnhancementType\": \"" << std::to_string(static_cast<int32_t>(localEnhancementType_))
        << "}";
     return ss.str();
 }

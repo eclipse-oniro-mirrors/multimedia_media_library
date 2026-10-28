@@ -17,7 +17,6 @@
 
 #include "multistages_capture_manager.h"
 
-
 #include "media_log.h"
 #include "medialibrary_rdbstore.h"
 #include "result_set_utils.h"
@@ -93,7 +92,16 @@ void MultiStagesCaptureManager::RemovePhotosWithResultSet(const shared_ptr<Nativ
         MEDIA_ERR_LOG("Result set is empty");
         return;
     }
+    int32_t localEnhancementAbility = GetInt32Val(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, resultSet);
+    int32_t localEnhancementStatus = GetInt32Val(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, resultSet);
     string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+    if (localEnhancementAbility != static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT) &&
+        (localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::IDEL) ||
+         localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO) ||
+         localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL))) {
+        MultiStagesPhotoCaptureManager::GetInstance().RemoveImageEnhancement(photoId, isRestorable);
+        return;
+    }
     int32_t stageVideoTaskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
     // Moving photo remove video task
     if (stageVideoTaskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
@@ -136,21 +144,31 @@ void MultiStagesCaptureManager::RestorePhotos(const NativeRdb::AbsRdbPredicates 
     MediaLibraryTracer tracer;
     tracer.Start("MultiStagesCaptureManager::RestorePhotos");
     NativeRdb::AbsRdbPredicates predicatesNew(predicates.GetTableName());
-    string where = predicates.GetWhereClause() + " AND " + PhotoColumn::PHOTO_QUALITY + "=" +
-        to_string(static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
+    string where = predicates.GetWhereClause() + " AND (" + PhotoColumn::PHOTO_QUALITY + "=" +
+        to_string(static_cast<int32_t>(MultiStagesPhotoQuality::LOW)) + " OR " +
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY + " > " +
+        to_string(static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)) + ")";
     predicatesNew.SetWhereClause(where);
     predicatesNew.SetWhereArgs(predicates.GetWhereArgs());
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
-        CONST_MEDIA_DATA_DB_MEDIA_TYPE };
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE, PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, PhotoColumn::LOCAL_ENHANCEMENT_STATUS };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicatesNew, columns);
     bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK);
     CHECK_AND_RETURN_INFO_LOG(!cond, "Result set is empty");
 
     do {
         string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        int32_t localEnhancementAbility = GetInt32Val(PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, resultSet);
+        int32_t localEnhancementStatus = GetInt32Val(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, resultSet);
+        if (localEnhancementAbility != static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT) &&
+            (localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::IDEL) ||
+             localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO) ||
+             localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL))) {
+            MultiStagesPhotoCaptureManager::GetInstance().RestoreImageEnhancement(photoId);
+            continue;
+        }
         int32_t photoQuality = GetInt32Val(CONST_MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
         if (photoId.empty() || photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::FULL)) {
-            MEDIA_DEBUG_LOG("photoId is empty or full quality ");
             continue;
         }
 
@@ -167,7 +185,6 @@ void MultiStagesCaptureManager::RestorePhotos(const NativeRdb::AbsRdbPredicates 
         }
     } while (!resultSet->GoToNextRow());
 }
-
 } // Media
 } // OHOS
 // LCOV_EXCL_STOP

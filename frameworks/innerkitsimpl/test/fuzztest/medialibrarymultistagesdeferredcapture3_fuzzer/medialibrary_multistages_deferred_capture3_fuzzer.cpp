@@ -138,7 +138,7 @@ static void MultistagesCaptureDeferredPhotoProcSessionCallback3Test()
     callback->OnProcessImageDone(photoId, addr, bytes, cloudImageEnhanceFlag);
 
     photoId = "/test" + SPLIT_PATH + provider->ConsumeBytesAsString(NUM_BYTES);
-    callback->OnDeliveryLowQualityImage(photoId, picture);
+    callback->OnDeliveryLowQualityImage(photoId, picture, metadata);
     delete[] addr;
     addr = nullptr;
     MEDIA_INFO_LOG("MultistagesCaptureDeferredPhotoProcSessionCallback3Test end");

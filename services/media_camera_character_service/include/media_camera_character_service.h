@@ -26,6 +26,9 @@
 #include "get_deferred_picture_info_dto.h"
 #include "get_deferred_picture_info_vo.h"
 #include "get_progress_callback_vo.h"
+#include "process_image_enhancement_vo.h"
+#include "query_local_enhancement_status_vo.h"
+#include "query_local_enhancement_task_state_vo.h"
 #include "scan_camera_file_dto.h"
 #include "process_video_dto.h"
 
@@ -42,6 +45,11 @@ public:
     EXPORT int32_t CreateCameraFileFd(const CreateCameraFileFdDto &dto, CreateCameraFileFdRespBody &respbody);
     EXPORT int32_t ScanCameraFile(const ScanCameraFileDto &dto);
     int32_t GetDeferredPictureInfo(const GetDeferredPictureInfoDto& dto, GetDeferredPictureInfoRespBody& respbody);
+    int32_t QueryLocalEnhancementStatus(const QueryLocalEnhancementStatusReqBody &reqBody,
+        QueryLocalEnhancementStatusRespBody &respBody);
+    int32_t ProcessImageEnhancement(const ProcessImageEnhancementReqBody &reqBody);
+    int32_t QueryLocalEnhancementTaskState(const QueryLocalEnhancementTaskStateReqBody &reqBody,
+        QueryLocalEnhancementTaskStateRespBody &respBody);
 };
 } // namespace OHOS::Media
 #endif // OHOS_MEDIA_CAMERA_CHARACTER_SERVICE_H

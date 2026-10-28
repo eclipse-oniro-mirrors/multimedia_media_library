@@ -17,9 +17,11 @@
 #include "ani_class_name.h"
 #include "cloud_enhancement_task_state_ani.h"
 #include "cloud_enhancement_uri.h"
+#include "local_enhancement_task_state_ani.h"
 #include "media_library_ani.h"
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_errno.h"
+#include "media_library_error_code.h"
 #include "medialibrary_tracer.h"
 #include "media_column.h"
 #include "media_file_uri.h"
@@ -36,6 +38,7 @@
 #include "user_define_ipc_client.h"
 #include "get_cloud_enhancement_pair_vo.h"
 #include "query_cloud_enhancement_task_state_vo.h"
+#include "query_local_enhancement_task_state_vo.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -309,6 +312,8 @@ ani_status CloudEnhancementAni::Init(ani_env *env)
             reinterpret_cast<void *>(CloudEnhancementAni::SyncCloudEnhancementTaskStatus)},
         ani_native_function {"getCloudEnhancementPairSync", nullptr,
             reinterpret_cast<void *>(CloudEnhancementAni::GetCloudEnhancementPair)},
+        ani_native_function {"queryLocalEnhancementTaskStateSync", nullptr,
+            reinterpret_cast<void *>(CloudEnhancementAni::QueryLocalEnhancementTaskState)},
     };
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
@@ -953,6 +958,67 @@ ani_object CloudEnhancementAni::GetCloudEnhancementPair(ani_env *env, ani_object
         "This operation is not supported for assets in shared albums");
     GetCloudEnhancementPairExecute(env, aniContext);
     return GetCloudEnhancementPairComplete(env, aniContext);
+}
+
+static void QueryLocalEnhancementTaskStateExecute(std::unique_ptr<CloudEnhancementAniContext> &aniContext)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryLocalEnhancementTaskStateExecute");
+    CHECK_NULL_PTR_RETURN_VOID(aniContext, "aniContext is nullptr");
+
+    QueryLocalEnhancementTaskStateReqBody reqBody;
+    QueryLocalEnhancementTaskStateRespBody respBody;
+    reqBody.photoUri = aniContext->photoUri;
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_SYSTEM_QUERY_LOCAL_ENHANCEMENT_TASK_STATE);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret < 0) {
+        aniContext->SaveError(ret);
+        ANI_ERR_LOG("Failed to query local enhancement task state, err: %{public}d", ret);
+        return;
+    }
+    aniContext->localEnhancementProgress_ = respBody.progress;
+    ANI_INFO_LOG("QueryLocalEnhancementTaskStateExecute progress: %{public}d", aniContext->localEnhancementProgress_);
+}
+
+static ani_object QueryLocalEnhancementTaskStateComplete(ani_env *env, unique_ptr<CloudEnhancementAniContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    ani_object taskStateObj {};
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT) {
+        taskStateObj = LocalEnhancementTaskStateAni::NewLocalEnhancementTaskStateAni(env, context);
+    } else {
+        context->HandleError(env, errorObj);
+    }
+    context.reset();
+    return taskStateObj;
+}
+
+ani_object CloudEnhancementAni::QueryLocalEnhancementTaskState(ani_env *env, ani_object aniObject,
+    ani_object photoAsset)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    MediaLibraryTracer tracer;
+    tracer.Start("JSQueryLocalEnhancementTaskState");
+
+    if (photoAsset == nullptr) {
+        AniError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "photoAsset is null");
+        return nullptr;
+    }
+
+    auto aniContext = make_unique<CloudEnhancementAniContext>();
+    CHECK_COND(env, CloudEnhancementAni::InitUserFileClient(env, aniObject), JS_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, ParseArgQuery(
+        env, aniObject, photoAsset, aniContext), "Failed to parse args");
+
+    QueryLocalEnhancementTaskStateExecute(aniContext);
+    return QueryLocalEnhancementTaskStateComplete(env, aniContext);
 }
 } // namespace Media
 } // namespace OHOS

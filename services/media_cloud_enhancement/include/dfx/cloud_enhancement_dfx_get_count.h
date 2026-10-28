@@ -32,6 +32,11 @@ enum class CloudEnhancementTaskCompletedType : int32_t {
     SYNC_CANCELLATION,
 };
 
+enum class CloudEnhancementTaskFinishType : int32_t {
+    AUTO_LOCAL_ENHANCEMENT = 3,
+    MANUAL_LOCAL_ENHANCEMENT = 4,
+};
+
 class CloudEnhancementGetCount {
 public:
     EXPORT static CloudEnhancementGetCount& GetInstance();
@@ -46,6 +51,7 @@ private:
     ~CloudEnhancementGetCount();
 
     std::unordered_map<std::string, int64_t> startTimes_;
+    std::mutex mutex_;
 };
 
 }  // namespace Media

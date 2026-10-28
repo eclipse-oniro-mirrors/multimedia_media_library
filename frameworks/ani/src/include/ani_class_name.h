@@ -29,6 +29,8 @@ static const std::string PAH_ANI_CLASS_FILE_ASSET_INFO = PAH_CLASS_SPACE + "File
 static const std::string PAH_ANI_CLASS_CLOUD_ENHANCEMENT = PAH_CLASS_SPACE + "CloudEnhancement";
 static const std::string PAH_ANI_CLASS_CLOUD_ENHANCEMENT_TASK_STATE_HANDLE =
     PAH_CLASS_SPACE + "CloudEnhancementTaskStateHandle";
+static const std::string PAH_ANI_CLASS_LOCAL_ENHANCEMENT_TASK_STATE_HANDLE =
+    PAH_CLASS_SPACE + "LocalEnhancementTaskStateHandle";
 static const std::string PAH_ANI_CLASS_CLOUD_MEDIA_ASSET_MANAGER =
     PAH_CLASS_SPACE + "CloudMediaAssetManager";
 static const std::string PAH_ANI_CLASS_CLOUD_MEDIA_ASSET_STATUS_HANDLE =

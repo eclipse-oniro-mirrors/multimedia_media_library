@@ -41,10 +41,13 @@ public:
     EXPORT void AddImage(const std::string &imageId, CameraStandard::DpsMetadata &metadata,
         const bool isTrashed = false, const std::string &packageName = "");
     EXPORT void SetProcessImageDoneCallback(const OHOS::Media::ProcessDoneHandler &func);
+    EXPORT virtual void RemoveImage(const std::string &imageId, DpsMetadata& metadata,
+        const bool isRestorable = true);
 #endif
-    EXPORT virtual void RemoveImage(const std::string &imageId, const bool isRestorable = true);
     EXPORT void RestoreImage(const std::string &imageId);
-    EXPORT void ProcessImage(const std::string &appName, const std::string &imageId);
+#ifdef ABILITY_CAMERA_SUPPORT
+    EXPORT void ProcessImage(const std::string &appName, const std::string &imageId, DpsMetadata &metadata);
+#endif
     EXPORT bool CancelProcessImage(const std::string &imageId);
     EXPORT void NotifyProcessImage();
 private:

@@ -22,6 +22,7 @@
 #include "camera_mapper.h"
 #include "camera_path_utils.h"
 #include "exif_metadata.h"
+#include "exif_utils.h"
 #include "file_utils.h"
 #include "high_quality_scan_file_callback.h"
 #include "media_change_effect.h"
@@ -35,6 +36,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
+#include "scan_config_builder.h"
 #include "multistages_camera_capture_manager.h"
 #include "multistages_capture_dfx_capture_fault.h"
 #include "multistages_capture_dfx_save_camera_photo.h"
@@ -87,8 +89,9 @@ static const std::unordered_map<int, int> ORIENTATION_MAP = {
     {270, ORIENTATION_270}
 };
 
-YuvPipeline::YuvPipeline()
+YuvPipeline::YuvPipeline(CameraBasePipelineType basePipelineType)
 {
+    SetBasePipelineType(basePipelineType);
     SetPipelineType(CameraPipelineType::YUV);
 }
 
@@ -100,7 +103,7 @@ bool YuvPipeline::CloseCameraFileFdWithMutex(const std::string& realPath, const 
     return true;
 }
 
-void YuvPipeline::OnDelivery(std::shared_ptr<Media::Picture> picture)
+void YuvPipeline::OnDelivery(std::shared_ptr<Media::Picture> picture, const MediaDpsMetadata &metadata)
 {
     // YuvPipeline 把 picture 存入缓存
     auto assetInfo = GetAssetInfo();
@@ -113,6 +116,8 @@ void YuvPipeline::OnDelivery(std::shared_ptr<Media::Picture> picture)
 
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::END);
     MultiStagesPhotoCaptureManager::GetInstance().DealLowQualityPicture(photoId, fileId, std::move(picture), false);
+
+    SetLocalEnhancementAbilityByMetadata(metadata);       // 记录端侧增强状态
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} save low quality image end, photoId: %{public}s, "
         "fileId: %{public}d", MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), fileId);
 }
@@ -237,7 +242,7 @@ void YuvPipeline::SaveImageForStageInternal(const SaveCameraPhotoDto& dto)
     SavePictureForFirstStage(true);
 }
 
-static void UpdateQualityAndDirty(const int32_t fileId, const std::string& photoId, const MediaDpsMetadata& metadata,
+static void UpdateQualityAndDirty(const CameraAssetInfo &assetInfo, const MediaDpsMetadata& metadata,
     bool isHighQualityPicture, bool needDfx)
 {
     if (!isHighQualityPicture) {
@@ -245,9 +250,10 @@ static void UpdateQualityAndDirty(const int32_t fileId, const std::string& photo
         return;
     }
 
-    MultiStagesCaptureDao::UpdateHighQualityInfo(fileId, metadata, false);
+    MultiStagesCaptureDao::UpdateHighQualityInfo(assetInfo, metadata, false, false);
     if (needDfx) {
-        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::UPDATE_DB);
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(assetInfo.GetPhotoId(),
+            AddSaveTimeStat::UPDATE_DB);
     }
 }
 
@@ -317,7 +323,7 @@ int32_t YuvPipeline::SavePictureForFirstStage(bool needDfx)
     }
 
     // 3.若落盘高质量, 需要更新photo_quality && dirty
-    UpdateQualityAndDirty(fileId, photoId, GetMediaDpsMetadata(), isHighForEffective_, needDfx);
+    UpdateQualityAndDirty(assetInfo, GetMediaDpsMetadata(), isHighForEffective_, needDfx);
     
     // 4.清理数据
     ClearPictureData(photoId, resultPictureForFirstStage_);
@@ -524,6 +530,7 @@ bool YuvPipeline::InitForOnProcessInternal(const OnProcessImageWrapper &wrapper)
     metadata.dfxMediaType = assetInfo.IsMovingPhoto() ? MultiStagesCaptureMediaType::MOVING_PHOTO_IMAGE
                                                       : MultiStagesCaptureMediaType::IMAGE;
     SetMediaDpsMetadata(std::move(metadata));
+    SetLocalEnhancementAbilityByMetadata(metadata);
     MEDIA_INFO_LOG("InitForOnProcessInternal end, photoId: %{public}s, fileId: %{public}d.",
         assetInfo.GetPhotoId().c_str(), assetInfo.GetFileId());
     return true;
@@ -687,17 +694,147 @@ int32_t YuvPipeline::SaveTwoPictureForOnProcess(
     return E_OK;
 }
 
-void YuvPipeline::ScanFileForOnProcessInternal()
+void YuvPipeline::AsyncScanFileForCamera(ScanQuality scanQuality)
 {
     auto assetInfo = GetAssetInfo();
-    int32_t fileId = assetInfo.GetFileId();
+    MEDIA_INFO_LOG("AsyncScanFileForCamera with picture.");
 
-    MEDIA_INFO_LOG("ScanFileForOnProcessInternal with picture.");
-    MediaLibraryObjectUtils::ScanFileAsync(assetInfo.GetPath(), to_string(fileId), MediaLibraryApi::API_10,
-        assetInfo.IsMovingPhoto(), resultPictureForOnProcess_, HighQualityScanFileCallback::Create(fileId));
+    DefaultScanInfo scanInfo;
+    scanInfo.SetFilePath(assetInfo.GetPath());
+    scanInfo.SetFileId(assetInfo.GetFileId());
+    scanInfo.SetIsMovingPhoto(assetInfo.IsMovingPhoto());
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(ScanQuality::FULL)
+        .SetDefaultScanInfo(scanInfo)
+        .UseThumbnailCallbackPreset(
+        false, true, resultPictureForOnProcess_, HighQualityScanFileCallback::Create(assetInfo.GetFileId()))
+        .Build();
+    MediaLibraryObjectUtils::ScanFileAsync(config);
 
     // 清理缓存数据
     resultPictureForOnProcess_.reset();
+}
+
+// 端侧增强落盘(三阶段落盘)
+bool YuvPipeline::InitForOnProcessEnhancementInternal(const OnProcessImageWrapper &wrapper)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("YuvPipeline::InitForOnProcessEnhancementInternal");
+    MEDIA_INFO_LOG("InitForOnProcessEnhancementInternal enter");
+
+    CHECK_AND_RETURN_RET_LOG(wrapper.yuv.IsValid(), false, "wrapper is inValid");
+    yuvEnhance_ = std::move(wrapper.yuv);
+
+    auto metadata = wrapper.metadata;
+    SetMediaDpsMetadata(std::move(metadata));
+    MEDIA_INFO_LOG("InitForOnProcessEnhancementInternal end.");
+    return true;
+}
+
+int32_t YuvPipeline::ProcessEnhancementPhotoInternal(const std::shared_ptr<FileAsset> &fileAsset, bool isManual)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_ERR, "fileAsset is nullptr.");
+
+    const char* tag = isManual ? "Manual" : "Auto";
+    MediaLibraryTracer tracer;
+    tracer.Start("YuvPipeline::ProcessEnhancementPhotoInternal");
+    MEDIA_INFO_LOG("ProcessEnhancementPhotoInternal enter, %{public}s", tag);
+
+    auto assetInfo = GetAssetInfo();
+    auto picture = yuvEnhance_.picture;
+    CHECK_AND_RETURN_RET_LOG(picture != nullptr, E_ERR, "picture is nullptr.");
+
+    // 已编辑：不论手动还是自动，都只替换原图，没有复合图规格
+    if (fileAsset->GetPhotoEditTime() > 0) {
+        return ProcessEnhancementForEdit(assetInfo.GetPath(), assetInfo, picture);
+    }
+
+    // 需要落盘的情况, 优先处理enhancement的exif信息
+    LocalEnhancementType type = isManual ? LocalEnhancementType::MANUAL : LocalEnhancementType::AUTO;
+    std::map<std::string, std::string> exifMap;
+    bool ret = GetEnhancementExifValue(type, exifMap);
+    if (ret) {
+        ExifUtils::ModifyExifByPicture(picture, exifMap);
+    }
+
+    std::string path = assetInfo.GetPath();
+    std::string editDataCameraPath;
+    CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, path, editDataCameraPath);
+
+    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+        return ProcessEnhancementForSaveOneImage(assetInfo, picture, isManual);
+    } else {
+        return ProcessEnhancementForSaveTwoImage(assetInfo, picture, isManual);
+    }
+}
+
+int32_t YuvPipeline::ProcessEnhancementForSaveOneImage(const CameraAssetInfo& assetInfo,
+    std::shared_ptr<Media::Picture> &picture, bool isManual)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessEnhancementForSaveOneImage");
+    MEDIA_INFO_LOG("ProcessEnhancementForSaveOneImage enter, isManual: %{public}d", isManual);
+
+    std::string path = assetInfo.GetPath();
+
+    if (isManual) {
+        std::string editDataSourceBackPath;
+        CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_BACK_PATH, path, editDataSourceBackPath);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(path, editDataSourceBackPath), E_ERR,
+            "Fail to move %{private}s to %{private}s", path.c_str(), editDataSourceBackPath.c_str());
+    }
+
+    int32_t ret = FileUtils::SavePicture(path, picture, assetInfo.GetMimeType(), true);
+    resultPictureForOnProcess_ = picture;
+    return ret;
+}
+
+int32_t YuvPipeline::ProcessEnhancementForSaveTwoImage(const CameraAssetInfo& assetInfo,
+    std::shared_ptr<Media::Picture> &picture, bool isManual)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessEnhancementForSaveTwoImage");
+    MEDIA_INFO_LOG("ProcessEnhancementForSaveTwoImage enter, isManual: %{public}d", isManual);
+
+    std::string path = assetInfo.GetPath();
+
+    std::string editDataSourcePath;
+    CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, path, editDataSourcePath);
+
+    if (isManual) {
+        std::string editDataSourceBackPath;
+        CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_BACK_PATH, path, editDataSourceBackPath);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(editDataSourcePath, editDataSourceBackPath), E_ERR,
+            "Fail to move %{private}s to %{private}s", editDataSourcePath.c_str(), editDataSourceBackPath.c_str());
+    }
+
+    // 1.先替换低质量裸图
+    int ret = FileUtils::SavePicture(editDataSourcePath, picture, assetInfo.GetMimeType(), true);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+
+    // 2.生成高质量水印滤镜图片
+    std::string editData;
+    CHECK_AND_RETURN_RET_LOG(CameraPathUtils::ReadEditdataCameraFromFile(path, true, editData) == E_OK,
+        E_HAS_FS_ERROR, "Failed to read editdata.");
+
+    // 3.添加水印+落盘
+    FileUtils::SavePictureWithFilters(picture, path, editData, editDataSourcePath);
+    FileUtils::DealPicture(assetInfo.GetMimeType(), path, picture, true);
+
+    resultPictureForOnProcess_ = picture;
+    return E_OK;
+}
+
+int32_t YuvPipeline::ProcessEnhancementForEdit(const std::string &path,
+    const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessEnhancementForEdit");
+    MEDIA_INFO_LOG("ProcessEnhancementForEdit enter");
+
+    std::string editDataSourcePath;
+    CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, path, editDataSourcePath);
+    return FileUtils::SavePicture(editDataSourcePath, picture, assetInfo.GetMimeType(), true);
 }
 } // Media
 } // OHOS

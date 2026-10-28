@@ -26,6 +26,7 @@
 #include "map_operation_flag.h"
 #include "media_analysis_helper.h"
 #include "image_packer.h"
+#include "local_enhancement_manager.h"
 #include "media_change_effect.h"
 #include "media_exif.h"
 #include "media_values_bucket_utils.h"
@@ -1418,7 +1419,7 @@ static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
         CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_BURST_COVER_LEVEL,
-        PhotoColumn::PHOTO_BURST_KEY };
+        PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, PhotoColumn::LOCAL_ENHANCEMENT_STATUS };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Result set is empty");
@@ -1436,8 +1437,12 @@ static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,
     DetectTrashScene(resultSet, sceneInfo);
     int32_t quality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
     int32_t taskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
+    int32_t localEnhancementStatus = GetInt32Val(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, resultSet);
     if (quality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)
-        || taskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
+        || taskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)
+        || localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::IDEL)
+        || localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO)
+        || localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL)) {
         MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, true);
     }
     resultSet->Close();
@@ -1451,12 +1456,14 @@ static void HandleQualityAndHiddenBatch(NativeRdb::AbsRdbPredicates predicates, 
         PhotoColumn::STAGE_VIDEO_TASK_STATUS + " = " +
         to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) + " OR " +
         PhotoColumn::PHOTO_BURST_COVER_LEVEL + " = " +
-        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) + ")";
+        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) + " OR " +
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY + " > " +
+        to_string(static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)) + ")";
     predicates.SetWhereClause(where);
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
         CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_BURST_COVER_LEVEL,
-        PhotoColumn::PHOTO_BURST_KEY};
+        PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, PhotoColumn::LOCAL_ENHANCEMENT_STATUS };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Result set is empty");
@@ -1475,8 +1482,12 @@ static void HandleQualityAndHiddenBatch(NativeRdb::AbsRdbPredicates predicates, 
         DetectTrashScene(resultSet, sceneInfo);
         int32_t quality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
         int32_t taskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
+        int32_t localEnhancementStatus = GetInt32Val(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, resultSet);
         if (quality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)
-            || taskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
+            || taskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)
+            || localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::IDEL)
+            || localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO)
+            || localEnhancementStatus == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL)) {
             MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, true);
         }
     } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
@@ -3554,6 +3565,8 @@ const static vector<string> EDITED_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_OWNER_ALBUM_ID,
     PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
     PhotoColumn::PHOTO_STORAGE_PATH,
+    PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+    PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
 };
 
 static int32_t CheckFileAssetStatus(const shared_ptr<FileAsset>& fileAsset, bool checkMovingPhoto = false)
@@ -3787,14 +3800,36 @@ int32_t MediaLibraryPhotoOperations::CommitEditOpenExecute(const shared_ptr<File
     return OpenFileWithPrivacy(path, "rw", fileId);
 }
 
-static int32_t UpdateEditTime(int32_t fileId, int64_t time)
+static void SetLocalEnhancementPipelineStatus(const std::shared_ptr<FileAsset> &fileAsset, int32_t status)
 {
+    CHECK_AND_RETURN_LOG(fileAsset != nullptr, "fileAsset is nullptr");
+
+    int32_t fileId = fileAsset->GetId();
+    auto pipeline = LocalEnhancementManager::GetInstance().GetLocalEnhancementPipeline(fileId);
+    CHECK_AND_RETURN_LOG(pipeline != nullptr, "image is not in Enhancement process, fileId: %{public}d", fileId);
+
+    if (status == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO)) {
+        pipeline->SetLocalEnhancementType(LocalEnhancementType::AUTO);
+    } else if (status == static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_MANUAL)) {
+        pipeline->SetLocalEnhancementType(LocalEnhancementType::MANUAL);
+    }
+}
+
+static int32_t UpdateEditTime(const shared_ptr<FileAsset>& fileAsset, int64_t time)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_HAS_DB_ERROR, "fileAsset is nullptr");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET(rdbStore != nullptr, E_HAS_DB_ERROR);
     MediaLibraryCommand updatePendingCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
-    updatePendingCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    updatePendingCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileAsset->GetId()));
     ValuesBucket updateValues;
     updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, time);
+    if (fileAsset->GetLocalEnhancementStatus() != static_cast<int32_t>(LocalEnhancementStatus::SUCCESS) &&
+        fileAsset->GetLocalEnhancementAbility() != static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT)) {
+        updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, static_cast<int32_t>(LocalEnhancementStatus::EDIT));
+        SetLocalEnhancementPipelineStatus(fileAsset, static_cast<int32_t>(LocalEnhancementStatus::EDIT));
+    }
+
     updatePendingCmd.SetValueBucket(updateValues);
     int32_t rowId = 0;
     int32_t result = rdbStore->Update(updatePendingCmd, rowId);
@@ -3803,7 +3838,7 @@ static int32_t UpdateEditTime(int32_t fileId, int64_t time)
     return E_OK;
 }
 
-static int32_t RevertMetadata(int32_t fileId, int64_t time, int32_t effectMode, int32_t photoSubType)
+static int32_t RevertMetadata(int32_t fileId, int64_t time, const std::shared_ptr<FileAsset> &fileAsset)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET(rdbStore != nullptr, E_HAS_DB_ERROR);
@@ -3811,14 +3846,26 @@ static int32_t RevertMetadata(int32_t fileId, int64_t time, int32_t effectMode, 
     cmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
     updateValues.PutLong(PhotoColumn::PHOTO_EDIT_TIME, time);
-    if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+    if (fileAsset->GetMovingPhotoEffectMode() == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
             static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
-    } else if (effectMode != static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT)) {
+    } else if (fileAsset->GetMovingPhotoEffectMode() != static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT)) {
         updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
             static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
     }
+    if (fileAsset->GetLocalEnhancementStatus() == static_cast<int32_t>(LocalEnhancementStatus::EDIT)) {
+        if (fileAsset->GetLocalEnhancementAbility() ==
+            static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL)) {
+            updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, static_cast<int32_t>(LocalEnhancementStatus::IDEL));
+        } else if (fileAsset->GetLocalEnhancementAbility() ==
+                static_cast<int32_t>(LocalEnhancementAbilityType::SUPPORT_MANUAL_AUTO)) {
+            updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
+                static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO));
+            SetLocalEnhancementPipelineStatus(fileAsset, static_cast<int32_t>(LocalEnhancementStatus::PROCESSING_AUTO));
+        }
+    }
+
     cmd.SetValueBucket(updateValues);
     int32_t rowId = 0;
     AccurateRefresh::AssetAccurateRefresh assetRefresh;
@@ -3876,6 +3923,11 @@ static int32_t UpdateEffectMode(const shared_ptr<FileAsset> &fileAsset, int32_t 
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
     HandleSetLivePhoto4dStatusValuesBucket(updateCmd, fileAsset);
+    if (fileAsset->GetLocalEnhancementAbility() != static_cast<int32_t>(LocalEnhancementAbilityType::NOT_SUPPORT) &&
+        fileAsset->GetLocalEnhancementStatus() != static_cast<int32_t>(LocalEnhancementStatus::SUCCESS)) {
+        updateValues.Put(PhotoColumn::LOCAL_ENHANCEMENT_STATUS, static_cast<int32_t>(LocalEnhancementStatus::EDIT));
+        SetLocalEnhancementPipelineStatus(fileAsset, static_cast<int32_t>(LocalEnhancementStatus::EDIT));
+    }
     updateCmd.SetValueBucket(updateValues);
 
     int32_t updateRows = -1;
@@ -4087,7 +4139,7 @@ int32_t MediaLibraryPhotoOperations::CommitEditInsertExecute(const shared_ptr<Fi
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::WriteStrToFile(editDataPath, editData), E_HAS_FS_ERROR,
         "Failed to write editdata path:%{private}s", editDataPath.c_str());
 
-    errCode = UpdateEditTime(fileAsset->GetId(), MediaFileUtils::UTCTimeSeconds());
+    errCode = UpdateEditTime(fileAsset, MediaFileUtils::UTCTimeSeconds());
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to update edit time, fileId:%{public}d",
         fileAsset->GetId());
     if (fileAsset->GetMediaType() == MEDIA_TYPE_IMAGE && fileAsset->GetExistCompatibleDuplicate() != 0) {
@@ -4277,7 +4329,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertEdit(const std::shared_ptr<FileAsse
     string editDataPath = MediaEditUtils::GetEditDataPath(path);
     CHECK_AND_RETURN_RET_LOG(!editDataPath.empty(), E_INVALID_URI, "Cannot get editdata path, id=%{public}d", fileId);
 
-    errCode = RevertMetadata(fileId, 0, fileAsset->GetMovingPhotoEffectMode(), fileAsset->GetPhotoSubType());
+    errCode = RevertMetadata(fileId, 0, fileAsset);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_HAS_DB_ERROR, "Failed to update data, fileId=%{public}d", fileId);
     ResetOcrInfo(fileId);
     if (MediaFileUtils::IsFileExists(editDataPath)) {
@@ -4355,7 +4407,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::WriteStrToFile(editDataPath, editData), E_HAS_FS_ERROR,
         "Failed to write editdata:%{private}s", editDataPath.c_str());
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_ERR, "fileAsset is nullptr");
-    UpdateEditTime(fileAsset->GetId(), MediaFileUtils::UTCTimeSeconds());
+    UpdateEditTime(fileAsset, MediaFileUtils::UTCTimeSeconds());
     return E_OK;
 }
 
@@ -5731,7 +5783,7 @@ int32_t MediaLibraryPhotoOperations::SubmitEditCacheExecute(MediaLibraryCommand&
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to SubmitEditMovingPhotoExecute");
     }
 
-    errCode = UpdateEditTime(id, MediaFileUtils::UTCTimeSeconds());
+    errCode = UpdateEditTime(fileAsset, MediaFileUtils::UTCTimeSeconds());
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to update edit time, fileId:%{public}d", id);
 
     string assetPath = fileAsset->GetFilePath();
@@ -6086,7 +6138,8 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
         "Failed to check effect mode: %{public}d", effectMode);
     vector<string> columns = { PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME, PhotoColumn::PHOTO_SUBTYPE,
         PhotoColumn::MEDIA_TIME_PENDING, PhotoColumn::MEDIA_DATE_TRASHED, PhotoColumn::PHOTO_EDIT_TIME,
-        PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_IS_SHARED };
+        PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_IS_SHARED, PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+        PhotoColumn::LOCAL_ENHANCEMENT_STATUS };
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, to_string(id),
         OperationObject::FILESYSTEM_PHOTO, columns);
     int32_t errCode = CheckFileAssetStatus(fileAsset, true);
@@ -6165,7 +6218,8 @@ int32_t MediaLibraryPhotoOperations::SubmitCache(MediaLibraryCommand& cmd)
     vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME,
         PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MEDIA_TIME_PENDING, PhotoColumn::MEDIA_DATE_TRASHED,
         PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
-        PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_IS_SHARED };
+        PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_IS_SHARED,
+        PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, PhotoColumn::LOCAL_ENHANCEMENT_STATUS };
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(
         PhotoColumn::MEDIA_ID, to_string(id), OperationObject::FILESYSTEM_PHOTO, columns);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES,

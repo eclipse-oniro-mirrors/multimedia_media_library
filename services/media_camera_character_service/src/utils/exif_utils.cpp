@@ -15,11 +15,13 @@
 
 #include "exif_utils.h"
 
+#include "exif_metadata.h"
 #include "image_source.h"
 #include "media_exif.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
+#include "picture.h"
 
 using namespace std;
 
@@ -61,6 +63,54 @@ int32_t ExifUtils::WriteGpsExifInfo(const string &path, double longitude, double
     ret = imageSource->ModifyImageProperty(index, PHOTO_DATA_IMAGE_GPS_LATITUDE_REF, latitude > 0.0 ? "N" : "S", path);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("modify image property latitude ref fail %{public}d", ret);
+    }
+
+    return E_OK;
+}
+
+int32_t ExifUtils::ModifyExifByPath(const string &filePath, const map<string, string> &values)
+{
+    if (values.empty()) {
+        MEDIA_INFO_LOG("ModifyExifByPath: values is empty");
+        return E_OK;
+    }
+
+    uint32_t errorCode = 0;
+    SourceOptions opts;
+    unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(filePath, opts, errorCode);
+    if (imageSource == nullptr) {
+        MEDIA_ERR_LOG("ModifyExifByPath: create image source failed, err: %{public}d", errorCode);
+        return E_ERR;
+    }
+
+    uint32_t index = 0;
+    for (const auto &[key, value] : values) {
+        uint32_t ret = imageSource->ModifyImageProperty(index, key, value, filePath);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("ModifyExifByPath: modify key=%{public}s failed, ret=%{public}u", key.c_str(), ret);
+        }
+    }
+
+    return E_OK;
+}
+
+int32_t ExifUtils::ModifyExifByPicture(const shared_ptr<Media::Picture> &picture,
+    const map<string, string> &values)
+{
+    if (values.empty()) {
+        MEDIA_INFO_LOG("ModifyExifByPicture: values is empty");
+        return E_OK;
+    }
+
+    CHECK_AND_RETURN_RET_LOG(picture != nullptr, E_ERR, "ModifyExifByPicture: picture is nullptr");
+
+    auto metadata = picture->GetExifMetadata();
+    CHECK_AND_RETURN_RET_LOG(metadata != nullptr, E_ERR, "ModifyExifByPicture: metadata is nullptr");
+
+    for (const auto &[key, value] : values) {
+        if (!metadata->SetValue(key, value)) {
+            MEDIA_ERR_LOG("ModifyExifByPicture: set key=%{public}s failed", key.c_str());
+        }
     }
 
     return E_OK;

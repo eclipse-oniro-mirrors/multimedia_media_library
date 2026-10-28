@@ -29,6 +29,12 @@ const std::string ENABLE_C2PA = "enableC2PA";
 const std::string AUTHOR_ID = "authorId";
 const std::string AUTHOR_NAME = "authorName";
 
+enum class CameraBasePipelineType : int32_t {
+    UNDEFINED = 0,
+    CAMERA_ASSET_PIPELINE,
+    LOCAL_ENHANCEMENT_PIPELINE,
+};
+
 enum class CameraPipelineType : int32_t {
     UNDEFINED = 0,
     NEW_IMAGE,
@@ -45,6 +51,7 @@ enum class CameraPathType : int32_t {
     // edit_data
     EDIT_DATA_SOURCE_PATH,          // source.jpg
     EDIT_DATA_CAMERA_PATH,      // editdata_camera
+    EDIT_DATA_SOURCE_BACK_PATH,         // source_back
 
     // temp path
     TEMP_LOW_PATH,                      // low_IMG_1773664117_013.jpg
@@ -60,17 +67,45 @@ enum class ObserverType : int32_t {
     REQUEST_IMAGE,
     REQUEST_VIDEO,
     REQUEST_QUICK_IMAGE,
+    REQUEST_IMAGE_ENHANCEMENT,
     OBSERVER_END,
 };
- 
+
 enum class MultistagesCaptureNotifyType : int32_t {
     UNDEFINED = 0,
-    ON_PROCESS_IMAGE_DONE,
+
+    ON_PROCESS_IMAGE_DONE,      // 二阶段 imageSource success
+    YUV_READY,                  // 二阶段 yuv success
+    ON_PROCESS_VIDEO_DONE,      // 二阶段 video success
+    ON_ENHANCEMENT_IMAGE_DONE,  // 端侧增强 local enhancement success
+    ON_SUCCESS_END,
+
+    ON_ERROR_START = 1000,
     ON_ERROR_IMAGE,
-    ON_PROCESS_VIDEO_DONE,
     ON_ERROR_VIDEO,
-    YUV_READY,
+    ON_ENHANCEMENT_ERROR_INVALID_PHOTO_ID,
+    ON_ENHANCEMENT_ERROR_FAILED,
+    ON_ENHANCEMENT_ERROR_TIMEOUT,
+    ON_ENHANCEMENT_ERROR_ABNORMAL,
+    ON_ENHANCEMENT_ERROR_INTERRUPTED,
+    ON_ENHANCEMENT_ERROR_MODEL_UNAVAILABLE,
+    ON_ENHANCEMENT_ERROR_RESOURCE_REMOVED,
+
     NOTIFY_END,
+};
+
+enum class MediaDpsErrorCode {
+    UNDEFINED = -1,
+
+    // image process error code
+    MEDIA_ERROR_IMAGE_PROC_INVALID_PHOTO_ID = 2,
+    MEDIA_ERROR_IMAGE_PROC_FAILED = 3,
+    MEDIA_ERROR_IMAGE_PROC_TIMEOUT = 4,
+    MEDIA_ERROR_IMAGE_PROC_ABNORMAL = 5,
+    MEDIA_ERROR_IMAGE_PROC_INTERRUPTED = 6,
+
+    MEDIA_ERROR_IMAGE_PROC_MODEL_UNAVAILABLE = 11,
+    MEDIA_ERROR_IMAGE_PROC_RESOURCE_REMOVED = 12,
 };
 } // namespace Media
 } // namespace OHOS

@@ -18,6 +18,7 @@
 
 #include <string>
 
+#include "camera_asset_info.h"
 #include "camera_mapper.h"
 #include "rdb_store.h"
 #include "file_asset.h"
@@ -31,12 +32,12 @@ public:
         const std::vector<std::string> &columns);
     // 一阶段: openFile时, 更新time_pending
     EXPORT static int32_t UpdateTimePendingForOpenFile(const int32_t &fileId, const int64_t &pendingTime);
-    // 二阶段落盘: 图片查询
+    // 二阶段 || 端侧AI增强 落盘: 图片查询
     EXPORT static std::shared_ptr<FileAsset> QueryForOnProcess(const int32_t &fileId,
         const std::string &photoId, MediaDpsMetadata &metadata);
     // 二阶段落盘: 图片更新数据(可能会被一阶段调用)
-    EXPORT static int32_t UpdateHighQualityInfo(const int32_t &fileId, const MediaDpsMetadata &metadata,
-        bool isOnProcess);
+    EXPORT static int32_t UpdateHighQualityInfo(const CameraAssetInfo &assetInfo, const MediaDpsMetadata &metadata,
+        bool isEdited, bool isOnProcess);
     // 二阶段: 仅更新photo_quality = 高
     EXPORT static int32_t UpdatePhotoQuality(const int32_t &fileId);
     // 二阶段: 周同步任务查询
@@ -45,6 +46,13 @@ public:
     // 异常流程中, 需要恢复pipeline
     EXPORT static std::shared_ptr<FileAsset> RecoverPipelineByFileId(int32_t fileId);
     EXPORT static std::shared_ptr<FileAsset> RecoverPipelineByPhotoId(const std::string& photoId);
+    
+    // 三阶段：查询资产的三阶段状态
+    EXPORT static std::shared_ptr<FileAsset> QueryForLocalEnhancementStatus(int32_t fileId);
+    // 三阶段落盘: 图片更新数据
+    EXPORT static int32_t UpdateLocalEnhancementInfo(int32_t fileId, int32_t status, bool isManual, bool isEdited);
+    // 三阶段报错: ability能力变更。status == SUCCESS(3) 或 EDIT(4) 时不更新 status
+    EXPORT static int32_t UpdateLocalEnhancementAbility(int32_t fileId, int32_t ability, int32_t status);
 };
 }  // namespace OHOS::Media
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_MULTI_STAGES_CAPTURE_DAO_H

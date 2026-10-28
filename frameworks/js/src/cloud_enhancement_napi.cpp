@@ -26,6 +26,7 @@
 #include "media_column.h"
 #include "media_string_utils.h"
 #include "cloud_enhancement_task_state_napi.h"
+#include "local_enhancement_task_state_napi.h"
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 #include "media_enhance_constants_c_api.h"
 #include "media_enhance_handles.h"
@@ -33,9 +34,11 @@
 #include "cloud_enhancement_uri.h"
 #include "cloud_enhancement_vo.h"
 #include "medialibrary_business_code.h"
+#include "media_library_error_code.h"
 #include "user_define_ipc_client.h"
 #include "get_cloud_enhancement_pair_vo.h"
 #include "query_cloud_enhancement_task_state_vo.h"
+#include "query_local_enhancement_task_state_vo.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -292,6 +295,7 @@ napi_value CloudEnhancementNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_FUNCTION("cancelCloudEnhancementTasks", JSCancelCloudEnhancementTasks),
             DECLARE_NAPI_FUNCTION("cancelAllCloudEnhancementTasks", JSCancelAllCloudEnhancementTasks),
             DECLARE_NAPI_FUNCTION("queryCloudEnhancementTaskState", JSQueryCloudEnhancementTaskState),
+            DECLARE_NAPI_FUNCTION("queryLocalEnhancementTaskState", JSQueryLocalEnhancementTaskState),
             DECLARE_NAPI_FUNCTION("syncCloudEnhancementTaskStatus", JSSyncCloudEnhancementTaskStatus),
             DECLARE_NAPI_FUNCTION("getCloudEnhancementPair", JSGetCloudEnhancementPair),
         } };
@@ -409,6 +413,23 @@ napi_status CloudEnhancementNapi::ParseArgGetPhotoAsset(napi_env env, napi_value
     napi_unwrap(env, arg, reinterpret_cast<void**>(&obj));
     if (obj == nullptr) {
         NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "failed to get asset napi object");
+        return napi_invalid_arg;
+    }
+    fileId = obj->GetFileId();
+    uri = obj->GetFileUri();
+    displayName = obj->GetFileDisplayName();
+    return napi_ok;
+}
+
+napi_status CloudEnhancementNapi::ParseArgGetPhotoAssetForLocalEnhancement(
+    napi_env env, napi_value arg, int &fileId, std::string &uri, std::string &displayName)
+{
+    if (arg == nullptr) {
+        return napi_invalid_arg;
+    }
+    FileAssetNapi *obj = nullptr;
+    napi_unwrap(env, arg, reinterpret_cast<void**>(&obj));
+    if (obj == nullptr) {
         return napi_invalid_arg;
     }
     fileId = obj->GetFileId();
@@ -771,6 +792,27 @@ static napi_status ParseArgQuery(napi_env env, napi_callback_info info,
     return napi_ok;
 }
 
+static napi_status ParseArgQueryForLocalEnhancement(napi_env env, napi_callback_info info,
+    unique_ptr<CloudEnhancementAsyncContext>& context)
+{
+    napi_value thisVar = nullptr;
+    context->argc = ARGS_ONE;
+    GET_JS_ARGS(env, info, context->argc, context->argv, thisVar);
+
+    if (CloudEnhancementNapi::ParseArgGetPhotoAssetForLocalEnhancement(env, context->argv[PARAM0],
+        context->fileId, context->photoUri, context->displayName) != napi_ok) {
+        NAPI_ERR_LOG("requestMedia ParseArgGetPhotoAsset error");
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "requestMedia ParseArgGetPhotoAsset error");
+        return napi_invalid_arg;
+    }
+
+    NAPI_INFO_LOG("Parse Arg: %{public}d, %{private}s, %{public}s", context->fileId, context->photoUri.c_str(),
+        context->displayName.c_str());
+
+    return napi_ok;
+}
+
 static void FillTaskStageWithClientQuery(CloudEnhancementAsyncContext* context, string &photoId)
 {
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
@@ -901,6 +943,69 @@ napi_value CloudEnhancementNapi::JSQueryCloudEnhancementTaskState(napi_env env, 
         "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "QueryCloudEnhancementTaskState",
         QueryCloudEnhancementTaskStateExecute, QueryCloudEnhancementTaskStateCompleteCallback);
+}
+
+static void QueryLocalEnhancementTaskStateExecute(napi_env env, void* data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryLocalEnhancementTaskStateExecute");
+
+    auto* context = static_cast<CloudEnhancementAsyncContext*>(data);
+    QueryLocalEnhancementTaskStateReqBody reqBody;
+    QueryLocalEnhancementTaskStateRespBody respBody;
+    reqBody.photoUri = context->photoUri;
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_SYSTEM_QUERY_LOCAL_ENHANCEMENT_TASK_STATE);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret < 0) {
+        context->SaveError(ret);
+        NAPI_ERR_LOG("Failed to query local enhancement task state, err: %{public}d", ret);
+        return;
+    }
+    context->localEnhancementProgress_ = respBody.progress;
+    NAPI_INFO_LOG("query local enhancement task state progress: %{public}d", respBody.progress);
+}
+
+static void QueryLocalEnhancementTaskStateCompleteCallback(napi_env env, napi_status status, void* data)
+{
+    auto* context = static_cast<CloudEnhancementAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    auto jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    napi_get_undefined(env, &jsContext->data);
+    napi_get_undefined(env, &jsContext->error);
+    if (context->error == ERR_DEFAULT) {
+        napi_value localEnhancementTaskState =
+            LocalEnhancementTaskStateNapi::NewLocalEnhancementTaskStateNapi(env, context);
+        jsContext->data = localEnhancementTaskState;
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error, true);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(
+            env, context->deferred, context->callbackRef, context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value CloudEnhancementNapi::JSQueryLocalEnhancementTaskState(napi_env env, napi_callback_info info)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL);
+        return nullptr;
+    }
+    MediaLibraryTracer tracer;
+    tracer.Start("JSQueryLocalEnhancementTaskState");
+
+    auto asyncContext = make_unique<CloudEnhancementAsyncContext>();
+    CHECK_COND(env, CloudEnhancementNapi::InitUserFileClient(env, info), JS_INNER_FAIL);
+    CHECK_PARAMETER_WITH_MESSAGE(env, ParseArgQueryForLocalEnhancement(env, info, asyncContext) == napi_ok,
+        "Failed to parse args");
+    
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "QueryLocalEnhancementTaskState",
+        QueryLocalEnhancementTaskStateExecute, QueryLocalEnhancementTaskStateCompleteCallback);
 }
 
 static void SyncCloudEnhancementTaskStatusExecute(napi_env env, void* data)
