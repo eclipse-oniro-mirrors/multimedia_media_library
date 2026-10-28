@@ -23,8 +23,10 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <mutex>
+#include <sys/mman.h>
 #include <thread>
 #include <vector>
+#include "ashmem.h"
 #include "directory_ex.h"
 #include "image_source.h"
 #include "media_column.h"
@@ -35,6 +37,7 @@
 #include "mimetype_utils.h"
 #include "nlohmann/json.hpp"
 #include "parameters.h"
+#include "unique_fd.h"
 #endif
 #include "medialibrary_errno.h"
 
@@ -176,6 +179,20 @@ private:
     CreateInstanceFunc createInstanceFunc_;
     DestroyInstanceFunc destroyInstanceFunc_;
     VTrustedServiceHctcClient* plugin_;
+};
+
+class MMapFd {
+public:
+    explicit MMapFd(const std::string &filePath);
+    ~MMapFd();
+    void* GetFdData();
+    off_t GetFdSize();
+    bool IsValid() const;
+private:
+    void* fdData_ = nullptr;
+    off_t size_ = 0;
+    bool isValid_ = false;
+    UniqueFd fd_;
 };
 } // namespace
 #endif
@@ -444,6 +461,44 @@ static void SetImageData(ImageData& imageData, const std::string& absFilePath)
     imageData.bufferType = ImageBufferFormat::IMAGE_DATA_TYPE_URL;
     imageData.imageFormat = GetImageFormat(absFilePath);
 }
+
+MMapFd::MMapFd(const std::string &filePath)
+{
+    std::string absFilePath = GetRealPath(filePath);
+    CHECK_AND_RETURN_LOG(!absFilePath.empty(), "[c2pa] absFilePath is empty");
+    int32_t fd = open(absFilePath.c_str(), O_RDWR);
+    fd_ = UniqueFd(fd);
+    CHECK_AND_RETURN_LOG(fd_.Get() > 0, "[c2pa] Open source file failed, errno: %{public}d", errno);
+
+    struct stat st;
+    CHECK_AND_RETURN_LOG(fstat(fd_.Get(), &st) == 0, "[c2pa] fstat error, errno:%{public}d", errno);
+    size_ = st.st_size;
+    fdData_ = mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    CHECK_AND_RETURN_LOG(fdData_ != MAP_FAILED && fdData_ != nullptr, "[c2pa] mmap failed, errno:%{public}d", errno);
+    isValid_ = true;
+}
+
+MMapFd::~MMapFd()
+{
+    if (isValid_) {
+        munmap(fdData_, size_);
+    }
+}
+
+void* MMapFd::GetFdData()
+{
+    return fdData_;
+}
+
+off_t MMapFd::GetFdSize()
+{
+    return size_;
+}
+
+bool MMapFd::IsValid() const
+{
+    return isValid_;
+}
 #endif
 
 int32_t C2paUtils::GetExifInfo(const std::string& filePath, ExifInfo& info)
@@ -508,23 +563,32 @@ int32_t C2paUtils::SignForCreate(const std::string& filePath, const std::string&
     CHECK_AND_RETURN_RET_LOG(GetExifInfo(filePath, info) == E_OK, E_ERR, "[c2pa] GetExifInfo failed");
     CHECK_AND_RETURN_RET_LOG(CertInitialize() == E_OK, E_ERR, "[c2pa] CertInitialize failed");
 
-    ImageSignData signData;
-    SetImageData(signData.image, absFilePath);
-    signData.product.productName = PRODUCT_NAME;
-    signData.product.productVersion = PRODUCT_VERSION;
-
-    std::unordered_map<std::string, std::string> metaData = {
-        {KEY_ACTION, C2PA_CREATED},
-        {KEY_DESCRIPTION, info.description},
-        {KEY_ACTION_TIME, info.dateTime},
-        {KEY_DIG_SRC_TYPE, DIGITAL_CAPTURE},
-        {KEY_AUTHOR_ID, authorId},
-        {KEY_AUTHOR_NAME, authorName}
-    };
-    signData.metadata.push_back(metaData);
+    int32_t result = E_ERR;
     auto& client = TrustedServiceLoader::GetInstance();
-    auto result = client.CreateImageSignature(signData);
-    MEDIA_INFO_LOG("[c2pa] SignForCreate end: %{public}s", result == E_OK ? LOG_SUCCESS : LOG_FAILED);
+    do {
+        MMapFd mmapFd(filePath);
+        CHECK_AND_BREAK_ERR_LOG(mmapFd.IsValid(), "[c2pa] immapFd faild");
+        ImageSignData signData;
+        signData.image.buffer.data = static_cast<uint8_t*>(mmapFd.GetFdData());
+        signData.image.buffer.length = static_cast<size_t>(mmapFd.GetFdSize());
+        signData.image.imgLen = static_cast<uint32_t>(mmapFd.GetFdSize());
+        signData.image.bufferType = ImageBufferFormat::IMAGE_DATA_TYPE_DATAFLOW;
+        signData.image.imageFormat = GetImageFormat(absFilePath);
+        signData.product.productName = PRODUCT_NAME;
+        signData.product.productVersion = PRODUCT_VERSION;
+
+        std::unordered_map<std::string, std::string> metaData = {
+            {KEY_ACTION, C2PA_CREATED},
+            {KEY_DESCRIPTION, info.description},
+            {KEY_ACTION_TIME, info.dateTime},
+            {KEY_DIG_SRC_TYPE, DIGITAL_CAPTURE},
+            {KEY_AUTHOR_ID, authorId},
+            {KEY_AUTHOR_NAME, authorName}
+        };
+        signData.metadata.push_back(metaData);
+        result = client.CreateImageSignature(signData);
+        MEDIA_INFO_LOG("[c2pa] SignForCreate end: %{public}s", result == E_OK ? LOG_SUCCESS : LOG_FAILED);
+    } while (false);
     (void)client.CertFinalize();
     return result;
 #else
