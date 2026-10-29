@@ -1462,8 +1462,10 @@ void MedialibrarySubscriber::UpdateBackgroundTimer()
     }
     MEDIA_DEBUG_LOG("UpdateBackgroundTimer Allow Download 30 day Pic");
     bool isPowerSufficient = batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY;
+    bool isMeteredHotspotConnected =
+        MedialibraryRelatedSystemStateManager::GetInstance()->IsMeteredHotspotConnectedAtRealTime();
     bool newStatus = isScreenOff_ && isCharging_ && isPowerSufficient &&
-        isDeviceTemperatureProper_ && isWifiConnected_;
+        isDeviceTemperatureProper_ && isWifiConnected_ && !isMeteredHotspotConnected;
 
     newStatus = newStatus && IsBackgroundTaskAllowed();
     if (timerStatus_ == newStatus) {
@@ -1471,9 +1473,9 @@ void MedialibrarySubscriber::UpdateBackgroundTimer()
     }
 
     MEDIA_INFO_LOG("update timer status current:%{public}d, new:%{public}d, %{public}d, %{public}d, %{public}d, "
-        "%{public}d, %{public}d",
+        "%{public}d, %{public}d, isMeteredHotspotConnected:%{public}d",
         timerStatus_, newStatus, isScreenOff_, isCharging_, isPowerSufficient, isDeviceTemperatureProper_,
-        isWifiConnected_);
+        isWifiConnected_, isMeteredHotspotConnected);
 
     timerStatus_ = newStatus;
     if (timerStatus_) {
