@@ -41,8 +41,7 @@ private:
 
     static int32_t CertInitialize(bool isTranscode = false);
     static int32_t GetExifInfo(const std::string& filePath, ExifInfo& info);
-    static int32_t CopySignatureInner(const std::string& sourcePath, const std::string& targetPath,
-        bool isTranscode = false);
+    static int32_t CopySignatureInner(const std::string& sourcePath, const std::string& targetPath);
 };
 } // namespace Media
 } // namespace OHOS

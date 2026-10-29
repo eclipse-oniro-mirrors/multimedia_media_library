@@ -596,41 +596,10 @@ int32_t C2paUtils::SignForCreate(const std::string& filePath, const std::string&
 #endif
 }
 
-int32_t C2paUtils::SignForTranscode(const std::string& sourcePath, const std::string& targetPath)
-{
-#ifdef C2PA_SUPPORT
-    MEDIA_INFO_LOG("[c2pa] SignForTranscode start");
-    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_ERR, "[c2pa] sourcePath is empty");
-    CHECK_AND_RETURN_RET_LOG(!targetPath.empty(), E_ERR, "[c2pa] targetPath is empty");
-    CHECK_AND_RETURN_RET(HasImageSignature(sourcePath), E_FAIL);
-
-    MediaLibraryTracer tracer;
-    tracer.Start("C2paUtils::SignForTranscode");
-    return CopySignatureInner(sourcePath, targetPath, true);
-#else
-    return E_ERR;
-#endif
-}
-
-int32_t C2paUtils::SignForRevert(const std::string& sourcePath, const std::string& targetPath)
-{
-#ifdef C2PA_SUPPORT
-    MEDIA_INFO_LOG("[c2pa] SignForRevert start");
-    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_ERR, "[c2pa] sourcePath is empty");
-    CHECK_AND_RETURN_RET_LOG(!targetPath.empty(), E_ERR, "[c2pa] targetPath is empty");
-    CHECK_AND_RETURN_RET(HasImageSignature(sourcePath), E_FAIL);
-
-    MediaLibraryTracer tracer;
-    tracer.Start("C2paUtils::SignForRevert");
-    return CopySignatureInner(sourcePath, targetPath, false);
-#else
-    return E_ERR;
-#endif
-}
-
 #ifdef C2PA_SUPPORT
 static int32_t ParseFromMetaDataString(const std::string& metaDataStr,
-    std::unordered_map<std::string, std::string>& metaData, bool isTranscode)
+    std::unordered_map<std::string, std::string>& metaData, bool isTranscode,
+    std::vector<uint8_t>* sourceManifest = nullptr)
 {
     MEDIA_DEBUG_LOG("[c2pa] ParseFromMetaDataString start, metaDataStr: %{public}s", metaDataStr.c_str());
     CHECK_AND_RETURN_RET_LOG(nlohmann::json::accept(metaDataStr), E_ERR,
@@ -677,7 +646,8 @@ static int32_t ParseFromMetaDataString(const std::string& metaDataStr,
 }
 
 static int32_t GetSourceMetaData(const std::string& sourcePath,
-    std::unordered_map<std::string, std::string>& metaData, bool isTranscode)
+    std::unordered_map<std::string, std::string>& metaData, bool isTranscode,
+    std::vector<uint8_t>* sourceManifest = nullptr)
 {
     MEDIA_INFO_LOG("[c2pa] GetSourceMetaData start");
     CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_ERR, "[c2pa] sourcePath is empty");
@@ -697,13 +667,16 @@ static int32_t GetSourceMetaData(const std::string& sourcePath,
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "[c2pa] ParseImageMetaData failed[%{public}d]", err);
 
     auto ret = ParseFromMetaDataString(metaDataStr, metaData, isTranscode);
-    MEDIA_INFO_LOG("[c2pa] GetSourceMetaData end: %{public}s", ret == E_OK ? LOG_SUCCESS : LOG_FAILED);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "[c2pa] ParseFromMetaDataString failed[%{public}d]", ret);
+    if (sourceManifest != nullptr) {
+        *sourceManifest = std::move(manifest);
+    }
+    MEDIA_INFO_LOG("[c2pa] GetSourceMetaData end: %{public}s", LOG_SUCCESS);
     return ret;
 }
 #endif
 
-int32_t C2paUtils::CopySignatureInner(const std::string& sourcePath, const std::string& targetPath,
-    bool isTranscode)
+int32_t C2paUtils::CopySignatureInner(const std::string& sourcePath, const std::string& targetPath)
 {
 #ifdef C2PA_SUPPORT
     MEDIA_INFO_LOG("[c2pa] CopySignatureInner start");
@@ -719,11 +692,11 @@ int32_t C2paUtils::CopySignatureInner(const std::string& sourcePath, const std::
 
         ImageSignData signData;
         SetImageData(signData.image, absFilePath);
-        signData.product.productName = isTranscode ? PRODUCT_NAME_EDITOR : PRODUCT_NAME;
+        signData.product.productName = PRODUCT_NAME;
         signData.product.productVersion = PRODUCT_VERSION;
 
         std::unordered_map<std::string, std::string> metaData;
-        auto ret = GetSourceMetaData(sourcePath, metaData, isTranscode);
+        auto ret = GetSourceMetaData(sourcePath, metaData, false);
         CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "[c2pa] GetSourceMetaData failed[%{public}d]", ret);
         signData.metadata.push_back(metaData);
 
@@ -791,7 +764,184 @@ int32_t C2paUtils::SignForEnhancement(const std::string& sourcePath, const std::
 
     MediaLibraryTracer tracer;
     tracer.Start("C2paUtils::SignForEnhancement");
-    return CopySignatureInner(sourcePath, targetPath, false);
+    return CopySignatureInner(sourcePath, targetPath);
+#else
+    return E_ERR;
+#endif
+}
+
+int32_t C2paUtils::SignForTranscode(const std::string& sourcePath, const std::string& targetPath)
+{
+#ifdef C2PA_SUPPORT
+    MEDIA_INFO_LOG("[c2pa] SignForTranscode start");
+    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_ERR, "[c2pa] sourcePath is empty");
+    CHECK_AND_RETURN_RET_LOG(!targetPath.empty(), E_ERR, "[c2pa] targetPath is empty");
+    CHECK_AND_RETURN_RET(HasImageSignature(sourcePath), E_FAIL);
+
+    MediaLibraryTracer tracer;
+    tracer.Start("C2paUtils::SignForTranscode");
+    CHECK_AND_RETURN_RET_LOG(CertInitialize(true) == E_OK, E_ERR, "[c2pa] CertInitialize failed");
+
+    int32_t result = E_ERR;
+    auto& client = TrustedServiceLoader::GetInstance();
+    do {
+        std::unordered_map<std::string, std::string> metaData;
+        std::vector<uint8_t> sourceManifest;
+        auto ret = GetSourceMetaData(sourcePath, metaData, true, &sourceManifest);
+        CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "[c2pa] GetSourceMetaData failed[%{public}d]", ret);
+        CHECK_AND_BREAK_ERR_LOG(!sourceManifest.empty(), "[c2pa] source manifest is empty");
+
+        std::string absFilePath = GetRealPath(targetPath);
+        CHECK_AND_BREAK_ERR_LOG(!absFilePath.empty(), "[c2pa] to real path failed");
+
+        ImageSignData signData;
+        SetImageData(signData.image, absFilePath);
+        signData.product.productName = PRODUCT_NAME_EDITOR;
+        signData.product.productVersion = PRODUCT_VERSION;
+        signData.manifests = std::move(sourceManifest);
+        signData.metadata.push_back(metaData);
+
+        result = client.AppendImageSignature(signData);
+        CHECK_AND_BREAK_ERR_LOG(result == E_OK, "[c2pa] AppendImageSignature failed [%{public}d]", result);
+    } while (false);
+
+    MEDIA_INFO_LOG("[c2pa] SignForTranscode end: %{public}s", result == E_OK ? LOG_SUCCESS : LOG_FAILED);
+    (void)client.CertFinalize();
+    return result;
+#else
+    return E_ERR;
+#endif
+}
+
+#ifdef C2PA_SUPPORT
+static void ParseToMapInner(std::unordered_map<std::string, std::string>& metaData, const nlohmann::json& action)
+{
+    if (action.contains(KEY_ACTION) && action[KEY_ACTION].is_string()) {
+        metaData[KEY_ACTION] = action[KEY_ACTION].get<std::string>();
+    }
+    if (action.contains(KEY_AUTHOR_ID) && action[KEY_AUTHOR_ID].is_string()) {
+        metaData[KEY_AUTHOR_ID] = action[KEY_AUTHOR_ID].get<std::string>();
+    }
+    if (action.contains(KEY_AUTHOR_NAME) && action[KEY_AUTHOR_NAME].is_string()) {
+        metaData[KEY_AUTHOR_NAME] = action[KEY_AUTHOR_NAME].get<std::string>();
+    }
+    if (action.contains(KEY_DESCRIPTION) && action[KEY_DESCRIPTION].is_string()) {
+        metaData[KEY_DESCRIPTION] = action[KEY_DESCRIPTION].get<std::string>();
+    }
+    if (action.contains(KEY_ACTION_TIME) && action[KEY_ACTION_TIME].is_string()) {
+        metaData[KEY_ACTION_TIME] = action[KEY_ACTION_TIME].get<std::string>();
+    }
+    if (action.contains(KEY_DIG_SRC_TYPE) && action[KEY_DIG_SRC_TYPE].is_string()) {
+        metaData[KEY_DIG_SRC_TYPE] = action[KEY_DIG_SRC_TYPE].get<std::string>();
+    }
+}
+
+static int32_t ParseImageMetaData(const std::string& sourcePath,
+    std::unordered_map<std::string, std::string>& metaData,
+    std::unordered_map<std::string, std::string>& metaDataTranscode)
+{
+    MEDIA_INFO_LOG("[c2pa] ParseImageMetaData start");
+    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_ERR, "[c2pa] sourcePath is empty");
+    std::string absFilePath = GetRealPath(sourcePath);
+    CHECK_AND_RETURN_RET_LOG(!absFilePath.empty(), E_ERR, "[c2pa] to real path failed");
+
+    ImageData imageData;
+    SetImageData(imageData, absFilePath);
+
+    std::vector<uint8_t> manifest;
+    auto& client = TrustedServiceLoader::GetInstance();
+    auto err = client.ImageVerify(imageData, manifest);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "[c2pa] ImageVerify failed[%{public}d]", err);
+
+    std::string metaDataStr;
+    err = client.ParseImageMetaData(manifest, metaDataStr);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "[c2pa] ParseImageMetaData failed[%{public}d]", err);
+
+    CHECK_AND_RETURN_RET_LOG(nlohmann::json::accept(metaDataStr), E_ERR,
+        "[c2pa] Invalid JSON format: %{public}s", metaDataStr.c_str());
+
+    nlohmann::json json = nlohmann::json::parse(metaDataStr);
+    auto cond = json.contains(KEY_MANIFESTS) && json[KEY_MANIFESTS].is_array() && !json[KEY_MANIFESTS].empty();
+    CHECK_AND_RETURN_RET_LOG(cond, E_ERR, "[c2pa] has no manifests");
+
+    for (const nlohmann::json& manifestString : json[KEY_MANIFESTS]) {
+        CHECK_AND_RETURN_RET_LOG(manifestString.contains(KEY_ASSERTIONS), E_ERR, "[c2pa] has no assertions");
+
+        const auto& assertions = manifestString[KEY_ASSERTIONS];
+        cond = assertions.contains(KEY_C2PA_ACTIONS) && assertions[KEY_C2PA_ACTIONS].is_array() &&
+            !assertions[KEY_C2PA_ACTIONS].empty();
+        CHECK_AND_RETURN_RET_LOG(cond, E_ERR, "[c2pa] has no c2pa.actions");
+
+        for (const nlohmann::json& action : assertions[KEY_C2PA_ACTIONS]) {
+            CHECK_AND_RETURN_RET_LOG(action.contains(KEY_ACTION) && action[KEY_ACTION].is_string(), E_ERR,
+                "[c2pa] has no action");
+            std::string actionStr = action[KEY_ACTION].get<std::string>();
+            if (actionStr == C2PA_CREATED) {
+                ParseToMapInner(metaData, action);
+            } else if (actionStr == C2PA_TRANSCODED) {
+                ParseToMapInner(metaDataTranscode, action);
+            }
+        }
+    }
+    MEDIA_INFO_LOG("[c2pa] ParseImageMetaData end: %{public}s", LOG_SUCCESS);
+    return E_OK;
+}
+#endif
+
+int32_t C2paUtils::SignForRevert(const std::string& sourcePath, const std::string& targetPath)
+{
+#ifdef C2PA_SUPPORT
+    MEDIA_INFO_LOG("[c2pa] SignForRevert start");
+    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_ERR, "[c2pa] sourcePath is empty");
+    CHECK_AND_RETURN_RET_LOG(!targetPath.empty(), E_ERR, "[c2pa] targetPath is empty");
+    CHECK_AND_RETURN_RET(HasImageSignature(sourcePath), E_FAIL);
+
+    MediaLibraryTracer tracer;
+    tracer.Start("C2paUtils::SignForRevert");
+    CHECK_AND_RETURN_RET_LOG(CertInitialize() == E_OK, E_ERR, "[c2pa] CertInitialize failed");
+
+    int32_t result = E_ERR;
+    auto& client = TrustedServiceLoader::GetInstance();
+    do {
+        std::unordered_map<std::string, std::string> metaData;
+        std::unordered_map<std::string, std::string> metaDataTranscode;
+        CHECK_AND_BREAK(ParseImageMetaData(sourcePath, metaData, metaDataTranscode) == E_OK);
+        std::string absFilePath = GetRealPath(targetPath);
+        CHECK_AND_BREAK_ERR_LOG(!absFilePath.empty(), "[c2pa] to real path failed");
+
+        ImageSignData signData;
+        SetImageData(signData.image, absFilePath);
+        signData.product.productName = PRODUCT_NAME;
+        signData.product.productVersion = PRODUCT_VERSION;
+        signData.metadata.push_back(metaData);
+
+        result = client.CreateImageSignature(signData);
+        CHECK_AND_BREAK_ERR_LOG(result == E_OK, "[c2pa] CreateImageSignature failed [%{public}d]", result);
+        CHECK_AND_BREAK(!metaDataTranscode.empty());
+
+        ImageData imageData;
+        SetImageData(imageData, absFilePath);
+        std::vector<uint8_t> manifest;
+        auto& client = TrustedServiceLoader::GetInstance();
+        auto err = client.ImageVerify(imageData, manifest);
+        CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "[c2pa] ImageVerify failed[%{public}d]", err);
+        (void)client.CertFinalize();
+        CHECK_AND_BREAK_ERR_LOG(CertInitialize(true) == E_OK, "[c2pa] CertInitialize failed");
+
+        ImageSignData signDataTranscode;
+        SetImageData(signDataTranscode.image, absFilePath);
+        signDataTranscode.product.productName = PRODUCT_NAME_EDITOR;
+        signDataTranscode.product.productVersion = PRODUCT_VERSION;
+        signDataTranscode.manifests = std::move(manifest);
+        signDataTranscode.metadata.push_back(metaDataTranscode);
+
+        result = client.AppendImageSignature(signDataTranscode);
+        CHECK_AND_BREAK_ERR_LOG(result == E_OK, "[c2pa] AppendImageSignature failed [%{public}d]", result);
+    } while (false);
+
+    MEDIA_INFO_LOG("[c2pa] SignForRevert end: %{public}s", result == E_OK ? LOG_SUCCESS : LOG_FAILED);
+    (void)client.CertFinalize();
+    return result;
 #else
     return E_ERR;
 #endif
