@@ -6424,8 +6424,8 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesVideo(const std::shared_p
         MEDIA_ERR_LOG("fileAsset is nullptr.");
         return E_ERR;
     }
-    bool isMovingPhoto =
-        (fileAsset->GetStageVideoTaskStatus()) == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED);
+    bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(fileAsset->GetPhotoSubType(),
+        fileAsset->GetMovingPhotoEffectMode(), fileAsset->GetOriginalSubType());
     bool isEdited = (fileAsset->GetPhotoEditTime()) > 0;
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "ProcessMultistagesVideo path:%{public}s, isEdited: %{public}d, isMovingPhoto: %{public}d",
