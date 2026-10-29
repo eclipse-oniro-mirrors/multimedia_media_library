@@ -844,7 +844,7 @@ static bool CheckWhetherInitSuccess(napi_env env, napi_value value, bool checkIs
         return false;
     }
     if (checkIsValid && (!UserFileClient::IsValid(userId))) {
-        NAPI_ERR_LOG("UserFileClient is not valid");
+        NAPI_ERR_LOG("UserFileClient is not valid.");
         return false;
     }
     return true;

@@ -105,6 +105,9 @@ int32_t AlbumAccurateRefresh::NotifyAddAlbums(const vector<string> &albumIdsStr)
 
 int32_t AlbumAccurateRefresh::NotifyShareAlbumUpdateForMemberChange(const std::vector<int32_t> &albumIds)
 {
+    for (auto const &albumId : albumIds) {
+        MEDIA_INFO_LOG("NotifyShareAlbumUpdateForMemberChange albumId: %{public}d", albumId);
+    }
     return Notify(dataManager_.GetAlbumDatasForUpdateNoChange(albumIds));
 }
 

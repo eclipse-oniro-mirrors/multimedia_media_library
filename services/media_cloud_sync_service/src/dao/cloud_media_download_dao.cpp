@@ -136,7 +136,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThmsShare(const DownloadThumbnailQuery
     // 先按PhotoAlbum.date_added降序，再按Photos.share_group降序、Photos.date_added降序
     predicates.OrderByDesc(PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_DATE_ADDED);
     predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SHARE_GROUP);
-    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_ADDED);
+    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_TAKEN);
 
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, this->DOWNLOAD_THUMBNAIL_COLUMNS);
     int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photos);

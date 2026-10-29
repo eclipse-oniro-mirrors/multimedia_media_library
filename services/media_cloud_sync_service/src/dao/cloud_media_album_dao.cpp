@@ -883,6 +883,12 @@ int32_t CloudMediaAlbumDao::GetDeletedRecordsAlbum(int32_t size, std::vector<Pho
     /* results to records */
     cloudRecordPoList.reserve(tempList.size());
     for (const auto &record : tempList) {
+        if (CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE)) {
+            MEDIA_INFO_LOG("share scene skip delete album, cloudId: %{public}s",
+                record.cloudId.value_or("").c_str());
+            cloudRecordPoList.emplace_back(move(record));
+            continue;
+        }
         // dirty为delete的相册如果非空，则不删除，设置相册dirty为new
         std::string albumCloudId = record.cloudId.value_or("");
         if (IsEmptyAlbum(rdbStore, albumCloudId) != E_OK) {
