@@ -28,6 +28,7 @@
 #include "global_scanner.h"
 #include "folder_scanner.h"
 #include "folder_scanner_utils.h"
+#include "lake_scan_policy.h"
 #include "media_lake_clone_event_manager.h"
 #include "media_log.h"
 
@@ -1622,6 +1623,74 @@ HWTEST_F(GlobalScannerTest, MixedOperations_009, TestSize.Level1)
     
     ScannerStatus status = scanner.GetScannerStatus();
     EXPECT_EQ(status, ScannerStatus::IDLE);
+}
+
+HWTEST_F(GlobalScannerTest, ShouldStopScan_IdleNoChargingLost_001, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::IDLE;
+    scanner.isChargingLost_.store(false);
+    EXPECT_FALSE(scanner.ShouldStopScan());
+}
+
+HWTEST_F(GlobalScannerTest, ShouldStopScan_ChargingLost_002, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    scanner.isChargingLost_.store(true);
+    EXPECT_TRUE(scanner.ShouldStopScan());
+    scanner.isChargingLost_.store(false);
+}
+
+HWTEST_F(GlobalScannerTest, NotifyChargingLost_WhenIdle_001, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::IDLE;
+    scanner.isChargingLost_.store(false);
+    scanner.NotifyChargingLost();
+    EXPECT_FALSE(scanner.isChargingLost_.load());
+}
+
+HWTEST_F(GlobalScannerTest, NotifyChargingLost_WhenCheckScan_002, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::CHECK_SCAN;
+    scanner.isChargingLost_.store(false);
+    scanner.NotifyChargingLost();
+    EXPECT_TRUE(scanner.isChargingLost_.load());
+    scanner.isChargingLost_.store(false);
+}
+
+HWTEST_F(GlobalScannerTest, NotifyChargingLost_WhenGlobalScan_003, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::GLOBAL_SCAN;
+    scanner.isChargingLost_.store(false);
+    scanner.NotifyChargingLost();
+    EXPECT_FALSE(scanner.isChargingLost_.load());
+}
+
+HWTEST_F(GlobalScannerTest, Run_ResetsChargingLost_016, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    std::error_code ec;
+    std::string testPath = TEST_ROOT_PATH + "/run_test_016";
+    std::filesystem::create_directories(testPath, ec);
+    scanner.isChargingLost_.store(true);
+    scanner.RunLakeScan(testPath, false);
+    EXPECT_FALSE(scanner.isChargingLost_.load());
+}
+
+HWTEST_F(GlobalScannerTest, ProcessIncrementScanTask_ClearsChargingLost_017, TestSize.Level1)
+{
+    GlobalScanner& scanner = GlobalScanner::GetInstance();
+    std::queue<std::pair<MediaNotifyInfo, ScanTaskType>> empty;
+    scanner.scanTaskQueue_.swap(empty);
+    scanner.scannerStatus_ = ScannerStatus::CHECK_SCAN;
+    scanner.isChargingLost_.store(true);
+    LakeScanPolicy policy;
+    scanner.ProcessIncrementScanTask(true, policy);
+    EXPECT_EQ(scanner.GetScannerStatus(), ScannerStatus::IDLE);
+    EXPECT_FALSE(scanner.isChargingLost_.load());
 }
 } // namespace Media
 } // namespace OHOS

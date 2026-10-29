@@ -92,6 +92,7 @@ void GlobalScanner::Run(const std::string &path, IScanPolicy &policy, CheckDfxCo
 
         scannerStatus_ = isFirstScanner ? ScannerStatus::GLOBAL_SCAN : ScannerStatus::CHECK_SCAN;
         isNotInterruptScanner_ = true;
+        isChargingLost_ = false;
         InitTemperatureCondition();
     }
     MEDIA_INFO_LOG("global scan start, isFirstScanner: %{public}d, scannerStatus: %{public}d, "
@@ -162,6 +163,7 @@ int32_t GlobalScanner::ProcessIncrementScanTask(bool isGlobalScanEnd, IScanPolic
     scanTaskQueue.swap(scanTaskQueue_);
     if (isGlobalScanEnd) {
         scannerStatus_ = ScannerStatus::IDLE;
+        isChargingLost_ = false;
     }
     lock.unlock();
 
@@ -215,6 +217,24 @@ ScannerStatus GlobalScanner::GetScannerStatus()
     return scannerStatus_;
 }
 
+bool GlobalScanner::ShouldStopScan()
+{
+    if (MediaLakeCloneEventManager::GetInstance().IsRestoring()) {
+        return true;
+    }
+    return isChargingLost_.load();
+}
+
+void GlobalScanner::NotifyChargingLost()
+{
+    std::lock_guard<std::mutex> lock(scanMutex_);
+    if (scannerStatus_ != ScannerStatus::CHECK_SCAN) {
+        return;
+    }
+    isChargingLost_ = true;
+    MEDIA_INFO_LOG("NotifyChargingLost, scannerStatus: %{public}d", static_cast<int32_t>(scannerStatus_));
+}
+
 void GlobalScanner::InterruptScanner()
 {
     std::lock_guard<std::mutex> lock(scanMutex_);
@@ -254,6 +274,7 @@ bool GlobalScanner::IsForceScanning()
         // 添加状态清理
         if (scannerStatus_ != ScannerStatus::IDLE) {
             scannerStatus_ = ScannerStatus::IDLE;
+            isChargingLost_ = false;
             MEDIA_INFO_LOG("LakeClone: set scannerStatus to IDLE");
         }
     }

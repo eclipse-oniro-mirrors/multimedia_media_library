@@ -37,6 +37,7 @@ void Reset()
     ConsistencyCheckManager::GetInstance().isInterrupted_.store(false);
     GlobalScanner::GetInstance().scannerStatus_ = ScannerStatus::IDLE;
     GlobalScanner::GetInstance().isNotInterruptScanner_.store(true);
+    GlobalScanner::GetInstance().isChargingLost_.store(false);
 }
 
 void ConsistencyCheckManagerTest::SetUpTestCase() {}
@@ -250,6 +251,100 @@ HWTEST_F(ConsistencyCheckManagerTest, IsCheckAllowed_001, TestSize.Level1)
     manager.checkEnabled_ = false;
     EXPECT_FALSE(manager.IsCheckAllowed());
     MEDIA_INFO_LOG("End IsCheckAllowed_001");
+}
+
+HWTEST_F(ConsistencyCheckManagerTest, OnDeviceStatusChanged_ChargingLost_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start OnDeviceStatusChanged_ChargingLost_001");
+    auto &manager = ConsistencyCheckManager::GetInstance();
+    auto &scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::CHECK_SCAN;
+    scanner.isChargingLost_.store(false);
+    scanner.isNotInterruptScanner_.store(true);
+    manager.runningScene_ = CheckScene::LAKE;
+    manager.checkEnabled_ = true;
+    manager.isInterrupted_.store(false);
+    manager.deviceStatus_.isCharging = true;
+
+    ConsistencyCheck::DeviceStatus newStatus;
+    newStatus.isCharging = false;
+    manager.OnDeviceStatusChanged(newStatus);
+
+    EXPECT_TRUE(scanner.isChargingLost_.load());
+    EXPECT_FALSE(scanner.isNotInterruptScanner_.load());
+    EXPECT_TRUE(manager.isInterrupted_.load());
+    MEDIA_INFO_LOG("End OnDeviceStatusChanged_ChargingLost_001");
+}
+
+HWTEST_F(ConsistencyCheckManagerTest, OnDeviceStatusChanged_NoChargingLost_ScreenOn_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start OnDeviceStatusChanged_NoChargingLost_ScreenOn_002");
+    auto &manager = ConsistencyCheckManager::GetInstance();
+    auto &scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::CHECK_SCAN;
+    scanner.isChargingLost_.store(false);
+    scanner.isNotInterruptScanner_.store(true);
+    manager.runningScene_ = CheckScene::LAKE;
+    manager.checkEnabled_ = true;
+    manager.isInterrupted_.store(false);
+    manager.deviceStatus_.isCharging = true;
+    manager.deviceStatus_.isScreenOff = true;
+
+    ConsistencyCheck::DeviceStatus newStatus;
+    newStatus.isCharging = true;
+    newStatus.isScreenOff = false;
+    manager.OnDeviceStatusChanged(newStatus);
+
+    EXPECT_FALSE(scanner.isChargingLost_.load());
+    EXPECT_FALSE(scanner.isNotInterruptScanner_.load());
+    EXPECT_TRUE(manager.isInterrupted_.load());
+    MEDIA_INFO_LOG("End OnDeviceStatusChanged_NoChargingLost_ScreenOn_002");
+}
+
+HWTEST_F(ConsistencyCheckManagerTest, OnDeviceStatusChanged_ChargingLost_ButIdle_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start OnDeviceStatusChanged_ChargingLost_ButIdle_003");
+    auto &manager = ConsistencyCheckManager::GetInstance();
+    auto &scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::IDLE;
+    scanner.isChargingLost_.store(false);
+    scanner.isNotInterruptScanner_.store(true);
+    manager.runningScene_ = CheckScene::IDLE;
+    manager.checkEnabled_ = true;
+    manager.isInterrupted_.store(false);
+    manager.deviceStatus_.isCharging = true;
+
+    ConsistencyCheck::DeviceStatus newStatus;
+    newStatus.isCharging = false;
+    manager.OnDeviceStatusChanged(newStatus);
+
+    EXPECT_FALSE(scanner.isChargingLost_.load());
+    EXPECT_TRUE(scanner.isNotInterruptScanner_.load());
+    EXPECT_FALSE(manager.isInterrupted_.load());
+    MEDIA_INFO_LOG("End OnDeviceStatusChanged_ChargingLost_ButIdle_003");
+}
+
+HWTEST_F(ConsistencyCheckManagerTest, OnDeviceStatusChanged_StopAll_ChargingLost_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start OnDeviceStatusChanged_StopAll_ChargingLost_004");
+    auto &manager = ConsistencyCheckManager::GetInstance();
+    auto &scanner = GlobalScanner::GetInstance();
+    scanner.scannerStatus_ = ScannerStatus::CHECK_SCAN;
+    scanner.isChargingLost_.store(false);
+    scanner.isNotInterruptScanner_.store(true);
+    manager.runningScene_ = CheckScene::LAKE;
+    manager.checkEnabled_ = false;
+    manager.isInterrupted_.store(false);
+    manager.deviceStatus_.isCharging = true;
+
+    ConsistencyCheck::DeviceStatus newStatus;
+    newStatus.isCharging = false;
+    manager.OnDeviceStatusChanged(newStatus);
+
+    EXPECT_FALSE(scanner.isChargingLost_.load());
+    EXPECT_FALSE(scanner.isNotInterruptScanner_.load());
+    EXPECT_TRUE(manager.isInterrupted_.load());
+    MEDIA_INFO_LOG("End OnDeviceStatusChanged_StopAll_ChargingLost_004");
 }
 
 } // namespace Media
