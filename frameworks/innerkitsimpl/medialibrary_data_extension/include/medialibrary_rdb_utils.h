@@ -157,6 +157,10 @@ public:
         std::set<std::string>& albumIds);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryPortraitAlbumCover(
         const std::shared_ptr<MediaLibraryRdbStore>& rdbStore, const std::string &albumId);
+    // Includes the visibility filters normally added by PhotosTableStrategy.
+    EXPORT static std::string GetAnalysisPhotoCountClause(bool hiddenState = false);
+    EXPORT static void GetPortraitAlbumCoverPredicates(const std::string &albumId,
+        NativeRdb::RdbPredicates &predicates);
     EXPORT static int32_t QueryAnalysisAlbumMapByAssets(const std::vector<std::string>& assetIds,
         std::unordered_map<int32_t, std::unordered_set<int32_t>>& fileToAlbums,
         std::unordered_set<int32_t>& allAlbumIds);

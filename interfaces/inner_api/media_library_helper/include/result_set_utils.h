@@ -15,9 +15,10 @@
 #ifndef INTERFACES_INNERAPI_MEDIA_LIBRARY_HELPER_INCLUDE_RESULT_SET_UTILS_H_
 #define INTERFACES_INNERAPI_MEDIA_LIBRARY_HELPER_INCLUDE_RESULT_SET_UTILS_H_
 
-#include <string>
-#include <variant>
 #include <memory>
+#include <string>
+#include <type_traits>
+#include <variant>
 #include <vector>
 
 #include "result_set.h"
@@ -30,6 +31,42 @@ namespace OHOS {
 namespace Media {
 class ResultSetUtils {
 public:
+    // Preserve native NULL conversion and distinguish read failure from a valid zero/empty value.
+    template<typename T>
+    static bool TryGetValue(const std::string &columnName,
+        const std::shared_ptr<NativeRdb::ResultSet> &resultSet, T &value)
+    {
+        static_assert(std::is_same_v<T, int32_t> || std::is_same_v<T, std::string>,
+            "TryGetValue supports int32_t and std::string");
+        int32_t index = -1;
+        if (resultSet == nullptr || resultSet->GetColumnIndex(columnName, index) != NativeRdb::E_OK) {
+            return false;
+        }
+        if constexpr (std::is_same_v<T, int32_t>) {
+            return resultSet->GetInt(index, value) == NativeRdb::E_OK;
+        } else {
+            return resultSet->GetString(index, value) == NativeRdb::E_OK;
+        }
+    }
+
+    // The visitor may see partial rows. Publish its results only when this returns true.
+    template<typename Visitor>
+    static bool ReadRows(const std::shared_ptr<NativeRdb::ResultSet> &rows, Visitor visit, bool checked = true)
+    {
+        if (rows == nullptr) {
+            return false;
+        }
+        int32_t expected = -1;
+        int32_t processed = 0;
+        bool complete = !checked || (rows->GetRowCount(expected) == NativeRdb::E_OK && expected >= 0);
+        while (rows->GoToNextRow() == NativeRdb::E_OK) {
+            ++processed;
+            complete = visit(rows) && complete;
+        }
+        rows->Close();
+        return complete && (!checked || processed == expected);
+    }
+
     template<typename T>
     static std::variant<int32_t, std::string, int64_t, double> GetValFromColumn(const std::string &columnName,
         T &resultSet, ResultSetDataType type)
