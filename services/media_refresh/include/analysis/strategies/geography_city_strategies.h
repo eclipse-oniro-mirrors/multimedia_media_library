@@ -41,7 +41,7 @@ class GeographyCityCoverPickerStrategy : public CoverPickerStrategyBase {
 protected:
     std::string QueryCover(const std::shared_ptr<MediaLibraryRdbStore> &rdb,
         const UpdateAlbumData& baseInfo) override;
-}
+};
 
 } // namespace AccurateRefresh
 } // namespace Media
