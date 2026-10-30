@@ -95,7 +95,6 @@ ohos_unittest("media_notification_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/analysis/strategies/portrait_strategies.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/analysis/strategies/highlight_strategies.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/analysis/strategies/shooting_mode_strategies.cpp",
-    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/analysis/strategies/geography_city_strategies.cpp",
   ]
 
   sources += media_notification_source
