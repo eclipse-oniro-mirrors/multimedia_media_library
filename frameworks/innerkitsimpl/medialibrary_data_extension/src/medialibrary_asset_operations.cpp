@@ -2636,7 +2636,7 @@ const std::unordered_map<std::string, std::vector<VerifyFunction>>
     { MediaColumn::MEDIA_DURATION, { Forbidden } },
     { MediaColumn::MEDIA_TIME_PENDING, { IsInt64, IsUniqueValue } },
     { MediaColumn::MEDIA_IS_FAV, { IsBool, IsUniqueValue } },
-    { MediaColumn::MEDIA_DATE_TRASHED, { IsInt64, IsUniqueValue } },
+    { MediaColumn::MEDIA_DATE_TRASHED, { IsInt64, IsUniqueValue, IsNonNegativeTrashTime } },
     { MediaColumn::MEDIA_DATE_DELETED, { IsInt64, IsUniqueValue } },
     { MediaColumn::MEDIA_HIDDEN, { IsBool, IsUniqueValue } },
     { MediaColumn::MEDIA_PARENT_ID, { IsInt64, IsBelowApi9 } },
@@ -2768,6 +2768,20 @@ bool AssetInputParamVerification::IsUniqueValue(ValueObject &value, MediaLibrary
     map<string, ValueObject> valuesMap;
     cmd.GetValueBucket().GetAll(valuesMap);
     if (valuesMap.size() != 1) {
+        return false;
+    }
+    return true;
+}
+
+bool AssetInputParamVerification::IsNonNegativeTrashTime(NativeRdb::ValueObject &value,
+    MediaLibraryCommand &cmd)
+{
+    int64_t trashTime = 0;
+    if (!value.GetLong(trashTime)) {
+        return false;
+    }
+    if (trashTime < 0) {
+        MEDIA_ERR_LOG("Invalid trash time %{public}" PRId64, trashTime);
         return false;
     }
     return true;

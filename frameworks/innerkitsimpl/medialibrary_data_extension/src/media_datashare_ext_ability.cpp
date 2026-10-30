@@ -768,6 +768,61 @@ static int32_t CheckPermFromUri(MediaLibraryCommand &cmd, bool isWrite)
     return E_SUCCESS;
 }
 
+static void WrapPredicatesWithOwnerCheck(DataSharePredicates &predicates, const std::string& clientAppid)
+{
+    const auto &oldOps = predicates.GetOperationList();
+    const std::string oldClause = predicates.GetWhereClause();
+    const std::vector<std::string> oldArgs = predicates.GetWhereArgs();
+
+    if (!oldOps.empty()) {
+        constexpr size_t WRAP_OP_COUNT = 4;
+        std::vector<OperationItem> newOps;
+        newOps.reserve(oldOps.size() + WRAP_OP_COUNT);
+        OperationItem beginWrap{};
+        beginWrap.operation = BEGIN_WARP;
+        newOps.push_back(beginWrap);
+
+        newOps.insert(newOps.end(), oldOps.begin(), oldOps.end());
+
+        OperationItem endWrap{};
+        endWrap.operation = END_WARP;
+        newOps.push_back(endWrap);
+
+        OperationItem andOp{};
+        andOp.operation = AND;
+        newOps.push_back(andOp);
+
+        OperationItem ownerOp{};
+        ownerOp.operation = EQUAL_TO;
+        ownerOp.singleParams.push_back(SingleValue("owner_appid").value);
+        ownerOp.singleParams.push_back(SingleValue(clientAppid).value);
+        newOps.push_back(ownerOp);
+
+        predicates = DataSharePredicates(std::move(newOps));
+        predicates.SetSettingMode(PREDICATES_METHOD);
+        return;
+    }
+
+    if (!oldClause.empty()) {
+        std::string newClause = "(" + oldClause + ") AND owner_appid = ?";
+        std::vector<std::string> newArgs = oldArgs;
+        newArgs.push_back(clientAppid);
+        predicates = DataSharePredicates();
+        predicates.SetWhereClause(newClause);
+        predicates.SetWhereArgs(newArgs);
+        return;
+    }
+
+    std::vector<OperationItem> newOps;
+    OperationItem ownerOp{};
+    ownerOp.operation = EQUAL_TO;
+    ownerOp.singleParams.push_back(SingleValue("owner_appid").value);
+    ownerOp.singleParams.push_back(SingleValue(clientAppid).value);
+    newOps.push_back(ownerOp);
+    predicates = DataSharePredicates(std::move(newOps));
+    predicates.SetSettingMode(PREDICATES_METHOD);
+}
+
 static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &appidPredicates)
 {
     bool cond = (cmd.GetTableName() != PhotoColumn::PHOTOS_TABLE &&
@@ -777,7 +832,7 @@ static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &appidPr
     if (clientAppId.empty()) {
         return false;
     }
-    appidPredicates.And()->EqualTo("owner_appid", clientAppId);
+    WrapPredicatesWithOwnerCheck(appidPredicates, clientAppId);
     return true;
 }
 

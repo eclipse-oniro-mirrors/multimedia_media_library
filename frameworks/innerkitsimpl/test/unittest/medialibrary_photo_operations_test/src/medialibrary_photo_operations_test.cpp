@@ -5929,5 +5929,72 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, NotifyAssetSended_test_001, TestSize.L
     EXPECT_GE(ret, 0);
     MEDIA_INFO_LOG("NotifyAssetSended_test_001::End");
 }
+
+/**
+ * @tc.name: IsNonNegativeTrashTime_NegativeValue_001
+ * @tc.desc: Test CheckParamForUpdate with negative MEDIA_DATE_TRASHED value.
+ *           IsNonNegativeTrashTime should return false (reject negative value).
+ *           Verify CheckParamForUpdate returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, IsNonNegativeTrashTime_NegativeValue_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("IsNonNegativeTrashTime_NegativeValue_001::Start");
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    NativeRdb::ValuesBucket values;
+    values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, -100);
+    cmd.SetValueBucket(values);
+
+    bool ret = AssetInputParamVerification::CheckParamForUpdate(cmd);
+    EXPECT_FALSE(ret);
+    MEDIA_INFO_LOG("IsNonNegativeTrashTime_NegativeValue_001::End");
+}
+
+/**
+ * @tc.name: IsNonNegativeTrashTime_NonIntValue_001
+ * @tc.desc: Test CheckParamForUpdate with non-int64 MEDIA_DATE_TRASHED value (string type).
+ *           IsInt64 should fail before IsNonNegativeTrashTime is reached, CheckParamForUpdate returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, IsNonNegativeTrashTime_NonIntValue_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("IsNonNegativeTrashTime_NonIntValue_001::Start");
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    NativeRdb::ValuesBucket values;
+    values.PutString(MediaColumn::MEDIA_DATE_TRASHED, "not_a_number");
+    cmd.SetValueBucket(values);
+
+    bool ret = AssetInputParamVerification::CheckParamForUpdate(cmd);
+    EXPECT_FALSE(ret);
+    MEDIA_INFO_LOG("IsNonNegativeTrashTime_NonIntValue_001::End");
+}
+
+/**
+ * @tc.name: IsNonNegativeTrashTime_NonNegativeValue_001
+ * @tc.desc: Test CheckParamForUpdate with non-negative MEDIA_DATE_TRASHED value.
+ *           IsNonNegativeTrashTime should return true without modifying the value.
+ *           Verify CheckParamForUpdate returns true and the value is unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, IsNonNegativeTrashTime_NonNegativeValue_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("IsNonNegativeTrashTime_NonNegativeValue_001::Start");
+    const int64_t testTrashTime = 1700000000000;
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    NativeRdb::ValuesBucket values;
+    values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, testTrashTime);
+    cmd.SetValueBucket(values);
+
+    bool ret = AssetInputParamVerification::CheckParamForUpdate(cmd);
+    EXPECT_TRUE(ret);
+
+    NativeRdb::ValueObject valueObj;
+    EXPECT_TRUE(cmd.GetValueBucket().GetObject(MediaColumn::MEDIA_DATE_TRASHED, valueObj));
+    int64_t resultTrashTime = 0;
+    EXPECT_TRUE(valueObj.GetLong(resultTrashTime));
+    EXPECT_EQ(resultTrashTime, testTrashTime);
+    MEDIA_INFO_LOG("IsNonNegativeTrashTime_NonNegativeValue_001::End resultTrashTime=%{public}" PRId64,
+        resultTrashTime);
+}
 } // namespace Media
 } // namespace OHOS
