@@ -437,10 +437,10 @@ void MedialibrarySubscriber::CheckHalfDayMissions()
 #endif
 }
 
-void MedialibrarySubscriber::PreProcessForUpdateStatus()
+bool MedialibrarySubscriber::PreProcessForUpdateStatus()
 {
     CheckOnRestoreAndTryResetFlag();
-    UpdateGlobalStatusForBgTask();
+    return UpdateGlobalStatusForBgTask();
 }
 
 bool MedialibrarySubscriber::CheckOnRestoreAndTryResetFlag()
@@ -472,15 +472,17 @@ bool MedialibrarySubscriber::CheckOnRestoreAndTryResetFlag()
     return true;
 }
 
-void MedialibrarySubscriber::UpdateGlobalStatusForBgTask()
+bool MedialibrarySubscriber::UpdateGlobalStatusForBgTask()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     bool isCurrentBackgroundTaskAllowed = IsBackgroundTaskAllowed();
+    bool backgroundResumed = !isBackgroundTaskAllowed_ && isCurrentBackgroundTaskAllowed;
     if (isBackgroundTaskAllowed_ != isCurrentBackgroundTaskAllowed) {
         MEDIA_INFO_LOG("UpdateGlobalStatusForBgTask, isCurrentBackgroundTaskAllowed: %{public}d",
             isCurrentBackgroundTaskAllowed);
         isBackgroundTaskAllowed_ = isCurrentBackgroundTaskAllowed;
     }
+    return backgroundResumed;
 }
 
 bool MedialibrarySubscriber::IsBackgroundTaskAllowed()
@@ -585,7 +587,7 @@ void MedialibrarySubscriber::UpdateBackgroundOperationStatus(
             return;
     }
 
-    PreProcessForUpdateStatus();
+    bool backgroundResumed = PreProcessForUpdateStatus();
     UpdateCurrentStatus();
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
     UpdateCheckCriticalTypeStatus();
@@ -595,7 +597,7 @@ void MedialibrarySubscriber::UpdateBackgroundOperationStatus(
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     UpdateBackgroundTimer();
 #endif
-    DealWithEventsAfterUpdateStatus(statusEventType);
+    DealWithEventsAfterUpdateStatus(statusEventType, backgroundResumed);
     UpdateConsistencyCheckStatus();
 }
 
@@ -1486,7 +1488,8 @@ void MedialibrarySubscriber::UpdateBackgroundTimer()
 }
 #endif
 
-void MedialibrarySubscriber::DealWithEventsAfterUpdateStatus(const StatusEventType statusEventType)
+void MedialibrarySubscriber::DealWithEventsAfterUpdateStatus(const StatusEventType statusEventType,
+    bool backgroundResumed)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (deviceTemperatureLevel_ != newTemperatureLevel_) {
@@ -1520,6 +1523,13 @@ void MedialibrarySubscriber::DealWithEventsAfterUpdateStatus(const StatusEventTy
     if (statusEventType == StatusEventType::THERMAL_LEVEL_CHANGED) {
         MEDIA_INFO_LOG("Current temperature level is %{public}d", newTemperatureLevel_);
         PowerEfficiencyManager::UpdateAlbumUpdateInterval(isDeviceTemperatureProper_);
+    }
+
+    // Screen/charging events already checked backup above. Other events may lift the clone gate
+    // while the device remains charging with its screen off, without another screen/charging event.
+    if (backgroundResumed && isScreenOff_ && isCharging_) {
+        MEDIA_INFO_LOG("Background admission resumed; check database backup");
+        MediaLibraryRestore::GetInstance().CheckBackup();
     }
 }
 

@@ -338,5 +338,26 @@ HWTEST_F(MediaLibraryRdbTest, medialib_StopThumbnailBgOperation_test_001, TestSi
     medialibrarySubscriberPtr->GetNowTime();
     EXPECT_EQ(medialibrarySubscriberPtr->agingCount_, 0);
 }
+HWTEST_F(MediaLibraryRdbTest, medialib_BackgroundAdmissionResumed_test, TestSize.Level1)
+{
+    MedialibrarySubscriber subscriber;
+    // Read the current admission without modifying device clone/restore parameters.
+    const bool allowed = MedialibrarySubscriber::IsBackgroundTaskAllowed();
+    subscriber.isBackgroundTaskAllowed_ = false;
+    EXPECT_EQ(subscriber.UpdateGlobalStatusForBgTask(), allowed);
+    EXPECT_EQ(subscriber.isBackgroundTaskAllowed_, allowed);
+    EXPECT_FALSE(subscriber.UpdateGlobalStatusForBgTask());
+}
+
+HWTEST_F(MediaLibraryRdbTest, medialib_BackgroundAdmissionNotResumed_test, TestSize.Level1)
+{
+    MedialibrarySubscriber subscriber;
+    const bool allowed = MedialibrarySubscriber::IsBackgroundTaskAllowed();
+    subscriber.isBackgroundTaskAllowed_ = true;
+    // Neither an unchanged allowed state nor an allowed-to-blocked transition is a resume.
+    EXPECT_FALSE(subscriber.UpdateGlobalStatusForBgTask());
+    EXPECT_EQ(subscriber.isBackgroundTaskAllowed_, allowed);
+    EXPECT_FALSE(subscriber.UpdateGlobalStatusForBgTask());
+}
 } // namespace Media
 } // namespace OHOS

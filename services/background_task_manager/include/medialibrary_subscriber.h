@@ -183,11 +183,11 @@ private:
     void UpdateBackgroundTimer();
 #endif
     void DoAgingOperation();
-    void DealWithEventsAfterUpdateStatus(const StatusEventType statusEventType);
+    void DealWithEventsAfterUpdateStatus(const StatusEventType statusEventType, bool backgroundResumed);
     void UploadDB();
-    void PreProcessForUpdateStatus();
+    bool PreProcessForUpdateStatus();
     bool CheckOnRestoreAndTryResetFlag();
-    void UpdateGlobalStatusForBgTask();
+    bool UpdateGlobalStatusForBgTask();
 #ifdef MEDIALIBRARY_FACARD_SUPPORT
     void InitFaCardAfterDataShareReady(const std::string &action);
 #endif
