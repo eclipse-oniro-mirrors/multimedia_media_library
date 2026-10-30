@@ -193,10 +193,10 @@ void CloneRestoreHighlight::ReverseInit(const InitInfo &info)
     duplicateAssetMap_ = info.duplicateAssetMap;
 }
 
-void CloneRestoreHighlight::ReverseRestore()
+void CloneRestoreHighlight::ReverseRestore(bool isResume)
 {
     int64_t startPreprocess = MediaFileUtils::UTCTimeMilliSeconds();
-    Preprocess();
+    Preprocess(isResume);
     int64_t startRestoreAlbums = MediaFileUtils::UTCTimeMilliSeconds();
     ReverseRestoreAlbums();
     int64_t startRestoreMaps = MediaFileUtils::UTCTimeMilliSeconds();
@@ -227,18 +227,32 @@ void CloneRestoreHighlight::Restore()
         startRestoreMaps - startRestoreAlbums, startUpdateAlbums - startRestoreMaps, end - startUpdateAlbums);
 }
 
-void CloneRestoreHighlight::Preprocess()
+void CloneRestoreHighlight::Preprocess(bool isResume)
 {
     CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdbStore is nullptr.");
+    bool hasRestoreColumn = false;
+    if (!isResume) {
+        auto columns = mediaRdb_->QuerySql("PRAGMA table_info(AnalysisAlbum)");
+        CHECK_AND_RETURN_LOG(columns != nullptr, "query AnalysisAlbum columns failed");
+        while (columns->GoToNextRow() == NativeRdb::E_OK) {
+            std::string name;
+            CHECK_AND_BREAK_ERR_LOG(ResultSetUtils::TryGetValue("name", columns, name),
+                "read AnalysisAlbum column failed");
+            hasRestoreColumn = hasRestoreColumn || name == "need_restore_highlight";
+        }
+        columns->Close();
+    }
     const std::vector<std::string> SQLS = {
-        "ALTER TABLE AnalysisAlbum ADD COLUMN need_restore_highlight INTEGER DEFAULT 0 ",
+        hasRestoreColumn ? "" : "ALTER TABLE AnalysisAlbum ADD COLUMN need_restore_highlight INTEGER DEFAULT 0 ",
         "UPDATE AnalysisAlbum SET need_restore_highlight = 1 "
             " WHERE album_id IN (SELECT album_id FROM tab_highlight_album WHERE highlight_status > 0 "
             " UNION SELECT ai_album_id FROM tab_highlight_album WHERE highlight_status > 0) ",
-        "CREATE INDEX idx_need_restore_highlight ON AnalysisAlbum(need_restore_highlight) "
+        std::string(isResume ? "CREATE INDEX " : "CREATE INDEX IF NOT EXISTS ") +
+            "idx_need_restore_highlight ON AnalysisAlbum(need_restore_highlight) "
             " WHERE need_restore_highlight = 1 ",
     };
     for (const auto &sql : SQLS) {
+        CHECK_AND_CONTINUE(!sql.empty());
         int32_t errCode = BackupDatabaseUtils::ExecuteSQL(mediaRdb_, sql);
         if (errCode != NativeRdb::E_OK) {
             MEDIA_ERR_LOG("Execute %{public}s failed, errCode: %{public}d", sql.c_str(), errCode);
@@ -369,8 +383,8 @@ void CloneRestoreHighlight::UpdateAlbums()
     for (const auto &info : analysisInfos_) {
         bool cond = (!info.oldCoverUri.has_value() || !info.albumIdNew.has_value());
         CHECK_AND_CONTINUE(!cond);
-        BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, UPDATE_ALBUM_SQL, { info.coverUri,
-            info.albumIdNew.value() });
+        BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, UPDATE_ALBUM_SQL,
+            {info.coverUri, info.albumIdNew.value()});
     }
 
     const std::string UPDATE_COVER_KEY_SQL = "UPDATE tab_highlight_cover_info SET cover_key = ? "
@@ -383,8 +397,8 @@ void CloneRestoreHighlight::UpdateAlbums()
         cond = (it == analysisInfos_.end() || !it->albumName.has_value());
         CHECK_AND_CONTINUE(!cond);
         std::string coverUri = it->albumName.value() + "_" + coverInfo.ratio.value() + "_" + it->coverUri;
-        BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, UPDATE_COVER_KEY_SQL, { coverUri,
-            coverInfo.highlightIdNew.value(), coverInfo.ratio.value()});
+        BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, UPDATE_COVER_KEY_SQL,
+            {coverUri, coverInfo.highlightIdNew.value(), coverInfo.ratio.value()});
     }
 }
 
@@ -598,6 +612,11 @@ void CloneRestoreHighlight::InsertIntoAnalysisAlbum()
         }
         int64_t rowNum = 0;
         int32_t errCode = BatchInsertWithRetry("AnalysisAlbum", values, rowNum);
+        for (size_t index = offset; albumRestoreObserver_ && index < offset + values.size(); ++index) {
+            const auto &album = analysisInfos_[index];
+            albumRestoreObserver_({album.albumIdOld.value_or(0), album.albumIdNew.value_or(0), 0,
+                album.albumSubtype.value_or(0), errCode == E_OK && rowNum == static_cast<int64_t>(values.size())});
+        }
         if (errCode != E_OK || rowNum != static_cast<int64_t>(values.size())) {
             int64_t failNums = static_cast<int64_t>(values.size()) - rowNum;
             ErrorInfo errorInfo(RestoreError::INSERT_FAILED, 0, std::to_string(errCode),
@@ -919,9 +938,11 @@ void CloneRestoreHighlight::MoveHighlightWordart(const AnalysisAlbumInfo &info, 
         CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(srcPath));
         std::string dstDir = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/" + ratio;
-        CHECK_AND_CONTINUE_ERR_LOG(!MediaFileUtils::IsDirectory(dstDir) || MediaFileUtils::DeleteDir(dstDir),
-            "remove %{public}s failed", dstDir.c_str());
-        CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::CreateDirectory(dstDir), "create %{public}s failed",
+
+        const bool cleared = !MediaFileUtils::IsDirectory(dstDir) || MediaFileUtils::DeleteDir(dstDir);
+        CHECK_AND_CONTINUE_ERR_LOG(cleared, "remove %{public}s failed", dstDir.c_str());
+        const bool directoryReady = MediaFileUtils::CreateDirectory(dstDir);
+        CHECK_AND_CONTINUE_ERR_LOG(directoryReady, "create %{public}s failed",
             BackupFileUtils::GarbleFilePath(dstDir, sceneCode_, GARBLE_DST_PATH).c_str());
 
         std::string dstPath = dstDir + "/wordart.png";
@@ -940,9 +961,12 @@ void CloneRestoreHighlight::MoveHighlightGround(const AnalysisAlbumInfo &info, c
         std::string groundDstDir = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/full";
         CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(groundPath));
-        CHECK_AND_CONTINUE_ERR_LOG(!MediaFileUtils::IsDirectory(groundDstDir) ||
-            MediaFileUtils::DeleteDir(groundDstDir), "remove %{public}s failed", groundDstDir.c_str());
-        CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::CreateDirectory(groundDstDir), "create %{public}s failed",
+
+        const bool cleared = !MediaFileUtils::IsDirectory(groundDstDir) ||
+            MediaFileUtils::DeleteDir(groundDstDir);
+        CHECK_AND_CONTINUE_ERR_LOG(cleared, "remove %{public}s failed", groundDstDir.c_str());
+        const bool directoryReady = MediaFileUtils::CreateDirectory(groundDstDir);
+        CHECK_AND_CONTINUE_ERR_LOG(directoryReady, "create %{public}s failed",
             BackupFileUtils::GarbleFilePath(groundDstDir, sceneCode_, GARBLE_DST_PATH).c_str());
 
         std::string groundDstPath = groundDstDir + "/" + fileName + ".png";
@@ -1367,6 +1391,7 @@ void CloneRestoreHighlight::DeleteAnalysisDuplicateRows(const std::unordered_set
     const std::string &duplicateAlbumName)
 {
     CHECK_AND_RETURN(!duplicateAnalysisAlbumIdSet.empty());
+    CHECK_AND_EXECUTE(!beforeAlbumDeletion_, beforeAlbumDeletion_(duplicateAnalysisAlbumIdSet));
     int32_t deleteRows = 0;
     std::vector<NativeRdb::ValueObject> duplicateAnalysisAlbumIds(duplicateAnalysisAlbumIdSet.begin(),
         duplicateAnalysisAlbumIdSet.end());

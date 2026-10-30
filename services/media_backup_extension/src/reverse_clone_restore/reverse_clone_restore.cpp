@@ -44,6 +44,7 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "rdb_predicates.h"
+#include "result_set_utils.h"
 #include "reverse_clone_resource_inherit_helper.h"
 #include "anco_reverse_clone_adapter.h"
 #include "photo_file_utils.h"
@@ -64,6 +65,9 @@
 #include "photo_map_code_operation.h"
 #include "medialibrary_tab_asset_and_album_operations.h"
 #include "photo_album_upload_status_operation.h"
+#include "analysis_album/analysis_album_refresh.h"
+#include "analysis_album/analysis_album_refresh_db.h"
+#include "medialibrary_notify.h"
 #include "reverse_clone_reliability_marker.h"
 #include "photo_count_strategy.h"
 #include "photo_count_context.h"
@@ -77,6 +81,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <map>
 #include <sys/statvfs.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -84,6 +89,7 @@
 #include <future>
 #include <chrono>
 #include <thread>
+#include <tuple>
 
 namespace OHOS {
 namespace Media {
@@ -860,7 +866,8 @@ std::vector<int32_t> BuildDataConflictCandidateUniqueIds(const DestDataConflictI
 }
 
 ReverseDataConflictResult ResolveDataConflictForFile(const std::shared_ptr<NativeRdb::RdbStore> &destRdb,
-    const FileInfo &fileInfo, const UniqueIdGetter &getUniqueId, ReverseStaleTargetResource &staleResource)
+    const FileInfo &fileInfo, const UniqueIdGetter &getUniqueId, ReverseStaleTargetResource &staleResource,
+    const std::function<void(int32_t)> &beforeMutation)
 {
     if (fileInfo.deletedSrcdbFileId > 0) {
         return MakeDataConflictResult(ReverseDataConflictStatus::SKIPPED_DUPLICATE, fileInfo.fileIdOld,
@@ -875,6 +882,7 @@ ReverseDataConflictResult ResolveDataConflictForFile(const std::shared_ptr<Nativ
         return CleanLocalTargetResidue(fileInfo.fileIdOld, fileInfo.cloudPath, staleResource);
     }
 
+    CHECK_AND_EXECUTE(!beforeMutation, beforeMutation(conflict.fileId));
     std::vector<int32_t> candidateUniqueIds = BuildDataConflictCandidateUniqueIds(conflict, getUniqueId);
     return ReleaseDestDataConflict(destRdb, conflict, candidateUniqueIds, staleResource);
 }
@@ -1743,6 +1751,7 @@ bool ReverseCloneRestore::FinalizeDatabaseSwap(const std::string &backupRestoreP
 
 bool ReverseCloneRestore::InitDatabasesForResume()
 {
+    useFullAnalysisRefreshForResume_ = true;
     const std::string newDbPath = "/data/storage/el2/database/rdb/media_library.db";
     const std::string newDbSourcePath = "/data/storage/el2/database/rdb/media_library_source.db";
 
@@ -2110,6 +2119,70 @@ bool ReverseCloneRestore::DoDataBaseUpgrade(std::shared_ptr<NativeRdb::RdbStore>
     return true;
 }
 
+bool ReverseCloneRestore::CaptureAnalysisAlbumMembers(const std::vector<int32_t> &albumIds,
+    const std::vector<int32_t> &fileIds)
+{
+    CHECK_AND_RETURN_RET(analysisAlbumRefreshContext_.IsTaskComplete(), false);
+    std::vector<int32_t> ids;
+    const auto result = AnalysisAlbumRefreshDb(mediaLibraryRdb_).QueryAssetIds(
+        albumIds, AnalysisAssetQuery::ALBUM_MEMBERS, ids);
+    if (result != E_OK) {
+        analysisAlbumRefreshContext_.MarkTaskIncomplete();
+        return false;
+    }
+    ids.insert(ids.end(), fileIds.begin(), fileIds.end());
+    return CaptureAnalysisTargetContributions(std::move(ids));
+}
+
+bool ReverseCloneRestore::CaptureAnalysisTargetContributions(std::vector<int32_t> targetFileIds,
+    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb)
+{
+    std::lock_guard<std::mutex> lock(analysisBeforeCaptureMutex_);
+    const auto &rdb = targetRdb == nullptr ? mediaLibraryRdb_ : targetRdb;
+    return analysisAlbumRefreshContext_.CaptureBefore(rdb, targetFileIds);
+}
+
+AnalysisAlbumRestoreObserver ReverseCloneRestore::AnalysisAlbumObserver()
+{
+    CHECK_AND_RETURN_RET(!useFullAnalysisRefreshForResume_, {});
+    return [this](const AnalysisAlbumOperation &result) {
+        analysisAlbumRefreshContext_.RecordAlbumResult(result);
+        if (result.complete && result.sourceId > 0 && result.targetId > 0) {
+            tableAlbumIdMap_[ANALYSIS_ALBUM_TABLE][result.sourceId] = result.targetId;
+        } else {
+            MEDIA_WARN_LOG("Unconfirmed analysis album source=%{public}d target=%{public}d replaced=%{public}d",
+                result.sourceId, result.targetId, result.replacedTargetId);
+        }
+    };
+}
+
+void ReverseCloneRestore::NotifyChangedAnalysisAlbums(const std::unordered_set<int32_t> &albumIds)
+{
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_LOG(watch != nullptr, "Can not get MediaLibraryNotify Instance");
+    for (const int32_t albumId : albumIds) {
+        watch->Notify(MediaFileUtils::GetUriByExtrConditions(
+            PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, std::to_string(albumId)), NotifyType::NOTIFY_UPDATE);
+    }
+}
+
+int32_t ReverseCloneRestore::ExecuteAnalysisAlbumRefresh(const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
+    const std::shared_ptr<MediaLibraryRdbStore> &rdbStore)
+{
+    auto result = analysisAlbumRefreshContext_.Refresh(targetRdb);
+    if (result.fullRefresh || !result.failedAlbumIds.empty()) {
+        std::vector<std::string> ids;
+        for (int32_t id : result.failedAlbumIds) {
+            ids.push_back(std::to_string(id));
+        }
+        MEDIA_WARN_LOG("Analysis fallback all=%{public}d albums=%{public}zu", result.fullRefresh, ids.size());
+        result.error = rdbStore == nullptr ? E_HAS_DB_ERROR :
+            MediaLibraryRdbUtils::UpdateAnalysisAlbumInternalWithResult(rdbStore, ids, &result.changedAlbumIds);
+    }
+    NotifyChangedAnalysisAlbums(result.changedAlbumIds);
+    return result.error;
+}
+
 void ReverseCloneRestore::ReverseRestoreClassifyData()
 {
     CloneReverseRestoreClassify reverseRestoreClassify;
@@ -2122,6 +2195,15 @@ void ReverseCloneRestore::ReverseRestoreClassifyData()
     config.scoreMaskMap = &scoreMaskMap_;
     config.duplicateMap = &duplicateAssetMap_;
     reverseRestoreClassify.Init(config);
+    if (useFullAnalysisRefreshForResume_) {
+        reverseRestoreClassify.Restore();
+        return;
+    }
+    reverseRestoreClassify.SetBeforeAlbumMerge([this](int32_t albumId) {
+        CHECK_AND_PRINT_LOG(CaptureAnalysisAlbumMembers({albumId}),
+            "Cannot capture classify merge; precise refresh will fall back");
+    });
+    reverseRestoreClassify.SetAlbumRestoreObserver(AnalysisAlbumObserver());
     reverseRestoreClassify.Restore();
 }
 
@@ -2129,6 +2211,15 @@ void ReverseCloneRestore::RestoreReverseAnalysisGeo()
 {
     CloneReverseRestoreGeo reverseRestoreGeo;
     reverseRestoreGeo.Init(sceneCode_, taskId_, mediaRdb_, mediaLibraryRdb_);
+    if (useFullAnalysisRefreshForResume_) {
+        reverseRestoreGeo.Restore();
+        return;
+    }
+    reverseRestoreGeo.SetBeforeMutation([this](int32_t albumId, const std::vector<int32_t> &fileIds) {
+        CHECK_AND_PRINT_LOG(CaptureAnalysisAlbumMembers(albumId > 0 ? std::vector<int32_t> {albumId} :
+            std::vector<int32_t> {}, fileIds), "Cannot capture city mutation; precise refresh will fall back");
+    });
+    reverseRestoreGeo.SetAlbumRestoreObserver(AnalysisAlbumObserver());
     reverseRestoreGeo.Restore();
 }
 
@@ -2151,6 +2242,7 @@ void ReverseCloneRestore::RestoreReverseAnalysisPortrait()
             sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, reversePhotoInfoMap_,
             isCloudRestoreSatisfied, &scoreMaskMap_);
         portraitAlbumClone.RefreshTotalAlbumNumber();
+        portraitAlbumClone.SetAlbumRestoreObserver(AnalysisAlbumObserver());
         portraitAlbumClone.Restore(true);
         // 合影
         RestoreReverseGroupPhoto();
@@ -2170,6 +2262,7 @@ void ReverseCloneRestore::RestoreReverseGroupPhoto()
     CloneRestoreGroupPhoto cloneRestoreGroupPhoto;
     cloneRestoreGroupPhoto.Init(
         sceneCode_, taskId_, restoreInfo_, mediaLibraryRdb_, mediaRdb_, isCloudRestoreSatisfied);
+    cloneRestoreGroupPhoto.SetAlbumRestoreObserver(AnalysisAlbumObserver());
     cloneRestoreGroupPhoto.Restore(reversePhotoInfoMap_, true);
     MEDIA_INFO_LOG("end RestoreReverseGroupPhoto");
 }
@@ -2285,6 +2378,36 @@ void ReverseCloneRestore::ReverseRestorePortraitNickNameData()
     portraitNickNameClone.Clone();
 }
 
+void ReverseCloneRestore::PrepareHighlightAnalysisCapture(CloneRestoreHighlight &highlight)
+{
+    CHECK_AND_RETURN(!useFullAnalysisRefreshForResume_);
+    highlight.SetAlbumRestoreObserver(AnalysisAlbumObserver());
+    highlight.SetBeforeAlbumDeletion([this](const std::unordered_set<int32_t> &albums) {
+        CHECK_AND_RETURN(analysisAlbumRefreshContext_.IsTaskComplete());
+        std::vector<int32_t> originalIds;
+        for (int32_t id : albums) {
+            if (analysisAlbumRefreshContext_.FindOriginalAlbum(AnalysisAlbumDatabaseSide::TARGET, id) != nullptr) {
+                originalIds.push_back(id);
+            }
+        }
+        CHECK_AND_PRINT_LOG(CaptureAnalysisAlbumMembers(originalIds),
+            "Cannot capture highlight deletion; precise refresh will fall back");
+    });
+}
+
+void ReverseCloneRestore::CaptureHighlightClearing()
+{
+    CHECK_AND_RETURN(!useFullAnalysisRefreshForResume_);
+    std::vector<int32_t> ids;
+    for (const auto &album : analysisAlbumRefreshContext_.GetFacts().targetAlbums) {
+        if (album.second.registered && (album.second.subtype == PhotoAlbumSubType::HIGHLIGHT ||
+            album.second.subtype == PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS)) {
+            ids.push_back(album.first);
+        }
+    }
+    CHECK_AND_PRINT_LOG(CaptureAnalysisAlbumMembers(ids), "Cannot capture highlight clearing");
+}
+
 void ReverseCloneRestore::RestoreReverseHighlightAlbums()
 {
     // 偏移 highlight play_info 中的 file_id，并移动 highlight 文件
@@ -2297,6 +2420,7 @@ void ReverseCloneRestore::RestoreReverseHighlightAlbums()
     // 反向：不满足云图迁移且旧机有时刻数据，删除旧机，插入新机；其他场景，插入新机
     int32_t highlightCloudMediaCnt = GetHighlightCloudMediaCnt(mediaLibraryRdb_);
     CloneRestoreHighlight cloneRestoreHighlight;
+    PrepareHighlightAnalysisCapture(cloneRestoreHighlight);
     string reverseHighlightPath = "/storage/media/local/files/reverse_restore/highlight/";
     CloneRestoreHighlight::InitInfo initInfo = { sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, reverseHighlightPath,
         reversePhotoInfoMap_, duplicateAssetMap_ };
@@ -2304,12 +2428,18 @@ void ReverseCloneRestore::RestoreReverseHighlightAlbums()
         .Report("CLONE_RESTORE_HIGHLIGHT_CHECK", "",
         "highlightCloudMediaCnt: " + std::to_string(highlightCloudMediaCnt) +
         ", isCloudRestoreSatisfied: " + std::to_string(IsCloudRestoreSatisfied()));
+    if (!useFullAnalysisRefreshForResume_) {
+        cloneRestoreHighlight.ReverseInit(initInfo);
+    }
     if (highlightCloudMediaCnt != 0 && !IsCloudRestoreSatisfied()) {
         MEDIA_INFO_LOG("old highlightAlbum condition not met, clear old data");
+        CaptureHighlightClearing();
         cloneRestoreHighlight.ClearHighlightAlbums();
     }
-    cloneRestoreHighlight.ReverseInit(initInfo);
-    cloneRestoreHighlight.ReverseRestore();
+    if (useFullAnalysisRefreshForResume_) {
+        cloneRestoreHighlight.ReverseInit(initInfo);
+    }
+    cloneRestoreHighlight.ReverseRestore(useFullAnalysisRefreshForResume_);
 
     CloneRestoreCVAnalysis cloneRestoreCVAnalysis;
     std::string videoPath = "/storage/media/local/files/reverse_restore/highlight/video/";
@@ -2342,45 +2472,92 @@ void ReverseCloneRestore::ReverseRestoreTabOldAlbumsData(std::shared_ptr<NativeR
         .append(std::to_string(endTime - startTime) + ";");
 }
 
+using AnalysisAlbumMatchKey = std::tuple<int32_t, int32_t, std::string, std::string>;
+using AnalysisAlbumMatches = std::map<AnalysisAlbumMatchKey, int32_t>;
+
+static bool QueryReverseAlbumMatches(const std::shared_ptr<NativeRdb::RdbStore> &rdb,
+    const std::string &sql, AnalysisAlbumMatches &matches)
+{
+    CHECK_AND_RETURN_RET(rdb != nullptr, false);
+    return ResultSetUtils::ReadRows(rdb->QuerySql(
+        "SELECT album_id, album_type, COALESCE(album_name, '') AS album_name, "
+        "COALESCE(tag_id, '') AS tag_id, album_subtype FROM (" + sql + ")"), [&matches](const auto &row) {
+        int32_t id = 0;
+        AnalysisAlbumMatchKey key;
+        auto &[albumType, albumSubtype, albumName, tagId] = key;
+        CHECK_AND_RETURN_RET(ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_ID, row, id) && id > 0 &&
+            ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_TYPE, row, albumType) &&
+            ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_SUBTYPE, row, albumSubtype) &&
+            ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_NAME, row, albumName) &&
+            ResultSetUtils::TryGetValue(ANALYSIS_COL_TAG_ID, row, tagId), false);
+        const auto [it, inserted] = matches.emplace(std::move(key), id);
+        if (!inserted) {
+            it->second = 0;
+        }
+        return true;
+    });
+}
+
 void ReverseCloneRestore::PopulateAnalysisAlbumIdMap(const std::vector<int32_t>& subtypes)
 {
-    MEDIA_INFO_LOG("Mapping portrait, group photo, and shooting mode albums");
     CHECK_AND_RETURN_LOG(!subtypes.empty(), "empty subtype");
-
     std::string srcSql = BuildSourceQuerySql(subtypes);
+    AnalysisAlbumMatches matches;
+    const bool indexed = !useFullAnalysisRefreshForResume_ &&
+        QueryReverseAlbumMatches(mediaLibraryRdb_, srcSql, matches);
+    CHECK_AND_EXECUTE(useFullAnalysisRefreshForResume_ || indexed, analysisAlbumRefreshContext_.MarkTaskIncomplete());
     auto srcResultSet = mediaRdb_->QuerySql(srcSql);
+    CHECK_AND_EXECUTE(useFullAnalysisRefreshForResume_ || srcResultSet != nullptr,
+        analysisAlbumRefreshContext_.MarkTaskIncomplete());
     CHECK_AND_RETURN_LOG(srcResultSet != nullptr, "Failed to query special album types from source");
-
     auto& albumIdMap = tableAlbumIdMap_[ANALYSIS_ALBUM_TABLE];
-    int32_t mappedCount = 0;
-
+    int32_t expected = -1;
+    int32_t processed = 0;
+    const bool sourceComplete = useFullAnalysisRefreshForResume_ ||
+        srcResultSet->GetRowCount(expected) == NativeRdb::E_OK;
     while (srcResultSet->GoToNextRow() == NativeRdb::E_OK) {
+        ++processed;
         int32_t oldAlbumId = GetInt32Val("album_id", srcResultSet);
         int32_t albumType = GetInt32Val("album_type", srcResultSet);
         int32_t albumSubtype = GetInt32Val("album_subtype", srcResultSet);
         std::string albumName = GetStringVal("album_name", srcResultSet);
         std::string tagId = GetStringVal("tag_id", srcResultSet);
-        if (albumIdMap.find(oldAlbumId) != albumIdMap.end()) {
+        const auto existingMapping = albumIdMap.find(oldAlbumId);
+        CHECK_AND_CONTINUE(!useFullAnalysisRefreshForResume_ || existingMapping == albumIdMap.end());
+        const auto match = matches.find({albumType, albumSubtype, albumName, tagId});
+        const auto matchedAlbumId = !indexed || (match != matches.end() && match->second == 0) ?
+            FindMatchingAlbum(albumType, albumSubtype, albumName, tagId) :
+            (match == matches.end() ? std::optional<int32_t> {} : std::make_optional(match->second));
+        CHECK_AND_EXECUTE(!indexed || match == matches.end() || matchedAlbumId.has_value(),
+            analysisAlbumRefreshContext_.MarkTaskIncomplete());
+        if (matchedAlbumId.has_value() && !useFullAnalysisRefreshForResume_) {
+            analysisAlbumRefreshContext_.RecordAlbumResult({oldAlbumId, matchedAlbumId.value(), 0, albumSubtype, true});
+        }
+        if (existingMapping != albumIdMap.end() || !matchedAlbumId.has_value()) {
             continue;
         }
-
-        if (auto newAlbumId = FindMatchingAlbum(albumType, albumSubtype, albumName, tagId)) {
-            if (!newAlbumId.has_value()) {
-                continue;
-            }
-            if (newAlbumId.value() == oldAlbumId) {
-                MEDIA_INFO_LOG("old database has portrait data, skip nickname");
-                continue;
-            }
-            tableAlbumIdMap_[ANALYSIS_ALBUM_TABLE][oldAlbumId] = newAlbumId.value();
-            mappedCount++;
-            MEDIA_DEBUG_LOG("Mapped album (subtype=%{public}d): old=%{public}d -> new=%{public}d",
-                albumSubtype, oldAlbumId, *newAlbumId);
+        if (matchedAlbumId.value() == oldAlbumId &&
+            (useFullAnalysisRefreshForResume_ || albumSubtype == PhotoAlbumSubType::PORTRAIT)) {
+            MEDIA_INFO_LOG("old database has portrait data, skip nickname");
+            continue;
         }
+        albumIdMap[oldAlbumId] = matchedAlbumId.value();
     }
     srcResultSet->Close();
+    CHECK_AND_EXECUTE(useFullAnalysisRefreshForResume_ || (sourceComplete && processed == expected),
+        analysisAlbumRefreshContext_.MarkTaskIncomplete());
+}
 
-    MEDIA_INFO_LOG("Album mapping completed. Mapped %{public}d albums", mappedCount);
+void ReverseCloneRestore::FinishAnalysisRestoreMappings()
+{
+    if (useFullAnalysisRefreshForResume_) {
+        PopulateAnalysisAlbumIdMap({PhotoAlbumSubType::PORTRAIT});
+    }
+    // 人像昵称依赖智慧相册映射，放到最后
+    ReverseRestorePortraitNickNameData();
+    if (!useFullAnalysisRefreshForResume_) {
+        PopulateAnalysisAlbumIdMap({PhotoAlbumSubType::GEOGRAPHY_LOCATION});
+    }
 }
 
 void ReverseCloneRestore::ReverseRestoreAnalysisData()
@@ -2419,12 +2596,7 @@ void ReverseCloneRestore::ReverseRestoreAnalysisData()
     ReverseRestoreDupSimData();
     // 精选视图
     ReverseRestoreSelectionData();
-    // 智慧相册id映射，复用正向，放到最后
-    PopulateAnalysisAlbumIdMap({
-        PhotoAlbumSubType::PORTRAIT
-    });
-    // 人像昵称依赖智慧相册映射，放到最后
-    ReverseRestorePortraitNickNameData();
+    FinishAnalysisRestoreMappings();
     // 重复资产特殊处理
     FileIdMigrator migrator;
     migrator.UpdateFaceTableFileIds(mediaLibraryRdb_, duplicateAssetMap_);
@@ -2536,7 +2708,9 @@ void ReverseCloneRestore::MergeShootingModeAlbums()
 {
     MEDIA_INFO_LOG("MergeShootingModeAlbums start");
     ShootingModeAlbumClone clone(mediaRdb_, mediaLibraryRdb_);
-    clone.Execute();
+    clone.SetAlbumRestoreObserver(AnalysisAlbumObserver());
+    const bool merged = clone.Execute();
+    CHECK_AND_RETURN_LOG(useFullAnalysisRefreshForResume_ || merged, "failed to merge shooting mode albums");
     MEDIA_INFO_LOG("MergeShootingModeAlbums completed");
 }
 
@@ -2772,6 +2946,12 @@ bool ReverseCloneRestore::WaitForIntegrityCheck()
 
 bool ReverseCloneRestore::CleanOldDbData(std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore)
 {
+    if (!useFullAnalysisRefreshForResume_) {
+        analysisAlbumRefreshContext_.Clear();
+        CHECK_AND_PRINT_LOG(analysisAlbumRefreshContext_.InitializeOriginalAlbums(
+            oldDbTempStore, AnalysisAlbumDatabaseSide::TARGET),
+            "Cannot prepare original analysis directory; precise refresh will fall back");
+    }
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t ret = tableDataAdapter_.ClearRedundantData(oldDbTempStore, mediaLibraryRdb_);
     std::string failedTable = tableDataAdapter_.GetFailedTable();
@@ -2791,7 +2971,7 @@ bool ReverseCloneRestore::CleanOldDbData(std::shared_ptr<NativeRdb::RdbStore> &o
         .append(std::to_string(endTime - startTime) + ";");
 
     startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    if (tableDataAdapter_.CleanInvalidPhotosFromOldDb(oldDbTempStore) != E_OK) {
+    if (CleanInvalidPhotosWithAnalysis(oldDbTempStore) != E_OK) {
         MEDIA_ERR_LOG("ReverseCloneRestore: CleanInvalidPhotosFromOldDb failed");
         reverseRestoreReportInfo_.reverseChangeErrorInfo = "CleanInvalidPhotosFromOldDb failed";
         return false;
@@ -2802,6 +2982,89 @@ bool ReverseCloneRestore::CleanOldDbData(std::shared_ptr<NativeRdb::RdbStore> &o
     return true;
 }
 
+int32_t ReverseCloneRestore::CleanInvalidPhotosWithAnalysis(const std::shared_ptr<NativeRdb::RdbStore> &rdb)
+{
+    CHECK_AND_RETURN_RET(!useFullAnalysisRefreshForResume_, tableDataAdapter_.CleanInvalidPhotosFromOldDb(rdb));
+    InvalidPhotoCleanupObserver observer;
+    observer.before = [this, &rdb](const auto &photos, bool complete) {
+        CHECK_AND_EXECUTE(complete, analysisAlbumRefreshContext_.MarkTaskIncomplete());
+        std::vector<int32_t> ids;
+        for (const auto &photo : photos) {
+            ids.push_back(static_cast<int32_t>(photo.fileId));
+        }
+        CHECK_AND_PRINT_LOG(CaptureAnalysisTargetContributions(std::move(ids), rdb),
+            "Cannot capture cleanup before; precise refresh will fall back");
+    };
+    observer.committed = [this, &rdb](const auto &ids) {
+        RecordAnalysisDeletedTargets(rdb, ids);
+    };
+    return tableDataAdapter_.CleanInvalidPhotosFromOldDb(rdb, &observer);
+}
+
+void ReverseCloneRestore::RecordAnalysisDeletedTargets(const std::shared_ptr<NativeRdb::RdbStore> &rdb,
+    const std::vector<int32_t> &ids)
+{
+    CHECK_AND_RETURN(analysisAlbumRefreshContext_.IsTaskComplete() && !ids.empty());
+    std::vector<int32_t> present;
+    if (AnalysisAlbumRefreshDb(rdb).QueryAssetIds(ids, AnalysisAssetQuery::EXISTING, present) != E_OK) {
+        analysisAlbumRefreshContext_.MarkTaskIncomplete();
+        return;
+    }
+    const std::unordered_set<int32_t> existing(present.begin(), present.end());
+    std::vector<int32_t> deleted;
+    for (int32_t id : ids) {
+        CHECK_AND_EXECUTE(existing.count(id) > 0, deleted.push_back(id));
+    }
+    analysisAlbumRefreshContext_.RecordDeletedTargets(deleted);
+}
+
+void ReverseCloneRestore::MigrateAnalysisTargetAssets(const std::shared_ptr<NativeRdb::RdbStore> &rdb,
+    int64_t offset, int64_t upperBound)
+{
+    CHECK_AND_RETURN(analysisAlbumRefreshContext_.IsTaskComplete());
+    const auto &snapshot = analysisAlbumRefreshContext_.GetFacts();
+    std::unordered_map<int32_t, int32_t> expected;
+    for (const auto &item : snapshot.targetCoverage) {
+        const int32_t id = item.first;
+        if (offset <= 0 || (id <= upperBound && offset > INT32_MAX - id)) {
+            analysisAlbumRefreshContext_.MarkTaskIncomplete();
+            return;
+        }
+        expected.emplace(id, id <= upperBound ? id + offset : id);
+    }
+    std::unordered_map<int32_t, int32_t> mappings;
+    if (!AnalysisAlbumRefreshDb(rdb).QueryMigratedPhotoIds(expected, mappings)) {
+        analysisAlbumRefreshContext_.MarkTaskIncomplete();
+        return;
+    }
+    std::vector<int32_t> deleted;
+    for (const auto &entry : expected) {
+        if (mappings.count(entry.first) == 0) {
+            deleted.push_back(entry.first);
+        }
+    }
+    analysisAlbumRefreshContext_.RecordDeletedTargets(deleted);
+    CHECK_AND_EXECUTE(analysisAlbumRefreshContext_.MigrateTargetAssets(mappings),
+        analysisAlbumRefreshContext_.MarkTaskIncomplete());
+}
+
+std::vector<int32_t> ReverseCloneRestore::CaptureCloudCleanupContributions(
+    const std::shared_ptr<NativeRdb::RdbStore> &rdb)
+{
+    std::vector<int32_t> ids;
+    if (useFullAnalysisRefreshForResume_ || IsCloudRestoreSatisfied()) {
+        return ids;
+    }
+    if (AnalysisAlbumRefreshDb(rdb).QueryCloudCleanupAssetIds(ids) != E_OK) {
+        analysisAlbumRefreshContext_.MarkTaskIncomplete();
+        MEDIA_WARN_LOG("Analysis cloud cleanup candidate query failed; precise refresh will fall back");
+        return ids;
+    }
+    const bool taskComplete = ids.empty() || CaptureAnalysisTargetContributions(ids, rdb);
+    MEDIA_INFO_LOG("Analysis cloud cleanup candidates=%{public}zu task_complete=%{public}d", ids.size(), taskComplete);
+    return ids;
+}
+
 bool ReverseCloneRestore::CleanCloudDataIfNeeded(std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore)
 {
     if (IsCloudRestoreSatisfied()) {
@@ -2809,11 +3072,15 @@ bool ReverseCloneRestore::CleanCloudDataIfNeeded(std::shared_ptr<NativeRdb::RdbS
     }
 
     MEDIA_INFO_LOG("ReverseCloneRestore: Account invalid, starting cloud data cleanup");
+    const auto cleanupIds = CaptureCloudCleanupContributions(oldDbTempStore);
     CloudDataCleaner cleaner(oldDbTempStore);
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     if (!cleaner.CleanCloudData()) {
         MEDIA_ERR_LOG("ReverseCloneRestore: CloudDataCleaner failed");
         return false;
+    }
+    if (!useFullAnalysisRefreshForResume_ && !cleanupIds.empty()) {
+        RecordAnalysisDeletedTargets(oldDbTempStore, cleanupIds);
     }
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.beforeTransformTimeCost.append(" CleanClouddata: ")
@@ -2862,6 +3129,21 @@ int32_t ReverseCloneRestore::RepairFinalAncoAssetsAfterSecondaryMigration()
 
     AncoReverseCloneContext ancoContext;
     ancoContext.dstConfig = dstDevFileTransferConfig_;
+    if (!useFullAnalysisRefreshForResume_) {
+        ancoContext.deletionObserver = [this, pending = std::vector<int32_t> {}](
+            const std::vector<int32_t> &ids, bool before) mutable {
+            if (!before) {
+                RecordAnalysisDeletedTargets(mediaLibraryRdb_, pending);
+                pending.clear();
+                return;
+            }
+            const bool queried = AnalysisAlbumRefreshDb(mediaLibraryRdb_).QueryAssetIds(
+                ids, AnalysisAssetQuery::DELETION_WITH_BURST, pending) == E_OK;
+            CHECK_AND_EXECUTE(queried, analysisAlbumRefreshContext_.MarkTaskIncomplete());
+            CHECK_AND_PRINT_LOG(queried && CaptureAnalysisTargetContributions(pending),
+                "Cannot capture Anco deletion; precise refresh will fall back");
+        };
+    }
 
     AncoReverseCloneAdapter ancoAdapter;
     int32_t ancoRet = ancoAdapter.RepairFinalDb(mediaLibraryRdb_, ancoContext);
@@ -2930,12 +3212,43 @@ void ReverseCloneRestore::CleanSharedAlbumDataFromMainDb()
     MEDIA_INFO_LOG("CleanSharedAlbumDataFromMainDb done");
 }
 
+void ReverseCloneRestore::PrepareAnalysisAbsorption()
+{
+    if (!useFullAnalysisRefreshForResume_) {
+        CHECK_AND_PRINT_LOG(analysisAlbumRefreshContext_.InitializeOriginalAlbums(
+            mediaRdb_, AnalysisAlbumDatabaseSide::SOURCE),
+            "Failed to prepare source analysis directory");
+        const bool shootingModeBaselineUntrusted = oldDbVersion_ < VERSION_ADD_CINEMATIC_VIDEO_ALBUM ||
+            oldDbVersion_ < VERSION_ADD_3DGS_MODE || oldDbVersion_ < VERSION_ADD_QUICK_CAPTURE_AND_TIME_LAPSE;
+        if (shootingModeBaselineUntrusted) {
+            size_t affected = 0;
+            for (const auto &album : analysisAlbumRefreshContext_.GetFacts().targetAlbums) {
+                CHECK_AND_CONTINUE(album.second.subtype == PhotoAlbumSubType::SHOOTING_MODE);
+                analysisAlbumRefreshContext_.MarkTargetAlbumIncomplete(album.first);
+                ++affected;
+            }
+            MEDIA_WARN_LOG("Analysis shooting mode version fallback albums=%{public}zu", affected);
+        }
+        PopulateAnalysisAlbumIdMap({
+            PhotoAlbumSubType::CLASSIFY,
+            PhotoAlbumSubType::GEOGRAPHY_LOCATION,
+            PhotoAlbumSubType::GEOGRAPHY_CITY,
+            PhotoAlbumSubType::SHOOTING_MODE,
+            PhotoAlbumSubType::PORTRAIT,
+            PhotoAlbumSubType::GROUP_PHOTO,
+            PhotoAlbumSubType::HIGHLIGHT,
+            PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS,
+        });
+    }
+}
+
 void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
     const vector<ReverseCloneKvStoreTask> &retainedOldPhotoKvStoreTasks)
 {
     // 初始化photoAlbumClone_与photosClone_
     this->photoAlbumClone_.OnStart(this->mediaLibraryRdb_, this->mediaRdb_, IsCloudRestoreSatisfied());
     this->photosClone_.OnStart(this->mediaRdb_, this->mediaLibraryRdb_);
+    PrepareAnalysisAbsorption();
     DatabaseReport()
         .SetSceneCode(this->sceneCode_)
         .SetTaskId(this->taskId_)
@@ -2966,6 +3279,7 @@ void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" AppendKvStore: ")
         .append(std::to_string(endTime - startTime) + ";");
     ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::ANALYSIS_RESTORE);
+    RecordAnalysisPhotoResults();
     ReverseRestoreAnalysisData();
 }
 
@@ -3148,7 +3462,8 @@ void ReverseCloneRestore::FinishReverseRestore()
     // 13 tab_old_album 基础相册处理
     DealDuplicatePhotoAlbum();
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    UpdateDatabase();
+    const int32_t refreshRet = UpdateDatabase();
+    CHECK_AND_PRINT_LOG(refreshRet == E_OK, "Reverse album refresh failed, ret=%{public}d", refreshRet);
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" UpdateDatabase: ")
         .append(std::to_string(endTime - startTime) + ";");
@@ -3313,6 +3628,20 @@ void ReverseCloneRestore::StartRestore(const string &backupRestorePath, const st
     reverseRestoreReportInfo_.perfectRestoreTime = endTime - startTime;
 }
 
+void ReverseCloneRestore::ObserveAnalysisMigration(FileIdMigrator &migrator,
+    const std::shared_ptr<NativeRdb::RdbStore> &rdb)
+{
+    if (!useFullAnalysisRefreshForResume_) {
+        migrator.SetAnalysisAlbumMigrationObserver([this](int64_t offset, int64_t upperBound) {
+            CHECK_AND_EXECUTE(analysisAlbumRefreshContext_.MigrateTargetAlbums(offset, upperBound),
+                analysisAlbumRefreshContext_.MarkTaskIncomplete());
+        });
+        migrator.SetPhotoMigrationObserver([this, &rdb](int64_t offset, int64_t upperBound) {
+            MigrateAnalysisTargetAssets(rdb, offset, upperBound);
+        });
+    }
+}
+
 bool ReverseCloneRestore::PerformInitialMigration(std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore)
 {
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
@@ -3332,9 +3661,13 @@ bool ReverseCloneRestore::PerformInitialMigration(std::shared_ptr<NativeRdb::Rdb
         resourceInheritHelper_.AddFileIdOffsetRule(oldMaxFileId, newMaxFileId);
     }
     FileIdMigrator migrator;
+    ObserveAnalysisMigration(migrator, oldDbTempStore);
     if (!migrator.Migrate(oldDbTempStore, mediaLibraryRdb_)) {
         MEDIA_ERR_LOG("PerformInitialMigration: initial migration failed");
         return false;
+    }
+    if (!useFullAnalysisRefreshForResume_) {
+        analysisAlbumRefreshContext_.PrepareTargetDirectory(analysisAlbumRefreshContext_.GetFacts().targetGroups);
     }
     FileIdMigrator::UpdateSqliteSequenceForPhotos(destRdb_);
     FileIdMigrator::UpdateSqliteSequenceForAlbums(destRdb_);
@@ -3682,6 +4015,7 @@ bool ReverseCloneRestore::PrepareAbsorbPhotosCommonInfo(int32_t &maxSourceDbFile
 void ReverseCloneRestore::InitializeDuplicateAssetMapForPhotos()
 {
     duplicateAssetMap_.clear();
+    analysisConflictingDonors_.clear();
     reverseDupMap_.clear();
     minDestDbFileId_ = INT32_MAX;
     std::string queryAllFileIdsSql = "SELECT file_id FROM " + std::string(PhotoColumn::PHOTOS_TABLE);
@@ -3724,12 +4058,11 @@ void ReverseCloneRestore::SubmitAbsorbNewPhotosTasks(int32_t totalNumber, int32_
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     int32_t batchCount = 0;
-    std::vector<std::string> localErrorInfos;
-    localErrorInfos.reverse(totalNumber / CLONE_QUERY_COUNT + 1);
+    const size_t batches = (static_cast<size_t>(std::max(totalNumber, 0)) + CLONE_QUERY_COUNT - 1) / CLONE_QUERY_COUNT;
+    std::vector<std::string> localErrorInfos(batches);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
-        localErrorInfos.emplace_back();
-        size_t errorInfoIdx = localErrorInfos.size() - 1;
+        const size_t errorInfoIdx = batchCount - 1;
         MEDIA_INFO_LOG("AbsorbNewPhotos: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
             [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
@@ -3754,12 +4087,11 @@ void ReverseCloneRestore::SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     int32_t batchCount = 0;
-    std::vector<std::string> localErrorInfos;
-    localErrorInfos.reverse(totalNumber / CLONE_QUERY_COUNT + 1);
+    const size_t batches = (static_cast<size_t>(std::max(totalNumber, 0)) + CLONE_QUERY_COUNT - 1) / CLONE_QUERY_COUNT;
+    std::vector<std::string> localErrorInfos(batches);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
-        localErrorInfos.emplace_back();
-        size_t errorInfoIdx = localErrorInfos.size() - 1;
+        const size_t errorInfoIdx = batchCount - 1;
         MEDIA_INFO_LOG("AbsorbNewPhotosForCloud: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
             [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
@@ -3836,6 +4168,22 @@ void ReverseCloneRestore::UpdateReverseDupMap(const std::vector<FileInfo> &fileI
     }
 }
 
+bool ReverseCloneRestore::CaptureReverseAnalysisContributions(const ReverseClonePhotoBatchContext &batch)
+{
+    std::vector<int32_t> targetFileIds;
+    targetFileIds.reserve(batch.validFileInfos.size() + batch.duplicateDonorMap.size());
+    for (const auto &fileInfo : batch.validFileInfos) {
+        CHECK_AND_CONTINUE(fileInfo.fileIdOld > 0);
+        // Reverse insertion uses the source ID as the final ID.
+        targetFileIds.push_back(fileInfo.fileIdOld);
+    }
+    for (const auto &mapping : batch.duplicateDonorMap) {
+        CHECK_AND_CONTINUE(mapping.first > 0);
+        targetFileIds.push_back(mapping.first);
+    }
+    return CaptureAnalysisTargetContributions(std::move(targetFileIds));
+}
+
 static void InsertMapCodes(
     int64_t photoRowNum, vector<FileInfo> fileInfos, std::shared_ptr<NativeRdb::RdbStore> &destRdb)
 {
@@ -3854,11 +4202,18 @@ bool ReverseCloneRestore::ResolveDataConflictsAfterDuplicate(ReverseClonePhotoBa
     const UniqueIdGetter getUniqueId = [this](int32_t mediaType) {
         return GetUniqueId(mediaType);
     };
+    std::function<void(int32_t)> beforeMutation;
+    if (!useFullAnalysisRefreshForResume_) {
+        beforeMutation = [this](int32_t id) {
+            CHECK_AND_PRINT_LOG(CaptureAnalysisTargetContributions({id}),
+                "Cannot capture path conflict asset=%{public}d; precise refresh will fall back", id);
+        };
+    }
 
     for (auto &fileInfo : batch.validFileInfos) {
         ReverseStaleTargetResource staleResource;
         ReverseDataConflictResult result =
-            ResolveDataConflictForFile(mediaLibraryRdb_, fileInfo, getUniqueId, staleResource);
+            ResolveDataConflictForFile(mediaLibraryRdb_, fileInfo, getUniqueId, staleResource, beforeMutation);
         if (result.status == ReverseDataConflictStatus::FAILED && result.fileId > 0) {
             failedFileIds.emplace_back(result.fileId);
         }
@@ -3933,6 +4288,14 @@ void ReverseCloneRestore::EnsureCommittedFailedAssetsOrigin(const ReverseClonePh
     resourceInheritHelper_.FinalizeBatch(failedBatch, mediaLibraryRdb_);
 }
 
+void ReverseCloneRestore::HandleAbsorbPhotosBatchFailure(const std::string &stage, int32_t offset,
+    const ReverseClonePhotoBatchContext &batch, std::string &localErrorInfo)
+{
+    CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+    localErrorInfo += stage + " failed: " + to_string(offset);
+    HandleAbsorbPhotosFinalFailure(stage, offset, &batch);
+}
+
 void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
     const ReverseClonePhotoBatchContext *batch)
 {
@@ -3964,6 +4327,19 @@ void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stag
     AddToPhotosFailedOffsets(offset);
 }
 
+void ReverseCloneRestore::RecordAnalysisPhotoResults()
+{
+    CHECK_AND_RETURN(!useFullAnalysisRefreshForResume_);
+    std::vector<int32_t> committedIds;
+    committedIds.reserve(reversePhotoInfoMap_.size());
+    for (const auto &entry : reversePhotoInfoMap_) {
+        committedIds.push_back(entry.first);
+    }
+    // These existing maps are populated after CommitPhotosBatch; all workers have joined here.
+    // Identity entries are ignored by RecordPhotoResults and never become query candidates.
+    analysisAlbumRefreshContext_.RecordPhotoResults(committedIds, duplicateAssetMap_, analysisConflictingDonors_);
+}
+
 void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelatedToPhotoMap,
     int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
     std::string &localErrorInfo)
@@ -3987,25 +4363,21 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
         maxDestDbFileId, minDestDbFileId, mediaLibraryRdb_, albumAssetAbsorb_,
         batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: PrepareBatch failed");
-        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
-        localErrorInfo += "PrepareLocalBatch failed: " + to_string(offset);
-        HandleAbsorbPhotosFinalFailure("PrepareLocalBatch", offset, &batch);
+        HandleAbsorbPhotosBatchFailure("PrepareLocalBatch", offset, batch, localErrorInfo);
         return;
     }
+    CHECK_AND_PRINT_LOG(useFullAnalysisRefreshForResume_ || CaptureReverseAnalysisContributions(batch),
+        "failed to capture reverse local analysis contributions; precise refresh will fall back");
     if (!ResolveDataConflictsAfterDuplicate(batch, dataConflictFailedFileIds)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: ResolveDataConflictsAfterDuplicate failed");
-        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
-        localErrorInfo += "ResolveLocalDataConflict failed: " + to_string(offset);
-        HandleAbsorbPhotosFinalFailure("ResolveLocalDataConflict", offset, &batch);
+        HandleAbsorbPhotosBatchFailure("ResolveLocalDataConflict", offset, batch, localErrorInfo);
         return;
     }
 
     int64_t photoRowNum = 0;
     if (!resourceInheritHelper_.CommitPhotosBatch(batch, mediaLibraryRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: CommitPhotosBatch failed");
-        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
-        localErrorInfo += "CommitLocalBatch failed: " + to_string(offset);
-        HandleAbsorbPhotosFinalFailure("CommitLocalBatch", offset, &batch);
+        HandleAbsorbPhotosBatchFailure("CommitLocalBatch", offset, batch, localErrorInfo);
         return;
     }
 
@@ -4021,7 +4393,7 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
-        &duplicateAssetMapMutex_);
+        &duplicateAssetMapMutex_, useFullAnalysisRefreshForResume_ ? nullptr : &analysisConflictingDonors_);
     UpdateReverseDupMap(batch.validFileInfos);
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, mediaLibraryRdb_);
@@ -4559,21 +4931,44 @@ void ReverseCloneRestore::InsertSourceAndUserAlbumsWithDuplicateCheck()
                    insertedCount, updatedCount, renamedCount);
 }
 
-void ReverseCloneRestore::UpdateDatabase()
+int32_t ReverseCloneRestore::UpdateDatabase()
 {
     int64_t startUpdateDatabase = MediaFileUtils::UTCTimeMilliSeconds();
     updateProcessStatus_ = ProcessStatus::START;
     GetUpdateTotalCount();
-    MEDIA_INFO_LOG("Start update all albums");
+    MEDIA_INFO_LOG("Start update system, user and source albums");
     int32_t errCode = MediaLibraryDataManager::GetInstance()->InitReverseMediaLibraryRdbStore();
+    if (!useFullAnalysisRefreshForResume_ && errCode != E_OK) {
+        MEDIA_ERR_LOG("Failed to initialize reverse media library rdb, ret=%{public}d", errCode);
+        updateProcessStatus_ = ProcessStatus::STOP;
+        return E_HAS_DB_ERROR;
+    }
     ExecuteAnalyzeInDatabase(mediaLibraryRdb_);
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    MediaLibraryRdbUtils::UpdateAllAlbums(rdbStore);
+    auto rdbStore = MediaLibraryDataManager::GetInstance()->GetReverseMediaLibraryRdbStore();
+    MEDIA_INFO_LOG("Reverse rdb update: available=%{public}d", rdbStore != nullptr);
+    if (!useFullAnalysisRefreshForResume_ && rdbStore == nullptr) {
+        updateProcessStatus_ = ProcessStatus::STOP;
+        MEDIA_ERR_LOG("reverse update database: target rdb is null");
+        return E_HAS_DB_ERROR;
+    }
+    if (useFullAnalysisRefreshForResume_) {
+        MediaLibraryRdbUtils::UpdateAllAlbums(rdbStore);
+    } else {
+        MediaLibraryRdbUtils::UpdateSystemAlbumsByUris(rdbStore, AlbumOperationType::DEFAULT);
+        MediaLibraryRdbUtils::UpdateUserAlbumByUri(rdbStore, {});
+        MediaLibraryRdbUtils::UpdateSourceAlbumByUri(rdbStore, {});
+        MediaLibraryRdbUtils::UpdateShareAlbumByUri(rdbStore, {});
+    }
     MEDIA_INFO_LOG("Start notify");
     NotifyAlbum();
+    int32_t analysisRefreshRet = E_OK;
+    if (!useFullAnalysisRefreshForResume_) {
+        analysisRefreshRet = ExecuteAnalysisAlbumRefresh(mediaLibraryRdb_, rdbStore);
+    }
     updateProcessStatus_ = ProcessStatus::STOP;
     int64_t endUpdateDatabase = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: UpdateDatabase cost: %{public}" PRId64, endUpdateDatabase - startUpdateDatabase);
+    return analysisRefreshRet;
 }
 
 void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t isRelatedToPhotoMap,
@@ -4597,25 +4992,21 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId,
         mediaLibraryRdb_, albumAssetAbsorb_, batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: PrepareBatch failed");
-        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
-        localErrorInfo += "PrepareCloudBatch failed: " + to_string(offset);
-        HandleAbsorbPhotosFinalFailure("PrepareCloudBatch", offset, &batch);
+        HandleAbsorbPhotosBatchFailure("PrepareCloudBatch", offset, batch, localErrorInfo);
         return;
     }
+    CHECK_AND_PRINT_LOG(useFullAnalysisRefreshForResume_ || CaptureReverseAnalysisContributions(batch),
+        "failed to capture reverse cloud analysis contributions; precise refresh will fall back");
     if (!ResolveDataConflictsAfterDuplicate(batch, dataConflictFailedFileIds)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: ResolveDataConflictsAfterDuplicate failed");
-        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
-        localErrorInfo += "ResolveCloudDataConflict failed: " + to_string(offset);
-        HandleAbsorbPhotosFinalFailure("ResolveCloudDataConflict", offset, &batch);
+        HandleAbsorbPhotosBatchFailure("ResolveCloudDataConflict", offset, batch, localErrorInfo);
         return;
     }
 
     int64_t photoRowNum = 0;
     if (!resourceInheritHelper_.CommitPhotosBatch(batch, mediaLibraryRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: CommitPhotosBatch failed");
-        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
-        localErrorInfo += "CommitCloudBatch failed: " + to_string(offset);
-        HandleAbsorbPhotosFinalFailure("CommitCloudBatch", offset, &batch);
+        HandleAbsorbPhotosBatchFailure("CommitCloudBatch", offset, batch, localErrorInfo);
         return;
     }
 
@@ -4631,7 +5022,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
-        &duplicateAssetMapMutex_);
+        &duplicateAssetMapMutex_, useFullAnalysisRefreshForResume_ ? nullptr : &analysisConflictingDonors_);
     UpdateReverseDupMap(batch.validFileInfos);
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, mediaLibraryRdb_);
@@ -4652,58 +5043,6 @@ void ReverseCloneRestore::ProcessNewPhotosForCloudFailedOffsets(int32_t isRelate
     }
     photosFailedOffsets_.clear();
     MEDIA_INFO_LOG("ProcessNewPhotosForCloudFailedOffsets: end, processed %{public}zu failed batches", vectorLen);
-}
-
-void ReverseCloneRestore::InheritManualCover()
-{
-    MEDIA_INFO_LOG("ReverseCloneRestore: InheritManualCover called");
-    CHECK_AND_RETURN_LOG(sourceRdb_ != nullptr, "sourceRdb_ is nullptr");
-    CHECK_AND_RETURN_LOG(destRdb_ != nullptr, "destRdb_ is nullptr");
-
-    // 从 sourceRdb_（新机数据库）查询所有手动设置封面的相册
-    std::string querySql = "SELECT album_id, cover_uri, cover_uri_source, cover_cloud_id"
-                           " FROM PhotoAlbum WHERE cover_uri_source > 0";
-    auto resultSet = BackupDatabaseUtils::QuerySql(sourceRdb_, querySql, {});
-    CHECK_AND_RETURN_LOG(resultSet != nullptr, "Query resultSql is null.");
-
-    vector<AlbumCoverInfo> albumCoverInfos;
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        AlbumCoverInfo albumCoverInfo;
-        int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
-        string coverUri = GetStringVal(PhotoAlbumColumns::ALBUM_COVER_URI, resultSet);
-        int32_t coverUriSource = GetInt32Val(PhotoAlbumColumns::COVER_URI_SOURCE, resultSet);
-        string coverCloudId = GetStringVal(PhotoAlbumColumns::COVER_CLOUD_ID, resultSet);
-
-        albumCoverInfo.albumId = albumId;
-        albumCoverInfo.coverUri = coverUri;
-        albumCoverInfo.coverUriSource = coverUriSource;
-        albumCoverInfo.coverCloudId = coverCloudId;
-        albumCoverInfos.emplace_back(albumCoverInfo);
-    }
-    resultSet->Close();
-
-    MEDIA_INFO_LOG("InheritManualCover: Found %{public}zu albums with manual cover", albumCoverInfos.size());
-
-    // 更新 destRdb_（旧机数据库）中对应相册的封面信息
-    for (auto &albumCoverInfo : albumCoverInfos) {
-        int32_t changeRows = 0;
-        std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
-            make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
-        predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, albumCoverInfo.albumId);
-        NativeRdb::ValuesBucket updateBucket;
-        updateBucket.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, albumCoverInfo.coverUriSource);
-        updateBucket.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, albumCoverInfo.coverUri);
-        updateBucket.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, albumCoverInfo.coverCloudId);
-        BackupDatabaseUtils::Update(destRdb_, changeRows, updateBucket, predicates);
-        if (changeRows != 1) {
-            MEDIA_ERR_LOG(
-                "InheritManualCover: update failed for albumId=%{public}d, expected count 1, but got %{public}d",
-                albumCoverInfo.albumId, changeRows);
-            AppendErrorInfo("InheritManualCover failed: " + to_string(albumCoverInfo.albumId));
-        }
-    }
-
-    MEDIA_INFO_LOG("InheritManualCover: Completed");
 }
 
 void ReverseCloneRestore::CleanPackageNameForEmptyBundleNameAlbums()

@@ -28,6 +28,7 @@
 #include <errno.h>
 
 #include "clone_restore.h"
+#include "analysis_album/analysis_album_refresh.h"
 #include "backup_database_utils.h"
 #include "media_library_db_upgrade.h"
 #include "media_log.h"
@@ -47,6 +48,7 @@
 
 namespace OHOS {
 namespace Media {
+class FileIdMigrator;
 #ifndef EXPORT
 #define EXPORT __attribute__ ((visibility ("default")))
 #endif
@@ -308,8 +310,22 @@ protected:
     void CreateTempCloudDentryTable();
     void InsertTempCloudDentryData(const std::vector<FileInfo> &fileInfos);
 
-    void UpdateDatabase();
-    void InheritManualCover();
+    int32_t ExecuteAnalysisAlbumRefresh(const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
+        const std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
+    void NotifyChangedAnalysisAlbums(const std::unordered_set<int32_t> &albumIds);
+    bool CaptureAnalysisTargetContributions(std::vector<int32_t> targetFileIds,
+        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb = nullptr);
+    bool CaptureAnalysisAlbumMembers(const std::vector<int32_t> &albumIds,
+        const std::vector<int32_t> &fileIds = {});
+    void PrepareAnalysisAbsorption();
+    void ObserveAnalysisMigration(FileIdMigrator &migrator, const std::shared_ptr<NativeRdb::RdbStore> &rdb);
+    void FinishAnalysisRestoreMappings();
+    AnalysisAlbumRestoreObserver AnalysisAlbumObserver();
+    AnalysisAlbumRefreshTask analysisAlbumRefreshContext_;
+    std::mutex analysisBeforeCaptureMutex_;
+    int32_t UpdateDatabase();
+    void RecordAnalysisPhotoResults();
+    bool CaptureReverseAnalysisContributions(const ReverseClonePhotoBatchContext &batch);
 
     void ReverseRestoreAnalysisData();
     // 分类
@@ -336,6 +352,8 @@ protected:
     void ReverseRestoreDupSimData();
     // 时刻相册
     void RestoreReverseHighlightAlbums();
+    void PrepareHighlightAnalysisCapture(CloneRestoreHighlight &highlight);
+    void CaptureHighlightClearing();
     // 时刻水印
     void ReverseRestoreWatermarkData();
     // 重复相似
@@ -363,6 +381,13 @@ protected:
     int64_t newMaxExtended_ = 0;        // 迁移时 file_id 偏移的分割线
 
 private:
+    bool useFullAnalysisRefreshForResume_ {false};
+    std::vector<int32_t> CaptureCloudCleanupContributions(const std::shared_ptr<NativeRdb::RdbStore> &rdb);
+    int32_t CleanInvalidPhotosWithAnalysis(const std::shared_ptr<NativeRdb::RdbStore> &rdb);
+    void RecordAnalysisDeletedTargets(const std::shared_ptr<NativeRdb::RdbStore> &rdb,
+        const std::vector<int32_t> &ids);
+    void MigrateAnalysisTargetAssets(const std::shared_ptr<NativeRdb::RdbStore> &rdb,
+        int64_t offset, int64_t upperBound);
     std::unique_ptr<NativeRdb::RdbStoreConfig> oldDbTempConfig_;
     TableDataAdapter tableDataAdapter_;
     AlbumAssetAbsorb albumAssetAbsorb_;
@@ -375,13 +400,13 @@ private:
     std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap_;
     // 反向克隆判重file_id映射：判重删掉的file_id -> 新机数据库中的file_id
     std::unordered_map<int32_t, int32_t> duplicateAssetMap_;
+    std::unordered_set<int32_t> analysisConflictingDonors_; // Protected by duplicateAssetMapMutex_.
 
     // 反向克隆判重file_id反向映射：新机数据库中的file_id -> 判重删掉的file_id
     std::unordered_map<int32_t, int32_t> reverseDupMap_;
 
     // 反向克隆映射表 新机file_id -> 最终插入
     std::unordered_map<int32_t, PhotoInfo> reversePhotoInfoMap_;
-
     // 保护 duplicateAssetMap_ 的互斥锁（多线程环境）
     std::mutex duplicateAssetMapMutex_;
 
@@ -512,6 +537,8 @@ private:
         std::vector<int32_t> &failedFileIds);
     void EnsureCommittedFailedAssetsOrigin(const ReverseClonePhotoBatchContext &batch,
         const std::vector<int32_t> &failedFileIds, const std::string &stage);
+    void HandleAbsorbPhotosBatchFailure(const std::string &stage, int32_t offset,
+        const ReverseClonePhotoBatchContext &batch, std::string &localErrorInfo);
     void HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
         const ReverseClonePhotoBatchContext *batch);
     void MergeAbsorbNewPhotosReport(const AlbumAssetAbsorb::DuplicateCount &duplicateCount);

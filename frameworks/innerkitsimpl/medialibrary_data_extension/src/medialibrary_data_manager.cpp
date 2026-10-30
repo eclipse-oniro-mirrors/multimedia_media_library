@@ -1191,6 +1191,13 @@ int32_t MediaLibraryDataManager::InitMediaLibraryRdbStore()
     return E_OK;
 }
 
+std::shared_ptr<MediaLibraryRdbStore> MediaLibraryDataManager::GetReverseMediaLibraryRdbStore()
+{
+    auto store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    MEDIA_INFO_LOG("Reverse rdb acquire: available=%{public}d", store != nullptr);
+    return store;
+}
+
 int32_t MediaLibraryDataManager::InitReverseMediaLibraryRdbStore()
 {
     MediaLibraryUnistoreManager::GetInstance().Stop();

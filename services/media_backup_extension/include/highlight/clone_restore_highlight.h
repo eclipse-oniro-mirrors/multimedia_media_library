@@ -16,9 +16,11 @@
 #ifndef CLONE_RESTORE_HIGHLIGHT_H
 #define CLONE_RESTORE_HIGHLIGHT_H
 
+#include <functional>
 #include <sstream>
 #include <string>
 
+#include "analysis_album_refresh.h"
 #include "backup_const.h"
 #include "backup_database_utils.h"
 #include "field_config/clone_field_writer.h"
@@ -86,7 +88,11 @@ public:
     void Init(const InitInfo &info);
     void ReverseInit(const InitInfo &info);
     void Restore();
-    void ReverseRestore();
+    void ReverseRestore(bool isResume = false);
+    void SetAlbumRestoreObserver(AnalysisAlbumRestoreObserver observer)
+    {
+        albumRestoreObserver_ = std::move(observer);
+    }
     void ReportCloneRestoreHighlightTask();
     int32_t GetNewHighlightAlbumId(int32_t oldId);
     int32_t GetNewHighlightPhotoId(int32_t oldId);
@@ -97,6 +103,10 @@ public:
     void UpdateRestoreTimeCost(int64_t timeCost);
     const std::vector<AnalysisAlbumInfo>& GetAnalysisInfos() const;
     void ClearHighlightAlbums();
+    void SetBeforeAlbumDeletion(std::function<void(const std::unordered_set<int32_t> &)> capture)
+    {
+        beforeAlbumDeletion_ = std::move(capture);
+    }
     void UpdateHighlightAlbumsViewed();
 
     template<typename T>
@@ -237,7 +247,7 @@ private:
         }
     };
 
-    void Preprocess();
+    void Preprocess(bool isResume = false);
     void RestoreAlbums();
     void ReverseRestoreAlbums();
     void RestoreMaps();
@@ -322,6 +332,8 @@ private:
     std::unordered_map<std::string, int32_t> albumPhotoCounter_;
     bool isMapOrder_{false};
     bool isCloneHighlight_{false};
+    AnalysisAlbumRestoreObserver albumRestoreObserver_;
+    std::function<void(const std::unordered_set<int32_t> &)> beforeAlbumDeletion_;
     bool isHighlightDirExist_{false};
     int32_t maxIdOfAlbum_{0};
     int32_t maxIdOfHighlight_{0};
