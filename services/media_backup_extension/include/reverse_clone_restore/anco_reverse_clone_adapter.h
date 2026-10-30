@@ -17,6 +17,7 @@
 #define OHOS_MEDIA_ANCO_REVERSE_CLONE_ADAPTER_H
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -37,6 +38,7 @@ struct AncoReverseCloneContext {
     std::string cloneInfoDbPath;
     std::vector<std::string> allowedRoots;
     std::string deduplicationDbPath;
+    std::function<void(const std::vector<int32_t> &, bool)> deletionObserver;
 };
 
 struct AncoReverseCloneStats {

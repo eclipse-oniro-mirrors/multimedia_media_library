@@ -16,8 +16,12 @@
 #ifndef CLONE_REVERSE_RESTORE_GEO_H
 #define CLONE_REVERSE_RESTORE_GEO_H
 
-#include "clone_restore_geo_base.h"
+#include <functional>
+#include <utility>
+
+#include "analysis_album_refresh.h"
 #include "backup_const_column.h"
+#include "clone_restore_geo_base.h"
 
 namespace OHOS::Media {
 class CloneReverseRestoreGeo : public CloneRestoreGeoBase {
@@ -28,8 +32,19 @@ public:
         std::shared_ptr<NativeRdb::RdbStore> mediaRdb);
 
     void Restore();
+    using BeforeMutation = std::function<void(int32_t, const std::vector<int32_t> &)>;
+    void SetBeforeMutation(BeforeMutation capture)
+    {
+        beforeMutation_ = std::move(capture);
+    }
+    void SetAlbumRestoreObserver(AnalysisAlbumRestoreObserver observer)
+    {
+        albumRestoreObserver_ = std::move(observer);
+    }
 
 private:
+    BeforeMutation beforeMutation_;
+    AnalysisAlbumRestoreObserver albumRestoreObserver_;
     void RestoreReverseGeoKnowledge();
     void RestoreReverseAlbums();
     void RestoreReverseMaps();
@@ -45,8 +60,8 @@ private:
     void QueryNewCityAlbums(std::vector<AnalysisAlbumTbl> &albums);
     void InsertCityAlbumsToOld(std::vector<AnalysisAlbumTbl> &albums);
     void GenerateAlbumIdMap(const std::vector<AnalysisAlbumTbl> &albums);
-    std::unordered_map<std::string, int32_t> QueryExistingCityAlbumNames();
-    void DeleteDuplicateCityAlbum(int32_t oldAlbumId, int32_t newAlbumId);
+    bool QueryExistingCityAlbumNames(std::unordered_map<std::string, int32_t> &existingAlbums);
+    bool DeleteDuplicateCityAlbum(int32_t oldAlbumId, int32_t newAlbumId);
     void UpdateTabOldAlbumsId(int32_t oldAlbumId, int32_t newAlbumId);
 
     void QueryNewCityMaps(std::vector<CityMapInfo> &maps);

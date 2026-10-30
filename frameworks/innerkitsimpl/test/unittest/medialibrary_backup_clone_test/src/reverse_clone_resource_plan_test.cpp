@@ -15,6 +15,7 @@
 
 #define MLOG_TAG "ReverseCloneResourcePlanTest"
 
+#include "album_asset_absorb.h"
 #include "reverse_clone_candidate_resolver.h"
 #include "reverse_clone_resource_executor.h"
 #include "reverse_clone_resource_inherit_helper.h"
@@ -122,16 +123,22 @@ ReverseCloneResourcePlan MakePlan(int32_t absorbedFileId, int32_t donorFileId,
 
 class SelfDuplicateAlbumAssetAbsorb {
 public:
+    using DuplicateCount = AlbumAssetAbsorb::DuplicateCount;
+
     void CheckAndRemoveDuplicatePhotos(const std::shared_ptr<NativeRdb::RdbStore> &,
-        std::vector<FileInfo> &fileInfos, int32_t, std::vector<ReverseCloneResourcePlan> &resourcePlans,
-        const std::unordered_set<int32_t> &, DuplicateCount &, unordered_map<int32_t, int32_t> &)
+        std::vector<FileInfo> &fileInfos, int32_t, int32_t,
+        std::vector<ReverseCloneResourcePlan> &resourcePlans,
+        const std::unordered_set<int32_t> &, AlbumAssetAbsorb::DuplicateCount &,
+        std::unordered_map<int32_t, int32_t> &duplicateDonorMap)
     {
         if (fileInfos.empty()) {
             return;
         }
-        fileInfos.front().deletedSrcdbFileId = fileInfos.front().fileIdOld;
-        resourcePlans.emplace_back(MakePlan(fileInfos.front().fileIdOld, fileInfos.front().fileIdOld,
-            ReverseCloneResourceDecision::INHERIT));
+
+        const int32_t fileId = fileInfos.front().fileIdOld;
+        fileInfos.front().deletedSrcdbFileId = fileId;
+        resourcePlans.emplace_back(MakePlan(fileId, fileId, ReverseCloneResourceDecision::INHERIT));
+        duplicateDonorMap.emplace(fileId, fileId);
     }
 };
 
@@ -501,13 +508,20 @@ HWTEST_F(ReverseCloneResourcePlanTest, PrepareBatch_SelfDuplicateDonorKeptForRep
 
     SelfDuplicateAlbumAssetAbsorb albumAssetAbsorb;
     std::shared_ptr<NativeRdb::RdbStore> destRdb;
-    EXPECT_TRUE(helper.PrepareBatch(fileInfos, DONOR_FILE_ID, destRdb, albumAssetAbsorb, batch));
+    AlbumAssetAbsorb::DuplicateCount duplicateCount;
+    ASSERT_TRUE(helper.PrepareBatch(fileInfos, DONOR_FILE_ID, DONOR_FILE_ID, destRdb, albumAssetAbsorb,
+        batch, duplicateCount));
 
     ASSERT_EQ(batch.validFileInfos.size(), 1);
     EXPECT_EQ(batch.validFileInfos.front().deletedSrcdbFileId, fileInfo.fileIdOld);
     ASSERT_EQ(batch.duplicatePlans.size(), 1);
     EXPECT_EQ(batch.duplicatePlans.front().donor.fileId, fileInfo.fileIdOld);
     EXPECT_EQ(batch.resourcePlans[fileInfo.fileIdOld].donor.fileId, fileInfo.fileIdOld);
+
+    ASSERT_EQ(batch.duplicateDonorMap.size(), 1);
+    auto donorIt = batch.duplicateDonorMap.find(fileInfo.fileIdOld);
+    ASSERT_NE(donorIt, batch.duplicateDonorMap.end());
+    EXPECT_EQ(donorIt->second, fileInfo.fileIdOld);
 }
 
 HWTEST_F(ReverseCloneResourcePlanTest, IsSameVersion_ImageRequiresOrientation_001, TestSize.Level1)

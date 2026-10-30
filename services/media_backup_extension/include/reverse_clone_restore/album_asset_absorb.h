@@ -34,6 +34,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <functional>
 #include <mutex>
@@ -151,7 +152,8 @@ public:
      */
     void UpdateDuplicateAssetMapForDuplicates(
         const unordered_map<int32_t, int32_t> &duplicateDonorMap,
-        unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex = nullptr);
+        unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex = nullptr,
+        std::unordered_set<int32_t> *conflictingDonors = nullptr);
 
     /**
      * 用reverseDupMap更新tab_cloned_old_photos表

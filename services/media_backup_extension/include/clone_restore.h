@@ -17,11 +17,14 @@
 #define OHOS_MEDIA_CLONE_RESTORE_H
 
 #include <optional>
+#include <mutex>
 #include <type_traits>
 #include <set>
 #include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base_restore.h"

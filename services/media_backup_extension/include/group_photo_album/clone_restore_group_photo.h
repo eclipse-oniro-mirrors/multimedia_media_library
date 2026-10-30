@@ -16,12 +16,14 @@
 #ifndef CLONE_RESTORE_GROUP_PHOTO_H
 #define CLONE_RESTORE_GROUP_PHOTO_H
 
-#include <string>
+#include <functional>
 #include <sstream>
+#include <string>
 
+#include "analysis_album_refresh.h"
 #include "backup_const.h"
-#include "rdb_store.h"
 #include "clone_restore_portrait_base.h"
+#include "rdb_store.h"
 
 namespace OHOS::Media {
 class CloneRestoreGroupPhoto : public CloneRestorePortraitBase {
@@ -31,8 +33,13 @@ public:
         std::shared_ptr<NativeRdb::RdbStore> mediaRdb, bool isCloudRestoreSatisfied);
     void Restore(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isReverse = false);
     bool IsExistPortraitDataInOldDb();
+    void SetAlbumRestoreObserver(AnalysisAlbumRestoreObserver observer)
+    {
+        albumRestoreObserver_ = std::move(observer);
+    }
 
 private:
+    AnalysisAlbumRestoreObserver albumRestoreObserver_;
     int32_t RestoreGroupPhotoAlbumInfo(bool isReverse);
     int32_t RestoreMaps();
 
@@ -40,6 +47,7 @@ private:
     int32_t QueryGroupPhotoAlbumTbl(const std::vector<std::string>& commonColumns, bool isReverse);
     std::unordered_set<std::string> QueryAllGroupTag();
     int32_t InsertGroupPhotoAlbum();
+    void UpdateRestoredAlbumIds(const std::unordered_set<int32_t> &committedSourceIds);
     void UpdateMapInsertValues(std::vector<NativeRdb::ValuesBucket> &values);
     void InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesBucket> &values);
     void RestoreMapsBatch();

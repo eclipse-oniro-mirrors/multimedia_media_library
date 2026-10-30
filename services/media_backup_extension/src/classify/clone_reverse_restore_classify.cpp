@@ -43,11 +43,10 @@ void CloneReverseRestoreClassify::Restore()
     CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr,
         "rdbStore is nullptr");
 
-    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    const int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     // 对旧机相册进行预处理
     DataTransfer::MediaLibraryDbUpgrade medialibraryDbUpgrade;
     medialibraryDbUpgrade.AggregateClassifyAlbum(*mediaRdb_);
-    // 先迁移新机AanalysisAlbum中数据，再迁移AnalysisPhotoMap
     RestoreAlbum();
     RestoreMap();
     RestoreReverseByVersion();
@@ -55,16 +54,32 @@ void CloneReverseRestoreClassify::Restore()
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     restoreTimeCost_ = end - start;
     ReportReverseRestoreTask();
-    MEDIA_INFO_LOG("TimeCost: CloneReverseRestoreClassify: %{public}" PRId64, end - start);
+    MEDIA_INFO_LOG("TimeCost: CloneReverseRestoreClassify: %{public}" PRId64, restoreTimeCost_);
+}
+
+NativeRdb::ValuesBucket CloneReverseRestoreClassify::BuildAlbumValue(const ClassifyAlbumInfo &album) const
+{
+    NativeRdb::ValuesBucket value;
+    BackupDatabaseUtils::PutIfPresent(value, "album_id", album.albumIdNew);
+    BackupDatabaseUtils::PutIfPresent(value, "album_name", album.albumName);
+    BackupDatabaseUtils::PutIfPresent(value, "album_type", album.albumType);
+    BackupDatabaseUtils::PutIfPresent(value, "album_subtype", album.albumSubType);
+    BackupDatabaseUtils::PutIfPresent(value, "date_modified", album.dateModified);
+    BackupDatabaseUtils::PutIfPresent(value, "is_local", album.isLocal);
+    return value;
 }
 
 void CloneReverseRestoreClassify::InsertClassifyAlbumData()
 {
-    auto existingAlbums = QueryExistingAlbumNames();
+    std::unordered_map<std::string, int32_t> existingAlbums;
+    const bool queried = QueryExistingAlbumNames(existingAlbums);
+    std::unordered_map<int32_t, std::pair<int32_t, bool>> results;
 
     std::vector<NativeRdb::ValuesBucket> valuesBuckets;
     for (auto& album : classifyAlbumInfos_) {
         album.albumIdOld = album.albumId;
+        CHECK_AND_EXECUTE(!album.albumId.has_value(),
+            (results[album.albumId.value()] = {0, queried}));
 
         if (album.albumName.has_value() && existingAlbums.count(album.albumName.value()) > 0) {
             int32_t duplicateAlbumId = existingAlbums[album.albumName.value()];
@@ -77,19 +92,13 @@ void CloneReverseRestoreClassify::InsertClassifyAlbumData()
             }
 
             // 更新 mediaRdb_ 中的重复相册数据
-            DeleteDuplicateAlbum(duplicateAlbumId, album.albumId.value());
+            const bool merged = DeleteDuplicateAlbum(duplicateAlbumId, album.albumId.value());
+            results[album.albumId.value()] = {duplicateAlbumId, queried && merged};
         }
 
         album.albumIdNew = album.albumIdOld;
 
-        NativeRdb::ValuesBucket value;
-        BackupDatabaseUtils::PutIfPresent(value, "album_id", album.albumIdNew);
-        BackupDatabaseUtils::PutIfPresent(value, "album_name", album.albumName);
-        BackupDatabaseUtils::PutIfPresent(value, "album_type", album.albumType);
-        BackupDatabaseUtils::PutIfPresent(value, "album_subtype", album.albumSubType);
-        BackupDatabaseUtils::PutIfPresent(value, "date_modified", album.dateModified);
-        BackupDatabaseUtils::PutIfPresent(value, "is_local", album.isLocal);
-        valuesBuckets.emplace_back(value);
+        valuesBuckets.emplace_back(BuildAlbumValue(album));
 
         if (album.albumId.has_value()) {
             albumIdMap_[album.albumId.value()] = album.albumIdNew.value();
@@ -100,6 +109,11 @@ void CloneReverseRestoreClassify::InsertClassifyAlbumData()
     int32_t ret = E_OK;
     if (!valuesBuckets.empty()) {
         ret = BatchInsertWithRetry(ANALYSIS_ALBUM_TABLE, valuesBuckets, rowNum, mediaRdb_);
+        for (const auto &result : results) {
+            CHECK_AND_EXECUTE(!albumRestoreObserver_, albumRestoreObserver_({result.first, result.first,
+                result.second.first, PhotoAlbumSubType::CLASSIFY,
+                result.second.second && ret == E_OK && rowNum == static_cast<int64_t>(valuesBuckets.size())}));
+        }
         CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to batch insert portrait albums");
         MEDIA_INFO_LOG("InsertClassifyAlbumData inserted %{public}ld rows", rowNum);
     }
@@ -124,24 +138,24 @@ void CloneReverseRestoreClassify::RestoreAlbum()
     InsertClassifyAlbumData();
 }
 
-std::unordered_map<std::string, int32_t> CloneReverseRestoreClassify::QueryExistingAlbumNames()
+bool CloneReverseRestoreClassify::QueryExistingAlbumNames(std::unordered_map<std::string, int32_t> &existingAlbums)
 {
-    std::unordered_map<std::string, int32_t> existingAlbums;
     string querySql = "SELECT album_id, album_name FROM AnalysisAlbum WHERE album_name IS NOT NULL"
         " AND album_subtype = 4097";
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, querySql);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, existingAlbums, "Query existing albums failed.");
-    
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t albumId = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, "album_id").value_or(0);
-        string albumName = BackupDatabaseUtils::GetOptionalValue<string>(resultSet, "album_name").value_or("");
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Query existing albums failed.");
+    const bool complete = ResultSetUtils::ReadRows(resultSet, [&existingAlbums](const auto &row) {
+        int32_t albumId = 0;
+        std::string albumName;
+        const bool idRead = ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_ID, row, albumId);
+        const bool nameRead = ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_NAME, row, albumName);
         if (!albumName.empty()) {
             existingAlbums[albumName] = albumId;
         }
-    }
-    resultSet->Close();
+        return idRead && nameRead && albumId > 0;
+    });
     MEDIA_INFO_LOG("QueryExistingAlbumNames found %{public}zu existing albums", existingAlbums.size());
-    return existingAlbums;
+    return complete;
 }
 
 void CloneReverseRestoreClassify::QueryNewClassifyMaps()
@@ -485,8 +499,9 @@ void CloneReverseRestoreClassify::DealReverseSpecialAlbum()
     MEDIA_INFO_LOG("DealReverseSpecialAlbum end");
 }
 
-void CloneReverseRestoreClassify::DeleteDuplicateAlbum(int32_t oldAlbumId, int32_t newAlbumId)
+bool CloneReverseRestoreClassify::DeleteDuplicateAlbum(int32_t oldAlbumId, int32_t newAlbumId)
 {
+    CHECK_AND_EXECUTE(!beforeAlbumMerge_, beforeAlbumMerge_(oldAlbumId));
     MEDIA_INFO_LOG("DeleteDuplicateAlbum start, oldAlbumId=%{public}d, newAlbumId=%{public}d",
         oldAlbumId, newAlbumId);
 
@@ -498,6 +513,7 @@ void CloneReverseRestoreClassify::DeleteDuplicateAlbum(int32_t oldAlbumId, int32
     updateMapPredicates->EqualTo("map_album", std::to_string(oldAlbumId));
     int32_t updatedMapRows = 0;
     int32_t ret = BackupDatabaseUtils::Update(mediaRdb_, updatedMapRows, updateMapValues, updateMapPredicates);
+    const bool updated = ret == E_OK;
     if (ret == E_OK) {
         MEDIA_INFO_LOG("DeleteDuplicateAlbum updated %{public}d rows in AnalysisPhotoMap",
             updatedMapRows);
@@ -521,6 +537,7 @@ void CloneReverseRestoreClassify::DeleteDuplicateAlbum(int32_t oldAlbumId, int32
 
     MEDIA_INFO_LOG("DeleteDuplicateAlbum end, deleted %{public}d album rows and updated %{public}d map rows",
         deletedAlbumRows, updatedMapRows);
+    return updated && ret == E_OK;
 }
 
 void CloneReverseRestoreClassify::UpdateTabOldAlbumsId(int32_t oldAlbumId, int32_t newAlbumId)

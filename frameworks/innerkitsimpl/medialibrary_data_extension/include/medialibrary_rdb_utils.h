@@ -110,6 +110,10 @@ public:
         bool shouldUpdateDateModified = false);
     EXPORT static void UpdateAnalysisAlbumInternal(const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
         const std::vector<std::string> &userAlbumIds = {});
+    EXPORT static int32_t UpdateAnalysisAlbumInternalWithResult(
+        const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
+        const std::vector<std::string> &albumIds = {},
+        std::unordered_set<int32_t> *changedAlbumIds = nullptr);
 
     // update cover_uri of albums.
     EXPORT static void UpdateCommonAlbumCover(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,

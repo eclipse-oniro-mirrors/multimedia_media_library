@@ -16,6 +16,7 @@
 #ifndef OHOS_MEDIA_SHOOTING_MODE_ALBUM_CLONE_H
 #define OHOS_MEDIA_SHOOTING_MODE_ALBUM_CLONE_H
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -23,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "analysis_album_refresh.h"
 #include "rdb_store.h"
 
 namespace OHOS {
@@ -40,6 +42,11 @@ public:
     ShootingModeAlbumClone& operator=(ShootingModeAlbumClone&&) = delete;
 
     bool Execute();
+    using AlbumRestoreObserver = AnalysisAlbumRestoreObserver;
+    void SetAlbumRestoreObserver(AlbumRestoreObserver observer)
+    {
+        albumRestoreObserver_ = std::move(observer);
+    }
 
 private:
     struct AlbumInfo {
@@ -87,6 +94,8 @@ private:
     public:
         virtual ~AlbumOperation() = default;
         virtual bool Execute(std::shared_ptr<NativeRdb::RdbStore> rdb) = 0;
+        virtual std::pair<int32_t, int32_t> GetAlbumIds() const = 0;
+        bool confirmed_ = false;
     };
 
     class AlbumUpdateOperation : public AlbumOperation {
@@ -95,6 +104,10 @@ private:
         ~AlbumUpdateOperation() override = default;
 
         bool Execute(std::shared_ptr<NativeRdb::RdbStore> rdb) override;
+        std::pair<int32_t, int32_t> GetAlbumIds() const override
+        {
+            return {oldAlbumId_, newAlbumId_};
+        }
 
     private:
         int32_t oldAlbumId_;
@@ -107,6 +120,10 @@ private:
         ~AlbumInsertOperation() override = default;
 
         bool Execute(std::shared_ptr<NativeRdb::RdbStore> rdb) override;
+        std::pair<int32_t, int32_t> GetAlbumIds() const override
+        {
+            return {0, album_.albumId};
+        }
 
     private:
         AlbumInfo album_;
@@ -128,6 +145,7 @@ private:
     std::shared_ptr<NativeRdb::RdbStore> sourceRdb_;
     std::shared_ptr<NativeRdb::RdbStore> destRdb_;
     mutable std::mutex mutex_;
+    AlbumRestoreObserver albumRestoreObserver_;
 };
 
 } // namespace Media

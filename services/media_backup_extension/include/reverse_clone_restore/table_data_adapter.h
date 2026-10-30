@@ -20,6 +20,7 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <functional>
 
 #include "rdb_store.h"
 #include "values_bucket.h"
@@ -53,6 +54,11 @@ struct InvalidPhotoInfo {
     std::string cloudPath;
     int32_t subtype;
     int32_t movingPhotoEffectMode;
+};
+
+struct InvalidPhotoCleanupObserver {
+    std::function<void(const std::vector<InvalidPhotoInfo> &, bool)> before;
+    std::function<void(const std::vector<int32_t> &)> committed;
 };
 
 // 表结构管理类
@@ -130,7 +136,8 @@ public:
         std::shared_ptr<NativeRdb::RdbStore> destRdb, std::shared_ptr<NativeRdb::RdbStore> sourceRdb);
 
     // 清理旧db临时副本中Photos表的无效记录及对应文件
-    int32_t CleanInvalidPhotosFromOldDb(std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore);
+    int32_t CleanInvalidPhotosFromOldDb(std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore,
+        const InvalidPhotoCleanupObserver *observer = nullptr);
 
     // 处理单张表：drop再create并复制数据（DROP_AND_INSERT）
     int32_t ProcessTableByRecreate(const std::string &tableName, std::shared_ptr<NativeRdb::RdbStore> destRdb,
@@ -167,12 +174,13 @@ private:
 
     // 查询无效照片记录
     std::vector<InvalidPhotoInfo> QueryInvalidPhotos(
-        std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore);
+        std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore, bool *complete = nullptr);
 
     // 在事务中处理无效照片
     void ProcessInvalidPhotosWithTransaction(const std::vector<InvalidPhotoInfo> &invalidPhotos,
         std::shared_ptr<NativeRdb::Transaction> &transaction,
-        int32_t &deleteFileSuccessCount, int32_t &deleteFileFailCount);
+        int32_t &deleteFileSuccessCount, int32_t &deleteFileFailCount,
+        std::vector<int32_t> *deletedIds = nullptr);
 
     // 删除单张照片的所有文件
     bool DeletePhotoFiles(const InvalidPhotoInfo &photo);

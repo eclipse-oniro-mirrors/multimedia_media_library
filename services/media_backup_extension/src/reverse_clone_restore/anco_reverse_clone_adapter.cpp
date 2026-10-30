@@ -416,7 +416,8 @@ bool ExecuteUpdates(const std::shared_ptr<NativeRdb::RdbStore> &finalDb,
     return ret == NativeRdb::E_OK;
 }
 
-bool ExecuteDeletes(const std::vector<int32_t> &fileIds, AncoReverseCloneStats &stats)
+bool ExecuteDeletes(const std::vector<int32_t> &fileIds, AncoReverseCloneStats &stats,
+    const AncoReverseCloneContext &context)
 {
     if (fileIds.empty()) {
         MEDIA_INFO_LOG("Execute anco deletes skipped, count=0");
@@ -439,7 +440,10 @@ bool ExecuteDeletes(const std::vector<int32_t> &fileIds, AncoReverseCloneStats &
         // RepairFinalDb is invoked after finalDb has become the active media library store.
         // Keep DeletePermanently here to preserve full asset cleanup semantics, including files,
         // thumbnails, edit data, moving-photo sidecars, download tasks, notifications and album refresh.
+        const std::vector<int32_t> batch(fileIds.begin() + offset, fileIds.begin() + offset + batchSize);
+        CHECK_AND_EXECUTE(!context.deletionObserver, context.deletionObserver(batch, true));
         int32_t ret = MediaLibraryAssetOperations::DeletePermanently(predicates, true);
+        CHECK_AND_EXECUTE(!context.deletionObserver, context.deletionObserver(batch, false));
         if (ret != E_OK) {
             stats.deleteFailedRows += static_cast<int32_t>(batchSize);
             MEDIA_ERR_LOG("Permanent delete anco rows failed, offset=%{public}zu, batchSize=%{public}zu, "
@@ -459,8 +463,9 @@ bool ExecuteDeletes(const std::vector<int32_t> &fileIds, AncoReverseCloneStats &
 
 class AncoRepairBatch {
 public:
-    AncoRepairBatch(const std::shared_ptr<NativeRdb::RdbStore> &finalDb, AncoReverseCloneStats &stats)
-        : finalDb_(finalDb), stats_(stats)
+    AncoRepairBatch(const std::shared_ptr<NativeRdb::RdbStore> &finalDb, AncoReverseCloneStats &stats,
+        const AncoReverseCloneContext &context)
+        : finalDb_(finalDb), stats_(stats), context_(context)
     {}
 
     const std::shared_ptr<NativeRdb::RdbStore> &GetFinalDb() const
@@ -496,7 +501,7 @@ public:
         MEDIA_INFO_LOG("FinishRepairBatch start, updateCount=%{public}zu, deleteCount=%{public}zu",
             updates_.size(), deleteFileIds_.size());
         bool success = FlushUpdates();
-        success = ExecuteDeletes(deleteFileIds_, stats_) && success;
+        success = ExecuteDeletes(deleteFileIds_, stats_, context_) && success;
         if (!success) {
             MEDIA_ERR_LOG("FinishRepairBatch failed, deleteCount=%{public}zu", deleteFileIds_.size());
         }
@@ -533,6 +538,7 @@ private:
 
     std::shared_ptr<NativeRdb::RdbStore> finalDb_;
     AncoReverseCloneStats &stats_;
+    const AncoReverseCloneContext &context_;
     std::vector<AncoRepairUpdate> updates_;
     std::vector<int32_t> deleteFileIds_;
     std::unordered_set<int32_t> deleteFileIdSet_;
@@ -555,10 +561,10 @@ void AddDeleteIfMissing(const AncoPhotoRow &row, AncoRepairBatch &batch)
 }
 
 bool RepairPhaseOneRows(const std::shared_ptr<NativeRdb::RdbStore> &finalDb,
-    const std::vector<AncoPhotoRow> &rows, AncoReverseCloneStats &stats)
+    const std::vector<AncoPhotoRow> &rows, AncoReverseCloneStats &stats, const AncoReverseCloneContext &context)
 {
     MEDIA_INFO_LOG("RepairPhaseOneRows start, rows=%{public}zu", rows.size());
-    AncoRepairBatch batch(finalDb, stats);
+    AncoRepairBatch batch(finalDb, stats, context);
     for (const auto &row : rows) {
         AddDeleteIfMissing(row, batch);
     }
@@ -568,7 +574,8 @@ bool RepairPhaseOneRows(const std::shared_ptr<NativeRdb::RdbStore> &finalDb,
     return success;
 }
 
-bool RepairPhaseOne(const std::shared_ptr<NativeRdb::RdbStore> &finalDb, AncoReverseCloneStats &stats)
+bool RepairPhaseOne(const std::shared_ptr<NativeRdb::RdbStore> &finalDb, AncoReverseCloneStats &stats,
+    const AncoReverseCloneContext &context)
 {
     std::vector<AncoPhotoRow> rows = QueryAncoRows(finalDb);
     stats.totalRows = static_cast<int32_t>(rows.size());
@@ -577,7 +584,7 @@ bool RepairPhaseOne(const std::shared_ptr<NativeRdb::RdbStore> &finalDb, AncoRev
         return true;
     }
     MEDIA_INFO_LOG("RepairFinalDb use phase one repair");
-    return RepairPhaseOneRows(finalDb, rows, stats);
+    return RepairPhaseOneRows(finalDb, rows, stats, context);
 }
 
 bool ProcessPhaseTwoFailedRows(const AncoRestoreInfoRepository &repo, AncoRepairBatch &batch)
@@ -650,11 +657,11 @@ bool ProcessPhaseTwoDeduplicationRows(const AncoRestoreInfoRepository &repo, Anc
 }
 
 bool RepairPhaseTwoRows(const std::shared_ptr<NativeRdb::RdbStore> &finalDb,
-    const AncoRestoreInfoRepository &repo, AncoReverseCloneStats &stats)
+    const AncoRestoreInfoRepository &repo, AncoReverseCloneStats &stats, const AncoReverseCloneContext &context)
 {
     MEDIA_INFO_LOG("RepairPhaseTwoRows start, failedPaths=%{public}zu, dedupPaths=%{public}zu",
         repo.GetFailedPaths().size(), repo.GetDeduplicationInfos().size());
-    AncoRepairBatch batch(finalDb, stats);
+    AncoRepairBatch batch(finalDb, stats, context);
     bool success = ProcessPhaseTwoFailedRows(repo, batch);
     success = ProcessPhaseTwoDeduplicationRows(repo, batch) && success;
     success = batch.Finish() && success;
@@ -684,19 +691,19 @@ int32_t AncoReverseCloneAdapter::RepairFinalDb(const std::shared_ptr<NativeRdb::
             stats_.totalRows =
                 static_cast<int32_t>(repo.GetFailedPaths().size() + repo.GetDeduplicationInfos().size());
             MEDIA_INFO_LOG("RepairFinalDb use phase two repair");
-            success = RepairPhaseTwoRows(finalDb, repo, stats_);
+            success = RepairPhaseTwoRows(finalDb, repo, stats_, context);
             if (!success) {
                 MEDIA_ERR_LOG("RepairFinalDb: phase two repair failed");
             }
         } else {
             MEDIA_WARN_LOG("RepairFinalDb: phase two restore info unavailable, fallback to phase one repair");
-            success = RepairPhaseOne(finalDb, stats_);
+            success = RepairPhaseOne(finalDb, stats_, context);
             if (!success) {
                 MEDIA_ERR_LOG("RepairFinalDb: fallback phase one repair failed");
             }
         }
     } else {
-        success = RepairPhaseOne(finalDb, stats_);
+        success = RepairPhaseOne(finalDb, stats_, context);
         if (!success) {
             MEDIA_ERR_LOG("RepairFinalDb: phase one repair failed");
         }

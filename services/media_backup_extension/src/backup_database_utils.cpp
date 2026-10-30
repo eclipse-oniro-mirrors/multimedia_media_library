@@ -1740,6 +1740,27 @@ int32_t CloneFileInfoDbCallback::OnCreate(NativeRdb::RdbStore &rdbStore)
     return NativeRdb::E_OK;
 }
 
+static std::string GetRestoredAnalysisCoverUri(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+    int32_t fileId, int32_t newFileId, const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+{
+    auto photoIt = photoInfoMap.find(newFileId);
+    if (photoIt != photoInfoMap.end()) {
+        const auto &photoInfo = photoIt->second;
+        return MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
+            std::to_string(photoInfo.fileIdNew),
+            MediaFileUtils::GetExtraUri(photoInfo.displayName, photoInfo.cloudPath));
+    }
+
+    // Retained assets can move to a new path without changing their file ID.
+    auto currentId = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, "file_id");
+    CHECK_AND_RETURN_RET(newFileId == fileId && currentId.has_value() && currentId.value() == fileId, "");
+    auto path = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "data").value_or("");
+    auto name = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "display_name").value_or("");
+    CHECK_AND_RETURN_RET(!path.empty() && !name.empty(), "");
+    return MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
+        std::to_string(fileId), MediaFileUtils::GetExtraUri(name, path));
+}
+
 void BackupDatabaseUtils::UpdateDuplicateCoverUris(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
     const std::unordered_map<int32_t, int32_t>& duplicateAssetMap,
     const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap,
@@ -1757,8 +1778,10 @@ void BackupDatabaseUtils::UpdateDuplicateCoverUris(std::shared_ptr<NativeRdb::Rd
         subtypeClause += std::to_string(albumSubtypes[i]);
     }
 
-    const std::string QUERY_SQL = "SELECT album_id, cover_uri FROM AnalysisAlbum "
-        " WHERE album_subtype IN (" + subtypeClause + ") AND cover_uri IS NOT NULL ";
+    const std::string QUERY_SQL = "SELECT a.album_id, a.cover_uri, p.file_id, p.data, p.display_name "
+        "FROM AnalysisAlbum AS a LEFT JOIN Photos AS p ON p.file_id = CAST(SUBSTR(a.cover_uri, " +
+        std::to_string(PhotoColumn::PHOTO_URI_PREFIX.size() + 1) + ") AS INTEGER) "
+        "WHERE a.album_subtype IN (" + subtypeClause + ") AND a.cover_uri IS NOT NULL ";
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaLibraryRdb, QUERY_SQL);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "query AnalysisAlbum for cover_uri failed.");
 
@@ -1772,13 +1795,8 @@ void BackupDatabaseUtils::UpdateDuplicateCoverUris(std::shared_ptr<NativeRdb::Rd
         auto it = duplicateAssetMap.find(fileId);
         CHECK_AND_CONTINUE(it != duplicateAssetMap.end());
 
-        int32_t newFileId = it->second;
-        auto photoIt = photoInfoMap.find(newFileId);
-        CHECK_AND_CONTINUE(photoIt != photoInfoMap.end());
-
-        PhotoInfo photoInfo = photoIt->second;
-        std::string newCoverUri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
-            to_string(photoInfo.fileIdNew), MediaFileUtils::GetExtraUri(photoInfo.displayName, photoInfo.cloudPath));
+        std::string newCoverUri = GetRestoredAnalysisCoverUri(resultSet, fileId, it->second, photoInfoMap);
+        CHECK_AND_CONTINUE(!newCoverUri.empty() && newCoverUri != coverUri.value());
         albumIdToNewCoverUri[albumId.value()] = newCoverUri;
     }
     resultSet->Close();

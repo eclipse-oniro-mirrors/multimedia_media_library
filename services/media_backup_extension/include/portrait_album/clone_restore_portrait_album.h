@@ -16,13 +16,15 @@
 #ifndef PORTRAIT_ALBUM_CLONE_H
 #define PORTRAIT_ALBUM_CLONE_H
 
+#include <functional>
 #include <string>
 
+#include "analysis_album_refresh.h"
 #include "backup_const.h"
 #include "backup_file_utils.h"
 #include "clone_restore_analysis_total.h"
-#include "rdb_store.h"
 #include "clone_restore_portrait_base.h"
+#include "rdb_store.h"
 
 namespace OHOS::Media {
 constexpr int32_t BATCH_SIZE = 200;
@@ -42,6 +44,10 @@ public:
     void UpdateAnalysisTotalTblStatus();
     int32_t RestoreMaps();
     const std::unordered_map<int32_t, uint32_t>& GetScoreMaskMap() const { return scoreMaskMap_; }
+    void SetAlbumRestoreObserver(AnalysisAlbumRestoreObserver observer)
+    {
+        albumRestoreObserver_ = std::move(observer);
+    }
     void UpdateScoreMask(int32_t fileId, uint32_t mask);
     bool RefreshTotalAlbumNumber();
     void ClearProfileFaceScore(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
@@ -57,6 +63,7 @@ protected:
     std::atomic<uint64_t> migratePortraitTotalTimeCost_{0};
 
 private:
+    AnalysisAlbumRestoreObserver albumRestoreObserver_;
     void RecordOldPortraitAlbumDfx();
     std::vector<PortraitAlbumDfx> QueryAllPortraitAlbum(int32_t& offset, int32_t& rowCount);
     void DeleteExistingPortraitInfos();
@@ -96,7 +103,7 @@ private:
     void ReportPortraitCloneStat(int32_t sceneCode);
     void RestoreAnalysisTotalFaceStatus();
     void RestoreAnalysisTotalFacialDetectionStatus();
-    void UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId);
+    bool UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId);
 
 public:
     std::vector<CoverUriInfo> coverUriInfo_;

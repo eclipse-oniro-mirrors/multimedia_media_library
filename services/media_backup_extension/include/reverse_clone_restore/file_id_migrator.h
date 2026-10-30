@@ -22,6 +22,7 @@
 #include <regex>
 #include <map>
 #include <unordered_map>
+#include <functional>
 #include "rdb_store.h"
 
 namespace OHOS {
@@ -120,6 +121,14 @@ public:
      * @return newMaxExtended 值，用于判重时排除吸收的数据范围
      */
     int64_t GetNewMaxExtended() const { return newMaxExtended_; }
+    void SetAnalysisAlbumMigrationObserver(std::function<void(int64_t, int64_t)> observer)
+    {
+        analysisAlbumMigrationObserver_ = std::move(observer);
+    }
+    void SetPhotoMigrationObserver(std::function<void(int64_t, int64_t)> observer)
+    {
+        photoMigrationObserver_ = std::move(observer);
+    }
 
 private:
     bool SetBit20InTotalScore(std::shared_ptr<NativeRdb::RdbStore> oldDb);
@@ -185,6 +194,8 @@ private:
 
     int64_t newMaxExtended_ = 0;  // 迁移时 file_id 偏移后的上限值（用于判重）
     std::regex regexPattern_;
+    std::function<void(int64_t, int64_t)> analysisAlbumMigrationObserver_;
+    std::function<void(int64_t, int64_t)> photoMigrationObserver_;
 };
 
 } // namespace Media

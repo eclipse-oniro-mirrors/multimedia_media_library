@@ -16,6 +16,10 @@
 #ifndef CLONE_REVERSE_RESTORE_CLASSIFY_H
 #define CLONE_REVERSE_RESTORE_CLASSIFY_H
 
+#include <functional>
+#include <utility>
+
+#include "analysis_album_refresh.h"
 #include "clone_restore_classify_base.h"
 
 namespace OHOS::Media {
@@ -25,6 +29,14 @@ public:
     void Init(const ClassifyCloneRestoreConfig& config);
 
     void Restore();
+    void SetBeforeAlbumMerge(std::function<void(int32_t)> observer)
+    {
+        beforeAlbumMerge_ = std::move(observer);
+    }
+    void SetAlbumRestoreObserver(AnalysisAlbumRestoreObserver observer)
+    {
+        albumRestoreObserver_ = std::move(observer);
+    }
 
 private:
     void RestoreReverseByVersion();
@@ -46,16 +58,19 @@ private:
     void DealReverseSpecialAlbum();
     void RestoreAlbum();
     void InsertClassifyAlbumData();
-    std::unordered_map<std::string, int32_t> QueryExistingAlbumNames();
+    NativeRdb::ValuesBucket BuildAlbumValue(const ClassifyAlbumInfo &album) const;
+    bool QueryExistingAlbumNames(std::unordered_map<std::string, int32_t> &existingAlbums);
     void RestoreMap();
     void QueryNewClassifyMaps();
     void InsertClassifyMapsToOldDb();
-    void DeleteDuplicateAlbum(int32_t oldAlbumId, int32_t newAlbumId);
+    bool DeleteDuplicateAlbum(int32_t oldAlbumId, int32_t newAlbumId);
 
     void UpdateTabOldAlbumsId(int32_t oldAlbumId, int32_t newAlbumId);
 
 private:
     bool isRestoreFromNewVersion_{false};
+    AnalysisAlbumRestoreObserver albumRestoreObserver_;
+    std::function<void(int32_t)> beforeAlbumMerge_;
     int32_t maxIdOfLabel_{0};
     int32_t maxIdOfVideoLabel_{0};
     int64_t restoreTimeCost_{0};

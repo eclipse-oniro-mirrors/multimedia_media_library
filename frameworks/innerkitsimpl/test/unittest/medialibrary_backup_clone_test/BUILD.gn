@@ -147,6 +147,8 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_deprecated_perm_usage.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "./src/analysis_album/analysis_precise_refresh_db_test.cpp",
+    "./src/analysis_album/analysis_precise_refresh_state_test.cpp",
     "./src/clone_source.cpp",
     "./src/clone_field_config_test.cpp",
     "./src/highlight/clone_highlight_source.cpp",
