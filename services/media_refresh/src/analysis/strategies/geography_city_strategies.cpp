@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
- #include "geography_city_strategies.h"
+#include "geography_city_strategies.h"
 
- #include "media_column.h"
- #include "userfile_manager_types.h"
+#include "media_column.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS {
 namespace Media {
