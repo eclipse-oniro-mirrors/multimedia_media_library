@@ -785,7 +785,7 @@ int32_t PhotoMapOperations::DismissAssets(NativeRdb::RdbPredicates &predicates)
     int32_t subtype = atoi(strSubtype.c_str());
     if (subtype != PhotoAlbumSubType::CLASSIFY && subtype != PhotoAlbumSubType::PORTRAIT &&
         subtype != PhotoAlbumSubType::GROUP_PHOTO && subtype != PhotoAlbumSubType::HIGHLIGHT &&
-        subtype != PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS) {
+        subtype != PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS && subtype != PhotoAlbumSubType::GEOGRAPHY_CITY) {
         MEDIA_ERR_LOG("Invalid album subtype: %{public}d", subtype);
         return E_INVALID_ARGUMENTS;
     }
