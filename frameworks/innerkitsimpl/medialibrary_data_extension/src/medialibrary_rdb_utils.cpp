@@ -635,6 +635,16 @@ static void GetTrashAlbumHiddenPredicates(RdbPredicates &predicates)
         predicates.GetStatement().c_str());
 }
 
+std::string MediaLibraryRdbUtils::GetAnalysisPhotoCountClause(bool hiddenState)
+{
+    const string common = "Photos.date_trashed = 0 AND Photos.hidden = " + to_string(hiddenState) +
+        " AND Photos.time_pending = 0 AND Photos.is_temp = 0 AND Photos.burst_cover_level = " +
+        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) + " AND Photos.is_shared = 0";
+    return "Photos.sync_status = " + to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)) +
+        " AND Photos.clean_flag = " + to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) +
+        " AND " + common;
+}
+
 void MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(const UpdateAlbumData& albumInfo,
     NativeRdb::RdbPredicates &predicates, const bool hiddenState, const bool isUpdateAlbum,
     bool filterVisibility)
@@ -642,15 +652,6 @@ void MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(const UpdateAlbumData
     const PhotoAlbumSubType subtype = static_cast<PhotoAlbumSubType>(albumInfo.albumSubtype);
     const string albumName = albumInfo.albumName;
     const int32_t albumId = albumInfo.albumId;
-    static const string QUERY_ASSETS_FROM_ANALYSIS_ALBUM =
-        PhotoColumn::PHOTO_SYNC_STATUS + " = " + to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)) +
-        " AND " + PhotoColumn::PHOTO_CLEAN_FLAG + " = " + to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) +
-        " AND " + MediaColumn::MEDIA_ID + " IN (SELECT " + PhotoMap::ASSET_ID + " FROM " + ANALYSIS_PHOTO_MAP_TABLE +
-        " WHERE " + PhotoMap::ALBUM_ID + " = ?) AND " + MediaColumn::MEDIA_DATE_TRASHED + " = 0 AND " +
-        MediaColumn::MEDIA_HIDDEN + " = ? AND " + MediaColumn::MEDIA_TIME_PENDING + " = 0 AND " +
-        PhotoColumn::PHOTO_IS_TEMP + " = 0 AND " + PhotoColumn::PHOTO_BURST_COVER_LEVEL + " = " +
-        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) +
-        " AND " + PhotoColumn::PHOTO_IS_SHARED + " = 0";
 
     bool isUserAlbum = PhotoAlbum::IsUserAlbumSubtype(subtype);
     bool isSourceAlbum = PhotoAlbum::IsSourceAlbumSubtype(subtype);
@@ -659,8 +660,9 @@ void MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(const UpdateAlbumData
     bool isShareAlbum = subtype == PhotoAlbumSubType::SHARE_GENERIC;
     if (isUpdateAlbum && isAnalysisAlbum &&
         subtype != PhotoAlbumSubType::PORTRAIT && subtype != PhotoAlbumSubType::SHOOTING_MODE) {
-        predicates.SetWhereClause(QUERY_ASSETS_FROM_ANALYSIS_ALBUM);
-        predicates.SetWhereArgs({ to_string(albumId), to_string(hiddenState) });
+        predicates.SetWhereClause(GetAnalysisPhotoCountClause(hiddenState) +
+            " AND Photos.file_id IN (SELECT map_asset FROM AnalysisPhotoMap WHERE map_album = ?)");
+        predicates.SetWhereArgs({ to_string(albumId) });
         return;
     }
 
@@ -1188,13 +1190,8 @@ static inline bool ShouldUpdateGroupPhotoAlbumCover(const shared_ptr<MediaLibrar
         !IsCoverValid(rdbStore, albumId, fileId);
 }
 
-shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
-    const string &albumId)
+void MediaLibraryRdbUtils::GetPortraitAlbumCoverPredicates(const string &albumId, RdbPredicates &predicates)
 {
-    MediaLibraryTracer tracer;
-    tracer.Start("QueryPortraitCover");
-    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-
     // INNER JOIN AnalysisPhotoMap ON AnalysisPhotoMap.map_asset = Photos.file_id
     string anaPhotoMapAsset = ANALYSIS_PHOTO_MAP_TABLE + "." + MAP_ASSET;
     string photosFileId = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_ID;
@@ -1212,14 +1209,7 @@ shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared
     clause = anaImageFaceFileId + "=" + photosFileId;
     predicates.InnerJoin(VISION_IMAGE_FACE_TABLE)->On({ clause });
 
-    clause = "Photos.sync_status = 0 "
-        "AND Photos.clean_flag = 0 "
-        "AND Photos.date_trashed = 0 "
-        "AND Photos.hidden = 0 "
-        "AND Photos.time_pending = 0 "
-        "AND Photos.is_temp = 0 "
-        "AND Photos.burst_cover_level = 1 "
-        "AND Photos.is_shared = 0 ";
+    clause = GetAnalysisPhotoCountClause() + " ";
     clause += "AND AnalysisAlbum.album_id IN (SELECT album_id FROM AnalysisAlbum where AnalysisAlbum.group_tag "
         "IN (SELECT group_tag FROM AnalysisAlbum WHERE album_id = " + albumId + " LIMIT 1))";
     predicates.SetWhereClause(clause);
@@ -1231,17 +1221,32 @@ shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared
     predicates.OrderByAsc("CASE WHEN tab_analysis_image_face.total_faces = 1 THEN 0 ELSE 1 END");
     predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_ADDED);
     predicates.Limit(1);
+}
+
+static shared_ptr<ResultSet> QueryPortraitCoverRows(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
+    const string &albumId, bool moveToFirst)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryPortraitCover");
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    MediaLibraryRdbUtils::GetPortraitAlbumCoverPredicates(albumId, predicates);
     const string columnFileId = PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_ID;
     const string columnDisplayName = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_NAME;
     const string columnData = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_FILE_PATH;
     const vector<string> columns = { columnFileId, columnDisplayName, columnData };
 
     auto resultSet = rdbStore->QueryByStepWithoutCount(predicates, columns, true);
-    string sql = RdbSqlUtils::BuildQueryString(predicates, columns);
     CHECK_AND_RETURN_RET(resultSet != nullptr, nullptr);
+    CHECK_AND_RETURN_RET(moveToFirst, resultSet);
     int32_t err = resultSet->GoToFirstRow();
     MediaLibraryRestore::GetInstance().CheckRestore(err);
     return resultSet;
+}
+
+shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
+    const string &albumId)
+{
+    return QueryPortraitCoverRows(rdbStore, albumId, true);
 }
 
 static shared_ptr<ResultSet> QueryGroupPhotoAlbumCover(const shared_ptr<MediaLibraryRdbStore> rdbStore,

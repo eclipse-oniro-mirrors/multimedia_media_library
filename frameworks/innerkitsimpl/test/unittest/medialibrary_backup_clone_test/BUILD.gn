@@ -190,6 +190,8 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_restore_geo_base.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_reverse_restore_geo.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/beauty_score_clone_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/analysis_album_refresh.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/analysis_album_refresh_db.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_executor.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
