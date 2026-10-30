@@ -149,6 +149,7 @@ public:
     EXPORT int32_t UpdateTabPhotosExt(MediaLibraryCommand &cmd, NativeRdb::ValuesBucket &value,
                 const DataShare::DataSharePredicates &predicates);
     EXPORT int32_t InitReverseMediaLibraryRdbStore();
+    EXPORT std::shared_ptr<MediaLibraryRdbStore> GetReverseMediaLibraryRdbStore();
     EXPORT void InitDatabaseACLPermission();
     EXPORT void HandleSpecialOpen(Uri &uri);
 
