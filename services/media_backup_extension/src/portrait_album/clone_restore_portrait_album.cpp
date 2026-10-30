@@ -504,25 +504,31 @@ void CloneRestorePortrait::InsertPortraitAlbum(std::vector<AnalysisAlbumTbl> &po
     return;
 }
 
-void CloneRestorePortrait::UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId)
+bool CloneRestorePortrait::UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId)
 {
     const std::string QUERY_SQL = "SELECT " + ANALYSIS_COL_ALBUM_ID + ", " + ANALYSIS_COL_TAG_ID + " FROM " +
         ANALYSIS_ALBUM_TABLE + " WHERE " + ANALYSIS_COL_ALBUM_SUBTYPE + " = " + std::to_string(PORTRAIT) +
         " AND " + ANALYSIS_COL_ALBUM_ID + " > ?";
     std::vector<NativeRdb::ValueObject> params = { minId };
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, QUERY_SQL, params);
-    CHECK_AND_RETURN_LOG(resultSet != nullptr, "query resultSet is null");
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "query resultSet is null");
     int resultRowCount = 0;
     int32_t errCode = resultSet->GetRowCount(resultRowCount);
     if (errCode != NativeRdb::E_OK || resultRowCount < 0) {
         MEDIA_ERR_LOG("resultSet GetRowCount failed");
         resultSet->Close();
-        return;
+        return false;
     }
     std::unordered_map<std::string, int32_t> portraitAlbumIdMap;
+    int32_t read = 0;
+    bool complete = true;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t albumId = GetInt32Val(ANALYSIS_COL_ALBUM_ID, resultSet);
-        std::string tagId = GetStringVal(ANALYSIS_COL_TAG_ID, resultSet);
+        int32_t albumId = 0;
+        std::string tagId;
+        const bool rowRead = ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_ID, resultSet, albumId) &&
+            ResultSetUtils::TryGetValue(ANALYSIS_COL_TAG_ID, resultSet, tagId);
+        complete = complete && rowRead && portraitAlbumIdMap.count(tagId) == 0;
+        ++read;
         bool cond = (albumId <= 0 || tagId.empty());
         CHECK_AND_CONTINUE(!cond);
         portraitAlbumIdMap[tagId] = albumId;
@@ -534,6 +540,7 @@ void CloneRestorePortrait::UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl
             portraitAlbumIdMap.find(it->tagId.value()) != portraitAlbumIdMap.end());
         it->albumIdNew = portraitAlbumIdMap[it->tagId.value()];
     }
+    return complete && read == resultRowCount;
 }
 
 int32_t CloneRestorePortrait::InsertPortraitAlbumByTable(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl)
@@ -543,8 +550,14 @@ int32_t CloneRestorePortrait::InsertPortraitAlbumByTable(std::vector<AnalysisAlb
     int32_t maxAnalysisAlbumIdBeforePortraitInsert =
         BackupDatabaseUtils::QueryMaxId(mediaLibraryRdb_, ANALYSIS_ALBUM_TABLE, ANALYSIS_COL_ALBUM_ID);
     int32_t ret = BatchInsertWithRetry(ANALYSIS_ALBUM_TABLE, valuesBuckets, rowNum);
+    const bool mapped = ret == E_OK &&
+        UpdatePortraitTblAlbumId(portraitAlbumTbl, maxAnalysisAlbumIdBeforePortraitInsert);
+    for (const auto &album : portraitAlbumTbl) {
+        CHECK_AND_EXECUTE(!albumRestoreObserver_, albumRestoreObserver_({
+            album.albumIdOld.value_or(0), mapped ? album.albumIdNew.value_or(0) : 0, 0, PhotoAlbumSubType::PORTRAIT,
+            mapped && rowNum == static_cast<int64_t>(valuesBuckets.size())}));
+    }
     CHECK_AND_RETURN_RET(ret == E_OK, E_ERR);
-    UpdatePortraitTblAlbumId(portraitAlbumTbl, maxAnalysisAlbumIdBeforePortraitInsert);
     portraitAlbumInfoMap_.insert(portraitAlbumInfoMap_.end(), portraitAlbumTbl.begin(), portraitAlbumTbl.end());
     return rowNum;
 }

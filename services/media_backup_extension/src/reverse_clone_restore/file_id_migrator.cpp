@@ -319,6 +319,7 @@ bool FileIdMigrator::UpdatePhotosFileId(std::shared_ptr<RdbStore> db,
     }
 
     const std::string dropTrigger = "DROP TRIGGER IF EXISTS photos_file_id_update_trigger;";
+    CHECK_AND_EXECUTE(!photoMigrationObserver_, photoMigrationObserver_(oldMax, newMaxExtended));
     return ExecuteSql(db, dropTrigger, triggerArgs);
 }
 
@@ -854,6 +855,10 @@ bool FileIdMigrator::UpdateSmartAlbumTable(std::shared_ptr<RdbStore> db,
         return false;
     }
 
+    // Report the actual SQL bindings, not the intended offset inferred by callers.
+    if (upd.table == "AnalysisAlbum" && analysisAlbumMigrationObserver_) {
+        analysisAlbumMigrationObserver_(oldMax, newMaxExtended);
+    }
     return true;
 }
 

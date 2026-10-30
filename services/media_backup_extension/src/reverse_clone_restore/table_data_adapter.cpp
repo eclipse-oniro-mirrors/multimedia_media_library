@@ -589,7 +589,7 @@ int32_t TableDataAdapter::ClearRedundantData(
 }
 
 int32_t TableDataAdapter::CleanInvalidPhotosFromOldDb(
-    std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore)
+    std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore, const InvalidPhotoCleanupObserver *observer)
 {
     MEDIA_INFO_LOG("CleanInvalidPhotosFromOldDb: start cleaning invalid photos");
 
@@ -598,7 +598,9 @@ int32_t TableDataAdapter::CleanInvalidPhotosFromOldDb(
         return E_ERR;
     }
 
-    std::vector<InvalidPhotoInfo> invalidPhotos = QueryInvalidPhotos(oldDbTempStore);
+    bool complete = false;
+    std::vector<InvalidPhotoInfo> invalidPhotos = QueryInvalidPhotos(oldDbTempStore, observer ? &complete : nullptr);
+    CHECK_AND_EXECUTE(observer == nullptr || !observer->before, observer->before(invalidPhotos, complete));
 
     auto [errCode, transaction] = oldDbTempStore->CreateTransaction(OHOS::NativeRdb::Transaction::DEFERRED);
     if (errCode != NativeRdb::E_OK || transaction == nullptr) {
@@ -608,7 +610,9 @@ int32_t TableDataAdapter::CleanInvalidPhotosFromOldDb(
 
     int32_t deleteFileSuccessCount = 0;
     int32_t deleteFileFailCount = 0;
-    ProcessInvalidPhotosWithTransaction(invalidPhotos, transaction, deleteFileSuccessCount, deleteFileFailCount);
+    std::vector<int32_t> deletedIds;
+    ProcessInvalidPhotosWithTransaction(invalidPhotos, transaction, deleteFileSuccessCount, deleteFileFailCount,
+        observer ? &deletedIds : nullptr);
 
     MEDIA_INFO_LOG("CleanInvalidPhotosFromOldDb: deleted files for %{public}d photos, "
         "failed for %{public}d photos", deleteFileSuccessCount, deleteFileFailCount);
@@ -620,6 +624,7 @@ int32_t TableDataAdapter::CleanInvalidPhotosFromOldDb(
         return E_ERR;
     }
 
+    CHECK_AND_EXECUTE(observer == nullptr || !observer->committed, observer->committed(deletedIds));
     MEDIA_INFO_LOG("CleanInvalidPhotosFromOldDb: successfully deleted invalid photos");
     return E_OK;
 }
@@ -627,7 +632,7 @@ int32_t TableDataAdapter::CleanInvalidPhotosFromOldDb(
 void TableDataAdapter::ProcessInvalidPhotosWithTransaction(
     const std::vector<InvalidPhotoInfo> &invalidPhotos,
     std::shared_ptr<NativeRdb::Transaction> &transaction,
-    int32_t &deleteFileSuccessCount, int32_t &deleteFileFailCount)
+    int32_t &deleteFileSuccessCount, int32_t &deleteFileFailCount, std::vector<int32_t> *deletedIds)
 {
     for (const auto &photo : invalidPhotos) {
         bool allFilesDeleted = DeletePhotoFiles(photo);
@@ -635,6 +640,7 @@ void TableDataAdapter::ProcessInvalidPhotosWithTransaction(
             bool dbDeleted = DeletePhotoRecord(transaction, photo.fileId);
             if (dbDeleted) {
                 deleteFileSuccessCount++;
+                CHECK_AND_EXECUTE(deletedIds == nullptr, deletedIds->push_back(static_cast<int32_t>(photo.fileId)));
             } else {
                 deleteFileFailCount++;
             }
@@ -715,7 +721,7 @@ void TableDataAdapter::LogDeleteFileFailure(const InvalidPhotoInfo &photo)
 }
 
 std::vector<InvalidPhotoInfo> TableDataAdapter::QueryInvalidPhotos(
-    std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore)
+    std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore, bool *complete)
 {
     std::string querySql = "SELECT file_id, data, subtype, moving_photo_effect_mode FROM Photos WHERE "
         "sync_status <> 0 OR clean_flag <> 0 OR time_pending < 0 OR is_temp <> 0 OR file_source_type = 1";
@@ -727,6 +733,8 @@ std::vector<InvalidPhotoInfo> TableDataAdapter::QueryInvalidPhotos(
     }
 
     std::vector<InvalidPhotoInfo> invalidPhotos;
+    int32_t rowCount = -1;
+    CHECK_AND_EXECUTE(complete == nullptr, *complete = resultSet->GetRowCount(rowCount) == NativeRdb::E_OK);
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int64_t fileId = 0;
         std::string cloudPath;
@@ -740,7 +748,9 @@ std::vector<InvalidPhotoInfo> TableDataAdapter::QueryInvalidPhotos(
             resultSet->GetColumnIndex("data", dataColumnIndex) == NativeRdb::E_OK &&
             resultSet->GetColumnIndex("subtype", subtypeIndex) == NativeRdb::E_OK &&
             resultSet->GetColumnIndex("moving_photo_effect_mode", effectModeIndex) == NativeRdb::E_OK) {
-            resultSet->GetLong(fileIdIndex, fileId);
+            const int32_t idRet = resultSet->GetLong(fileIdIndex, fileId);
+            CHECK_AND_EXECUTE(complete == nullptr, *complete = *complete && idRet == NativeRdb::E_OK &&
+                fileId > 0 && fileId <= INT32_MAX);
             resultSet->GetString(dataColumnIndex, cloudPath);
             resultSet->GetInt(subtypeIndex, subtype);
             resultSet->GetInt(effectModeIndex, movingPhotoEffectMode);
@@ -749,6 +759,8 @@ std::vector<InvalidPhotoInfo> TableDataAdapter::QueryInvalidPhotos(
     }
     resultSet->Close();
 
+    CHECK_AND_EXECUTE(complete == nullptr, *complete = *complete &&
+        rowCount == static_cast<int32_t>(invalidPhotos.size()));
     MEDIA_INFO_LOG("QueryInvalidPhotos: found %{public}zu invalid photos", invalidPhotos.size());
     return invalidPhotos;
 }

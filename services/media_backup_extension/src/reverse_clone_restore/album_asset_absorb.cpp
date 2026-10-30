@@ -400,7 +400,8 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
 
 void AlbumAssetAbsorb::UpdateDuplicateAssetMapForDuplicates(
     const unordered_map<int32_t, int32_t> &duplicateDonorMap,
-    unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex)
+    unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex,
+    std::unordered_set<int32_t> *conflictingDonors)
 {
     // 加锁保护（如果提供了互斥锁）
     if (mutex != nullptr) {
@@ -408,6 +409,11 @@ void AlbumAssetAbsorb::UpdateDuplicateAssetMapForDuplicates(
     }
 
     for (const auto &[donorFileId, absorbedFileId] : duplicateDonorMap) {
+        const auto previous = duplicateAssetMap.find(donorFileId);
+        if (conflictingDonors != nullptr && previous != duplicateAssetMap.end() &&
+            previous->second != donorFileId && previous->second != absorbedFileId) {
+            conflictingDonors->insert(donorFileId);
+        }
         duplicateAssetMap[donorFileId] = absorbedFileId;
 
         MEDIA_INFO_LOG(

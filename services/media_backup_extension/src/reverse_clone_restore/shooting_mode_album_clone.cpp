@@ -157,6 +157,11 @@ bool ShootingModeAlbumClone::ExecuteOperations(
             failCount++;
             MEDIA_WARN_LOG("Failed to execute album operation");
         }
+        if (albumRestoreObserver_) {
+            const auto ids = operation->GetAlbumIds();
+            albumRestoreObserver_({ids.second, ids.second, ids.first,
+                PhotoAlbumSubType::SHOOTING_MODE, operation->confirmed_});
+        }
     }
 
     MEDIA_INFO_LOG("ShootingModeAlbumClone: executed operations, success: %{public}d, fail: %{public}d",
@@ -184,6 +189,7 @@ bool ShootingModeAlbumClone::AlbumUpdateOperation::Execute(
     int32_t updatedRows = 0;
     int32_t ret = BackupDatabaseUtils::Update(rdb, updatedRows,
         updateValues, updatePredicates);
+    confirmed_ = ret == E_OK && updatedRows == 1;
     if (ret != E_OK) {
         MEDIA_WARN_LOG("Failed to update album_id from %{public}d to %{public}d, "
             "ret=%{public}d", oldAlbumId_, newAlbumId_, ret);
@@ -228,6 +234,7 @@ bool ShootingModeAlbumClone::AlbumInsertOperation::Execute(
 
     int64_t insertedRowId = -1;
     int32_t ret = rdb->Insert(insertedRowId, ANALYSIS_ALBUM_TABLE, values);
+    confirmed_ = ret == E_OK && insertedRowId > 0;
     if (ret != E_OK) {
         MEDIA_WARN_LOG("Failed to insert album '%{public}s', ret=%{public}d",
             album_.albumName.c_str(), ret);

@@ -17,6 +17,7 @@
 
 #include "clone_reverse_restore_geo.h"
 
+#include "backup_const_column.h"
 #include "backup_database_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -52,7 +53,7 @@ void CloneReverseRestoreGeo::Restore()
     CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr,
         "rdbStore is nullptr");
 
-    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    const int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     maxAlbumIdOld_ = GetMaxAlbumIdOld();
 
     RestoreReverseGeoKnowledge();
@@ -63,7 +64,7 @@ void CloneReverseRestoreGeo::Restore()
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     restoreTimeCost_ = end - start;
     ReportReverseRestoreTask();
-    MEDIA_INFO_LOG("TimeCost: CloneReverseRestoreGeo: %{public}" PRId64, end - start);
+    MEDIA_INFO_LOG("TimeCost: CloneReverseRestoreGeo: %{public}" PRId64, restoreTimeCost_);
 }
 
 int32_t CloneReverseRestoreGeo::GetMaxAlbumIdOld()
@@ -275,24 +276,24 @@ void CloneReverseRestoreGeo::RestoreReverseAlbums()
     MEDIA_INFO_LOG("restore reverse city albums end.");
 }
 
-std::unordered_map<std::string, int32_t> CloneReverseRestoreGeo::QueryExistingCityAlbumNames()
+bool CloneReverseRestoreGeo::QueryExistingCityAlbumNames(std::unordered_map<std::string, int32_t> &existingAlbums)
 {
-    std::unordered_map<std::string, int32_t> existingAlbums;
     string querySql = "SELECT album_id, album_name FROM AnalysisAlbum WHERE album_name IS NOT NULL"
         " AND album_type = 4096 AND album_subtype = 4100";
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, querySql);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, existingAlbums, "Query existing city albums failed.");
-    
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t albumId = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, ALBUM_ID).value_or(0);
-        string albumName = BackupDatabaseUtils::GetOptionalValue<string>(resultSet, ALBUM_NAME).value_or("");
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Query existing city albums failed.");
+    const bool complete = ResultSetUtils::ReadRows(resultSet, [&existingAlbums](const auto &row) {
+        int32_t albumId = 0;
+        std::string albumName;
+        const bool idRead = ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_ID, row, albumId);
+        const bool nameRead = ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_NAME, row, albumName);
         if (!albumName.empty()) {
             existingAlbums[albumName] = albumId;
         }
-    }
-    resultSet->Close();
+        return idRead && nameRead && albumId > 0;
+    });
     MEDIA_INFO_LOG("QueryExistingCityAlbumNames found %{public}zu existing albums", existingAlbums.size());
-    return existingAlbums;
+    return complete;
 }
 
 void CloneReverseRestoreGeo::QueryNewCityAlbums(std::vector<AnalysisAlbumTbl> &albums)
@@ -320,13 +321,16 @@ void CloneReverseRestoreGeo::InsertCityAlbumsToOld(std::vector<AnalysisAlbumTbl>
 {
     CHECK_AND_RETURN(!albums.empty());
 
-    auto existingAlbums = QueryExistingCityAlbumNames();
+    std::unordered_map<std::string, int32_t> existingAlbums;
+    const bool queried = QueryExistingCityAlbumNames(existingAlbums);
+    std::unordered_map<int32_t, std::pair<int32_t, bool>> results;
     
     std::vector<NativeRdb::ValuesBucket> values;
     for (auto& album : albums) {
         CHECK_AND_CONTINUE(album.albumId.has_value());
         album.albumIdOld = album.albumId;
         album.albumIdNew = album.albumId;
+        results[album.albumId.value()] = {0, queried};
 
         if (album.albumName.has_value() && existingAlbums.count(album.albumName.value()) > 0) {
             int32_t duplicateAlbumId = existingAlbums[album.albumName.value()];
@@ -337,7 +341,8 @@ void CloneReverseRestoreGeo::InsertCityAlbumsToOld(std::vector<AnalysisAlbumTbl>
             UpdateTabOldAlbumsId(duplicateAlbumId, album.albumId.value());
 
             // 更新 mediaRdb_ 中的重复相册数据
-            DeleteDuplicateCityAlbum(duplicateAlbumId, album.albumId.value());
+            const bool merged = DeleteDuplicateCityAlbum(duplicateAlbumId, album.albumId.value());
+            results[album.albumId.value()] = {duplicateAlbumId, queried && merged};
         }
         NativeRdb::ValuesBucket value;
         PutIfPresent(value, ALBUM_ID, album.albumIdNew);
@@ -362,6 +367,11 @@ void CloneReverseRestoreGeo::InsertCityAlbumsToOld(std::vector<AnalysisAlbumTbl>
     }
     MEDIA_INFO_LOG("InsertCityAlbumsToOld total albums processed: %{public}zu, new: %{public}ld, existing: %{public}zu",
         albums.size(), rowNum, albums.size() - values.size());
+    for (const auto &result : results) {
+        CHECK_AND_EXECUTE(!albumRestoreObserver_, albumRestoreObserver_({result.first, result.first,
+            result.second.first, PhotoAlbumSubType::GEOGRAPHY_CITY,
+            result.second.second && errCode == E_OK && rowNum == static_cast<int64_t>(values.size())}));
+    }
 }
 
 void CloneReverseRestoreGeo::GenerateAlbumIdMap(const std::vector<AnalysisAlbumTbl> &albums)
@@ -381,6 +391,13 @@ void CloneReverseRestoreGeo::RestoreReverseMaps()
 
     std::vector<CityMapInfo> maps;
     QueryNewCityMaps(maps);
+    if (beforeMutation_) {
+        std::vector<int32_t> ids;
+        for (const auto &map : maps) {
+            CHECK_AND_EXECUTE(!map.mapAsset.has_value(), ids.push_back(map.mapAsset.value()));
+        }
+        beforeMutation_(0, ids);
+    }
     InsertCityMapsToOld(maps);
 
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
@@ -556,8 +573,9 @@ void CloneReverseRestoreGeo::UpdateCityMapsToOld(std::vector<CityMapInfo> &maps)
     }
 }
 
-void CloneReverseRestoreGeo::DeleteDuplicateCityAlbum(int32_t oldAlbumId, int32_t newAlbumId)
+bool CloneReverseRestoreGeo::DeleteDuplicateCityAlbum(int32_t oldAlbumId, int32_t newAlbumId)
 {
+    CHECK_AND_EXECUTE(!beforeMutation_, beforeMutation_(oldAlbumId, {}));
     MEDIA_INFO_LOG("DeleteDuplicateCityAlbum start, oldAlbumId=%{public}d, newAlbumId=%{public}d",
         oldAlbumId, newAlbumId);
 
@@ -569,6 +587,7 @@ void CloneReverseRestoreGeo::DeleteDuplicateCityAlbum(int32_t oldAlbumId, int32_
     updateMapPredicates->EqualTo("map_album", std::to_string(oldAlbumId));
     int32_t updatedMapRows = 0;
     int32_t ret = BackupDatabaseUtils::Update(mediaRdb_, updatedMapRows, updateMapValues, updateMapPredicates);
+    const bool updated = ret == E_OK;
     if (ret == E_OK) {
         MEDIA_INFO_LOG("DeleteDuplicateCityAlbum updated %{public}d rows in AnalysisPhotoMap",
             updatedMapRows);
@@ -592,6 +611,7 @@ void CloneReverseRestoreGeo::DeleteDuplicateCityAlbum(int32_t oldAlbumId, int32_
 
     MEDIA_INFO_LOG("DeleteDuplicateCityAlbum end, deleted %{public}d album rows and updated %{public}d map rows",
         deletedAlbumRows, updatedMapRows);
+    return updated && ret == E_OK;
 }
 
 void CloneReverseRestoreGeo::UpdateTabOldAlbumsId(int32_t oldAlbumId, int32_t newAlbumId)

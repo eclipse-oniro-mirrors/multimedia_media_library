@@ -4259,8 +4259,6 @@ void CloneRestore::StoreHighlightAlbumMappings(CloneRestoreHighlight& cloneResto
         if (info.albumIdOld.has_value() && info.albumIdNew.has_value()) {
             int32_t oldId = info.albumIdOld.value();
             int32_t newId = info.albumIdNew.value();
-            
-            // Skip if already mapped
             if (albumIdMap.find(oldId) == albumIdMap.end()) {
                 albumIdMap[oldId] = newId;
                 mappedCount++;
