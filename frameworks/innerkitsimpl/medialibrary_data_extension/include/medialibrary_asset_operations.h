@@ -289,6 +289,7 @@ private:
     static bool IsBelowApi9(NativeRdb::ValueObject &value, MediaLibraryCommand &cmd);
     static bool IsStringNotNull(NativeRdb::ValueObject &value, MediaLibraryCommand &cmd);
     static bool IsUniqueValue(NativeRdb::ValueObject &value, MediaLibraryCommand &cmd);
+    static bool IsNonNegativeTrashTime(NativeRdb::ValueObject &value, MediaLibraryCommand &cmd);
 
     static const std::unordered_map<std::string, std::vector<VerifyFunction>> UPDATE_VERIFY_PARAM_MAP;
 };

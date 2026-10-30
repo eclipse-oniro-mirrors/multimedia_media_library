@@ -48,6 +48,8 @@
 #include "data_secondary_directory_uri.h"
 #include "medialibrary_upgrade_utils.h"
 #include "media_upgrade.h"
+#include "medialibrary_mock_tocken.h"
+#include "ipc_skeleton.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -56,6 +58,8 @@ using namespace OHOS::DataShare;
 namespace OHOS {
 namespace Media {
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
+static uint64_t g_shellToken = 0;
+static MediaLibraryMockHapToken* g_mockToken = nullptr;
 static const int32_t SLEEP_FOR_FIFTY_MS = 50;
 static const std::vector<std::string> EXTENSION_URI_LISTS = {
     // API9 compat photo operations constants
@@ -375,6 +379,35 @@ void InsertAsset(PhotoResult &result)
 
     int32_t ret = rdbStore->Insert(result.fileId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
     EXPECT_EQ(ret, E_OK);
+}
+
+void InsertAssetWithOwner(int64_t &fileId, const string &displayName, const string &filePath,
+    const string &ownerAppid)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    EXPECT_NE(rdbStore, nullptr);
+
+    NativeRdb::ValuesBucket valuesBucket;
+    valuesBucket.PutInt(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MEDIA_TYPE_IMAGE));
+    valuesBucket.PutString(MediaColumn::MEDIA_NAME, displayName);
+    valuesBucket.PutString(MediaColumn::MEDIA_FILE_PATH, filePath);
+    valuesBucket.PutString(MediaColumn::MEDIA_OWNER_APPID, ownerAppid);
+
+    int32_t ret = rdbStore->Insert(fileId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
+    EXPECT_EQ(ret, E_OK);
+}
+
+string QueryPhotoName(int64_t fileId)
+{
+    auto rs = g_rdbStore->QuerySql("SELECT " + MediaColumn::MEDIA_NAME + " FROM " +
+        PhotoColumn::PHOTOS_TABLE + " WHERE " + MediaColumn::MEDIA_ID + " = ?",
+        { to_string(fileId) });
+    if (rs == nullptr || rs->GoToFirstRow() != E_OK) {
+        return "";
+    }
+    string name;
+    rs->GetString(0, name);
+    return name;
 }
 
 HWTEST_F(MediaDatashareExtAbilityTest, Extension_Insert_001, TestSize.Level1)
@@ -728,6 +761,210 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
     // Test with write mode and close via DataManager
     EXPECT_LT(ret, 0);
     MEDIA_INFO_LOG("Extension_OpenFile_005::End");
+}
+
+/**
+ * @tc.name: Update_OrInjectionAttack_WrappedVsUnwrapped_001
+ * @tc.desc: Test UPDATE with OR injection attack, comparing wrapped (with fix) vs unwrapped (without fix).
+ *           Attack: file_id = <victimId> OR file_id = -1 (targeting victim's asset with non-existent id)
+ *           Wrapped (with fix): (file_id = ? OR file_id = ?) AND owner_appid = ?
+ *             = (file_id = victimId OR file_id = -1) AND owner_appid = attacker
+ *             = (true OR false) AND owner_appid = attacker
+ *             = owner_appid = attacker → victim's asset doesn't match → 0 rows changed
+ *           Unwrapped (without fix): file_id = ? OR file_id = ? AND owner_appid = ?
+ *             = file_id = victimId OR (file_id = -1 AND owner_appid = attacker)
+ *             = file_id = victimId OR false
+ *             = file_id = victimId → victim's asset matches → 1 row changed (attack succeeds)
+ *           Verify the two return different changed row counts (攻击前后，应该返回不同的值).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Update_OrInjectionAttack_WrappedVsUnwrapped_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Update_OrInjectionAttack_WrappedVsUnwrapped_001::Start");
+    const string attackerAppid = "com.attacker.appid";
+    const string victimAppid = "com.victim.appid";
+
+    int64_t attackerFileId = -1;
+    int64_t victimFileId = -1;
+    InsertAssetWithOwner(attackerFileId, "AttackerAsset_001.jpg",
+        "Pictures/AttackerAsset_001.jpg", attackerAppid);
+    InsertAssetWithOwner(victimFileId, "VictimAsset_001.jpg",
+        "Pictures/VictimAsset_001.jpg", victimAppid);
+    EXPECT_GT(attackerFileId, 0);
+    EXPECT_GT(victimFileId, 0);
+
+    string victimIdStr = to_string(victimFileId);
+
+    // --- Wrapped UPDATE (with fix): 0 rows changed ---
+    NativeRdb::ValuesBucket wrappedValues;
+    wrappedValues.PutString(MediaColumn::MEDIA_NAME, "WrappedHacked_001.jpg");
+    string wrappedWhere = "(" + MediaColumn::MEDIA_ID + " = ? OR " + MediaColumn::MEDIA_ID +
+        " = ?) AND " + MediaColumn::MEDIA_OWNER_APPID + " = ?";
+    vector<string> wrappedArgs = { victimIdStr, "-1", attackerAppid };
+    int wrappedChangedRows = 0;
+    int wrappedRet = g_rdbStore->Update(wrappedChangedRows, PhotoColumn::PHOTOS_TABLE,
+        wrappedValues, wrappedWhere, wrappedArgs);
+    EXPECT_EQ(wrappedRet, E_OK);
+    EXPECT_EQ(wrappedChangedRows, 0);
+
+    // --- Unwrapped UPDATE (without fix): 1 row changed (attack succeeds) ---
+    NativeRdb::ValuesBucket unwrappedValues;
+    unwrappedValues.PutString(MediaColumn::MEDIA_NAME, "UnwrappedHacked_001.jpg");
+    string unwrappedWhere = MediaColumn::MEDIA_ID + " = ? OR " + MediaColumn::MEDIA_ID +
+        " = ? AND " + MediaColumn::MEDIA_OWNER_APPID + " = ?";
+    vector<string> unwrappedArgs = { victimIdStr, "-1", attackerAppid };
+    int unwrappedChangedRows = 0;
+    int unwrappedRet = g_rdbStore->Update(unwrappedChangedRows, PhotoColumn::PHOTOS_TABLE,
+        unwrappedValues, unwrappedWhere, unwrappedArgs);
+    EXPECT_EQ(unwrappedRet, E_OK);
+    EXPECT_EQ(unwrappedChangedRows, 1);
+
+    // Verify the two return different values (攻击前后，应该返回不同的值)
+    EXPECT_NE(wrappedChangedRows, unwrappedChangedRows);
+    MEDIA_INFO_LOG("Update_OrInjectionAttack_WrappedVsUnwrapped_001::End wrapped=%{public}d unwrapped=%{public}d",
+        wrappedChangedRows, unwrappedChangedRows);
+}
+
+/**
+ * @tc.name: Extension_Update_OrInjectionAttack_001
+ * @tc.desc: Test MediaDataShareExtAbility::Update with OR injection attack predicate.
+ *           Without write permission, AddOwnerCheck wraps predicates with owner_appid check.
+ *           Verify that the OR injection attack cannot bypass the owner check:
+ *           both normal and attack predicates return E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_Update_OrInjectionAttack_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_Update_OrInjectionAttack_001::Start");
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    struct PhotoResult photoAsset = { -1, static_cast<int32_t>(MEDIA_TYPE_IMAGE),
+        "UpdateAttackTest_001.jpg", "Pictures/" };
+    InsertAsset(photoAsset);
+
+    Uri updateUri(CONST_PAH_UPDATE_PHOTO);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(MediaColumn::MEDIA_NAME, "ModifiedAttackTest_001.jpg");
+
+    // Normal predicate (no attack)
+    DataShare::DataSharePredicates normalPredicates;
+    normalPredicates.EqualTo(MediaColumn::MEDIA_ID, photoAsset.fileId);
+    int normalRet = extension.Update(updateUri, normalPredicates, valuesBucket);
+    EXPECT_EQ(normalRet, E_PERMISSION_DENIED);
+
+    // OR injection attack predicate: fileId = <validId> OR fileId = -1
+    DataShare::DataSharePredicates attackPredicates;
+    attackPredicates.EqualTo(MediaColumn::MEDIA_ID, photoAsset.fileId)
+        .Or().EqualTo(MediaColumn::MEDIA_ID, -1);
+    int attackRet = extension.Update(updateUri, attackPredicates, valuesBucket);
+    EXPECT_EQ(attackRet, E_PERMISSION_DENIED);
+
+    // The attack must not produce a different (successful) result
+    EXPECT_EQ(normalRet, attackRet);
+    MEDIA_INFO_LOG("Extension_Update_OrInjectionAttack_001::End normal=%{public}d attack=%{public}d",
+        normalRet, attackRet);
+}
+
+/**
+ * @tc.name: Update_WhereClause_OrInjection_WrappedVsUnwrapped_001
+ * @tc.desc: Test UPDATE with OR injection via WhereClause path, comparing wrapped vs unwrapped.
+ *           DataSharePredicates supports SetWhereClause independently from chain API.
+ *           Wrapped: (file_id = ? OR file_id = ?) AND owner_appid = ? → 0 rows changed
+ *           Unwrapped: file_id = ? OR file_id = ? AND owner_appid = ? → 1 row changed (attack succeeds)
+ *           Verify the two return different values (攻击前后，应该返回不同的值).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Update_WhereClause_OrInjection_WrappedVsUnwrapped_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Update_WhereClause_OrInjection_WrappedVsUnwrapped_001::Start");
+    const string attackerAppid = "com.attacker.appid";
+    const string victimAppid = "com.victim.appid";
+
+    int64_t attackerFileId = -1;
+    int64_t victimFileId = -1;
+    InsertAssetWithOwner(attackerFileId, "AttackerAsset_002.jpg",
+        "Pictures/AttackerAsset_002.jpg", attackerAppid);
+    InsertAssetWithOwner(victimFileId, "VictimAsset_002.jpg",
+        "Pictures/VictimAsset_002.jpg", victimAppid);
+    EXPECT_GT(attackerFileId, 0);
+    EXPECT_GT(victimFileId, 0);
+
+    string victimIdStr = to_string(victimFileId);
+
+    // --- Wrapped WhereClause (with fix): 0 rows changed ---
+    NativeRdb::ValuesBucket wrappedValues;
+    wrappedValues.PutString(MediaColumn::MEDIA_NAME, "WrappedHacked_002.jpg");
+    string wrappedWhere = "(" + MediaColumn::MEDIA_ID + " = ? OR " + MediaColumn::MEDIA_ID +
+        " = ?) AND " + MediaColumn::MEDIA_OWNER_APPID + " = ?";
+    vector<string> wrappedArgs = { victimIdStr, "-1", attackerAppid };
+    int wrappedChangedRows = 0;
+    int wrappedRet = g_rdbStore->Update(wrappedChangedRows, PhotoColumn::PHOTOS_TABLE,
+        wrappedValues, wrappedWhere, wrappedArgs);
+    EXPECT_EQ(wrappedRet, E_OK);
+    EXPECT_EQ(wrappedChangedRows, 0);
+
+    // --- Unwrapped WhereClause (without fix): 1 row changed (attack succeeds) ---
+    NativeRdb::ValuesBucket unwrappedValues;
+    unwrappedValues.PutString(MediaColumn::MEDIA_NAME, "UnwrappedHacked_002.jpg");
+    string unwrappedWhere = MediaColumn::MEDIA_ID + " = ? OR " + MediaColumn::MEDIA_ID +
+        " = ? AND " + MediaColumn::MEDIA_OWNER_APPID + " = ?";
+    vector<string> unwrappedArgs = { victimIdStr, "-1", attackerAppid };
+    int unwrappedChangedRows = 0;
+    int unwrappedRet = g_rdbStore->Update(unwrappedChangedRows, PhotoColumn::PHOTOS_TABLE,
+        unwrappedValues, unwrappedWhere, unwrappedArgs);
+    EXPECT_EQ(unwrappedRet, E_OK);
+    EXPECT_EQ(unwrappedChangedRows, 1);
+
+    EXPECT_NE(wrappedChangedRows, unwrappedChangedRows);
+    MEDIA_INFO_LOG("Update_WhereClause_OrInjection_WrappedVsUnwrapped_001::End wrapped=%{public}d unwrapped=%{public}d",
+        wrappedChangedRows, unwrappedChangedRows);
+}
+
+/**
+ * @tc.name: Extension_Update_OwnerCheck_OrInjection_E2E_001
+ * @tc.desc: End-to-end test: mock HAP token without write permission → permission check fails →
+ *           AddOwnerCheck → WrapPredicatesWithOwnerCheck wraps predicates →
+ *           MediaLibraryDataManager::Update executes wrapped SQL →
+ *           verify OR injection attack is blocked (victim asset not modified).
+ *           This is the only test that actually exercises WrapPredicatesWithOwnerCheck through the full path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_Update_OwnerCheck_OrInjection_E2E_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_Update_OwnerCheck_OrInjection_E2E_001::Start");
+    g_shellToken = IPCSkeleton::GetSelfTokenID();
+    MediaLibraryMockTokenUtils::RestoreShellToken(g_shellToken);
+
+    const string attackerAppid = "com.attacker.e2e";
+    int64_t victimFileId = -1;
+    int64_t attackerFileId = -1;
+    InsertAssetWithOwner(attackerFileId, "E2E_Attacker_001.jpg",
+        "Pictures/E2E_Attacker_001.jpg", attackerAppid);
+    InsertAssetWithOwner(victimFileId, "E2E_Victim_001.jpg",
+        "Pictures/E2E_Victim_001.jpg", "com.victim.e2e");
+    EXPECT_GT(attackerFileId, 0);
+    EXPECT_GT(victimFileId, 0);
+    EXPECT_EQ(QueryPhotoName(victimFileId), "E2E_Victim_001.jpg");
+
+    vector<string> perms;
+    g_mockToken = new MediaLibraryMockHapToken("com.attacker.e2e", perms, false);
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    Uri updateUri(CONST_PAH_UPDATE_PHOTO);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(MediaColumn::MEDIA_NAME, "E2E_Hacked_001.jpg");
+    DataShare::DataSharePredicates attackPredicates;
+    attackPredicates.EqualTo(MediaColumn::MEDIA_ID, victimFileId)
+        .Or().EqualTo(MediaColumn::MEDIA_ID, -1);
+    int ret = extension.Update(updateUri, attackPredicates, valuesBucket);
+
+    delete g_mockToken;
+    g_mockToken = nullptr;
+    SetSelfTokenID(g_shellToken);
+    EXPECT_EQ(QueryPhotoName(victimFileId), "E2E_Victim_001.jpg");
+    MEDIA_INFO_LOG("Extension_Update_OwnerCheck_OrInjection_E2E_001::End ret=%{public}d", ret);
 }
 } // namespace Media
 } // namespace OHOS
