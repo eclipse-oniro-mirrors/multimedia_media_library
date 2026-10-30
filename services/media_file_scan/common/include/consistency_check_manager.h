@@ -36,8 +36,6 @@ public:
 
     void DisableCheck();
     void EnableCheck();
-    // Background recovery defers instead of waiting behind a long managed scene.
-    std::unique_lock<std::mutex> TryAcquireRecoveryLock();
 
 private:
     enum class StopAction {
@@ -68,7 +66,6 @@ private:
     bool IsScenePending(CheckScene scene);
     
     std::mutex mutex_;
-    std::mutex executionMutex_;
     std::atomic<bool> isInterrupted_ {false};
     ConsistencyCheck::DeviceStatus deviceStatus_;
     std::deque<CheckScene> pendingScenes_;

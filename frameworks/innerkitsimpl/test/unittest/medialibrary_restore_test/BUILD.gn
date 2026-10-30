@@ -27,15 +27,11 @@ ohos_unittest("medialibrary_restore_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
-    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_restore_test.cpp",
-    "./src/replica_recovery_policy_test.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/replica_recovery_policy.cpp",
   ]
 
   deps = [
@@ -62,7 +58,6 @@ ohos_unittest("medialibrary_restore_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "relational_store:native_rdb",
-    "preferences:native_preferences",
     "relational_store:rdb_data_share_adapter",
   ]
 

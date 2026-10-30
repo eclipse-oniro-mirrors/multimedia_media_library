@@ -17,9 +17,6 @@
 
 #include "consistency_check_manager_test.h"
 
-#include <atomic>
-#include <thread>
-
 #include "consistency_check_manager.h"
 #include "global_scanner.h"
 #include "media_log.h"
@@ -43,33 +40,6 @@ void Reset()
 void ConsistencyCheckManagerTest::SetUpTestCase() {}
 
 void ConsistencyCheckManagerTest::TearDownTestCase() {}
-
-/** @tc.desc: A busy managed-scene lock must defer recovery without waiting for the whole scene. */
-HWTEST_F(ConsistencyCheckManagerTest, RecoveryLease_BusyDefersWithoutBlocking, TestSize.Level1)
-{
-    ConsistencyCheckManager manager;
-    auto sceneLock = manager.TryAcquireRecoveryLock();
-    ASSERT_TRUE(sceneLock.owns_lock());
-    std::atomic<bool> acquired {true};
-    std::thread contender([&] {
-        auto recovery = manager.TryAcquireRecoveryLock();
-        acquired.store(recovery.owns_lock());
-    });
-    contender.join();
-    EXPECT_FALSE(acquired.load());
-}
-
-/** @tc.desc: The RAII recovery lease releases execution ownership for the next managed scene. */
-HWTEST_F(ConsistencyCheckManagerTest, RecoveryLease_ReleasesExecutionOwnership, TestSize.Level1)
-{
-    ConsistencyCheckManager manager;
-    {
-        auto recovery = manager.TryAcquireRecoveryLock();
-        ASSERT_TRUE(recovery.owns_lock());
-    }
-    auto scene = manager.TryAcquireRecoveryLock();
-    EXPECT_TRUE(scene.owns_lock());
-}
 
 void ConsistencyCheckManagerTest::SetUp()
 {

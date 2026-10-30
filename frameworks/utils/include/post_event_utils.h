@@ -14,7 +14,6 @@
  */
 #ifndef POST_EVENT_UTILS_H
 #define POST_EVENT_UTILS_H
-#include <cstdint>
 #include <map>
 #include <string>
 #include <variant>
@@ -25,41 +24,6 @@
 namespace OHOS {
 namespace Media {
 #define COMPILE_HIDDEN __attribute__ ((visibility ("hidden")))
-enum class DatabaseRecoveryStage : int32_t {
-    DETECTED = 1,
-    ORDINARY_RESTORE,
-    DIAGNOSIS,
-    FORCE_RESTORE,
-    DATABASE_USABLE,
-    BACKGROUND_SCAN,
-};
-
-enum class DatabaseRecoveryResult : int32_t { SUCCESS, WAITING, PAUSED, PARTIAL, FAILED, REJECTED };
-
-// Reuse corruption DATE; never report an asset path, cloud ID or encryption key.
-struct DatabaseRecoveryReport {
-    std::string date;
-    DatabaseRecoveryStage stage = DatabaseRecoveryStage::DETECTED;
-    DatabaseRecoveryResult result = DatabaseRecoveryResult::WAITING;
-    int32_t error = 0;
-    int32_t decision = -1;
-    int64_t primarySize = -1;
-    int64_t replicaSize = -1;
-    int64_t primaryPhotoCount = -1;
-    int64_t replicaPhotoCount = -1;
-    int64_t primaryAlbumCount = -1;
-    int64_t replicaAlbumCount = -1;
-    int64_t primaryTimeMs = -1;
-    int64_t replicaTimeMs = -1;
-    int64_t durationMs = -1;
-    // Per-pass work counters, not incident totals or mutually exclusive photo buckets.
-    int64_t visited = 0;
-    int64_t repaired = 0; // Includes missing-owner repairs, not only inserted rows.
-    int64_t failed = 0; // A later notification failure may overlap an already committed repair.
-    int64_t deferred = 0; // Includes photo candidates and incomplete album evidence.
-    int64_t albumsCreated = 0;
-};
-
 struct SyncEventStat {
     int64_t startDownloadTime;
     int64_t endDownloadTime;
@@ -200,7 +164,6 @@ using VariantMap = std::map<std::string, std::variant<int32_t, int64_t, std::str
 class PostEventUtils : public Singleton<PostEventUtils> {
 public:
     void PostErrorProcess(const uint32_t &errType, const VariantMap &error);
-    void PostDatabaseRecovery(const DatabaseRecoveryReport &report);
     void PostStatProcess(const uint32_t &statType, const VariantMap &stat);
     void CreateCloudDownloadSyncStat(std::string& syncId);
     void UpdateCloudDownloadSyncStat(VariantMap& syncStat);
