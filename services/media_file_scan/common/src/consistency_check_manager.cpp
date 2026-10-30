@@ -103,11 +103,6 @@ void ConsistencyCheckManager::EnableCheck()
     MEDIA_INFO_LOG("checkEnabled_: %{public}d", checkEnabled_);
 }
 
-std::unique_lock<std::mutex> ConsistencyCheckManager::TryAcquireRecoveryLock()
-{
-    return std::unique_lock<std::mutex>(executionMutex_, std::try_to_lock);
-}
-
 bool ConsistencyCheckManager::IsCheckAllowed() const
 {
     return checkEnabled_;
@@ -224,8 +219,6 @@ void ConsistencyCheckManager::WorkerMain()
 
 void ConsistencyCheckManager::ExecuteScene(CheckScene scene)
 {
-    std::lock_guard<std::mutex> executionLock(executionMutex_);
-    CHECK_AND_RETURN(!isInterrupted_.load());
     ConsistencyCheck::DeviceStatus deviceStatus;
     {
         std::lock_guard<std::mutex> lock(mutex_);

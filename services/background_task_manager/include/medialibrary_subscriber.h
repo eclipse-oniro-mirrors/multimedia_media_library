@@ -140,8 +140,6 @@ private:
     EXPORT void OnReceiveEventSub(const EventFwk::CommonEventData &eventData);
     EXPORT void ClearDirtyData();
     EXPORT void DoBackgroundOperation();
-    void DoBackgroundMaintenance();
-    void DoBackgroundOperationStepOne();
     EXPORT void DoBackgroundOperationStepTwo();
     EXPORT void DoThumbnailBgOperation();
     EXPORT void StopBackgroundOperation();

@@ -19,7 +19,6 @@
 #include "dfx_utils.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_rdb_utils.h"
-#include "medialibrary_unistore_manager.h"
 #include "medialibrary_tracer.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -27,9 +26,6 @@
 #include "parameters.h"
 #include "post_event_utils.h"
 #include "medialibrary_notify_new.h"
-#include "replica_recovery_policy.h"
-#include "photo_album_column.h"
-#include "medialibrary_meta_recovery.h"
 #ifdef CLOUD_SYNC_MANAGER
 #include "cloud_sync_manager.h"
 #endif
@@ -43,6 +39,7 @@ namespace {
     constexpr int PARAMETER_E_OK        = 0;
     constexpr int WAIT_SECONDS          = 30;
     constexpr int SLEEP_SECONDS         = 60;
+    constexpr int MAX_RETRY_TIMES       = 2;
     enum HA_SWITCH_STATUS : uint32_t {
         HA_SWITCH_READY = 0,
         HA_SWITCHING = 1
@@ -61,91 +58,43 @@ void MediaLibraryRestore::SaveHAModeSwitchStatusToPara(const int64_t &status)
     CHECK_AND_RETURN_LOG((ret == PARAMETER_E_OK), "MediaLibraryRestore SetParameter switch error");
 }
 
-static ReplicaRecoveryDecision DiagnoseReplicaRecovery(NativeRdb::RdbStore &store, DatabaseRecoveryReport &report)
-{
-    auto [error, info] = store.GetPrimaryReplicaInfo({PhotoColumn::PHOTOS_TABLE, PhotoAlbumColumns::TABLE});
-    auto decision = CheckReplicaRecovery(error, info);
-    if (decision == ReplicaRecoveryDecision::ALLOW && info.replicaInfo.userVersion != MEDIA_RDB_VERSION) {
-        decision = ReplicaRecoveryDecision::VERSION_MISMATCH;
-    }
-    report.stage = DatabaseRecoveryStage::DIAGNOSIS;
-    report.result = decision == ReplicaRecoveryDecision::ALLOW ? DatabaseRecoveryResult::WAITING :
-        DatabaseRecoveryResult::REJECTED;
-    report.error = error;
-    report.decision = static_cast<int32_t>(decision);
-    if (error == NativeRdb::E_OK) {
-        report.primarySize = info.primaryInfo.dbInfo.size;
-        report.replicaSize = info.replicaInfo.dbInfo.size;
-        report.primaryTimeMs = info.GetPrimaryLastModifyTime();
-        report.replicaTimeMs = info.GetReplicaLastModifyTime();
-        report.primaryPhotoCount = GetRecoveryTableCount(info, true, PhotoColumn::PHOTOS_TABLE);
-        report.replicaPhotoCount = GetRecoveryTableCount(info, false, PhotoColumn::PHOTOS_TABLE);
-        report.primaryAlbumCount = GetRecoveryTableCount(info, true, PhotoAlbumColumns::TABLE);
-        report.replicaAlbumCount = GetRecoveryTableCount(info, false, PhotoAlbumColumns::TABLE);
-    }
-    PostEventUtils::GetInstance().PostDatabaseRecovery(report);
-    return decision;
-}
-
-static void ReportRestoreResult(DatabaseRecoveryReport &report, DatabaseRecoveryStage stage, int32_t error)
-{
-    report.stage = stage;
-    report.error = error;
-    report.result = error == NativeRdb::E_OK ? DatabaseRecoveryResult::SUCCESS :
-        (IsReplicaRecoveryBusy(error) ? DatabaseRecoveryResult::WAITING : DatabaseRecoveryResult::FAILED);
-    PostEventUtils::GetInstance().PostDatabaseRecovery(report);
-}
-
-static int32_t RunDatabaseRecovery(const std::shared_ptr<MediaLibraryRdbStore> &rdb,
-    const std::shared_ptr<NativeRdb::RdbStore> &store, DatabaseRecoveryReport &report)
-{
-    VariantMap fault = {{KEY_DB_CORRUPT, report.date}};
-    PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_CORRUPT_ERR, fault);
-    int32_t ret = rdb->Restore("");
-    ReportRestoreResult(report, DatabaseRecoveryStage::ORDINARY_RESTORE, ret);
-    if (ret == NativeRdb::E_SQLITE_CORRUPT &&
-        DiagnoseReplicaRecovery(*store, report) == ReplicaRecoveryDecision::ALLOW) {
-        MediaLibraryMetaRecovery::GetInstance().PrepareIncrementalRecovery(store, report.date);
-        ret = store->ForceRestore("");
-        ReportRestoreResult(report, DatabaseRecoveryStage::FORCE_RESTORE, ret);
-    }
-    return ret;
-}
-
 void MediaLibraryRestore::CheckRestore(const int32_t &errCode)
 {
     if (errCode != NativeRdb::E_SQLITE_CORRUPT) {
         return;
     }
     MEDIA_INFO_LOG("Restore is called");
-    bool expected = false;
-    CHECK_AND_RETURN_LOG(isRestoring_.compare_exchange_strong(expected, true), "RdbStore is restoring");
+    CHECK_AND_RETURN_LOG((!isRestoring_), "RdbStore is restoring");
 
-    auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    auto rawStore = MediaLibraryRdbStore::GetRaw();
-    if (rdb == nullptr || rawStore == nullptr) {
-        isRestoring_ = false;
-        MEDIA_ERR_LOG("Restore rdbStore is nullptr");
-        return;
-    }
-    DatabaseRecoveryReport report;
-    report.date = DfxUtils::GetCurrentDateMillisecond();
-    std::thread([rdb, rawStore, report]() mutable {
+    std::string date = DfxUtils::GetCurrentDateMillisecond();
+    VariantMap map = {{KEY_DB_CORRUPT, std::move(date)}};
+    PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_CORRUPT_ERR, map);
+
+    isRestoring_ = true;
+    std::thread([] {
         MEDIA_INFO_LOG("MediaLibraryRestore::Restore [start]");
-        MediaLibraryTracer tracer;
-        tracer.Start("MediaLibraryRestore::Restore");
-        MediaLibraryRestore::GetInstance().InterruptBackup();
-        Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("unavailable", "Database corrupted");
-        int32_t errCode = RunDatabaseRecovery(rdb, rawStore, report);
-        if (errCode == NativeRdb::E_OK && MediaLibraryRdbStore::GetRaw() == rawStore) {
-            Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("available", "");
-        } else if (errCode == NativeRdb::E_OK) {
-            MEDIA_INFO_LOG("Recovered store is no longer current; suppress its availability notification");
-        } else if (IsReplicaRecoveryBusy(errCode)) {
-            MEDIA_INFO_LOG("Database restore busy, result=%{public}d", errCode);
-        } else {
-            MEDIA_ERR_LOG("Database restore failed, result=%{public}d", errCode);
+        auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
+        if (rdb == nullptr) {
+            MediaLibraryRestore::GetInstance().isRestoring_ = false;
+            MEDIA_ERR_LOG("Restore rdbStore is nullptr");
+            return;
         }
+
+        int retryTimes = MAX_RETRY_TIMES;
+        int errCode = NativeRdb::E_OK;
+        do {
+            MediaLibraryTracer tracer;
+            tracer.Start("MediaLibraryRestore::Restore");
+            Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("unavailable", "Database corrupted");
+            errCode = rdb->Restore("");
+            MEDIA_INFO_LOG("MediaLibraryRestore::Restore errCode = %{public}d", errCode);
+            if (errCode == NativeRdb::E_SQLITE_BUSY) {
+                retryTimes--;
+                continue;
+            }
+            Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("available", "");
+            break;
+        } while (retryTimes > 0);
         MEDIA_INFO_LOG("MediaLibraryRestore::Restore [end]. errCode = %{public}d", errCode);
         MediaLibraryRestore::GetInstance().isRestoring_ = false;
     }).detach();
@@ -167,6 +116,7 @@ void MediaLibraryRestore::CheckBackup()
 {
     MEDIA_INFO_LOG("CheckBackup is called");
     CHECK_AND_RETURN_LOG((!isRestoring_), "CheckBackup: is restoring, return");
+
     auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
     CHECK_AND_RETURN_LOG((rdb != nullptr), "CheckBackup: rdbStore is nullptr");
     if (!rdb->IsSlaveDiffFromMaster()) {

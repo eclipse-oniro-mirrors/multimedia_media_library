@@ -142,37 +142,6 @@ DATABASE_CORRUPTION_ERROR:
   __BASE: { type: FAULT, level: CRITICAL, desc: The database corruption error }
   DATE: { type: STRING, desc: The database corruption time }
 
-# This existing event is emitted by MediaLibraryMetaRecovery::RecoveryStatistic.
-MEDIALIB_META_RECOVERY_INFO:
-  __BASE: { type: STATISTIC, level: CRITICAL, desc: Media backup and database recovery results, preserve: true }
-  TOTAL_PHOTO_COUNT: { type: INT64, desc: Photo count in periodic statistics }
-  TOTAL_BACKUP_COUNT: { type: INT64, desc: Metadata file count in periodic statistics }
-  BACKUP_PHOTO_COUNT: { type: INT64, desc: Successfully backed up photos }
-  BACKUP_COST_TIME: { type: INT64, desc: Metadata backup duration in milliseconds }
-  REBUILT_COUNT: { type: INT64, desc: Database rebuild count }
-  RECOVERY_BACKUP_TOTAL_COUNT: { type: INT64, desc: Metadata files before full rebuild recovery }
-  RECOVERY_SUCC_PHOTO_COUNT: { type: INT64, desc: Photos recovered after full database rebuild }
-  RECOVERY_COST_TIME: { type: INT64, desc: Full recovery duration in milliseconds }
-  DATE: { type: STRING, desc: First detection time reused for this recovery }
-  RECOVERY_STAGE: { type: INT32, desc: 1 detected 2 ordinary restore 3 diagnosis 4 force restore 5 usable 6 scan }
-  RECOVERY_RESULT: { type: INT32, desc: 0 success 1 waiting 2 paused 3 partial 4 failed 5 rejected }
-  ERROR_CODE: { type: INT32, desc: Original operation error }
-  RESTORE_DECISION: { type: INT32, desc: Media recovery policy decision or -1 when not evaluated }
-  PRIMARY_DB_BYTES: { type: INT64, desc: Diagnosed primary file bytes or -1 when unknown }
-  REPLICA_DB_BYTES: { type: INT64, desc: Diagnosed replica file bytes or -1 when unknown }
-  PRIMARY_PHOTO_COUNT: { type: INT64, desc: Diagnosed Photos count or -1 when unknown }
-  REPLICA_PHOTO_COUNT: { type: INT64, desc: Diagnosed replica Photos count or -1 when unknown }
-  PRIMARY_ALBUM_COUNT: { type: INT64, desc: Diagnosed PhotoAlbum count or -1 when unknown }
-  REPLICA_ALBUM_COUNT: { type: INT64, desc: Diagnosed replica PhotoAlbum count or -1 when unknown }
-  PRIMARY_TIME_MS: { type: INT64, desc: ArkData primary time in milliseconds or -1 when unknown }
-  REPLICA_TIME_MS: { type: INT64, desc: ArkData replica time in milliseconds or -1 when unknown }
-  DURATION_MS: { type: INT64, desc: Background pass duration in milliseconds or -1 when not measured }
-  SCAN_VISITED: { type: INT64, desc: Candidate files visited in this pass }
-  SCAN_REPAIRED: { type: INT64, desc: "Photo record repairs including owner fixes in this pass, not only new rows" }
-  SCAN_FAILED: { type: INT64, desc: "Candidate errors including transient DB errors, may overlap committed repairs" }
-  SCAN_DEFERRED: { type: INT64, desc: "Deferred photo candidates or album evidence items, not a photo count" }
-  ALBUMS_CREATED: { type: INT64, desc: Missing albums actually created in this pass }
-
 MEDIALIB_CLOUDENHANCEMENT_STAT:
   __BASE: {type: STATISTIC, level: CRITICAL, desc: mediaLibrary cloud enhancement task statistics, preserve: true }
   PHOTO_ID: { type: STRING, desc: photo id }
