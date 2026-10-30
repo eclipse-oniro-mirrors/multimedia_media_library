@@ -308,7 +308,7 @@ int32_t MedialibrarySubscriber::RegisterDefaultNetObserver()
     if (CloudMediaAssetUnlimitObserver_ == nullptr) { // 补注册
         CreateOptions options;
         options.enabled_ = true;
-        cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_DATASHARE_URI, options);
+        cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_URI, options);
         if (cloudHelper_ != nullptr) {
             std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
             CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);

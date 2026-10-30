@@ -46,7 +46,7 @@ static std::shared_ptr<DataShare::DataShareHelper> GetCloudHelper(const std::str
 
 bool CloudSyncUtils::IsUnlimitedTrafficStatusOn()
 {
-    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
+    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_DATASHARE_URI);
     if (cloudHelper == nullptr) {
         MEDIA_INFO_LOG("cloudHelper is null");
         return false;
@@ -78,7 +78,7 @@ bool CloudSyncUtils::IsCloudSyncSwitchOn()
     }
     MEDIA_DEBUG_LOG("GetPhotosSyncSwitchStatus fail, continue query old sync switch");
 
-    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
+    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_SYNC_SWITCH_URI);
     CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, false, "cloudHelper is null");
 
     DataShare::DataSharePredicates predicates;
@@ -98,7 +98,7 @@ bool CloudSyncUtils::IsCloudSyncSwitchOn()
 
 bool CloudSyncUtils::IsCloudDataAgingPolicyOn()
 {
-    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
+    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_DATASHARE_URI);
     CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, false, "cloudHelper is null");
     
     DataShare::DataSharePredicates predicates;
@@ -117,7 +117,7 @@ bool CloudSyncUtils::IsCloudDataAgingPolicyOn()
 
 bool CloudSyncUtils::IsSwitchOn(const std::string &bundleName)
 {
-    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
+    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_SYNC_SWITCH_URI);
     CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, false, "cloudHelper is null");
 
     DataShare::DataSharePredicates predicates;

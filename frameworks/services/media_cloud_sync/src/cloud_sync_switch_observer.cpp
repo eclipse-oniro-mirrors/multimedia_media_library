@@ -95,10 +95,6 @@ void CloudSyncSwitchObserver::HandleIndex()
 
 void CloudSyncSwitchManager::RegisterObserver()
 {
-    options.enabled_ = true;
-    auto dataShareHelper = DataShare::DataShareHelper::Creator(QUERY_URI, options);
-    CHECK_AND_RETURN_LOG(dataShareHelper != nullptr, "dataShareHelper is nullptr");
-
     const string photos = "persist.kernel.bundle_name.photos";
     const string clouddrive = "persist.kernel.bundle_name.clouddrive";
     const std::string GALLERY_BUNDLE_NAME = system::GetParameter(photos, "");
@@ -106,6 +102,10 @@ void CloudSyncSwitchManager::RegisterObserver()
     CHECK_AND_RETURN_LOG(GALLERY_BUNDLE_NAME != "", "can't get gallery bundle name");
     CHECK_AND_RETURN_LOG(CLOUDDRIVE_BUNDLE_NAME != "", "can't get clouddrive bundle name");
     std::string queryUri = QUERY_URI + CLOUDDRIVE_BUNDLE_NAME + "/sync_switch?bundleName=" + GALLERY_BUNDLE_NAME;
+
+    options.enabled_ = true;
+    auto dataShareHelper = DataShare::DataShareHelper::Creator(queryUri, options);
+    CHECK_AND_RETURN_LOG(dataShareHelper != nullptr, "dataShareHelper is nullptr");
 
     sptr<CloudSyncSwitchObserver> switchObserver(new (std::nothrow) CloudSyncSwitchObserver());
     CHECK_AND_RETURN(switchObserver != nullptr);
