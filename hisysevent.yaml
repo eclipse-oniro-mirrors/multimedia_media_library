@@ -160,8 +160,8 @@ MEDIALIB_META_RECOVERY_INFO:
   RESTORE_DECISION:
     type: INT32
     desc: >-
-      Window decision: -1 not evaluated; 0 allowed; 1 unavailable; 2 version;
-      3 time; 4 time gap; 5 file; 6 table; 7 row gap; 8 replica newer than primary
+      -1 unchecked; 0 allowed; 1 unavailable; 2 version; 3 time; 4 time gap;
+      5 file; 6 table; 7 row gap; 8 replica newer than primary
   WINDOW_START_MS: { type: INT64, desc: Effective window start after merging }
   WINDOW_END_MS: { type: INT64, desc: Registration attempt time or minus one when not attempted }
   SCAN_JSON_UPDATED: { type: INT64, desc: Existing row updates from JSON across attempts }
