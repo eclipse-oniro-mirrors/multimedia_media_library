@@ -69,6 +69,7 @@ group("media_library_fuzztest") {
     "medialibraryrefresh_fuzzer:MediaLibraryRefreshFuzzTest",
     "medialibraryrefreshmanager_fuzzer:MediaLibraryRefreshManagerFuzzTest",
     "medialibraryrestore_fuzzer:MediaLibraryRestoreFuzzTest",
+    "medialibraryrestore_fuzzer:MediaLibraryRecoveryDecisionFuzzTest",
     "medialibrarythumbnail_fuzzer:MediaLibraryThumbnailFuzzTest",
     "medialibrarythumbnail2_fuzzer:MediaLibraryThumbnail2FuzzTest",
     "medialibrarythumbnail3_fuzzer:MediaLibraryThumbnail3FuzzTest",

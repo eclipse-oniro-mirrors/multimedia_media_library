@@ -27,11 +27,22 @@ ohos_unittest("medialibrary_restore_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_restore_test.cpp",
+    "./src/replica_recovery_policy_test.cpp",
+    "./src/recovery_window_test.cpp",
+    "./src/recovery_event_limiter_test.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/recovery_event_limiter.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/replica_recovery_policy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/recovery_summary.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/recovery_window.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/recovery_bucket_index.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/recovery_json_utils.cpp",
   ]
 
   deps = [
@@ -57,6 +68,7 @@ ohos_unittest("medialibrary_restore_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "json:nlohmann_json_static",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]

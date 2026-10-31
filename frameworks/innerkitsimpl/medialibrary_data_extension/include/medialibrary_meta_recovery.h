@@ -16,6 +16,7 @@
 #define OHOS_MEDIALIBRARY_METARECOVERY_H
 
 #include <map>
+#include <atomic>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <set>
@@ -28,21 +29,25 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
+class IncrementalRecovery;
 
 enum class MediaLibraryMetaRecoveryState : int32_t {
     STATE_NONE = 0,
     STATE_RECOVERING,
     STATE_RECOVERING_ABORT,
-    STATE_BACKING_UP
+    STATE_BACKING_UP,
+    STATE_INCREMENTAL_RECOVERING
 };
 
 class MediaLibraryMetaRecovery {
+    friend class IncrementalRecovery;
 public:
     EXPORT static MediaLibraryMetaRecovery &GetInstance();
     EXPORT static int32_t DeleteMetaDataByPath(const std::string &filePath);
 
     EXPORT void CheckRecoveryState();
     EXPORT void InterruptRecovery();
+    EXPORT void InterruptIncrementalRecovery();
     EXPORT int32_t WriteSingleMetaDataById(int32_t rowId);
     EXPORT int32_t StartAsyncRecovery();
     EXPORT int32_t SetRdbRebuiltStatus(bool status);
@@ -50,18 +55,24 @@ public:
     EXPORT void RecoveryStatistic();
     EXPORT void StatisticSave();
 
+#ifdef MEDIALIB_RECOVERY_UNIT_TEST
+public:
+#else
 private:
+#endif
     MediaLibraryMetaRecovery() = default;
     virtual ~MediaLibraryMetaRecovery() = default;
     EXPORT void StatisticRestore();
     EXPORT void StatisticReset();
     // Backup
     EXPORT void DoBackupMetadata();
+    void RunMetadataBackup();
     void AlbumBackup();
     void PhotoBackupBatch();
     void PhotoBackup(const std::vector<std::shared_ptr<FileAsset>>&, int32_t&, int32_t&);
 
     // Recovery
+    void RunHistoricalRecovery();
     void DoDataBaseRecovery();
     EXPORT int32_t AlbumRecovery(const std::string &path);
     EXPORT int32_t PhotoRecovery(const std::string &path);
@@ -75,13 +86,14 @@ private:
     void AddMetadataToJson(nlohmann::json &j, const FileAsset &fileAsset);
     bool GetMetadataFromJson(const nlohmann::json &j, FileAsset &fileAsset);
     int32_t WriteSingleMetaData(const FileAsset &asset);
+    int32_t WriteSingleMetaDataUnlocked(const FileAsset &asset);
     EXPORT int32_t WritePhotoAlbumToFile(const std::string &filePath,
                                   const std::vector<std::shared_ptr<PhotoAlbum>> &vecPhotoAlbum);
     EXPORT int32_t ReadPhotoAlbumFromFile(const std::string &filePath,
                                    std::vector<std::shared_ptr<PhotoAlbum>> &photoAlbumVector);
     void AddPhotoAlbumToJson(nlohmann::json &j, const PhotoAlbum &photoAlbum);
     bool GetPhotoAlbumFromJson(const nlohmann::json &j, PhotoAlbum &photoAlbum);
-    void LoadAlbumMaps(const std::string &path);
+    int32_t LoadAlbumMaps(const std::string &path, std::set<std::string> *ambiguousPaths = nullptr);
     EXPORT int32_t ReadMetaStatusFromFile(std::set<int32_t> &status);
     EXPORT int32_t WriteMetaStatusToFile(const std::string &keyPath, const int32_t status);
     EXPORT int32_t ReadMetaRecoveryCountFromFile();
@@ -100,9 +112,20 @@ private:
     // RecoveryPhotosTableColumn
     EXPORT ResultSetDataType GetDataType(const std::string &name);
     EXPORT std::unordered_map<std::string, ResultSetDataType> QueryRecoveryPhotosTableColumnInfo();
+    EXPORT void StartIncrementalRecovery();
+    void FinishIncrementalRecovery(int32_t result);
+    int32_t RunIncrementalRecovery(const std::string &directory);
+    bool IsIncrementalRecoveryAllowed() const;
 
+#ifdef MEDIALIB_RECOVERY_UNIT_TEST
+public:
+#else
 private:
+#endif
     std::atomic<MediaLibraryMetaRecoveryState> recoveryState_{MediaLibraryMetaRecoveryState::STATE_NONE};
+    std::atomic<bool> cancelIncremental_{false};
+    std::atomic<bool> interruptedByDatabase_{false};
+    std::atomic<bool> historicalRecoveryPending_{false};
     bool rdbRebuilt_{false};
     std::set<int32_t> metaStatus;
     std::map<int32_t, std::string> oldAlbumIdToLpath;

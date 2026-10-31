@@ -97,6 +97,7 @@ public:
 
     EXPORT virtual void OnReceiveEvent(const EventFwk::CommonEventData &eventData) override;
     EXPORT static bool IsCurrentStatusOn();
+    static void ResumeBackgroundOperation();
     EXPORT static bool IsMainUser();
     EXPORT static bool IsCriticalTypeStatusOn();
     EXPORT static bool IsCharging();
