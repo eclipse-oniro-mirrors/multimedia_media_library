@@ -45,6 +45,7 @@
 #include "preferences_helper.h"
 #include "rdb_predicates.h"
 #include "result_set_utils.h"
+#include "rdb_store.h"
 #include "reverse_clone_resource_inherit_helper.h"
 #include "anco_reverse_clone_adapter.h"
 #include "photo_file_utils.h"
@@ -69,6 +70,9 @@
 #include "analysis_album/analysis_album_refresh_db.h"
 #include "medialibrary_notify.h"
 #include "reverse_clone_reliability_marker.h"
+#include "kvstore_swap_operator.h"
+#include "reverse_clone_kvstore_absorber.h"
+#include "reverse_clone_restore_marker.h"
 #include "photo_count_strategy.h"
 #include "photo_count_context.h"
 #include "shooting_mode_album_clone.h"
@@ -1732,7 +1736,8 @@ bool ReverseCloneRestore::FinalizeDatabaseSwap(const std::string &backupRestoreP
     // 媒体库主进程重新开库
     int32_t REVERSE_OPEN_DATABASE = 2;
     NotifyDbStatusForClone(REVERSE_OPEN_DATABASE);
-    CHECK_AND_PRINT_LOG(ReverseCloneRestoreMarker::Recreate(), "recreate reverse clone restore marker failed");
+    CHECK_AND_PRINT_LOG(ReverseCloneRestoreMarker::Recreate(ReverseCloneMarkerType::RDB),
+        "recreate reverse clone restore marker failed");
     MediaLibraryDataManager::GetInstance()->InitDatabaseACLPermission();
     InsertForAncoProcess();
 
@@ -1840,6 +1845,13 @@ bool ReverseCloneRestore::PrepareForResume()
 
     // 6. 初始化 tableColumnStatusMap_ （新增）
     CheckTableColumnStatus(mediaLibraryRdb_, CLONE_TABLE_LISTS_PHOTO);
+
+    // 设置kvdb是否走了反向吸收流程
+    bool isKvStoreReverse = ReverseCloneRestoreMarker::Exists(ReverseCloneMarkerType::KVDB) &&
+        MediaPureFileUtils::IsFileExists(REVERSE_KVDB_TEMP_DIR);
+    if (isKvStoreReverse) {
+        SetIsKvStoreReverseForResume(true);
+    }
 
     MEDIA_INFO_LOG("PrepareForResume: completed successfully");
     return true;
@@ -3117,7 +3129,40 @@ bool ReverseCloneRestore::SwitchReverseDbAndAssets(const string &backupRestorePa
         FallbackToForwardRestore(backupRestorePath, upgradePath, false);   // 完整回退后回到正向克隆
         return false;
     }
+
+    ExecuteReverseCloneKvStoreSwap(backupRestorePath);
     return true;
+}
+
+void ReverseCloneRestore::ExecuteReverseCloneKvStoreSwap(const std::string &backupRestorePath)
+{
+    MEDIA_INFO_LOG("ReverseCloneRestore: KVDB swap start");
+    ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::KVDB_SWAPPING);
+    CloseAllKvStore();
+    MediaLibraryKvStoreManager::GetInstance().ForceCloseAllKvStore();
+    if (kvdbSwap_.Swap(backupRestorePath)) {
+        isKvStoreReverse_ = true;
+        ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::KVDB_SWAPPED);
+        MEDIA_INFO_LOG("ReverseCloneRestore: KVDB swap success, isKvStoreReverse_=true");
+    } else {
+        isKvStoreReverse_ = false;
+        InitAllKvStore();
+        MEDIA_INFO_LOG("ReverseCloneRestore: KVDB swap failed, kvdb fallback to forward absorption");
+    }
+    MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
+}
+
+void ReverseCloneRestore::ResetThumbnailFlags(const std::shared_ptr<NativeRdb::RdbStore> &rdb)
+{
+    if (rdb == nullptr) {
+        MEDIA_ERR_LOG("ReverseCloneRestore: ResetThumbnailFlags rdb is null");
+        return;
+    }
+    const std::string sql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
+        PhotoColumn::PHOTO_THUMBNAIL_READY + " = 0, " +
+        PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + " = 0";
+    int32_t result = BackupDatabaseUtils::ExecuteSQL(rdb, sql, {});
+    MEDIA_INFO_LOG("ReverseCloneRestore: ResetThumbnailFlags result=%{public}d", result);
 }
 
 int32_t ReverseCloneRestore::RepairFinalAncoAssetsAfterSecondaryMigration()
@@ -3273,14 +3318,72 @@ void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" UpdateTabClonedOldPhotos: ")
         .append(std::to_string(endTime - startTime) + ";");
     startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    resourceInheritHelper_.AppendKvStoreTasks(retainedOldPhotoKvStoreTasks);
-    resourceInheritHelper_.ExecutePendingKvStoreTasks(backupRestorePath);
+    AbsorbNewDeviceKvStore(backupRestorePath, retainedOldPhotoKvStoreTasks);
     endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" AppendKvStore: ")
         .append(std::to_string(endTime - startTime) + ";");
     ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::ANALYSIS_RESTORE);
     RecordAnalysisPhotoResults();
     ReverseRestoreAnalysisData();
+}
+
+void ReverseCloneRestore::AbsorbNewDeviceKvStore(const std::string &backupRestorePath,
+    const std::vector<ReverseCloneKvStoreTask> &retainedOldPhotoKvStoreTasks)
+{
+    if (!isKvStoreReverse_) {
+        // 正向吸收
+        resourceInheritHelper_.AppendKvStoreTasks(retainedOldPhotoKvStoreTasks);
+        resourceInheritHelper_.ExecutePendingKvStoreTasks(backupRestorePath);
+        return;
+    }
+
+    // swap 成功：走 Absorber反向吸收
+    resourceInheritHelper_.ClearPendingKvStoreTasks();
+    MEDIA_INFO_LOG("ReverseCloneRestore: clear pending kvstore tasks, start absorber");
+    ReverseCloneKvStoreAbsorber absorber;
+    ReverseCloneKvStoreAbsorbResult initRet = absorber.Init();
+    if (initRet != ReverseCloneKvStoreAbsorbResult::SUCCESS) {
+        MEDIA_WARN_LOG("ReverseCloneRestore: absorber init failed, result=%{public}d",
+            static_cast<int32_t>(initRet));
+        if (initRet == ReverseCloneKvStoreAbsorbResult::MASTER_CORRUPTED ||
+            initRet == ReverseCloneKvStoreAbsorbResult::BOTH_CORRUPTED) {
+            ResetThumbnailFlags(mediaLibraryRdb_);
+        }
+        if (initRet == ReverseCloneKvStoreAbsorbResult::TEMP_CORRUPTED ||
+            initRet == ReverseCloneKvStoreAbsorbResult::BOTH_CORRUPTED) {
+            ResetThumbnailFlags(mediaRdb_);
+        }
+        // 反向吸收不可用（库损坏），还原新旧库位置，优先保证新机图片正常
+        RestoreKvDbOriginalPositions();
+        return;
+    }
+    std::vector<ReverseCloneResourcePlan> duplicatePlans;
+    {
+        std::lock_guard<std::mutex> lock(allDuplicatePlansMutex_);
+        duplicatePlans = allDuplicatePlans_;
+    }
+    if (!absorber.Absorb(mediaLibraryRdb_, duplicatePlans)) {
+        MEDIA_ERR_LOG("ReverseCloneRestore: absorber Absorb failed");
+        RestoreKvDbOriginalPositions();
+        return;
+    }
+    kvdbSwap_.CleanupTempDir();
+}
+
+void ReverseCloneRestore::RestoreKvDbOriginalPositions()
+{
+    MEDIA_INFO_LOG("ReverseCloneRestore: restore kvdb original positions, isKvStoreReverse_=%{public}d",
+        isKvStoreReverse_);
+    if (!isKvStoreReverse_) {
+        return;
+    }
+    CloseAllKvStore();
+    MediaLibraryKvStoreManager::GetInstance().ForceCloseAllKvStore();
+    kvdbSwap_.RestoreOriginalPositions();
+    isKvStoreReverse_ = false;
+    InitAllKvStore();
+    MediaLibraryKvStoreManager::GetInstance().InitMonthAndYearKvStore(KvStoreRoleType::OWNER);
+    MEDIA_INFO_LOG("ReverseCloneRestore: restore kvdb original positions finished");
 }
 
 void ReverseCloneRestore::CalculateMigrateNumbers(std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore)
@@ -3505,6 +3608,13 @@ void ReverseCloneRestore::FinishReverseRestore()
 void ReverseCloneRestore::SetCloneParameterAndStopSyncForResume()
 {
     SetCloneParameterAndStopSync();
+}
+
+void ReverseCloneRestore::SetIsKvStoreReverseForResume(bool isKvStoreReverse)
+{
+    isKvStoreReverse_ = isKvStoreReverse;
+    MEDIA_INFO_LOG("ReverseCloneRestore: set isKvStoreReverse_ for resume, isKvStoreReverse_=%{public}d",
+        isKvStoreReverse);
 }
 
 void ReverseCloneRestore::StopParametersForResume()
@@ -4386,18 +4496,28 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     migrateDatabaseNumber_ += photoRowNum;
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: committed %{public}ld photos", photoRowNum);
 
+    FinalizeAbsorbedBatch(batch, photoRowNum, duplicateCount, dataConflictFailedFileIds);
+    MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
+}
+
+void ReverseCloneRestore::FinalizeAbsorbedBatch(ReverseClonePhotoBatchContext &batch,
+    int64_t photoRowNum, const AlbumAssetAbsorb::DuplicateCount &duplicateCount,
+    const std::vector<int32_t> &dataConflictFailedFileIds)
+{
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
     resourceInheritHelper_.FinalizeBatch(batch, mediaLibraryRdb_);
     MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveLocalDataConflict");
 
-    // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_, useFullAnalysisRefreshForResume_ ? nullptr : &analysisConflictingDonors_);
     UpdateReverseDupMap(batch.validFileInfos);
-
     InsertMapCodes(photoRowNum, batch.validFileInfos, mediaLibraryRdb_);
-    MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
+    {
+        std::lock_guard<std::mutex> lock(allDuplicatePlansMutex_);
+        allDuplicatePlans_.insert(allDuplicatePlans_.end(),
+            batch.duplicatePlans.begin(), batch.duplicatePlans.end());
+    }
 }
 
 void ReverseCloneRestore::ProcessNewPhotosFailedOffsets(int32_t isRelatedToPhotoMap,

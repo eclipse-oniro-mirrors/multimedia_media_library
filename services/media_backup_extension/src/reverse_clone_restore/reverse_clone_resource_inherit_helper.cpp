@@ -390,6 +390,62 @@ void ReverseCloneResourceInheritHelper::Reset()
         std::lock_guard<std::mutex> lock(kvStoreMutex_);
         pendingKvStoreTasks_.clear();
     }
+    {
+        std::lock_guard<std::mutex> lock(duplicateMutex_);
+        reservedDuplicateDonorFileIds_.clear();
+    }
+}
+
+void ReverseCloneResourceInheritHelper::ReserveDuplicateDonors(ReverseClonePhotoBatchContext &batch)
+{
+    std::lock_guard<std::mutex> lock(duplicateMutex_);
+    std::unordered_set<int32_t> rejectedAbsorbedFileIds;
+    for (const auto &fileInfo : batch.validFileInfos) {
+        CHECK_AND_CONTINUE(fileInfo.deletedSrcdbFileId > 0);
+        auto donorIt = batch.duplicateDonorMap.find(fileInfo.deletedSrcdbFileId);
+        if (donorIt == batch.duplicateDonorMap.end() || donorIt->second != fileInfo.fileIdOld) {
+            rejectedAbsorbedFileIds.emplace(fileInfo.fileIdOld);
+        }
+    }
+    for (const auto &[donorFileId, absorbedFileId] : batch.duplicateDonorMap) {
+        if (reservedDuplicateDonorFileIds_.count(donorFileId) > 0) {
+            rejectedAbsorbedFileIds.emplace(absorbedFileId);
+        }
+    }
+    for (auto &fileInfo : batch.validFileInfos) {
+        if (rejectedAbsorbedFileIds.count(fileInfo.fileIdOld) > 0) {
+            fileInfo.deletedSrcdbFileId = 0;
+        }
+    }
+    for (auto it = batch.duplicateDonorMap.begin(); it != batch.duplicateDonorMap.end();) {
+        if (rejectedAbsorbedFileIds.count(it->second) > 0) {
+            it = batch.duplicateDonorMap.erase(it);
+        } else {
+            reservedDuplicateDonorFileIds_.emplace(it->first);
+            ++it;
+        }
+    }
+    batch.duplicatePlans.erase(std::remove_if(batch.duplicatePlans.begin(), batch.duplicatePlans.end(),
+        [&](const auto &plan) {
+            return rejectedAbsorbedFileIds.count(plan.absorbed.fileId) > 0;
+        }), batch.duplicatePlans.end());
+    MEDIA_INFO_LOG("ReserveDuplicateDonors: donors=%{public}zu, skippedAssets=%{public}zu, "
+        "totalReserved=%{public}zu", batch.duplicateDonorMap.size(), rejectedAbsorbedFileIds.size(),
+        reservedDuplicateDonorFileIds_.size());
+}
+
+void ReverseCloneResourceInheritHelper::ReleaseDuplicateDonorReservations(const ReverseClonePhotoBatchContext &batch)
+{
+    std::lock_guard<std::mutex> lock(duplicateMutex_);
+    int32_t releasedCount = 0;
+    for (const auto &entry : batch.duplicateDonorMap) {
+        releasedCount += reservedDuplicateDonorFileIds_.erase(entry.first);
+    }
+    if (releasedCount == 0) {
+        return;
+    }
+    MEDIA_INFO_LOG("RevRes duplicate donor reservations released=%{public}d, remaining=%{public}zu",
+        releasedCount, reservedDuplicateDonorFileIds_.size());
 }
 
 void ReverseCloneResourceInheritHelper::AddFileIdOffsetRule(int64_t oldMaxFileId, int64_t newMaxFileId)
@@ -594,6 +650,14 @@ void ReverseCloneResourceInheritHelper::AppendKvStoreTasks(const std::vector<Rev
     pendingKvStoreTasks_.insert(pendingKvStoreTasks_.end(), tasks.begin(), tasks.end());
     MEDIA_INFO_LOG("RevRes AppendKvStoreTasks: appended=%{public}zu, pending=%{public}zu",
         tasks.size(), pendingKvStoreTasks_.size());
+}
+
+void ReverseCloneResourceInheritHelper::ClearPendingKvStoreTasks()
+{
+    std::lock_guard<std::mutex> lock(kvStoreMutex_);
+    size_t cleared = pendingKvStoreTasks_.size();
+    pendingKvStoreTasks_.clear();
+    MEDIA_INFO_LOG("RevRes ClearPendingKvStoreTasks: cleared=%{public}zu", cleared);
 }
 
 void ReverseCloneResourceInheritHelper::ExecutePendingKvStoreTasks(const std::string &backupRoot)
@@ -1031,6 +1095,7 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosBatch(ReverseClonePhotoBatch
     const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows)
 {
     if (targetRdb == nullptr) {
+        ReleaseDuplicateDonorReservations(batch);
         MEDIA_ERR_LOG("CommitPhotosBatch: targetRdb is null");
         return false;
     }
@@ -1038,6 +1103,7 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosBatch(ReverseClonePhotoBatch
         QueryDuplicateDonorResources(batch.duplicateDonorMap, targetRdb);
     std::vector<int32_t> deletedDonorFileIds;
     if (!CommitPhotosInTransaction(batch, targetRdb, insertedRows, deletedDonorFileIds)) {
+        ReleaseDuplicateDonorReservations(batch);
         return false;
     }
 

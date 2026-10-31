@@ -31,20 +31,18 @@ constexpr size_t CLOSE_KVSTORE_TIME_INTERVAL = 270000;
 
 class MediaLibraryKvStoreManager {
 public:
-    EXPORT static MediaLibraryKvStoreManager &GetInstance()
-    {
-        static MediaLibraryKvStoreManager instance;
-        return instance;
-    }
+    EXPORT static MediaLibraryKvStoreManager &GetInstance();
 
     EXPORT std::shared_ptr<MediaLibraryKvStore> InitKvStore(const KvStoreRoleType &roleType,
         const KvStoreValueType &valueType);
     EXPORT std::shared_ptr<MediaLibraryKvStore> GetKvStore(
         const KvStoreRoleType &roleType, const KvStoreValueType &valueType);
+    EXPORT void EnsureKvStoreFresh(const KvStoreRoleType &roleType, const KvStoreValueType &valueType);
     EXPORT bool InitMonthAndYearKvStore(const KvStoreRoleType &roleType);
     EXPORT bool CloseKvStore(const KvStoreValueType &valueType);
     EXPORT void CloseAllKvStore();
     EXPORT void TryCloseAllKvStore();
+    EXPORT bool ForceCloseAllKvStore();
     EXPORT bool IsKvStoreValid(const KvStoreValueType &valueType);
     EXPORT int32_t RebuildInvalidKvStore(const KvStoreValueType &valueType);
     EXPORT std::shared_ptr<MediaLibraryKvStore> GetSingleKvStore(const KvStoreRoleType &roleType,
@@ -53,12 +51,15 @@ public:
         const std::string &newKvStoreId, const std::string &newBaseDir);
 
 private:
+    void DoRefreshKvStore(int64_t markerMtimeMs);
     MediaLibraryKvStoreManager() = default;
     ~MediaLibraryKvStoreManager() = default;
 
     SafeMap<KvStoreValueType, KvStoreSharedPtr> kvStoreMap_;
     std::mutex mutex_;
     std::atomic<int64_t> kvStoreEvokedTimeStamp_{0};
+    std::atomic<int64_t> clientOpenKvdbTime_{0};
+    std::mutex kvdbMutex_;
 };
 } // namespace Media
 } // namespace OHOS

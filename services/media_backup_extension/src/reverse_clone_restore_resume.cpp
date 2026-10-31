@@ -17,6 +17,9 @@
 #include "reverse_clone_restore_resume.h"
 #include "reverse_clone_reliability_marker.h"
 #include "reverse_clone_restore.h"
+#include "reverse_clone_restore_marker.h"
+#include "reverse_clone_restore/kvstore_swap_operator.h"
+#include "backup_const.h"
 #include "media_log.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
@@ -211,6 +214,10 @@ static std::string GetResumeStageString(ReverseCloneRestoreStage stage, bool suc
             return "RESUME:ROLLBACK:EARLY_STAGE:" + result;
         case ReverseCloneRestoreStage::DB_SWITCHED:
             return "RESUME:ROLLBACK:DB_SWITCHED:" + result;
+        case ReverseCloneRestoreStage::KVDB_SWAPPING:
+            return "RESUME:ROLLBACK:KVDB_SWAPPING:" + result;
+        case ReverseCloneRestoreStage::KVDB_SWAPPED:
+            return "RESUME:ROLLBACK:KVDB_SWAPPED:" + result;
         case ReverseCloneRestoreStage::ABSORBING_DATA:
             return "RESUME:ABSORBING_DATA:" + result;
         case ReverseCloneRestoreStage::ANALYSIS_RESTORE:
@@ -285,6 +292,8 @@ bool ReverseCloneRestoreResume::DoResume(ReverseCloneRestoreStage stage)
     switch (stage) {
         case ReverseCloneRestoreStage::EARLY_STAGE:
         case ReverseCloneRestoreStage::DB_SWITCHED:
+        case ReverseCloneRestoreStage::KVDB_SWAPPING:
+        case ReverseCloneRestoreStage::KVDB_SWAPPED:
             // 清理临时文件，忽略该次反向克隆，回滚
             return RollbackAndIgnore();
 
@@ -333,6 +342,17 @@ bool ReverseCloneRestoreResume::RollbackAndIgnore()
     if (!reverseRestore->RollbackReverseRestore(isEarlyStage)) {
         MEDIA_ERR_LOG("Rollback reverse restore failed");
         return false;
+    }
+    // KVDB已经发生搬迁则回滚
+    if (currentStage == ReverseCloneRestoreStage::KVDB_SWAPPING ||
+        currentStage == ReverseCloneRestoreStage::KVDB_SWAPPED) {
+        std::string backupRestorePath;
+        if (ReverseCloneReliabilityMarker::GetBackupRestorePath(backupRestorePath)) {
+            KvStoreSwapOperator kvdbSwap;
+            if (!kvdbSwap.RestoreOriginalPositionsForResume(backupRestorePath)) {
+                MEDIA_ERR_LOG("RollbackAndIgnore: restore kvdb original positions failed");
+            }
+        }
     }
     // 删除标记位
     ReverseCloneReliabilityMarker::Delete();

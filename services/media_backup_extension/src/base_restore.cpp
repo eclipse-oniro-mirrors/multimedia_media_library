@@ -2827,6 +2827,15 @@ void BaseRestore::NotifyDbStatusForClone(int32_t reverseCloneStatus)
     MEDIA_INFO_LOG("NotifyDbStatusForClone reverseCloneStatus:%{public}d ret:%{public}d", reverseCloneStatus, result);
 }
 
+void BaseRestore::NotifyKvDbStatusForClone(int32_t reverseCloneStatus)
+{
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::NOTIFY_CLONE_STATUS);
+    CloneStatusNotifyVo reqBody;
+    reqBody.reverseCloneStatus = reverseCloneStatus;
+    int32_t result = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    MEDIA_INFO_LOG("NotifyKvDbStatusForClone reverseCloneStatus:%{public}d ret:%{public}d", reverseCloneStatus, result);
+}
+
 int32_t BaseRestore::GetThumbStatusByExistFlag(bool isLcdExist, bool isThmExist)
 {
     if (isLcdExist && isThmExist) {

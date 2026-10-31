@@ -14,12 +14,21 @@
  */
 
 #include "medialibrary_kvstore_manager.h"
+#include <sys/stat.h>
+
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 
+
 using namespace OHOS::DistributedKv;
 namespace OHOS::Media {
+
+MediaLibraryKvStoreManager &MediaLibraryKvStoreManager::GetInstance()
+{
+    static MediaLibraryKvStoreManager instance;
+    return instance;
+}
 
 std::shared_ptr<MediaLibraryKvStore> MediaLibraryKvStoreManager::InitKvStore(const KvStoreRoleType &roleType,
     const KvStoreValueType &valueType)
@@ -61,6 +70,30 @@ std::shared_ptr<MediaLibraryKvStore> MediaLibraryKvStoreManager::GetKvStore(
     return InitKvStore(roleType, valueType);
 }
 
+void MediaLibraryKvStoreManager::EnsureKvStoreFresh(const KvStoreRoleType &roleType,
+    const KvStoreValueType &valueType)
+{
+    struct stat st;
+    CHECK_AND_RETURN_LOG(stat(KVDB_SWAP_MARKER_FILE.c_str(), &st) == 0, "KVDB swap marker not found");
+    int64_t markerMtimeMs = MediaFileUtils::Timespec2Millisecond(st.st_mtim);
+    if (markerMtimeMs <= clientOpenKvdbTime_.load(std::memory_order_relaxed)) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(kvdbMutex_);
+    if (markerMtimeMs <= clientOpenKvdbTime_.load(std::memory_order_relaxed)) {
+        return;
+    }
+    DoRefreshKvStore(markerMtimeMs);
+}
+
+void MediaLibraryKvStoreManager::DoRefreshKvStore(int64_t markerMtimeMs)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    kvStoreMap_.Clear();
+    clientOpenKvdbTime_.store(markerMtimeMs);
+    MEDIA_INFO_LOG("KVDB refreshed after swap, markerMtimeMs %{public}lld", static_cast<long long>(markerMtimeMs));
+}
+
 void MediaLibraryKvStoreManager::CloseAllKvStore()
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -69,6 +102,25 @@ void MediaLibraryKvStoreManager::CloseAllKvStore()
     }
 
     kvStoreMap_.Clear();
+}
+
+bool MediaLibraryKvStoreManager::ForceCloseAllKvStore()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    bool allClosed = true;
+    kvStoreMap_.Iterate([&allClosed](const KvStoreValueType &key, KvStoreSharedPtr &ptr) {
+        if (ptr != nullptr) {
+            if (ptr->Close()) {
+                MEDIA_INFO_LOG("ForceCloseAllKvStore closed kvstore, type=%{public}d", static_cast<int32_t>(key));
+            } else {
+                MEDIA_ERR_LOG("ForceCloseAllKvStore failed to close kvstore, type=%{public}d",
+                    static_cast<int32_t>(key));
+                allClosed = false;
+            }
+        }
+    });
+    kvStoreMap_.Clear();
+    return allClosed;
 }
 
 void MediaLibraryKvStoreManager::TryCloseAllKvStore()

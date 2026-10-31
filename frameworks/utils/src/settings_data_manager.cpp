@@ -393,6 +393,25 @@ int32_t SettingsDataManager::GetCloseDatabaseStatus(std::string& value)
     return QueryParamInSettingData(CLOSE_DATABASE_KEY, value);
 }
 
+static const std::string CLOSE_KVDB_KEY = "media_reverse_backup_close_kvdb";
+
+int32_t SettingsDataManager::GetKvDbCloseStatus(std::string &value)
+{
+    int32_t ret = QueryParamInSettingData(CLOSE_KVDB_KEY, value);
+    MEDIA_INFO_LOG("GetKvDbCloseStatus ret=%{public}d, value=%{public}s", ret, value.c_str());
+    return ret;
+}
+
+int32_t SettingsDataManager::SetKvDbCloseStatus(const std::string &value)
+{
+    std::string existingValue;
+    int32_t ret = QueryParamInSettingData(CLOSE_KVDB_KEY, existingValue);
+    if (ret == E_OK) {
+        return UpdateParamInSettingData(CLOSE_KVDB_KEY, value);
+    }
+    return InsertParamInSettingData(CLOSE_KVDB_KEY, value);
+}
+
 int32_t SettingsDataManager::CheckAndInitUserSettings()
 {
     std::string configValue;

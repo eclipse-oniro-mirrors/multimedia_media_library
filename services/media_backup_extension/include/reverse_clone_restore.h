@@ -40,6 +40,7 @@
 #include "table_data_adapter.h"
 #include "album_asset_absorb.h"
 #include "reverse_clone_resource_inherit_helper.h"
+#include "reverse_clone_restore/kvstore_swap_operator.h"
 #include "reverse_clone_resource_plan.h"
 #include "db_integrity_checker.h"
 #include "reverse_clone_restore/shooting_mode_album_clone.h"
@@ -105,6 +106,12 @@ public:
      */
     bool InitSourceAndDestRdb(const std::string &newDbPath, const std::string &newDbSourcePath,
                               const std::string &logTag);
+
+    /**
+     * @brief 断点续传时恢复 KVDB 反向恢复状态（isKvStoreReverse_ 是内存态，重启后丢失）
+     * @param isKvStoreReverse 是否已发生 KVDB 倒换走反向恢复
+     */
+    void SetIsKvStoreReverseForResume(bool isKvStoreReverse);
 
     // 资产移动状态结构体（用于断点续传）
     struct AssetMoveState {
@@ -413,6 +420,12 @@ private:
     // destRdb 中的最小 file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
     int32_t minDestDbFileId_;
 
+    // KVDB 反向恢复状态（true=KVDB 已倒换，走 Absorber 反向吸收）
+    bool isKvStoreReverse_ = false;
+    KvStoreSwapOperator kvdbSwap_;
+    std::vector<ReverseCloneResourcePlan> allDuplicatePlans_;
+    std::mutex allDuplicatePlansMutex_;
+
     // 反向恢复状态更新线程
     std::atomic<bool> shouldUpdateReverseRestoreStatus_{false};
     std::thread reverseRestoreStatusUpdateThread_;
@@ -490,6 +503,11 @@ private:
     bool StartIntegrityCheckAsync(const std::string& backupRestorePath, const std::string& upgradePath);
     bool WaitForIntegrityCheck();
     bool SwitchReverseDbAndAssets(const std::string &backupRestorePath, const std::string &upgradePath);
+    void ExecuteReverseCloneKvStoreSwap(const std::string &backupRestorePath);
+    void AbsorbNewDeviceKvStore(const std::string &backupRestorePath,
+        const std::vector<ReverseCloneKvStoreTask> &retainedOldPhotoKvStoreTasks);
+    void RestoreKvDbOriginalPositions();
+    void ResetThumbnailFlags(const std::shared_ptr<NativeRdb::RdbStore> &rdb);
 
     void HandlePrepareFailure(const std::string &backupRestorePath, const std::string &upgradePath,
         std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore);
@@ -547,6 +565,9 @@ private:
     void UpdateSyncStatusForInsertedPhotos(const ReverseClonePhotoBatchContext& batch,
                                            int64_t photoRowNum);
     void CleanSharedAlbumDataFromMainDb();
+    void FinalizeAbsorbedBatch(ReverseClonePhotoBatchContext &batch,
+        int64_t photoRowNum, const AlbumAssetAbsorb::DuplicateCount &duplicateCount,
+        const std::vector<int32_t> &dataConflictFailedFileIds);
 };
 
 } // namespace Media
