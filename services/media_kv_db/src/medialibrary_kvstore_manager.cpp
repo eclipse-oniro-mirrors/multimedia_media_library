@@ -113,7 +113,8 @@ bool MediaLibraryKvStoreManager::ForceCloseAllKvStore()
             if (ptr->Close()) {
                 MEDIA_INFO_LOG("ForceCloseAllKvStore closed kvstore, type=%{public}d", static_cast<int32_t>(key));
             } else {
-                MEDIA_ERR_LOG("ForceCloseAllKvStore failed to close kvstore, type=%{public}d", static_cast<int32_t>(key));
+                MEDIA_ERR_LOG("ForceCloseAllKvStore failed to close kvstore, type=%{public}d",
+                    static_cast<int32_t>(key));
                 allClosed = false;
             }
         }

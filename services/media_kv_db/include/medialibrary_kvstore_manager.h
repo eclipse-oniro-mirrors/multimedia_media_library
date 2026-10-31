@@ -55,7 +55,6 @@ private:
     MediaLibraryKvStoreManager() = default;
     ~MediaLibraryKvStoreManager() = default;
 
-
     SafeMap<KvStoreValueType, KvStoreSharedPtr> kvStoreMap_;
     std::mutex mutex_;
     std::atomic<int64_t> kvStoreEvokedTimeStamp_{0};

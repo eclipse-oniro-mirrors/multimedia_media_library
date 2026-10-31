@@ -565,6 +565,9 @@ private:
     void UpdateSyncStatusForInsertedPhotos(const ReverseClonePhotoBatchContext& batch,
                                            int64_t photoRowNum);
     void CleanSharedAlbumDataFromMainDb();
+    void FinalizeAbsorbedBatch(ReverseClonePhotoBatchContext &batch,
+        int64_t photoRowNum, const AlbumAssetAbsorb::DuplicateCount &duplicateCount,
+        const std::vector<int32_t> &dataConflictFailedFileIds);
 };
 
 } // namespace Media

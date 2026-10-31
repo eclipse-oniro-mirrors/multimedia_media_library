@@ -28,6 +28,7 @@
 #include "medialibrary_kvstore_manager.h"
 #include "result_set_utils.h"
 #include "reverse_clone_restore/reverse_clone_resource_plan.h"
+#include "values_bucket.h"
 
 namespace OHOS {
 namespace Media {
@@ -47,29 +48,29 @@ ReverseCloneKvStoreAbsorbResult ReverseCloneKvStoreAbsorber::Init()
     monthStores_.master = MediaLibraryKvStoreManager::GetInstance().GetSingleKvStore(
         KvStoreRoleType::OWNER, MEDIA_KVSTORE_MONTH_STOREID, masterBaseDir_);
     if (monthStores_.master == nullptr) {
-        MEDIA_ERR_LOG("Absorber: month master kvstore init failed");
-    }
-    monthStores_.temp = MediaLibraryKvStoreManager::GetInstance().GetSingleKvStore(
-        KvStoreRoleType::OWNER, CLONE_KVSTORE_MONTH_STOREID, tempBaseDir_);
-    if (monthStores_.temp == nullptr) {
-        MEDIA_ERR_LOG("Absorber: month temp kvstore init failed");
+        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: month master kvstore init failed");
     }
     yearStores_.master = MediaLibraryKvStoreManager::GetInstance().GetSingleKvStore(
         KvStoreRoleType::OWNER, MEDIA_KVSTORE_YEAR_STOREID, masterBaseDir_);
     if (yearStores_.master == nullptr) {
-        MEDIA_ERR_LOG("Absorber: year master kvstore init failed");
+        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: year master kvstore init failed");
+    }
+    monthStores_.temp = MediaLibraryKvStoreManager::GetInstance().GetSingleKvStore(
+        KvStoreRoleType::OWNER, CLONE_KVSTORE_MONTH_STOREID, tempBaseDir_);
+    if (monthStores_.temp == nullptr) {
+        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: month temp kvstore init failed");
     }
     yearStores_.temp = MediaLibraryKvStoreManager::GetInstance().GetSingleKvStore(
         KvStoreRoleType::OWNER, CLONE_KVSTORE_YEAR_STOREID, tempBaseDir_);
     if (yearStores_.temp == nullptr) {
-        MEDIA_ERR_LOG("Absorber: year temp kvstore init failed");
+        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: year temp kvstore init failed");
     }
 
     bool masterCorrupted = monthStores_.master == nullptr || yearStores_.master == nullptr;
     bool tempCorrupted = monthStores_.temp == nullptr || yearStores_.temp == nullptr;
 
     if (!masterCorrupted && !tempCorrupted) {
-        MEDIA_INFO_LOG("Absorber: init success, tempBaseDir=%{public}s",
+        MEDIA_INFO_LOG("ReverseCloneKvStoreAbsorber: init success, tempBaseDir=%{public}s",
             MediaPathUtils::DesensitizePath(tempBaseDir_).c_str());
         return ReverseCloneKvStoreAbsorbResult::SUCCESS;
     }
@@ -85,7 +86,7 @@ ReverseCloneKvStoreAbsorbResult ReverseCloneKvStoreAbsorber::Init()
         return ReverseCloneKvStoreAbsorbResult::BOTH_CORRUPTED;
     }
     return masterCorrupted ? ReverseCloneKvStoreAbsorbResult::MASTER_CORRUPTED
-                           : ReverseCloneKvStoreAbsorbResult::TEMP_CORRUPTED;
+                            : ReverseCloneKvStoreAbsorbResult::TEMP_CORRUPTED;
 }
 
 void ReverseCloneKvStoreAbsorber::DeleteCorruptedStore(const std::string &storeId, const std::string &baseDir)
@@ -130,7 +131,7 @@ int32_t &GetStoreCounter(const char *name, AbsorbCopyStatus status, ReverseClone
         { &ReverseCloneKvStoreAbsorbStats::copiedMonth, &ReverseCloneKvStoreAbsorbStats::copiedYear },
         { &ReverseCloneKvStoreAbsorbStats::keptMonth, &ReverseCloneKvStoreAbsorbStats::keptYear },
         { &ReverseCloneKvStoreAbsorbStats::missingMonth, &ReverseCloneKvStoreAbsorbStats::missingYear },
-        { &ReverseCloneKvStoreAbsorbStats::failedMonth, &ReverseCloneKvStoreAbsorbStats::failedYear }
+        { &ReverseCloneKvStoreAbsorbStats::failedMonth, &ReverseCloneKvStoreAbsorbStats::failedYear },
     }};
     return stats.*(counters[static_cast<size_t>(status)][isMonth ? 0 : 1]);
 }
@@ -147,7 +148,6 @@ void LogAbsorbStats(const ReverseCloneKvStoreAbsorbStats &stats)
         stats.copyStoreSuccess, stats.copyStoreFailed);
 }
 } // namespace
-
 
 void ReverseCloneKvStoreAbsorber::AbsorbRetainedPhoto(int32_t currentFileId, int32_t originalFileId,
     int64_t dateTaken, ReverseCloneKvStoreAbsorbStats &stats,
@@ -327,7 +327,6 @@ int32_t ReverseCloneKvStoreAbsorber::CopyAllFromTempToMaster(ReverseCloneKvStore
     return stats.copyStoreFailed == 0 ? E_OK : E_FAIL;
 }
 
-
 bool ReverseCloneKvStoreAbsorber::Absorb(
     const std::shared_ptr<NativeRdb::RdbStore> &destRdb,
     const std::vector<ReverseCloneResourcePlan> &duplicatePlans)
@@ -342,13 +341,13 @@ bool ReverseCloneKvStoreAbsorber::Absorb(
     }
     ret = AbsorbDuplicatePhotos(duplicatePlans, stats);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: Absorb failed at AbsorbDuplicatePhotos, ret=%{public}d", ret);
+        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: AbsorbDuplicatePhotos failed, ret=%{public}d", ret);
         Close();
         return false;
     }
     ret = CopyAllFromTempToMaster(stats);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: Absorb failed at CopyAllFromTempToMaster, ret=%{public}d", ret);
+        MEDIA_ERR_LOG("ReverseCloneKvStoreAbsorber: CopyAllFromTempToMaster failed, ret=%{public}d", ret);
         Close();
         return false;
     }

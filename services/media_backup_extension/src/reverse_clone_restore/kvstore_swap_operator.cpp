@@ -15,11 +15,8 @@
 
 #include "reverse_clone_restore/kvstore_swap_operator.h"
 
-#include "clone_restore.h"
-
 #include <chrono>
 #include <thread>
-#include <fstream>
 
 #include "backup_const.h"
 #include "base_restore.h"
@@ -91,9 +88,9 @@ bool KvStoreSwapOperator::InitBaseDirs(const std::string &backupRestorePath)
     newBaseDir_ = MEDIA_KVDB_DIR + "/kvdb";
     tempBaseDir_ = REVERSE_KVDB_TEMP_DIR + "/kvdb";
     MEDIA_INFO_LOG("InitBaseDirs old=%{public}s, new=%{public}s, temp=%{public}s",
-        MediaFileUtils::DesensitizePath(oldBaseDir_).c_str(),
-        MediaFileUtils::DesensitizePath(newBaseDir_).c_str(),
-        MediaFileUtils::DesensitizePath(tempBaseDir_).c_str());
+        MediaPathUtils::DesensitizePath(oldBaseDir_).c_str(),
+        MediaPathUtils::DesensitizePath(newBaseDir_).c_str(),
+        MediaPathUtils::DesensitizePath(tempBaseDir_).c_str());
     return true;
 }
 
@@ -186,9 +183,9 @@ bool KvStoreSwapOperator::RenameNewKvDbToTemp()
         MEDIA_WARN_LOG("DeleteDir tempBaseDir failed or not exist, continue");
     }
 
-    if (!MediaFileUtils::CreateDirectory(tempBaseDir_)) {
+    if (!MediaPureFileUtils::CreateDirectory(tempBaseDir_)) {
         MEDIA_ERR_LOG("Failed to create tempBaseDir_: %{public}s",
-            MediaFileUtils::DesensitizePath(tempBaseDir_).c_str());
+            MediaPathUtils::DesensitizePath(tempBaseDir_).c_str());
         return false;
     }
     for (const auto &pair : hashPairs_) {
@@ -211,9 +208,8 @@ bool KvStoreSwapOperator::MoveOldKvDbToMaster()
         std::string srcSingleVer = oldBaseDir_ + "/" + pair.oldHash + "/single_ver";
         std::string dstSingleVer = newBaseDir_ + "/" + pair.newHash + "/single_ver";
         if (!MoveKvDbDirectory(srcSingleVer, dstSingleVer)) {
-            MEDIA_ERR_LOG("MoveOldKvDbToMaster move kvdb directory failed, src=%{public}s, dst=%{public}s",
-                MediaFileUtils::DesensitizePath(srcSingleVer).c_str(),
-                MediaFileUtils::DesensitizePath(dstSingleVer).c_str());
+            MEDIA_ERR_LOG("MoveOldKvDbToMaster failed for pair (old=%{public}s, new=%{public}s)",
+                pair.oldHash.c_str(), pair.newHash.c_str());
             return false;
         }
     }
@@ -246,18 +242,18 @@ bool KvStoreSwapOperator::RestoreKvDbFromTempToMaster()
 bool KvStoreSwapOperator::MoveKvDbDirectory(const std::string &srcPath, const std::string &dstPath)
 {
     MEDIA_INFO_LOG("MoveKvDbDirectory: %{public}s -> %{public}s",
-        MediaFileUtils::DesensitizePath(srcPath).c_str(),
-        MediaFileUtils::DesensitizePath(dstPath).c_str());
+        MediaPathUtils::DesensitizePath(srcPath).c_str(),
+        MediaPathUtils::DesensitizePath(dstPath).c_str());
     if (!MediaPureFileUtils::IsFileExists(srcPath)) {
         MEDIA_ERR_LOG("MoveKvDbDirectory src not exist, src=%{public}s",
-            MediaFileUtils::DesensitizePath(srcPath).c_str());
+            MediaPathUtils::DesensitizePath(srcPath).c_str());
         return false;
     }
     size_t lastSlash = dstPath.find_last_of('/');
     std::string dstParentDir = (lastSlash != std::string::npos) ? dstPath.substr(0, lastSlash) : "";
-    if (!dstParentDir.empty() && !MediaFileUtils::CreateDirectory(dstParentDir)) {
+    if (!dstParentDir.empty() && !MediaPureFileUtils::CreateDirectory(dstParentDir)) {
         MEDIA_ERR_LOG("MoveKvDbDirectory: failed to create destination parent dir: %{public}s",
-            MediaFileUtils::DesensitizePath(dstParentDir).c_str());
+            MediaPathUtils::DesensitizePath(dstParentDir).c_str());
         return false;
     }
 
@@ -268,7 +264,7 @@ bool KvStoreSwapOperator::MoveKvDbDirectory(const std::string &srcPath, const st
     if (MediaPureFileUtils::IsFileExists(dstPath)) {
         if (!MediaFileUtils::DeleteFileOrFolder(dstPath, false)) {
             MEDIA_ERR_LOG("MoveKvDbDirectory delete existing dst failed, dst=%{public}s",
-                MediaFileUtils::DesensitizePath(dstPath).c_str());
+                MediaPathUtils::DesensitizePath(dstPath).c_str());
             return false;
         }
     }
@@ -278,7 +274,7 @@ bool KvStoreSwapOperator::MoveKvDbDirectory(const std::string &srcPath, const st
     }
     if (!MediaFileUtils::DeleteFileOrFolder(srcPath, false)) {
         MEDIA_ERR_LOG("MoveKvDbDirectory delete src after copy failed, src=%{public}s",
-            MediaFileUtils::DesensitizePath(srcPath).c_str());
+            MediaPathUtils::DesensitizePath(srcPath).c_str());
         return false;
     }
     return true;
@@ -317,7 +313,7 @@ bool KvStoreSwapOperator::WriteSwapTimestamp()
 bool KvStoreSwapOperator::Swap(const std::string &backupRestorePath)
 {
     MEDIA_INFO_LOG("KvStoreSwapOperator Swap start, backupRestorePath: %{public}s",
-        MediaFileUtils::DesensitizePath(backupRestorePath).c_str());
+        MediaPathUtils::DesensitizePath(backupRestorePath).c_str());
 
     InitBaseDirs(backupRestorePath);
 
@@ -360,7 +356,6 @@ bool KvStoreSwapOperator::RestoreOriginalPositions()
     if (!NotifyMainProcessReopen()) {
         MEDIA_WARN_LOG("KvStoreSwapOperator::RestoreOriginalPositions NotifyMainProcessReopen failed");
     }
-    // 目录已动，通知主进程重开句柄；失败仅告警（主进程下次打开时自然恢复）
     CleanupTempDir();
     MEDIA_INFO_LOG("KvStoreSwapOperator::RestoreOriginalPositions finished, ret=%{public}d", ret);
     return ret;
@@ -406,6 +401,7 @@ bool KvStoreSwapOperator::RestoreOriginalPositionsForResume(const std::string &b
             if (!MoveKvDbDirectory(masterPath, oldPath)) {
                 MEDIA_ERR_LOG("RestoreOriginalPositionsForResume: move master to old failed");
                 ret = false;
+                continue;
             }
             if (!MoveKvDbDirectory(tempPath, masterPath)) {
                 MEDIA_ERR_LOG("RestoreOriginalPositionsForResume: move temp to master failed");
@@ -441,13 +437,14 @@ bool KvStoreSwapOperator::Rollback()
         case KvStoreSwapStep::RENAME_NEW_TO_TEMP:
             RestoreKvDbFromTempToMaster();
             break;
+        case KvStoreSwapStep::WRITE_MARKER:
         case KvStoreSwapStep::NONE:
             RestoreKvDbToInitialPosition();
             break;
         default:
             break;
     }
-    if (static_cast<int>(failedStep_) >= static_cast<int>(KvStoreSwapStep::NOTIFY_MAIN_CLOSE)) {
+    if (static_cast<int32_t>(failedStep_) >= static_cast<int32_t>(KvStoreSwapStep::NOTIFY_MAIN_CLOSE)) {
         NotifyMainProcessReopen();
     }
     CleanupTempDir();

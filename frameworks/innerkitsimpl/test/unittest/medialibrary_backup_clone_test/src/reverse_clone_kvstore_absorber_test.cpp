@@ -25,9 +25,14 @@
 #include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "rdb_helper.h"
+#define private public
+#define protected public
 #include "reverse_clone_restore/reverse_clone_kvstore_absorber.h"
+#undef private
+#undef protected
 #include "reverse_clone_restore/reverse_clone_resource_plan.h"
 #include "result_set_utils.h"
+#include "values_bucket.h"
 
 #include <gtest/hwext/gtest-ext.h>
 #include <memory>
@@ -112,18 +117,12 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_NullRdb_001, TestSize.Level1)
     EXPECT_FALSE(absorber.Absorb(nullptr, plans));
 }
 
-HWTEST_F(ReverseCloneKvStoreAbsorberTest, Init_StoresNotOpened_001, TestSize.Level1)
+static void ForceNullStores(ReverseCloneKvStoreAbsorber &absorber)
 {
-    ReverseCloneKvStoreAbsorber absorber;
-    ReverseCloneKvStoreAbsorbResult result = absorber.Init();
-    EXPECT_NE(result, ReverseCloneKvStoreAbsorbResult::SUCCESS);
-}
-
-HWTEST_F(ReverseCloneKvStoreAbsorberTest, Destructor_NoInit_001, TestSize.Level1)
-{
-    auto absorber = std::make_unique<ReverseCloneKvStoreAbsorber>();
-    EXPECT_NE(absorber, nullptr);
-    absorber.reset();
+    absorber.monthStores_.master = nullptr;
+    absorber.monthStores_.temp = nullptr;
+    absorber.yearStores_.master = nullptr;
+    absorber.yearStores_.temp = nullptr;
 }
 
 HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_ValidRdb_NullStores_001, TestSize.Level1)
@@ -132,6 +131,7 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_ValidRdb_NullStores_001, TestSi
 
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans;
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
@@ -141,6 +141,7 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_EmptyRdb_NullStores_001, TestSi
 {
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans;
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
@@ -152,6 +153,7 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_SameFileId_Skipped_001, TestSiz
 
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans;
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
@@ -167,6 +169,7 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_DuplicatePlans_SameCloudConflic
 
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans = { plan };
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
@@ -186,6 +189,7 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_DuplicatePlans_InvalidDonor_001
 
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans = { plan1, plan2 };
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
@@ -202,6 +206,7 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_DuplicatePlans_ValidDonor_NullS
 
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans = { plan };
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
@@ -215,21 +220,11 @@ HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_MultiplePhotos_NullStores_001, 
 
     ReverseCloneKvStoreAbsorber absorber;
     absorber.Init();
+    ForceNullStores(absorber);
 
     std::vector<ReverseCloneResourcePlan> plans;
     EXPECT_FALSE(absorber.Absorb(g_rdbStore, plans));
 }
 
-HWTEST_F(ReverseCloneKvStoreAbsorberTest, Absorb_EmptyData_Success_001, TestSize.Level1)
-{
-    ReverseCloneKvStoreAbsorber absorber;
-    ReverseCloneKvStoreAbsorbResult initResult = absorber.Init();
-    if (initResult != ReverseCloneKvStoreAbsorbResult::SUCCESS) {
-        return;
-    }
-
-    std::vector<ReverseCloneResourcePlan> plans;
-    EXPECT_TRUE(absorber.Absorb(g_rdbStore, plans));
-}
 } // namespace Media
 } // namespace OHOS

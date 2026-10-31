@@ -4496,23 +4496,28 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     migrateDatabaseNumber_ += photoRowNum;
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: committed %{public}ld photos", photoRowNum);
 
+    FinalizeAbsorbedBatch(batch, photoRowNum, duplicateCount, dataConflictFailedFileIds);
+    MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
+}
+
+void ReverseCloneRestore::FinalizeAbsorbedBatch(ReverseClonePhotoBatchContext &batch,
+    int64_t photoRowNum, const AlbumAssetAbsorb::DuplicateCount &duplicateCount,
+    const std::vector<int32_t> &dataConflictFailedFileIds)
+{
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
     resourceInheritHelper_.FinalizeBatch(batch, mediaLibraryRdb_);
     MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveLocalDataConflict");
 
-    // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_, useFullAnalysisRefreshForResume_ ? nullptr : &analysisConflictingDonors_);
     UpdateReverseDupMap(batch.validFileInfos);
-
     InsertMapCodes(photoRowNum, batch.validFileInfos, mediaLibraryRdb_);
     {
         std::lock_guard<std::mutex> lock(allDuplicatePlansMutex_);
         allDuplicatePlans_.insert(allDuplicatePlans_.end(),
             batch.duplicatePlans.begin(), batch.duplicatePlans.end());
     }
-    MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
 }
 
 void ReverseCloneRestore::ProcessNewPhotosFailedOffsets(int32_t isRelatedToPhotoMap,
