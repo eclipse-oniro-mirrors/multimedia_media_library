@@ -331,6 +331,38 @@ public:
     int32_t result = E_ERR;
 };
 
+bool SkipNonJsonEntry(fs::recursive_directory_iterator &entry)
+{
+    if (entry.depth() == 0) {
+        return false;
+    }
+    if (IsRecoveryBucketMarker(entry->path().filename().string())) {
+        entry.disable_recursion_pending();
+        return true;
+    }
+    if (entry->path().extension() == ".json") {
+        return false;
+    }
+    std::error_code error;
+    return !entry->is_directory(error) && !error;
+}
+
+bool SkipCompletedBucket(fs::recursive_directory_iterator &entry, bool jsonPass, const struct stat &info,
+    const DatabaseRecoveryReport *report)
+{
+    if (entry.depth() != 0 || !S_ISDIR(info.st_mode) || report == nullptr) {
+        return false;
+    }
+    const auto &finished = jsonPass ? report->jsonBucketsDone : report->fileBucketsDone;
+    if (finished.count(entry->path().filename().string()) == 0) {
+        return false;
+    }
+    MEDIA_INFO_LOG("Recovery bucket already completed, phase=%{public}s bucket=%{public}s",
+        jsonPass ? "json" : "file", GetLogBucketName(entry->path().string()).c_str());
+    entry.disable_recursion_pending();
+    return true;
+}
+
 } // namespace
 
 class IncrementalRecovery {
@@ -750,7 +782,6 @@ int32_t IncrementalRecovery::ScanOriginal(const std::string &path, const PhotoRe
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
     IncrementCount(report_->fileScanned);
     if (!row.exists) {
-
         IncrementCount(report_->fileInserted);
     }
     return E_OK;
@@ -905,15 +936,8 @@ int32_t IncrementalRecovery::ProcessDirectoryEntry(fs::recursive_directory_itera
     const RecoveryWindow &window, BucketScanState &bucket)
 {
     const std::string path = entry->path().string();
-    if (jsonPass && entry.depth() > 0 && IsRecoveryBucketMarker(entry->path().filename().string())) {
-        entry.disable_recursion_pending();
+    if (jsonPass && SkipNonJsonEntry(entry)) {
         return E_OK;
-    }
-    if (jsonPass && entry.depth() > 0 && entry->path().extension() != ".json") {
-        std::error_code error;
-        if (!entry->is_directory(error) && !error) {
-            return E_OK;
-        }
     }
     if (entry.depth() == 0) {
         FinishBucket(bucket);
@@ -924,14 +948,8 @@ int32_t IncrementalRecovery::ProcessDirectoryEntry(fs::recursive_directory_itera
         entry.disable_recursion_pending();
         return E_OK;
     }
-    if (entry.depth() == 0 && S_ISDIR(info.st_mode) && report_ != nullptr) {
-        const auto &finished = jsonPass ? report_->jsonBucketsDone : report_->fileBucketsDone;
-        if (finished.count(entry->path().filename().string()) != 0) {
-            MEDIA_INFO_LOG("Recovery bucket already completed, phase=%{public}s bucket=%{public}s",
-                jsonPass ? "json" : "file", GetLogBucketName(path).c_str());
-            entry.disable_recursion_pending();
-            return E_OK;
-        }
+    if (SkipCompletedBucket(entry, jsonPass, info, report_)) {
+        return E_OK;
     }
     if (jsonPass && IndexJsonEntry(entry, info, window, bucket)) {
         return E_OK;

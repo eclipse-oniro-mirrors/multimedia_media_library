@@ -31,6 +31,10 @@ namespace {
 constexpr int64_t MS_PER_SECOND = 1000;
 constexpr int64_t NS_PER_MS = 1000000;
 constexpr int64_t NS_PER_SECOND = 1000000000;
+constexpr char INDEX_SUFFIX[] = ".idx";
+constexpr char JSON_SUFFIX[] = ".json";
+constexpr size_t INDEX_SUFFIX_SIZE = sizeof(INDEX_SUFFIX) - 1;
+constexpr size_t JSON_SUFFIX_SIZE = sizeof(JSON_SUFFIX) - 1;
 std::mutex g_mutex;
 // Cache only the current marker name; the marker file remains the source of truth.
 std::unordered_map<std::string, std::string> g_markers;
@@ -199,13 +203,15 @@ bool ParseRecoveryBucketMarker(const std::string &name, int64_t &mtimeMs, std::s
     char *end = nullptr;
     const long long parsed = strtoll(time.c_str(), &end, 10);
     jsonName = value.substr(separator + 1);
-    if (jsonName.size() < 4 || jsonName.compare(jsonName.size() - 4, 4, ".idx") != 0) {
+    if (jsonName.size() < INDEX_SUFFIX_SIZE ||
+        jsonName.compare(jsonName.size() - INDEX_SUFFIX_SIZE, INDEX_SUFFIX_SIZE, INDEX_SUFFIX) != 0) {
         return false;
     }
-    jsonName.resize(jsonName.size() - 4);
+    jsonName.resize(jsonName.size() - INDEX_SUFFIX_SIZE);
     if (errno != 0 || end == nullptr || *end != '\0' || parsed < 0 || jsonName.find('/') != std::string::npos ||
-        jsonName == "." || jsonName == ".." || jsonName.size() < 5 ||
-        jsonName.compare(jsonName.size() - 5, 5, ".json") != 0 || IsRecoveryBucketMarker(jsonName)) {
+        jsonName == "." || jsonName == ".." || jsonName.size() < JSON_SUFFIX_SIZE ||
+        jsonName.compare(jsonName.size() - JSON_SUFFIX_SIZE, JSON_SUFFIX_SIZE, JSON_SUFFIX) != 0 ||
+        IsRecoveryBucketMarker(jsonName)) {
         return false;
     }
     mtimeMs = static_cast<int64_t>(parsed);

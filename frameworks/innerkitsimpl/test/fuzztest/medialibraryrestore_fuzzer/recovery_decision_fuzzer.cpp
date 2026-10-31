@@ -190,7 +190,7 @@ void FuzzBucketProgress(FuzzedDataProvider &input)
     std::string bucket;
     const size_t count = input.ConsumeIntegralInRange<size_t>(0, 32);
     for (size_t i = 0; i < count; ++i) {
-        bucket.push_back(static_cast<char>('a' + input.ConsumeIntegralInRange<int>(0, 25)));
+        bucket.push_back(static_cast<char>('a' + input.ConsumeIntegralInRange<int>(0, 'z' - 'a')));
     }
     summary["json_buckets_done"] = nlohmann::json::array({bucket});
     summary["file_buckets_done"] = nlohmann::json::array({bucket});

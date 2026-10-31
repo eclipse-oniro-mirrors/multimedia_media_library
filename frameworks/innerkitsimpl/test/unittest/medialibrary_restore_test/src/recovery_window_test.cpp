@@ -40,6 +40,11 @@ constexpr int64_t TEST_WINDOW_END = 300;
 constexpr int64_t TEST_WINDOW_EARLIER = 99;
 constexpr int64_t TEST_WINDOW_LATER = 400;
 constexpr int64_t TEST_PENDING_MAX_AGE = 72LL * 60 * 60 * 1000;
+constexpr int32_t TEST_SCAN_ATTEMPTS = 2;
+constexpr int64_t TEST_SCAN_MS = 130;
+constexpr int32_t TEST_JSON_UPDATED = 17;
+constexpr int32_t TEST_JSON_INSERTED = 4;
+constexpr int32_t TEST_FAILURES = 1;
 
 std::string CreateRecoveryTestDirectory()
 {
@@ -49,6 +54,30 @@ std::string CreateRecoveryTestDirectory()
     char directory[] = "/data/test/media_library_restore/window_XXXXXX";
     const char *path = mkdtemp(directory);
     return path == nullptr ? std::string() : std::string(path);
+}
+
+void ExpectRestoredSummary(const DatabaseRecoveryReport &restored, const DatabaseRecoveryReport &report)
+{
+    EXPECT_EQ(restored.stage, report.stage);
+    EXPECT_EQ(restored.result, report.result);
+    EXPECT_FALSE(restored.waitForRestore);
+    EXPECT_EQ(restored.scanAttempts, TEST_SCAN_ATTEMPTS);
+    EXPECT_EQ(restored.failed, TEST_FAILURES);
+    EXPECT_EQ(restored.scanMs, TEST_SCAN_MS);
+    EXPECT_EQ(restored.jsonUpdated, TEST_JSON_UPDATED);
+    EXPECT_EQ(restored.jsonInserted, TEST_JSON_INSERTED);
+    EXPECT_EQ(restored.lastScanError, E_ERR);
+    EXPECT_EQ(restored.failed, TEST_FAILURES);
+    EXPECT_EQ(restored.jsonBucketsDone, report.jsonBucketsDone);
+    EXPECT_EQ(restored.fileBucketsDone, report.fileBucketsDone);
+}
+
+void ExpectUnrelatedSummaryMissing(const std::string &directory)
+{
+    DatabaseRecoveryReport unrelated;
+    EXPECT_EQ(LoadRecoverySummary(directory + "/recovery_task_99_200", unrelated), ENOENT);
+    EXPECT_TRUE(unrelated.jsonBucketsDone.empty());
+    EXPECT_TRUE(unrelated.fileBucketsDone.empty());
 }
 }
 
@@ -576,11 +605,11 @@ HWTEST_F(RecoveryWindowTest, RecoverySummaryPersistsAndProgressResets, TestSize.
     report.result = DatabaseRecoveryResult::PAUSED;
     report.waitForRestore = false;
     report.windowEnd = 200;
-    report.scanAttempts = 2;
-    report.scanMs = 130;
-    report.jsonUpdated = 17;
-    report.jsonInserted = 4;
-    report.failed = 1;
+    report.scanAttempts = TEST_SCAN_ATTEMPTS;
+    report.scanMs = TEST_SCAN_MS;
+    report.jsonUpdated = TEST_JSON_UPDATED;
+    report.jsonInserted = TEST_JSON_INSERTED;
+    report.failed = TEST_FAILURES;
     report.lastScanError = E_ERR;
     report.jsonBucketsDone = {"1", "2"};
     report.fileBucketsDone = {"1"};
@@ -590,22 +619,8 @@ HWTEST_F(RecoveryWindowTest, RecoverySummaryPersistsAndProgressResets, TestSize.
     EXPECT_EQ(restored.date, report.date);
     EXPECT_EQ(restored.windowStart, 100);
     EXPECT_EQ(restored.windowEnd, 200);
-    DatabaseRecoveryReport unrelated;
-    EXPECT_EQ(LoadRecoverySummary(std::string(tempDir) + "/recovery_task_99_200", unrelated), ENOENT);
-    EXPECT_TRUE(unrelated.jsonBucketsDone.empty());
-    EXPECT_TRUE(unrelated.fileBucketsDone.empty());
-    EXPECT_EQ(restored.stage, report.stage);
-    EXPECT_EQ(restored.result, report.result);
-    EXPECT_FALSE(restored.waitForRestore);
-    EXPECT_EQ(restored.scanAttempts, 2);
-    EXPECT_EQ(restored.failed, 1);
-    EXPECT_EQ(restored.scanMs, 130);
-    EXPECT_EQ(restored.jsonUpdated, 17);
-    EXPECT_EQ(restored.jsonInserted, 4);
-    EXPECT_EQ(restored.lastScanError, E_ERR);
-    EXPECT_EQ(restored.failed, 1);
-    EXPECT_EQ(restored.jsonBucketsDone, report.jsonBucketsDone);
-    EXPECT_EQ(restored.fileBucketsDone, report.fileBucketsDone);
+    ExpectUnrelatedSummaryMissing(tempDir);
+    ExpectRestoredSummary(restored, report);
     int updated = 0;
     EXPECT_EQ(PrepareRecoveryWindowsAfterRestore(tempDir, updated), 0);
     EXPECT_EQ(updated, 1);

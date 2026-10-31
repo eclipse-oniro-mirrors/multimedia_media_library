@@ -79,8 +79,8 @@ namespace {
 
 static void SetStartupParam()
 {
-    static constexpr uint32_t BASE_USER_RANGE = 200000; // for get uid
-    uid_t uid = getuid() / BASE_USER_RANGE;
+    static constexpr uint32_t baseUserRange = 200000; // for get uid
+    uid_t uid = getuid() / baseUserRange;
     const string key = "multimedia.medialibrary.startup." + to_string(uid);
     string value = "true";
     int ret = system::SetParameter(key.c_str(), value.c_str());
@@ -317,6 +317,18 @@ void MediaLibraryMetaRecovery::InterruptRecovery()
     }
 }
 
+static void ReadLegacyAlbumMappings(const shared_ptr<NativeRdb::ResultSet> &resultSet,
+    std::map<std::string, int32_t> &mappings)
+{
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        string lPath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
+        mappings[lPath] = albumId;
+        MEDIA_INFO_LOG("lpathToNewAlbumId, path=%{public}s db id %{public}d",
+            MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
+    }
+}
+
 static int32_t ReadCurrentAlbumMappings(const shared_ptr<NativeRdb::ResultSet> &resultSet,
     std::map<std::string, int32_t> &mappings, std::set<std::string> *ambiguousPaths)
 {
@@ -391,13 +403,7 @@ int32_t MediaLibraryMetaRecovery::LoadAlbumMaps(const string &path, std::set<std
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet == nullptr");
     if (ambiguousPaths == nullptr) {
         // Keep historical JSON rebuilding's result-set handling unchanged.
-        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-            int albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
-            string lPath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
-            lpathToNewAlbumId[lPath] = albumId;
-            MEDIA_INFO_LOG("lpathToNewAlbumId, path=%{public}s db id %{public}d",
-                MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
-        }
+        ReadLegacyAlbumMappings(resultSet, lpathToNewAlbumId);
         return E_OK;
     }
     ret = ReadCurrentAlbumMappings(resultSet, lpathToNewAlbumId, ambiguousPaths);
