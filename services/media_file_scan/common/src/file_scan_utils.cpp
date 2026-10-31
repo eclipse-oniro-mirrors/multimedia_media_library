@@ -544,8 +544,7 @@ void FileScanUtils::UpdateAndNotifyAnalysisAlbum(const std::vector<std::string>&
     MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets(fileIds, analysisAlbumIds);
 
     std::vector<std::string> albumIds(analysisAlbumIds.begin(), analysisAlbumIds.end());
-    if (albumIds.size() > 0 && rdbStore != nullptr) {
-        MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIds);
+    if (albumIds.size() > 0) {
         NotifyAnalysisAlbum(albumIds);
     }
 }
