@@ -1019,16 +1019,25 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
     cond = (!IsDirectory(srcDir) || !CreateDirectory(dstDir));
     CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL, "srcDir is not directory or Create dstDir failed");
     std::string sourceFilePath = srcDir + "/source." + GetExtensionFromPath(srcDir);
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(srcDir)) {
+    std::error_code iterEc;
+    auto iter = std::filesystem::recursive_directory_iterator(srcDir, iterEc);
+    CHECK_AND_RETURN_RET_LOG(!iterEc, E_FAIL, "Iterator creation failed: %{public}s", iterEc.message().c_str());
+    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(iterEc)) {
+        if (iterEc) {
+            MEDIA_ERR_LOG("Iteration error: %{public}s", iterEc.message().c_str());
+            continue;
+        }
+        const auto& entry = *iter;
         std::string srcFilePath = entry.path();
         std::string tmpFilePath = srcFilePath;
         std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        if (entry.is_directory()) {
+        std::error_code entryEc;
+        if (entry.is_directory(entryEc)) {
             if (!CreateDirectory(dstFilePath)) {
                 MEDIA_ERR_LOG("Create dir:%{public}s failed", DesensitizePath(dstFilePath).c_str());
                 return E_FAIL;
             }
-        } else if (entry.is_regular_file()) {
+        } else if (!entryEc && entry.is_regular_file(entryEc)) {
             CHECK_AND_CONTINUE(!IsTranscodeFile(srcFilePath));
             error_code ec;
             bool ret = false;
@@ -1041,11 +1050,17 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
                 ret = CopyFileUtil(srcFilePath, dstFilePath);
             }
             CHECK_AND_RETURN_RET_LOG(ret, E_FAIL, "copyFile failed, isSrcFile: %{public}d", isEqual);
+        } else if (entryEc) {
+            MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", DesensitizePath(srcFilePath).c_str(),
+                entryEc.message().c_str());
+            return E_FAIL;
         } else {
             MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
             return E_FAIL;
         }
     }
+    CHECK_AND_RETURN_RET_LOG(!iterEc, E_FAIL, "Iterate %{public}s failed: %{public}s",
+        DesensitizePath(srcDir).c_str(), iterEc.message().c_str());
     return E_OK;
 }
 
@@ -2672,28 +2687,43 @@ int32_t MediaFileUtils::CopyDirectory(const std::string &srcDir, const std::stri
         MEDIA_ERR_LOG("Create dstDir:%{public}s failed", DesensitizePath(dstDir).c_str());
         return E_FAIL;
     }
- 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(srcDir)) {
+    std::error_code ec;
+    auto iter = std::filesystem::recursive_directory_iterator(srcDir, ec);
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterator creation failed: %{public}s", ec.message().c_str());
+    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(ec)) {
+        if (ec) {
+            // 这里如果有错误码，迭代器会置为end
+            MEDIA_ERR_LOG("Iteration error: %{public}s", ec.message().c_str());
+            continue;
+        }
+        const auto& entry = *iter;
         std::string srcFilePath = entry.path();
         std::string tmpFilePath = srcFilePath;
         std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        if (entry.is_directory()) {
+        std::error_code entryEc;
+        if (entry.is_directory(entryEc)) {
             if (!CreateDirectory(dstFilePath)) {
                 MEDIA_ERR_LOG("Create dir:%{public}s failed", DesensitizePath(dstFilePath).c_str());
                 return E_FAIL;
             }
-        } else if (entry.is_regular_file()) {
+        } else if (!entryEc && entry.is_regular_file(entryEc)) {
             CHECK_AND_CONTINUE(!IsTranscodeFile(srcFilePath));
             if (!CopyFileUtil(srcFilePath, dstFilePath)) {
                 MEDIA_ERR_LOG("Copy file from %{public}s to %{public}s failed.",
                     DesensitizePath(srcFilePath).c_str(), DesensitizePath(dstFilePath).c_str());
                 return E_FAIL;
             }
+        } else if (entryEc) {
+            MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", DesensitizePath(srcFilePath).c_str(),
+                entryEc.message().c_str());
+            return E_FAIL;
         } else {
             MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
             return E_FAIL;
         }
     }
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterate %{public}s failed: %{public}s",
+        DesensitizePath(srcDir).c_str(), ec.message().c_str());
     return E_OK;
 }
 
@@ -2713,17 +2743,26 @@ int32_t MediaFileUtils::MoveDirectory(const std::string &srcDir, const std::stri
     CHECK_AND_RETURN_RET_LOG(
         CreateDirectory(dstDir), E_FAIL, "Create dstDir:%{public}s failed", DesensitizePath(dstDir).c_str());
 
-    for (const auto &entry : std::filesystem::recursive_directory_iterator(srcDir)) {
+    std::error_code ec;
+    auto iter = std::filesystem::recursive_directory_iterator(srcDir, ec);
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterator creation failed: %{public}s", ec.message().c_str());
+    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(ec)) {
+        if (ec) {
+            MEDIA_ERR_LOG("Iteration error: %{public}s", ec.message().c_str());
+            continue;
+        }
+        const auto &entry = *iter;
         std::string srcFilePath = entry.path();
         std::string tmpFilePath = srcFilePath;
         std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
         CHECK_AND_CONTINUE_DEBUG_LOG(srcFilePath.find("transcode.jpg") == std::string::npos, "skip transcode.jpg");
-        if (entry.is_directory()) {
+        std::error_code entryEc;
+        if (entry.is_directory(entryEc)) {
             CHECK_AND_RETURN_RET_LOG(CreateDirectory(dstFilePath),
                 E_FAIL,
                 "Create dir:%{public}s failed",
                 DesensitizePath(dstFilePath).c_str());
-        } else if (entry.is_regular_file()) {
+        } else if (!entryEc && entry.is_regular_file(entryEc)) {
             if (srcFilePath.find("editdata_camera") != std::string::npos ||
                 srcFilePath.find("source_back") != std::string::npos) {
                 CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(srcFilePath, dstFilePath),
@@ -2737,11 +2776,17 @@ int32_t MediaFileUtils::MoveDirectory(const std::string &srcDir, const std::stri
                 "Copy file from %{public}s to %{public}s failed.",
                 DesensitizePath(srcFilePath).c_str(),
                 DesensitizePath(dstFilePath).c_str());
+        } else if (entryEc) {
+            MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", DesensitizePath(srcFilePath).c_str(),
+                entryEc.message().c_str());
+            return E_FAIL;
         } else {
             MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
             return E_FAIL;
         }
     }
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterate %{public}s failed: %{public}s",
+        DesensitizePath(srcDir).c_str(), ec.message().c_str());
     return E_OK;
 }
 
