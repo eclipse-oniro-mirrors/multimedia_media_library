@@ -41,7 +41,7 @@ static constexpr size_t EXPECTED_HASH_PAIR_COUNT = 2;
 
 static const std::string NEW_MACHINE_YEAR_HASH = "d1fceec62f61bcc5d3b48e9b01c80384ba4ab9c91eb68b13a573ccea03803e43";
 static const std::string NEW_MACHINE_MONTH_HASH = "3ddb6fb8b2fcb38d2f431e86bfb806dab771637860d6e86bb9430fa15df04248";
-static const std::string OLD_MACHINE_YEAR_HASH = "5f796bfa83fcd52d829a2304cb7194119a6e6e84b8efdde115b26fbd424b8541";
+static const std::string OLD_MACHINE_YEAR_HASH = "5f796bfa83fcd52d" "829a2304cb7194119a6e6e84b8efdde115b26fbd424b8541";
 static const std::string OLD_MACHINE_MONTH_HASH = "1bd52423fd08d9b97e0c93366e3f9747b17e5dc321a3f0e328273cbd3dca611a";
 
 bool KvStoreSwapOperator::NotifyMainProcessClose()

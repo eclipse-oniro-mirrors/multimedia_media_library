@@ -410,6 +410,8 @@ static const std::string OLD_YEAR_HASH = "5f796bfa83fcd52d829a2304cb7194119a6e6e
 static const std::string NEW_YEAR_HASH = "d1fceec62f61bcc5d3b48e9b01c80384ba4ab9c91eb68b13a573ccea03803e43";
 static const std::string OLD_MONTH_HASH = "1bd52423fd08d9b97e0c93366e3f9747b17e5dc321a3f0e328273cbd3dca611a";
 static const std::string NEW_MONTH_HASH = "3ddb6fb8b2fcb38d2f431e86bfb806dab771637860d6e86bb9430fa15df04248";
+static constexpr int32_t SIM_REOPEN_DELAY_MS = 200;
+static constexpr int32_t SIM_THREAD_POLL_MS = 50;
 
 void KvStoreSwapOperatorTest::SetUpTestCase()
 {
@@ -507,10 +509,10 @@ HWTEST_F(KvStoreSwapOperatorTest, Swap_AllSuccess_001, TestSize.Level1)
 
     std::atomic<bool> stopFlag{false};
     std::thread simThread([&stopFlag]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SIM_REOPEN_DELAY_MS));
         SettingsDataManager::SetKvDbCloseStatus("1");
         while (!stopFlag.load(std::memory_order_relaxed)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(SIM_THREAD_POLL_MS));
         }
     });
 
@@ -561,10 +563,10 @@ static bool DoSwapWithSimulatedHandshake()
     }
     std::atomic<bool> stopFlag{false};
     std::thread simThread([&stopFlag]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SIM_REOPEN_DELAY_MS));
         SettingsDataManager::SetKvDbCloseStatus("1");
         while (!stopFlag.load(std::memory_order_relaxed)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(SIM_THREAD_POLL_MS));
         }
     });
     KvStoreSwapOperator op;
@@ -604,10 +606,10 @@ HWTEST_F(KvStoreSwapOperatorTest, Rollback_AfterSwap_001, TestSize.Level1)
     ASSERT_EQ(ret, E_OK) << "SettingsDataManager unavailable, skip Rollback test";
     std::atomic<bool> stopFlag{false};
     std::thread simThread([&stopFlag]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SIM_REOPEN_DELAY_MS));
         SettingsDataManager::SetKvDbCloseStatus("1");
         while (!stopFlag.load(std::memory_order_relaxed)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(SIM_THREAD_POLL_MS));
         }
     });
 

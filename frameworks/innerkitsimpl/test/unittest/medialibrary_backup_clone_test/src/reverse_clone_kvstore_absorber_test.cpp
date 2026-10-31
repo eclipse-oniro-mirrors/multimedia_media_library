@@ -25,11 +25,7 @@
 #include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "rdb_helper.h"
-#define private public
-#define protected public
 #include "reverse_clone_restore/reverse_clone_kvstore_absorber.h"
-#undef private
-#undef protected
 #include "reverse_clone_restore/reverse_clone_resource_plan.h"
 #include "result_set_utils.h"
 #include "values_bucket.h"
