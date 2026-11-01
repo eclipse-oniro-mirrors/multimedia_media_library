@@ -30,6 +30,14 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "../get_self_permissions/include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/dfx",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/core",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/base",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/strategies",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
   ]
@@ -38,8 +46,14 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_meta_recovery_test.cpp",
+    "./src/medialibrary_incremental_recovery_test.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_meta_recovery.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_incremental_recovery.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/recovery_json_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/recovery_summary.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/recovery_window.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/recovery_bucket_index.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
@@ -71,7 +85,9 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "player_framework:media_client",
     "ipc:ipc_single",
     "ipc:ipc_napi",
+    "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
+    "netmanager_base:net_conn_manager_if",
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
     "hisysevent:libhisysevent",
@@ -79,7 +95,10 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
   ]
 
   defines = []
-  defines += [ "META_RECOVERY_SUPPORT=1" ]
+  defines += [
+    "META_RECOVERY_SUPPORT=1",
+    "MEDIALIB_RECOVERY_UNIT_TEST=1",
+  ]
 
   sanitize = {
     cfi = true

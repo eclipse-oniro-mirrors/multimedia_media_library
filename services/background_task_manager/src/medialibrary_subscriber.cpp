@@ -60,6 +60,8 @@
 #include "medialibrary_kvstore_manager.h"
 #ifdef META_RECOVERY_SUPPORT
 #include "medialibrary_meta_recovery.h"
+#include "recovery_window.h"
+#include "recovery_summary.h"
 #endif
 #include "medialibrary_restore.h"
 #include "medialibrary_subscriber_database_utils.h"
@@ -623,6 +625,18 @@ bool MedialibrarySubscriber::IsCurrentStatusOn()
     return currentStatus_;
 }
 
+void MedialibrarySubscriber::ResumeBackgroundOperation()
+{
+    std::shared_ptr<MedialibrarySubscriber> subscriber;
+    {
+        std::lock_guard<std::mutex> lock(subscribeLock_);
+        subscriber = subscriber_;
+    }
+    if (subscriber != nullptr && IsCurrentStatusOn()) {
+        subscriber->DoBackgroundOperation();
+    }
+}
+
 bool MedialibrarySubscriber::IsMainUser()
 {
     const int32_t INVALID_UID = -1;
@@ -1182,11 +1196,56 @@ void MedialibrarySubscriber::DoFillUUIDOfPhotoAndAlbums()
     return;
 }
 
+#ifdef META_RECOVERY_SUPPORT
+static bool DeferBackgroundForRecovery()
+{
+    if (!HasPendingRecoveryWindow(RECOVERY_WINDOW_DIRECTORY)) {
+        return false;
+    }
+    if (MediaLibraryRestore::GetInstance().IsRestoring()) {
+        return true;
+    }
+    std::vector<RecoveryWindow> windows;
+    int recoveryError = ListRecoveryWindows(RECOVERY_WINDOW_DIRECTORY, windows);
+    if (recoveryError != 0) {
+        MEDIA_ERR_LOG("List recovery tasks failed, errno=%{public}d", recoveryError);
+        return false;
+    }
+    for (const auto &window : windows) {
+        DatabaseRecoveryReport report;
+        if (LoadRecoverySummary(window.path, report) != 0 || !IsWaitingForDatabaseRecovery(report)) {
+            MediaLibraryMetaRecovery::GetInstance().CheckRecoveryState();
+            return true;
+        }
+    }
+    MEDIA_WARN_LOG("Recovery task waits for a later database recovery; continue unrelated background tasks");
+    return false;
+}
+#endif
+
+static void MigrateHighlightInfo()
+{
+    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
+        return;
+    }
+    MEDIA_INFO_LOG("Migration highlight info to new path");
+    bool copied = MediaFileUtils::CopyDirAndDelSrc(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD,
+        ROOT_MEDIA_DIR + HIGHLIGHT_INFO_NEW);
+    if (copied && !MediaFileUtils::DeleteDir(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
+        MEDIA_ERR_LOG("Delete old highlight path fail");
+    }
+}
+
 void MedialibrarySubscriber::DoBackgroundOperation()
 {
     std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
     bool cond = (!backgroundDelayTask_.IsDelayTaskTimeOut() || !currentStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
+#ifdef META_RECOVERY_SUPPORT
+    if (DeferBackgroundForRecovery()) {
+        return;
+    }
+#endif
     Background::MediaCloudDentryBatchTask::CheckDentryCreation();
     PeriodicAnalyzePhotosData();
     Background::LcdDownloadTask::HandleLcdDownload();
@@ -1220,18 +1279,7 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     // add permission for cloud enhancement photo
     CloudEnhancementChecker::AddPermissionForCloudEnhancement();
 #endif
-    // migration highlight info to new path
-    if (MediaFileUtils::IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
-        MEDIA_INFO_LOG("Migration highlight info to new path");
-        bool retMigration = MediaFileUtils::CopyDirAndDelSrc(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD,
-            ROOT_MEDIA_DIR + HIGHLIGHT_INFO_NEW);
-        if (retMigration) {
-            bool retDelete = MediaFileUtils::DeleteDir(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD);
-            if (!retDelete) {
-                MEDIA_ERR_LOG("Delete old highlight path fail");
-            }
-        }
-    }
+    MigrateHighlightInfo();
     ret = DoUpdateBurstCoverLevelFromGallery();
     CHECK_AND_PRINT_LOG(ret == E_OK, "DoUpdateBurstCoverLevelFromGallery faild");
     DoUpdatePhotoHdrMode();

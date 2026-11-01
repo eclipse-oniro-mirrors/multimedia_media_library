@@ -67,3 +67,29 @@ ohos_fuzztest("MediaLibraryRestoreFuzzTest") {
     external_deps += [ "dfs_service:cloudsync_kit_inner" ]
   }
 }
+
+ohos_fuzztest("MediaLibraryRecoveryDecisionFuzzTest") {
+  module_out_path = "media_library/media_library"
+  fuzz_config_file = "."
+  include_dirs = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_UTILS_PATH}/include",
+  ]
+  sources = [
+    "./recovery_decision_fuzzer.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/recovery_event_limiter.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/recovery_window.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/recovery_summary.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/recovery_bucket_index.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/recovery_json_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/replica_recovery_policy.cpp",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+    "json:nlohmann_json_static",
+  ]
+}

@@ -95,7 +95,10 @@ ohos_static_library("post_event_utils") {
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
   ]
 
-  sources = [ "src/post_event_utils.cpp" ]
+  sources = [
+    "src/post_event_utils.cpp",
+    "src/recovery_event_limiter.cpp",
+  ]
 
   external_deps = [
     "c_utils:utils",

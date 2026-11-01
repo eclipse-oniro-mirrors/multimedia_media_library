@@ -14,6 +14,7 @@
  */
 #include "post_event_utils.h"
 
+#include <cerrno>
 #include <unistd.h>
 #include <set>
 
@@ -29,6 +30,22 @@ const string OPT_THUMB = "THUMB";
 const string OPT_SCAN = "SCAN";
 const string OPT_QUERY = "QUERY";
 static constexpr char MEDIA_LIBRARY[] = "MEDIALIBRARY";
+
+bool PostEventUtils::AllowRecoveryEvent(RecoveryEventKind kind)
+{
+    int error = ReserveRecoveryEvent(kind);
+    if (error != 0) {
+        const char *name = RecoveryEventName(kind);
+        name = name == nullptr ? "unknown" : name;
+        if (error == EAGAIN) {
+            MEDIA_WARN_LOG("Recovery event %{public}s suppressed: hourly limit reached", name);
+        } else {
+            MEDIA_ERR_LOG("Recovery event %{public}s suppressed: quota unavailable, errno=%{public}d", name, error);
+        }
+        return false;
+    }
+    return true;
+}
 
 string PostEventUtils::GetOptType(const uint32_t &optType)
 {
@@ -109,6 +126,9 @@ void PostEventUtils::PostFileOptError(const VariantMap &error)
 
 void PostEventUtils::PostRecoveryOptError(const VariantMap &error)
 {
+    if (!AllowRecoveryEvent(RecoveryEventKind::META_RECOVERY_ERROR)) {
+        return;
+    }
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_META_RECOVERY_ERROR",
@@ -367,6 +387,9 @@ void PostEventUtils::PostDatabaseCorruption(const VariantMap &errMap)
 {
     string date = GetStringValue(KEY_DB_CORRUPT, errMap);
     MEDIA_ERR_LOG("ReportDatabaseCorruption periodTime:%{public}s", date.c_str());
+    if (!AllowRecoveryEvent(RecoveryEventKind::DATABASE_CORRUPTION)) {
+        return;
+    }
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "DATABASE_CORRUPTION_ERROR",
@@ -375,6 +398,28 @@ void PostEventUtils::PostDatabaseCorruption(const VariantMap &errMap)
     if (ret != 0) {
         MEDIA_ERR_LOG("ReportDatabaseCorruption error:%{public}d", ret);
     }
+}
+
+void PostEventUtils::PostDatabaseRecovery(const DatabaseRecoveryReport &report)
+{
+    if (!AllowRecoveryEvent(RecoveryEventKind::META_RECOVERY_INFO)) {
+        return;
+    }
+    int ret = HiSysEventWrite(MEDIA_LIBRARY, "MEDIALIB_META_RECOVERY_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC, "DATE", report.date,
+        "RECOVERY_STAGE", static_cast<int32_t>(report.stage),
+        "RECOVERY_RESULT", static_cast<int32_t>(report.result),
+        "ERROR_CODE", report.error, "RESTORE_DECISION", report.decision,
+        "WINDOW_START_MS", report.windowStart, "WINDOW_END_MS", report.windowEnd,
+        "SCAN_JSON_UPDATED", report.jsonUpdated, "SCAN_JSON_INSERTED", report.jsonInserted,
+        "SCAN_FILE_SCANNED", report.fileScanned, "SCAN_FILE_INSERTED", report.fileInserted,
+        "SCAN_FAILED", report.failed,
+        "FORCE_ATTEMPTS", report.forceAttempts, "FORCE_FAILURE_ATTEMPTS", report.forceFailures,
+        "LAST_FORCE_ERROR", report.lastForceError,
+        "SCAN_ATTEMPTS", report.scanAttempts, "FORCE_TIME_MS", report.forceMs,
+        "SCAN_TIME_MS", report.scanMs, "SCAN_BUCKET_COUNT", report.bucketsChecked,
+        "SCAN_BUCKET_SKIP", report.bucketsSkipped);
+    CHECK_AND_PRINT_LOG(ret == 0, "Database recovery report failed, code=%{public}d", ret);
 }
 
 void PostEventUtils::PostErrorProcess(const uint32_t &errType, const VariantMap &error)

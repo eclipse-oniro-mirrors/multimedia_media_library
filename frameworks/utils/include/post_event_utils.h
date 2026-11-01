@@ -14,16 +14,57 @@
  */
 #ifndef POST_EVENT_UTILS_H
 #define POST_EVENT_UTILS_H
+#include <cstdint>
 #include <map>
 #include <string>
 #include <variant>
 #include <list>
 #include <set>
 
+#include "recovery_event_limiter.h"
 #include "singleton.h"
 namespace OHOS {
 namespace Media {
 #define COMPILE_HIDDEN __attribute__ ((visibility ("hidden")))
+enum class DatabaseRecoveryStage : int32_t {
+    DETECTED = 1,
+    ORDINARY_RESTORE,
+    DIAGNOSIS,
+    FORCE_RESTORE,
+    DATABASE_USABLE,
+    BACKGROUND_SCAN,
+    WINDOW_REGISTRATION,
+};
+
+enum class DatabaseRecoveryResult : int32_t { SUCCESS, WAITING, PAUSED, PARTIAL, FAILED, REJECTED };
+
+struct DatabaseRecoveryReport {
+    std::string date;
+    std::string windowName;
+    DatabaseRecoveryStage stage = DatabaseRecoveryStage::DETECTED;
+    DatabaseRecoveryResult result = DatabaseRecoveryResult::WAITING;
+    int32_t error = 0; // ArkData error, or POSIX errno for the window stage.
+    int32_t decision = -1;
+    int64_t windowStart = -1;
+    int64_t windowEnd = -1;
+    int64_t jsonUpdated = 0;
+    int64_t jsonInserted = 0;
+    int64_t fileScanned = 0;
+    int64_t fileInserted = 0;
+    int64_t failed = 0;
+    int32_t forceAttempts = 0;
+    int32_t forceFailures = 0;
+    int32_t lastForceError = 0;
+    int32_t lastScanError = 0;
+    int32_t scanAttempts = 0;
+    int64_t forceMs = 0;
+    int64_t scanMs = 0;
+    int64_t bucketsChecked = 0;
+    int64_t bucketsSkipped = 0;
+    bool waitForRestore = false;
+    std::set<std::string> jsonBucketsDone;
+    std::set<std::string> fileBucketsDone;
+};
 struct SyncEventStat {
     int64_t startDownloadTime;
     int64_t endDownloadTime;
@@ -163,6 +204,8 @@ using VariantMap = std::map<std::string, std::variant<int32_t, int64_t, std::str
 
 class PostEventUtils : public Singleton<PostEventUtils> {
 public:
+    bool AllowRecoveryEvent(RecoveryEventKind kind);
+    void PostDatabaseRecovery(const DatabaseRecoveryReport &report);
     void PostErrorProcess(const uint32_t &errType, const VariantMap &error);
     void PostStatProcess(const uint32_t &statType, const VariantMap &stat);
     void CreateCloudDownloadSyncStat(std::string& syncId);
