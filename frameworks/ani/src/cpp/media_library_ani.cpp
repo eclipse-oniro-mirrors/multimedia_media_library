@@ -4213,19 +4213,14 @@ static ani_object CreateNullableUriArray(ani_env *env, unique_ptr<MediaLibraryAs
     }
     int count = 0;
     for (const auto &uri : context->uriArray) {
-        ani_ref elementRef {};
-        if (uri.empty()) {
-            env->GetNull(&elementRef);
-        } else {
-            ani_string aniString {};
-            status = MediaLibraryAniUtils::ToAniString(env, uri, aniString);
-            if (status != ANI_OK) {
-                ANI_ERR_LOG("ToAniString failed for element[%{public}d]", count);
-                MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
-                return retObj;
-            }
-            elementRef = static_cast<ani_ref>(aniString);
+        ani_string aniString {};
+        status = MediaLibraryAniUtils::ToAniString(env, uri, aniString);
+        if (status != ANI_OK) {
+            ANI_ERR_LOG("ToAniString failed for element[%{public}d]", count);
+            MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+            return retObj;
         }
+        ani_ref elementRef = static_cast<ani_ref>(aniString);
         status = env->Object_CallMethod_Void(retObj, arrayOperator.setMethod, (ani_int)count, elementRef);
         if (status != ANI_OK) {
             ANI_ERR_LOG("$_set failed for element[%{public}d], status=%{public}d", count, status);
