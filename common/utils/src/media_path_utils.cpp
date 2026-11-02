@@ -207,6 +207,65 @@ bool MediaPathUtils::IsTranscodeFile(const std::string &filePath)
     return false;
 }
 
+namespace {
+// 单个目录项的拷贝动作：目录补建对应目录，普通文件拷贝文件，其余按 stat 结果报错
+int32_t CopyDirEntry(const std::filesystem::directory_entry &entry, const std::string &srcFilePath,
+    const std::string &dstFilePath)
+{
+    std::error_code entryEc;
+    if (entry.is_directory(entryEc)) {
+        if (!MediaPureFileUtils::CreateDirectory(dstFilePath)) {
+            MEDIA_ERR_LOG("Create dir:%{public}s failed", MediaPathUtils::DesensitizePath(dstFilePath).c_str());
+            return E_FAIL;
+        }
+        return E_OK;
+    }
+    if (!entryEc && entry.is_regular_file(entryEc)) {
+        if (MediaPathUtils::IsTranscodeFile(srcFilePath)) {
+            return E_OK;
+        }
+        if (!MediaPureFileUtils::CopyFileUtil(srcFilePath, dstFilePath)) {
+            MEDIA_ERR_LOG("Copy file from %{public}s to %{public}s failed.",
+                MediaPathUtils::DesensitizePath(srcFilePath).c_str(),
+                MediaPathUtils::DesensitizePath(dstFilePath).c_str());
+            return E_FAIL;
+        }
+        return E_OK;
+    }
+    if (entryEc) {
+        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaPathUtils::DesensitizePath(srcFilePath).c_str(),
+            entryEc.message().c_str());
+        return E_FAIL;
+    }
+    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaPathUtils::DesensitizePath(srcFilePath).c_str());
+    return E_FAIL;
+}
+
+// 遍历目录并逐项拷贝，调用方需已完成入参校验
+int32_t CopyDirectoryByEntry(const std::string &srcDir, const std::string &dstDir)
+{
+    std::error_code ec;
+    auto iter = std::filesystem::recursive_directory_iterator(srcDir, ec);
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterator creation failed: %{public}s", ec.message().c_str());
+    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(ec)) {
+        if (ec) {
+            // 这里如果有错误码，迭代器会置为end
+            MEDIA_ERR_LOG("Iteration error: %{public}s", ec.message().c_str());
+            continue;
+        }
+        const auto &entry = *iter;
+        std::string srcFilePath = entry.path();
+        std::string tmpFilePath = srcFilePath;
+        std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
+        int32_t ret = CopyDirEntry(entry, srcFilePath, dstFilePath);
+        CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    }
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterate %{public}s failed: %{public}s",
+        MediaPathUtils::DesensitizePath(srcDir).c_str(), ec.message().c_str());
+    return E_OK;
+}
+} // namespace
+
 int32_t MediaPathUtils::CopyDirectory(const std::string &srcDir, const std::string &dstDir)
 {
     if (srcDir.empty() || dstDir.empty()) {
@@ -230,43 +289,6 @@ int32_t MediaPathUtils::CopyDirectory(const std::string &srcDir, const std::stri
         MEDIA_ERR_LOG("Create dstDir:%{public}s failed", DesensitizePath(dstDir).c_str());
         return E_FAIL;
     }
-    std::error_code ec;
-    auto iter = std::filesystem::recursive_directory_iterator(srcDir, ec);
-    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterator creation failed: %{public}s", ec.message().c_str());
-    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(ec)) {
-        if (ec) {
-            // 这里如果有错误码，迭代器会置为end
-            MEDIA_ERR_LOG("Iteration error: %{public}s", ec.message().c_str());
-            continue;
-        }
-        const auto& entry = *iter;
-        std::string srcFilePath = entry.path();
-        std::string tmpFilePath = srcFilePath;
-        std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        std::error_code entryEc;
-        if (entry.is_directory(entryEc)) {
-            if (!MediaPureFileUtils::CreateDirectory(dstFilePath)) {
-                MEDIA_ERR_LOG("Create dir:%{public}s failed", DesensitizePath(dstFilePath).c_str());
-                return E_FAIL;
-            }
-        } else if (!entryEc && entry.is_regular_file(entryEc)) {
-            CHECK_AND_CONTINUE(!IsTranscodeFile(srcFilePath));
-            if (!MediaPureFileUtils::CopyFileUtil(srcFilePath, dstFilePath)) {
-                MEDIA_ERR_LOG("Copy file from %{public}s to %{public}s failed.",
-                    DesensitizePath(srcFilePath).c_str(), DesensitizePath(dstFilePath).c_str());
-                return E_FAIL;
-            }
-        } else if (entryEc) {
-            MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", DesensitizePath(srcFilePath).c_str(),
-                entryEc.message().c_str());
-            return E_FAIL;
-        } else {
-            MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
-            return E_FAIL;
-        }
-    }
-    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterate %{public}s failed: %{public}s",
-        DesensitizePath(srcDir).c_str(), ec.message().c_str());
-    return E_OK;
+    return CopyDirectoryByEntry(srcDir, dstDir);
 }
 } // namespace OHOS::Media
