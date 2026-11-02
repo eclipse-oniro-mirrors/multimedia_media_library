@@ -356,28 +356,73 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_ScanMetaDir_Test_001, Te
     EXPECT_EQ(ret, ERR_NOT_ACCESSIBLE);
 }
 
+// Parameterized JSON tests own their files and never replace the live album.json.
+class ScopedRecoveryJsonFile {
+public:
+    bool Init(const string &name)
+    {
+        if (!MediaFileUtils::CreateDirectory("/data/test/media_library_restore")) {
+            return false;
+        }
+        char directory[] = "/data/test/media_library_restore/json_XXXXXX";
+        if (mkdtemp(directory) == nullptr) {
+            return false;
+        }
+        directory_ = directory;
+        path = directory_ + "/" + name;
+        return true;
+    }
+
+    ~ScopedRecoveryJsonFile()
+    {
+        if (!directory_.empty()) {
+            (void)unlink(path.c_str());
+            (void)rmdir(directory_.c_str());
+        }
+    }
+
+    string path;
+private:
+    string directory_;
+};
+
 HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_LoadAlbumMaps_Test_001, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("MetaRecovery_LoadAlbumMaps_Test_001::Start");
+    ScopedRecoveryJsonFile file;
+    ASSERT_TRUE(file.Init("album.json"));
+    auto &recovery = MediaLibraryMetaRecovery::GetInstance();
+    vector<shared_ptr<PhotoAlbum>> albums;
+    for (int32_t id : {1, 2}) {
+        auto album = make_shared<PhotoAlbum>();
+        album->SetAlbumId(id);
+        album->SetPhotoAlbumType(PhotoAlbumType::USER);
+        album->SetPhotoAlbumSubType(PhotoAlbumSubType::USER_GENERIC);
+        album->SetLPath("/Pictures/recovery_valid_" + to_string(id));
+        albums.push_back(album);
+    }
+    ASSERT_EQ(recovery.WritePhotoAlbumToFile(file.path, albums), E_OK);
+    nlohmann::json metadata;
+    ASSERT_TRUE(recovery.ReadJsonFile(file.path, metadata));
+    ASSERT_EQ(metadata.size(), 2U);
+    nlohmann::json invalid = metadata[0];
+    invalid[PhotoAlbumColumns::ALBUM_ID] = "invalid";
+    metadata.insert(metadata.begin() + 1, invalid);
+    ASSERT_TRUE(recovery.WriteJsonFile(file.path, metadata));
 
-    string albumMetaPath = "/storage/cloud/files/.meta/album.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    vector<shared_ptr<PhotoAlbum>> decoded;
+    ASSERT_EQ(recovery.ReadPhotoAlbumFromFile(file.path, decoded), E_OK);
+    ASSERT_EQ(decoded.size(), 2U);
+    EXPECT_EQ(decoded[0]->GetAlbumId(), 1);
+    EXPECT_EQ(decoded[1]->GetAlbumId(), 2);
+    EXPECT_EQ(recovery.LoadAlbumMaps(file.path), E_OK);
+    EXPECT_EQ(recovery.oldAlbumIdToLpath[1], "/Pictures/recovery_valid_1");
+    EXPECT_EQ(recovery.oldAlbumIdToLpath[2], "/Pictures/recovery_valid_2");
+    recovery.oldAlbumIdToLpath.clear();
+    recovery.lpathToNewAlbumId.clear();
 
-    vector<shared_ptr<PhotoAlbum>> vecPhotoAlbum;
-    auto album1 = make_shared<PhotoAlbum>();
-    album1->SetAlbumId(1);
-    album1->SetLPath("/storage/cloud/files/Pictures/Camera");
-    vecPhotoAlbum.push_back(album1);
-
-    MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumMetaPath, vecPhotoAlbum);
-
-    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().LoadAlbumMaps(albumMetaPath), E_OK);
-
-    EXPECT_FALSE(MediaLibraryMetaRecovery::GetInstance().oldAlbumIdToLpath.empty());
-    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().oldAlbumIdToLpath[1], "/storage/cloud/files/Pictures/Camera");
-
-    remove(albumMetaPath.c_str());
-    MEDIA_INFO_LOG("MetaRecovery_LoadAlbumMaps_Test_001::End");
+    ASSERT_TRUE(recovery.WriteJsonFile(file.path, nlohmann::json::object()));
+    decoded.clear();
+    EXPECT_NE(recovery.ReadPhotoAlbumFromFile(file.path, decoded), E_OK);
 }
 
 HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_AmbiguousOldAlbumPathsAreDetected, TestSize.Level1)
@@ -536,9 +581,10 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_InsertMetadataInDb_Test_
     testAsset.SetDateModified(123456789);
     testAsset.SetSize(1024);
 
-    string metaPath = "/storage/cloud/files/.meta/Photo/test_insert.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
-    MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
+    ScopedRecoveryJsonFile metaPathFile;
+    ASSERT_TRUE(metaPathFile.Init("test_insert.jpg.json"));
+    const string metaPath = metaPathFile.path;
+    ASSERT_EQ(MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset), E_OK);
 
     ClearPhotoApi10();
 
@@ -735,8 +781,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WriteMetadataToFile_Test
     testAsset.SetHeight(1080);
     testAsset.SetMimeType("image/jpeg");
 
-    string metaPath = "/storage/cloud/files/.meta/Photo/write_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    ScopedRecoveryJsonFile metaPathFile;
+    ASSERT_TRUE(metaPathFile.Init("write_test.jpg.json"));
+    const string metaPath = metaPathFile.path;
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
     EXPECT_EQ(ret, E_OK);
@@ -794,8 +841,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_ReadMetadataFromFile_Tes
     testAsset.SetArtist("Test Artist");
     testAsset.SetAlbum("Test Album");
 
-    string metaPath = "/storage/cloud/files/.meta/Photo/read_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    ScopedRecoveryJsonFile metaPathFile;
+    ASSERT_TRUE(metaPathFile.Init("read_test.jpg.json"));
+    const string metaPath = metaPathFile.path;
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
     EXPECT_EQ(ret, E_OK);
@@ -850,8 +898,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WritePhotoAlbumToFile_Te
     album1->SetContainsHidden(0);
     vecPhotoAlbum.push_back(album1);
 
-    string albumPath = "/storage/cloud/files/.meta/album_write_test.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    ScopedRecoveryJsonFile albumPathFile;
+    ASSERT_TRUE(albumPathFile.Init("album_write_test.json"));
+    const string albumPath = albumPathFile.path;
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumPath, vecPhotoAlbum);
     EXPECT_EQ(ret, E_OK);
@@ -1031,8 +1080,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_AlbumRecovery_Test_002, 
     ASSERT_NE(rdbStore, nullptr);
     rdbStore->ExecuteSql(CLEAR_ALBUMS);
 
-    string albumMetaPath = "/storage/cloud/files/.meta/album_recovery.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    ScopedRecoveryJsonFile albumMetaPathFile;
+    ASSERT_TRUE(albumMetaPathFile.Init("album_recovery.json"));
+    const string albumMetaPath = albumMetaPathFile.path;
 
     vector<shared_ptr<PhotoAlbum>> vecPhotoAlbum;
     auto album1 = make_shared<PhotoAlbum>();
@@ -1051,7 +1101,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_AlbumRecovery_Test_002, 
     album1->SetUploadStatus(0);
     vecPhotoAlbum.push_back(album1);
 
-    MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumMetaPath, vecPhotoAlbum);
+    ASSERT_EQ(MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumMetaPath, vecPhotoAlbum), E_OK);
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().AlbumRecovery(albumMetaPath);
     EXPECT_EQ(ret, E_OK);
@@ -1237,8 +1287,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WriteJsonFile_Test_001, 
     testJson["key2"] = 123;
     testJson["key3"] = 456.789;
 
-    string testPath = "/storage/cloud/files/.meta/test_write.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    ScopedRecoveryJsonFile testPathFile;
+    ASSERT_TRUE(testPathFile.Init("test_write.json"));
+    const string testPath = testPathFile.path;
 
     bool ret = MediaLibraryMetaRecovery::GetInstance().WriteJsonFile(testPath, testJson);
     EXPECT_TRUE(ret);
@@ -1314,8 +1365,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_MultipleAlbums_Test_001,
         vecPhotoAlbum.push_back(album);
     }
 
-    string albumPath = "/storage/cloud/files/.meta/multi_albums.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    ScopedRecoveryJsonFile albumPathFile;
+    ASSERT_TRUE(albumPathFile.Init("multi_albums.json"));
+    const string albumPath = albumPathFile.path;
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumPath, vecPhotoAlbum);
     EXPECT_EQ(ret, E_OK);
@@ -1343,8 +1395,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_EdgeCases_Test_001, Test
     MEDIA_INFO_LOG("MetaRecovery_EdgeCases_Test_001::Start");
 
     FileAsset emptyAsset;
-    string emptyMetaPath = "/storage/cloud/files/.meta/Photo/empty_test.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    ScopedRecoveryJsonFile emptyMetaPathFile;
+    ASSERT_TRUE(emptyMetaPathFile.Init("empty_test.json"));
+    const string emptyMetaPath = emptyMetaPathFile.path;
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(emptyMetaPath, emptyAsset);
     EXPECT_EQ(ret, E_OK);
@@ -1365,7 +1418,9 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_EdgeCases_Test_001, Test
     largeValueAsset.SetWidth(INT32_MAX);
     largeValueAsset.SetHeight(INT32_MAX);
 
-    string largeMetaPath = "/storage/cloud/files/.meta/Photo/large_test.json";
+    ScopedRecoveryJsonFile largeMetaPathFile;
+    ASSERT_TRUE(largeMetaPathFile.Init("large_test.json"));
+    const string largeMetaPath = largeMetaPathFile.path;
     ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(largeMetaPath, largeValueAsset);
     EXPECT_EQ(ret, E_OK);
 

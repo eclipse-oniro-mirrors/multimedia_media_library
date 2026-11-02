@@ -1112,12 +1112,11 @@ int32_t MediaLibraryMetaRecovery::ReadPhotoAlbumFromFile(const string &filePath,
         return E_ERR;
     }
 
-    int ret = E_OK;
     for (const json &j : jsonArray) {
         PhotoAlbum photoAlbum;
         if (!GetPhotoAlbumFromJson(j, photoAlbum)) {
-            MEDIA_WARN_LOG("GetPhotoAlbumFromJson failed");
-            ret = E_ERR;
+            MEDIA_WARN_LOG("Skip album JSON entry: metadata decode failed");
+            continue;
         }
         if (photoAlbum.GetPhotoAlbumSubType() != 1 && photoAlbum.GetLPath() == "") {
             continue;
@@ -1125,7 +1124,7 @@ int32_t MediaLibraryMetaRecovery::ReadPhotoAlbumFromFile(const string &filePath,
         photoAlbumVector.emplace_back(make_shared<PhotoAlbum>(photoAlbum));
     }
 
-    return ret;
+    return E_OK;
 }
 
 int32_t MediaLibraryMetaRecovery::WriteMetaStatusToFile(const string &keyPath, const int32_t status)

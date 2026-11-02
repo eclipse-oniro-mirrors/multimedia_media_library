@@ -98,13 +98,19 @@ HWTEST_F(ReplicaRecoveryPolicyTest, DiagnosisExtremeCountAndReplicaTime, TestSiz
     auto info = ValidDiagnosis();
     info.replicaInfo.tables["PhotoAlbum"].count = std::numeric_limits<int64_t>::max();
     EXPECT_EQ(CheckReplicaRecovery(NativeRdb::E_OK, info, TEST_VERSION), ReplicaRecoveryDecision::ROW_GAP_TOO_LARGE);
-    info = ValidDiagnosis();
-    info.binlogInfo.exist = true;
-    ++info.binlogInfo.lastModifyTime;
-    EXPECT_EQ(CheckReplicaRecovery(NativeRdb::E_OK, info, TEST_VERSION), ReplicaRecoveryDecision::REPLICA_NEWER);
-    info.binlogInfo.lastModifyTime = TEST_TIME + MAX_GAP_MS;
-    EXPECT_EQ(CheckReplicaRecovery(NativeRdb::E_OK, info, TEST_VERSION), ReplicaRecoveryDecision::REPLICA_NEWER);
-    ++info.binlogInfo.lastModifyTime;
-    EXPECT_EQ(CheckReplicaRecovery(NativeRdb::E_OK, info, TEST_VERSION), ReplicaRecoveryDecision::REPLICA_NEWER);
+    const int64_t gaps[] = {0, 1, 284, 5720, MAX_GAP_MS, MAX_GAP_MS + 1};
+    for (int64_t gap : gaps) {
+        for (bool replicaNewer : {false, true}) {
+            info = ValidDiagnosis();
+            if (replicaNewer) {
+                info.binlogInfo.lastModifyTime += gap;
+            } else {
+                info.primaryInfo.dbInfo.mtime += gap;
+            }
+            const auto expected = gap <= MAX_GAP_MS ? ReplicaRecoveryDecision::ALLOW :
+                ReplicaRecoveryDecision::TOO_OLD;
+            EXPECT_EQ(CheckReplicaRecovery(NativeRdb::E_OK, info, TEST_VERSION), expected);
+        }
+    }
 }
 } // namespace OHOS::Media

@@ -14,6 +14,7 @@
  */
 #define MLOG_TAG "MediaLibraryRestore"
 
+#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <utility>
@@ -23,6 +24,7 @@
 #include "medialibrary_data_manager.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_tracer.h"
+#include "medialibrary_unistore_manager.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "parameter.h"
@@ -241,17 +243,8 @@ static int32_t DiagnoseAfterRestore(int32_t error, const std::shared_ptr<NativeR
     return NativeRdb::E_CANCEL;
 }
 
-static void ReportRecoveryResult(const std::string &taskPath, int updated, const DatabaseRecoveryReport &report)
-{
-    if (taskPath.empty() && updated == 0 &&
-        (report.result != DatabaseRecoveryResult::SUCCESS || !HasPendingRecoveryWindow(RECOVERY_WINDOW_DIRECTORY))) {
-        // No Force was started for this attempt; diagnosis failures need their own limited report.
-        PostEventUtils::GetInstance().PostDatabaseRecovery(report);
-    }
-}
-
 static void FinishDatabaseRecovery(int32_t error, const std::shared_ptr<NativeRdb::RdbStore> &store,
-    const std::string &taskPath, DatabaseRecoveryReport &report)
+    const std::string &taskPath, DatabaseRecoveryReport &report, std::atomic<bool> &restoring)
 {
     if (error == NativeRdb::E_OK) {
         report.stage = DatabaseRecoveryStage::DATABASE_USABLE;
@@ -271,9 +264,15 @@ static void FinishDatabaseRecovery(int32_t error, const std::shared_ptr<NativeRd
         CHECK_AND_PRINT_LOG(markError == 0 || markError == ENOENT,
             "Could not prepare pending recovery after restore, errno=%{public}d", markError);
     }
-    ReportRecoveryResult(taskPath, updated, report);
+    const bool ordinaryRestoreFailed =
+        report.stage == DatabaseRecoveryStage::ORDINARY_RESTORE && report.error != NativeRdb::E_OK;
+    if (!ordinaryRestoreFailed && taskPath.empty() && updated == 0 &&
+        (report.result != DatabaseRecoveryResult::SUCCESS ||
+        !HasPendingRecoveryWindow(RECOVERY_WINDOW_DIRECTORY))) {
+        PostEventUtils::GetInstance().PostDatabaseRecovery(report);
+    }
     MEDIA_INFO_LOG("MediaLibraryRestore::Restore [end]. errCode = %{public}d", error);
-    MediaLibraryRestore::GetInstance().isRestoring_ = false;
+    restoring = false;
 #ifdef META_RECOVERY_SUPPORT
     if (error == NativeRdb::E_OK && MediaLibraryRdbStore::GetRaw() == store &&
         MedialibrarySubscriber::IsCurrentStatusOn() &&
@@ -283,30 +282,31 @@ static void FinishDatabaseRecovery(int32_t error, const std::shared_ptr<NativeRd
 #endif
 }
 
-static void RunRecoveryThread(const std::string &date)
+static void RunRecoveryThread(const std::string &date, std::atomic<bool> &restoring)
 {
     MEDIA_INFO_LOG("MediaLibraryRestore::Restore [start]");
     DatabaseRecoveryReport report;
     report.date = date;
     std::string taskPath;
-    auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     auto rawStore = MediaLibraryRdbStore::GetRaw();
     if (rdb == nullptr || rawStore == nullptr) {
         report.stage = DatabaseRecoveryStage::ORDINARY_RESTORE;
         report.error = NativeRdb::E_ERROR;
         report.result = DatabaseRecoveryResult::FAILED;
         PostEventUtils::GetInstance().PostDatabaseRecovery(report);
-        MediaLibraryRestore::GetInstance().isRestoring_ = false;
+        restoring = false;
         MEDIA_ERR_LOG("Restore rdbStore or rawStore is nullptr");
         return;
     }
     int32_t error = RunOrdinaryRestore(rawStore, report);
     error = DiagnoseAfterRestore(error, rawStore, report, taskPath);
-    FinishDatabaseRecovery(error, rawStore, taskPath, report);
+    FinishDatabaseRecovery(error, rawStore, taskPath, report, restoring);
 }
 
 void MediaLibraryRestore::CheckRestore(const int32_t &errCode)
 {
+    MEDIA_DEBUG_LOG("CheckRestore is called, errcode=%{public}d", errCode);
     if (errCode != NativeRdb::E_SQLITE_CORRUPT) {
         return;
     }
@@ -318,7 +318,7 @@ void MediaLibraryRestore::CheckRestore(const int32_t &errCode)
     std::string date = DfxUtils::GetCurrentDateMillisecond();
     VariantMap map = {{KEY_DB_CORRUPT, date}};
     PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_CORRUPT_ERR, map);
-    std::thread([date] { RunRecoveryThread(date); }).detach();
+    std::thread([this, date] { RunRecoveryThread(date, isRestoring_); }).detach();
 }
 
 #ifdef CLOUD_SYNC_MANAGER

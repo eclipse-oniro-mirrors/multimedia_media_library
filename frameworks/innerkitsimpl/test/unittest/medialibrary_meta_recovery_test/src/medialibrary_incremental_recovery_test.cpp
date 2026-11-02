@@ -25,7 +25,9 @@
 
 #include "media_column.h"
 #include "media_path_utils.h"
+#include "media_values_bucket_utils.h"
 #include "imedia_scanner_callback.h"
+#include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_restore.h"
@@ -40,6 +42,7 @@
 #include "recovery_summary.h"
 #include "recovery_window.h"
 #include "rdb_errno.h"
+#include "rdb_predicates.h"
 
 #include "incremental_recovery_test_hooks.h"
 #include "medialibrary_meta_recovery.h"
@@ -70,6 +73,10 @@ constexpr int COMMENT_COLUMN = 2;
 constexpr int ALBUM_COLUMN = 3;
 const std::string ALBUM_LPATH = "/Pictures/RecoveryUnitTest";
 std::vector<std::string> g_scannedPaths;
+std::vector<std::string> g_submittedMovingPaths;
+std::string g_submittedVideoName;
+int32_t g_submittedSubtype = 0;
+int32_t g_movingSubmitError = E_OK;
 int32_t g_scannerResult = E_OK;
 int64_t g_scannerAlbumId = 0;
 bool g_cancelAfterScan = false;
@@ -131,6 +138,10 @@ public:
         owner_.cancelIncremental_ = false;
         owner_.interruptedByDatabase_ = false;
         g_scannedPaths.clear();
+        g_submittedMovingPaths.clear();
+        g_submittedVideoName.clear();
+        g_submittedSubtype = 0;
+        g_movingSubmitError = E_OK;
         g_scannerResult = E_OK;
         g_scannerAlbumId = albumId_;
         g_cancelAfterScan = false;
@@ -290,6 +301,38 @@ void ExpectRow(const RecoveryPassFixture &fixture, const std::string &name,
 // The production scanner is exercised separately; this test double observes its invocation.
 void MedialibrarySubscriber::ResumeBackgroundOperation() {}
 
+int32_t SubmitRecoveryMovingPhotoForTest(const NativeRdb::ValuesBucket &values)
+{
+    if (g_movingSubmitError != E_OK) {
+        return g_movingSubmitError;
+    }
+    std::string path;
+    std::string name;
+    if (!MediaValuesBucketUtils::GetString(values, CONST_IMPORT_CACHE_FILE_PATH, path) ||
+        !MediaValuesBucketUtils::GetString(values, MEDIA_DATA_DB_NAME, name) ||
+        !MediaValuesBucketUtils::GetString(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, g_submittedVideoName) ||
+        !MediaValuesBucketUtils::GetInt(values, CONST_COMPAT_FILE_SUBTYPE, g_submittedSubtype)) {
+        return E_INVALID_VALUES;
+    }
+    auto store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (store == nullptr) {
+        return E_HAS_DB_ERROR;
+    }
+    NativeRdb::ValuesBucket row;
+    row.PutString(MediaColumn::MEDIA_FILE_PATH, path);
+    row.PutString(MediaColumn::MEDIA_NAME, name);
+    row.PutInt(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MEDIA_TYPE_IMAGE));
+    row.PutInt(PhotoColumn::PHOTO_SUBTYPE, g_submittedSubtype);
+    row.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, static_cast<int32_t>(g_scannerAlbumId));
+    row.PutLong(MediaColumn::MEDIA_TIME_PENDING, 0);
+    int64_t id = 0;
+    if (store->Insert(id, PhotoColumn::PHOTOS_TABLE, row) != NativeRdb::E_OK || id <= 0) {
+        return E_HAS_DB_ERROR;
+    }
+    g_submittedMovingPaths.push_back(path);
+    return static_cast<int32_t>(id);
+}
+
 int32_t ScanRecoveryFileForTest(const std::string &path, const std::shared_ptr<IMediaScannerCallback> &callback,
     int32_t fileId)
 {
@@ -414,15 +457,31 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalInsertsMappedAlbumFromJson
     ASSERT_TRUE(fixture.Json("fallback.jpg", invalid.dump()));
     ASSERT_TRUE(fixture.Photo("outside.jpg", WINDOW_SECONDS));
     json outside = {{"data", fixture.Cloud("outside.jpg")}, {"title", "old json"},
-        {"user_comment", "from json"}, {"owner_album_id", OLD_ALBUM_ID}};
+        {"user_comment", "from json"}, {"owner_album_id", OLD_ALBUM_ID},
+        {"date_modified", EARLY_SECONDS * MILLISECONDS_PER_SECOND}, {"size", TEST_FILE_SIZE}};
     ASSERT_TRUE(fixture.Json("outside.jpg", outside.dump(), EARLY_SECONDS));
+    ASSERT_TRUE(fixture.Photo("unchanged-new.jpg", WINDOW_SECONDS));
+    json unchanged = {{"data", fixture.Cloud("unchanged-new.jpg")}, {"owner_album_id", OLD_ALBUM_ID},
+        {"date_modified", WINDOW_SECONDS * MILLISECONDS_PER_SECOND}, {"size", TEST_FILE_SIZE}};
+    ASSERT_TRUE(fixture.Json("unchanged-new.jpg", unchanged.dump(), EARLY_SECONDS));
+    ASSERT_TRUE(fixture.Photo("deleted-new.jpg", WINDOW_SECONDS));
+    json deleted = {{"data", fixture.Cloud("deleted-new.jpg")},
+        {"dirty", static_cast<int32_t>(DirtyTypes::TYPE_DELETED)}};
+    ASSERT_TRUE(fixture.Json("deleted-new.jpg", deleted.dump(), EARLY_SECONDS));
     DatabaseRecoveryReport report;
     EXPECT_EQ(fixture.Run(report), E_OK);
     ExpectRow(fixture, "new.jpg", "new title", 1, "from json");
     ExpectRow(fixture, "fallback.jpg", "fallback", 0, "from json");
     ExpectRow(fixture, "outside.jpg", "old json", 0, "from json");
-    EXPECT_EQ(report.jsonInserted, 3);
-    EXPECT_TRUE(g_scannedPaths.empty());
+    EXPECT_EQ(report.jsonInserted, 4);
+    EXPECT_EQ(g_scannedPaths.size(), 1);
+    EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud("outside.jpg")), 1);
+    EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud("unchanged-new.jpg")), 0);
+    auto deletedResult = fixture.Query("deleted-new.jpg");
+    ASSERT_NE(deletedResult, nullptr);
+    int deletedCount = -1;
+    EXPECT_EQ(deletedResult->GetRowCount(deletedCount), NativeRdb::E_OK);
+    EXPECT_EQ(deletedCount, 0);
 }
 
 HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalScansOnlyChangedOrNewFilesInWindow, TestSize.Level1)
@@ -445,14 +504,19 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalScansOnlyChangedOrNewFiles
         ASSERT_TRUE(fixture.Existing(item.name, WINDOW_SECONDS, item.modified, item.size));
     }
     ASSERT_TRUE(fixture.Photo("new.jpg", WINDOW_SECONDS));
+    constexpr int64_t AFTER_END_SECONDS = 220;
+    ASSERT_TRUE(fixture.Existing("after-end-existing.jpg", AFTER_END_SECONDS,
+        WINDOW_SECONDS * MILLISECONDS_PER_SECOND, TEST_FILE_SIZE));
+    ASSERT_TRUE(fixture.Photo("after-end-new.jpg", AFTER_END_SECONDS));
     ASSERT_TRUE(fixture.Photo("outside.jpg", EARLY_SECONDS));
     ASSERT_TRUE(fixture.Photo("damaged.jpg", WINDOW_SECONDS));
     ASSERT_TRUE(fixture.Json("damaged.jpg", "{broken"));
     DatabaseRecoveryReport report;
     EXPECT_EQ(fixture.Run(report), E_OK);
-    EXPECT_EQ(report.fileScanned, 4);
-    EXPECT_EQ(report.fileInserted, 2);
-    EXPECT_EQ(g_scannedPaths.size(), 4);
+    EXPECT_EQ(report.fileScanned, 6);
+    EXPECT_EQ(report.fileInserted, 3);
+    EXPECT_EQ(g_scannedPaths.size(), 6);
+    EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud("after-end-existing.jpg")), 1);
     EXPECT_GT(report.failed, 0);
     EXPECT_EQ(report.result, DatabaseRecoveryResult::PARTIAL);
     for (const auto &item : cases) {
@@ -460,7 +524,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalScansOnlyChangedOrNewFiles
         EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud(item.name)),
             item.scan ? 1 : 0);
     }
-    for (const auto *name : {"new.jpg", "damaged.jpg"}) {
+    for (const auto *name : {"new.jpg", "damaged.jpg", "after-end-new.jpg"}) {
         EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud(name)), 1);
     }
     auto outside = fixture.Query("outside.jpg");
@@ -679,5 +743,129 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalRetainsPausedTaskAndFinish
     EXPECT_EQ(RunIncrementalRecoveryTestTask(fixture.owner_, taskDirectory.directory, albumFile,
         fixture.JsonDirectory(), fixture.PhotoDirectory(), reports), E_OK);
     EXPECT_EQ(reports, 1);
+}
+
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalClosesTaskWhenDatabaseColumnsUnavailable, TestSize.Level1)
+{
+    RecoveryPassFixture fixture;
+    RecoveryTaskDirectory taskDirectory;
+    ASSERT_TRUE(fixture.Init());
+    ASSERT_TRUE(taskDirectory.Init());
+    auto task = CreateRecoveryWindowFile(taskDirectory.directory, WINDOW_START, WINDOW_END);
+    ASSERT_EQ(task.error, 0);
+    taskDirectory.task = task.path;
+    ASSERT_EQ(fixture.store_->ExecuteSql("ALTER TABLE Photos RENAME TO PhotosRecoveryFailureTest"), NativeRdb::E_OK);
+    int32_t reports = 0;
+    int32_t ret = RunIncrementalRecoveryTestTask(fixture.owner_, taskDirectory.directory,
+        taskDirectory.directory + "/album.json", fixture.JsonDirectory(), fixture.PhotoDirectory(), reports);
+    // Restore the test table before assertions or fixture cleanup can return.
+    int32_t restore = fixture.store_->ExecuteSql("ALTER TABLE PhotosRecoveryFailureTest RENAME TO Photos");
+    ASSERT_EQ(restore, NativeRdb::E_OK);
+    EXPECT_EQ(ret, E_HAS_DB_ERROR);
+    EXPECT_NE(access(task.path.c_str(), F_OK), 0);
+    EXPECT_EQ(reports, 1);
+    DatabaseRecoveryReport summary;
+    ASSERT_EQ(LoadRecoverySummary(task.path, summary), 0);
+    EXPECT_EQ(summary.lastScanError, E_HAS_DB_ERROR);
+    EXPECT_EQ(summary.failed, 1);
+    EXPECT_EQ(summary.scanAttempts, 1);
+}
+
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalRestoresMovingPhotoWithoutJson, TestSize.Level1)
+{
+    RecoveryPassFixture fixture;
+    ASSERT_TRUE(fixture.Init());
+    ASSERT_TRUE(fixture.Photo("pair.jpg", WINDOW_SECONDS));
+    ASSERT_TRUE(fixture.Photo("pair.mp4", WINDOW_SECONDS));
+    DatabaseRecoveryReport report;
+    EXPECT_EQ(fixture.Run(report), E_OK);
+    ASSERT_EQ(g_submittedMovingPaths.size(), 1U);
+    EXPECT_EQ(g_submittedMovingPaths[0], fixture.Cloud("pair.jpg"));
+    EXPECT_EQ(g_submittedVideoName, "pair.mp4");
+    EXPECT_EQ(g_submittedSubtype, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    EXPECT_EQ(report.fileScanned, 1);
+    EXPECT_EQ(report.fileInserted, 1);
+    EXPECT_EQ(report.failed, 0);
+    auto video = fixture.Query("pair.mp4");
+    ASSERT_NE(video, nullptr);
+    int32_t count = -1;
+    ASSERT_EQ(video->GetRowCount(count), NativeRdb::E_OK);
+    EXPECT_EQ(count, 0);
+}
+
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalKeepsVideoWithOwnJsonIndependent, TestSize.Level1)
+{
+    RecoveryPassFixture fixture;
+    ASSERT_TRUE(fixture.Init());
+    ASSERT_TRUE(fixture.Photo("pair.jpg", WINDOW_SECONDS));
+    ASSERT_TRUE(fixture.Photo("pair.mp4", WINDOW_SECONDS));
+    json metadata = {{"data", fixture.Cloud("pair.mp4")}, {"display_name", "pair.mp4"},
+        {"media_type", static_cast<int32_t>(MEDIA_TYPE_VIDEO)}, {"owner_album_id", OLD_ALBUM_ID},
+        {"date_modified", WINDOW_SECONDS * MILLISECONDS_PER_SECOND}, {"size", TEST_FILE_SIZE}};
+    ASSERT_TRUE(fixture.Json("pair.mp4", metadata.dump(), EARLY_SECONDS));
+    DatabaseRecoveryReport report;
+    EXPECT_EQ(fixture.Run(report), E_OK);
+    EXPECT_TRUE(g_submittedMovingPaths.empty());
+    EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud("pair.jpg")), 1);
+    EXPECT_EQ(report.jsonInserted, 1);
+    auto video = fixture.Query("pair.mp4");
+    ASSERT_NE(video, nullptr);
+    int32_t count = -1;
+    ASSERT_EQ(video->GetRowCount(count), NativeRdb::E_OK);
+    EXPECT_EQ(count, 1);
+}
+
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalRecordsMovingPhotoSubmitFailure, TestSize.Level1)
+{
+    RecoveryPassFixture fixture;
+    ASSERT_TRUE(fixture.Init());
+    ASSERT_TRUE(fixture.Photo("pair.jpg", WINDOW_SECONDS));
+    ASSERT_TRUE(fixture.Photo("pair.mp4", WINDOW_SECONDS));
+    g_movingSubmitError = E_ERR;
+    DatabaseRecoveryReport report;
+    EXPECT_EQ(fixture.Run(report), E_OK);
+    EXPECT_GT(report.failed, 0);
+    EXPECT_EQ(report.fileInserted, 0);
+    EXPECT_TRUE(g_submittedMovingPaths.empty());
+}
+
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalKeepsExistingVideoIndependent, TestSize.Level1)
+{
+    RecoveryPassFixture fixture;
+    ASSERT_TRUE(fixture.Init());
+    ASSERT_TRUE(fixture.Photo("pair.jpg", WINDOW_SECONDS));
+    ASSERT_TRUE(fixture.Existing("pair.mp4", WINDOW_SECONDS,
+        WINDOW_SECONDS * MILLISECONDS_PER_SECOND, TEST_FILE_SIZE));
+    NativeRdb::ValuesBucket values;
+    values.PutInt(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(MEDIA_TYPE_VIDEO));
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_FILE_PATH, fixture.Cloud("pair.mp4"));
+    int32_t changed = 0;
+    ASSERT_EQ(fixture.store_->Update(changed, values, predicates), NativeRdb::E_OK);
+    ASSERT_EQ(changed, 1);
+    DatabaseRecoveryReport report;
+    EXPECT_EQ(fixture.Run(report), E_OK);
+    EXPECT_TRUE(g_submittedMovingPaths.empty());
+    EXPECT_EQ(std::count(g_scannedPaths.begin(), g_scannedPaths.end(), fixture.Cloud("pair.jpg")), 1);
+    auto video = fixture.Query("pair.mp4");
+    ASSERT_NE(video, nullptr);
+    int32_t count = -1;
+    ASSERT_EQ(video->GetRowCount(count), NativeRdb::E_OK);
+    EXPECT_EQ(count, 1);
+}
+
+HWTEST_F(MediaLibraryMetaRecoveryUnitTest, IncrementalRestoresMovingPhotoWhenImageJsonIsDamaged, TestSize.Level1)
+{
+    RecoveryPassFixture fixture;
+    ASSERT_TRUE(fixture.Init());
+    ASSERT_TRUE(fixture.Photo("pair.jpg", WINDOW_SECONDS));
+    ASSERT_TRUE(fixture.Photo("pair.mp4", WINDOW_SECONDS));
+    ASSERT_TRUE(fixture.Json("pair.jpg", "{broken"));
+    DatabaseRecoveryReport report;
+    EXPECT_EQ(fixture.Run(report), E_OK);
+    EXPECT_EQ(g_submittedMovingPaths.size(), 1U);
+    EXPECT_EQ(g_submittedSubtype, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    EXPECT_EQ(report.fileInserted, 1);
+    EXPECT_GT(report.failed, 0);
 }
 } // namespace OHOS::Media

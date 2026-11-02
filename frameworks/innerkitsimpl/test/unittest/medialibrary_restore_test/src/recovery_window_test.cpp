@@ -253,19 +253,35 @@ HWTEST_F(RecoveryWindowTest, ForceDependsOnRegistrationOnlyWhenEligible, TestSiz
         result.attempts = 1;
         return result;
     };
+    auto successRegistration = [&registrations]() {
+        ++registrations;
+        RecoveryWindowResult result;
+        result.error = 0;
+        result.attempts = 1;
+        result.path = "/tmp/test_force_window";
+        return result;
+    };
     auto force = [&forces]() {
         ++forces;
         return 0;
     };
+    // When not eligible, neither registration nor force is invoked.
     auto unavailable = RunForceRecovery(false, failRegistration, force);
     EXPECT_FALSE(unavailable.forceCalled);
     EXPECT_EQ(registrations, 0);
     EXPECT_EQ(forces, 0);
+    // When eligible but registration fails, force is still not invoked.
     auto failed = RunForceRecovery(true, failRegistration, force);
     EXPECT_FALSE(failed.forceCalled);
     EXPECT_EQ(failed.window.error, ENOSPC);
     EXPECT_EQ(failed.window.attempts, 1);
     EXPECT_EQ(forces, 0);
+    // When eligible and registration succeeds, force is invoked exactly once.
+    auto success = RunForceRecovery(true, successRegistration, force);
+    EXPECT_TRUE(success.forceCalled);
+    EXPECT_EQ(success.forceError, 0);
+    EXPECT_EQ(forces, 1);
+    EXPECT_EQ(registrations, 2);
 }
 
 HWTEST_F(RecoveryWindowTest, ForceFailureRetainsRegisteredWindow, TestSize.Level1)
@@ -315,7 +331,9 @@ HWTEST_F(RecoveryWindowTest, TwoPassDecisionsRespectWindowAndDatabaseValues, Tes
     EXPECT_TRUE(ShouldScanRecoveryFile(100, 1, 99, 1, window));
     EXPECT_TRUE(ShouldScanRecoveryFile(100, 2, 100, 1, window));
     EXPECT_TRUE(ShouldScanRecoveryFile(100, 2, 100, -1, window));
-    EXPECT_FALSE(ShouldScanRecoveryFile(201, 2, 100, 1, window));
+    EXPECT_TRUE(ShouldScanRecoveryFile(201, 2, 100, 1, window));
+    EXPECT_FALSE(ShouldScanRecoveryFile(201, 2, 201, 2, window));
+    EXPECT_TRUE(ShouldScanRecoveryFile(150, 2, 180, 1, window));
     EXPECT_FALSE(ShouldScanRecoveryFile(100, -1, 100, 1, window));
 }
 
@@ -487,9 +505,12 @@ HWTEST_F(RecoveryWindowTest, BackupCanReportCorruptionWithoutDeadlock, TestSize.
         return TryBeginDatabaseRecovery(restoring) ? 0 : EBUSY;
     }), 0);
     EXPECT_TRUE(restoring.load());
-    EXPECT_EQ(RunWhileDatabaseAvailable(restoring, []() { return 0; }), EBUSY);
+    auto isRestoring = [&restoring]() {
+        return restoring.load();
+    };
+    EXPECT_EQ(RunWhileDatabaseAvailable(isRestoring, []() { return 0; }), EBUSY);
     restoring = false;
-    EXPECT_EQ(RunWhileDatabaseAvailable(restoring, []() { return 0; }), 0);
+    EXPECT_EQ(RunWhileDatabaseAvailable(isRestoring, []() { return 0; }), 0);
     EXPECT_EQ(rmdir(tempDir.c_str()), 0);
 }
 

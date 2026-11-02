@@ -19,9 +19,12 @@
 #include <memory>
 #include <string>
 
+#include "values_bucket.h"
+
 namespace OHOS::Media {
 class IMediaScannerCallback;
 int32_t ScanRecoveryFileForTest(const std::string &path,
     const std::shared_ptr<IMediaScannerCallback> &callback, int32_t fileId);
+int32_t SubmitRecoveryMovingPhotoForTest(const NativeRdb::ValuesBucket &values);
 } // namespace OHOS::Media
 #endif // INCREMENTAL_RECOVERY_TEST_HOOKS_H

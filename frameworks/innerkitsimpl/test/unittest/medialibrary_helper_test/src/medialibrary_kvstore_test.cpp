@@ -146,18 +146,29 @@ HWTEST_F(MedialibraryKvstoreTest, medialibrary_kvstore_testlevel_007, TestSize.L
 {
     std::shared_ptr<MediaLibraryKvStore> medialibraryKvstore = std::make_shared<MediaLibraryKvStore>();
     ASSERT_NE(medialibraryKvstore, nullptr);
-    medialibraryKvstore->kvStorePtr_ = std::make_shared<MockSingleKvStore>();
+    const std::string storeId = "test_batch_query_007";
+    ASSERT_EQ(medialibraryKvstore->InitSingleKvstore(KvStoreRoleType::OWNER, storeId, TEST_PATH), E_OK);
     std::vector<std::string> uriBatch;
     std::vector<std::vector<uint8_t>> dataBatch;
     uriBatch.push_back("000004");
     uriBatch.push_back("000003");
     uriBatch.push_back("000002");
     uriBatch.push_back("000001");
+    const std::vector<uint8_t> value = {1, 2, 3, 4};
+    for (const auto &key : uriBatch) {
+        EXPECT_EQ(medialibraryKvstore->Insert(key, value), E_OK);
+    }
+    const std::vector<std::vector<uint8_t>> expectedValues(uriBatch.size(), value);
     int errCode = medialibraryKvstore->BatchQuery(uriBatch, dataBatch);
     EXPECT_EQ(errCode, E_OK);
+    EXPECT_EQ(dataBatch, expectedValues);
     dataBatch.clear();
     errCode = medialibraryKvstore->BatchQuery(uriBatch, dataBatch);
     EXPECT_EQ(errCode, E_OK);
+    EXPECT_EQ(dataBatch, expectedValues);
+    EXPECT_TRUE(medialibraryKvstore->Close());
+    EXPECT_EQ(medialibraryKvstore->dataManager_.DeleteKvStore(
+        {"com.ohos.medialibrary.medialibrarydata"}, {storeId}, TEST_PATH), DistributedKv::Status::SUCCESS);
 }
 
 /*

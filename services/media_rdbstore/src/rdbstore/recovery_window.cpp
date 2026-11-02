@@ -173,36 +173,8 @@ int ListRecoveryWindows(const std::string &directory, std::vector<RecoveryWindow
     return error;
 }
 
-static bool IsRecentWindow(const RecoveryWindow &window, int64_t now)
-{
-    return window.startMs <= now && now - window.startMs <= MAX_PENDING_AGE_MS;
-}
-
-static void RemovePreviousWindows(const std::vector<RecoveryWindow> &oldWindows,
-    const std::string &target, const std::string &renamed, int64_t now, RecoveryWindowResult &result)
-{
-    for (const auto &old : oldWindows) {
-        if (IsRecentWindow(old, now)) {
-            ++result.merged;
-            if (old.path != target && UpdateRecoveryWindowProgress(old.path, target) != 0) {
-                MEDIA_WARN_LOG("Could not carry recovery statistics to the merged window");
-            }
-        } else {
-            ++result.expired;
-        }
-        if (old.path == target) {
-            continue;
-        }
-        if (old.path != renamed && unlink(old.path.c_str()) != 0 && errno != ENOENT) {
-            result.cleanupError = errno;
-            MEDIA_WARN_LOG("Could not remove old recovery window, errno=%{public}d", errno);
-            continue;
-        }
-        CleanupRecoverySummary(old.path);
-    }
-}
-
-RecoveryWindowResult RegisterRecoveryWindowFile(const std::string &directory, int64_t startMs, int64_t endMs)
+RecoveryWindowResult RegisterRecoveryWindowFile(
+    const std::string &directory, int64_t startMs, int64_t endMs)
 {
     std::lock_guard<std::recursive_mutex> lock(g_windowMutex);
     RecoveryWindowResult result;
@@ -215,30 +187,30 @@ RecoveryWindowResult RegisterRecoveryWindowFile(const std::string &directory, in
     if (result.error != 0) {
         return result;
     }
-    for (const auto &old : oldWindows) {
-        if (IsRecentWindow(old, endMs)) {
-            startMs = std::min(startMs, old.startMs);
-        }
-    }
-    const std::string target = directory + "/" + WINDOW_PREFIX + std::to_string(startMs) + "_" +
-        std::to_string(endMs);
-    const auto existing = std::find_if(oldWindows.begin(), oldWindows.end(),
-        [&target](const auto &old) { return old.path == target; });
     if (oldWindows.empty()) {
         return CreateRecoveryWindowFile(directory, startMs, endMs);
     }
-    result.path = target;
-    result.startMs = startMs;
-    std::string renamed;
-    if (existing == oldWindows.end()) {
-        renamed = oldWindows.front().path;
-        result.attempts = 1;
-        if (rename(renamed.c_str(), target.c_str()) != 0) {
-            result.error = errno;
-            return result;
-        }
+    const RecoveryWindow &old = oldWindows.front();
+    const bool merge = old.startMs <= endMs && endMs - old.startMs <= MAX_PENDING_AGE_MS;
+    if (merge) {
+        startMs = std::min(startMs, old.startMs);
     }
-    RemovePreviousWindows(oldWindows, target, renamed, endMs, result);
+    result.startMs = startMs;
+    result.path = directory + "/" + WINDOW_PREFIX + std::to_string(startMs) + "_" + std::to_string(endMs);
+    result.attempts = 1;
+    if (rename(old.path.c_str(), result.path.c_str()) != 0) {
+        result.error = errno;
+        return result;
+    }
+    if (merge) {
+        result.merged = 1;
+        if (UpdateRecoveryWindowProgress(old.path, result.path) != 0) {
+            MEDIA_WARN_LOG("Could not carry recovery statistics to the merged window");
+        }
+    } else {
+        result.expired = 1;
+        CleanupRecoverySummary(old.path);
+    }
     return result;
 }
 
@@ -253,10 +225,13 @@ bool TryBeginDatabaseRecovery(std::atomic<bool> &restoring)
     return true;
 }
 
-int RunWhileDatabaseAvailable(const std::atomic<bool> &restoring, const std::function<int()> &operation)
+int RunWhileDatabaseAvailable(const std::function<bool()> &isRestoring, const std::function<int()> &operation)
 {
     std::lock_guard<std::recursive_mutex> lock(g_windowMutex);
-    return restoring.load() || !operation ? EBUSY : operation();
+    if (!isRestoring || !operation || isRestoring()) {
+        return EBUSY;
+    }
+    return operation();
 }
 
 int RunForCurrentRecoveryWindow(const RecoveryWindow &window, const std::function<int()> &operation)
@@ -312,6 +287,11 @@ bool IsInRecoveryWindow(int64_t mtimeMs, const RecoveryWindow &window)
         mtimeMs >= window.startMs && mtimeMs <= window.endMs;
 }
 
+bool IsAtOrAfterRecoveryStart(int64_t mtimeMs, const RecoveryWindow &window)
+{
+    return window.startMs > 0 && window.endMs >= window.startMs && mtimeMs >= window.startMs;
+}
+
 bool ShouldApplyRecoveryJson(int64_t mtimeMs, int64_t databaseMtimeMs, const RecoveryWindow &window)
 {
     return IsInRecoveryWindow(mtimeMs, window) && mtimeMs > databaseMtimeMs;
@@ -320,7 +300,7 @@ bool ShouldApplyRecoveryJson(int64_t mtimeMs, int64_t databaseMtimeMs, const Rec
 bool ShouldScanRecoveryFile(int64_t mtimeMs, int64_t size, int64_t databaseMtimeMs, int64_t databaseSize,
     const RecoveryWindow &window)
 {
-    return size >= 0 && IsInRecoveryWindow(mtimeMs, window) &&
+    return size >= 0 && IsAtOrAfterRecoveryStart(mtimeMs, window) &&
         (mtimeMs > databaseMtimeMs || size != databaseSize);
 }
 
