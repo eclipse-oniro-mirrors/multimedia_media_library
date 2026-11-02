@@ -2777,10 +2777,7 @@ bool AssetInputParamVerification::IsNonNegativeTrashTime(NativeRdb::ValueObject 
     MediaLibraryCommand &cmd)
 {
     int64_t trashTime = 0;
-    if (!value.GetLong(trashTime)) {
-        return false;
-    }
-    if (trashTime < 0) {
+    if (value.GetLong(trashTime) == EOK && trashTime < 0) {
         MEDIA_ERR_LOG("Invalid trash time %{public}" PRId64, trashTime);
         return false;
     }
