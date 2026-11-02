@@ -40,14 +40,16 @@ int32_t AssetBatchNotify::TryNotifyAssetsChange(const std::vector<std::string> &
     return E_OK;
 }
 
-int32_t AssetBatchNotify::FinalNotifyAssetsChange()
+int32_t AssetBatchNotify::FinalNotifyAssetsChange(bool needUpdateAllAlbums)
 {
     CHECK_AND_RETURN_RET(!this->fileIds_.empty(), E_OK);
 
     this->NotifyAssetsChange(this->fileIds_);
     this->fileIds_.clear();
 
-    this->TryUpdateAllAlbums();
+    if (needUpdateAllAlbums) {
+        this->TryUpdateAllAlbums();
+    }
     return E_OK;
 }
 
