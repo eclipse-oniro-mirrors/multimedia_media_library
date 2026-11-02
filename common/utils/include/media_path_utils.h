@@ -16,6 +16,7 @@
 #ifndef COMMON_UTILS_MEDIA_PATH_UTILS_H_
 #define COMMON_UTILS_MEDIA_PATH_UTILS_H_
 
+#include <cstdint>
 #include <string>
 #include <sys/stat.h>
 
@@ -38,6 +39,12 @@ public:
     EXPORT static bool CheckPathTraversal(const std::string& path);
     EXPORT static bool CheckIsCloudFile(const std::string &sandboxPath);
     EXPORT static std::string ConvertCloudPathToLocalPath(const std::string &cloudPath);
+    EXPORT static std::string GetParentPath(const std::string &path);
+    EXPORT static std::string DesensitizePath(const std::string &path);
+    EXPORT static std::string DesensitizeName(const std::string &name);
+    EXPORT static int32_t CopyDirectory(const std::string &srcDir, const std::string &dstDir);
+private:
+    static bool IsTranscodeFile(const std::string &filePath);
 };
 } // namespace OHOS::Media
 
