@@ -32,7 +32,6 @@
 #include "medialibrary_tracer.h"
 
 namespace OHOS::Media {
-inline static const std::string SETTING_DATA_QUERY_URI = "datashareproxy://";
 inline static const std::string SETTING_DATA_COMMON_URI =
     "datashare:///com.ohos.settingsdata/entry/settingsdata/SETTINGSDATA?Proxy=true";
 inline static const std::string PHOTOS_USER_PROPERTY_INIT_URI =
@@ -53,11 +52,11 @@ inline static const std::string CLONE_SEARCH_INDEXING = "3";
 
 class MediaSettingDataHelper {
 public:
-    MediaSettingDataHelper()
+    explicit MediaSettingDataHelper(const std::string &uri)
     {
         DataShare::CreateOptions options;
         options.enabled_ = true;
-        dataShareHelper_ = DataShare::DataShareHelper::Creator(SETTING_DATA_QUERY_URI, options);
+        dataShareHelper_ = DataShare::DataShareHelper::Creator(uri, options);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG("dataShareHelper = nullptr");
             return;
@@ -117,7 +116,8 @@ static int32_t QueryParamInDeviceSettingData(const std::string &key, std::string
     MediaLibraryTracer tracer;
     tracer.Start("SettingsDataManager::QueryParamInDeviceSettingData");
 
-    MediaSettingDataHelper dataShareHelper;
+    std::string queryUri = SETTING_DATA_COMMON_URI + "&key=" + key;
+    MediaSettingDataHelper dataShareHelper(queryUri);
     if (!dataShareHelper) {
         MEDIA_ERR_LOG("failed to init dataShareHelper");
         return E_DB_FAIL;
@@ -127,7 +127,6 @@ static int32_t QueryParamInDeviceSettingData(const std::string &key, std::string
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo("KEYWORD", key);
     std::vector<std::string> columns = {"value"};
-    std::string queryUri = SETTING_DATA_COMMON_URI + "&key=" + key;
     Uri uri(queryUri);
 
     std::shared_ptr<DataShare::DataShareResultSet> resultSet = dataShareHelper->Query(uri, predicates, columns);
@@ -146,7 +145,8 @@ static int32_t QueryParamInDeviceSettingData(const std::string &key, std::string
 
 static int32_t UpdateParamInDeviceSettingData(const std::string &key, const std::string &value)
 {
-    MediaSettingDataHelper dataShareHelper;
+    std::string updateUri = SETTING_DATA_COMMON_URI + "&key=" + key;
+    MediaSettingDataHelper dataShareHelper(updateUri);
     if (!dataShareHelper) {
         MEDIA_ERR_LOG("failed to init dataShareHelper");
         return E_DB_FAIL;
@@ -158,7 +158,6 @@ static int32_t UpdateParamInDeviceSettingData(const std::string &key, const std:
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put("VALUE", value);
 
-    std::string updateUri = SETTING_DATA_COMMON_URI + "&key=" + key;
     Uri uri(updateUri);
     auto ret = dataShareHelper->UpdateEx(uri, predicates, valuesBucket);
     CHECK_AND_RETURN_RET_LOG(ret.first == DataShare::E_OK, ret.first,
@@ -168,7 +167,8 @@ static int32_t UpdateParamInDeviceSettingData(const std::string &key, const std:
 
 static int32_t InsertParamInDeviceSettingData(const std::string &key, const std::string &value)
 {
-    MediaSettingDataHelper dataShareHelper;
+    std::string insertUri = SETTING_DATA_COMMON_URI + "&key=" + key;
+    MediaSettingDataHelper dataShareHelper(insertUri);
     if (!dataShareHelper) {
         MEDIA_ERR_LOG("failed to init dataShareHelper");
         return E_DB_FAIL;
@@ -179,7 +179,6 @@ static int32_t InsertParamInDeviceSettingData(const std::string &key, const std:
     valuesBucket.Put("KEYWORD", key);
     valuesBucket.Put("VALUE", value);
 
-    std::string insertUri = SETTING_DATA_COMMON_URI + "&key=" + key;
     Uri uri(insertUri);
     auto ret = dataShareHelper->InsertEx(uri, valuesBucket);
     CHECK_AND_RETURN_RET_LOG(ret.first == DataShare::E_OK, ret.first,
@@ -230,16 +229,16 @@ int32_t SettingsDataManager::QueryParamInSettingData(const std::string &key, std
     MediaLibraryTracer tracer;
     tracer.Start("SettingsDataManager::QueryParamInSettingData::" + key);
 
-    MediaSettingDataHelper dataShareHelper;
+    int32_t userId = GetUserId();
+    std::string queryUri = "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_" +
+                           std::to_string(userId) + "?Proxy=true&key=" + key;
+    MediaSettingDataHelper dataShareHelper(queryUri);
     CHECK_AND_RETURN_RET_LOG(dataShareHelper, E_DB_FAIL, "failed to init dataShareHelper");
 
     MEDIA_DEBUG_LOG("Query key: %{public}s", key.c_str());
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo("KEYWORD", key);
     std::vector<std::string> columns = {"value"};
-    int32_t userId = GetUserId();
-    std::string queryUri = "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_" +
-                           std::to_string(userId) + "?Proxy=true&key=" + key;
     Uri uri(queryUri);
 
     std::shared_ptr<DataShare::DataShareResultSet> resultSet = dataShareHelper->Query(uri, predicates, columns);
@@ -288,7 +287,10 @@ static AlbumUploadSwitchStatus StringToAlbumUploadSwitchStatus(const std::string
 
 int32_t SettingsDataManager::UpdateParamInSettingData(const std::string &key, const std::string &value)
 {
-    MediaSettingDataHelper dataShareHelper;
+    int32_t userId = GetUserId();
+    std::string updateUri = "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_" +
+                            std::to_string(userId) + "?Proxy=true&key=" + key;
+    MediaSettingDataHelper dataShareHelper(updateUri);
     if (!dataShareHelper) {
         return E_DB_FAIL;
     }
@@ -299,9 +301,6 @@ int32_t SettingsDataManager::UpdateParamInSettingData(const std::string &key, co
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put("VALUE", value); // static_cast<int32_t>(value)
 
-    int32_t userId = GetUserId();
-    std::string updateUri = "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_" +
-                            std::to_string(userId) + "?Proxy=true&key=" + key;
     Uri uri(updateUri);
     auto ret = dataShareHelper->UpdateEx(uri, predicates, valuesBucket);
     CHECK_AND_RETURN_RET_LOG(ret.first == DataShare::E_OK, ret.first, "update failed, err: %{public}d", ret.first);
@@ -310,7 +309,10 @@ int32_t SettingsDataManager::UpdateParamInSettingData(const std::string &key, co
 
 int32_t SettingsDataManager::InsertParamInSettingData(const std::string &key, const std::string &value)
 {
-    MediaSettingDataHelper dataShareHelper;
+    int32_t userId = GetUserId();
+    std::string insertUri = "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_" +
+                            std::to_string(userId) + "?Proxy=true&key=" + key;
+    MediaSettingDataHelper dataShareHelper(insertUri);
     if (!dataShareHelper) {
         return E_DB_FAIL;
     }
@@ -320,9 +322,6 @@ int32_t SettingsDataManager::InsertParamInSettingData(const std::string &key, co
     valuesBucket.Put("KEYWORD", key);
     valuesBucket.Put("VALUE", value); // static_cast<int32_t>(value)
 
-    int32_t userId = GetUserId();
-    std::string insertUri = "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_" +
-                            std::to_string(userId) + "?Proxy=true&key=" + key;
     Uri uri(insertUri);
     std::string result;
     auto ret = dataShareHelper->InsertEx(uri, valuesBucket);

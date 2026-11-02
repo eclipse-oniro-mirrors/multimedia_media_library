@@ -373,7 +373,7 @@ int32_t CloudMediaAssetDownloadOperation::DoRelativedRegister()
     // register unlimit traffic status
     CreateOptions options;
     options.enabled_ = true;
-    cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_DATASHARE_URI, options);
+    cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_URI, options);
     CHECK_AND_RETURN_RET_LOG(cloudHelper_ != nullptr, E_ERR, "cloudHelper_ is null.");
 
     cloudMediaAssetObserver_ = std::make_shared<CloudMediaAssetObserver>(instance_);

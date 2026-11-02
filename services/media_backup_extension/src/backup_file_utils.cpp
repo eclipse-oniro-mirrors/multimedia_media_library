@@ -861,7 +861,7 @@ int32_t BackupFileUtils::IsCloneCloudSyncSwitchOn(int32_t sceneCode)
 
 int32_t BackupFileUtils::IsCloneCloudSpaceSyncSwitchOn(int32_t sceneCode)
 {
-    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
+    std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_SYNC_SWITCH_URI);
     CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, CheckSwitchType::CLOUD_HELPER_NULL, "cloudHelper is null");
 
     DataShare::DataSharePredicates predicates;
