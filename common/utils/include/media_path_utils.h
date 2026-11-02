@@ -43,8 +43,7 @@ public:
     EXPORT static std::string DesensitizePath(const std::string &path);
     EXPORT static std::string DesensitizeName(const std::string &name);
     EXPORT static int32_t CopyDirectory(const std::string &srcDir, const std::string &dstDir);
-private:
-    static bool IsTranscodeFile(const std::string &filePath);
+    EXPORT static bool IsTranscodeFile(const std::string &filePath);
 };
 } // namespace OHOS::Media
 
