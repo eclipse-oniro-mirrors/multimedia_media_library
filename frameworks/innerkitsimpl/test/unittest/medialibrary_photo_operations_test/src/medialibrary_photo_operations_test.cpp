@@ -5953,7 +5953,9 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, IsNonNegativeTrashTime_NegativeValue_0
 /**
  * @tc.name: IsNonNegativeTrashTime_NonIntValue_001
  * @tc.desc: Test CheckParamForUpdate with non-int64 MEDIA_DATE_TRASHED value (string type).
- *           IsInt64 should fail before IsNonNegativeTrashTime is reached, CheckParamForUpdate returns false.
+ *           IsInt64 fails first, CheckParamForUpdate returns false.
+ *           Note: IsNonNegativeTrashTime itself returns true for non-int values
+ *           (GetLong fails, short-circuit skips the negative check), but IsInt64 guards before it.
  * @tc.type: FUNC
  */
 HWTEST_F(MediaLibraryPhotoOperationsTest, IsNonNegativeTrashTime_NonIntValue_001, TestSize.Level1)
