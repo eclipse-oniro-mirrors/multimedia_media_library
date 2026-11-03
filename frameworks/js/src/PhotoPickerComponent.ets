@@ -19,6 +19,7 @@ import { AsyncCallback, BusinessError } from '@kit.BasicServicesKit';
 import { bundleManager } from '@kit.AbilityKit';
 import { LengthMetrics, LengthUnit } from '@kit.ArkUI';
 import { display } from @ohos.display;
+import { image } from '@multimedia.image'
 const cooperation_multi_name = ['Cooperation-multi', 'Cooperation'];
 const PHOTO_VIEW_MIME_TYPE_MAP = new Map([
     ['*/*', 'FILTER_MEDIA_TYPE_ALL'],
