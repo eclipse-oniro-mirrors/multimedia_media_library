@@ -115,6 +115,8 @@ private:
         NativeRdb::ValuesBucket &values);
     void AddShareTypeCondition(NativeRdb::AbsRdbPredicates &predicates);
     void UpdateAlbumUploadStatusValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void HandleDateAdded(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void HandleDateModified(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
 
 private:
     /* album failure records */
