@@ -492,7 +492,7 @@ string tempImagePath;
     auto fileAsset = MediaFileAccessUtils::GetFileAssetByPathIgnoreCase(path_);
     if (fileAsset != nullptr && fileAsset->GetFilePath() != path_ &&
         fileAsset->GetPosition() == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
-        MEDIA_INFO_LOG("Open replace path with cloud data path, old=%{private}s, new=%{private}s",
+        MEDIA_INFO_LOG("Open replace path with cloud data path, old=%{public}s, new=%{public}s",
             path_.c_str(), fileAsset->GetFilePath().c_str());
         path_ = fileAsset->GetFilePath();
         OHOS::Media::CloudDentryHelper::CreateDentryForOrigin(fileId_, path_);

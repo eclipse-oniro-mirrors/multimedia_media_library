@@ -639,7 +639,7 @@ string MediaFileUri::GetPathWithOrgSubFixFromUri(const string &uri, bool isPhoto
         return "";
     }
     string fileId = realTitle.substr(index + 1);
-    if (!std::all_of(fileId.begin(), fileId.end(), [](unsigned char c) { return std::isdigit(c); })) {
+    if (!all_of(fileId.begin(), fileId.end(), ::isdigit)) {
         MEDIA_ERR_LOG("fileId invalid %{private}s", uri.c_str());
         return "";
     }
