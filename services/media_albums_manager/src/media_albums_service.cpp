@@ -221,8 +221,6 @@ int32_t MediaAlbumsService::ChangeRequestSetAlbumName(const ChangeRequestSetAlbu
 
 int32_t MediaAlbumsService::ChangeRequestOperateAlbumAttribute(const ChangeRequestOperateAlbumAttributeDto &dto)
 {
-    auto photoAlbum = BuildAnalysisAlbumTarget(dto);
-    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "failed to build analysis album target");
     if (dto.attr == ALBUM_ATTR_HIDDEN) {
         CHECK_AND_RETURN_RET_LOG(dto.type == ANALYSIS_ALBUM_OP_UPDATE, E_INVALID_VALUES,
             "only update operation support set hidden attribute");
@@ -230,6 +228,8 @@ int32_t MediaAlbumsService::ChangeRequestOperateAlbumAttribute(const ChangeReque
             "only one hidden attribute value is allowed");
         return MediaLibraryAlbumOperations::UpdateAlbumHiddenAttribute(dto.albumId, dto.values[0]);
     }
+    auto photoAlbum = BuildAnalysisAlbumTarget(dto);
+    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "failed to build analysis album target");
     AnalysisAlbumOperation operation { dto.attr, dto.type, dto.values };
     return AnalysisAlbumAttributeDispatcher::Execute(photoAlbum, operation);
 }

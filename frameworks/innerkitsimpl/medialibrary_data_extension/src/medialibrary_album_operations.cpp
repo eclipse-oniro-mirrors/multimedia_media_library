@@ -4290,6 +4290,65 @@ int32_t MediaLibraryAlbumOperations::UpdateAlbumHiddenAttribute(const std::strin
     return E_OK;
 }
 
+static bool AbsorbAlbumExecute(MediaLibraryAlbumFusionUtils::ExecuteObject& executeObject,
+    NewNameExecuteInfo& executeInfo, NativeRdb::ValuesBucket& newNameValues, vector<string>& fileIdsInAlbum)
+{
+    CHECK_AND_RETURN_RET_LOG(executeObject.albumRefresh != nullptr, false, "[absorb] albumRefresh is nullptr");
+    CHECK_AND_RETURN_RET_LOG(executeObject.assetRefresh != nullptr, false, "[absorb] assetRefresh is nullptr");
+
+    RdbPredicates rdbPredicatesNew(PhotoAlbumColumns::TABLE);
+    rdbPredicatesNew.EqualTo(PhotoAlbumColumns::ALBUM_ID, executeInfo.newAlbumId);
+    int changeRows = 0;
+    CHECK_AND_RETURN_RET_LOG(
+        executeObject.albumRefresh->Update(changeRows, newNameValues, rdbPredicatesNew) == NativeRdb::E_OK,
+        false, "Failed to update deleted album with same name");
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryAlbumFusionUtils::DeleteAlbumAndUpdateRelationship(executeObject,
+        executeInfo.oldAlbumId, executeInfo.newAlbumId, executeInfo.isCloudAlbum, &fileIdsInAlbum) == E_OK,
+        false, "Failed to merge old name album with new name album");
+    MEDIA_INFO_LOG("AbsorbAlbumExecute success, old album id: %{public}d, new album id: %{public}" PRId64,
+        executeInfo.oldAlbumId, executeInfo.newAlbumId);
+    return true;
+}
+
+static int32_t FillValuesBucket(NativeRdb::ValuesBucket& newNameValues, int32_t albumId, int32_t absorbAlbumId,
+    const shared_ptr<OHOS::Media::MediaLibraryRdbStore>& rdbStore)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "[absorb] rdbStore is nullptr");
+    const std::string sql = "SELECT (SELECT dirty FROM PhotoAlbum WHERE album_id = ?) AS dirty,"
+        "(SELECT COUNT(hidden_count) FROM PhotoAlbum WHERE album_id IN (?, ?)) AS hidden_count";
+
+    std::vector<NativeRdb::ValueObject> params = { albumId, albumId, absorbAlbumId };
+    auto resultSet = rdbStore->QuerySql(sql, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "[absorb] Query failed");
+    int32_t dirty = static_cast<int32_t>(DirtyTypes::TYPE_NEW);
+    int32_t hiddenCount = 0;
+    auto result = resultSet->GoToFirstRow();
+    if (result == NativeRdb::E_OK) {
+        dirty = GetInt32Val(PhotoAlbumColumns::ALBUM_DIRTY, resultSet);
+        hiddenCount = GetInt32Val(PhotoAlbumColumns::HIDDEN_COUNT, resultSet);
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(result == NativeRdb::E_OK, E_HAS_DB_ERROR, "[absorb] GoToFirstRow failed");
+
+    newNameValues.Delete(PhotoAlbumColumns::ALBUM_COUNT);
+    newNameValues.Delete(PhotoAlbumColumns::ALBUM_COVER_URI);
+    newNameValues.Delete(PhotoAlbumColumns::HIDDEN_COUNT);
+    newNameValues.Delete(PhotoAlbumColumns::HIDDEN_COVER);
+    newNameValues.Delete(PhotoAlbumColumns::ALBUM_IMAGE_COUNT);
+    newNameValues.Delete(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
+    newNameValues.Delete(PhotoAlbumColumns::COVER_DATE_TIME);
+    newNameValues.Delete(PhotoAlbumColumns::HIDDEN_COVER_DATE_TIME);
+    newNameValues.Delete(PhotoAlbumColumns::ALBUM_RELATIVE_PATH);
+    newNameValues.Delete(PhotoAlbumColumns::CONTAINS_HIDDEN);
+    newNameValues.PutInt(PhotoAlbumColumns::CONTAINS_HIDDEN, hiddenCount > 0 ? VALUE_YES : VALUE_NO);
+    if (dirty == static_cast<int32_t>(DirtyTypes::TYPE_NEW)) {
+        newNameValues.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, dirty);
+    } else {
+        newNameValues.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_MDIRTY));
+    }
+    return E_OK;
+}
+
 static int32_t CheckAbsorbAlbum(int32_t albumId, int32_t absorbAlbumId,
     const std::shared_ptr<MediaLibraryRdbStore>& rdbStore, std::string& albumName)
 {
@@ -4301,8 +4360,9 @@ static int32_t CheckAbsorbAlbum(int32_t albumId, int32_t absorbAlbumId,
     static const std::vector<int32_t> absorbAlbumTypes = {
         static_cast<int32_t>(PhotoAlbumType::USER), static_cast<int32_t>(PhotoAlbumType::SOURCE)
     };
-    std::string sql = "SELECT a1.album_name as album_name FROM PhotoAlbum a1 JOIN PhotoAlbum a2 ON a1.album_id = ? AND "
-        "a2.album_id = ? AND a1.album_type = a2.album_type AND a1.album_type IN (";
+    std::string sql = "SELECT a1.album_name as album_name FROM PhotoAlbum a1 JOIN PhotoAlbum a2 ON a1.album_id = ? "
+        "AND a2.album_id = ? AND a1.album_type = a2.album_type AND a1.album_subtype = a2.album_subtype AND "
+        "a1.album_type IN (";
 
     for (const auto &albumType : absorbAlbumTypes) {
         sql.append(std::to_string(albumType)).append(", ");
@@ -4344,16 +4404,9 @@ int32_t MediaLibraryAlbumOperations::AbsorbAlbum(int32_t albumId, int32_t absorb
     CHECK_AND_RETURN_RET_LOG(CheckAbsorbAlbum(albumId, absorbAlbumId, rdbStore, albumName) == E_OK, E_HAS_DB_ERROR,
         "[absorb] Check absorb album failed");
 
-    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
-    auto albumRefresh = make_shared<AccurateRefresh::AlbumAccurateRefresh>(
-        AccurateRefresh::RENAME_USER_ALBUM_BUSSINESS_NAME, trans);
-    auto dfxRefreshManager = albumRefresh->GetDfxRefreshManager();
-    albumRefresh->CloseDfxReport();
-    auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
-        AccurateRefresh::RENAME_USER_ALBUM_BUSSINESS_NAME, trans);
-    if (dfxRefreshManager != nullptr) {
-        assetRefresh->SetDfxRefreshManager(dfxRefreshManager);
-    }
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    auto albumRefresh = std::make_shared<AccurateRefresh::AlbumAccurateRefresh>(trans);
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>(trans);
 
     std::string oldAlbumPath("");
     int32_t ret = MediaDuplicateCheckerUtils::getAlbumActualPathByAlbumId(to_string(absorbAlbumId), oldAlbumPath);
@@ -4361,27 +4414,30 @@ int32_t MediaLibraryAlbumOperations::AbsorbAlbum(int32_t albumId, int32_t absorb
 
     std::vector<std::string> fileIdsInAlbum = GetAssetIdsFromOldAlbum(rdbStore, absorbAlbumId);
     NativeRdb::ValuesBucket newNameValues {};
-    bool isCloudAlbum {};
+    bool isCloudAlbum = false;
     auto success = BuildNewNameValuesBucket(rdbStore, absorbAlbumId, newNameValues, albumName, isCloudAlbum);
     CHECK_AND_RETURN_RET_LOG(success, E_INNER_FAIL, "Build new name values bucket failed");
+    CHECK_AND_RETURN_RET_LOG(FillValuesBucket(newNameValues, albumId, absorbAlbumId, rdbStore) == E_OK, E_INNER_FAIL,
+        "[absorb] FillValuesBucket failed");
 
     MediaLibraryAlbumFusionUtils::ExecuteObject executeObject{
         rdbStore, trans, albumRefresh, assetRefresh};
     NewNameExecuteInfo executeInfo{absorbAlbumId, albumId, isCloudAlbum};
-    std::function<int(void)> trySetUserAlbumName = [&]() -> int {
-        CHECK_AND_RETURN_RET_LOG(SetNewNameExecute(executeObject, executeInfo, newNameValues, fileIdsInAlbum),
-            E_HAS_DB_ERROR, "Set new name execute failed");
+    std::function<int(void)> tryAbsorbAlbum = [&]() -> int {
+        CHECK_AND_RETURN_RET_LOG(AbsorbAlbumExecute(executeObject, executeInfo, newNameValues, fileIdsInAlbum),
+            E_HAS_DB_ERROR, "Absorb album execute failed");
         return E_OK;
     };
-    ret = trans->RetryTrans(trySetUserAlbumName);
+    ret = trans->RetryTrans(tryAbsorbAlbum);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_INNER_FAIL, "[absorb] Failed to absorb album");
 
     FileManagerAlbumOperations::RenameFileManagerAlbum(oldAlbumPath, albumId, albumName);
     HandleLakeAssets(fileIdsInAlbum, albumId);
     UpdateAnalysisIndexAfterRename(fileIdsInAlbum);
-    MediaLibraryRdbUtils::UpdateCommonAlbumCover(rdbStore, { std::to_string(albumId) }, true);
-    ret = NotifyForRenameUserAlbum(albumRefresh, dfxRefreshManager, albumId, assetRefresh);
-    CHECK_AND_PRINT_LOG(ret == E_OK, "failed to send notification for rename user album");
+    albumRefresh->Notify();
+    assetRefresh->RefreshAlbum();
+    assetRefresh->Notify();
+    MEDIA_INFO_LOG("[absorb] AbsorbAlbum success");
     return E_OK;
 }
 
