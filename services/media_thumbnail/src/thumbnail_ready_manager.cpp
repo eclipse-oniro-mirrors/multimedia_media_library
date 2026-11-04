@@ -199,6 +199,7 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
     };
 
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "0");
+    rdbPredicate.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");
     if (!ThumbnailUtils::IsMobileNetworkEnabled() || timeoutCount_ >= RETRY_DOWNLOAD_THUMB_LIMIT) {
         CHECK_AND_PRINT_LOG(timeoutCount_ < RETRY_DOWNLOAD_THUMB_LIMIT,
             "timeoutCount_:%{public}d is over three, just query local", timeoutCount_.load());
