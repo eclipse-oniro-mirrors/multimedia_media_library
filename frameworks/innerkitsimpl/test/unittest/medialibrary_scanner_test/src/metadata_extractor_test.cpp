@@ -938,6 +938,156 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     EXPECT_EQ(data->GetLongitude(), 0);
 }
 
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_tag_only_longitude
+ * @tc.desc: Tag::MEDIA_LONGITUDE is set but Tag::MEDIA_LATITUDE is missing.
+ *           ISO6709 in customInfo should fill in only the missing latitude.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_tag_only_longitude, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    float tagLon = 20.0f;
+    meta->SetData(Tag::MEDIA_LONGITUDE, tagLon);
+    // Latitude not set in Tag
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+55.5555+66.6666");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    // Latitude should come from ISO6709
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 55.5555);
+    // Longitude from Tag should be preserved
+    EXPECT_EQ(data->GetLongitude(), static_cast<double>(tagLon));
+}
+
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_mixed_sign
+ * @tc.desc: ISO6709 string with positive latitude and negative longitude
+ *           (northern hemisphere, western hemisphere).
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_mixed_sign, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+40.7128-074.0060");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 40.7128);
+    EXPECT_DOUBLE_EQ(data->GetLongitude(), -74.0060);
+}
+
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_zero_values
+ * @tc.desc: ISO6709 string with zero coordinates (equator/prime meridian).
+ *           Zero values should be parsed successfully, not treated as failure.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_zero_values, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+00.0000+000.0000");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 0.0);
+    EXPECT_DOUBLE_EQ(data->GetLongitude(), 0.0);
+}
+
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_partial_match
+ * @tc.desc: ISO6709 string contains non-numeric characters around valid coordinate pairs.
+ *           Regex should still extract the two valid coordinate values.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_partial_match, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "abc+12.3400def+56.7800xyz");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 12.3400);
+    EXPECT_DOUBLE_EQ(data->GetLongitude(), 56.7800);
+}
+
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_image_type
+ * @tc.desc: ISO6709 location parsing for MEDIA_TYPE_IMAGE.
+ *           FillExtractedMetadata should also populate location for image media.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_image_type, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_IMAGE));
+    data->SetFilePath("/storage/cloud/files/test.jpg");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+48.8566+002.3522");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 48.8566);
+    EXPECT_DOUBLE_EQ(data->GetLongitude(), 2.3522);
+}
+
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_out_of_range
+ * @tc.desc: ISO6709 string with out-of-range coordinates (latitude > 90, longitude > 180).
+ *           Current implementation does no range validation, so values are stored as-is.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_out_of_range, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+91.0000+181.0000");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    // No range validation in current implementation; values stored as parsed
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 91.0000);
+    EXPECT_DOUBLE_EQ(data->GetLongitude(), 181.0000);
+}
+
 
 } // namespace Media
 } // namespace OHOS
