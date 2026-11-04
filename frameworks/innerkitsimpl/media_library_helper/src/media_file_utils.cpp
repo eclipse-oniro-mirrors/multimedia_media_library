@@ -1908,8 +1908,13 @@ int32_t MediaFileUtils::OpenFile(const string &filePath, const string &mode, con
                       errno, filePath.c_str());
         return errCode;
     }
-    MEDIA_DEBUG_LOG("File absFilePath is %{private}s", absFilePath.c_str());
+    MEDIA_INFO_LOG("File absFilePath is %{private}s", absFilePath.c_str());
     int32_t fd = open(absFilePath.c_str(), MEDIA_OPEN_MODE_MAP.at(mode));
+    if (fd >= 0) {
+        MEDIA_INFO_LOG("File fd succ %{private}d", fd);
+    } else {
+        MEDIA_ERR_LOG("File fd %{private}d", fd);
+    }
     if (clientbundleName.empty()) {
         MEDIA_DEBUG_LOG("ClientbundleName is empty,failed to to set caller_info to fd");
     } else {

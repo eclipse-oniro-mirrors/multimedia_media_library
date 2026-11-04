@@ -619,6 +619,59 @@ string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
     return path;
 }
 
+string MediaFileUri::GetPathWithOrgSubFixFromUri(const string &uri, bool isPhoto)
+{
+    size_t index = uri.rfind('/');
+    if (index == string::npos) {
+        MEDIA_ERR_LOG("index invalid %{private}s", uri.c_str());
+        return "";
+    }
+    string realTitle = uri.substr(0, index);
+    index = realTitle.rfind('/');
+    if (index == string::npos) {
+        MEDIA_ERR_LOG("invalid realTitle %{private}s", uri.c_str());
+        return "";
+    }
+    realTitle = realTitle.substr(index + 1);
+    index = realTitle.rfind('_');
+    if (index == string::npos) {
+        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uri.c_str());
+        return "";
+    }
+    string fileId = realTitle.substr(index + 1);
+    if (!std::all_of(fileId.begin(), fileId.end(), [](unsigned char c) { return std::isdigit(c); })) {
+        MEDIA_ERR_LOG("fileId invalid %{private}s", uri.c_str());
+        return "";
+    }
+    int32_t fileUniqueId = 0;
+    if (!StrToInt(fileId, fileUniqueId)) {
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", uri.c_str());
+        return "";
+    }
+    int32_t bucketNum = 0;
+    CreateAssetBucket(fileUniqueId, bucketNum);
+ 
+    string ext = MediaFileUtils::SplitByChar(uri, '.');
+    if (ext.empty()) {
+        MEDIA_ERR_LOG("invalid ext %{private}s", uri.c_str());
+        return "";
+    }
+ 
+    string path;
+    if (isPhoto) {
+        path = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES)
+               + to_string(bucketNum) + "/" + realTitle + "." + ext;
+    } else {
+        path = MediaPathUtils::GetDir(MediaPathType::CLOUD_AUDIO, AdaptAccount::YES)
+               + to_string(bucketNum) + "/" + realTitle + "." + ext;
+    }
+    if (!MediaPureFileUtils::IsFileExists(path)) {
+        MEDIA_ERR_LOG("file not exist, path=%{private}s", path.c_str());
+        return "";
+    }
+    return path;
+}
+
 string MediaFileUri::GetPhotoUri(const std::string &fileId, const std::string &path, const std::string &displayName)
 {
     std::string uri = "";

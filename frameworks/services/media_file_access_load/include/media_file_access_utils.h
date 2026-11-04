@@ -79,7 +79,8 @@ public:
     EXPORT static void UpdateModifyTime(const std::string &path, int64_t localMtime);
 
     EXPORT static std::shared_ptr<FileAsset> GetFileAssetFromDb(const std::string &column, const std::string &value);
-
+    EXPORT static std::shared_ptr<FileAsset> GetFileAssetByPathIgnoreCase(const std::string &path);
+ 
     EXPORT static MoveResult ProcessLivePhotoToMovingPhoto(const std::string &srcPath,
         const std::string &destPath, bool deleteSrc);
     EXPORT static MoveResult ProcessMovingPhotoToLivePhoto(const std::string &srcPath, const std::string &destPath,

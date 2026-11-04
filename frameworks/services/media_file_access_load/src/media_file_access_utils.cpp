@@ -81,7 +81,7 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const std::string &path)
     CHECK_AND_RETURN_RET_INFO_LOG(NeedConvertPath(path), path, "no need to convert, path: %{public}s",
         MediaFileUtils::DesensitizePath(path).c_str());
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
-    CHECK_AND_RETURN_RET(!IsZeroBucketPath(path), FileScanUtils::GetAssetRealPath(path));
+    CHECK_AND_RETURN_RET(IsZeroBucketPath(path), path);
 #endif
     auto fileAsset = GetFileAssetFromDb(MediaColumn::MEDIA_FILE_PATH, path);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, path, "get file asset from db failed");
@@ -164,6 +164,24 @@ std::shared_ptr<FileAsset> MediaFileAccessUtils::GetFileAssetFromDb(const std::s
     MEDIA_DEBUG_LOG("GetFileAssetFromDb enter");
     return MediaLibraryAssetOperations::GetFileAssetFromDb(column, value, OperationObject::FILESYSTEM_PHOTO,
         FILE_INFO_COLUMNS);
+}
+
+std::shared_ptr<FileAsset> MediaFileAccessUtils::GetFileAssetByPathIgnoreCase(const std::string &path)
+{
+    CHECK_AND_RETURN_RET_LOG(!path.empty(), nullptr, "path is empty");
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.SetWhereClause(MediaColumn::MEDIA_FILE_PATH + " = ? COLLATE NOCASE");
+    predicates.SetWhereArgs({ path });
+    predicates.Limit(1);
+    std::vector<std::string> columns = {
+        MediaColumn::MEDIA_FILE_PATH,
+        PhotoColumn::PHOTO_POSITION,
+    };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "query file asset by path failed");
+    auto fileAsset = MediaLibraryAssetOperations::GetAssetFromResultSet(resultSet, columns);
+    resultSet->Close();
+    return fileAsset;
 }
 
 int32_t MediaFileAccessUtils::OpenAssetFile(const std::string &path, const std::string &mode)
