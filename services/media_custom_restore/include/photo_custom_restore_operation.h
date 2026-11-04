@@ -16,9 +16,6 @@
 #ifndef OHOS_MEDIA_PHOTO_CUSTOM_RESTORE_OPERATION_H
 #define OHOS_MEDIA_PHOTO_CUSTOM_RESTORE_OPERATION_H
 
-#include <condition_variable>
-#include <thread>
-
 #include "asset_accurate_refresh.h"
 #include "medialibrary_custom_restore_notify.h"
 #include "medialibrary_rdbstore.h"
@@ -53,7 +50,6 @@ struct RestoreTaskInfo {
     int64_t endTime;
     int32_t imageAlbumId;
     int32_t videoAlbumId;
-    bool earlyNotifySent = false;
 };
 
 class ShareRestoreRdbCallback : public NativeRdb::RdbOpenCallback {
@@ -74,8 +70,7 @@ const std::string CUSTOM_RESTORE_DIR = LOCAL_ROOT_MEDIA_DIR + CUSTOM_RESTORE_VAL
 const int MAX_RESTORE_FILE_NUM = 200;
 const int MAX_RESTORE_THREAD_NUM = 2;
 const int RESTORE_URI_TYPE_PHOTO = 1;
-const int RESTORE_URI_TYPE_EMPTY = 2;
-const int RESTORE_URI_TYPE_ALBUM = 3;
+const int RESTORE_URI_TYPE_ALBUM = 2;
 const int PROGRESS_MULTI_NUM = 100;
 const int NOTIFY_FIRST = 0;
 const int NOTIFY_PROGRESS = 1;
@@ -93,15 +88,11 @@ class PhotoCustomRestoreOperation {
 public:
     static PhotoCustomRestoreOperation &GetInstance();
     PhotoCustomRestoreOperation &AddTask(RestoreTaskInfo restoreTaskInfo);
-    PhotoCustomRestoreOperation &AddTaskAsync(RestoreTaskInfo restoreTaskInfo);
     PhotoCustomRestoreOperation &Start();
-    PhotoCustomRestoreOperation &StartAsync();
     void CancelTask(RestoreTaskInfo restoreTaskInfo);
     void CleanTimeoutCustomRestoreTaskDir();
-    ~PhotoCustomRestoreOperation();
 
 private:
-    void WorkerLoop();
     void DoCustomRestore(RestoreTaskInfo &restoreTaskInfo);
     void InitRestoreTask(RestoreTaskInfo &restoreTaskInfo, int32_t fileNum);
     void ReleaseCustomRestoreTask(RestoreTaskInfo &restoreTaskInfo);
@@ -182,14 +173,6 @@ private:
     std::atomic<int32_t> sameNum_{0};
     std::unordered_set<std::string> photoCache_;
     Restore::MediaCustomRestoreDao customRestoreDao_;
-
-    //AsyncWorker thread members
-    std::mutex queueMutex_;
-    std::condition_variable queueCv_;
-    std::thread workerThread_;
-    std::atomic<bool> workerRunning_{false};
-    std::atomic<bool> stopWorker_{false};
-    std::atomic<bool> isProcessingTask_{false};
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_PHOTO_CUSTOM_RESTORE_OPERATION_H
