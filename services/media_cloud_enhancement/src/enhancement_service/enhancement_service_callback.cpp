@@ -194,6 +194,11 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
             effectPhotoPath), E_ERR, "Fail to copy editdata_source to file_path"));
     }
 
+    if (MediaPureFileUtils::IsFileExists(editDataSourcePath)) {
+        int32_t signRet = C2paUtils::SignForEnhancement(editDataSourceBackPath, editDataSourcePath);
+        MEDIA_INFO_LOG("sign editdata source after cloud enhancement, ret: %{public}d", signRet);
+    }
+    int32_t signRet = C2paUtils::SignForEnhancement(editDataSourceBackPath, effectPhotoPath);
     ProcessCloudEnhancementPhotoUpdate(info->fileId, assetRefresh, sourceType, info->filePath);
     return info->fileId;
 }
