@@ -938,6 +938,35 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     EXPECT_EQ(data->GetLongitude(), 0);
 }
 
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_tag_only_longitude
+ * @tc.desc: Tag::MEDIA_LONGITUDE is set but Tag::MEDIA_LATITUDE is missing.
+ *           IOS6709 in customInfo should fill in only the missing longitude.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_tag_only_longitude, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+ 
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    float tagLon = 20.0f;
+    meta->SetData(Tag::MEDIA_LONGITUDE, tagLon);
+    // Latitude not set in Tag
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+55.5555+66.6666");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+ 
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+ 
+    // Latitude should come from ISO6709
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 55.5555);
+    // Latitude from Tag should be preserved
+    EXPECT_EQ(data->GetLongitude(), static_cast<double>(tagLon));
+}
+
 
 } // namespace Media
 } // namespace OHOS
