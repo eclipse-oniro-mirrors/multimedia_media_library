@@ -1201,6 +1201,7 @@ function setPickerOptionParams(params, option) {
   params.isDestroyedWithNavigation = option.isDestroyedWithNavigation;
   params.isReturnToPhotoBrowserEnabled = option.isReturnToPhotoBrowserEnabled;
   params.pickerColorMode = option.pickerColorMode;
+  params.textColor = option.textColor;
   params.autoPlayScenes = parseAutoPlayScenes(option.autoPlayScenes);
   params.gridPinchMode = option.gridPinchMode;
   params.showDateOnScrollbar = option.showDateOnScrollbar;
