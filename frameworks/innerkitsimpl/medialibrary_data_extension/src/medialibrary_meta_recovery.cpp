@@ -472,7 +472,7 @@ static int32_t GetTotalBackupFileCount()
     filesystem::path dir(META_RECOVERY_META_PATH);
     std::error_code ec;
     auto iter = filesystem::recursive_directory_iterator(dir, ec);
-    CHECK_AND_RETURN_RET_LOG(ec, count, "Iterator creation failed: %{public}s", ec.message().c_str());
+    CHECK_AND_RETURN_RET_LOG(!ec, count, "Iterator creation failed: %{public}s", ec.message().c_str());
     for (; iter != filesystem::recursive_directory_iterator(); iter.increment(ec)) {
         if (ec) {
             MEDIA_ERR_LOG("Iteration error: %{public}s", ec.message().c_str());
