@@ -474,14 +474,11 @@ int32_t MediaLibraryNotify::GetDefaultAlbums(std::unordered_map<PhotoAlbumSubTyp
 
 int32_t MediaLibraryNotify::GetAlbumIdBySubType(const PhotoAlbumSubType subType)
 {
-    int errCode = E_OK;
-    if (defaultAlbums_.size() == 0) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (defaultAlbums_.size() == 0) {
-            errCode = GetDefaultAlbums(defaultAlbums_);
-        }
+    std::lock_guard<std::mutex> lock(defaultAlbumsMutex_);
+    if (defaultAlbums_.empty()) {
+        int32_t errCode = GetDefaultAlbums(defaultAlbums_);
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to GetDefaultAlbums");
     }
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to GetDefaultAlbums");
     if (defaultAlbums_.count(subType) == 0) {
         return E_ERR;
     }

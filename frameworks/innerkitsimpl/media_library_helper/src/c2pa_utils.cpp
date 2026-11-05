@@ -596,6 +596,49 @@ int32_t C2paUtils::SignForCreate(const std::string& filePath, const std::string&
 #endif
 }
 
+int32_t C2paUtils::SignForCreateByFd(const std::string& filePath, const std::string& authorId,
+    const std::string& authorName)
+{
+#ifdef C2PA_SUPPORT
+    MEDIA_INFO_LOG("[c2pa] SignForCreateByFd start");
+    CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_ERR, "[c2pa] filePath is empty");
+
+    MediaLibraryTracer tracer;
+    tracer.Start("C2paUtils::SignForCreateByFd");
+
+    std::string absFilePath = GetRealPath(filePath);
+    CHECK_AND_RETURN_RET_LOG(!absFilePath.empty(), E_ERR, "[c2pa] to real path failed");
+    ExifInfo info;
+    CHECK_AND_RETURN_RET_LOG(GetExifInfo(filePath, info) == E_OK, E_ERR, "[c2pa] GetExifInfo failed");
+    CHECK_AND_RETURN_RET_LOG(CertInitialize() == E_OK, E_ERR, "[c2pa] CertInitialize failed");
+
+    int32_t result = E_ERR;
+    auto& client = TrustedServiceLoader::GetInstance();
+    do {
+        ImageSignData signData;
+        SetImageData(signData.image, absFilePath);
+        signData.product.productName = PRODUCT_NAME;
+        signData.product.productVersion = PRODUCT_VERSION;
+
+        std::unordered_map<std::string, std::string> metaData = {
+            {KEY_ACTION, C2PA_CREATED},
+            {KEY_DESCRIPTION, info.description},
+            {KEY_ACTION_TIME, info.dateTime},
+            {KEY_DIG_SRC_TYPE, DIGITAL_CAPTURE},
+            {KEY_AUTHOR_ID, authorId},
+            {KEY_AUTHOR_NAME, authorName}
+        };
+        signData.metadata.push_back(metaData);
+        result = client.CreateImageSignature(signData);
+        MEDIA_INFO_LOG("[c2pa] SignForCreateByFd end: %{public}s", result == E_OK ? LOG_SUCCESS : LOG_FAILED);
+    } while (false);
+    (void)client.CertFinalize();
+    return result;
+#else
+    return E_ERR;
+#endif
+}
+
 #ifdef C2PA_SUPPORT
 static int32_t ParseFromMetaDataString(const std::string& metaDataStr,
     std::unordered_map<std::string, std::string>& metaData, bool isTranscode,

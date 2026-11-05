@@ -16,6 +16,7 @@
 #ifndef COMMON_UTILS_MEDIA_PATH_UTILS_H_
 #define COMMON_UTILS_MEDIA_PATH_UTILS_H_
 
+#include <cstdint>
 #include <string>
 #include <sys/stat.h>
 #include <functional>
@@ -172,6 +173,11 @@ public:
      */
     EXPORT static std::string ConvertCloudPathToLocalPath(const std::string &cloudPath);
     /**
+     * @brief Check if the photo path is a valid cloud file path
+     */
+    EXPORT static bool CheckPhotoPath(const std::string& photoPath);
+
+    /**
      * @brief Convert a local path to a cloud path by replacing the root prefix
      */
     EXPORT static std::string ConvertLocalPathToCloudPath(const std::string &localPath);
@@ -210,6 +216,19 @@ public:
      */
     EXPORT static int32_t ParseAccountIdFromPath(const std::string& path);
 #endif
+
+    /**
+     * @brief Desensitize a file name by masking characters in the middle
+     */
+    EXPORT static std::string DesensitizeName(const std::string &name);
+    /**
+     * @brief Copy a directory recursively
+     */
+    EXPORT static int32_t CopyDirectory(const std::string &srcDir, const std::string &dstDir);
+    /**
+     * @brief Check if the file is a transcode file
+     */
+    EXPORT static bool IsTranscodeFile(const std::string &filePath);
 
 private:
     /**

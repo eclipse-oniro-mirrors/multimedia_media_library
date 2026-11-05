@@ -16,8 +16,10 @@
 #ifndef COMMON_UTILS_MEDIA_PURE_FILE_UTILS_H_
 #define COMMON_UTILS_MEDIA_PURE_FILE_UTILS_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <sys/types.h>
 
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -34,9 +36,12 @@ public:
 
     // directory operation
     EXPORT static bool CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr = nullptr);
+    EXPORT static bool DeleteDir(const std::string &dirName);
     EXPORT static bool DeleteDirectory(const std::string &dirName);
     EXPORT static bool IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr = nullptr);
-
+    EXPORT static bool CopyFileUtil(const std::string &filePath, const std::string &newPath,
+        bool skipCheckPermit = false);
+    EXPORT static void PrintStatInformation(const std::string &path);
 private:
     static int32_t RemoveDirectory(const std::string &path);
     static bool Mkdir(const std::string &subStr, std::shared_ptr<int> errCodePtr);
