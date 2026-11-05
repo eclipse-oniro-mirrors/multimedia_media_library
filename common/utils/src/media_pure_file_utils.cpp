@@ -16,20 +16,24 @@
 #include "media_pure_file_utils.h"
 
 #include <ftw.h>
+#include <memory>
+#include <sstream>
+#include <sys/stat.h>
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media {
 const int32_t OPEN_FDS = 64;
+static const mode_t CHOWN_RWX_USR_GRP = 02771;
 bool MediaPureFileUtils::IsFileExists(const std::string &fileName)
 {
     struct stat statInfo {};
-
     return ((stat(fileName.c_str(), &statInfo)) == E_SUCCESS);
 }
 
-bool MediaPureFileUtils::DeleteDir(const std::string &dirName)
+bool MediaPureFileUtils::DeleteDirectory(const std::string &dirName)
 {
     bool errRet = false;
 
@@ -39,7 +43,6 @@ bool MediaPureFileUtils::DeleteDir(const std::string &dirName)
 
     return errRet;
 }
-
 
 bool MediaPureFileUtils::IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr)
 {
@@ -75,5 +78,50 @@ int32_t MediaPureFileUtils::RemoveDirectory(const std::string &path)
 bool MediaPureFileUtils::DeleteFile(const std::string &fileName)
 {
     return (remove(fileName.c_str()) == E_SUCCESS);
+}
+
+bool MediaPureFileUtils::CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr)
+{
+    std::string subStr;
+    std::string segment;
+
+    /*  Create directory and its sub directories if does not exist
+     *  take each string after '/' create directory if does not exist.
+     *  Created directory will be the base path for the next sub directory.
+     */
+
+    std::stringstream folderStream(dirPath);
+    while (getline(folderStream, segment, '/')) {
+        if (segment.empty()) {    // skip the first "/" in case of "/storage/cloud/files"
+            continue;
+        }
+
+        subStr.append('/' + segment);
+        if (!IsDirectory(subStr, errCodePtr)) {
+            CHECK_AND_RETURN_RET(Mkdir(subStr, errCodePtr), false);
+        }
+    }
+
+    return true;
+}
+
+bool MediaPureFileUtils::Mkdir(const std::string &subStr, std::shared_ptr<int> errCodePtr)
+{
+    mode_t mask = umask(0);
+    if (mkdir(subStr.c_str(), CHOWN_RWX_USR_GRP) == -1) {
+        if (errCodePtr != nullptr) {
+            *errCodePtr = errno;
+        }
+        int err = errno;
+        MEDIA_ERR_LOG("Failed to create directory %{public}d, path:%{public}s", err,
+            MediaPathUtils::DesensitizePath(subStr).c_str());
+        if (err == EACCES) {
+            MediaPathUtils::PrintStatInformation(MediaPathUtils::GetParentPath(subStr));
+        }
+        umask(mask);
+        return (err == EEXIST) ? true : false;
+    }
+    umask(mask);
+    return true;
 }
 } // namespace OHOS::Media
