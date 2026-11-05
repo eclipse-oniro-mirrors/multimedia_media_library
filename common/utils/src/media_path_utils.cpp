@@ -24,7 +24,6 @@
 #include <unicode/normalizer2.h>
 #include <unicode/unistr.h>
 
-#include "account_scope.h"
 #include "media_string_utils.h"
 #include "media_log.h"
 #include "media_pure_file_utils.h"
