@@ -16,6 +16,7 @@
 #include "media_asset_change_request_ani.h"
 #include <array>
 #include <fcntl.h>
+#include <optional>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include "ability_context.h"
@@ -58,6 +59,8 @@
 #include "validate_latest_pair_vo.h"
 #include "media_asset_rdbstore.h"
 #include "userfilemgr_uri.h"
+#include "delete_local_assets_and_get_uris_vo.h"
+#include "recover_assets_and_get_uris_vo.h"
 
 namespace OHOS::Media {
 namespace {
@@ -136,6 +139,10 @@ std::array staticMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteLocalAssetsPermanentlyWithUri)},
     ani_native_function {"deleteAssetsPermanentlyWithUriSync", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteAssetsPermanentlyWithUri)},
+    ani_native_function {"deleteLocalAssetsAndGetUrisSync", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteLocalAssetsAndGetUris)},
+    ani_native_function {"recoverAssetsAndGetUrisSync", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::RecoverAssetsAndGetUris)},
 };
 } // namespace
 std::atomic<uint32_t> MediaAssetChangeRequestAni::cacheFileId_ = 0;
@@ -3229,6 +3236,189 @@ ani_object MediaAssetChangeRequestAni::DeleteAssetsPermanentlyWithUri(ani_env *e
     DeleteAssetsPermanentlyWithUriExecute(env, asyncContext);
     DeleteAssetsPermanentlyWithUriComplete(env, asyncContext);
     return ReturnAniUndefined(env);
+}
+
+static ani_object ParseArgsAssetsAndGetUris(ani_env *env, ani_object aniContext, ani_object assetUris,
+    unique_ptr<MediaAssetChangeRequestAniContext>& context)
+{
+    ANI_DEBUG_LOG("enter ParseArgsAssetsAndGetUris.");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    CHECK_COND_WITH_MESSAGE(env, context != nullptr, "context is nullptr");
+    CHECK_COND(env, MediaAssetChangeRequestAni::InitUserFileClient(env, aniContext), JS_E_PARAM_INVALID);
+
+    vector<string> uriArray;
+    if (MediaLibraryAniUtils::GetStringArray(env, assetUris, uriArray) != ANI_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Argument must be array of strings");
+        return nullptr;
+    }
+    if (uriArray.empty() || uriArray.size() > BATCH_DELETE_MAX_NUMBER) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "size of assetUris is 0 or over 500.");
+        return nullptr;
+    }
+
+    vector<string> fileIds;
+    fileIds.reserve(uriArray.size());
+    for (const auto& uri : uriArray) {
+        int32_t fileId = MediaLibraryAniUtils::GetFileIdFromPhotoUri(uri);
+        if (fileId < 0) {
+            AniError::ThrowError(env, JS_E_PARAM_INVALID, "Invalid URI format or empty fileId");
+            return nullptr;
+        }
+        fileIds.push_back(to_string(fileId));
+    }
+    context->fileIds = move(fileIds);
+    context->assetUris = move(uriArray);
+    ani_object ret = nullptr;
+    if (MediaLibraryAniUtils::ToAniBooleanObject(env, true, ret) != ANI_OK) {
+        AniError::ThrowError(env, JS_E_INNER_FAIL, "Failed to create the parse result object");
+        return nullptr;
+    }
+    return ret;
+}
+
+static void AlignResultsWithInputAssets(unique_ptr<MediaAssetChangeRequestAniContext>& context,
+    const vector<AssetUriResult>& results)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    if (context->fileIds.size() != context->resultUris.size() ||
+        context->fileIds.size() != context->resultSuccess.size()) {
+        ANI_ERR_LOG("Result arrays are not aligned, fileIds: %{public}zu, resultUris: %{public}zu, "
+            "resultSuccess: %{public}zu", context->fileIds.size(), context->resultUris.size(),
+            context->resultSuccess.size());
+        context->error = JS_E_INNER_FAIL;
+        return;
+    }
+    // Align the per-item results with the input fileIds, so that each input uri has exactly one result.
+    unordered_map<string, AssetUriResult> resultMap;
+    resultMap.reserve(results.size());
+    for (const auto& result : results) {
+        resultMap[result.originalFileId] = result;
+    }
+    for (size_t i = 0; i < context->fileIds.size(); i++) {
+        std::optional<AssetUriResult> result;
+        if (i < results.size() && results[i].originalFileId == context->fileIds[i]) {
+            result = results[i];
+        } else {
+            auto iter = resultMap.find(context->fileIds[i]);
+            if (iter != resultMap.end()) {
+                result = iter->second;
+            }
+        }
+        if (!result.has_value() || !result->isSuccess || result->resultUri.empty()) {
+            ANI_INFO_LOG("Failed to operate the asset, fileId: %{public}s, index: %{public}zu",
+                context->fileIds[i].c_str(), i);
+            continue;
+        }
+        context->resultUris[i] = result->resultUri;
+        context->resultSuccess[i] = true;
+    }
+}
+
+static void DeleteLocalAssetsAndGetUrisExecute(ani_env *env, unique_ptr<MediaAssetChangeRequestAniContext>& context)
+{
+    ANI_DEBUG_LOG("enter DeleteLocalAssetsAndGetUrisExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteLocalAssetsAndGetUrisExecute");
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    context->resultUris.assign(context->fileIds.size(), "");
+    context->resultSuccess.assign(context->fileIds.size(), false);
+    CHECK_IF_EQUAL(!context->fileIds.empty(), "fileIds is empty");
+
+    DeleteLocalAssetsAndGetUrisReqBody reqBody;
+    reqBody.fileIds = context->fileIds;
+    DeleteLocalAssetsAndGetUrisRespBody respBody;
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_DELETE_LOCAL_ASSETS_AND_GET_URIS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret < 0) {
+        if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(ret);
+        } else if (ret == -EINVAL) {
+            context->error = JS_E_PARAM_INVALID;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        ANI_ERR_LOG("Failed to delete local assets, ret: %{public}d", ret);
+        return;
+    }
+    AlignResultsWithInputAssets(context, respBody.results);
+}
+
+static void RecoverAssetsAndGetUrisExecute(ani_env *env, unique_ptr<MediaAssetChangeRequestAniContext>& context)
+{
+    ANI_DEBUG_LOG("enter RecoverAssetsAndGetUrisExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("RecoverAssetsAndGetUrisExecute");
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    context->resultUris.assign(context->fileIds.size(), "");
+    context->resultSuccess.assign(context->fileIds.size(), false);
+    CHECK_IF_EQUAL(!context->assetUris.empty(), "assetUris is empty");
+
+    RecoverAssetsAndGetUrisReqBody reqBody;
+    reqBody.assets = context->assetUris;
+    RecoverAssetsAndGetUrisRespBody respBody;
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_RECOVER_ASSETS_AND_GET_URIS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret < 0) {
+        if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(ret);
+        } else if (ret == -EINVAL) {
+            context->error = JS_E_PARAM_INVALID;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        ANI_ERR_LOG("Failed to recover assets, ret: %{public}d", ret);
+        return;
+    }
+    AlignResultsWithInputAssets(context, respBody.results);
+}
+
+static ani_object DeleteOrRecoverAssetsAndGetUrisComplete(ani_env *env, unique_ptr<MediaAssetChangeRequestAniContext>&
+    context)
+{
+    ANI_DEBUG_LOG("enter DeleteOrRecoverAssetsAndGetUrisComplete.");
+    CHECK_COND_WITH_MESSAGE(env, context != nullptr, "context is nullptr");
+    if (context->error != ERR_DEFAULT) {
+        ani_object errorObj {};
+        context->HandleError(env, errorObj);
+        return nullptr;
+    }
+    ani_object aniArray = nullptr;
+    if (MediaLibraryAniUtils::ToAssetUriResultAniArray(env, context->assetUris,
+        context->resultUris, context->resultSuccess, aniArray) != ANI_OK) {
+        ANI_ERR_LOG("Failed to create the asset uri result array");
+        AniError::ThrowError(env, JS_E_INNER_FAIL, "Failed to create the asset uri result array");
+        return nullptr;
+    }
+    return aniArray;
+}
+
+ani_object MediaAssetChangeRequestAni::DeleteLocalAssetsAndGetUris(ani_env *env,
+    [[maybe_unused]] ani_class clazz, ani_object context, ani_object assetUris)
+{
+    ANI_DEBUG_LOG("enter DeleteLocalAssetsAndGetUris.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAniContext>();
+    if (ParseArgsAssetsAndGetUris(env, context, assetUris, asyncContext) == nullptr) {
+        return nullptr;
+    }
+    DeleteLocalAssetsAndGetUrisExecute(env, asyncContext);
+    return DeleteOrRecoverAssetsAndGetUrisComplete(env, asyncContext);
+}
+
+ani_object MediaAssetChangeRequestAni::RecoverAssetsAndGetUris(ani_env *env,
+    [[maybe_unused]] ani_class clazz, ani_object context, ani_object assetUris)
+{
+    ANI_DEBUG_LOG("enter RecoverAssetsAndGetUris.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAniContext>();
+    if (ParseArgsAssetsAndGetUris(env, context, assetUris, asyncContext) == nullptr) {
+        return nullptr;
+    }
+    RecoverAssetsAndGetUrisExecute(env, asyncContext);
+    return DeleteOrRecoverAssetsAndGetUrisComplete(env, asyncContext);
 }
 
 ani_object MediaAssetChangeRequestAni::SetFavorite(ani_env *env, ani_object object, ani_boolean favoriteState)

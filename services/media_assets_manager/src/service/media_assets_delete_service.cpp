@@ -38,9 +38,42 @@
 #include "file_scan_utils.h"
 #endif
 #include "file_manager_asset_operations.h"
+#include "media_library_error_code.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsDeleteService::DeleteLocalAssets(const std::vector<std::string> &fileIds)
+{
+    std::unordered_map<std::string, std::string> unusedTargetUriMap;
+    return this->DeleteLocalAssetsInternal(fileIds, unusedTargetUriMap);
+}
+
+int32_t MediaAssetsDeleteService::DeleteLocalAssetsAndGetUris(const std::vector<std::string> &fileIds,
+    std::vector<AssetUriResult> &results)
+{
+    std::unordered_map<std::string, std::string> targetUriMap;
+    int32_t ret = this->DeleteLocalAssetsInternal(fileIds, targetUriMap);
+    bool isSuccess = ret >= 0;
+    results.clear();
+    results.reserve(fileIds.size());
+    for (const auto &fileId : fileIds) {
+        AssetUriResult result;
+        result.originalFileId = fileId;
+        result.resultUri = "";
+        result.isSuccess = false;
+        auto it = targetUriMap.find(fileId);
+        if (isSuccess && it != targetUriMap.end() && !it->second.empty()) {
+            result.resultUri = it->second;
+            result.isSuccess = true;
+        }
+        results.emplace_back(std::move(result));
+    }
+    MEDIA_INFO_LOG("DeleteLocalAssetsAndGetUris completed, fileIds: %{public}zu, results: %{public}zu, "
+        "ret: %{public}d, isSuccess: %{public}d", fileIds.size(), results.size(), ret, static_cast<int32_t>(isSuccess));
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::DeleteLocalAssetsInternal(const std::vector<std::string> &fileIds,
+    std::unordered_map<std::string, std::string> &targetUriMap)
 {
     // Ensure the process is single-threaded.
     std::lock_guard<std::mutex> lock(this->deleteAssetsMutex_);
@@ -52,22 +85,19 @@ int32_t MediaAssetsDeleteService::DeleteLocalAssets(const std::vector<std::strin
     // Aggreate all the target fileIds.
     std::vector<std::string> targetFileIds;
     // Handle the LOCAL_AND_CLOUD assets, provide the LOCAL copy.
-    ret = this->BatchCopyAndMoveLocalAssetToTrash(photosList, targetFileIds);
+    ret = this->BatchCopyAndMoveLocalAssetToTrash(photosList, targetFileIds, targetUriMap);
     CHECK_AND_RETURN_RET_LOG(
         !targetFileIds.empty(), E_OK, "No need to handle, all are CLOUD. fileIds: %{public}zu", fileIds.size());
     // Move the assets to trash.
     ret = MediaAssetsService::GetInstance().TrashPhotos(targetFileIds);
-    MEDIA_INFO_LOG("DeleteLocalAssets completed, ret: %{public}d, fileIds size: %{public}zu, "
-                   "photosList: %{public}zu, targetFileIds: %{public}zu",
-        ret,
-        fileIds.size(),
-        photosList.size(),
+    MEDIA_INFO_LOG("DeleteLocalAssetsInternal completed, ret: %{public}d, fileIds size: %{public}zu, "
+        "photosList: %{public}zu, targetFileIds: %{public}zu", ret, fileIds.size(), photosList.size(),
         targetFileIds.size());
     return ret;
 }
 
-int32_t MediaAssetsDeleteService::BatchCopyAndMoveLocalAssetToTrash(
-    const std::vector<PhotosPo> &photosList, std::vector<std::string> &targetFileIds)
+int32_t MediaAssetsDeleteService::BatchCopyAndMoveLocalAssetToTrash(const std::vector<PhotosPo> &photosList,
+    std::vector<std::string> &targetFileIds, std::unordered_map<std::string, std::string> &targetUriMap)
 {
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
@@ -77,6 +107,11 @@ int32_t MediaAssetsDeleteService::BatchCopyAndMoveLocalAssetToTrash(
     bool isValid = false;
     std::optional<PhotosPo> targetPhotoInfoOp;
     bool isCoverAsset = false;
+    // Record the target uri of each original fileId, so that the result can be aligned with the input assets.
+    auto appendTargetUri = [&targetFileIds, &targetUriMap](const PhotosPo &photoInfo, const std::string &targetUri) {
+        targetFileIds.emplace_back(targetUri);
+        targetUriMap[std::to_string(photoInfo.fileId.value_or(-1))] = targetUri;
+    };
     for (const PhotosPo &photoInfo : photosList) {
         // Only process cover asset.
         isCoverAsset = photoInfo.burstCoverLevel.value_or(1) == 1;
@@ -88,7 +123,7 @@ int32_t MediaAssetsDeleteService::BatchCopyAndMoveLocalAssetToTrash(
             photoInfo.burstKey.value_or("").c_str());
         // Fdirty asset should move to trash directly.
         isValid = photoInfo.dirty.value_or(0) != static_cast<int32_t>(DirtyType::TYPE_FDIRTY);
-        CHECK_AND_EXECUTE(isValid, targetFileIds.emplace_back(photoInfo.BuildFileUri()));
+        CHECK_AND_EXECUTE(isValid, appendTargetUri(photoInfo, photoInfo.BuildFileUri()));
         CHECK_AND_CONTINUE_INFO_LOG(isValid,
             "Delete directly. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
             photoInfo.fileId.value_or(-1),
@@ -98,10 +133,10 @@ int32_t MediaAssetsDeleteService::BatchCopyAndMoveLocalAssetToTrash(
         // Only handle the LOCAL_AND_CLOUD assets.
         ret = this->DeleteLocalAssetSingle(photoInfo, targetPhotoInfoOp, photoRefresh);
         isValid = ret == E_OK && targetPhotoInfoOp.has_value();
-        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(targetPhotoInfoOp.value().BuildFileUri()));
+        CHECK_AND_EXECUTE(!isValid, appendTargetUri(photoInfo, targetPhotoInfoOp.value().BuildFileUri()));
         // Handle the LOCAL assets, ignore the CLOUD assets.
         isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL);
-        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(photoInfo.BuildFileUri()));
+        CHECK_AND_EXECUTE(!isValid, appendTargetUri(photoInfo, photoInfo.BuildFileUri()));
     }
     photoRefresh->RefreshAlbumNoDateModified(static_cast<NotifyAlbumType>(
         NotifyAlbumType::SYS_ALBUM | NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));

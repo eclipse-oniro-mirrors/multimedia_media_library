@@ -918,10 +918,23 @@ int32_t MediaAlbumsService::RemoveAssets(
 
 int32_t MediaAlbumsService::RecoverAssets(ChangeRequestRecoverAssetsDto &recoverAssetsDto)
 {
+    std::vector<AssetUriResult> results;
+    return this->RecoverAssetsInternal(recoverAssetsDto, results);
+}
+
+int32_t MediaAlbumsService::RecoverAssetsAndGetResults(ChangeRequestRecoverAssetsDto &recoverAssetsDto,
+    std::vector<AssetUriResult> &results)
+{
+    return this->RecoverAssetsInternal(recoverAssetsDto, results);
+}
+
+int32_t MediaAlbumsService::RecoverAssetsInternal(ChangeRequestRecoverAssetsDto &recoverAssetsDto,
+    std::vector<AssetUriResult> &results)
+{
     // Get all recoverable fileIds
     std::vector<std::string> targetFileIds;
-    int32_t ret =
-        this->mediaAssetsRecoverService_.BatchMoveOutTrashAndMergeWithSameAsset(recoverAssetsDto.assets, targetFileIds);
+    int32_t ret = this->mediaAssetsRecoverService_.BatchMoveOutTrashAndMergeWithSameAsset(
+        recoverAssetsDto.assets, targetFileIds, results);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "BatchMoveOutTrashAndMergeWithSameAsset failed, ret: %{public}d", ret);
     DataShare::DataSharePredicates predicates;
     predicates.In(PhotoColumn::MEDIA_ID, targetFileIds);

@@ -18,17 +18,21 @@
 
 #include <vector>
 #include <mutex>
+#include <unordered_map>
 
 #include "media_assets_dao.h"
 #include "cloud_media_define.h"
 #include "cloud_sync_manager.h"
+#include "asset_uri_result_vo.h"
 
 namespace OHOS::Media::Common {
 using namespace OHOS::Media::ORM;
 class EXPORT MediaAssetsRecoverService {
 public:
-    int32_t BatchMoveOutTrashAndMergeWithSameAsset(
-        const std::vector<std::string> &fileIds, std::vector<std::string> &targetFileIds);
+    // targetFileIds only holds the uris of the assets which are moved out of the trash successfully.
+    // results holds one item per input asset id, in the same order as fileIds.
+    int32_t BatchMoveOutTrashAndMergeWithSameAsset(const std::vector<std::string> &fileIds,
+        std::vector<std::string> &targetFileIds, std::vector<AssetUriResult> &results);
     int32_t MoveOutTrashAndMergeWithSameAsset(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh,
         const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp);
 
@@ -67,6 +71,22 @@ private:
     int32_t RecoverPackageName(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t MoveAssetFileFromMediaToFileManager(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
+    // Builds one result per input fileId, so that the results are aligned with the input assets.
+    int32_t FillRecoverResults(const std::vector<std::string> &fileIds,
+        const std::unordered_map<std::string, std::string> &recoveredUris,
+        std::vector<AssetUriResult> &results);
+    // Marks every input fileId as failed, used when the batch cannot be executed at all.
+    int32_t FillRecoverResults(const std::vector<std::string> &fileIds, std::vector<AssetUriResult> &results);
+    // Completes the burst members of the input fileIds, so that the whole burst group can be recovered
+    // even when only the cover uri is passed in.
+    int32_t PrepareForBurstRecovery(std::vector<std::string> &fileIds);
+    // Removes the duplicated elements of values, keeping the order of the first occurrence.
+    int32_t RemoveDuplicates(std::vector<std::string> &values);
+    // Records the result of one asset which has been moved out of the trash: only the assets recovered
+    // successfully are collected into targetFileIds and recoveredUris.
+    int32_t RecordRecoveredAsset(const PhotosPo &photoInfo, int32_t ret,
+        const std::optional<PhotosPo> &targetPhotoInfoOp, std::vector<std::string> &targetFileIds,
+        std::unordered_map<std::string, std::string> &recoveredUris);
 
 private:
     MediaAssetsDao mediaAssetsDao_;

@@ -95,6 +95,9 @@ public:
     int32_t AddAssets(ChangeRequestAddAssetsDto &addAssetsDto, ChangeRequestAddAssetsRespBody &respBody);
     int32_t RemoveAssets(ChangeRequestRemoveAssetsDto &removeAssetsDto, ChangeRequestRemoveAssetsRespBody &respBody);
     int32_t RecoverAssets(ChangeRequestRecoverAssetsDto &recoverAssetsDto);
+    // Recover the assets from trash and report one result per input asset, in the same order as the input assets.
+    int32_t RecoverAssetsAndGetResults(ChangeRequestRecoverAssetsDto &recoverAssetsDto,
+        std::vector<AssetUriResult> &results);
     int32_t DeleteAssets(ChangeRequestDeleteAssetsDto &deleteAssetsDto);
     int32_t GetAlbumsByIds(GetAlbumsByIdsDto &getAlbumsByIdsDto, GetAlbumsByIdsRespBody &respBody);
     int32_t GetPhotoAlbumObject(GetPhotoAlbumObjectDto &getPhotoAlbumObjectDto, GetPhotoAlbumObjectRespBody &respBody);
@@ -136,6 +139,8 @@ private:
     int32_t SetUserAlbumCoverUri(const ChangeRequestSetCoverUriDto& dto);
     int32_t SetSourceAlbumCoverUri(const ChangeRequestSetCoverUriDto& dto);
     int32_t SetSystemAlbumCoverUri(const ChangeRequestSetCoverUriDto& dto);
+    int32_t RecoverAssetsInternal(ChangeRequestRecoverAssetsDto &recoverAssetsDto,
+        std::vector<AssetUriResult> &results);
     MediaAlbumsRdbOperations rdbOperation_;
 
 private:
