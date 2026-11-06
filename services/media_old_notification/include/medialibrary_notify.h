@@ -60,7 +60,6 @@ private:
     int32_t GetDefaultAlbums(std::unordered_map<PhotoAlbumSubType, int> &outAlbums);
     static std::shared_ptr<MediaLibraryNotify> instance_;
     std::unordered_map<PhotoAlbumSubType, int> defaultAlbums_;
-    std::mutex defaultAlbumsMutex_;
 };
 
 class NotifyTaskWorker {
