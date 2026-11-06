@@ -26,6 +26,8 @@
 #include "media_string_utils.h"
 #include "medialibrary_helper_container.h"
 #include "media_account_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 using namespace std;
 namespace OHOS {
