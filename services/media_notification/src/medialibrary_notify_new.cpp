@@ -49,9 +49,7 @@ void MediaLibraryNotifyNew::AddItem(NotifyInfoInner &notifyInfoInner)
 {
     auto worker = NotifyTaskWorker::GetInstance();
     worker->AddTaskInfo(notifyInfoInner);
-    if (!worker->IsRunning()) {
-        worker->StartWorker();
-    }
+    worker->StartWorker();
     MEDIA_INFO_LOG("AddItem");
 }
 
@@ -69,9 +67,7 @@ void MediaLibraryNotifyNew::AddUserDefineItem(const UserDefineNotifyInfo &notify
 {
     auto worker = NotifyTaskWorker::GetInstance();
     worker->AddUserDefineTaskInfo(notifyInfoInner);
-    if (!worker->IsRunning()) {
-        worker->StartWorker();
-    }
+    worker->StartWorker();
     MEDIA_INFO_LOG("AddUserDefineItem");
 }
 
@@ -79,9 +75,7 @@ void MediaLibraryNotifyNew::AddDbAvailabilityItem(const std::string& status, con
 {
     auto worker = NotifyTaskWorker::GetInstance();
     worker->AddDbAvailabilityTaskInfo(status, reason);
-    if (!worker->IsRunning()) {
-        worker->StartWorker();
-    }
+    worker->StartWorker();
     MEDIA_INFO_LOG("AddDbAvailabilityItem");
 }
 } // Notification

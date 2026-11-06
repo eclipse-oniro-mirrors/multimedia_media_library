@@ -16,6 +16,7 @@
 #include "medialibrary_photo_operations.h"
 
 #include <grp.h>
+#include <mutex>
 #include <regex>
 #include <unordered_set>
 #include "album_plugin_base.h"
@@ -2539,6 +2540,8 @@ int32_t MediaLibraryPhotoOperations::UpdateOrientationExif(MediaLibraryCommand &
 int32_t IsSystemAlbumMovement(MediaLibraryCommand &cmd, bool &isSystemAlbum)
 {
     static vector<int32_t> systemAlbumIds;
+    static std::mutex systemAlbumIdsMutex;
+    s
     if (systemAlbumIds.empty()) {
         auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "rdbstore is nullptr");

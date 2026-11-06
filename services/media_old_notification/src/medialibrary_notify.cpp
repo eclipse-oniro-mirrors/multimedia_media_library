@@ -41,6 +41,7 @@ using NotifyDataMap = unordered_map<NotifyType, list<Uri>>;
 static const int32_t WAIT_TIME = 2;
 shared_ptr<MediaLibraryNotify> MediaLibraryNotify::instance_;
 mutex MediaLibraryNotify::mutex_;
+once_flag MediaLibraryNotify::onceFlag_;
 unordered_map<string, NotifyDataMap> MediaLibraryNotify::nfListMap_ = {};
 atomic<uint16_t> MediaLibraryNotify::thumbCounts_(0);
 atomic<uint16_t> MediaLibraryNotify::counts_(0);
@@ -53,15 +54,14 @@ shared_ptr<MediaLibraryNotify> MediaLibraryNotify::GetInstance()
     if (instance_ != nullptr) {
         return instance_;
     }
-    lock_guard<mutex> lock(mutex_);
-    if (instance_ == nullptr) {
+    std::call_once(onceFlag_, [&]() {
         instance_ = shared_ptr<MediaLibraryNotify>(new MediaLibraryNotify());
         if (instance_ == nullptr) {
             MEDIA_ERR_LOG("GetInstance nullptr");
-            return instance_;
+            return;
         }
         instance_->Init();
-    }
+    });
     return instance_;
 }
 MediaLibraryNotify::MediaLibraryNotify() {};

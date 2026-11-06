@@ -70,6 +70,7 @@ private:
     std::map<sptr<IRemoteObject>, sptr<ObserverCallbackRecipient>> obsCallbackPecipients_;
     static std::shared_ptr<Media::Notification::MediaObserverManager> observerManager_;
     static std::mutex instanceMutex_;
+    static std::once_flag onceFlag_;
 };
 
 }
