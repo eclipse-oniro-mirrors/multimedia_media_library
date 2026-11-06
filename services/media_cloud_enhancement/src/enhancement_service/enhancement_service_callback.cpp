@@ -95,7 +95,7 @@ static int32_t SetAssetPathInCreate(FileAsset &fileAsset, std::shared_ptr<Transa
     if (!fileAsset.GetPath().empty()) {
         return E_OK;
     }
-    string extension = MediaFileUtils::GetExtensionFromPath(fileAsset.GetDisplayName());
+    string extension = MediaFileUtils::SplitByChar(fileAsset.GetDisplayName(), '.');
     string filePath;
     int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileAsset.GetMediaType(), trans);
     int32_t errCode = MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileAsset.GetMediaType(),

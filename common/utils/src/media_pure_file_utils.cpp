@@ -18,6 +18,7 @@
 #include <climits>
 #include <fcntl.h>
 #include <ftw.h>
+#include <memory>
 #include <sstream>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
@@ -79,15 +80,18 @@ static bool SendFileWithRetry(int32_t dest, int32_t source, off_t totalSize, off
     return true;
 }
 } // namespace
-
 bool MediaPureFileUtils::IsFileExists(const std::string &fileName)
 {
     struct stat statInfo {};
-
     return ((stat(fileName.c_str(), &statInfo)) == E_SUCCESS);
 }
 
 bool MediaPureFileUtils::DeleteDir(const std::string &dirName)
+{
+    return DeleteDirectory(dirName);
+}
+
+bool MediaPureFileUtils::DeleteDirectory(const std::string &dirName)
 {
     bool errRet = false;
 
@@ -97,7 +101,6 @@ bool MediaPureFileUtils::DeleteDir(const std::string &dirName)
 
     return errRet;
 }
-
 
 bool MediaPureFileUtils::IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr)
 {
@@ -165,7 +168,6 @@ bool MediaPureFileUtils::Mkdir(const std::string &subStr, std::shared_ptr<int> e
     umask(mask);
     return true;
 }
-
 bool MediaPureFileUtils::CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr)
 {
     std::string subStr;

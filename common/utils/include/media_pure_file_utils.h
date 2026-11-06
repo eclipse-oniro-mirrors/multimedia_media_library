@@ -32,10 +32,13 @@ public:
     EXPORT MediaPureFileUtils();
     EXPORT ~MediaPureFileUtils();
     EXPORT static bool IsFileExists(const std::string &fileName);
-    EXPORT static bool DeleteDir(const std::string &dirName);
-    EXPORT static bool IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr = nullptr);
     EXPORT static bool DeleteFile(const std::string &fileName);
+
+    // directory operation
     EXPORT static bool CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr = nullptr);
+    EXPORT static bool DeleteDir(const std::string &dirName);
+    EXPORT static bool DeleteDirectory(const std::string &dirName);
+    EXPORT static bool IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr = nullptr);
     EXPORT static bool CopyFileUtil(const std::string &filePath, const std::string &newPath,
         bool skipCheckPermit = false);
     EXPORT static void PrintStatInformation(const std::string &path);

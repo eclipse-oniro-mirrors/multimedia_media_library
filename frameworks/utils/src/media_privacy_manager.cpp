@@ -266,6 +266,7 @@ static int32_t OpenFilterProxyFd(const string &path, const string &mode, const P
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaPrivacyManager::OpenFilterProxyFd");
+    MEDIA_INFO_LOG("OpenFilterProxyFd");
     CHECK_AND_RETURN_RET_LOG(CheckFsMounted(FS_TYPE_EPFS, EPFS_MOUNT_POINT),
         OpenOriginFd(path, mode, clientBundle, fuseFlag),
         "Epfs is currently not supported yet");
@@ -486,6 +487,17 @@ string tempImagePath;
     } else {
         path_ = MediaFileAccessUtils::GetAssetRealPath(path_);
     }
+    // 用 path_ 做整路径大小写不敏感匹配（如 aaa.mp4 与 aaa.MP4）把 data 列查出来；
+    // 若查到的 data 与原有 path 不同且 position 为纯云（CLOUD），则用库中 data 路径替换 path_。
+    auto fileAsset = MediaFileAccessUtils::GetFileAssetByPathIgnoreCase(path_);
+    if (fileAsset != nullptr && fileAsset->GetFilePath() != path_ &&
+        fileAsset->GetPosition() == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_INFO_LOG("Open replace path with cloud data path, old=%{public}s, new=%{public}s",
+            path_.c_str(), fileAsset->GetFilePath().c_str());
+        path_ = fileAsset->GetFilePath();
+        OHOS::Media::CloudDentryHelper::CreateDentryForOrigin(fileId_, path_);
+    }
+    MEDIA_INFO_LOG("after replace path with db data path, toopen=%{private}s", path_.c_str());
 #endif
     if (!MediaFileUtils::IsFileExists(path_) && !fileId_.empty()) {
         OHOS::Media::CloudDentryHelper::CreateDentryForOrigin(fileId_, path_);
