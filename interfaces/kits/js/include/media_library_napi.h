@@ -363,6 +363,7 @@ private:
     EXPORT static napi_value RequestPhotoUrisReadPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value RequestPhotoUrisReadPermissionEx(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessCheckPhotoUrisReadPermission(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessVerifyPhotoAssetUris(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperCreatePhotoAsset(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessCreatePhotoAsset(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetPhotoAssetsForQuery(napi_env env, napi_callback_info info);

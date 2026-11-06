@@ -1644,6 +1644,7 @@ export default {
   MediaAssetManager: photoAccessHelper.MediaAssetManager,
   MovingPhoto: photoAccessHelper.MovingPhoto,
   MovingPhotoEffectMode: photoAccessHelper.MovingPhotoEffectMode,
+  SingleFileMovingPhotoUtil: photoAccessHelper.SingleFileMovingPhotoUtil,
   CompleteButtonText: CompleteButtonText,
   ImageFileType: photoAccessHelper.ImageFileType,
   PhotoRiskStatus: photoAccessHelper.PhotoRiskStatus,

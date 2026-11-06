@@ -532,6 +532,11 @@ const std::map<std::string, std::string> DATE_TRANSITION_MAP = {
 // write cache
 #define CONST_CACHE_FILE_NAME "cache_file_name"
 #define CONST_CACHE_MOVING_PHOTO_VIDEO_NAME "cache_moving_photo_video_name"
+// 合一文件保存时透传的源文件末尾整段 extraData（40B / 60B / 60B+N），用于沿用源文件的
+// VersionAndFrameNum、封面时间、视频信息与 CinemagraphInfo，不走扫描器的默认重拼逻辑
+#define CONST_CACHE_MOVING_PHOTO_EXTRA_DATA "cache_moving_photo_extra_data"
+// 标记本次缓存提交来自合一文件，服务端据此放宽动态照片视频的时长上限
+#define CONST_CACHE_IS_SINGLE_FILE "cache_is_single_file"
 #define CONST_IMPORT_CACHE_FILE_PATH "import_cache_file_path"
 
 // moving photo param

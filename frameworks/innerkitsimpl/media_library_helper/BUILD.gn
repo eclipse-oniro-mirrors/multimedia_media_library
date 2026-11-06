@@ -95,6 +95,7 @@ ohos_shared_library("media_library") {
     "src/medialibrary_operation.cpp",
     "src/mimetype_utils.cpp",
     "src/moving_photo_file_utils.cpp",
+    "src/single_file_moving_photo_utils.cpp",
     "src/native_album_asset.cpp",
     "src/photo_album.cpp",
     "src/photo_album_column.cpp",

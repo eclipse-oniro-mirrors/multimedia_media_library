@@ -4773,6 +4773,35 @@ int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     return E_OK;
 }
 
+// 保存合一文件时沿用源文件末尾的整段 extraData（40B / 60B / 60B+N）：落盘后据此预创建 extraData，
+// 避免扫描器首次扫描时按默认版本（v3/v6）与默认帧重拼 VersionAndFrameNum，并保留 CinemagraphInfo
+static void CreateSingleFileMovingPhotoExtraData(MediaLibraryCommand &cmd, const string &imagePath,
+    const string &videoPath)
+{
+    string extraData;
+    bool hasExtraData = MediaValuesBucketUtils::GetString(cmd.GetValueBucket(),
+        CONST_CACHE_MOVING_PHOTO_EXTRA_DATA, extraData);
+    if (!hasExtraData || extraData.empty()) {
+        return;  // 未透传时保持扫描器的原有默认行为
+    }
+    MovingPhotoExtraDataParams params;
+    params.imagePath = imagePath;
+    params.videoPath = videoPath;
+    params.extraData = extraData;
+    off_t extraDataSize = 0;
+    int32_t ret = MovingPhotoFileUtils::CreateExtraData(params, extraDataSize);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to create extra data of single file moving photo, ret:%{public}d", ret);
+}
+
+static bool CheckCacheMovingPhotoVideo(const NativeRdb::ValuesBucket &values, const std::string &videoPath)
+{
+    // 合一文件拆出的视频原时长可能超过 10s，仅校验格式与可解析性；普通动态照片沿用 10s 上限的原有规则
+    bool isSingleFile = false;
+    MediaValuesBucketUtils::GetBool(values, CONST_CACHE_IS_SINGLE_FILE, isSingleFile);
+    return isSingleFile ? MovingPhotoFileUtils::CheckMovingPhotoVideoFormat(videoPath)
+                        : MovingPhotoFileUtils::CheckMovingPhotoVideo(videoPath);
+}
+
 int32_t MediaLibraryPhotoOperations::MoveCacheFile(MediaLibraryCommand &cmd, const MoveCacheFileInfo &moveCacheFileInfo)
 {
     if (moveCacheFileInfo.subtype == static_cast<int32_t>(PhotoSubType::DEFAULT) &&
@@ -4864,12 +4893,15 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(MediaLibraryCommand &cmd, con
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckMovingPhotoImage(moveCacheFileInfo.cachePath), E_INVALID_MOVING_PHOTO,
         "Failed to check image of moving photo");
     string cacheMovingPhotoVideoName;
+    string destVideoPath;
     if (MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
         cacheMovingPhotoVideoName) && !cacheMovingPhotoVideoName.empty()) {
         string cacheVideoPath = GetAssetCacheDir() + "/" + cacheMovingPhotoVideoName;
-        CHECK_AND_RETURN_RET_LOG(MovingPhotoFileUtils::CheckMovingPhotoVideo(cacheVideoPath), E_INVALID_MOVING_PHOTO,
+        // 合一动态照片的视频不受 10s 限制，但仍需能解析出有效时长，空/损坏文件仍需拒绝
+        CHECK_AND_RETURN_RET_LOG(CheckCacheMovingPhotoVideo(cmd.GetValueBucket(), cacheVideoPath),
+            E_INVALID_MOVING_PHOTO,
             "Failed to check video of moving photo");
-        string destVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(moveCacheFileInfo.destPath);
+        destVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(moveCacheFileInfo.destPath);
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
         int32_t errCode = MediaFileAccessUtils::MoveFileInEditScene(cacheVideoPath, destVideoPath);
 #else
@@ -4885,16 +4917,27 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(MediaLibraryCommand &cmd, con
             "MediaLibraryPhotoOperations MoveCacheFile MOVING_PHOTO destPath %{public}s",
             MLOG_TAG, __FUNCTION__, __LINE__, destPath.c_str());
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
-        return MediaFileAccessUtils::MoveFileInEditScene(moveCacheFileInfo.cachePath, destPath);
+        int32_t editMoveRet = MediaFileAccessUtils::MoveFileInEditScene(moveCacheFileInfo.cachePath, destPath);
 #else
-        return Move(moveCacheFileInfo.cachePath, destPath);
+        int32_t editMoveRet = Move(moveCacheFileInfo.cachePath, destPath);
 #endif
+        // 编辑场景主文件已存在，extraData 可基于主文件路径创建，与移动编辑源文件的顺序无关
+        if (editMoveRet == E_OK && !destVideoPath.empty()) {
+            CreateSingleFileMovingPhotoExtraData(cmd, moveCacheFileInfo.destPath, destVideoPath);
+        }
+        return editMoveRet;
     }
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
-    return MediaFileAccessUtils::MoveFileInEditScene(moveCacheFileInfo.cachePath, moveCacheFileInfo.destPath);
+    int32_t moveRet = MediaFileAccessUtils::MoveFileInEditScene(moveCacheFileInfo.cachePath,
+        moveCacheFileInfo.destPath);
 #else
-    return Move(moveCacheFileInfo.cachePath, moveCacheFileInfo.destPath);
+    int32_t moveRet = Move(moveCacheFileInfo.cachePath, moveCacheFileInfo.destPath);
 #endif
+    // extraData 的路径基于图片的真实路径解析，必须在图片落盘成功后再创建，否则会因文件不存在而透传失效
+    if (moveRet == E_OK && !destVideoPath.empty()) {
+        CreateSingleFileMovingPhotoExtraData(cmd, moveCacheFileInfo.destPath, destVideoPath);
+    }
+    return moveRet;
 }
 
 bool MediaLibraryPhotoOperations::CheckCacheCmd(MediaLibraryCommand& cmd, int32_t subtype, const string& displayName)
@@ -6023,7 +6066,8 @@ int32_t MediaLibraryPhotoOperations::GetMovingPhotoCachePath(MediaLibraryCommand
 
     string cacheDir = GetAssetCacheDir();
     if (!videoCacheName.empty()) {
-        CHECK_AND_RETURN_RET_LOG(MovingPhotoFileUtils::CheckMovingPhotoVideo(cacheDir + "/" + videoCacheName),
+        // 合一动态照片的视频不受 10s 限制，但仍需能解析出有效时长
+        CHECK_AND_RETURN_RET_LOG(CheckCacheMovingPhotoVideo(values, cacheDir + "/" + videoCacheName),
             E_INVALID_MOVING_PHOTO, "Failed to check cache video of moving photo");
     }
 

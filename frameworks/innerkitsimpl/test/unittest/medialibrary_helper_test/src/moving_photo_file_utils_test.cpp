@@ -465,12 +465,20 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhotoFileUtils_GetExtraDataLen_003, T
 {
     string dirPath = "/storage/cloud/files/Photo/1";
     EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
-    string imagePath = dirPath + "/" + "livePhotoSamePath.jpg";
-    string videoPath = dirPath + "/" + "video.mp4";
+    string imagePath = dirPath + "/" + "livePhotoExtraDataLen_003.jpg";
+    string videoPath = dirPath + "/" + "videoExtraDataLen_003.mp4";
+    // 清掉同目录历史残留的源文件与 extraData，保证每次运行时路径状态一致
+    MediaFileUtils::DeleteFile(MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(imagePath));
+    MediaFileUtils::DeleteFile(imagePath);
+    MediaFileUtils::DeleteFile(videoPath);
     off_t fileSize{0};
-    EXPECT_EQ(MovingPhotoFileUtils::GetExtraDataLen(imagePath, videoPath, 0, 0, fileSize), E_OK);
+    // 图片不存在时在落盘前拒绝
+    EXPECT_EQ(MovingPhotoFileUtils::GetExtraDataLen(imagePath, videoPath, 0, 0, fileSize), E_HAS_FS_ERROR);
+    EXPECT_EQ(fileSize, 0);
     EXPECT_EQ(WriteFileContent(imagePath, FILE_TEST_JPG, sizeof(FILE_TEST_JPG)), true);
-    EXPECT_EQ(MovingPhotoFileUtils::GetExtraDataLen(imagePath, videoPath, 0, 0, fileSize), E_OK);
+    // 图片存在但视频缺失时同样拒绝，避免用非法长度写出 LIVE_ 段
+    EXPECT_EQ(MovingPhotoFileUtils::GetExtraDataLen(imagePath, videoPath, 0, 0, fileSize), E_HAS_FS_ERROR);
+    EXPECT_EQ(fileSize, 0);
     EXPECT_EQ(WriteFileContent(videoPath, FILE_TEST_MP4, sizeof(FILE_TEST_MP4)), true);
     EXPECT_EQ(MovingPhotoFileUtils::GetExtraDataLen(imagePath, videoPath, 0, 0, fileSize), E_OK);
     EXPECT_EQ(fileSize, MIN_STANDARD_SIZE);

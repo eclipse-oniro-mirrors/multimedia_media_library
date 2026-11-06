@@ -59,6 +59,7 @@ static const std::string PAH_ANI_CLASS_MEDIA_ASSETS_EDIT_DATA = PAH_CLASS_SPACE 
 static const std::string PAH_ANI_CLASS_MEDIA_MANAGER = PAH_CLASS_SPACE + "MediaAssetManager";
 static const std::string PAH_ANI_CLASS_MEDIA_DATA_HANDLER = PAH_CLASS_SPACE + "MediaAssetDataHandler";
 static const std::string PAH_ANI_CLASS_MEDIA_PROGRESS_HANDLER = PAH_CLASS_SPACE + "MediaAssetProgressHandler";
+static const std::string PAH_ANI_CLASS_SINGLE_FILE_MOVING_PHOTO_UTIL = PAH_CLASS_SPACE + "SingleFileMovingPhotoUtil";
 static const std::string PAH_ANI_CLASS_SHARED_PHOTO_ASSET_HANDLE = PAH_CLASS_SPACE + "SharedPhotoAssetHandle";
 static const std::string PAH_ANI_CLASS_SHARED_ALBUM_ASSET_HANDLE = PAH_CLASS_SPACE + "SharedAlbumAssetHandle";
 

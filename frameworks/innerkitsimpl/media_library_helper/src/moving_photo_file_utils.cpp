@@ -21,6 +21,7 @@
 #include <regex>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "avmetadatahelper.h"
 #include "directory_ex.h"
@@ -33,6 +34,7 @@
 #include "media_edit_utils.h"
 #include "media_path_utils.h"
 #include "media_string_utils.h"
+#include "single_file_moving_photo_utils.h"
 
 using namespace std;
 
@@ -51,19 +53,21 @@ static const mode_t CHOWN_RO_USR_GRP = 0644;
 
 // LCOV_EXCL_START
 static string GetVersionPositionTag(uint32_t frame, bool hasExtraData,
-    const string& data = "", bool isCameraShotMovingPhoto = false)
+    const string& data = "", bool isCameraShotMovingPhoto = false, uint32_t version = 0)
 {
     string buffer;
     bool hasCinemagraph{false};
     if (data.size() != 0) {
-        uint32_t version{0};
-        uint32_t frameIndex{0};
-        if (MovingPhotoFileUtils::GetVersionAndFrameNum(data, version, frameIndex, hasCinemagraph) != E_OK) {
+        uint32_t dataVersion{0};
+        uint32_t dataFrameIndex{0};
+        if (MovingPhotoFileUtils::GetVersionAndFrameNum(data, dataVersion, dataFrameIndex, hasCinemagraph) != E_OK) {
             return buffer;
         }
-        buffer = "v" + to_string(version) + "_f";
+        buffer = "v" + to_string(dataVersion) + "_f";
     } else if (hasExtraData) {
         return buffer;
+    } else if (version != 0) {  // 显式指定版本号时优先沿用，不受 camera shot 规则影响
+        buffer = "v" + to_string(version) + "_f";
     } else {
         buffer += isCameraShotMovingPhoto ? "v6_f" : "v3_f";
     }
@@ -277,13 +281,105 @@ static int32_t WriteExtraData(const string& extraPath, const UniqueFd& livePhoto
 int32_t MovingPhotoFileUtils::GetExtraDataLen(const string& imagePath, const string& videoPath,
     uint32_t frameIndex, int64_t coverPosition, off_t &fileSize, bool isCameraShotMovingPhoto)
 {
+    MovingPhotoExtraDataParams params;
+    params.imagePath = imagePath;
+    params.videoPath = videoPath;
+    params.frameIndex = frameIndex;
+    params.coverPosition = coverPosition;
+    params.isCameraShotMovingPhoto = isCameraShotMovingPhoto;
+    return MovingPhotoFileUtils::CreateExtraData(params, fileSize);
+}
+
+// 版本段带 _c 但 CinemagraphInfo 长度字段损坏时，GetExtraDataSize 会把整段大小回退成 60B；
+// 这时读到的 60B 里版本段仍带 _c，消费侧按 _c 语义会再去找 4B 长度字段而错算视频大小，
+// 因此剔除 _c 后缀并补空格，使整段退化为不含 CinemagraphInfo 的 60B 布局。
+static void StripCinemagraphSuffixIfNeeded(std::string &extraData)
+{
+    if (extraData.size() != static_cast<size_t>(MIN_STANDARD_SIZE)) {
+        return;  // 只有回退后的 60B 形态需要处理，40B 与 60B+N 均保持原样
+    }
+    const string versionTag = extraData.substr(0, VERSION_TAG_LEN);
+    size_t end = versionTag.find_last_not_of(' ');
+    if (end == string::npos) {
+        return;  // 全空格：无版本号，原样保留
+    }
+    string trimmed = versionTag.substr(0, end + 1);
+    if (!MediaStringUtils::EndsWith(trimmed, "_c") && !MediaStringUtils::EndsWith(trimmed, "_C")) {
+        return;
+    }
+    trimmed = trimmed.substr(0, trimmed.length() - 2);
+    trimmed.append(VERSION_TAG_LEN - trimmed.length(), ' ');
+    extraData.replace(0, VERSION_TAG_LEN, trimmed);
+    MEDIA_INFO_LOG("strip cinemagraph suffix of extra data, version tag:%{public}s", trimmed.c_str());
+}
+
+int32_t MovingPhotoFileUtils::CheckExtraData(const std::string &extraData)
+{
+    const size_t size = extraData.size();
+    const size_t noVersionSize = static_cast<size_t>(LIVE_TAG_LEN + PLAY_INFO_LEN);
+    const size_t standardSize = static_cast<size_t>(MIN_STANDARD_SIZE);
+    // 长度只允许两种形态：40B（版本段非标准，整段只有 PLAY_INFO 与 LIVE）与 60B 及以上（含版本段）
+    CHECK_AND_RETURN_RET_LOG(size == noVersionSize || size >= standardSize, E_INVALID_VALUES,
+        "Invalid extra data size:%{public}d", static_cast<int32_t>(size));
+    const string liveTag = extraData.substr(size - LIVE_TAG_LEN, LIVE_TAG_LEN);
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(liveTag, LIVE_TAG), E_INVALID_VALUES,
+        "Invalid live tag of extra data");
+    if (size == noVersionSize) {
+        return E_OK;  // 40B 形态没有版本段，只能校验 LIVE 段
+    }
+    // 版本段固定在末尾 60B 的起始处，与消费侧 GetExtraDataSize 的读取位置保持一致
+    const string versionTag = extraData.substr(size - standardSize, VERSION_TAG_LEN);
+    uint32_t version = 0;
+    uint32_t frameIndex = 0;
+    bool hasCinemagraphInfo = false;
+    CHECK_AND_RETURN_RET_LOG(GetVersionAndFrameNum(versionTag, version, frameIndex, hasCinemagraphInfo) == E_OK,
+        E_INVALID_VALUES, "Invalid version tag of extra data:%{public}s", versionTag.c_str());
+    return E_OK;
+}
+
+// 未透传整段 extraData 时，按帧号、封面时间与视频大小重新拼装标准 60B
+static int32_t WriteRecomputedExtraData(const UniqueFd &extraDataFd, const MovingPhotoExtraDataParams &params)
+{
+    if (AddStringToFile(extraDataFd, GetVersionPositionTag(params.frameIndex, false, "",
+        params.isCameraShotMovingPhoto, params.version)) == E_ERR) {
+        MEDIA_ERR_LOG("write version position tag err");
+        return E_ERR;
+    }
+    if (AddStringToFile(extraDataFd, GetDurationTag(params.coverPosition)) == E_ERR) {
+        MEDIA_ERR_LOG("write duration tag err");
+        return E_ERR;
+    }
+    if (AddStringToFile(extraDataFd, GetVideoInfoTag(GetFileSize(params.videoPath) + VERSION_TAG_LEN)) == E_ERR) {
+        MEDIA_ERR_LOG("write video info tag err");
+        return E_ERR;
+    }
+    return E_OK;
+}
+
+int32_t MovingPhotoFileUtils::CreateExtraData(const MovingPhotoExtraDataParams &params, off_t &fileSize)
+{
+    // 透传了源合一文件整段 extraData 时，先校验长度与版本段，避免落盘到一半才失败
+    const bool useExtraData = !params.extraData.empty();
+    if (useExtraData) {
+        int32_t checkRet = MovingPhotoFileUtils::CheckExtraData(params.extraData);
+        CHECK_AND_RETURN_RET_LOG(checkRet == E_OK, checkRet,
+            "Invalid extra data of moving photo, size:%{public}d", static_cast<int32_t>(params.extraData.size()));
+    }
+    // 使用路径前统一归一化并校验：拒绝空路径、../ 与目录，并解析符号链接
     string absImagePath;
-    if (!PathToRealPath(imagePath, absImagePath)) {
-        MEDIA_ERR_LOG("file is not real path: %{private}s, errno: %{public}d", imagePath.c_str(), errno);
-        return E_HAS_FS_ERROR;
+    CHECK_AND_RETURN_RET_LOG(
+        SingleFileMovingPhotoUtils::NormalizeExistingFile(params.imagePath, absImagePath) == E_OK,
+        E_HAS_FS_ERROR, "Invalid image path of moving photo");
+    if (!useExtraData) {
+        // 重拼 extraData 需要视频段大小，视频缺失时写出的 LIVE_ 段非法，必须在落盘前拒绝
+        string absVideoPath;
+        CHECK_AND_RETURN_RET_LOG(
+            SingleFileMovingPhotoUtils::NormalizeExistingFile(params.videoPath, absVideoPath) == E_OK,
+            E_HAS_FS_ERROR, "Invalid video path of moving photo");
     }
     string extraDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(absImagePath);
     string extraPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(absImagePath);
+    // 已存在时保持不覆盖，直接复用（二次保存、重试、扫描抢跑场景）
     if (MediaFileUtils::IsFileValid(extraPath)) {
         fileSize = GetFileSize(extraPath);
         return E_OK;
@@ -300,19 +396,47 @@ int32_t MovingPhotoFileUtils::GetExtraDataLen(const string& imagePath, const str
         MEDIA_ERR_LOG("failed to open extra data, errno:%{public}d", errno);
         return E_ERR;
     }
-    if (AddStringToFile(extraDataFd, GetVersionPositionTag(frameIndex, false, "", isCameraShotMovingPhoto)) == E_ERR) {
-        MEDIA_ERR_LOG("write version position tag err");
-        return E_ERR;
+    if (useExtraData) {
+        // 整段原样落盘，CinemagraphInfo 与版本段都不重拼；服务端再兜底一次 _c 剔除，保证落盘自洽
+        std::string normalized = params.extraData;
+        StripCinemagraphSuffixIfNeeded(normalized);
+        if (AddStringToFile(extraDataFd, normalized) == E_ERR) {
+            MEDIA_ERR_LOG("write extra data err");
+            return E_ERR;
+        }
+        fileSize = static_cast<off_t>(normalized.size());
+        return E_OK;
     }
-    if (AddStringToFile(extraDataFd, GetDurationTag(coverPosition)) == E_ERR) {
-        MEDIA_ERR_LOG("write duration tag err");
-        return E_ERR;
-    }
-    if (AddStringToFile(extraDataFd, GetVideoInfoTag(GetFileSize(videoPath) + VERSION_TAG_LEN)) == E_ERR) {
-        MEDIA_ERR_LOG("write video info tag err");
-        return E_ERR;
-    }
+    int32_t writeRet = WriteRecomputedExtraData(extraDataFd, params);
+    CHECK_AND_RETURN_RET_LOG(writeRet == E_OK, writeRet, "Failed to write extra data of moving photo");
     fileSize = MIN_STANDARD_SIZE;
+    return E_OK;
+}
+
+int32_t MovingPhotoFileUtils::GetWholeExtraData(const int32_t fd, std::string &extraData)
+{
+    extraData.clear();
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, E_HAS_FS_ERROR, "Invalid fd of extra data");
+    struct stat st;
+    CHECK_AND_RETURN_RET_LOG(fstat(fd, &st) == 0, E_HAS_FS_ERROR,
+        "Failed to get file state of live photo, errno:%{public}d", errno);
+    const int64_t totalSize = static_cast<int64_t>(st.st_size);
+    CHECK_AND_RETURN_RET_LOG(totalSize > MIN_STANDARD_SIZE, E_INVALID_LIVE_PHOTO,
+        "File too small to hold extra data, size:%{public}" PRId64, totalSize);
+    // 复用与 ParseSingleFileMovingPhoto 完全一致的布局解析，避免两处对边界判断不一致
+    int64_t imageSize = 0;
+    int64_t videoSize = 0;
+    int64_t extraDataSize = 0;
+    int32_t ret = MovingPhotoFileUtils::GetMovingPhotoDetailedSize(fd, imageSize, videoSize, extraDataSize);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to get detailed size of live photo, ret:%{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(extraDataSize > 0 && extraDataSize < totalSize, E_INVALID_LIVE_PHOTO,
+        "Invalid extra data size:%{public}" PRId64 ", total size:%{public}" PRId64, extraDataSize, totalSize);
+    std::string buffer(static_cast<size_t>(extraDataSize), '\0');
+    ssize_t bytesRead = pread(fd, &buffer[0], buffer.size(), totalSize - extraDataSize);
+    CHECK_AND_RETURN_RET_LOG(bytesRead == static_cast<ssize_t>(buffer.size()), E_HAS_FS_ERROR,
+        "Failed to read extra data, ret:%{public}d, errno:%{public}d", static_cast<int32_t>(bytesRead), errno);
+    StripCinemagraphSuffixIfNeeded(buffer);
+    extraData = std::move(buffer);
     return E_OK;
 }
 
@@ -549,7 +673,42 @@ int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const std::string& movingPhotoI
     return E_OK;
 }
 
-bool MovingPhotoFileUtils::IsLivePhoto(const string& path)
+// LCOV_EXCL_START
+int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const int32_t imageFd, const int32_t videoFd,
+    const std::string &livePhotoPath, int64_t coverPosition)
+{
+    CHECK_AND_RETURN_RET_LOG(imageFd >= 0, E_HAS_FS_ERROR, "image fd is invalid");
+    CHECK_AND_RETURN_RET_LOG(videoFd >= 0, E_HAS_FS_ERROR, "video fd is invalid");
+    CHECK_AND_RETURN_RET_LOG(!livePhotoPath.empty(), E_HAS_FS_ERROR, "live photo path is empty");
+    // 输出文件已存在时跳过 CreateAsset（其语义为"新建"，已存在会返回 E_FILE_EXIST），由下方 O_TRUNC 截断覆盖
+    // 黄区 MediaFileUtils 无 IsFileExists，此处直接用 stat 判存在
+    struct stat statInfo {};
+    if (stat(livePhotoPath.c_str(), &statInfo) != E_SUCCESS) {
+        MEDIA_DEBUG_LOG("Live photo file does not exist, create it, path:%{private}s, errno:%{public}d",
+            livePhotoPath.c_str(), errno);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateAsset(livePhotoPath) == E_OK, E_ERR,
+            "Failed to create live photo file, path:%{private}s, errno:%{public}d", livePhotoPath.c_str(), errno);
+    }
+    string absLivePhotoPath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(livePhotoPath, absLivePhotoPath),
+        E_HAS_FS_ERROR, "file is not real path: %{private}s, errno: %{public}d", livePhotoPath.c_str(), errno);
+    UniqueFd livePhotoFd(open(absLivePhotoPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, CHOWN_RO_USR_GRP));
+    CHECK_AND_RETURN_RET_LOG(livePhotoFd.Get() >= 0, E_ERR,
+        "failed to open live photo file, errno: %{public}d", errno);
+    UniqueFd imageUniqueFd(dup(imageFd));
+    CHECK_AND_RETURN_RET_LOG(imageUniqueFd.Get() >= 0, E_ERR, "failed to dup image fd, errno: %{public}d", errno);
+    UniqueFd videoUniqueFd(dup(videoFd));
+    CHECK_AND_RETURN_RET_LOG(videoUniqueFd.Get() >= 0, E_ERR, "failed to dup video fd, errno: %{public}d", errno);
+    if (MergeFile(imageUniqueFd, videoUniqueFd, livePhotoFd, "", coverPosition) == E_ERR) {
+        MEDIA_ERR_LOG("failed to MergeFile file");
+        MediaFileUtils::DeleteFile(absLivePhotoPath);
+        return E_ERR;
+    }
+    return E_OK;
+}
+// LCOV_EXCL_STOP
+
+bool MovingPhotoFileUtils::IsLivePhoto(const std::string &path)
 {
     string absPath;
     if (!PathToRealPath(path, absPath)) {
@@ -1727,6 +1886,18 @@ bool MovingPhotoFileUtils::CheckMovingPhotoVideo(const UniqueFd &uniqueFd)
         MEDIA_ERR_LOG("Failed to check duration of moving photo video: %{public}d ms", duration);
         return false;
     }
+    return true;
+}
+
+bool MovingPhotoFileUtils::CheckMovingPhotoVideoFormat(const string &path)
+{
+    // 扩展名与路径校验复用既有实现，不限制时长上限
+    CHECK_AND_RETURN_RET_LOG(CheckMovingPhotoVideo(path, false), false,
+        "Failed to check format of moving photo video");
+    // 视频时长仍需可解析，否则空文件或损坏文件会被当作有效视频落盘
+    int32_t duration = GetMovingPhotoVideoDuration(path);
+    CHECK_AND_RETURN_RET_LOG(duration > 0, false,
+        "Failed to get duration of moving photo video, duration: %{public}d", duration);
     return true;
 }
 

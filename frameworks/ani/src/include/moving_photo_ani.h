@@ -44,12 +44,15 @@ public:
     static int32_t OpenReadOnlyMetadata(const std::string& movingPhotoUri);
     static ani_object NewMovingPhotoAni(ani_env *env, const std::string& photoUri, SourceMode sourceMode,
         MovingPhotoParam &movingPhotoParam);
+    static ani_object NewSingleFileMovingPhotoAni(ani_env *env, const std::string& photoUri);
     static void SubRequestContent(int32_t fd, MovingPhotoAsyncContext* context);
     static void RequestLivePhotoContentArrayBuffer(int32_t fd, MovingPhotoAsyncContext* context);
     std::string GetUriInner();
     SourceMode GetSourceMode();
     static int32_t GetFdFromUri(const std::string &uri);
     void SetSourceMode(SourceMode sourceMode);
+    bool IsFromSingleFile() const;
+    void SetIsFromSingleFile(bool isFromSingleFile);
     std::string GetRequestId();
     void SetRequestId(const std::string &requestId);
     CompatibleMode GetCompatibleMode();
@@ -84,6 +87,7 @@ private:
     ani_vm *etsVm_ = nullptr;
     ThreadFunctionOnProgress threadsafeFunction_ = nullptr;
     std::string requestId_;
+    bool isFromSingleFile_ = false;
 };
 
 struct MovingPhotoAsyncContext : public AniError {
@@ -95,6 +99,7 @@ struct MovingPhotoAsyncContext : public AniError {
 
     std::string movingPhotoUri;
     SourceMode sourceMode;
+    bool isFromSingleFile = false;
     CompatibleMode compatibleMode;
     std::function<void(int, int, std::string)> callback;
     std::string requestId;

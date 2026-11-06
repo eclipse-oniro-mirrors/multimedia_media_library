@@ -89,6 +89,9 @@
 #include "grant_photo_uri_permission_vo.h"
 #include "grant_photo_uris_permission_vo.h"
 #include "check_photo_uris_read_permission_vo.h"
+#include "moving_photo_file_utils.h"
+#include "moving_photo_napi.h"
+#include "userfile_manager_types.h"
 #include "cancel_photo_uri_permission_vo.h"
 #include "start_thumbnail_creation_task_vo.h"
 #include "stop_thumbnail_creation_task_vo.h"
@@ -134,6 +137,8 @@
 #include "media_upgrade.h"
 #include "media_result_type_map_utils.h"
 #include "media_string_utils.h"
+#include "media_file_uri.h"
+#include "media_uri_utils.h"
 #include "preferred_compatible_mode_check_utils.h"
 #include "photo_file_utils.h"
 #include "change_request_move_assets_to_dir_vo.h"
@@ -169,6 +174,7 @@ const int64_t MAX_INT64 = 9223372036854775807;
 const int32_t MAX_QUERY_LIMIT = 150;
 const int32_t MAX_CREATE_ASSET_LIMIT = 500;
 const int32_t MAX_CHECK_PHOTO_PERMISSION_URI_COUNT = 500;
+const int32_t MAX_VERIFY_PHOTO_ASSET_URI_COUNT = 500;
 const int32_t MAX_QUERY_ALBUM_LIMIT = 500;
 const int32_t MAX_LPATH_BUNDLENAME_LENGTH = 255;
 const int32_t MAX_LEN_LIMIT = 9999;
@@ -584,6 +590,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("grantPhotoUriPermission", PhotoAccessGrantPhotoUriPermission),
             DECLARE_NAPI_FUNCTION("grantPhotoUrisPermission", PhotoAccessGrantPhotoUrisPermission),
             DECLARE_NAPI_FUNCTION("checkPhotoUrisReadPermission", PhotoAccessCheckPhotoUrisReadPermission),
+            DECLARE_NAPI_FUNCTION("verifyPhotoAssetUris", PhotoAccessVerifyPhotoAssetUris),
             DECLARE_NAPI_FUNCTION("cancelPhotoUriPermission", PhotoAccessCancelPhotoUriPermission),
             DECLARE_NAPI_FUNCTION("createAssetsForAppWithMode", PhotoAccessHelperAgentCreateAssetsWithMode),
             DECLARE_NAPI_FUNCTION("getDataAnalysisProgress", PhotoAccessHelperGetDataAnalysisProgress),
@@ -6187,6 +6194,87 @@ napi_value MediaLibraryNapi::PhotoAccessCheckPhotoUrisReadPermission(napi_env en
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "CheckPhotoUrisReadPermission",
         CheckPhotoUrisReadPermissionExecute, CheckPhotoUrisReadPermissionComplete);
+}
+
+// 解析并校验 verifyPhotoAssetUris 的入参，输出 uri 列表（同步接口，不使用异步 context）
+static napi_status ParseVerifyPhotoAssetUrisArgs(napi_env env, napi_callback_info info,
+    std::vector<std::string> &uris)
+{
+    size_t argc = ARGS_TWO;
+    napi_value argv[ARGS_TWO] = { nullptr };
+    CHECK_STATUS_RET(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr), "Failed to get callback info");
+    CHECK_COND_RET(argc == ARGS_ONE && argv[ARGS_ZERO] != nullptr, napi_invalid_arg,
+        "The number of arguments is invalid, argc: %{public}zu", argc);
+    bool isArray = false;
+    CHECK_STATUS_RET(napi_is_array(env, argv[ARGS_ZERO], &isArray), "Failed to check array type");
+    CHECK_COND_RET(isArray, napi_invalid_arg, "The uris must be an array");
+    uint32_t len = 0;
+    CHECK_STATUS_RET(napi_get_array_length(env, argv[ARGS_ZERO], &len), "Failed to get array length");
+    CHECK_COND_RET(len > 0 && static_cast<int32_t>(len) <= MAX_VERIFY_PHOTO_ASSET_URI_COUNT, napi_invalid_arg,
+        "The size of uris is invalid, size: %{public}u", len);
+    uris.reserve(len);
+    for (uint32_t i = 0; i < len; i++) {
+        napi_value item = nullptr;
+        CHECK_STATUS_RET(napi_get_element(env, argv[ARGS_ZERO], i, &item), "Failed to get array item");
+        napi_valuetype itemType = napi_undefined;
+        CHECK_STATUS_RET(napi_typeof(env, item, &itemType), "Failed to get type of array item");
+        if (itemType == napi_string) {
+            std::string uri;
+            CHECK_STATUS_RET(MediaLibraryNapiUtils::GetParamStringPathMax(env, item, uri),
+                "Failed to get string buffer");
+            uris.emplace_back(std::move(uri));
+        } else if (itemType == napi_null) {
+            // null 元素不作为参数错误，按字符串 "null" 参与校验并固定返回 false
+            uris.emplace_back("null");
+        } else if (itemType == napi_undefined) {
+            // undefined 元素同理，按字符串 "undefined" 参与校验并固定返回 false
+            uris.emplace_back("undefined");
+        } else {
+            MEDIA_ERR_LOG("The uri in uris has invalid type:%{public}d", static_cast<int32_t>(itemType));
+            return napi_invalid_arg;
+        }
+    }
+    return napi_ok;
+}
+
+static bool IsPhotoAssetUri(const std::string &uri)
+{
+    // 仅校验媒体库 URI 形态（scheme + authority/path）与 fileId，不查库确认数据是否存在
+    return MediaUriUtils::IsLibraryUri(uri);
+}
+
+// 构造 uri -> 是否为媒体库 uri 的 Map（同步接口，直接基于入参计算，无需异步 context）
+static napi_value BuildVerifyPhotoAssetUrisMap(napi_env env, const std::vector<std::string> &uris)
+{
+    napi_value mapValue = nullptr;
+    CHECK_COND_RET(napi_create_map(env, &mapValue) == napi_ok && mapValue != nullptr, nullptr,
+        "Failed to create map napi value");
+    for (const auto &uri : uris) {
+        napi_value key = nullptr;
+        napi_value value = nullptr;
+        CHECK_COND_RET(napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &key) == napi_ok &&
+            napi_get_boolean(env, IsPhotoAssetUri(uri), &value) == napi_ok &&
+            napi_map_set_property(env, mapValue, key, value) == napi_ok, nullptr,
+            "Failed to build map entry for uri: %{private}s", uri.c_str());
+    }
+    return mapValue;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessVerifyPhotoAssetUris(napi_env env, napi_callback_info info)
+{
+    NAPI_DEBUG_LOG("MediaLibraryNapi::PhotoAccessVerifyPhotoAssetUris start");
+
+    std::vector<std::string> uris;
+    if (ParseVerifyPhotoAssetUrisArgs(env, info, uris) != napi_ok) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to parse uris");
+        return nullptr;
+    }
+    napi_value resultMap = BuildVerifyPhotoAssetUrisMap(env, uris);
+    if (resultMap == nullptr) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to build result map");
+        return nullptr;
+    }
+    return resultMap;
 }
 
 static napi_value ParseArgsGrantPhotoUriPermissionInner(napi_env env, napi_callback_info info,

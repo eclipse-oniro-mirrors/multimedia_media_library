@@ -257,6 +257,7 @@ public:
     static ani_int PhotoAccessCancelPhotoUriPermission(ani_env *env, ani_object object, ani_long aniTokenId,
         ani_string aniUri, ani_enum_item photoPermissionType);
     static ani_object PhotoAccessCheckPhotoUrisReadPermission(ani_env *env, ani_object object, ani_object uris);
+    static ani_object PhotoAccessVerifyPhotoAssetUris(ani_env *env, ani_object object, ani_object uris);
     static ani_int PhotoAccessGetPhotoIndex([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
         ani_string photoUri, ani_string albumUri, ani_object options);
     static ani_object PhotoAccessGetSupportedPhotoFormats(ani_env *env, ani_object object, ani_enum_item photoTypeAni);

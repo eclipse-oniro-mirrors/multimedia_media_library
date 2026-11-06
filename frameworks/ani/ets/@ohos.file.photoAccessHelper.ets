@@ -802,6 +802,10 @@ export class ContextRecoveryInfo {
       });
     }
 
+    static loadSingleFileMovingPhoto(singleFileMovingPhotoUri: string): MovingPhoto {
+      return MediaAssetManager.loadSingleFileMovingPhotoInner(singleFileMovingPhotoUri);
+    }
+
     native static requestImageInner(context: Context, asset: PhotoAsset, requestOptions: RequestOptions,
       dataHandler: MediaAssetDataHandler<image.ImageSource>): string;
     native static quickRequestImageInner(context: Context, asset: PhotoAsset, requestOptions: RequestOptions,
@@ -815,6 +819,53 @@ export class ContextRecoveryInfo {
     native static cancelRequestInner(context: Context, requestId: string): void;
     native static requestVideoFileInner(context: Context, param: requestVideoFileParam): string;
     native static loadMovingPhotoInner(context: Context, imageFileUri: string, videoFileUri: string): MovingPhoto;
+    native static loadSingleFileMovingPhotoInner(singleFileMovingPhotoUri: string): MovingPhoto;
+  }
+
+  export class SingleFileMovingPhotoUtil {
+
+    constructor() {}
+    /**
+     * 识别文件是否为单文件动态照片。入参须为应用沙箱 file uri；
+     * 媒体库 uri 直接返回 false；入参为空/非字符串/无法打开时抛出 23800151。
+     */
+    static isSingleFileMovingPhoto(movingPhotoFileUri: string): boolean {
+      return SingleFileMovingPhotoUtil.isSingleFileMovingPhotoInner(movingPhotoFileUri);
+    }
+
+    /**
+     * 将单文件动态照片拆分为静态图与视频两份文件，返回 [图片路径, 视频路径]。
+     * 输出入参为父目录，图片命名为“源文件主名_decode + 图片后缀”，视频为“源文件主名_decode + .mp4”；
+     * 目录内已存在同名文件时追加 _时间戳(ms)。
+     */
+    static unpackingSingleFileMovingPhoto(movingPhotoFileUri: string, outImageParentFolder: string,
+      outVideoParentFolder: string): Array<string> {
+      return SingleFileMovingPhotoUtil.unpackingSingleFileMovingPhotoInner(movingPhotoFileUri,
+        outImageParentFolder, outVideoParentFolder);
+    }
+
+    /**
+     * 将静态图与视频打包为单文件动态照片，返回生成的合一文件路径。
+     * 输出入参为父目录，输出文件命名为图片原名；目录内已存在同名文件时追加 _时间戳(ms)。
+     * 图片后缀仅支持 jpg/jpeg/heic/heif，视频后缀仅支持 mp4（大小写不敏感）。
+     */
+    static packingSingleFileMovingPhoto(imageUri: string, videoUri: string,
+      outParentFolder: string): string {
+      return SingleFileMovingPhotoUtil.packingSingleFileMovingPhotoInner(imageUri, videoUri, outParentFolder);
+    }
+
+    /** 获取视频段在合一文件中的起始字节偏移；入参须为应用沙箱 file uri，媒体库 uri 抛出 23800151。 */
+    static getVideoOffset(movingPhotoFileUri: string): int {
+      // native 侧返回 ani_long，需显式窄化为 int（'as int' 对数值类型已废弃）
+      return Long.toInt(SingleFileMovingPhotoUtil.getVideoOffsetInner(movingPhotoFileUri));
+    }
+
+    static native isSingleFileMovingPhotoInner(movingPhotoFileUri: string): boolean;
+    static native unpackingSingleFileMovingPhotoInner(movingPhotoFileUri: string, outImageParentFolder: string,
+      outVideoParentFolder: string): Array<string>;
+    static native packingSingleFileMovingPhotoInner(imageUri: string, videoUri: string,
+      outParentFolder: string): string;
+    static native getVideoOffsetInner(movingPhotoFileUri: string): long;
   }
 
   export type MemberType = int | long | double | string | boolean;
@@ -2864,6 +2915,7 @@ export class ContextRecoveryInfo {
     cancelPhotoUriPermission(tokenId: long, uri: string,
       photoPermissionType: PhotoPermissionType): Promise<int>;
     checkPhotoUrisReadPermission(uris: Array<string>): Promise<Map<string, MediaAssetPermissionState>>;
+    verifyPhotoAssetUris(uris: Array<string>): Map<string, boolean>;
     getPhotoIndex(photoUri: string, albumUri: string, options: FetchOptions,
         callback: AsyncCallback<int | undefined>): void;
     getPhotoIndex(photoUri: string, albumUri: string, options: FetchOptions): Promise<int>;
@@ -3973,6 +4025,10 @@ export class ContextRecoveryInfo {
       });
     }
 
+    verifyPhotoAssetUris(uris: Array<string>): Map<string, boolean> {
+      return this.verifyPhotoAssetUrisInner(uris);
+    }
+
     getSupportedPhotoFormats(photoType: PhotoType): Promise<Array<string>> {
       return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString) => {
         let cb = (): Array<string> | MediaLibraryAniError => {
@@ -5076,6 +5132,7 @@ export class ContextRecoveryInfo {
     native cancelPhotoUriPermissionInner(tokenId: long, uri: string,
       photoPermissionType: PhotoPermissionType): int;
     native checkPhotoUrisReadPermissionInner(uris: Array<string>): Map<string, MediaAssetPermissionState>;
+    native verifyPhotoAssetUrisInner(uris: Array<string>): Map<string, boolean>;
     native getPhotoIndexInner(photoUri: string, albumUri: string, options: FetchOptions): int;
     native PhotoAccessRemoveFormInfo(info: FormInfo): void;
     native removeGalleryFormInfoInner(info: GalleryFormInfo): void;

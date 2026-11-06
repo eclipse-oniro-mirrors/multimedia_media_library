@@ -37,6 +37,7 @@ public:
     EXPORT static std::string GetFileIdStr(const std::string &uri);
     EXPORT static Uri GetMultiUri(Uri &uri, int32_t userId);
     EXPORT static bool CheckUri(const std::string &uri);
+    EXPORT static bool IsLibraryUri(const std::string &uri);
     EXPORT static std::string GetSafeUri(const std::string &uri);
 private:
     static std::string GetSafeDiaplayName(const std::string &displayName);
