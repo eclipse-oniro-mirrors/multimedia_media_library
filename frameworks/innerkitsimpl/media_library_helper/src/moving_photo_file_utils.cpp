@@ -47,6 +47,9 @@ const std::string LIVE_PHOTO_SIGHT_TREMBLE_META_DATA = "SightTrembleMetadata";
 const std::string LIVE_PHOTO_VERSION_AND_FRAME_NUM = "VersionAndFrameNum";
 const std::string LOCAL_ROOT_MEDIA_DIR = "/storage/media/local/files/";
 const std::string TMP = ".tmp";
+// 版本段末尾的 CinemagraphInfo 标记后缀（小写 / 大写），长度固定 2 字节
+const std::string CINEMAGRAPH_VERSION_SUFFIX = "_c";
+const std::string CINEMAGRAPH_VERSION_SUFFIX_UPPER = "_C";
 constexpr int32_t HEX_BASE = 16;
 constexpr int64_t AUTO_PLAY_DURATION_MS = 600;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
@@ -304,10 +307,11 @@ static void StripCinemagraphSuffixIfNeeded(std::string &extraData)
         return;  // 全空格：无版本号，原样保留
     }
     string trimmed = versionTag.substr(0, end + 1);
-    if (!MediaStringUtils::EndsWith(trimmed, "_c") && !MediaStringUtils::EndsWith(trimmed, "_C")) {
+    if (!MediaStringUtils::EndsWith(trimmed, CINEMAGRAPH_VERSION_SUFFIX) &&
+        !MediaStringUtils::EndsWith(trimmed, CINEMAGRAPH_VERSION_SUFFIX_UPPER)) {
         return;
     }
-    trimmed = trimmed.substr(0, trimmed.length() - 2);
+    trimmed.erase(trimmed.length() - CINEMAGRAPH_VERSION_SUFFIX.length());
     trimmed.append(VERSION_TAG_LEN - trimmed.length(), ' ');
     extraData.replace(0, VERSION_TAG_LEN, trimmed);
     MEDIA_INFO_LOG("strip cinemagraph suffix of extra data, version tag:%{public}s", trimmed.c_str());

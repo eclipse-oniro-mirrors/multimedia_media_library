@@ -221,13 +221,13 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CreateExtraData_WithVersion_004
     params.imagePath = imagePath;
     params.videoPath = videoPath;
     params.frameIndex = 12;
-    params.version = 8;  // 模拟源合一文件自带的版本号
+    params.version = 9;  // 模拟源合一文件自带的版本号
     off_t fileSize = 0;
     EXPECT_EQ(MovingPhotoFileUtils::CreateExtraData(params, fileSize), E_OK);
     EXPECT_EQ(fileSize, MIN_STANDARD_SIZE);
     string extraPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(imagePath);
     EXPECT_FALSE(extraPath.empty());
-    EXPECT_EQ(ReadExtraDataVersionTag(extraPath), "v8_f12");
+    EXPECT_EQ(ReadExtraDataVersionTag(extraPath), "v9_f12");
     MediaFileUtils::DeleteFile(extraPath);
     MediaFileUtils::DeleteFile(imagePath);
     MediaFileUtils::DeleteFile(videoPath);
@@ -315,7 +315,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_GetWholeExtraData_Standard_006,
     const string path = "/data/test/whole_extra_standard.jpg";
     MediaFileUtils::CreateAsset(path);
     const size_t videoSize = 128;
-    const string extraData = PadTag("v8_f12") + PadTag("0:5") + BuildLiveTag(videoSize);
+    const string extraData = PadTag("v9_f12") + PadTag("0:5") + BuildLiveTag(videoSize);
     WriteSingleFileContainer(path, 64, videoSize, extraData);
     int32_t fd = open(path.c_str(), O_RDONLY);
     ASSERT_GE(fd, 0);
@@ -350,7 +350,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_GetWholeExtraData_Cinemagraph_0
     const string path = "/data/test/whole_extra_cinemagraph.jpg";
     MediaFileUtils::CreateAsset(path);
     const size_t videoSize = 128;
-    const string extraData = BuildCinemagraphSegment(12) + PadTag("v8_f3_c") + PadTag("0:5") +
+    const string extraData = BuildCinemagraphSegment(12) + PadTag("v9_f3_c") + PadTag("0:5") +
         BuildLiveTag(videoSize);
     WriteSingleFileContainer(path, 64, videoSize, extraData);
     int32_t fd = open(path.c_str(), O_RDONLY);
@@ -370,12 +370,12 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_GetWholeExtraData_CinemagraphFa
     MediaFileUtils::CreateAsset(path);
     const size_t videoSize = 128;
     const string tail = PadTag("0:5") + BuildLiveTag(videoSize);
-    WriteSingleFileContainer(path, 64, videoSize, PadTag("v8_f3_c") + tail);
+    WriteSingleFileContainer(path, 64, videoSize, PadTag("v9_f3_c") + tail);
     int32_t fd = open(path.c_str(), O_RDONLY);
     ASSERT_GE(fd, 0);
     string readExtraData;
     EXPECT_EQ(MovingPhotoFileUtils::GetWholeExtraData(fd, readExtraData), E_OK);
-    EXPECT_EQ(readExtraData, PadTag("v8_f3") + tail);
+    EXPECT_EQ(readExtraData, PadTag("v9_f3") + tail);
     close(fd);
     MediaFileUtils::DeleteFile(path);
 }
@@ -419,7 +419,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CheckExtraData_Standard_012, Te
     EXPECT_EQ(MovingPhotoFileUtils::CheckExtraData(PadTag("v3_f7") + PadTag("0:5") + PadTag("LIVE_2048")),
         E_OK);
     EXPECT_EQ(MovingPhotoFileUtils::CheckExtraData(PadTag("0:5") + PadTag("LIVE_2048")), E_OK);
-    EXPECT_EQ(MovingPhotoFileUtils::CheckExtraData(BuildCinemagraphSegment(12) + PadTag("v8_f3_c") +
+    EXPECT_EQ(MovingPhotoFileUtils::CheckExtraData(BuildCinemagraphSegment(12) + PadTag("v9_f3_c") +
         PadTag("0:5") + PadTag("LIVE_4096")), E_OK);
     // PLAY_INFO 不校验格式，原样透传
     EXPECT_EQ(MovingPhotoFileUtils::CheckExtraData(PadTag("v3_f7") + string(PLAY_INFO_LEN, 'x') +
@@ -480,8 +480,6 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CreateExtraData_WithExtraData_0
     MediaFileUtils::DeleteFile(imagePath);
     MediaFileUtils::DeleteFile(videoPath);
 }
-
-
 
 HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CreateExtraData_StripCinemagraphSuffix_018, TestSize.Level1)
 {
