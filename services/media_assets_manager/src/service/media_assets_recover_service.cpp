@@ -17,6 +17,11 @@
 
 #include "media_assets_recover_service.h"
 
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+
 #include "media_log.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_db_const.h"
@@ -31,44 +36,55 @@
 #include "medialibrary_album_operations.h"
 #include "medialibrary_photo_operations.h"
 #include "file_manager_asset_operations.h"
+#include "media_library_error_code.h"
+#include "burst_dao.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsRecoverService::BatchMoveOutTrashAndMergeWithSameAsset(
-    const std::vector<std::string> &assetIds, std::vector<std::string> &targetFileIds)
+    const std::vector<std::string> &assetIds, std::vector<std::string> &targetFileIds,
+    std::vector<AssetUriResult> &results)
 {
     std::vector<std::string> fileIds;
     std::transform(
         std::begin(assetIds), std::end(assetIds), std::back_inserter(fileIds), [](const std::string &assetId) {
             return MediaAssetsUtils::GetFileId(assetId);
         });
+    // The results are aligned with the input assets, so the original fileIds must be kept.
+    const std::vector<std::string> inputFileIds = fileIds;
+    // Complete the burst members, so that the whole burst group can be recovered by the cover only.
+    int32_t ret = this->PrepareForBurstRecovery(fileIds);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "PrepareForBurstRecovery failed, ret: %{public}d", ret);
     MediaLibraryAlbumOperations::DealwithNoAlbumAssets(fileIds);
     // Find assets info.
     std::vector<PhotosPo> photosList;
-    int32_t ret = this->mediaAssetsDao_.QueryAssets(fileIds, photosList);
-    CHECK_AND_RETURN_RET_LOG(
-        ret == E_OK, ret, "QueryAssets fail, ret: %{public}d, fileIds: %{public}zu", ret, fileIds.size());
+    ret = this->mediaAssetsDao_.QueryAssets(fileIds, photosList);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryAssets fail, ret: %{public}d, fileIds: %{public}zu", ret, fileIds.size());
+        this->FillRecoverResults(inputFileIds, results);
+        return ret;
+    }
     std::optional<PhotosPo> targetPhotoInfoOp;
-    bool isValid = false;
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr,
-        E_RDB_STORE_NULL,
+    CHECK_AND_EXECUTE(photoRefresh != nullptr, this->FillRecoverResults(inputFileIds, results));
+    CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL,
         "BatchMoveOutTrashAndMergeWithSameAsset Failed to get photoRefresh.");
     std::sort(photosList.begin(), photosList.end(), [](const PhotosPo &a, const PhotosPo &b) {
         return a.fileId.value_or(-1) < b.fileId.value_or(-1);
     });
+    // The fileId of the input asset to the uri of the asset which is moved out of the trash successfully.
+    std::unordered_map<std::string, std::string> recoveredUris;
     for (const PhotosPo &photoInfo : photosList) {
+        // Only the assets in the trash can be recovered.
+        CHECK_AND_CONTINUE_INFO_LOG(photoInfo.dateTrashed.value_or(0) > 0,
+            "Skip the asset which is not in the trash, fileId: %{public}d", photoInfo.fileId.value_or(-1));
         targetPhotoInfoOp.reset();
         ret = this->MoveOutTrashAndMergeWithSameAsset(photoRefresh, photoInfo, targetPhotoInfoOp);
-        isValid = ret == E_OK && targetPhotoInfoOp.has_value();
-        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(targetPhotoInfoOp.value().BuildFileUri()));
-        MEDIA_INFO_LOG("MoveOutTrashAndMergeWithSameAsset completed, "
-                       "isValid: %{public}d, ret: %{public}d, original file_id: %{public}d, target file_id: %{public}d",
-            isValid,
-            ret,
-            photoInfo.fileId.value_or(-1),
-            targetPhotoInfoOp.value_or(PhotosPo()).fileId.value_or(-1));
+        ret = this->RecordRecoveredAsset(photoInfo, ret, targetPhotoInfoOp, targetFileIds, recoveredUris);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to recover the asset, ret: %{public}d, fileId: %{public}d",
+            ret, photoInfo.fileId.value_or(-1));
     }
+    this->FillRecoverResults(inputFileIds, recoveredUris, results);
     photoRefresh->RefreshAlbumNoDateModified(static_cast<NotifyAlbumType>(
         NotifyAlbumType::SYS_ALBUM | NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
     photoRefresh->Notify();
@@ -455,5 +471,77 @@ int32_t MediaAssetsRecoverService::MoveAssetFileFromMediaToFileManager(
         DfxUtils::GetSafePath(targetPhotoInfo.storagePath.value_or("")).c_str(),
         errno);
     return ret;
+}
+
+int32_t MediaAssetsRecoverService::FillRecoverResults(const std::vector<std::string> &fileIds,
+    const std::unordered_map<std::string, std::string> &recoveredUris, std::vector<AssetUriResult> &results)
+{
+    results.clear();
+    results.reserve(fileIds.size());
+    size_t failedCount = 0;
+    for (const auto &fileId : fileIds) {
+        AssetUriResult result;
+        result.originalFileId = fileId;
+        const auto it = recoveredUris.find(fileId);
+        if (it != recoveredUris.end()) {
+            result.resultUri = it->second;
+        }
+        bool isValid = !result.resultUri.empty();
+        result.isSuccess = isValid;
+        failedCount = isValid ? failedCount : failedCount + 1;
+        results.emplace_back(std::move(result));
+    }
+    MEDIA_INFO_LOG("Recover results built, total: %{public}zu, failed: %{public}zu", results.size(), failedCount);
+    return E_OK;
+}
+
+int32_t MediaAssetsRecoverService::FillRecoverResults(const std::vector<std::string> &fileIds,
+    std::vector<AssetUriResult> &results)
+{
+    return this->FillRecoverResults(fileIds, std::unordered_map<std::string, std::string>(), results);
+}
+
+int32_t MediaAssetsRecoverService::PrepareForBurstRecovery(std::vector<std::string> &fileIds)
+{
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_OK, "fileIds is empty.");
+    size_t inputSize = fileIds.size();
+    std::vector<std::string> uris;
+    BurstDao::CompleteBurstFileIds(fileIds, uris);
+    // The input fileIds may already contain the burst members, which will be appended again by
+    // CompleteBurstFileIds, so remove the duplicates to avoid recovering the same member twice.
+    int32_t ret = this->RemoveDuplicates(fileIds);
+    MEDIA_INFO_LOG("input fileIds: %{public}zu, fileIds size: %{public}zu.", inputSize, fileIds.size());
+    CHECK_AND_PRINT_LOG(ret == E_OK, "RemoveDuplicates failed, ret: %{public}d", ret);
+    return ret;
+}
+
+int32_t MediaAssetsRecoverService::RemoveDuplicates(std::vector<std::string> &values)
+{
+    std::unordered_set<std::string> uniqueValues;
+    std::vector<std::string> deduplicated;
+    deduplicated.reserve(values.size());
+    for (const auto &value : values) {
+        if (uniqueValues.insert(value).second) {
+            deduplicated.emplace_back(value);
+        }
+    }
+    values.swap(deduplicated);
+    return E_OK;
+}
+
+int32_t MediaAssetsRecoverService::RecordRecoveredAsset(const PhotosPo &photoInfo, int32_t ret,
+    const std::optional<PhotosPo> &targetPhotoInfoOp, std::vector<std::string> &targetFileIds,
+    std::unordered_map<std::string, std::string> &recoveredUris)
+{
+    bool isValid = ret >= E_OK && targetPhotoInfoOp.has_value();
+    if (isValid) {
+        std::string targetUri = targetPhotoInfoOp.value().BuildFileUri();
+        targetFileIds.emplace_back(targetUri);
+        recoveredUris[std::to_string(photoInfo.fileId.value_or(-1))] = std::move(targetUri);
+    }
+    MEDIA_INFO_LOG("RecordRecoveredAsset completed, "
+        "isValid: %{public}d, ret: %{public}d, original file_id: %{public}d, target file_id: %{public}d",
+        isValid, ret, photoInfo.fileId.value_or(-1), targetPhotoInfoOp.value_or(PhotosPo()).fileId.value_or(-1));
+    return isValid ? E_OK : ret;
 }
 }  // namespace OHOS::Media::Common

@@ -17,7 +17,10 @@
 
 #include "media_asset_change_request_napi.h"
 #include "media_library_napi.h"
+
 #include <sys/sendfile.h>
+#include <optional>
+
 #include "ability_context.h"
 #include "accesstoken_kit.h"
 #include "delete_callback.h"
@@ -49,6 +52,8 @@
 #include "media_asset_rdbstore.h"
 #include "userfilemgr_uri.h"
 #include "validate_latest_pair_vo.h"
+#include "delete_local_assets_and_get_uris_vo.h"
+#include "recover_assets_and_get_uris_vo.h"
 
 using namespace std;
 using namespace OHOS::Security::AccessToken;
@@ -191,6 +196,8 @@ napi_value MediaAssetChangeRequestNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_STATIC_FUNCTION("deleteAssetsPermanentlyWithUri", JSDeleteAssetsPermanentlyWithUri),
             DECLARE_NAPI_FUNCTION("setLivePhoto4dStatus", JSSetLivePhoto4dStatus),
             DECLARE_NAPI_FUNCTION("setMovingPhotoVersion", JSSetMovingPhotoVersion),
+            DECLARE_NAPI_STATIC_FUNCTION("deleteLocalAssetsAndGetUris", JSDeleteLocalAssetsAndGetUris),
+            DECLARE_NAPI_STATIC_FUNCTION("recoverAssetsAndGetUris", JSRecoverAssetsAndGetUris),
         } };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
     return exports;
@@ -3837,6 +3844,353 @@ napi_value MediaAssetChangeRequestNapi::JSDeleteLocalAssetsWithUri(napi_env env,
     }
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ChangeRequestDeleteLocalAssetsWithUri",
         DeleteLocalAssetsWithUriExecute, DeleteLocalAssetsWithUriCallback);
+}
+
+static napi_value ParseArgsDeleteLocalAssetsAndGetUris(
+    napi_env env, napi_callback_info info, unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps");
+        return nullptr;
+    }
+    constexpr size_t jsArgs = ARGS_TWO;
+    CHECK_WITH_INT_ERR_MESSAGE(env,
+        MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, jsArgs, jsArgs) == napi_ok, JS_E_PARAM_INVALID,
+        "Failed to get args");
+    CHECK_COND_WITH_INT(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info), JS_E_PARAM_INVALID);
+
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, context->argv[PARAM0], &valueType) != napi_ok || valueType != napi_object) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "invalid context");
+        return nullptr;
+    }
+
+    vector<napi_value> napiValues;
+    CHECK_WITH_INT_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetNapiValueArray(env, context->argv[PARAM1], napiValues),
+        JS_E_PARAM_INVALID, "Failed to get array");
+    CHECK_WITH_INT_ERR_MESSAGE(env, !napiValues.empty() && napiValues.size() <= BATCH_DELETE_MAX_NUMBER,
+        JS_E_PARAM_INVALID, "size of assetUris is 0 or over 500.");
+
+    vector<string> deleteIds;
+    vector<string> assetUris;
+    for (const auto& napiValue : napiValues) {
+        valueType = napi_undefined;
+        CHECK_ARGS_WITH_CODE(env, napi_typeof(env, napiValue, &valueType), JS_E_PARAM_INVALID);
+        CHECK_WITH_INT_ERR_MESSAGE(env, valueType == napi_string, JS_E_PARAM_INVALID,
+            "Argument must be array of strings");
+        size_t strLength = 0;
+        CHECK_WITH_INT_ERR_MESSAGE(env, napi_get_value_string_utf8(env, napiValue, nullptr, 0, &strLength) == napi_ok,
+            JS_E_PARAM_INVALID, "Failed to get string length");
+        std::vector<char> uriBuffer(strLength + 1);
+        CHECK_WITH_INT_ERR_MESSAGE(env,
+            napi_get_value_string_utf8(env, napiValue, uriBuffer.data(), uriBuffer.size(), nullptr) == napi_ok,
+            JS_E_PARAM_INVALID, "Failed to copy string");
+        int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(std::string(uriBuffer.data()));
+        CHECK_WITH_INT_ERR_MESSAGE(env, fileId >= 0, JS_E_PARAM_INVALID, "Invalid URI format or empty fileId");
+        deleteIds.emplace_back(std::to_string(fileId));
+        assetUris.emplace_back(uriBuffer.data());
+    }
+    context->fileIds = deleteIds;
+    context->assetUris = assetUris;
+    RETURN_NAPI_TRUE(env);
+}
+
+static void DeleteLocalAssetsAndGetUrisExecute(napi_env env, void *data)
+{
+    NAPI_INFO_LOG("enter DeleteLocalAssetsAndGetUrisExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteLocalAssetsAndGetUrisExecute");
+
+    auto *context = static_cast<MediaAssetChangeRequestAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    CHECK_IF_EQUAL(!context->fileIds.empty(), "fileIds is empty");
+
+    DeleteLocalAssetsAndGetUrisReqBody reqBody;
+    reqBody.fileIds = context->fileIds;
+    DeleteLocalAssetsAndGetUrisRespBody respBody;
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_DELETE_LOCAL_ASSETS_AND_GET_URIS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret < 0) {
+        if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(ret);
+        } else if (ret == -EINVAL) {
+            context->error = JS_E_PARAM_INVALID;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        NAPI_ERR_LOG("Failed to delete local assets, err: %{public}d", ret);
+        return;
+    }
+    // Align the per-item results with the input fileIds, so that each input uri has exactly one result.
+    std::unordered_map<std::string, AssetUriResult> resultMap;
+    resultMap.reserve(respBody.results.size());
+    for (const auto &item : respBody.results) {
+        resultMap[item.originalFileId] = item;
+    }
+    context->resultUris.assign(context->fileIds.size(), "");
+    context->resultSuccess.assign(context->fileIds.size(), false);
+    for (size_t i = 0; i < context->fileIds.size(); i++) {
+        std::optional<AssetUriResult> result;
+        if (i < respBody.results.size() && respBody.results[i].originalFileId == context->fileIds[i]) {
+            result = respBody.results[i];
+        } else {
+            auto it = resultMap.find(context->fileIds[i]);
+            if (it != resultMap.end()) {
+                result = it->second;
+            }
+        }
+        if (!result.has_value() || !result->isSuccess || result->resultUri.empty()) {
+            NAPI_INFO_LOG("Failed to delete the local asset, fileId: %{public}s, index: %{public}zu",
+                context->fileIds[i].c_str(), i);
+            continue;
+        }
+        context->resultUris[i] = result->resultUri;
+        context->resultSuccess[i] = true;
+    }
+}
+
+// Builds one AssetUriResult object, returns nullptr when any NAPI call fails.
+static napi_value BuildAssetUriResult(napi_env env, const std::string &originalUri,
+    const std::string &resultUri, bool isSuccess)
+{
+    napi_value resultObj = nullptr;
+    if (napi_create_object(env, &resultObj) != napi_ok) {
+        NAPI_ERR_LOG("Failed to create the asset uri result object");
+        return nullptr;
+    }
+    napi_value value = nullptr;
+    if (napi_create_string_utf8(env, originalUri.c_str(), NAPI_AUTO_LENGTH, &value) != napi_ok ||
+        napi_set_named_property(env, resultObj, "originalUri", value) != napi_ok) {
+        NAPI_ERR_LOG("Failed to set originalUri");
+        return nullptr;
+    }
+    if (napi_create_string_utf8(env, resultUri.c_str(), NAPI_AUTO_LENGTH, &value) != napi_ok ||
+        napi_set_named_property(env, resultObj, "resultUri", value) != napi_ok) {
+        NAPI_ERR_LOG("Failed to set resultUri");
+        return nullptr;
+    }
+    if (napi_get_boolean(env, isSuccess, &value) != napi_ok ||
+        napi_set_named_property(env, resultObj, "isSuccess", value) != napi_ok) {
+        NAPI_ERR_LOG("Failed to set isSuccess");
+        return nullptr;
+    }
+    return resultObj;
+}
+
+// Builds the AssetUriResult array aligned with the input assetUris, returns nullptr when any NAPI call fails.
+static napi_value BuildAssetUriResultArray(napi_env env, const MediaAssetChangeRequestAsyncContext &context)
+{
+    napi_value resultArray = nullptr;
+    if (napi_create_array_with_length(env, context.resultUris.size(), &resultArray) != napi_ok) {
+        NAPI_ERR_LOG("Failed to create the asset uri result array");
+        return nullptr;
+    }
+    for (size_t i = 0; i < context.resultUris.size(); i++) {
+        std::string originalUri = i < context.assetUris.size() ? context.assetUris[i] : std::string();
+        bool isSuccess = i < context.resultSuccess.size() ? context.resultSuccess[i] : false;
+        napi_value item = BuildAssetUriResult(env, originalUri, context.resultUris[i], isSuccess);
+        if (item == nullptr || napi_set_element(env, resultArray, i, item) != napi_ok) {
+            NAPI_ERR_LOG("Failed to build the asset uri result, index: %{public}zu", i);
+            return nullptr;
+        }
+    }
+    return resultArray;
+}
+
+static void DeleteLocalAssetsAndGetUrisCallback(napi_env env, napi_status status, void* data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteLocalAssetsAndGetUrisCallback");
+    auto* context = static_cast<MediaAssetChangeRequestAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    auto jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    napi_get_undefined(env, &jsContext->data);
+    napi_get_undefined(env, &jsContext->error);
+    if (context->error == ERR_DEFAULT) {
+        napi_value resultArray = BuildAssetUriResultArray(env, *context);
+        if (resultArray != nullptr) {
+            jsContext->data = resultArray;
+            jsContext->status = true;
+        } else {
+            MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, JS_E_INNER_FAIL,
+                "Failed to create asset uri result array", true);
+        }
+    } else {
+        context->HandleError(env, jsContext->error, true);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(
+            env, context->deferred, context->callbackRef, context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaAssetChangeRequestNapi::JSDeleteLocalAssetsAndGetUris(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter JSDeleteLocalAssetsAndGetUris.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
+    if (!ParseArgsDeleteLocalAssetsAndGetUris(env, info, asyncContext)) {
+        NAPI_ERR_LOG("Failed to parse args");
+        return nullptr;
+    }
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ChangeRequestDeleteLocalAssetsAndGetUris",
+        DeleteLocalAssetsAndGetUrisExecute, DeleteLocalAssetsAndGetUrisCallback);
+}
+
+static napi_value ParseArgsRecoverAssetsAndGetUris(
+    napi_env env, napi_callback_info info, unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
+{
+    NAPI_INFO_LOG("enter ParseArgsRecoverAssetsAndGetUris.");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps");
+        return nullptr;
+    }
+    constexpr size_t jsArgs = ARGS_TWO;
+    CHECK_WITH_INT_ERR_MESSAGE(env,
+        MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, jsArgs, jsArgs) == napi_ok, JS_E_PARAM_INVALID,
+        "Failed to get args");
+    CHECK_COND_WITH_INT(env, MediaAssetChangeRequestNapi::InitUserFileClient(env, info), JS_E_PARAM_INVALID);
+
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, context->argv[PARAM0], &valueType) != napi_ok || valueType != napi_object) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "invalid context");
+        return nullptr;
+    }
+
+    vector<napi_value> napiValues;
+    CHECK_WITH_INT_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetNapiValueArray(env, context->argv[PARAM1], napiValues),
+        JS_E_PARAM_INVALID, "Failed to get array");
+    CHECK_WITH_INT_ERR_MESSAGE(env, !napiValues.empty() && napiValues.size() <= BATCH_DELETE_MAX_NUMBER,
+        JS_E_PARAM_INVALID, "size of assetUris is 0 or over 500.");
+
+    vector<string> fileIds;
+    vector<string> assetUris;
+    fileIds.reserve(napiValues.size());
+    assetUris.reserve(napiValues.size());
+    for (const auto& napiValue : napiValues) {
+        valueType = napi_undefined;
+        CHECK_ARGS_WITH_CODE(env, napi_typeof(env, napiValue, &valueType), JS_E_PARAM_INVALID);
+        CHECK_WITH_INT_ERR_MESSAGE(env, valueType == napi_string, JS_E_PARAM_INVALID,
+            "Argument must be array of strings");
+        size_t strLength = 0;
+        CHECK_WITH_INT_ERR_MESSAGE(env, napi_get_value_string_utf8(env, napiValue, nullptr, 0, &strLength) == napi_ok,
+            JS_E_PARAM_INVALID, "Failed to get string length");
+        std::vector<char> uriBuffer(strLength + 1);
+        CHECK_WITH_INT_ERR_MESSAGE(env,
+            napi_get_value_string_utf8(env, napiValue, uriBuffer.data(), uriBuffer.size(), nullptr) == napi_ok,
+            JS_E_PARAM_INVALID, "Failed to copy string");
+        int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(std::string(uriBuffer.data()));
+        CHECK_WITH_INT_ERR_MESSAGE(env, fileId >= 0, JS_E_PARAM_INVALID, "Invalid URI format or empty fileId");
+        fileIds.emplace_back(std::to_string(fileId));
+        assetUris.emplace_back(uriBuffer.data());
+    }
+    context->fileIds = std::move(fileIds);
+    context->assetUris = std::move(assetUris);
+    NAPI_INFO_LOG("ParseArgsRecoverAssetsAndGetUris completed, size: %{public}zu", context->fileIds.size());
+    RETURN_NAPI_TRUE(env);
+}
+
+static void RecoverAssetsAndGetUrisExecute(napi_env env, void *data)
+{
+    NAPI_INFO_LOG("enter RecoverAssetsAndGetUrisExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("RecoverAssetsAndGetUrisExecute");
+
+    auto *context = static_cast<MediaAssetChangeRequestAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    CHECK_IF_EQUAL(!context->assetUris.empty(), "assetUris is empty");
+
+    RecoverAssetsAndGetUrisReqBody reqBody;
+    reqBody.assets = context->assetUris;
+    RecoverAssetsAndGetUrisRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_RECOVER_ASSETS_AND_GET_URIS);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret < 0) {
+        if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(ret);
+        } else if (ret == -EINVAL) {
+            context->error = JS_E_PARAM_INVALID;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        NAPI_ERR_LOG("Failed to recover assets, err: %{public}d", ret);
+        return;
+    }
+    // Align the per-item results with the input fileIds, so that each input uri has exactly one result.
+    std::unordered_map<std::string, AssetUriResult> resultMap;
+    resultMap.reserve(respBody.results.size());
+    for (const auto &item : respBody.results) {
+        resultMap[item.originalFileId] = item;
+    }
+    context->resultUris.assign(context->fileIds.size(), "");
+    context->resultSuccess.assign(context->fileIds.size(), false);
+    for (size_t i = 0; i < context->fileIds.size(); i++) {
+        std::optional<AssetUriResult> result;
+        if (i < respBody.results.size() && respBody.results[i].originalFileId == context->fileIds[i]) {
+            result = respBody.results[i];
+        } else {
+            auto it = resultMap.find(context->fileIds[i]);
+            if (it != resultMap.end()) {
+                result = it->second;
+            }
+        }
+        if (!result.has_value() || !result->isSuccess || result->resultUri.empty()) {
+            NAPI_DEBUG_LOG("Failed to recover the asset, fileId: %{public}s, index: %{public}zu",
+                context->fileIds[i].c_str(), i);
+            continue;
+        }
+        context->resultUris[i] = result->resultUri;
+        context->resultSuccess[i] = true;
+    }
+    NAPI_INFO_LOG("RecoverAssetsAndGetUrisExecute completed, results: %{public}zu", respBody.results.size());
+}
+
+static void RecoverAssetsAndGetUrisCallback(napi_env env, napi_status status, void* data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("RecoverAssetsAndGetUrisCallback");
+    auto* context = static_cast<MediaAssetChangeRequestAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    auto jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    napi_get_undefined(env, &jsContext->data);
+    napi_get_undefined(env, &jsContext->error);
+    if (context->error == ERR_DEFAULT) {
+        napi_value resultArray = BuildAssetUriResultArray(env, *context);
+        if (resultArray != nullptr) {
+            jsContext->data = resultArray;
+            jsContext->status = true;
+        } else {
+            MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, JS_E_INNER_FAIL,
+                "Failed to create asset uri result array", true);
+        }
+    } else {
+        context->HandleError(env, jsContext->error, true);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(
+            env, context->deferred, context->callbackRef, context->work, *jsContext);
+    }
+    delete context;
+    NAPI_INFO_LOG("RecoverAssetsAndGetUrisCallback completed.");
+}
+
+napi_value MediaAssetChangeRequestNapi::JSRecoverAssetsAndGetUris(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter JSRecoverAssetsAndGetUris.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
+    if (!ParseArgsRecoverAssetsAndGetUris(env, info, asyncContext)) {
+        NAPI_ERR_LOG("Failed to parse args");
+        return nullptr;
+    }
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ChangeRequestRecoverAssetsAndGetUris",
+        RecoverAssetsAndGetUrisExecute, RecoverAssetsAndGetUrisCallback);
 }
 
 static void DeleteCloudAssetsWithUriExecute(napi_env env, void *data)

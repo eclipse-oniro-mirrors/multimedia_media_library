@@ -189,6 +189,8 @@ private:
     EXPORT static napi_value JSSetMovingPhotoVersion(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetHiddenAttribute(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetTitleByFile(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSDeleteLocalAssetsAndGetUris(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSRecoverAssetsAndGetUris(napi_env env, napi_callback_info info);
 
     bool CheckChangeOperations(napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context);
     bool CheckMovingPhotoWriteOperation();
@@ -240,6 +242,9 @@ struct MediaAssetChangeRequestAsyncContext : public NapiError {
     DataShare::DataShareValuesBucket valuesBucket;
     std::vector<std::string> uris;
     std::vector<std::string> fileIds;
+    std::vector<std::string> assetUris;
+    std::vector<std::string> resultUris;
+    std::vector<bool> resultSuccess;
     std::string appName;
     std::string realPath;
     int32_t fd;

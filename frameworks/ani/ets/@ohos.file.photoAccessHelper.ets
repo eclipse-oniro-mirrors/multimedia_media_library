@@ -5604,6 +5604,18 @@ export class ContextRecoveryInfo {
 
   export type AssetType = PhotoAsset | string;
 
+  export interface AssetUriResult {
+    originalUri: string;
+    resultUri: string;
+    isSuccess: boolean;
+  };
+
+  class AssetUriResultHandle implements AssetUriResult {
+    originalUri: string = "";
+    resultUri: string = "";
+    isSuccess: boolean = false;
+  }
+
   export class MediaAssetChangeRequest implements MediaChangeRequest {
     readonly comment: string = "";
     private nativeHandle: long = 0;
@@ -5795,6 +5807,58 @@ export class ContextRecoveryInfo {
       });
     }
 
+    static deleteLocalAssetsAndGetUris(context: Context,
+      assetUris: Array<string>): Promise<Array<AssetUriResult>> {
+      return new Promise<Array<AssetUriResult>>((resolve: (v: Array<AssetUriResult>) => void,
+        reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | Array<AssetUriResult> => {
+          try {
+            return MediaAssetChangeRequest.deleteLocalAssetsAndGetUrisSync(context, assetUris);
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<AssetUriResult>);
+            }
+          }
+        });
+      });
+    }
+
+    static recoverAssetsAndGetUris(context: Context,
+      assetUris: Array<string>): Promise<Array<AssetUriResult>> {
+      return new Promise<Array<AssetUriResult>>((resolve: (v: Array<AssetUriResult>) => void,
+        reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | Array<AssetUriResult> => {
+          try {
+            return MediaAssetChangeRequest.recoverAssetsAndGetUrisSync(context, assetUris);
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<AssetUriResult>);
+            }
+          }
+        });
+      });
+    }
+
     private create(nativePointer: long): void {
       if (this.nativeHandle == 0) {
         this.nativeHandle = nativePointer;
@@ -5810,6 +5874,10 @@ export class ContextRecoveryInfo {
     private native static deleteLocalAssetsPermanentlySync(context: Context, assets: Array<PhotoAsset>): void;
     private native static deleteLocalAssetsPermanentlyWithUriSync(context: Context, assetUris: Array<string>): void;
     private native static deleteAssetsPermanentlyWithUriSync(context: Context, assetUris: Array<string>): void;
+    private native static deleteLocalAssetsAndGetUrisSync(context: Context,
+      assetUris: Array<string>): Array<AssetUriResult>;
+    private native static recoverAssetsAndGetUrisSync(context: Context,
+      assetUris: Array<string>): Array<AssetUriResult>;
   }
 
   export class MediaAssetsChangeRequest implements MediaChangeRequest {

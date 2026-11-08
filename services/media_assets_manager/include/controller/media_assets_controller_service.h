@@ -178,6 +178,8 @@ public:
     EXPORT int32_t SetPhotoCritical(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GenerateUniqueId(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ValidateLatestPair(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteLocalAssetsAndGetUris(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t RecoverAssetsAndGetUris(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAssetsControllerService() = default;
