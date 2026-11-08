@@ -3112,7 +3112,7 @@ int32_t DoMoveFilesByPath(const std::vector<FileAssetsInfo> &moveAssetInfos, std
         {
             std::lock_guard<std::mutex> lock(g_taskCancelMutex);
             auto it = g_taskCancelMap.find(dto.requestId);
-            if (it != g_taskCancelMap.end() && it->second && *(it->second))
+            if (it != g_taskCancelMap.end() && it->second && *(it->second)) {
                 return E_CANCEL_TASK;
             }
         }
