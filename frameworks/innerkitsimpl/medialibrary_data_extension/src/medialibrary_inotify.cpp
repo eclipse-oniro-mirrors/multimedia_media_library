@@ -185,7 +185,7 @@ int32_t MediaLibraryInotify::Init()
     if (inotifyFd_.load() <= 0) {
         inotifyFd_.store(inotify_init());
         if (inotifyFd_.load() < 0) {
-            MEDIA_ERR_LOG("add AddWatchList fail fd: %{public}d, error: %{public}d", inotifyFd_, errno);
+            MEDIA_ERR_LOG("add AddWatchList fail fd: %{public}d, error: %{public}d", inotifyFd_.load(), errno);
             return E_FAIL;
         }
         MEDIA_INFO_LOG("init inotifyFd_: %{public}d success", inotifyFd_.load());
