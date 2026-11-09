@@ -48,6 +48,8 @@
 #endif
 #include "parameters.h"
 #include "media_string_utils.h"
+#include "thread_qos_utils.h"
+
 
 namespace OHOS {
 namespace Media {
@@ -529,6 +531,25 @@ int32_t MediaLibraryMetaRecovery::PhotoRecovery(const string &path)
     metaStatus.clear();
 
     return err;
+}
+
+static void WriteSingleMetaDataAsync(AsyncTaskData *data)
+{
+    auto asyncData = static_cast<WriteJsonAsyncTaskData *>(data);
+    auto rowId = asyncData->file_id;
+    MediaLibraryTracer tracer;
+    tracer.Start("WriteSingleMetaDataById");
+    int64_t backupStart = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_DEBUG_LOG("WriteSingleMetaDataById : rowId %{public}d", rowId);
+    OHOS::Media::ThreadQosUtils::SetThreadQos();
+    auto asset = MediaLibraryAssetOperations::QuerySinglePhoto(rowId);
+    if (asset == nullptr) {
+        MEDIA_ERR_LOG("QuerySinglePhoto : rowId %{public}d failed", rowId);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
+        return;
+    }
+    MediaLibraryMetaRecovery::GetInstance().WriteSingleMetaData(*asset, backupStart);
+    OHOS::Media::ThreadQosUtils::ResetThreadQos();
 }
 
 int32_t MediaLibraryMetaRecovery::WriteSingleMetaDataById(int32_t rowId)

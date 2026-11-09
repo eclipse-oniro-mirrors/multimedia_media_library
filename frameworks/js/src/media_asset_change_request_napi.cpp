@@ -46,7 +46,7 @@
 #include "submit_cache_vo.h"
 #include "add_image_vo.h"
 #include "save_camera_photo_vo.h"
-#include "qos.h"
+#include "thread_qos_utils.h"
 #include "media_change_request_utils.h"
 #include "moving_photo_file_utils.h"
 #include "media_asset_rdbstore.h"
@@ -2496,7 +2496,9 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(SubmitCacheConfig submitCacheCo
         }
         HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, submitCacheConfig.isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
+        OHOS::Media::ThreadQosUtils::SetThreadQos();
         ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).Call(businessCode, reqBody, respBody);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
     } else {
         DataShare::DataShareValuesBucket valuesBucket = GetSubmitCacheValueBucket(submitCacheConfig);
         ret = PutMediaAssetEditData(valuesBucket);
@@ -2504,8 +2506,10 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(SubmitCacheConfig submitCacheCo
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
         std::unordered_map<std::string, std::string> headerMap{
             {MediaColumn::MEDIA_ID, to_string(fileAsset_->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
+        OHOS::Media::ThreadQosUtils::SetThreadQos();
         ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).SetHeader(headerMap).Call(businessCode,
             reqBody, respBody);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
     }
     if (respBody.fileId > 0 && submitCacheConfig.isCreation) {
         SetNewFileAsset(respBody.fileId, respBody.outUri);
@@ -2533,7 +2537,9 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
         creationValuesBucket_.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
             static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER));
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
+        OHOS::Media::ThreadQosUtils::SetThreadQos();
         ret = IPC::UserDefineIPCClient().SetUserId(userId).Call(businessCode, reqBody, respBody);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
     } else {
         DataShare::DataShareValuesBucket valuesBucket;
         valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
@@ -2547,7 +2553,9 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
         std::unordered_map<std::string, std::string> headerMap{
             {MediaColumn::MEDIA_ID, to_string(fileAsset_->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
+        OHOS::Media::ThreadQosUtils::SetThreadQos();
         ret = IPC::UserDefineIPCClient().SetUserId(userId).SetHeader(headerMap).Call(businessCode, reqBody, respBody);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
     }
     if (respBody.fileId > 0 && isCreation) {
         SetNewFileAsset(respBody.fileId, respBody.outUri);
