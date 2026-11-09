@@ -46,7 +46,7 @@ std::shared_ptr<Notification::MediaObserverManager> MediaObserverManager::GetObs
     }
     std::call_once(onceFlag_, [&]() {
         auto *mediaObserverManager = new (std::nothrow)Media::Notification::MediaObserverManager();
-         if (mediaObserverManager == nullptr) {
+        if (mediaObserverManager == nullptr) {
             MEDIA_ERR_LOG("Failed to new MediaObserverManager");
             return;
         }
