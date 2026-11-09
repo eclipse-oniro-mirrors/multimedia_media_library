@@ -400,7 +400,7 @@ void FileParser::SetByPhotosRowData(const PhotosRowData &rowData)
     if (rowData.subtype == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)) {
         fileInfo_.subtype = rowData.subtype;
     }
-    if (rowData.dateTaken > 0 && rowData.dateTaken < fileInfo_.dateTaken) {
+    if (fileInfo_.dateTaken <= 0 || (rowData.dateTaken > 0 && rowData.dateTaken < fileInfo_.dateTaken)) {
         SetDateTakenFields(rowData);
     }
 }
