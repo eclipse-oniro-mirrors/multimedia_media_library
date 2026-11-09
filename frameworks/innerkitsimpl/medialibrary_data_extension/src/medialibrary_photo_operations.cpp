@@ -2541,7 +2541,7 @@ int32_t IsSystemAlbumMovement(MediaLibraryCommand &cmd, bool &isSystemAlbum)
 {
     static vector<int32_t> systemAlbumIds;
     static std::mutex systemAlbumIdsMutex;
-    s
+    std::local_guard<std::mutex> lock(systemAlbumIdsMutex);
     if (systemAlbumIds.empty()) {
         auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "rdbstore is nullptr");
