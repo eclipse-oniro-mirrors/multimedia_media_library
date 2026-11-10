@@ -28,12 +28,17 @@
 #include "file_uri.h"
 #include "image_source_napi.h"
 #include "log_cinematic_access_vo.h"
+#include "media_file_uri.h"
+#include "media_file_utils.h"
+#include "media_uri_utils.h"
 #include "medialibrary_business_code.h"
 #include "medialibrary_client_errno.h"
 #include "medialibrary_errno.h"
+#include "media_library_error_code.h"
 #include "medialibrary_napi_utils_ext.h"
 #include "medialibrary_notify_utils.h"
 #include "medialibrary_tracer.h"
+#include "moving_photo_file_utils.h"
 #include "moving_photo_napi.h"
 #include "moving_photo_call_transcoder.h"
 #include "multistages_capture_on_process_observer.h"
@@ -155,6 +160,7 @@ napi_value MediaAssetManagerNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_STATIC_FUNCTION("requestVideoFile", JSRequestVideoFile),
             DECLARE_NAPI_STATIC_FUNCTION("requestVideo", JSRequestVideo),
             DECLARE_NAPI_STATIC_FUNCTION("loadMovingPhoto", JSLoadMovingPhoto),
+            DECLARE_NAPI_STATIC_FUNCTION("loadSingleFileMovingPhoto", JSLoadSingleFileMovingPhoto),
             DECLARE_NAPI_STATIC_FUNCTION("quickRequestImage", JSRequestEfficientIImage),
             DECLARE_NAPI_STATIC_FUNCTION("requestEnhancementImage", JSRequestEnhancementImage)
         }};
@@ -2737,6 +2743,44 @@ napi_value MediaAssetManagerNapi::JSLoadMovingPhoto(napi_env env, napi_callback_
         "This operation is not supported for assets in shared albums");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSLoadMovingPhoto", JSLoadMovingPhotoExecute,
         JSLoadMovingPhotoComplete);
+}
+
+// 同步接口：从应用沙箱中的合一文件加载 MovingPhoto。整条链路不依赖 context，也不初始化媒体库单例。
+napi_value MediaAssetManagerNapi::JSLoadSingleFileMovingPhoto(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSLoadSingleFileMovingPhoto");
+
+    size_t argc = ARGS_ONE;
+    napi_value argv[ARGS_ONE] = { nullptr };
+    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr), JS_INNER_FAIL);
+    // d.ts 未声明 401：参数个数错误按场景参数校验失败（23800151）返回
+    CHECK_PARAMETER_WITH_MESSAGE(env, argc == ARGS_ONE, "The number of parameters is invalid, expected 1 parameter");
+
+    std::string singleFileMovingPhotoUri;
+    CHECK_PARAMETER_WITH_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[PARAM0], singleFileMovingPhotoUri) == napi_ok &&
+        !singleFileMovingPhotoUri.empty(), "The singleFileMovingPhotoUri parameter is invalid");
+    // 合一文件只支持应用沙箱文件，媒体库 uri 一律拒绝。
+    // 注意不能用 MediaFileUtils::IsMediaLibraryUri：该函数实际语义是「不含 MOVING_PHOTO_URI_SPLIT」，
+    // 沙箱单文件 uri 天然不含分隔符会被误判为媒体库 uri，必须按 scheme + authority 判定。
+    CHECK_PARAMETER_WITH_MESSAGE(env, !MediaUriUtils::IsLibraryUri(singleFileMovingPhotoUri),
+        "The singleFileMovingPhotoUri is belonging to MediaLibrary");
+
+    AppFileService::ModuleFileUri::FileUri fileUri(singleFileMovingPhotoUri);
+    std::string realPath = fileUri.GetRealPath();
+    CHECK_PARAMETER_WITH_MESSAGE(env, !realPath.empty(),
+        "Failed to resolve the real path of the singleFileMovingPhotoUri");
+    // 文件不存在或不可访问属于「can not open」，与 d.ts 声明一致归入 23800151
+    CHECK_PARAMETER_WITH_MESSAGE(env, MediaFileUtils::IsFileExists(realPath),
+        "Failed to open the single-file moving photo");
+    CHECK_WITH_INT_ERR_MESSAGE(env, MovingPhotoFileUtils::IsLivePhotoAsset(realPath), JS_E_FILE_FORMAT_ERROR,
+        "The file specified by singleFileMovingPhotoUri is not a valid single-file moving photo");
+
+    napi_value movingPhoto = MovingPhotoNapi::NewSingleFileMovingPhotoNapi(env, singleFileMovingPhotoUri);
+    CHECK_COND_RET(movingPhoto != nullptr, nullptr, "Failed to create js object for single-file moving photo");
+    tracer.Finish();
+    return movingPhoto;
 }
 
 int32_t MediaAssetManagerNapi::GetFdFromSandBoxUri(const std::string &sandBoxUri)

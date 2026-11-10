@@ -45,6 +45,7 @@
 #include "album_operation_uri.h"
 #include "data_secondary_directory_uri.h"
 #include "photo_asset_custom_record_manager_napi.h"
+#include "single_file_moving_photo_util_napi.h"
 #include "vision_ocr_column.h"
 #include "vision_video_label_column.h"
 #include "vision_label_column.h"

@@ -157,6 +157,8 @@ private:
         ani_object context, ani_object param);
     static ani_object LoadMovingPhoto(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_string imageFileUri, ani_string videoFileUri);
+    static ani_object LoadSingleFileMovingPhoto(ani_env *env, [[maybe_unused]] ani_class clazz,
+        ani_string singleFileMovingPhotoUri);
     static void ProcessImage(const int fileId, const int deliveryMode);
     static void CancelProcessImage(const std::string &photoId);
     static void OnHandleRequestImage(ani_env *env, unique_ptr<MediaAssetManagerAniContext> &context);

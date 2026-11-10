@@ -29,14 +29,17 @@
 #include "media_call_transcode.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_uri_utils.h"
 #include "media_library_ani.h"
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_ani_utils_ext.h"
 #include "medialibrary_business_code.h"
+#include "medialibrary_client_errno.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_operation.h"
 #include "moving_photo_ani.h"
+#include "moving_photo_file_utils.h"
 #include "moving_photo_call_transcoder.h"
 #include "permission_utils.h"
 #include "picture_handle_client.h"
@@ -94,6 +97,8 @@ ani_status MediaAssetManagerAni::Init(ani_env *env)
         ani_native_function {"quickRequestImageInner", nullptr, reinterpret_cast<void *>(RequestEfficientImage)},
         ani_native_function {"requestVideoFileInner", nullptr, reinterpret_cast<void *>(RequestVideoFile)},
         ani_native_function {"loadMovingPhotoInner", nullptr, reinterpret_cast<void *>(LoadMovingPhoto)},
+        ani_native_function {"loadSingleFileMovingPhotoInner", nullptr,
+            reinterpret_cast<void *>(LoadSingleFileMovingPhoto)},
     };
 
     status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
@@ -2048,5 +2053,49 @@ ani_object MediaAssetManagerAni::LoadMovingPhoto(ani_env *env, [[maybe_unused]] 
     CHECK_COND_WITH_MESSAGE(env, !MediaLibraryAniUtils::HasSharedAlbumAsset({ std::to_string(fileId) }),
         "This operation is not supported for assets in shared albums");
     return LoadMovingPhotoComplete(env, aniContext);
+}
+
+// 同步接口：从应用沙箱中的合一文件加载 MovingPhoto，不依赖 context，也不初始化媒体库单例
+ani_object MediaAssetManagerAni::LoadSingleFileMovingPhoto(ani_env *env, [[maybe_unused]] ani_class clazz,
+    ani_string singleFileMovingPhotoUri)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("LoadSingleFileMovingPhoto");
+
+    std::string uriStr;
+    if (MediaLibraryAniUtils::GetParamStringPathMax(env, singleFileMovingPhotoUri, uriStr) != ANI_OK ||
+        uriStr.empty()) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID,
+            "The singleFileMovingPhotoUri is invalid");
+        return nullptr;
+    }
+    // 合一文件只支持应用沙箱文件，媒体库 uri 一律拒绝。
+    // 沙箱单文件 uri 天然不含分隔符会被误判为媒体库 uri，必须按 scheme + authority 判定。
+    if (MediaUriUtils::IsLibraryUri(uriStr)) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID,
+            "The singleFileMovingPhotoUri is belonging to MediaLibrary");
+        return nullptr;
+    }
+    AppFileService::ModuleFileUri::FileUri fileUri(uriStr);
+    std::string realPath = fileUri.GetRealPath();
+    if (realPath.empty()) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID,
+            "Failed to resolve the real path of the singleFileMovingPhotoUri");
+        return nullptr;
+    }
+    if (!MediaFileUtils::IsFileExists(realPath)) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID,
+            "Failed to open the single-file moving photo");
+        return nullptr;
+    }
+    if (!MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
+        AniError::ThrowError(env, JS_E_FILE_FORMAT_ERROR,
+            "The file specified by singleFileMovingPhotoUri is not a valid single-file moving photo");
+        return nullptr;
+    }
+    ani_object movingPhoto = MovingPhotoAni::NewSingleFileMovingPhotoAni(env, uriStr);
+    CHECK_COND_RET(movingPhoto != nullptr, nullptr, "Failed to create ani object for single-file moving photo");
+    tracer.Finish();
+    return movingPhoto;
 }
 } // namespace OHOS::Media

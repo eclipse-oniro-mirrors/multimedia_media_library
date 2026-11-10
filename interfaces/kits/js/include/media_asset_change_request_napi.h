@@ -69,6 +69,7 @@ enum class AddResourceMode {
     DATA_BUFFER,
     FILE_URI,
     PHOTO_PROXY,
+    SINGLE_FILE_URI,
 };
 
 struct MediaAssetChangeRequestAsyncContext;
@@ -143,6 +144,15 @@ public:
 
     void SetMovingPhotoVersion(uint32_t movingPhotoVerion);
     uint32_t GetMovingPhotoVersion();
+    void SetSingleFileExtraData(const std::string &extraData);
+    string GetSingleFileExtraData();
+    void SetIsSingleFileSource(bool isSingleFileSource);
+    bool GetIsSingleFileSource();
+    int32_t DecodeSingleFileResources(std::string& tmpImagePath, std::string& tmpVideoPath);
+    bool WriteTmpContainerFile(const void *dataBuffer, size_t dataSize, std::string &normalizedPath);
+    void DeleteTmpContainerFile();
+    // 合一文件缓存提交时统一填充视频名、透传的整段 extraData 与单文件标记
+    void PutSingleFileCacheFields(DataShare::DataShareValuesBucket &valuesBucket);
 
     sptr<PhotoProxy> GetPhotoProxyObj();
     void ReleasePhotoProxyObj();
@@ -202,6 +212,11 @@ private:
     bool CheckSetLivePhoto4dStatus(napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context);
     static napi_value ParseAddResourceValue(napi_env env,
         unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, const std::shared_ptr<FileAsset>& fileAsset);
+    static napi_value ParseSingleFileResource(napi_env env,
+        unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, int32_t uriErrCode,
+        int32_t paramErrCode);
+    static napi_value AddSingleFileResourceForPicker(napi_env env,
+        unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext);
 
     static thread_local napi_ref constructor_;
     static std::atomic<uint32_t> cacheFileId_;
@@ -210,7 +225,10 @@ private:
     std::shared_ptr<MediaAssetEditData> editData_ = nullptr;
     DataShare::DataShareValuesBucket creationValuesBucket_;
     std::string realPath_;
+    std::string tmpContainerPath_;
     std::string cacheFileName_;
+    std::string singleFileExtraData_;
+    bool isSingleFileSource_ = false;
     void* dataBuffer_;
     size_t dataBufferSize_;
     AddResourceMode addResourceMode_;

@@ -28,6 +28,7 @@
 #include "ani_class_name.h"
 #include "file_uri.h"
 #include "ipc_skeleton.h"
+#include "media_library_error_code.h"
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_business_code.h"
 #include "media_asset_rdbstore.h"
@@ -35,6 +36,7 @@
 #include "media_file_utils.h"
 #include "moving_photo_call_transcoder.h"
 #include "moving_photo_file_utils.h"
+#include "single_file_moving_photo_utils.h"
 #include "permission_utils.h"
 #include "progress_handler.h"
 #include "request_content_vo.h"
@@ -136,6 +138,20 @@ ani_object MovingPhotoAni::NewMovingPhotoAni(ani_env *env, const string& photoUr
         return nullptr;
     }
     movingPhotoAni->SetEtsVm(etsVm);
+    return movingPhotoObject;
+}
+
+ani_object MovingPhotoAni::NewSingleFileMovingPhotoAni(ani_env *env, const string& photoUri)
+{
+    MovingPhotoParam movingPhotoParam;
+    movingPhotoParam.compatibleMode = CompatibleMode::ORIGINAL_FORMAT_MODE;
+    ani_object movingPhotoObject = NewMovingPhotoAni(env, photoUri, SourceMode::EDITED_MODE, movingPhotoParam);
+    MovingPhotoAni* movingPhotoAni = Unwrap(env, movingPhotoObject);
+    if (movingPhotoAni == nullptr) {
+        ANI_ERR_LOG("movingPhotoAni is nullptr");
+        return nullptr;
+    }
+    movingPhotoAni->SetIsFromSingleFile(true);
     return movingPhotoObject;
 }
 
@@ -242,6 +258,16 @@ SourceMode MovingPhotoAni::GetSourceMode()
 void MovingPhotoAni::SetSourceMode(SourceMode sourceMode)
 {
     sourceMode_ = sourceMode;
+}
+
+bool MovingPhotoAni::IsFromSingleFile() const
+{
+    return isFromSingleFile_;
+}
+
+void MovingPhotoAni::SetIsFromSingleFile(bool isFromSingleFile)
+{
+    isFromSingleFile_ = isFromSingleFile;
 }
 
 CompatibleMode MovingPhotoAni::GetCompatibleMode()
@@ -689,10 +715,10 @@ static int32_t RequestContentToArrayBuffer(ani_env *env, MovingPhotoAsyncContext
 
 static bool IsValidResourceType(int32_t resourceType)
 {
+    // PRIVATE_MOVING_PHOTO_RESOURCE 已公开给三方应用，PRIVATE_MOVING_PHOTO_METADATA 仍仅限系统应用
     return resourceType == static_cast<int32_t>(ResourceType::IMAGE_RESOURCE) ||
            resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE) ||
-           (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) &&
-               MediaLibraryAniUtils::IsSystemApp()) ||
+           resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) ||
            (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_METADATA) &&
                MediaLibraryAniUtils::IsSystemApp());
 }
@@ -781,6 +807,7 @@ static void SetContextInfo(MovingPhotoAni* thisArg, std::unique_ptr<MovingPhotoA
     CHECK_NULL_PTR_RETURN_VOID(thisArg, "thisArg is nullptr");
     context->movingPhotoUri = thisArg->GetUriInner();
     context->sourceMode = thisArg->GetSourceMode();
+    context->isFromSingleFile = thisArg->IsFromSingleFile();
     context->compatibleMode = thisArg->GetCompatibleMode();
     context->progressHandlerRef = thisArg->GetProgressHandlerRef();
     context->etsVm = thisArg->GetEtsVm();
@@ -854,9 +881,121 @@ static ani_status ParseArgsByResourceType(ani_env *env, ani_enum_item resourceTy
     return ANI_OK;
 }
 
+// 单文件来源：按目标 uri 把容器的图片段/视频段/整容器导出到沙箱
+static int32_t WriteSingleFileToSandbox(int32_t srcFd, MovingPhotoAsyncContext *context)
+{
+    if (!context->destImageUri.empty()) {
+        AppFileService::ModuleFileUri::FileUri destUri(context->destImageUri);
+        std::string destPath = destUri.GetRealPath();
+        CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest image uri");
+        int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcFd, destPath, "", "");
+        CHECK_COND_RET(ret == E_OK, ret, "Write image to sandbox failed");
+    }
+    if (!context->destVideoUri.empty()) {
+        AppFileService::ModuleFileUri::FileUri destUri(context->destVideoUri);
+        std::string destPath = destUri.GetRealPath();
+        CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest video uri");
+        int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcFd, "", destPath, "");
+        CHECK_COND_RET(ret == E_OK, ret, "Write video to sandbox failed");
+    }
+    if (!context->destLivePhotoUri.empty()) {
+        AppFileService::ModuleFileUri::FileUri destUri(context->destLivePhotoUri);
+        std::string destPath = destUri.GetRealPath();
+        CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest live photo uri");
+        int32_t destFd = open(destPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        CHECK_COND_RET(destFd >= 0, E_HAS_FS_ERROR, "Failed to create dest live photo file");
+        UniqueFd uniqueDestFd(destFd);
+        char copyBuffer[4096];
+        ssize_t readBytes = 0;
+        while ((readBytes = read(srcFd, copyBuffer, sizeof(copyBuffer))) > 0) {
+            if (write(uniqueDestFd.Get(), copyBuffer, readBytes) != readBytes) {
+                ANI_ERR_LOG("Failed to write live photo, errno: %{public}d", errno);
+                return E_HAS_FS_ERROR;
+            }
+        }
+        CHECK_COND_RET(readBytes == 0, E_HAS_FS_ERROR, "Failed to read live photo, errno: %{public}d", errno);
+    }
+    if (!context->destMetadataUri.empty()) {
+        ANI_ERR_LOG("The single-file moving photo has no independent metadata resource");
+        return E_INVALID_VALUES;
+    }
+    return E_OK;
+}
+
+// 单文件来源：按资源类型把容器对应段读入 ArrayBuffer
+static int32_t ReadSingleFileSegmentToBuffer(int32_t srcFd, MovingPhotoAsyncContext *context,
+    const SingleFileMovingPhotoInfo &info)
+{
+    int64_t offset = 0;
+    int64_t size = 0;
+    switch (context->resourceType) {
+        case ResourceType::IMAGE_RESOURCE:
+            size = info.imageSize;
+            break;
+        case ResourceType::VIDEO_RESOURCE:
+            offset = info.imageSize;
+            size = info.videoSize;
+            break;
+        case ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE:
+            size = info.imageSize + info.videoSize + info.extraDataSize;
+            break;
+        default:
+            ANI_ERR_LOG("Unsupported resource type for single-file moving photo: %{public}d",
+                static_cast<int32_t>(context->resourceType));
+            return E_INVALID_VALUES;
+    }
+    CHECK_COND_RET(size > 0, E_INVALID_VALUES, "Invalid single-file segment size");
+    context->arrayBufferData = malloc(static_cast<size_t>(size));
+    CHECK_COND_RET(context->arrayBufferData != nullptr, E_HAS_FS_ERROR, "Failed to allocate array buffer");
+    char *buffer = static_cast<char *>(context->arrayBufferData);
+    int64_t readOffset = offset;
+    int64_t remain = size;
+    while (remain > 0) {
+        ssize_t readBytes = pread(srcFd, buffer, static_cast<size_t>(remain), readOffset);
+        if (readBytes <= 0) {
+            ANI_ERR_LOG("Failed to read single-file segment, errno: %{public}d", errno);
+            free(context->arrayBufferData);
+            context->arrayBufferData = nullptr;
+            return E_HAS_FS_ERROR;
+        }
+        buffer += readBytes;
+        readOffset += readBytes;
+        remain -= readBytes;
+    }
+    context->arrayBufferLength = static_cast<size_t>(size);
+    return E_OK;
+}
+
+// 单文件来源：直接读容器，按 imageSize / videoSize / extraDataSize 分段导出，不经过媒体库服务端
+static int32_t RequestContentFromSingleFile(MovingPhotoAsyncContext *context)
+{
+    AppFileService::ModuleFileUri::FileUri fileUri(context->movingPhotoUri);
+    std::string realPath = fileUri.GetRealPath();
+    CHECK_COND_RET(!realPath.empty(), E_HAS_FS_ERROR, "Invalid single-file path");
+    UniqueFd srcFd(open(realPath.c_str(), O_RDONLY));
+    CHECK_COND_RET(srcFd.Get() >= 0, E_HAS_FS_ERROR, "Open single-file failed, errno: %{public}d", errno);
+
+    SingleFileMovingPhotoInfo info;
+    int32_t ret = MovingPhotoFileUtils::GetMovingPhotoDetailedSize(srcFd.Get(), info.imageSize, info.videoSize,
+        info.extraDataSize);
+    CHECK_COND_RET(ret == E_OK, ret, "Failed to get detailed size of single-file moving photo");
+
+    if (context->requestContentMode == MovingPhotoAsyncContext::WRITE_TO_SANDBOX) {
+        return WriteSingleFileToSandbox(srcFd.Get(), context);
+    }
+    return ReadSingleFileSegmentToBuffer(srcFd.Get(), context, info);
+}
+
 static void RequestContentExecute(ani_env *env, unique_ptr<MovingPhotoAsyncContext> &context)
 {
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    if (context->isFromSingleFile) {
+        int32_t singleFileRet = RequestContentFromSingleFile(context.get());
+        if (singleFileRet != E_OK) {
+            context->SaveError(singleFileRet);
+        }
+        return;
+    }
     int32_t ret = QueryPhotoPosition(context->movingPhotoUri, HasReadPermission(), context->position);
     if (ret != E_OK) {
         ANI_ERR_LOG("Failed to query position of moving photo, ret: %{public}d", ret);
@@ -963,7 +1102,6 @@ ani_object MovingPhotoAni::RequestContentByResourceType(ani_env *env, ani_object
 {
     unique_ptr<MovingPhotoAsyncContext> asyncContext = make_unique<MovingPhotoAsyncContext>();
     MovingPhotoAni* nativeObject = Unwrap(env, object);
-
     CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsByResourceType(env, resourceTypeAni, nativeObject,
         asyncContext) == ANI_OK, nullptr, "Failed to parse requestContent args");
     RequestContentExecute(env, asyncContext);

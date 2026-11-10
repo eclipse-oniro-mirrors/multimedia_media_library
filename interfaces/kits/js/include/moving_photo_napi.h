@@ -39,6 +39,7 @@ struct MovingPhotoAsyncContext : public NapiError {
 
     std::string movingPhotoUri;
     SourceMode sourceMode;
+    bool isFromSingleFile = false;
     CompatibleMode compatibleMode;
     napi_ref progressHandlerRef;
     napi_env mediaAssetEnv;
@@ -78,9 +79,12 @@ public:
     static int32_t OpenReadOnlyMetadata(const string& movingPhotoUri);
     static napi_value NewMovingPhotoNapi(napi_env env, const string& photoUri, SourceMode sourceMode,
         MovingPhotoParam &movingPhotoParam);
+    static napi_value NewSingleFileMovingPhotoNapi(napi_env env, const string& photoUri);
     std::string GetUri();
     SourceMode GetSourceMode();
     void SetSourceMode(SourceMode sourceMode);
+    bool IsFromSingleFile() const;
+    void SetIsFromSingleFile(bool isFromSingleFile);
     std::string GetRequestId();
     void SetRequestId(const std::string requestId);
     CompatibleMode GetCompatibleMode();
@@ -116,6 +120,7 @@ private:
     SourceMode sourceMode_ = SourceMode::EDITED_MODE;
     CompatibleMode compatibleMode_ = CompatibleMode::COMPATIBLE_FORMAT_MODE;
     std::string requestId_;
+    bool isFromSingleFile_ = false;
     napi_ref progressHandlerRef_ = nullptr;
     napi_env media_asset_env_ = nullptr;
     napi_threadsafe_function threadsafeFunction_ = nullptr;

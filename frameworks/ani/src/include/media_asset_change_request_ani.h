@@ -58,6 +58,7 @@ enum class AddResourceMode {
     DATA_BUFFER,
     FILE_URI,
     PHOTO_PROXY,
+    SINGLE_FILE_URI,
 };
 
 class MediaDataSource : public IMediaDataSource {
@@ -118,6 +119,8 @@ public:
     static ani_object AddMovingPhotoVideoResourceByFileUri(ani_env *env, ani_object aniObject, ani_string fileUri);
     static ani_object AddMovingPhotoVideoResourceByArrayBuffer(ani_env *env, ani_object aniObject,
         ani_arraybuffer arrayBuffer);
+    static ani_object AddSingleFileResourceByArrayBuffer(ani_env *env, MediaAssetChangeRequestAni *changeRequest,
+        const std::shared_ptr<FileAsset> &fileAsset, ani_arraybuffer arrayBuffer);
 
     static ani_object GetAsset(ani_env *env, ani_object aniObject);
     static ani_object DeleteAssets(ani_env *env, [[maybe_unused]] ani_class clazz, ani_object context,
@@ -172,6 +175,19 @@ public:
     int32_t CopyFileToMediaLibrary(const OHOS::UniqueFd &destFd, bool isMovingPhotoVideo = false);
     int32_t CopyDataBufferToMediaLibrary(const OHOS::UniqueFd &destFd, bool isMovingPhotoVideo = false);
     int32_t CopyMovingPhotoVideo(const std::string &assetUri);
+    int32_t DecodeSingleFileResources(std::string &tmpImagePath, std::string &tmpVideoPath);
+    // 合一文件资源：解析 uri → 校验末尾整段 extraData → 落单文件状态与三类资源类型
+    static ani_object AddSingleFileResourceByFileUri(ani_env *env, MediaAssetChangeRequestAni *changeRequest,
+        std::shared_ptr<FileAsset> fileAsset, ani_string fileUri);
+    bool ParseSingleFileArrayBuffer(void *data, size_t size);
+    bool PrepareSingleFileExtraData(const std::string &path);
+    // 合一文件缓存提交时统一填充视频名、透传的整段 extraData 与单文件标记
+    void PutSingleFileCacheFields(DataShare::DataShareValuesBucket &valuesBucket);
+    void SetSingleFileExtraData(const std::string &extraData);
+    std::string GetSingleFileExtraData();
+    void SetIsSingleFileSource(bool isSingleFileSource);
+    bool GetIsSingleFileSource();
+    void DeleteTmpContainerFile();
 
     std::shared_ptr<FileAsset> GetFileAssetInstance() const;
     sptr<PhotoProxy> GetPhotoProxyObj();
@@ -216,6 +232,9 @@ private:
     DataShare::DataShareValuesBucket creationValuesBucket_;
     std::vector<AssetChangeOperation> assetChangeOperations_;
     std::string realPath_;
+    std::string tmpContainerPath_;
+    std::string singleFileExtraData_;
+    bool isSingleFileSource_ = false;
     void* dataBuffer_ = nullptr;
     size_t dataBufferSize_ = 0;
     AddResourceMode addResourceMode_ = AddResourceMode::DATA_BUFFER;

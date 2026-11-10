@@ -184,6 +184,7 @@ private:
     static napi_value JSRequestVideoFile(napi_env env, napi_callback_info info);
     static napi_value JSRequestVideo(napi_env env, napi_callback_info info);
     static napi_value JSLoadMovingPhoto(napi_env env, napi_callback_info info);
+    static napi_value JSLoadSingleFileMovingPhoto(napi_env env, napi_callback_info info);
     static napi_value JSRequestEnhancementImage(napi_env env, napi_callback_info info);
     static void AddImage(const int fileId, DeliveryMode deliveryMode);
 

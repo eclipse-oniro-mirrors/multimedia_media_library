@@ -72,6 +72,7 @@ ohos_unittest("media_library_helper_test") {
     "./src/smart_album_asset_test.cpp",
     "./src/media_edit_utils_test.cpp",
     "./src/photos_po_test.cpp",
+    "./src/single_file_moving_photo_utils_test.cpp",
   ]
 
   deps = [

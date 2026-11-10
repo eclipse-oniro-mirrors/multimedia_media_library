@@ -26,6 +26,8 @@
 #include "media_file_utils.h"
 #include "media_file_uri.h"
 #include "moving_photo_file_utils.h"
+#include "single_file_moving_photo_utils.h"
+#include "media_library_error_code.h"
 #include "media_library_napi.h"
 #include "medialibrary_client_errno.h"
 #include "medialibrary_db_const.h"
@@ -135,6 +137,16 @@ SourceMode MovingPhotoNapi::GetSourceMode()
 void MovingPhotoNapi::SetSourceMode(SourceMode sourceMode)
 {
     sourceMode_ = sourceMode;
+}
+
+bool MovingPhotoNapi::IsFromSingleFile() const
+{
+    return isFromSingleFile_;
+}
+
+void MovingPhotoNapi::SetIsFromSingleFile(bool isFromSingleFile)
+{
+    isFromSingleFile_ = isFromSingleFile;
 }
 
 CompatibleMode MovingPhotoNapi::GetCompatibleMode()
@@ -541,10 +553,10 @@ static int32_t RequestContentToArrayBuffer(napi_env env, MovingPhotoAsyncContext
 
 static bool IsValidResourceType(int32_t resourceType)
 {
+    // PRIVATE_MOVING_PHOTO_RESOURCE 已公开给三方应用，PRIVATE_MOVING_PHOTO_METADATA 仍仅限系统应用
     return resourceType == static_cast<int32_t>(ResourceType::IMAGE_RESOURCE) ||
            resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE) ||
-           (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) &&
-               MediaLibraryNapiUtils::IsSystemApp()) ||
+           resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) ||
            (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_METADATA) &&
                MediaLibraryNapiUtils::IsSystemApp());
 }
@@ -636,6 +648,7 @@ static void SetContextInfo(unique_ptr<MovingPhotoAsyncContext>& context, MovingP
     if (context != nullptr && thisArg != nullptr) {
         context->movingPhotoUri = thisArg->GetUri();
         context->sourceMode = thisArg->GetSourceMode();
+        context->isFromSingleFile = thisArg->IsFromSingleFile();
         context->compatibleMode = thisArg->GetCompatibleMode();
         context->requestId = thisArg->GetRequestId();
         context->progressHandlerRef = thisArg->GetProgressHandlerRef();
@@ -695,9 +708,129 @@ static napi_value ParseArgsForRequestContent(napi_env env, size_t argc, const na
     RETURN_NAPI_TRUE(env);
 }
 
+// 单文件来源：按目标 uri 把容器的图片段/视频段/整容器导出到沙箱
+static int32_t WriteSingleFileToSandbox(int32_t srcFd, MovingPhotoAsyncContext* context)
+{
+    if (!context->destImageUri.empty()) {
+        AppFileService::ModuleFileUri::FileUri destUri(context->destImageUri);
+        std::string destPath = destUri.GetRealPath();
+        CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest image uri");
+        int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcFd, destPath, "", "");
+        CHECK_COND_RET(ret == E_OK, ret, "Write image to sandbox failed");
+    }
+    if (!context->destVideoUri.empty()) {
+        AppFileService::ModuleFileUri::FileUri destUri(context->destVideoUri);
+        std::string destPath = destUri.GetRealPath();
+        CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest video uri");
+        int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcFd, "", destPath, "");
+        CHECK_COND_RET(ret == E_OK, ret, "Write video to sandbox failed");
+    }
+    if (!context->destLivePhotoUri.empty()) {
+        // 整容器原样导出：WriteToSandboxUri 会接管传入 fd 的所有权，不适合调用方仍持有 srcFd 的场景，
+        // 因此这里直接拷贝，srcFd 由调用方的 UniqueFd 全程持有
+        AppFileService::ModuleFileUri::FileUri destUri(context->destLivePhotoUri);
+        std::string destPath = destUri.GetRealPath();
+        CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest live photo uri");
+        if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+            NAPI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
+            return E_HAS_FS_ERROR;
+        }
+        int32_t destFd = MediaFileUtils::OpenFile(destPath, MEDIA_FILEMODE_READWRITE);
+        CHECK_COND_RET(destFd >= 0, E_HAS_FS_ERROR, "Open dest file failed, errno: %{public}d", errno);
+        UniqueFd destUniqueFd(destFd);
+        if (ftruncate(destUniqueFd.Get(), 0) == -1) {
+            NAPI_ERR_LOG("Truncate old file in sandbox failed, errno: %{public}d", errno);
+            return E_HAS_FS_ERROR;
+        }
+        CHECK_COND_RET(lseek(srcFd, 0, SEEK_SET) == 0, E_HAS_FS_ERROR,
+            "Seek single-file to head failed, errno: %{public}d", errno);
+        int32_t ret = CopyFileFromMediaLibrary(srcFd, destUniqueFd.Get());
+        CHECK_COND_RET(ret == E_OK, ret, "Write live photo to sandbox failed");
+    }
+    if (!context->destMetadataUri.empty()) {
+        NAPI_ERR_LOG("The single-file moving photo has no independent metadata resource");
+        return E_INVALID_VALUES;
+    }
+    return E_OK;
+}
+
+// 单文件来源：按资源类型把容器对应段读入 ArrayBuffer
+static int32_t ReadSingleFileSegmentToBuffer(int32_t srcFd, MovingPhotoAsyncContext* context,
+    const SingleFileMovingPhotoInfo& info)
+{
+    int64_t offset = 0;
+    int64_t size = 0;
+    switch (context->resourceType) {
+        case ResourceType::IMAGE_RESOURCE:
+            size = info.imageSize;
+            break;
+        case ResourceType::VIDEO_RESOURCE:
+            offset = info.imageSize;
+            size = info.videoSize;
+            break;
+        case ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE:
+            size = info.imageSize + info.videoSize + info.extraDataSize;
+            break;
+        default:
+            NAPI_ERR_LOG("Unsupported resource type for single-file moving photo: %{public}d",
+                static_cast<int32_t>(context->resourceType));
+            return E_INVALID_VALUES;
+    }
+    CHECK_COND_RET(size > 0, E_INVALID_VALUES, "Invalid single-file segment size");
+    CHECK_COND_RET(static_cast<uint64_t>(size) <= static_cast<uint64_t>(SIZE_MAX), E_INVALID_VALUES,
+        "Single-file segment size is too large");
+    context->arrayBufferData = malloc(static_cast<size_t>(size));
+    CHECK_COND_RET(context->arrayBufferData != nullptr, E_HAS_FS_ERROR, "Failed to allocate array buffer");
+    char* buffer = static_cast<char*>(context->arrayBufferData);
+    int64_t readOffset = offset;
+    int64_t remain = size;
+    while (remain > 0) {
+        ssize_t readBytes = pread(srcFd, buffer, static_cast<size_t>(remain), readOffset);
+        if (readBytes <= 0) {
+            NAPI_ERR_LOG("Failed to read single-file segment, errno: %{public}d", errno);
+            free(context->arrayBufferData);
+            context->arrayBufferData = nullptr;
+            return E_HAS_FS_ERROR;
+        }
+        buffer += readBytes;
+        readOffset += readBytes;
+        remain -= readBytes;
+    }
+    context->arrayBufferLength = static_cast<size_t>(size);
+    return E_OK;
+}
+
+// 单文件来源：直接读容器，按 imageSize / videoSize / extraDataSize 分段导出，不经过媒体库服务端
+static int32_t RequestContentFromSingleFile(MovingPhotoAsyncContext* context)
+{
+    AppFileService::ModuleFileUri::FileUri fileUri(context->movingPhotoUri);
+    std::string realPath = fileUri.GetRealPath();
+    CHECK_COND_RET(!realPath.empty(), E_HAS_FS_ERROR, "Invalid single-file path");
+    UniqueFd srcFd(open(realPath.c_str(), O_RDONLY));
+    CHECK_COND_RET(srcFd.Get() >= 0, E_HAS_FS_ERROR, "Open single-file failed, errno: %{public}d", errno);
+
+    SingleFileMovingPhotoInfo info;
+    int32_t ret = MovingPhotoFileUtils::GetMovingPhotoDetailedSize(srcFd.Get(), info.imageSize, info.videoSize,
+        info.extraDataSize);
+    CHECK_COND_RET(ret == E_OK, ret, "Failed to get detailed size of single-file moving photo");
+
+    if (context->requestContentMode == MovingPhotoAsyncContext::WRITE_TO_SANDBOX) {
+        return WriteSingleFileToSandbox(srcFd.Get(), context);
+    }
+    return ReadSingleFileSegmentToBuffer(srcFd.Get(), context, info);
+}
+
 static void RequestContentExecute(napi_env env, void *data)
 {
     auto* context = static_cast<MovingPhotoAsyncContext*>(data);
+    // 单文件来源没有服务端记录，直接按容器分段导出
+    if (context->isFromSingleFile) {
+        int32_t ret = RequestContentFromSingleFile(context);
+        if (ret != E_OK) {
+            context->SaveError(ret);
+        }
+        return;
+    }
     int32_t ret = QueryPhotoPosition(context->movingPhotoUri, HasReadPermission(), context->position);
     if (ret != E_OK) {
         NAPI_ERR_LOG("Failed to query position of moving photo, ret: %{public}d", ret);
@@ -818,6 +951,23 @@ napi_value MovingPhotoNapi::NewMovingPhotoNapi(napi_env env, const string& photo
     movingPhotoNapi->SetProgressHandlerRef(movingPhotoParam.progressHandlerRef);
     movingPhotoNapi->SetMediaAssetEnv(env);
     movingPhotoNapi->SetThreadsafeFunction(movingPhotoParam.threadsafeFunction);
+    return instance;
+}
+
+napi_value MovingPhotoNapi::NewSingleFileMovingPhotoNapi(napi_env env, const string& photoUri)
+{
+    MovingPhotoParam movingPhotoParam;
+    movingPhotoParam.compatibleMode = CompatibleMode::ORIGINAL_FORMAT_MODE;
+    napi_value instance = NewMovingPhotoNapi(env, photoUri, SourceMode::EDITED_MODE, movingPhotoParam);
+    if (instance == nullptr) {
+        return nullptr;
+    }
+    MovingPhotoNapi* movingPhotoNapi = nullptr;
+    if (napi_unwrap(env, instance, reinterpret_cast<void**>(&movingPhotoNapi)) != napi_ok ||
+        movingPhotoNapi == nullptr) {
+        return nullptr;
+    }
+    movingPhotoNapi->SetIsFromSingleFile(true);
     return instance;
 }
 

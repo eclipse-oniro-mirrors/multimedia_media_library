@@ -30,6 +30,7 @@
 #include "native_module_ohos_medialibrary.h"
 #include "photo_proxy_napi.h"
 #include "photo_asset_custom_record_manager_napi.h"
+#include "single_file_moving_photo_util_napi.h"
 #include "cloud_media_download_resources_status_napi.h"
 #include "result_set_napi.h"
 #include "task_signal_napi.h"
@@ -69,6 +70,7 @@ static napi_value PhotoAccessHelperExport(napi_env env, napi_value exports)
     PhotoAssetCustomRecordNapi::Init(env, exports);
     CloudMediaDownloadResourcesStatusNapi::Init(env, exports);
     TaskSignalNapi::Init(env, exports);
+    SingleFileMovingPhotoUtil::Init(env, exports);
     return exports;
 }
 

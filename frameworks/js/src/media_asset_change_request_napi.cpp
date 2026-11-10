@@ -48,7 +48,10 @@
 #include "save_camera_photo_vo.h"
 #include "qos.h"
 #include "media_change_request_utils.h"
+#include "media_time_utils.h"
 #include "moving_photo_file_utils.h"
+#include "single_file_moving_photo_utils.h"
+#include "application_context.h"
 #include "media_asset_rdbstore.h"
 #include "userfilemgr_uri.h"
 #include "validate_latest_pair_vo.h"
@@ -78,6 +81,12 @@ constexpr int32_t MAX_PHOTO_ID_LEN = 32;
 const std::string PAH_SUBTYPE = "subtype";
 const std::string CAMERA_SHOT_KEY = "cameraShotKey";
 const std::string USER_ID = "userId";
+// 合一容器以文件形态落盘时使用的临时文件前缀、拆分产物中缀与默认后缀
+const std::string SINGLE_FILE_TEMP_PREFIX = "sfsrc_";
+const std::string SINGLE_FILE_DECODE_PREFIX = "sf_";
+const std::string SINGLE_FILE_IMAGE_INFIX = "_img";
+const std::string SINGLE_FILE_VIDEO_INFIX = "_video";
+const std::string SINGLE_FILE_DEFAULT_EXTENSION = "jpg";
 const std::map<std::string, std::string> PHOTO_CREATE_OPTIONS_PARAM = {
     { PAH_SUBTYPE, PhotoColumn::PHOTO_SUBTYPE },
     { CAMERA_SHOT_KEY, PhotoColumn::CAMERA_SHOT_KEY },
@@ -264,6 +273,8 @@ void MediaAssetChangeRequestNapi::Destructor(napi_env env, void* nativeObject, v
 
     DeleteCache(assetChangeRequest->cacheFileName_);
     DeleteCache(assetChangeRequest->cacheMovingPhotoVideoName_);
+    // 兜底清理：解析完成后未走到 AddResourceExecute 即析构时，临时容器文件需在此释放
+    assetChangeRequest->DeleteTmpContainerFile();
 
     delete assetChangeRequest;
     assetChangeRequest = nullptr;
@@ -352,9 +363,20 @@ bool MediaAssetChangeRequestNapi::CheckMovingPhotoResource(ResourceType resource
         return false;
     }
 
-    bool isResourceTypeVaild = !ContainsResource(resourceType);
     int addResourceTimes =
         std::count(assetChangeOperations_.begin(), assetChangeOperations_.end(), AssetChangeOperation::ADD_RESOURCE);
+    // The single-file resource can only be added alone and once
+    if (resourceType == ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) {
+        return !ContainsResource(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE) &&
+            !ContainsResource(ResourceType::IMAGE_RESOURCE) &&
+            !ContainsResource(ResourceType::VIDEO_RESOURCE) && addResourceTimes == 0;
+    }
+    // No more image or video resource is allowed after the single-file resource is added
+    if (ContainsResource(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE)) {
+        NAPI_ERR_LOG("The single-file moving photo resource has already been added");
+        return false;
+    }
+    bool isResourceTypeVaild = !ContainsResource(resourceType);
     return isResourceTypeVaild && addResourceTimes <= 1; // currently, add resource no more than once
 }
 
@@ -431,6 +453,12 @@ bool MediaAssetChangeRequestNapi::CheckMovingPhotoWriteOperation()
             AssetChangeOperation::ADD_RESOURCE_FOR_PICKER);
     bool isImageExist = ContainsResource(ResourceType::IMAGE_RESOURCE);
     bool isVideoExist = ContainsResource(ResourceType::VIDEO_RESOURCE);
+    // The single-file resource expands into image and video resources internally.
+    // It can be added only once, no matter through addResource or through addResourceForPicker.
+    if (ContainsResource(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE)) {
+        int singleFileTimes = addResourceTimes + addResourceForPickerTimes;
+        return singleFileTimes == 1 && isImageExist && isVideoExist;
+    }
     // must add resource 2 times with image and video
     int movingPhotoAddResourceTimes = 2;
     return (addResourceTimes == movingPhotoAddResourceTimes && isImageExist && isVideoExist) ||
@@ -686,6 +714,26 @@ void MediaAssetChangeRequestNapi::SetMovingPhotoVersion(uint32_t movingPhotoVers
 uint32_t MediaAssetChangeRequestNapi::GetMovingPhotoVersion()
 {
     return movingPhotoVersion_;
+}
+
+void MediaAssetChangeRequestNapi::SetSingleFileExtraData(const std::string &extraData)
+{
+    singleFileExtraData_ = extraData;
+}
+
+std::string MediaAssetChangeRequestNapi::GetSingleFileExtraData()
+{
+    return singleFileExtraData_;
+}
+
+void MediaAssetChangeRequestNapi::SetIsSingleFileSource(bool isSingleFileSource)
+{
+    isSingleFileSource_ = isSingleFileSource;
+}
+
+bool MediaAssetChangeRequestNapi::GetIsSingleFileSource()
+{
+    return isSingleFileSource_;
 }
 
 napi_value MediaAssetChangeRequestNapi::JSGetAsset(napi_env env, napi_callback_info info)
@@ -994,17 +1042,18 @@ napi_value MediaAssetChangeRequestNapi::JSCreateAssetRequest(napi_env env, napi_
 }
 
 static napi_value ParseFileUri(napi_env env, napi_value arg, MediaType mediaType,
-    unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& context, int32_t pathErrCode = JS_ERR_NO_SUCH_FILE)
 {
     string fileUriStr;
-    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok,
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok, pathErrCode,
         "The fileUri parameter must be a string and within length limit");
     AppFileService::ModuleFileUri::FileUri fileUri(fileUriStr);
     string path = fileUri.GetRealPath();
-    CHECK_COND_WITH_ERR_MESSAGE(env, PathToRealPath(path, context->realPath), JS_ERR_NO_SUCH_FILE,
+    CHECK_COND_WITH_ERR_MESSAGE(env, PathToRealPath(path, context->realPath), pathErrCode,
         "The file corresponding to the URI is not in the app sandbox");
 
-    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType(context->realPath),
+    CHECK_COND_WITH_ERR_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType(context->realPath), pathErrCode,
         "The file type does not match the expected type");
     RETURN_NAPI_TRUE(env);
 }
@@ -1900,6 +1949,7 @@ static ResourceType GetResourceType(int32_t value)
         case static_cast<int32_t>(ResourceType::IMAGE_RESOURCE):
         case static_cast<int32_t>(ResourceType::VIDEO_RESOURCE):
         case static_cast<int32_t>(ResourceType::PHOTO_PROXY):
+        case static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE):
             result = static_cast<ResourceType>(value);
             break;
         default:
@@ -2079,6 +2129,129 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResourceForPicker(nap
     RETURN_NAPI_UNDEFINED(env);
 }
 
+// 把 ArrayBuffer 形态的合一容器写成临时文件，并回填归一化后的真实路径
+bool MediaAssetChangeRequestNapi::WriteTmpContainerFile(const void *dataBuffer, size_t dataSize,
+    std::string &normalizedPath)
+{
+    auto abilityContext = AbilityRuntime::Context::GetApplicationContext();
+    CHECK_COND_RET(abilityContext != nullptr, false, "abilityContext is nullptr");
+    std::string cacheDir = abilityContext->GetCacheDir();
+    CHECK_COND_RET(!cacheDir.empty(), false, "cacheDir is empty");
+    // 写入前先归一化目录，避免用未校验的路径拼接并创建文件
+    std::string normalizedCacheDir;
+    CHECK_COND_RET(SingleFileMovingPhotoUtils::NormalizeOutputDir(cacheDir, normalizedCacheDir) == E_OK, false,
+        "cacheDir is invalid");
+    tmpContainerPath_ = normalizedCacheDir + "/" + SINGLE_FILE_TEMP_PREFIX +
+        std::to_string(MediaTimeUtils::UTCTimeNanoSeconds()) + "." + SINGLE_FILE_DEFAULT_EXTENSION;
+    int32_t tmpFd = open(tmpContainerPath_.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    CHECK_COND_RET(tmpFd >= 0, false, "Failed to create temp container file");
+    UniqueFd uniqueTmpFd(tmpFd);
+    const char *buffer = static_cast<const char*>(dataBuffer);
+    size_t offset = 0;
+    while (offset < dataSize) {
+        ssize_t written = write(uniqueTmpFd.Get(), buffer + offset, dataSize - offset);
+        if (written < 0) {
+            if (errno == EINTR) {  // 被信号中断时重试，不能当成写失败
+                continue;
+            }
+            NAPI_ERR_LOG("Failed to write temp container file, errno: %{public}d", errno);
+            DeleteTmpContainerFile();
+            return false;
+        }
+        offset += static_cast<size_t>(written);
+    }
+    // 落盘后再归一化，确保后续链路拿到的是解析过符号链接的绝对路径
+    if (SingleFileMovingPhotoUtils::NormalizeExistingFile(tmpContainerPath_, normalizedPath) == E_OK) {
+        return true;
+    }
+    DeleteTmpContainerFile();  // 归一化失败时清理临时容器文件，避免残留
+    return false;
+}
+
+// 读取并校验源合一文件末尾的整段 extraData（40B / 60B / 60B+N）；
+// 文件过小或不是有效容器时不透传，交给解码阶段按容器非法统一上报
+static bool PrepareSingleFileExtraData(napi_env env, const std::string &path, int32_t errCode,
+    std::string &extraData)
+{
+    extraData.clear();
+    // 打开前统一归一化并校验：拒绝空路径、../ 与目录；失败时必须抛异常，不能让调用方返回空值
+    std::string absPath;
+    if (SingleFileMovingPhotoUtils::NormalizeExistingFile(path, absPath) != E_OK) {
+        NAPI_ERR_LOG("Invalid path of single file moving photo");
+        NapiError::ThrowError(env, errCode, "The path of the single-file moving photo is invalid");
+        return false;
+    }
+    UniqueFd fd(open(absPath.c_str(), O_RDONLY));
+    CHECK_COND_RET(fd.Get() >= 0, false, "Failed to open single file moving photo");
+    int32_t readRet = MovingPhotoFileUtils::GetWholeExtraData(fd.Get(), extraData);
+    if (readRet != E_OK) {
+        NAPI_INFO_LOG("Skip extra data of source file, ret:%{public}d", readRet);
+        extraData.clear();
+        return true;
+    }
+    if (MovingPhotoFileUtils::CheckExtraData(extraData) != E_OK) {
+        NAPI_ERR_LOG("Invalid extra data of single file moving photo, size:%{public}d",
+            static_cast<int32_t>(extraData.size()));
+        NapiError::ThrowError(env, errCode, "The extra data of the single-file moving photo is invalid");
+        return false;
+    }
+    return true;
+}
+
+// 解析 PRIVATE_MOVING_PHOTO_RESOURCE 的 value：支持沙箱 file uri 与 ArrayBuffer 两种形态。
+// uriErrCode 仅用于 URI 解析、沙箱路径与文件类型类失败；extraData 内容非法属于参数校验失败，统一用 paramErrCode。
+napi_value MediaAssetChangeRequestNapi::ParseSingleFileResource(napi_env env,
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, int32_t uriErrCode, int32_t paramErrCode)
+{
+    auto changeRequest = asyncContext->objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, nullptr, "changeRequest is nullptr");
+    napi_value value = asyncContext->argv[PARAM1];
+    napi_valuetype valueType = napi_undefined;
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, value, &valueType) == napi_ok, paramErrCode,
+        "Failed to get napi type");
+    std::string extraData;
+    if (valueType == napi_string) {
+        CHECK_COND(env, ParseFileUri(env, value, MediaType::MEDIA_TYPE_IMAGE, asyncContext, uriErrCode), uriErrCode);
+        // ParseFileUri 已解析真实路径，这里统一复核路径合法性并归一化
+        std::string normalizedPath;
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            SingleFileMovingPhotoUtils::NormalizeExistingFile(asyncContext->realPath, normalizedPath) == E_OK,
+            uriErrCode, "The file corresponding to the URI is invalid");
+        // extraData 内容非法属于参数校验失败，与 URI 解析失败区分错误码
+        if (!PrepareSingleFileExtraData(env, normalizedPath, paramErrCode, extraData)) {
+            return nullptr;
+        }
+        changeRequest->realPath_ = normalizedPath;
+        changeRequest->addResourceMode_ = AddResourceMode::SINGLE_FILE_URI;
+        changeRequest->SetIsSingleFileSource(true);
+        changeRequest->SetSingleFileExtraData(extraData);
+        RETURN_NAPI_TRUE(env);
+    }
+    bool isArrayBuffer = false;
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_is_arraybuffer(env, value, &isArrayBuffer) == napi_ok, paramErrCode,
+        "Failed to check type");
+    CHECK_COND_WITH_ERR_MESSAGE(env, isArrayBuffer, paramErrCode,
+        "The data parameter must be a file uri string or an ArrayBuffer");
+    void* dataBuffer = nullptr;
+    size_t dataSize = 0;
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        napi_get_arraybuffer_info(env, value, &dataBuffer, &dataSize) == napi_ok && dataSize > 0, paramErrCode,
+        "Failed to get data buffer");
+    // 合一容器需以文件形态解码：先落临时容器文件，再复用既有拆分链路
+    std::string normalizedContainerPath;
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        changeRequest->WriteTmpContainerFile(dataBuffer, dataSize, normalizedContainerPath), paramErrCode,
+        "Failed to prepare the temp container file");
+    if (!PrepareSingleFileExtraData(env, normalizedContainerPath, paramErrCode, extraData)) {
+        return nullptr;
+    }
+    changeRequest->realPath_ = normalizedContainerPath;
+    changeRequest->addResourceMode_ = AddResourceMode::SINGLE_FILE_URI;
+    changeRequest->SetIsSingleFileSource(true);
+    changeRequest->SetSingleFileExtraData(extraData);
+    RETURN_NAPI_TRUE(env);
+}
+
 napi_value MediaAssetChangeRequestNapi::ParseAddResourceValue(napi_env env,
     unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, const std::shared_ptr<FileAsset>& fileAsset)
 {
@@ -2136,6 +2309,26 @@ napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callbac
     if (changeRequest->IsMovingPhoto() && resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE)) {
         return AddMovingPhotoVideoResource(env, info);
     }
+    // The single-file resource carries both image and video, so the media type check only requires an image asset.
+    // It applies to a newly created image asset as well as an existing moving photo asset.
+    if (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE)) {
+        CHECK_COND_WITH_MESSAGE(env, fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE ||
+            changeRequest->IsMovingPhoto(), "The resourceType does not match the media type of the asset");
+        if (ParseSingleFileResource(env, asyncContext, JS_ERR_NO_SUCH_FILE, OHOS_INVALID_PARAM_CODE) == nullptr) {
+            return nullptr;
+        }
+        changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE);
+        changeRequest->addResourceTypes_.push_back(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE);
+        changeRequest->addResourceTypes_.push_back(ResourceType::IMAGE_RESOURCE);
+        changeRequest->addResourceTypes_.push_back(ResourceType::VIDEO_RESOURCE);
+        // 保存合一文件后资产必须是动态照片，后续 video 落库与缓存名下发都依赖该子类型
+        if (!changeRequest->IsMovingPhoto()) {
+            fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+            changeRequest->creationValuesBucket_.Put(PhotoColumn::PHOTO_SUBTYPE,
+                static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+        }
+        RETURN_NAPI_UNDEFINED(env);
+    }
     CHECK_COND_WITH_MESSAGE(env, resourceType == static_cast<int32_t>(fileAsset->GetMediaType()) ||
         resourceType == static_cast<int32_t>(ResourceType::PHOTO_PROXY),
         "The resourceType does not match the media type of the asset");
@@ -2146,6 +2339,45 @@ napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callbac
 
     changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE);
     changeRequest->addResourceTypes_.push_back(GetResourceType(resourceType));
+    RETURN_NAPI_UNDEFINED(env);
+}
+
+// addResourceForPicker 的两条分支共用：根据已解析出的 displayName 补全创建资产所需的 title 与 extension
+static void PreparePickerCreationFields(DataShare::DataShareValuesBucket &valuesBucket)
+{
+    bool isValid = false;
+    string displayName = valuesBucket.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
+    valuesBucket.Put(CONST_ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
+}
+
+// addResourceForPicker 的合一文件分支：走与 addResource 相同的单文件链路，
+// 由 AddResourceExecute 拆成图片 + 视频后落库（系统应用专用能力）
+napi_value MediaAssetChangeRequestNapi::AddSingleFileResourceForPicker(napi_env env,
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext)
+{
+    auto changeRequest = asyncContext->objectInfo;
+    CHECK_COND(env, changeRequest != nullptr, JS_E_INNER_FAIL);
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND(env, fileAsset != nullptr, JS_E_INNER_FAIL);
+    // 合一文件携带图片与视频两份资源，媒体类型只要求是图片资产（新建）或已是动图资产（已存在）
+    CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE ||
+        changeRequest->IsMovingPhoto(), JS_E_PARAM_INVALID,
+        "The resourceType does not match the media type of the asset");
+    if (ParseSingleFileResource(env, asyncContext, JS_E_PARAM_INVALID, JS_E_PARAM_INVALID) == nullptr) {
+        return nullptr;
+    }
+    changeRequest->RecordChangeOperationForPicker(AssetChangeOperation::ADD_RESOURCE_FOR_PICKER);
+    changeRequest->addResourceTypes_.push_back(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE);
+    changeRequest->addResourceTypes_.push_back(ResourceType::IMAGE_RESOURCE);
+    changeRequest->addResourceTypes_.push_back(ResourceType::VIDEO_RESOURCE);
+    PreparePickerCreationFields(changeRequest->creationValuesBucket_);
+    // 保存合一文件后资产必须是动态照片，后续 video 落库与缓存名下发都依赖该子类型
+    if (!changeRequest->IsMovingPhoto()) {
+        fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+        changeRequest->creationValuesBucket_.Put(PhotoColumn::PHOTO_SUBTYPE,
+            static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    }
     RETURN_NAPI_UNDEFINED(env);
 }
 
@@ -2174,6 +2406,10 @@ napi_value MediaAssetChangeRequestNapi::JSAddResourceForPicker(napi_env env, nap
     if (changeRequest->IsMovingPhoto() && resourceType == static_cast<int32_t>(ResourceType::VIDEO_RESOURCE)) {
         return AddMovingPhotoVideoResourceForPicker(env, info);
     }
+    // 合一文件：type 传 PRIVATE_MOVING_PHOTO_RESOURCE 时走与 addResource 相同的单文件链路
+    if (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE)) {
+        return AddSingleFileResourceForPicker(env, asyncContext);
+    }
     CHECK_COND_WITH_ERR_MESSAGE(env, resourceType == static_cast<int32_t>(fileAsset->GetMediaType()),
         JS_E_PARAM_INVALID, "Failed to check resourceType");
 
@@ -2187,11 +2423,7 @@ napi_value MediaAssetChangeRequestNapi::JSAddResourceForPicker(napi_env env, nap
     changeRequest->realPath_ = asyncContext->realPath;
     changeRequest->addResourceMode_ = AddResourceMode::FILE_URI;
 
-    bool isValid = false;
-    string displayName = changeRequest->creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
-    changeRequest->creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_TITLE,
-        MediaFileUtils::GetTitleFromDisplayName(displayName));
-    changeRequest->creationValuesBucket_.Put(CONST_ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
+    PreparePickerCreationFields(changeRequest->creationValuesBucket_);
 
     changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE_FOR_PICKER);
     changeRequest->addResourceTypes_.push_back(GetResourceType(resourceType));
@@ -2454,15 +2686,27 @@ void HandleValueBucketForSetLocation(std::shared_ptr<FileAsset> fileAsset, DataS
     }
 }
 
+// 合一文件缓存提交的公共字段：视频名、透传的整段 extraData、单文件标记，避免各处重复填充
+void MediaAssetChangeRequestNapi::PutSingleFileCacheFields(DataShare::DataShareValuesBucket &valuesBucket)
+{
+    if (IsMovingPhoto()) {
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    if (!singleFileExtraData_.empty()) {
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_EXTRA_DATA, singleFileExtraData_);
+    }
+    if (isSingleFileSource_) {
+        valuesBucket.Put(CONST_CACHE_IS_SINGLE_FILE, true);
+    }
+}
+
 DataShare::DataShareValuesBucket MediaAssetChangeRequestNapi::GetSubmitCacheValueBucket(
     SubmitCacheConfig submitCacheConfig)
 {
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
     valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
-    if (IsMovingPhoto()) {
-        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-    }
+    PutSingleFileCacheFields(valuesBucket);
     if (submitCacheConfig.isSetEffectMode) {
         valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
         valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
@@ -2491,9 +2735,7 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(SubmitCacheConfig submitCacheCo
         CHECK_COND_RET(
             isValid && MediaFileUtils::CheckDisplayName(displayName) == E_OK, E_FAIL, "Failed to check displayName");
         creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
-        if (IsMovingPhoto()) {
-            creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
+        PutSingleFileCacheFields(creationValuesBucket_);
         HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, submitCacheConfig.isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
         ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).Call(businessCode, reqBody, respBody);
@@ -2512,6 +2754,11 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(SubmitCacheConfig submitCacheCo
     }
     cacheFileName_.clear();
     cacheMovingPhotoVideoName_.clear();
+    if (ret == E_OK) {
+        // 合一文件的透传 extraData 是一次性的，提交成功后清空，避免同一请求二次 apply 时带上旧值
+        singleFileExtraData_.clear();
+        isSingleFileSource_ = false;
+    }
     return ret == E_OK ? respBody.fileId : ret;
 }
 
@@ -2527,9 +2774,7 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_SUBMIT_CACHE_FOR_PICKER);
     if (isCreation) {
         creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
-        if (IsMovingPhoto()) {
-            creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
+        PutSingleFileCacheFields(creationValuesBucket_);
         creationValuesBucket_.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
             static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER));
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
@@ -2540,9 +2785,7 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
         valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         ret = PutMediaAssetEditData(valuesBucket);
         CHECK_COND_RET(ret == E_OK, ret, "Failed to put editData");
-        if (IsMovingPhoto()) {
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
+        PutSingleFileCacheFields(valuesBucket);
         valuesBucket.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int64_t>(FileSourceTypes::TEMP_FILE_MANAGER));
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
         std::unordered_map<std::string, std::string> headerMap{
@@ -2554,6 +2797,11 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
     }
     cacheFileName_.clear();
     cacheMovingPhotoVideoName_.clear();
+    if (ret == E_OK) {
+        // 合一文件的透传 extraData 是一次性的，提交成功后清空，避免同一请求二次 apply 时带上旧值
+        singleFileExtraData_.clear();
+        isSingleFileSource_ = false;
+    }
     return ret == E_OK ? respBody.fileId : ret;
 }
 
@@ -2764,21 +3012,91 @@ static bool CancelProcessCinematicVideo(MediaAssetChangeRequestAsyncContext& con
     return true;
 }
 
-static bool AddResourceExecute(MediaAssetChangeRequestAsyncContext& context)
+// 解析源合一文件布局并按真实内容决定产物后缀，拼出图片与视频两个临时产物路径
+static int32_t ResolveDecodeTmpPaths(const int32_t srcFd, const std::string &cacheDir,
+    const std::string &fileId, std::string &tmpImagePath, std::string &tmpVideoPath)
 {
-    MediaLibraryTracer tracer;
-    tracer.Start("AddResourceExecute");
-    NAPI_INFO_LOG("AddResourceExecute begin.");
-    if (!HasWritePermission()) {
-        return WriteBySecurityComponent(context);
+    SingleFileMovingPhotoInfo info;
+    int32_t parseRet = SingleFileMovingPhotoUtils::ParseSingleFileMovingPhoto(srcFd, info);
+    if (parseRet != E_OK) {
+        NAPI_ERR_LOG("Failed to parse single-file moving photo, err: %{public}d", parseRet);
+        return parseRet == E_HAS_FS_ERROR ? E_HAS_FS_ERROR : E_INVALID_VALUES;
     }
+    string imageExtension;
+    if (SingleFileMovingPhotoUtils::ResolveOutputImageExtension(srcFd, imageExtension) != E_OK) {
+        NAPI_ERR_LOG("Failed to resolve image extension of single-file moving photo");
+        return E_INVALID_VALUES;
+    }
+    string videoExtension;
+    if (SingleFileMovingPhotoUtils::ResolveOutputVideoExtension(srcFd, info.videoOffset, info.videoSize,
+        videoExtension) != E_OK) {
+        NAPI_ERR_LOG("Failed to resolve video extension of single-file moving photo");
+        return E_INVALID_VALUES;
+    }
+    tmpImagePath = cacheDir + "/" + SINGLE_FILE_DECODE_PREFIX + fileId + SINGLE_FILE_IMAGE_INFIX +
+        "." + imageExtension;
+    tmpVideoPath = cacheDir + "/" + SINGLE_FILE_DECODE_PREFIX + fileId + SINGLE_FILE_VIDEO_INFIX +
+        "." + videoExtension;
+    return E_OK;
+}
 
+int32_t MediaAssetChangeRequestNapi::DecodeSingleFileResources(std::string& tmpImagePath, std::string& tmpVideoPath)
+{
+    if (realPath_.empty()) {
+        NAPI_ERR_LOG("The single-file moving photo path is empty");
+        return E_INVALID_VALUES;
+    }
+    auto abilityContext = AbilityRuntime::Context::GetApplicationContext();
+    CHECK_COND_RET(abilityContext != nullptr, E_ERR, "abilityContext is nullptr");
+    string cacheDir = abilityContext->GetCacheDir();
+    CHECK_COND_RET(!cacheDir.empty(), E_ERR, "cacheDir is empty");
+    // 解析阶段与使用阶段之间路径可能被替换，打开前重新归一化并校验
+    string absSrcPath;
+    CHECK_COND_RET(SingleFileMovingPhotoUtils::NormalizeExistingFile(realPath_, absSrcPath) == E_OK,
+        E_HAS_FS_ERROR, "Invalid path of single file moving photo");
+    string normalizedCacheDir;
+    CHECK_COND_RET(SingleFileMovingPhotoUtils::NormalizeOutputDir(cacheDir, normalizedCacheDir) == E_OK,
+        E_HAS_FS_ERROR, "cacheDir is invalid");
+    string fileId = to_string(MediaTimeUtils::UTCTimeNanoSeconds()) + "_" + to_string(FetchAddCacheFileId());
+    UniqueFd srcFd(open(absSrcPath.c_str(), O_RDONLY));
+    CHECK_COND_RET(srcFd.Get() >= 0, E_HAS_FS_ERROR, "Failed to open single-file moving photo");
+    int32_t pathRet = ResolveDecodeTmpPaths(srcFd.Get(), normalizedCacheDir, fileId, tmpImagePath, tmpVideoPath);
+    CHECK_COND_RET(pathRet == E_OK, pathRet, "Failed to resolve decode output paths");
+
+    int32_t err = SingleFileMovingPhotoUtils::DecodeSingleFileMovingPhoto(absSrcPath, tmpImagePath, tmpVideoPath);
+    if (err != E_OK) {
+        NAPI_ERR_LOG("Failed to decode single-file moving photo, err: %{public}d", err);
+        // Invalid container is treated as a parameter error, others as file system errors
+        bool isParamError = (err == E_INVALID_VALUES) || (err == E_INVALID_LIVE_PHOTO) ||
+            (err == E_INVALID_MOVING_PHOTO) || (err == E_OPERATION_NOT_SUPPORT);
+        return isParamError ? E_INVALID_VALUES : E_HAS_FS_ERROR;
+    }
+    // 产物后缀已按真实内容决定，这里只校验视频可解析且时长有效，不再按扩展名白名单限制
+    if (MovingPhotoFileUtils::GetMovingPhotoVideoDuration(tmpVideoPath) <= 0) {
+        NAPI_ERR_LOG("The video of single-file moving photo is invalid");
+        return E_INVALID_VALUES;
+    }
+    // The two decoded files are written through the existing addResource path and stored separately by the server
+    realPath_ = tmpImagePath;
+    addResourceMode_ = AddResourceMode::FILE_URI;
+    movingPhotoVideoRealPath_ = tmpVideoPath;
+    movingPhotoVideoResourceMode_ = AddResourceMode::FILE_URI;
+    return E_OK;
+}
+
+void MediaAssetChangeRequestNapi::DeleteTmpContainerFile()
+{
+    if (!tmpContainerPath_.empty()) {
+        MediaFileUtils::DeleteFile(tmpContainerPath_);
+        tmpContainerPath_.clear();
+    }
+}
+
+// Writes the image and video resources through the existing double-cache path and then submits them
+static bool WriteAddResourceCache(MediaAssetChangeRequestAsyncContext& context)
+{
     auto changeRequest = context.objectInfo;
     CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
-    if (changeRequest->IsCinematicVideo()) {
-        CancelProcessCinematicVideo(context);
-    }
-
     if (changeRequest->IsMovingPhoto() && HasAddResource(context, ResourceType::VIDEO_RESOURCE) &&
         !AddMovingPhotoVideoExecute(context)) {
         NAPI_ERR_LOG("Faild to write cache file for video of moving photo");
@@ -2803,6 +3121,68 @@ static bool AddResourceExecute(MediaAssetChangeRequestAsyncContext& context)
         return false;
     }
     return SubmitCacheExecute(context);
+}
+
+static void DeleteTempResourceFiles(const std::string& tmpImagePath, const std::string& tmpVideoPath)
+{
+    if (!tmpImagePath.empty()) {
+        MediaFileUtils::DeleteFile(tmpImagePath);
+    }
+    if (!tmpVideoPath.empty()) {
+        MediaFileUtils::DeleteFile(tmpVideoPath);
+    }
+}
+
+// Decodes the single-file moving photo into an image and a video, and fills the addResource paths
+static bool PrepareSingleFileResources(MediaAssetChangeRequestAsyncContext& context,
+    std::string& tmpImagePath, std::string& tmpVideoPath)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    int32_t ret = changeRequest->DecodeSingleFileResources(tmpImagePath, tmpVideoPath);
+    if (ret == E_OK) {
+        return true;
+    }
+    DeleteTempResourceFiles(tmpImagePath, tmpVideoPath);
+    // addResourceForPicker 的 d.ts 只声明了 23800151（场景参数校验失败），需要与 addResource 的 401 区分
+    int32_t paramErrCode = IsAddResourceForPicker(context) ? JS_E_PARAM_INVALID : OHOS_INVALID_PARAM_CODE;
+    // Invalid container or invalid video is a parameter error, others are inner failures
+    context.error = (ret == E_INVALID_VALUES) ? paramErrCode : JS_INNER_FAIL;
+    return false;
+}
+
+static bool AddResourceExecute(MediaAssetChangeRequestAsyncContext& context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("AddResourceExecute");
+    NAPI_INFO_LOG("AddResourceExecute begin.");
+
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+
+    // 合一容器必须先拆成图片与视频：无论走有 WRITE 权限的缓存路径，还是三方应用的安全控件路径，
+    // 后续 CopyToMediaLibrary / CopyMovingPhotoVideo 都只认 FILE_URI / DATA_BUFFER 两种模式。
+    // DecodeSingleFileResources 会把 addResourceMode_ 改成 FILE_URI，并填好 movingPhotoVideo* 两个字段。
+    std::string tmpImagePath;
+    std::string tmpVideoPath;
+    if (changeRequest->GetAddResourceMode() == AddResourceMode::SINGLE_FILE_URI &&
+        !PrepareSingleFileResources(context, tmpImagePath, tmpVideoPath)) {
+        return false;
+    }
+
+    bool result = false;
+    if (!HasWritePermission()) {
+        // 三方应用：SaveButton 安全控件临时授权后由服务端 ASSET_CHANGE_CREATE_ASSET 放行
+        result = WriteBySecurityComponent(context);
+    } else {
+        if (changeRequest->IsCinematicVideo()) {
+            CancelProcessCinematicVideo(context);
+        }
+        result = WriteAddResourceCache(context);
+    }
+    DeleteTempResourceFiles(tmpImagePath, tmpVideoPath);
+    changeRequest->DeleteTmpContainerFile();
+    return result;
 }
 
 static bool UpdateAssetProperty(MediaAssetChangeRequestAsyncContext& context, string uri,

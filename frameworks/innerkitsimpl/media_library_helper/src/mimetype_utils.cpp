@@ -114,6 +114,23 @@ int32_t MimeTypeUtils::GetImageMimetype(const string &filePath, string &mimeType
     return E_OK;
 }
 
+int32_t MimeTypeUtils::GetImageMimetype(const int32_t fd, string &mimeType)
+{
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, E_INVALID_VALUES, "Invalid fd");
+    mimeType.clear();
+    SourceOptions opts;
+    uint32_t err = E_OK;
+    std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(fd, opts, err);
+    CHECK_AND_RETURN_RET_LOG(imageSource != nullptr, E_INVALID_VALUES,
+        "CreateImageSource by fd failed, err: %{public}d", err);
+    ImageInfo imageInfo;
+    err = imageSource->GetImageInfo(0, imageInfo);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, E_INVALID_VALUES, "GetImageInfo failed, err: %{public}d", err);
+    mimeType = imageInfo.encodedFormat;
+    CHECK_AND_RETURN_RET_LOG(!mimeType.empty(), E_INVALID_VALUES, "failed to get encodedFormat");
+    return E_OK;
+}
+
 int32_t MimeTypeUtils::GetVideoMimetype(const string &filePath, string &mimeType)
 {
     MediaLibraryTracer tracer;
@@ -148,6 +165,24 @@ int32_t MimeTypeUtils::GetVideoMimetype(const string &filePath, string &mimeType
         "failed to get AV_KEY_MIME_TYPE");
     mimeType = resultMap.at(AV_KEY_MIME_TYPE);
     CHECK_AND_RETURN_RET_LOG(mimeType != "", E_INVALID_VALUES, "AV_KEY_MIME_TYPE empty");
+    return E_OK;
+}
+
+int32_t MimeTypeUtils::GetVideoMimetype(const int32_t fd, int64_t offset, int64_t size, string &mimeType)
+{
+    mimeType.clear();
+    CHECK_AND_RETURN_RET_LOG(fd >= 0 && offset >= 0 && size > 0, E_INVALID_VALUES,
+        "Invalid fd or range, fd:%{public}d, offset:%{public}" PRId64 ", size:%{public}" PRId64, fd, offset, size);
+    std::shared_ptr<AVMetadataHelper> avMetadataHelper = AVMetadataHelperFactory::CreateAVMetadataHelper();
+    CHECK_AND_RETURN_RET_LOG(avMetadataHelper != nullptr, E_INVALID_VALUES, "CreateAVMetadataHelper fail!");
+    // 只解析指定区间，合并容器中图片段与尾部标签不会被误判为视频头
+    int32_t err = avMetadataHelper->SetSource(fd, offset, size, AV_META_USAGE_META_ONLY);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, E_AVMETADATA, "SetSource failed for the given range, err = %{public}d", err);
+    auto resultMap = avMetadataHelper->ResolveMetadata();
+    CHECK_AND_RETURN_RET_LOG(resultMap.find(AV_KEY_MIME_TYPE) != resultMap.end(), E_INVALID_VALUES,
+        "failed to get AV_KEY_MIME_TYPE");
+    mimeType = resultMap.at(AV_KEY_MIME_TYPE);
+    CHECK_AND_RETURN_RET_LOG(!mimeType.empty(), E_INVALID_VALUES, "AV_KEY_MIME_TYPE empty");
     return E_OK;
 }
 
@@ -198,6 +233,27 @@ string MimeTypeUtils::GetMimeTypeFromExtension(const string &extension,
         }
     }
     return DEFAULT_MIME_TYPE;
+}
+
+int32_t MimeTypeUtils::GetExtensionFromMimeType(const std::string &mimeType, std::string &extension)
+{
+    extension.clear();
+    CHECK_AND_RETURN_RET_LOG(!mimeType.empty(), E_INVALID_VALUES, "Empty mime type");
+    if (IsMimeTypeMapEmpty()) {
+        CreateMapFromJson();
+    }
+    auto iter = mediaJsonMap_.find(mimeType);
+    CHECK_AND_RETURN_RET_LOG(iter != mediaJsonMap_.end() && !iter->second.empty(), E_INVALID_VALUES,
+        "Failed to find extension of mime type:%{public}s", mimeType.c_str());
+    // 同一 MIME 可能对应多个扩展名，优先取最常见写法，其余情况取映射表首位
+    for (const auto &ext : iter->second) {
+        if (ext == "jpg" || ext == "mp4") {
+            extension = ext;
+            return E_OK;
+        }
+    }
+    extension = iter->second.front();
+    return E_OK;
 }
 
 MediaType MimeTypeUtils::GetMediaTypeFromMimeType(const string &mimeType)

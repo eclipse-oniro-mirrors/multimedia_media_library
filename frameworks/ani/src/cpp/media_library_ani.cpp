@@ -42,6 +42,7 @@
 #include "medialibrary_ani_enum_comm.h"
 #include "media_file_utils.h"
 #include "media_file_uri.h"
+#include "media_uri_utils.h"
 #include "media_ani_native_impl.h"
 #include "permission_utils.h"
 #include "safe_map.h"
@@ -64,6 +65,9 @@
 #include "grant_photo_uri_permission_vo.h"
 #include "grant_photo_uris_permission_vo.h"
 #include "file_uri.h"
+#include "moving_photo_ani.h"
+#include "moving_photo_file_utils.h"
+#include "userfile_manager_types.h"
 #include "cancel_photo_uri_permission_vo.h"
 #include "start_thumbnail_creation_task_vo.h"
 #include "stop_thumbnail_creation_task_vo.h"
@@ -151,6 +155,7 @@ const int32_t BETA_ISSUE_ID_LENGTH = 10;
 const int32_t MAX_FILE_FD = 1023;
 const size_t MAX_PARCEL_SIZE = 200 * 1024;
 const int32_t MAX_CHECK_PHOTO_PERMISSION_URI_COUNT = 500;
+const int32_t MAX_VERIFY_PHOTO_ASSET_URI_COUNT = 500;
 const int32_t MAX_CREATE_ASSET_LIMIT = 500;
 const std::string REAL_TIME_THUMB = "realTimeThumb";
 const int32_t URI_FORMAT_ERROR_STATE = 0;
@@ -289,6 +294,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessCancelPhotoUriPermission)},
     ani_native_function {"checkPhotoUrisReadPermissionInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessCheckPhotoUrisReadPermission)},
+    ani_native_function {"verifyPhotoAssetUrisInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessVerifyPhotoAssetUris)},
     ani_native_function {"saveFormInfoInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessSaveFormInfo)},
     ani_native_function {"saveGalleryFormInfoInner", nullptr,
@@ -5941,6 +5948,109 @@ ani_object MediaLibraryAni::PhotoAccessCheckPhotoUrisReadPermission(ani_env *env
     SetUserIdFromObjectInfo(context);
     CheckPhotoUrisReadPermissionExecute(env, context);
     return CheckPhotoUrisReadPermissionComplete(env, context);
+}
+
+static ani_status ParseVerifyPhotoAssetUrisArgs(ani_env *env, ani_object uris,
+    std::vector<std::string> &uriList)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(uris != nullptr, ANI_INVALID_ARGS, "uris is null");
+    CHECK_COND_RET(MediaLibraryAniUtils::IsUndefined(env, uris) != ANI_TRUE, ANI_INVALID_ARGS,
+        "uris is undefined");
+    CHECK_COND_RET(MediaLibraryAniUtils::IsArray(env, uris) == ANI_TRUE, ANI_INVALID_ARGS,
+        "uris is not an array");
+
+    ani_int length = 0;
+    CHECK_STATUS_RET(env->Object_GetPropertyByName_Int(uris, "length", &length), "Get uris length failed");
+    CHECK_COND_RET(length > 0 && length <= MAX_VERIFY_PHOTO_ASSET_URI_COUNT, ANI_INVALID_ARGS,
+        "The size of uris is invalid, size: %{public}d", static_cast<int32_t>(length));
+
+    uriList.reserve(static_cast<size_t>(length));
+    for (ani_int i = 0; i < length; i++) {
+        ani_ref value {};
+        CHECK_STATUS_RET(env->Object_CallMethodByName_Ref(uris, "$_get", "i:Y", &value, i),
+            "Call method $_get failed");
+        ani_boolean isUndefined = ANI_FALSE;
+        env->Reference_IsUndefined(value, &isUndefined);
+        if (isUndefined == ANI_TRUE) {
+            // undefined 元素不作为参数错误，按字符串 "undefined" 参与校验并固定返回 false
+            uriList.emplace_back("undefined");
+            continue;
+        }
+        ani_boolean isNull = ANI_FALSE;
+        env->Reference_IsNull(value, &isNull);
+        if (isNull == ANI_TRUE) {
+            // null 元素同理，按字符串 "null" 参与校验并固定返回 false
+            uriList.emplace_back("null");
+            continue;
+        }
+        std::string uri;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, static_cast<ani_object>(value), uri),
+            "Failed to get uri string");
+        uriList.emplace_back(std::move(uri));
+    }
+    return ANI_OK;
+}
+
+static bool IsPhotoAssetUri(const std::string &uri)
+{
+    // 仅校验媒体库 URI 形态（scheme + authority/path）与 fileId，不查库确认数据是否存在
+    return MediaUriUtils::IsLibraryUri(uri);
+}
+
+static ani_status CreateVerifyPhotoAssetUrisMap(ani_env *env, const std::vector<std::string> &uris,
+    ani_object &aniMap)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    ani_class cls {};
+    static const std::string className = "std.core.Map";
+    CHECK_STATUS_RET(env->FindClass(className.c_str(), &cls), "Can't find std.core.Map");
+
+    ani_method mapConstructor {};
+    CHECK_STATUS_RET(env->Class_FindMethod(cls, "<ctor>",
+        "X{C{std.core.Iterable}C{std.core.Null}C{std.core.ReadonlyArray}}:", &mapConstructor),
+        "Can't find method <ctor> in std.core.Map");
+
+    ani_ref undefinedArgument {};
+    CHECK_STATUS_RET(env->GetUndefined(&undefinedArgument), "GetUndefined failed");
+
+    CHECK_STATUS_RET(env->Object_New(cls, mapConstructor, &aniMap, undefinedArgument), "Call method <ctor> fail");
+
+    ani_method setMethod {};
+    CHECK_STATUS_RET(env->Class_FindMethod(cls, "set", "YY:C{std.core.Map}", &setMethod),
+        "Can't find method set in std.core.Map");
+
+    for (const auto &uri : uris) {
+        ani_string key {};
+        CHECK_STATUS_RET(MediaLibraryAniUtils::ToAniString(env, uri, key), "ToAniString key[%{public}s] fail",
+            uri.c_str());
+        ani_boolean value = IsPhotoAssetUri(uri) ? ANI_TRUE : ANI_FALSE;
+        ani_ref setResult {};
+        CHECK_STATUS_RET(env->Object_CallMethod_Ref(aniMap, setMethod, &setResult, key, value),
+            "Call method set fail");
+    }
+    return ANI_OK;
+}
+
+ani_object MediaLibraryAni::PhotoAccessVerifyPhotoAssetUris(ani_env *env, [[maybe_unused]] ani_object object,
+    ani_object uris)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessVerifyPhotoAssetUris");
+
+    std::vector<std::string> uriList;
+    if (ParseVerifyPhotoAssetUrisArgs(env, uris, uriList) != ANI_OK) {
+        AniError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to parse uris");
+        return nullptr;
+    }
+    ani_object mapRes {};
+    if (CreateVerifyPhotoAssetUrisMap(env, uriList, mapRes) != ANI_OK) {
+        AniError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to build result map");
+        return nullptr;
+    }
+
+    tracer.Finish();
+    return mapRes;
 }
 
 int32_t MediaLibraryAni::GetUserId()

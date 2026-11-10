@@ -15,6 +15,9 @@
 
 #include "media_uri_utils.h"
 
+#include <algorithm>
+#include <cctype>
+
 #include "media_log.h"
 #include "media_string_utils.h"
 #include "media_path_utils.h"
@@ -35,6 +38,10 @@ const std::string MULTI_USER_URI_FLAG = "user";
 const std::string GARBLE = "*";
 const std::string SPLIT_PATH = "/";
 const std::string DOT = ".";
+const std::string MEDIA_URI_FILE_SCHEME = "file";
+const std::string MEDIA_URI_DATA_SHARE_SCHEME = "datashare";
+const std::string MEDIA_URI_AUTHORITY = "media";
+const std::string MEDIA_URI_PATH_IDENTIFIER = "/media";
 constexpr uint32_t GARBLE_SMALL = 3;
 constexpr uint32_t GARBLE_LARGE = 8;
 constexpr uint32_t GARBLE_LAST_TWO = 2;
@@ -175,6 +182,87 @@ bool MediaUriUtils::CheckUri(const std::string &uri)
     }
     std::string uriprex = "file://media";
     return uri.substr(0, uriprex.size()) == uriprex;
+}
+
+// 媒体库 uri 统一形态：{scheme}://{authority}[/media]/{Type}/{fileId}[/{title}[/{displayName}]]，
+// fileId 固定落在类型段之后。段名与 PhotoColumn::PHOTO_TYPE_URI、AudioColumn::AUDIO_TYPE_URI、
+// PhotoColumn::HIGHTLIGHT_COVER_URI 等常量保持一致。
+// fileIdOffset 表示 fileId 相对类型段的偏移：1 为紧跟类型段，2 为中间隔一层。
+struct LibraryUriTypeSegment {
+    const char *segment;
+    size_t fileIdOffset;
+};
+
+static const LibraryUriTypeSegment LIBRARY_URI_TYPE_SEGMENTS[] = {
+    { "/Photo/", 1 },
+    { "/Audio/", 1 },
+    { "/hiddenPhoto/", 1 },
+    { "/trashedPhoto/", 1 },
+    // highlight 固定为 /highlight/video/{assetId}/... 或 /highlight/cover/{id}/...
+    { "/highlight/", 2 },
+};
+
+static bool IsAllDigits(const std::string &str)
+{
+    // char 可能是有符号类型，UTF-8 等多字节字符的字节值可能为负，直接传给 isdigit 属于未定义行为
+    return !str.empty() && std::all_of(str.begin(), str.end(),
+        [](unsigned char c) { return std::isdigit(c) != 0; });
+}
+
+// 条件3：fileId 必须是整数，且不为表示无效的 -1（'-' 不是数字，天然被排除）。
+// 有类型段时按类型段定位 fileId；没有类型段的 uri（如相册）末段即 fileId。
+static bool IsLibraryFileIdValid(const std::string &path)
+{
+    if (path.empty() || path.back() == '/') {
+        return false;
+    }
+    for (const auto &type : LIBRARY_URI_TYPE_SEGMENTS) {
+        std::string typeSegment(type.segment);
+        size_t pos = path.find(typeSegment);
+        if (pos == std::string::npos) {
+            continue;
+        }
+        size_t begin = pos + typeSegment.size();
+        for (size_t level = 1; level < type.fileIdOffset; ++level) {
+            begin = path.find('/', begin);
+            if (begin == std::string::npos) {
+                return false;
+            }
+            ++begin;
+        }
+        if (begin >= path.size()) {
+            return false;
+        }
+        size_t end = path.find('/', begin);
+        std::string fileId = (end == std::string::npos) ? path.substr(begin) : path.substr(begin, end - begin);
+        return IsAllDigits(fileId);
+    }
+    size_t index = path.rfind('/');
+    if (index == std::string::npos) {
+        return false;
+    }
+    return IsAllDigits(path.substr(index + 1));
+}
+
+bool MediaUriUtils::IsLibraryUri(const std::string &uri)
+{
+    // 条件1：不含 ../，避免借媒体库 uri 形态绕过沙箱路径约束
+    if (uri.find("../") != std::string::npos) {
+        return false;
+    }
+    Uri parsedUri(uri);
+    // 条件2：scheme 只允许 datashare / file
+    std::string scheme = parsedUri.GetScheme();
+    if (scheme != MEDIA_URI_FILE_SCHEME && scheme != MEDIA_URI_DATA_SHARE_SCHEME) {
+        return false;
+    }
+    // 条件3：fileId 为整数，且不为 -1
+    if (!IsLibraryFileIdValid(parsedUri.GetPath())) {
+        return false;
+    }
+    // 条件4：authority 为 media，或 path 以 /media 开头
+    return parsedUri.GetAuthority() == MEDIA_URI_AUTHORITY ||
+        MediaStringUtils::StartsWith(parsedUri.GetPath(), MEDIA_URI_PATH_IDENTIFIER);
 }
 
 static std::string GetTitleFromDisplayName(const std::string &displayName)

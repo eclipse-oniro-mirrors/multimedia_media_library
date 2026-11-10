@@ -27,6 +27,7 @@
 #include "medialibrary_ani_log.h"
 #include "moving_photo_ani.h"
 #include "photo_album_ani.h"
+#include "single_file_moving_photo_util_ani.h"
 #include "photo_asset_custom_record_manager_ani.h"
 #include "photo_proxy_ani.h"
 #include "cloud_media_asset_manager_ani.h"
@@ -91,6 +92,7 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
         "MediaAnalysisAlbumChangeRequestAni init fail");
     CHECK_STATUS_RET(MediaAssetManagerAni::Init(env), "MediaAssetManagerAni init fail");
     CHECK_STATUS_RET(MovingPhotoAni::Init(env), "MovingPhoto init fail");
+    CHECK_STATUS_RET(SingleFileMovingPhotoUtilAni::Init(env), "SingleFileMovingPhotoUtilAni init fail");
     CHECK_STATUS_RET(CloudEnhancementAni::Init(env), "CloudEnhancementAni init fail");
     CHECK_STATUS_RET(CloudEnhancementTaskStateAni::Init(env), "CloudEnhancementTaskStateAni init fail");
     CHECK_STATUS_RET(CloudMediaAssetManagerAni::Init(env), "CloudMediaAssetManagerAni init fail");
