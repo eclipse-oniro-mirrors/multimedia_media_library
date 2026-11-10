@@ -68,9 +68,10 @@ private:
     EXPORT static std::unordered_map<int32_t, NotifyTaskInfo> taskInfos_;
     EXPORT static std::shared_ptr<NotifyTaskWorker> notifyTaskWorker_;
     EXPORT static std::mutex instanceMtx_;
+    EXPORT static std::once_flag onceFlag_;
     EXPORT std::atomic<bool> isThreadRunning_{false};
     EXPORT std::mutex workLock_;
-    EXPORT int32_t noTaskTims_ {0};
+    EXPORT std::atomic<int32_t> noTaskTims_{0};
     EXPORT std::condition_variable workCv_;
     EXPORT static std::mutex mapMutex_;
 

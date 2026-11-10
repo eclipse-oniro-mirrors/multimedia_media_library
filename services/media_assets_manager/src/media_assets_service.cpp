@@ -2953,7 +2953,8 @@ int32_t DoMoveFilesToDir(const std::vector<FileAssetsInfo> &infos, std::shared_p
     for (const auto &info : infos) {
         {
             std::lock_guard<std::mutex> lock(g_taskCancelMutex);
-            if (*g_taskCancelMap[dto.requestId]) {
+            auto it = g_taskCancelMap.find(dto.requestId);
+            if (it != g_taskCancelMap.end() && it->second && *(it->second)) {
                 return E_CANCEL_TASK;
             }
         }
@@ -3110,7 +3111,8 @@ int32_t DoMoveFilesByPath(const std::vector<FileAssetsInfo> &moveAssetInfos, std
     for (const auto &info : moveAssetInfos) {
         {
             std::lock_guard<std::mutex> lock(g_taskCancelMutex);
-            if (*g_taskCancelMap[dto.requestId]) {
+            auto it = g_taskCancelMap.find(dto.requestId);
+            if (it != g_taskCancelMap.end() && it->second && *(it->second)) {
                 return E_CANCEL_TASK;
             }
         }

@@ -58,7 +58,7 @@ struct AstcBatchTaskInfo {
     bool isTemperatureHighForReady{false};
     std::shared_ptr<NativeRdb::RdbPredicates> rdbPredicatePtr;
     std::atomic<bool> isCancel{false};
-    bool isDownloadEnd{false};
+    std::atomic<bool> isDownloadEnd{false};
     bool isBatchComplete{false};
     std::atomic<int> pendingTasks{0};
     std::condition_variable cv;

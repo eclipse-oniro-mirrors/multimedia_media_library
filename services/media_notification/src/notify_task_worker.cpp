@@ -41,6 +41,7 @@ shared_ptr<NotifyTaskWorker> NotifyTaskWorker::notifyTaskWorker_{nullptr};
 std::unordered_map<int32_t, NotifyTaskInfo> NotifyTaskWorker::taskInfos_;
 mutex NotifyTaskWorker::instanceMtx_;
 std::mutex NotifyTaskWorker::mapMutex_;
+std::once_flag NotifyTaskWorker::onceFlag_;
 
 std::vector<UserDefineNotifyInfo> NotifyTaskWorker::userDefineTaskInfos_;
 std::mutex NotifyTaskWorker::userDefineVecMutex_;
@@ -52,12 +53,12 @@ static const int32_t MAX_WAIT_TIME = 50;
 static const int32_t WAIT_FOR_MS = 100;
 shared_ptr<NotifyTaskWorker> NotifyTaskWorker::GetInstance()
 {
-    if (notifyTaskWorker_ == nullptr) {
-        lock_guard<mutex> lockGuard(instanceMtx_);
-        if (notifyTaskWorker_ == nullptr) {
-            notifyTaskWorker_ = make_shared<NotifyTaskWorker>();
-        }
+    if (notifyTaskWorker_ != nullptr) {
+        return notifyTaskWorker_;
     }
+    std::call_once(onceFlag_, [&]() {
+        notifyTaskWorker_ = std::make_shared<NotifyTaskWorker>();
+    });
     return notifyTaskWorker_;
 }
 
@@ -68,6 +69,11 @@ NotifyTaskWorker::~NotifyTaskWorker() {}
 void NotifyTaskWorker::StartWorker()
 {
     MEDIA_INFO_LOG("StartWorker");
+    std::lock_guard<std::mutex> lock(workLock_);
+    if (isThreadRunning_) {
+        MEDIA_INFO_LOG("StartWorker: already running");
+        return;
+    }
     isThreadRunning_ = true;
     std::thread([this]() { this->HandleNotifyTaskPeriod(); }).detach();
 }

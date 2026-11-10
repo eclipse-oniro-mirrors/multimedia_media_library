@@ -35,6 +35,7 @@ namespace OHOS {
 namespace Media {
 std::shared_ptr<MediaLibraryInotify> MediaLibraryInotify::instance_ = nullptr;
 std::mutex MediaLibraryInotify::mutex_;
+std::once_flag MediaLibraryInotify::onceFlag_;
 const int32_t MAX_WATCH_LIST = 1000;
 const int32_t SINGLE_BUNDLE_LIST = 200;
 const int32_t MAX_AGING_WATCH_LIST = 100;
@@ -44,15 +45,14 @@ shared_ptr<MediaLibraryInotify> MediaLibraryInotify::GetInstance()
     if (instance_ != nullptr) {
         return instance_;
     }
-    lock_guard<mutex> lock(mutex_);
-    if (instance_ == nullptr) {
+    std::call_once(onceFlag_, [&]() {
         instance_ = make_shared<MediaLibraryInotify>();
         if (instance_ == nullptr) {
             MEDIA_ERR_LOG("GetInstance nullptr");
-            return instance_;
+            return;
         }
         instance_->Init();
-    }
+    });
     return instance_;
 }
 
@@ -76,10 +76,10 @@ void MediaLibraryInotify::WatchCallBack()
     const int32_t READ_LEN = 255;
     char data[READ_LEN] = {0};
     while (isWatching_) {
-        int32_t len = read(inotifyFd_, data, READ_LEN);
+        int32_t len = read(inotifyFd_.load(), data, READ_LEN);
         if (len < static_cast<int32_t>(sizeof(struct inotify_event))) {
-            MEDIA_ERR_LOG("read event error, len: %{public}d, fd: %{public}d, error: %{public}d", len, inotifyFd_,
-                errno);
+            MEDIA_ERR_LOG("read event error, len: %{public}d, fd: %{public}d, error: %{public}d", len,
+                inotifyFd_.load(), errno);
             Restart();
             return;
         }
@@ -118,13 +118,13 @@ void MediaLibraryInotify::WatchCallBack()
 void MediaLibraryInotify::Restart()
 {
     for (auto iter = watchList_.begin(); iter != watchList_.end(); iter++) {
-        if (inotify_rm_watch(inotifyFd_, iter->first) != 0) {
+        if (inotify_rm_watch(inotifyFd_.load(), iter->first) != 0) {
             MEDIA_ERR_LOG("rm watch fd: %{public}d, fail: %{public}d", iter->first, errno);
         }
     }
     isWatching_ = false;
     watchList_.clear();
-    inotifyFd_ = 0;
+    inotifyFd_.store(0);
     Init();
 }
 
@@ -141,13 +141,13 @@ void MediaLibraryInotify::DoStop()
 {
     lock_guard<mutex> lock(mutex_);
     for (auto iter = watchList_.begin(); iter != watchList_.end(); iter++) {
-        if (inotify_rm_watch(inotifyFd_, iter->first) != 0) {
+        if (inotify_rm_watch(inotifyFd_.load(), iter->first) != 0) {
             MEDIA_ERR_LOG("rm watch fd: %{public}d, fail: %{public}d", iter->first, errno);
         }
     }
     isWatching_ = false;
     watchList_.clear();
-    inotifyFd_ = 0;
+    inotifyFd_.store(0);
     MEDIA_INFO_LOG("stop success");
 }
 
@@ -173,7 +173,7 @@ int32_t MediaLibraryInotify::RemoveByFileUri(const string &uri, MediaLibraryApi 
 int32_t MediaLibraryInotify::Remove(int wd)
 {
     watchList_.erase(wd);
-    if (inotify_rm_watch(inotifyFd_, wd) != 0) {
+    if (inotify_rm_watch(inotifyFd_.load(), wd) != 0) {
         MEDIA_ERR_LOG("rm watch fd:%{public}d fail:%{public}d", wd, errno);
         return E_FAIL;
     }
@@ -182,13 +182,13 @@ int32_t MediaLibraryInotify::Remove(int wd)
 
 int32_t MediaLibraryInotify::Init()
 {
-    if (inotifyFd_ <= 0) {
-        inotifyFd_ = inotify_init();
-        if (inotifyFd_ < 0) {
-            MEDIA_ERR_LOG("add AddWatchList fail fd: %{public}d, error: %{public}d", inotifyFd_, errno);
+    if (inotifyFd_.load() <= 0) {
+        inotifyFd_.store(inotify_init());
+        if (inotifyFd_.load() < 0) {
+            MEDIA_ERR_LOG("add AddWatchList fail fd: %{public}d, error: %{public}d", inotifyFd_.load(), errno);
             return E_FAIL;
         }
-        MEDIA_INFO_LOG("init inotifyFd_: %{public}d success", inotifyFd_);
+        MEDIA_INFO_LOG("init inotifyFd_: %{public}d success", inotifyFd_.load());
     }
     return E_SUCCESS;
 }
@@ -241,7 +241,7 @@ int32_t MediaLibraryInotify::AddWatchList(const string &path, const string &uri,
             uri.c_str(), bundleName.c_str(), BuildDfxInfo().c_str());
         return E_FAIL;
     }
-    int32_t wd = inotify_add_watch(inotifyFd_, path.c_str(), IN_CLOSE | IN_MODIFY);
+    int32_t wd = inotify_add_watch(inotifyFd_.load(), path.c_str(), IN_CLOSE | IN_MODIFY);
     if (wd > 0) {
         int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
         struct WatchInfo item(path, uri, bundleName, api, currentTime);

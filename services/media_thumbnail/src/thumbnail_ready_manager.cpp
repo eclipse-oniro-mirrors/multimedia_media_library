@@ -108,7 +108,7 @@ void ThumbnailReadyManager::SetDownloadEnd(pid_t pid)
 {
     auto taskInfo = GetAstcBatchTaskInfo(pid);
     if (taskInfo != nullptr) {
-        taskInfo->isDownloadEnd = true;
+        taskInfo->isDownloadEnd.store(true);
     }
 }
 
@@ -443,7 +443,7 @@ void ThumbnailReadyManager::DownloadTimeOut(int32_t requestId, pid_t pid)
     MEDIA_INFO_LOG("DownloadTimeOut pid:%{public}d, requestId:%{public}d", pid, requestId);
     std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> timerInfo;
     CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid, timerInfo));
-    if (!timerInfo->isDownloadEnd) {
+    if (!timerInfo->isDownloadEnd.load()) {
         timeoutCount_++;
         MEDIA_INFO_LOG("Download thumbnail timeout, count:%{public}d", timeoutCount_.load());
         auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();
