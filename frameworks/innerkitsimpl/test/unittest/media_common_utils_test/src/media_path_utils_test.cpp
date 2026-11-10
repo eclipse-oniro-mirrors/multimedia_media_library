@@ -17,7 +17,11 @@
 
 #include "media_path_utils.h"
 
+#include <cstdio>
+
 #include "media_log.h"
+#include "media_pure_file_utils.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS {
 namespace Media {
@@ -489,6 +493,55 @@ HWTEST_F(MediaPathUtilsUnitTest, GetExtension_RelativePath_Test_001, TestSize.Le
     std::string filePath = "relative/path/to/file.jpg";
     std::string result = MediaPathUtils::GetExtension(filePath);
     EXPECT_EQ(result, "jpg");
+}
+HWTEST_F(MediaPathUtilsUnitTest, medialib_desensitize_path_test_001, TestSize.Level1)
+{
+    // 云路径前缀被替换为单个 *，其余部分保持
+    EXPECT_EQ(MediaPathUtils::DesensitizePath("/storage/cloud/files/Photo/1/a.jpg"), "*/Photo/1/a.jpg");
+    // 短于云路径前缀长度的路径原样返回
+    EXPECT_EQ(MediaPathUtils::DesensitizePath("/data/test/a.jpg"), "/data/test/a.jpg");
+    EXPECT_EQ(MediaPathUtils::DesensitizePath(""), "");
+}
+
+HWTEST_F(MediaPathUtilsUnitTest, medialib_desensitize_name_test_001, TestSize.Level1)
+{
+    // 脱敏规则：1~3 个字符簇 -> 1 个 *，4 个 -> 2 个 *，5 个及以上 -> 3 个 *；扩展名不参与脱敏
+    EXPECT_EQ(MediaPathUtils::DesensitizeName("abc.jpg"), "a*c.jpg");
+    EXPECT_EQ(MediaPathUtils::DesensitizeName("abcd.jpg"), "a**d.jpg");
+    EXPECT_EQ(MediaPathUtils::DesensitizeName("abcde.jpg"), "a***e.jpg");
+    EXPECT_EQ(MediaPathUtils::DesensitizeName(""), "");
+}
+
+HWTEST_F(MediaPathUtilsUnitTest, medialib_get_parent_path_test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaPathUtils::GetParentPath("/data/test/abc/a.jpg"), "/data/test/abc");
+    EXPECT_EQ(MediaPathUtils::GetParentPath("/data"), "");
+    EXPECT_EQ(MediaPathUtils::GetParentPath("noslash"), "");
+}
+
+HWTEST_F(MediaPathUtilsUnitTest, medialib_copy_directory_test_001, TestSize.Level1)
+{
+    std::string srcDir = "/data/test/media_path_utils/copy_src";
+    std::string dstDir = "/data/test/media_path_utils/copy_dst";
+    EXPECT_EQ(MediaPathUtils::CopyDirectory("", dstDir), E_MODIFY_DATA_FAIL);
+    EXPECT_EQ(MediaPathUtils::CopyDirectory("", ""), E_MODIFY_DATA_FAIL);
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(srcDir));
+
+    std::string srcFile = srcDir + "/a.txt";
+    FILE *fp = fopen(srcFile.c_str(), "w");
+    ASSERT_NE(fp, nullptr);
+    (void)fprintf(fp, "media library");
+    (void)fclose(fp);
+
+    EXPECT_EQ(MediaPathUtils::CopyDirectory(srcDir, dstDir), E_OK);
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(dstDir + "/a.txt"));
+    // 目标目录已存在时直接返回 E_FILE_EXIST，不覆盖
+    EXPECT_EQ(MediaPathUtils::CopyDirectory(srcDir, dstDir), E_FILE_EXIST);
+    // 源路径不是目录时返回 E_FAIL
+    EXPECT_EQ(MediaPathUtils::CopyDirectory(srcFile, dstDir + "_2"), E_FAIL);
+
+    EXPECT_TRUE(MediaPureFileUtils::DeleteDir(dstDir));
+    EXPECT_TRUE(MediaPureFileUtils::DeleteDir(srcDir));
 }
 } // namespace Media
 } // namespace OHOS

@@ -33,6 +33,7 @@ MediaObserverManager::~MediaObserverManager() {}
 
 std::shared_ptr<Media::Notification::MediaObserverManager> MediaObserverManager::observerManager_ = nullptr;
 std::mutex MediaObserverManager::instanceMutex_;
+std::once_flag MediaObserverManager::onceFlag_;
 constexpr size_t MAX_SINGLE_ASSET = 1000 - 1;
 constexpr size_t MAX_SINGLE_ALBUM = 250 - 1;
 constexpr size_t MAX_SINGLE_ASSET_PROCESS = 50;
@@ -40,18 +41,17 @@ constexpr size_t MAX_SINGLE_ALBUM_PROCESS = 50;
 
 std::shared_ptr<Notification::MediaObserverManager> MediaObserverManager::GetObserverManager()
 {
-    if (observerManager_ == nullptr) {
-        std::lock_guard<std::mutex> guard(instanceMutex_);
-        if (observerManager_ != nullptr) {
-            return observerManager_;
-        }
+    if (observerManager_ != nullptr) {
+        return observerManager_;
+    }
+    std::call_once(onceFlag_, [&]() {
         auto *mediaObserverManager = new (std::nothrow)Media::Notification::MediaObserverManager();
         if (mediaObserverManager == nullptr) {
             MEDIA_ERR_LOG("Failed to new MediaObserverManager");
-            return nullptr;
+            return;
         }
         observerManager_ = std::shared_ptr<Media::Notification::MediaObserverManager>(mediaObserverManager);
-    }
+    });
     return observerManager_;
 }
 

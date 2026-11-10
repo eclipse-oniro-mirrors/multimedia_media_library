@@ -19,6 +19,7 @@
 #include <charconv>
 #include <fcntl.h>
 #include <regex>
+#include <ctime>
 #include "directory_ex.h"
 #include "hitrace_meter.h"
 #include "media_exif.h"
@@ -539,28 +540,55 @@ int32_t ExtractedAVMetadataExifRotate(const std::unordered_map<int32_t, std::str
     return exifRotate;
 }
 
-bool TrySetTimeInfoFromVideoMetadata(const shared_ptr<Meta> &customMeta,
-    const std::unordered_map<int32_t, std::string> &resultMap, std::unique_ptr<Metadata> &data)
+static bool IsCompleteDateTime(const std::string &timeStr, const std::string &format)
+{
+    if (timeStr.empty()) {
+        return false;
+    }
+    struct tm tmInfo{};
+    if (strptime(timeStr.c_str(), format.c_str(), &tmInfo) == nullptr) {
+        MEDIA_ERR_LOG("incomplete datetime, timeStr: %{public}s", timeStr.c_str());
+        return false;
+    }
+    return true;
+}
+
+static bool TrySetTimeInfoFromIOSCreationDate(const shared_ptr<Meta> &customMeta, std::unique_ptr<Metadata> &data)
 {
     bool forAdd = data->GetForAdd();
     std::string localTime;
-    if (customMeta != nullptr && customMeta->GetData(PHOTO_DATA_VIDEO_IOS_CREATION_DATE, localTime) &&
-        !localTime.empty()) {
-        auto [dateTaken, detailTime] = PhotoFileUtils::ExtractTimeInfo(localTime, "%Y-%m-%dT%H:%M:%S");
-        if (dateTaken > 0) {
-            SetTimeInfo(dateTaken, detailTime, data);
-            MEDIA_INFO_LOG("forAdd:%{public}d, extract iOS video localTime:%{public}s", forAdd, localTime.c_str());
-            return true;
-        }
+    if (customMeta == nullptr || !customMeta->GetData(PHOTO_DATA_VIDEO_IOS_CREATION_DATE, localTime) ||
+        localTime.empty()) {
+        return false;
     }
+    auto [dateTaken, detailTime] = PhotoFileUtils::ExtractTimeInfo(localTime, "%Y-%m-%dT%H:%M:%S");
+    if (dateTaken <= 0) {
+        return false;
+    }
+    SetTimeInfo(dateTaken, detailTime, data);
+    MEDIA_INFO_LOG("forAdd:%{public}d, extract iOS video localTime:%{public}s", forAdd, localTime.c_str());
+    return true;
+}
 
+static bool TrySetTimeInfoFromDateTimeKeys(const std::unordered_map<int32_t, std::string> &resultMap,
+    std::unique_ptr<Metadata> &data)
+{
+    bool forAdd = data->GetForAdd();
     auto it = resultMap.find(AV_KEY_DATE_TIME_ISO8601);
     std::string utcTime = it != resultMap.end() ? it->second : "";
-    auto [dateTaken, utcDetailTime] = PhotoFileUtils::ExtractTimeInfo(utcTime, "%Y-%m-%dT%H:%M:%S", true);
+    int64_t dateTaken = 0;
+    std::string utcDetailTime;
+    if (IsCompleteDateTime(utcTime, "%Y-%m-%dT%H:%M:%S")) {
+        std::tie(dateTaken, utcDetailTime) = PhotoFileUtils::ExtractTimeInfo(utcTime, "%Y-%m-%dT%H:%M:%S", true);
+    }
 
-    it = resultMap.find(AV_KEY_DATE_TIME_FORMAT);
-    localTime = it != resultMap.end() ? it->second : "";
-    auto [localDateTaken, detailTime] = PhotoFileUtils::ExtractTimeInfo(localTime, "%Y-%m-%d %H:%M:%S");
+    it = resultMap.find(AV_KEY_DATE_TIME);
+    std::string localTime = it != resultMap.end() ? it->second : "";
+    int64_t localDateTaken = 0;
+    std::string detailTime;
+    if (IsCompleteDateTime(localTime, "%Y-%m-%d %H:%M:%S")) {
+        std::tie(localDateTaken, detailTime) = PhotoFileUtils::ExtractTimeInfo(localTime, "%Y-%m-%d %H:%M:%S");
+    }
 
     if (dateTaken > 0) {
         if (detailTime.empty()) {
@@ -568,21 +596,52 @@ bool TrySetTimeInfoFromVideoMetadata(const shared_ptr<Meta> &customMeta,
         }
         SetTimeInfo(dateTaken, detailTime, data);
         MEDIA_INFO_LOG("forAdd:%{public}d, use utcTime:%{public}s, localTime:%{public}s",
-            forAdd,
-            utcTime.c_str(),
-            localTime.c_str());
+            forAdd, utcTime.c_str(), localTime.c_str());
         return true;
     }
-
     if (localDateTaken > 0) {
         SetTimeInfo(localDateTaken, detailTime, data);
         MEDIA_WARN_LOG("forAdd:%{public}d, utcTime:%{public}s, use localTime:%{public}s",
-            forAdd,
-            utcTime.c_str(),
-            localTime.c_str());
+            forAdd, utcTime.c_str(), localTime.c_str());
         return true;
     }
+    return false;
+}
 
+static bool TrySetTimeInfoFromCreationTime(const std::unordered_map<int32_t, std::string> &resultMap,
+    std::unique_ptr<Metadata> &data)
+{
+    bool forAdd = data->GetForAdd();
+    auto it = resultMap.find(AV_KEY_CREATION_TIME);
+    std::string creationTime = it != resultMap.end() ? it->second : "";
+    int64_t creationDateTaken = 0;
+    std::string creationDetailTime;
+    if (IsCompleteDateTime(creationTime, "%Y-%m-%d %H:%M:%S")) {
+        std::tie(creationDateTaken, creationDetailTime) =
+            PhotoFileUtils::ExtractTimeInfo(creationTime, "%Y-%m-%d %H:%M:%S");
+    }
+    if (creationDateTaken <= 0) {
+        return false;
+    }
+    SetTimeInfo(creationDateTaken, creationDetailTime, data);
+    MEDIA_WARN_LOG("forAdd:%{public}d, use creationTime:%{public}s", forAdd, creationTime.c_str());
+    return true;
+}
+
+bool TrySetTimeInfoFromVideoMetadata(const shared_ptr<Meta> &customMeta,
+    const std::unordered_map<int32_t, std::string> &resultMap, std::unique_ptr<Metadata> &data)
+{
+    bool forAdd = data->GetForAdd();
+    if (TrySetTimeInfoFromIOSCreationDate(customMeta, data)) {
+        return true;
+    }
+    if (TrySetTimeInfoFromDateTimeKeys(resultMap, data)) {
+        return true;
+    }
+    if (TrySetTimeInfoFromCreationTime(resultMap, data)) {
+        return true;
+    }
+    MEDIA_DEBUG_LOG("forAdd:%{public}d, no valid video time metadata, fall back", forAdd);
     return false;
 }
 

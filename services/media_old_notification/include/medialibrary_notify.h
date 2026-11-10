@@ -53,6 +53,7 @@ public:
     static std::atomic<uint16_t> counts_;
     static std::atomic<uint16_t> thumbCounts_;
     static std::mutex mutex_;
+    static std::once_flag onceFlag_;
     static std::unordered_map<std::string, std::unordered_map<NotifyType, std::list<Uri>>> nfListMap_;
 private:
     MediaLibraryNotify();
@@ -60,6 +61,7 @@ private:
     int32_t GetDefaultAlbums(std::unordered_map<PhotoAlbumSubType, int> &outAlbums);
     static std::shared_ptr<MediaLibraryNotify> instance_;
     std::unordered_map<PhotoAlbumSubType, int> defaultAlbums_;
+    std::mutex defaultAlbumsMutex_;
 };
 
 class NotifyTaskWorker {

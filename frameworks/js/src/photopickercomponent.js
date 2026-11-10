@@ -32,6 +32,7 @@ const bundleManager = requireNapi('bundle.bundleManager');
 const LengthMetrics = requireNapi('arkui.node').LengthMetrics;
 const LengthUnit = requireNapi('arkui.node').LengthUnit;
 const photoAccessHelper = requireNapi('file.photoAccessHelper');
+const image = requireNapi('multimedia.image');
 const PHOTO_VIEW_MIME_TYPE_MAP = new Map([
     ['*/*', 'FILTER_MEDIA_TYPE_ALL'],
     ['image/*', 'FILTER_MEDIA_TYPE_IMAGE'],

@@ -2201,24 +2201,6 @@ int32_t MediaAssetsService::Restore(const RestoreDto &dto)
 #endif
 }
 
-int32_t MediaAssetsService::AsyncRestore(const RestoreDto &dto)
-{
-    NativeRdb::ValuesBucket values;
-    values.PutString("dbPath", dto.dbPath);
-    values.PutString("albumLpath", dto.albumLpath);
-    values.PutString("keyPath", dto.keyPath);
-    values.PutString("isDeduplication", dto.isDeduplication ? "true" : "false");
-    values.PutString("bundleName", dto.bundleName);
-    values.PutString("appName", dto.appName);
-    values.PutString("appId", dto.appId);
-    MediaLibraryCommand cmd(values);
-#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
-    return MediaLibraryPhotoOperations::ProcessCustomRestoreAsync(cmd);
-#else
-    return E_ERR;
-#endif
-}
-
 int32_t MediaAssetsService::StopRestore(const std::string &keyPath)
 {
     NativeRdb::ValuesBucket values;
@@ -2971,7 +2953,8 @@ int32_t DoMoveFilesToDir(const std::vector<FileAssetsInfo> &infos, std::shared_p
     for (const auto &info : infos) {
         {
             std::lock_guard<std::mutex> lock(g_taskCancelMutex);
-            if (*g_taskCancelMap[dto.requestId]) {
+            auto it = g_taskCancelMap.find(dto.requestId);
+            if (it != g_taskCancelMap.end() && it->second && *(it->second)) {
                 return E_CANCEL_TASK;
             }
         }
@@ -3128,7 +3111,8 @@ int32_t DoMoveFilesByPath(const std::vector<FileAssetsInfo> &moveAssetInfos, std
     for (const auto &info : moveAssetInfos) {
         {
             std::lock_guard<std::mutex> lock(g_taskCancelMutex);
-            if (*g_taskCancelMap[dto.requestId]) {
+            auto it = g_taskCancelMap.find(dto.requestId);
+            if (it != g_taskCancelMap.end() && it->second && *(it->second)) {
                 return E_CANCEL_TASK;
             }
         }

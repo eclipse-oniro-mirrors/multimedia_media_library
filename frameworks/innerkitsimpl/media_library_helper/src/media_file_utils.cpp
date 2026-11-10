@@ -58,6 +58,7 @@
 #include "media_audio_column.h"
 #include "media_string_utils.h"
 #include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "moving_photo_file_utils.h"
 #include "photo_file_utils.h"
 #include "media_edit_utils.h"
@@ -65,7 +66,6 @@
 using namespace std;
 // LCOV_EXCL_START
 namespace OHOS::Media {
-static const mode_t CHOWN_RWX_USR_GRP = 02771;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
 constexpr size_t DISPLAYNAME_MAX = 255;
 constexpr int32_t HAS_APPLINK_MIN = 0;
@@ -88,7 +88,6 @@ const std::string THUMBS_DIR = ".thumbs";
 const std::string EDIT_DATA_DIR = ".editData";
 const std::string THUMBS_PHOTO_DIR = ".thumbs/Photo";
 const std::string EDIT_DATA_PHOTO_DIR = ".editData/Photo";
-const std::string CLOUD_FILE_PATH = "/storage/cloud/files";
 const std::string TMP_SUFFIX = "tmp";
 const std::vector<std::string> SET_LISTEN_DIR = {
     PHOTO_DIR, AUDIO_DIR, THUMBS_DIR, EDIT_DATA_DIR, THUMBS_PHOTO_DIR, EDIT_DATA_PHOTO_DIR
@@ -121,10 +120,6 @@ const int32_t ASPECT_RATIO_MAX = 1000;
 const double ASPECT_RATIO_MIN = 0.001;
 const double ASPECT_RATIO_PRECISION = 1000.0;
 const size_t BUFFER_SIZE = 4 * 1024 * 1024;
-const size_t MAX_SENDFILE_SIZE = 0x7FFFF000;
-
-const UChar MASK = 0x002A;  // '*'
-const UChar DOT = 0x002E;   // '.'
 
 std::mutex MediaFileUtils::cancelMutex_;
 std::unordered_set<std::string> MediaFileUtils::requestIdSet_ = {};
@@ -186,131 +181,27 @@ int32_t MediaFileUtils::RemoveDirectory(const string &path)
 
 std::string MediaFileUtils::DesensitizePath(const std::string &path)
 {
-    string result = path;
-    CHECK_AND_RETURN_RET(result.length() > CLOUD_FILE_PATH.length(), result);
-    return result.replace(0, CLOUD_FILE_PATH.length(), "*");
+    return MediaPathUtils::DesensitizePath(path);
 }
 
 std::string MediaFileUtils::DesensitizeName(const std::string &name)
 {
-    CHECK_AND_RETURN_RET_LOG(!name.empty(), name, "name is empty");
-
-    UErrorCode status = U_ZERO_ERROR;
-    const icu::Normalizer2 *normalizer = icu::Normalizer2::getNFCInstance(status);
-    CHECK_AND_RETURN_RET_LOG(
-        normalizer != nullptr && !U_FAILURE(status), name, "getNFCInstance failed, status:%{public}d", status);
-
-    icu::UnicodeString uName = icu::UnicodeString::fromUTF8(icu::StringPiece(name.data(), (int32_t)name.length()));
-    CHECK_AND_RETURN_RET_LOG(!uName.isBogus(), name, "uName is Bogus");
-
-    icu::UnicodeString norm;
-    normalizer->normalize(uName, norm, status);
-    CHECK_AND_RETURN_RET_LOG(
-        !U_FAILURE(status) && !norm.isBogus(), name, "normalize failed, status:%{public}d", status);
-
-    const int32_t dotPos = norm.lastIndexOf(DOT);
-    const bool hasExt = (dotPos > 0 && dotPos < norm.length() - 1);
-    const int32_t baseEnd = hasExt ? dotPos : norm.length();
-
-    std::unique_ptr<icu::BreakIterator> it(icu::BreakIterator::createCharacterInstance(icu::Locale::getRoot(), status));
-    CHECK_AND_RETURN_RET_LOG(
-        it != nullptr && !U_FAILURE(status), name, "create character iterator failed, status:%{public}d", status);
-
-    it->setText(norm);
-
-    std::vector<int32_t> boundaries;
-    for (int32_t pos = it->first(); pos != icu::BreakIterator::DONE && pos <= baseEnd; pos = it->next()) {
-        boundaries.push_back(pos);
-    }
-    const int32_t clusterCount = static_cast<int32_t>(boundaries.size()) - 1;
-    CHECK_AND_RETURN_RET_LOG(clusterCount > 0, name, "clusterCount is zero");
-
-    // desensitization strategy (1,2,3 -> 1*; 4 -> 2*; 5+ -> 3*)
-    const int32_t maskCount = (clusterCount >= 5) ? 3 : (clusterCount == 4 ? 2 : 1);
-    const int32_t displayCount = clusterCount - maskCount;
-    const int32_t prefixCount = displayCount / 2;
-    const int32_t suffixCount = displayCount - prefixCount;
-
-    icu::UnicodeString out;
-    if (prefixCount > 0) {
-        out.append(norm.tempSubStringBetween(0, boundaries[prefixCount]));
-    }
-
-    out.append(icu::UnicodeString(maskCount, MASK, maskCount));
-
-    if (suffixCount > 0) {
-        out.append(norm.tempSubStringBetween(boundaries[clusterCount - suffixCount], baseEnd));
-    }
-
-    if (hasExt) {
-        out.append(norm.tempSubString(dotPos));
-    }
-
-    std::string result;
-    out.toUTF8String(result);
-    return result;
+    return MediaPathUtils::DesensitizeName(name);
 }
 
 void MediaFileUtils::PrintStatInformation(const std::string& path)
 {
-    struct stat statInfo {};
-    if ((stat(path.c_str(), &statInfo)) == E_SUCCESS) {
-        MEDIA_INFO_LOG("path:%{public}s uid:%{public}d, gid:%{public}d, mode:%{public}d",
-            DesensitizePath(path).c_str(), statInfo.st_uid, statInfo.st_gid, statInfo.st_mode);
-    } else {
-        MEDIA_INFO_LOG("path:%{public}s is not exist", DesensitizePath(path).c_str());
-    }
-}
-
-bool MediaFileUtils::Mkdir(const string &subStr, shared_ptr<int> errCodePtr)
-{
-    mode_t mask = umask(0);
-    if (mkdir(subStr.c_str(), CHOWN_RWX_USR_GRP) == -1) {
-        if (errCodePtr != nullptr) {
-            *errCodePtr = errno;
-        }
-        int err = errno;
-        MEDIA_ERR_LOG("Failed to create directory %{public}d, path:%{public}s", err, DesensitizePath(subStr).c_str());
-        if (err == EACCES) {
-            PrintStatInformation(GetParentPath(subStr));
-        }
-        umask(mask);
-        return (err == EEXIST) ? true : false;
-    }
-    umask(mask);
-    return true;
+    MediaPureFileUtils::PrintStatInformation(path);
 }
 
 bool MediaFileUtils::CreateDirectory(const string &dirPath, shared_ptr<int> errCodePtr)
 {
-    string subStr;
-    string segment;
-
-    /*  Create directory and its sub directories if does not exist
-     *  take each string after '/' create directory if does not exist.
-     *  Created directory will be the base path for the next sub directory.
-     */
-
-    stringstream folderStream(dirPath);
-    while (getline(folderStream, segment, '/')) {
-        if (segment.empty()) {    // skip the first "/" in case of "/storage/cloud/files"
-            continue;
-        }
-
-        subStr.append(SLASH_CHAR + segment);
-        if (!IsDirectory(subStr, errCodePtr)) {
-            CHECK_AND_RETURN_RET(Mkdir(subStr, errCodePtr), false);
-        }
-    }
-
-    return true;
+    return MediaPureFileUtils::CreateDirectory(dirPath, errCodePtr);
 }
 
 bool MediaFileUtils::IsFileExists(const string &fileName)
 {
-    struct stat statInfo {};
-
-    return ((stat(fileName.c_str(), &statInfo)) == E_SUCCESS);
+    return MediaPureFileUtils::IsFileExists(fileName);
 }
 
 bool MediaFileUtils::IsFileExistsWithExtRetry(const string &fileName)
@@ -433,20 +324,7 @@ int32_t MediaFileUtils::CreateAssetRealName(int32_t fileId, int32_t mediaType,
 
 bool MediaFileUtils::IsDirectory(const string &dirName, shared_ptr<int> errCodePtr)
 {
-    struct stat statInfo {};
-
-    int32_t ret = stat(dirName.c_str(), &statInfo);
-    if (ret == E_SUCCESS) {
-        if (statInfo.st_mode & S_IFDIR) {
-            return true;
-        }
-    } else if (errCodePtr != nullptr) {
-        *errCodePtr = errno;
-        MEDIA_ERR_LOG("ret: %{public}d, errno: %{public}d", ret, errno);
-        return false;
-    }
-    MEDIA_ERR_LOG("ret: %{public}d, errno: %{public}d", ret, errno);
-    return false;
+    return MediaPureFileUtils::IsDirectory(dirName, errCodePtr);
 }
 
 bool MediaFileUtils::CreateFile(const string &filePath)
@@ -806,72 +684,9 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
     return errCode;
 }
 
-static bool SendFileWithRetry(int32_t dest, int32_t source, off_t totalSize, off_t &copied)
-{
-    while (copied < totalSize) {
-        off_t leftSize = totalSize - copied;
-        const off_t maxSendfileSize = static_cast<off_t>(MAX_SENDFILE_SIZE);
-        size_t sendSize = static_cast<size_t>(leftSize > maxSendfileSize ? maxSendfileSize : leftSize);
-        ssize_t ret = sendfile(dest, source, &copied, sendSize);
-        if (ret == E_ERR) {
-            CHECK_AND_CONTINUE(errno != EINTR);
-            MEDIA_ERR_LOG("Failed to sendfile, errno: %{public}d", errno);
-            return false;
-        }
-        CHECK_AND_RETURN_RET_LOG(ret != 0, false,
-            "sendfile returned 0 before copy finished, copied: %{public}lld, total: %{public}lld",
-            static_cast<long long>(copied), static_cast<long long>(totalSize));
-    }
-    return true;
-}
-
 bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath, bool skipCheckPermit)
 {
-    struct stat fst{};
-    bool errCode = false;
-    if (filePath.size() >= PATH_MAX) {
-        MEDIA_ERR_LOG("File path too long %{public}d", static_cast<int>(filePath.size()));
-        return errCode;
-    }
-    MEDIA_DEBUG_LOG("File path is %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
-    string absFilePath;
-    if (!PathToRealPath(filePath, absFilePath)) {
-        MEDIA_ERR_LOG("file is not real path, file path: %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
-        return errCode;
-    }
-    if (absFilePath.empty()) {
-        MEDIA_ERR_LOG("Failed to obtain the canonical path for source path:%{public}s %{public}d",
-            MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
-        return errCode;
-    }
-
-    int32_t source = open(absFilePath.c_str(), O_RDONLY);
-    UniqueFd srcFd(source);
-    CHECK_AND_RETURN_RET_LOG(srcFd.Get() != -1, errCode, "Open failed for source file, errno: %{public}d", errno);
-
-    CHECK_AND_RETURN_RET_LOG(!newPath.empty(), errCode, "dest path is empty, safety check");
-    int32_t dest = open(newPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, CHOWN_RO_USR_GRP);
-    UniqueFd destFd(dest);
-    CHECK_AND_RETURN_RET_LOG(destFd.Get() != -1, errCode, "Open failed for destination file %{public}d", errno);
-
-    CHECK_AND_RETURN_RET_LOG(fstat(srcFd.Get(), &fst) == E_SUCCESS, errCode,
-        "Failed to fstat source file, errno: %{public}d", errno);
-
-    off_t total_size = fst.st_size;
-    off_t copied = 0;
-    CHECK_AND_RETURN_RET_LOG(SendFileWithRetry(destFd.Get(), srcFd.Get(), total_size, copied), errCode,
-        "Failed to copy content by sendfile");
-
-    if (copied == total_size) {
-        errCode = true;
-        if (skipCheckPermit) {
-            MEDIA_ERR_LOG("Open failed for destination file %{public}d", errno);
-            errCode = true;
-        }
-    }
-
-    return errCode;
+    return MediaPureFileUtils::CopyFileUtil(filePath, newPath, skipCheckPermit);
 }
 
 static std::unique_ptr<Picture> DecodeAsset(int32_t fd, int32_t width, int32_t height)
@@ -991,16 +806,68 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
 
 static bool IsTranscodeFile(const std::string &filePath)
 {
-    std::string displayName = filePath;
-    size_t pos = filePath.find_last_of("/");
-    if (pos != std::string::npos) {
-        displayName = filePath.substr(pos + 1);
+    return MediaPathUtils::IsTranscodeFile(filePath);
+}
+
+static int32_t ConvertFormatDirEntry(const std::filesystem::directory_entry &entry,
+    const std::string &srcFilePath, const std::string &dstFilePath, const std::string &dstDir,
+    const std::string &extension, const std::string &sourceFilePath)
+{
+    std::error_code entryEc;
+    if (entry.is_directory(entryEc)) {
+        if (!MediaFileUtils::CreateDirectory(dstFilePath)) {
+            MEDIA_ERR_LOG("Create dir:%{public}s failed", MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+            return E_FAIL;
+        }
+        return E_OK;
     }
-    if (displayName == "transcode.jpg" && filePath.find(".editData") != std::string::npos) {
-        MEDIA_INFO_LOG("displayname %{public}s, success", MediaFileUtils::DesensitizeName(displayName).c_str());
-        return true;
+    if (!entryEc && entry.is_regular_file(entryEc)) {
+        if (IsTranscodeFile(srcFilePath)) {
+            return E_OK;
+        }
+        error_code ec;
+        bool isEqual = std::filesystem::equivalent(srcFilePath, sourceFilePath, ec);
+        bool ret = false;
+        if (isEqual) {
+            std::string convertedPath = dstDir + "/source." + extension;
+            ret = MediaFileUtils::ConvertFormatCopy(srcFilePath, convertedPath, extension);
+            C2paUtils::SignForTranscode(srcFilePath, convertedPath);
+        } else {
+            ret = MediaFileUtils::CopyFileUtil(srcFilePath, dstFilePath);
+        }
+        CHECK_AND_RETURN_RET_LOG(ret, E_FAIL, "copyFile failed, isSrcFile: %{public}d", isEqual);
+        return E_OK;
     }
-    return false;
+    if (entryEc) {
+        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
+            entryEc.message().c_str());
+        return E_FAIL;
+    }
+    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str());
+    return E_FAIL;
+}
+
+static int32_t ConvertFormatDirectoryByEntry(const std::string &srcDir, const std::string &dstDir,
+    const std::string &extension, const std::string &sourceFilePath)
+{
+    std::error_code iterEc;
+    auto iter = std::filesystem::recursive_directory_iterator(srcDir, iterEc);
+    CHECK_AND_RETURN_RET_LOG(!iterEc, E_FAIL, "Iterator creation failed: %{public}s", iterEc.message().c_str());
+    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(iterEc)) {
+        if (iterEc) {
+            MEDIA_ERR_LOG("Iteration error: %{public}s", iterEc.message().c_str());
+            continue;
+        }
+        const auto &entry = *iter;
+        std::string srcFilePath = entry.path();
+        std::string tmpFilePath = srcFilePath;
+        std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
+        int32_t ret = ConvertFormatDirEntry(entry, srcFilePath, dstFilePath, dstDir, extension, sourceFilePath);
+        CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    }
+    CHECK_AND_RETURN_RET_LOG(!iterEc, E_FAIL, "Iterate %{public}s failed: %{public}s",
+        MediaFileUtils::DesensitizePath(srcDir).c_str(), iterEc.message().c_str());
+    return E_OK;
 }
 
 bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, const std::string &dstDir,
@@ -1019,34 +886,8 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
     cond = (!IsDirectory(srcDir) || !CreateDirectory(dstDir));
     CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL, "srcDir is not directory or Create dstDir failed");
     std::string sourceFilePath = srcDir + "/source." + GetExtensionFromPath(srcDir);
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(srcDir)) {
-        std::string srcFilePath = entry.path();
-        std::string tmpFilePath = srcFilePath;
-        std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        if (entry.is_directory()) {
-            if (!CreateDirectory(dstFilePath)) {
-                MEDIA_ERR_LOG("Create dir:%{public}s failed", DesensitizePath(dstFilePath).c_str());
-                return E_FAIL;
-            }
-        } else if (entry.is_regular_file()) {
-            CHECK_AND_CONTINUE(!IsTranscodeFile(srcFilePath));
-            error_code ec;
-            bool ret = false;
-            bool isEqual = std::filesystem::equivalent(srcFilePath, sourceFilePath, ec);
-            if (isEqual) {
-                dstFilePath = dstDir + "/source." + extension;
-                ret = ConvertFormatCopy(srcFilePath, dstFilePath, extension);
-                C2paUtils::SignForTranscode(srcFilePath, dstFilePath);
-            } else {
-                ret = CopyFileUtil(srcFilePath, dstFilePath);
-            }
-            CHECK_AND_RETURN_RET_LOG(ret, E_FAIL, "copyFile failed, isSrcFile: %{public}d", isEqual);
-        } else {
-            MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
-            return E_FAIL;
-        }
-    }
-    return E_OK;
+    // 返回值语义沿用原实现：bool 承载错误码，true 表示失败
+    return ConvertFormatDirectoryByEntry(srcDir, dstDir, extension, sourceFilePath) != E_OK;
 }
 
 bool MediaFileUtils::CopyFileSafe(const string &filePath, const string &newPath)
@@ -1673,13 +1514,7 @@ int32_t MediaFileUtils::CheckDentryName(const string &dentryName)
 
 string MediaFileUtils::GetParentPath(const string &path)
 {
-    string name;
-    size_t slashIndex = path.rfind("/");
-    if (slashIndex != string::npos) {
-        name = path.substr(0, slashIndex);
-    }
-
-    return name;
+    return MediaPathUtils::GetParentPath(path);
 }
 
 string MediaFileUtils::GetTitleFromDisplayName(const string &displayName)
@@ -1908,10 +1743,15 @@ int32_t MediaFileUtils::OpenFile(const string &filePath, const string &mode, con
                       errno, filePath.c_str());
         return errCode;
     }
-    MEDIA_DEBUG_LOG("File absFilePath is %{private}s", absFilePath.c_str());
+    MEDIA_INFO_LOG("File absFilePath is %{private}s", absFilePath.c_str());
     int32_t fd = open(absFilePath.c_str(), MEDIA_OPEN_MODE_MAP.at(mode));
+    if (fd >= 0) {
+        MEDIA_INFO_LOG("File fd succ %{private}d", fd);
+    } else {
+        MEDIA_ERR_LOG("File fd %{private}d", fd);
+    }
     if (clientbundleName.empty()) {
-        MEDIA_DEBUG_LOG("ClientbundleName is empty,failed to to set caller_info to fd");
+        MEDIA_ERR_LOG("ClientbundleName is empty,failed to to set caller_info to fd");
     } else {
         SendHmdfsCallerInfoToIoctl(fd, clientbundleName);
     }
@@ -2651,49 +2491,62 @@ bool MediaFileUtils::CheckSupportedWatermarkType(int32_t watermarkType)
 
 int32_t MediaFileUtils::CopyDirectory(const std::string &srcDir, const std::string &dstDir)
 {
-    if (srcDir.empty() || dstDir.empty()) {
-        MEDIA_ERR_LOG("Failed to copy directory, srcDir:%{public}s or newPath:%{public}s is empty!",
-            DesensitizePath(srcDir).c_str(), DesensitizePath(dstDir).c_str());
-        return E_MODIFY_DATA_FAIL;
+    return MediaPathUtils::CopyDirectory(srcDir, dstDir);
+}
+
+static int32_t MoveDirEntry(const std::filesystem::directory_entry &entry, const std::string &srcFilePath,
+    const std::string &dstFilePath)
+{
+    std::error_code entryEc;
+    if (entry.is_directory(entryEc)) {
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dstFilePath), E_FAIL,
+            "Create dir:%{public}s failed", MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+        return E_OK;
     }
-    if (!IsFileExists(srcDir)) {
-        MEDIA_ERR_LOG("SrcDir:%{public}s is not exist", DesensitizePath(srcDir).c_str());
-        return E_NO_SUCH_FILE;
+    if (!entryEc && entry.is_regular_file(entryEc)) {
+        if (srcFilePath.find("editdata_camera") != std::string::npos ||
+            srcFilePath.find("source_back") != std::string::npos) {
+            CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(srcFilePath, dstFilePath), E_FAIL,
+                "Copy editdata_camera from %{public}s to %{public}s failed.",
+                MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
+                MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+            return E_OK;
+        }
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(srcFilePath, dstFilePath), E_FAIL,
+            "Copy file from %{public}s to %{public}s failed.",
+            MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
+            MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+        return E_OK;
     }
-    if (!IsDirectory(srcDir)) {
-        MEDIA_ERR_LOG("SrcDir:%{public}s is not directory", DesensitizePath(srcDir).c_str());
+    if (entryEc) {
+        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
+            entryEc.message().c_str());
         return E_FAIL;
     }
-    if (IsFileExists(dstDir)) {
-        MEDIA_ERR_LOG("DstDir:%{public}s exists", DesensitizePath(dstDir).c_str());
-        return E_FILE_EXIST;
-    }
-    if (!CreateDirectory(dstDir)) {
-        MEDIA_ERR_LOG("Create dstDir:%{public}s failed", DesensitizePath(dstDir).c_str());
-        return E_FAIL;
-    }
- 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(srcDir)) {
+    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str());
+    return E_FAIL;
+}
+
+static int32_t MoveDirectoryByEntry(const std::string &srcDir, const std::string &dstDir)
+{
+    std::error_code ec;
+    auto iter = std::filesystem::recursive_directory_iterator(srcDir, ec);
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterator creation failed: %{public}s", ec.message().c_str());
+    for (; iter != std::filesystem::recursive_directory_iterator(); iter.increment(ec)) {
+        if (ec) {
+            MEDIA_ERR_LOG("Iteration error: %{public}s", ec.message().c_str());
+            continue;
+        }
+        const auto &entry = *iter;
         std::string srcFilePath = entry.path();
         std::string tmpFilePath = srcFilePath;
         std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        if (entry.is_directory()) {
-            if (!CreateDirectory(dstFilePath)) {
-                MEDIA_ERR_LOG("Create dir:%{public}s failed", DesensitizePath(dstFilePath).c_str());
-                return E_FAIL;
-            }
-        } else if (entry.is_regular_file()) {
-            CHECK_AND_CONTINUE(!IsTranscodeFile(srcFilePath));
-            if (!CopyFileUtil(srcFilePath, dstFilePath)) {
-                MEDIA_ERR_LOG("Copy file from %{public}s to %{public}s failed.",
-                    DesensitizePath(srcFilePath).c_str(), DesensitizePath(dstFilePath).c_str());
-                return E_FAIL;
-            }
-        } else {
-            MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
-            return E_FAIL;
-        }
+        CHECK_AND_CONTINUE_DEBUG_LOG(srcFilePath.find("transcode.jpg") == std::string::npos, "skip transcode.jpg");
+        int32_t ret = MoveDirEntry(entry, srcFilePath, dstFilePath);
+        CHECK_AND_RETURN_RET(ret == E_OK, ret);
     }
+    CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterate %{public}s failed: %{public}s",
+        MediaFileUtils::DesensitizePath(srcDir).c_str(), ec.message().c_str());
     return E_OK;
 }
 
@@ -2713,36 +2566,7 @@ int32_t MediaFileUtils::MoveDirectory(const std::string &srcDir, const std::stri
     CHECK_AND_RETURN_RET_LOG(
         CreateDirectory(dstDir), E_FAIL, "Create dstDir:%{public}s failed", DesensitizePath(dstDir).c_str());
 
-    for (const auto &entry : std::filesystem::recursive_directory_iterator(srcDir)) {
-        std::string srcFilePath = entry.path();
-        std::string tmpFilePath = srcFilePath;
-        std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        CHECK_AND_CONTINUE_DEBUG_LOG(srcFilePath.find("transcode.jpg") == std::string::npos, "skip transcode.jpg");
-        if (entry.is_directory()) {
-            CHECK_AND_RETURN_RET_LOG(CreateDirectory(dstFilePath),
-                E_FAIL,
-                "Create dir:%{public}s failed",
-                DesensitizePath(dstFilePath).c_str());
-        } else if (entry.is_regular_file()) {
-            if (srcFilePath.find("editdata_camera") != std::string::npos ||
-                srcFilePath.find("source_back") != std::string::npos) {
-                CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(srcFilePath, dstFilePath),
-                    E_FAIL, "Copy editdata_camera from %{public}s to %{public}s failed.",
-                    DesensitizePath(srcFilePath).c_str(),
-                    DesensitizePath(dstFilePath).c_str());
-                continue;
-            }
-            CHECK_AND_RETURN_RET_LOG(MoveFile(srcFilePath, dstFilePath),
-                E_FAIL,
-                "Copy file from %{public}s to %{public}s failed.",
-                DesensitizePath(srcFilePath).c_str(),
-                DesensitizePath(dstFilePath).c_str());
-        } else {
-            MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
-            return E_FAIL;
-        }
-    }
-    return E_OK;
+    return MoveDirectoryByEntry(srcDir, dstDir);
 }
 
 bool MediaFileUtils::CheckCompositeDisplayMode(int32_t compositeDisplayMode)

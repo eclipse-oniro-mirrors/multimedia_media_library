@@ -130,7 +130,6 @@ public:
     EXPORT int32_t GetUrisByOldUrisInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetClonedAssetUrisInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t Restore(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t AsyncRestore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StopRestore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CancelRequest(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t HeifTranscodingCheck(MessageParcel &data, MessageParcel &reply);
@@ -179,6 +178,8 @@ public:
     EXPORT int32_t SetPhotoCritical(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GenerateUniqueId(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ValidateLatestPair(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteLocalAssetsAndGetUris(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t RecoverAssetsAndGetUris(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAssetsControllerService() = default;

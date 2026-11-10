@@ -40,6 +40,7 @@ ohos_shared_library("media_library_common") {
     "ability_base:zuri",
     "c_utils:utils",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "relational_store:native_rdb",
   ]
 

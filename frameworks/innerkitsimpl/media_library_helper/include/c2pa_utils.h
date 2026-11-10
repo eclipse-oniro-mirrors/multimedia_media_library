@@ -26,6 +26,8 @@ public:
     static bool HasImageSignature(const std::string& filePath);
     static int32_t SignForCreate(const std::string& filePath,
         const std::string& authorId, const std::string& authorName);
+    static int32_t SignForCreateByFd(const std::string& filePath,
+        const std::string& authorId, const std::string& authorName);
     static int32_t SignForTranscode(const std::string& sourcePath, const std::string& targetPath);
     static int32_t SignForRevert(const std::string& sourcePath, const std::string& targetPath);
     static int32_t SignatureToLcd(const std::string& sourcePath, const std::string& targetPath);

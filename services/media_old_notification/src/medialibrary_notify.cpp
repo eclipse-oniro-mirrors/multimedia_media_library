@@ -41,6 +41,7 @@ using NotifyDataMap = unordered_map<NotifyType, list<Uri>>;
 static const int32_t WAIT_TIME = 2;
 shared_ptr<MediaLibraryNotify> MediaLibraryNotify::instance_;
 mutex MediaLibraryNotify::mutex_;
+once_flag MediaLibraryNotify::onceFlag_;
 unordered_map<string, NotifyDataMap> MediaLibraryNotify::nfListMap_ = {};
 atomic<uint16_t> MediaLibraryNotify::thumbCounts_(0);
 atomic<uint16_t> MediaLibraryNotify::counts_(0);
@@ -53,15 +54,14 @@ shared_ptr<MediaLibraryNotify> MediaLibraryNotify::GetInstance()
     if (instance_ != nullptr) {
         return instance_;
     }
-    lock_guard<mutex> lock(mutex_);
-    if (instance_ == nullptr) {
+    std::call_once(onceFlag_, [&]() {
         instance_ = shared_ptr<MediaLibraryNotify>(new MediaLibraryNotify());
         if (instance_ == nullptr) {
             MEDIA_ERR_LOG("GetInstance nullptr");
-            return instance_;
+            return;
         }
         instance_->Init();
-    }
+    });
     return instance_;
 }
 MediaLibraryNotify::MediaLibraryNotify() {};
@@ -474,14 +474,11 @@ int32_t MediaLibraryNotify::GetDefaultAlbums(std::unordered_map<PhotoAlbumSubTyp
 
 int32_t MediaLibraryNotify::GetAlbumIdBySubType(const PhotoAlbumSubType subType)
 {
-    int errCode = E_OK;
-    if (defaultAlbums_.size() == 0) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (defaultAlbums_.size() == 0) {
-            errCode = GetDefaultAlbums(defaultAlbums_);
-        }
+    std::lock_guard<std::mutex> lock(defaultAlbumsMutex_);
+    if (defaultAlbums_.empty()) {
+        int32_t errCode = GetDefaultAlbums(defaultAlbums_);
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to GetDefaultAlbums");
     }
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to GetDefaultAlbums");
     if (defaultAlbums_.count(subType) == 0) {
         return E_ERR;
     }

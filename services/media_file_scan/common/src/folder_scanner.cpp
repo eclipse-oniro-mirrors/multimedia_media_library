@@ -143,6 +143,9 @@ int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue)
         if (GlobalScanner::GetInstance().ShouldStopScan()) {
             closedir(dirPath);
             dirPath = nullptr;
+            BatchInsertAssets(assetRefresh);
+            assetRefresh->Notify();
+            UpdateAndNotifyAlbumInfos(true);
             MEDIA_WARN_LOG("Current folder scan stop at file[%{public}s] scanning",
                 FileScanUtils::GarbleFilePath(currentFilePath).c_str());
             return ERR_SUCCESS;

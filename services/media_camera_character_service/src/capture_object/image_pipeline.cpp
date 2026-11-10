@@ -111,7 +111,7 @@ int32_t ImagePipeline::AddFiltersToPhoto(const std::string& sourcePath, const st
     ret = MediaChangeEffect::TakeEffect(sourcePath, tempFilterPath, info, quality);
     auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
     if (c2paConfigInfo.enableC2PA) {
-        C2paUtils::SignForCreate(tempFilterPath, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
+        C2paUtils::SignForCreateByFd(tempFilterPath, c2paConfigInfo.authorId, c2paConfigInfo.authorName);
     }
     tracer.Finish();
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to TakeEffect, ret: %{public}d.", ret);

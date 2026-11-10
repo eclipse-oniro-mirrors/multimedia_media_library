@@ -108,7 +108,7 @@ void ThumbnailReadyManager::SetDownloadEnd(pid_t pid)
 {
     auto taskInfo = GetAstcBatchTaskInfo(pid);
     if (taskInfo != nullptr) {
-        taskInfo->isDownloadEnd = true;
+        taskInfo->isDownloadEnd.store(true);
     }
 }
 
@@ -199,6 +199,7 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
     };
 
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "0");
+    rdbPredicate.EqualTo(PhotoColumn::PHOTO_IS_SHARED, "0");
     if (!ThumbnailUtils::IsMobileNetworkEnabled() || timeoutCount_ >= RETRY_DOWNLOAD_THUMB_LIMIT) {
         CHECK_AND_PRINT_LOG(timeoutCount_ < RETRY_DOWNLOAD_THUMB_LIMIT,
             "timeoutCount_:%{public}d is over three, just query local", timeoutCount_.load());
@@ -442,7 +443,7 @@ void ThumbnailReadyManager::DownloadTimeOut(int32_t requestId, pid_t pid)
     MEDIA_INFO_LOG("DownloadTimeOut pid:%{public}d, requestId:%{public}d", pid, requestId);
     std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> timerInfo;
     CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid, timerInfo));
-    if (!timerInfo->isDownloadEnd) {
+    if (!timerInfo->isDownloadEnd.load()) {
         timeoutCount_++;
         MEDIA_INFO_LOG("Download thumbnail timeout, count:%{public}d", timeoutCount_.load());
         auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();

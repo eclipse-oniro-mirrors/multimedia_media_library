@@ -76,8 +76,9 @@ private:
 private:
     static std::shared_ptr<MediaLibraryInotify> instance_;
     static std::mutex mutex_;
+    static std::once_flag onceFlag_;
     static inline std::unordered_map<int, struct WatchInfo> watchList_;
-    static inline int inotifyFd_ = 0;
+    static inline std::atomic<int> inotifyFd_ = 0;
     static inline std::atomic<bool> isWatching_ = false;
 };
 } // namespace Media

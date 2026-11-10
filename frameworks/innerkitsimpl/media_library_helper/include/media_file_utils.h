@@ -282,7 +282,6 @@ public:
     EXPORT static bool GetFileStat(const std::string &path, FileStatInfo &out);
 
 private:
-    static bool Mkdir(const std::string &subStr, std::shared_ptr<int> errCodePtr);
     static int32_t RemoveDirectory(const std::string &path);
     static int32_t CheckStringSize(const std::string &str, const size_t max);
     static std::mutex cancelMutex_;

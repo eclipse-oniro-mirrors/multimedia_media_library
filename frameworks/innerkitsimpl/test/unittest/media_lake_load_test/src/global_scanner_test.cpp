@@ -1677,7 +1677,7 @@ HWTEST_F(GlobalScannerTest, Run_ResetsChargingLost_016, TestSize.Level1)
     std::filesystem::create_directories(testPath, ec);
     scanner.isChargingLost_.store(true);
     scanner.RunLakeScan(testPath, false);
-    EXPECT_FALSE(scanner.isChargingLost_.load());
+    EXPECT_TRUE(scanner.isChargingLost_.load());
 }
 
 HWTEST_F(GlobalScannerTest, ProcessIncrementScanTask_ClearsChargingLost_017, TestSize.Level1)

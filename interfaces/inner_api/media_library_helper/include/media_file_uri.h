@@ -107,6 +107,7 @@ public:
     EXPORT static int32_t CreateAssetBucket(int32_t fileId, int32_t &bucketNum,
         AssetBucketType bucketType = AssetBucketType::NORMAL);
     EXPORT static std::string GetPathFromUri(const std::string &uri, bool isPhoto);
+    EXPORT static std::string GetPathWithOrgSubFixFromUri(const std::string &uri, bool isPhoto);
     EXPORT static std::string GetPhotoUri(const std::string &fileId, const std::string &path,
         const std::string &displayName);
 };

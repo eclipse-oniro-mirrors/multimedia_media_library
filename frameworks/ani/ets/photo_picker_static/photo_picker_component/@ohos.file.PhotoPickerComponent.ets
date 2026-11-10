@@ -918,12 +918,23 @@ export struct PhotoPickerComponent {
     itemInfo.height = checkValueRetUndefined<int>(wantParam['height']);
     itemInfo.size = checkValueRetUndefined<int>(wantParam['size']);
     itemInfo.duration = checkValueRetUndefined<int>(wantParam['duration']);
-    itemInfo.photoSubType = checkValueRetUndefined<photoAccessHelper.PhotoSubtype>(wantParam['subtype']);
-    itemInfo.dynamicRangeType = checkValueRetUndefined<photoAccessHelper.DynamicRangeType>(wantParam['dynamicRangeType']);
+    let val = checkValueRetUndefined<int>(wantParam['subtype']);
+    if (val !== undefined) {
+      itemInfo.photoSubType = photoAccessHelper.PhotoSubtype.fromValue(val);
+    }
+    let dynamicRangeVal = checkValueRetUndefined<int>(wantParam['dynamicRangeType']);
+    if (dynamicRangeVal !== undefined) {
+      itemInfo.dynamicRangeType = photoAccessHelper.DynamicRangeType.fromValue(dynamicRangeVal);
+    }
     itemInfo.orientation = checkValueRetUndefined<int>(wantParam['imageOrientation']);
-    itemInfo.movingPhotoBadgeState =
-      checkValueRetUndefined<photoAccessHelper.MovingPhotoBadgeStateType>(wantParam['movingPhotoBadgeState']);
-    itemInfo.videoMode = checkValueRetUndefined<photoAccessHelper.VideoMode>(wantParam['videoMode']);
+    val = checkValueRetUndefined<int>(wantParam['movingPhotoBadgeState']);
+    if (val !== undefined) {
+      itemInfo.movingPhotoBadgeState = photoAccessHelper.MovingPhotoBadgeStateType.fromValue(val);
+    }
+    let videoModeVal = checkValueRetUndefined<int>(wantParam['videoMode']);
+    if (videoModeVal !== undefined) {
+      itemInfo.videoMode = photoAccessHelper.VideoMode.fromValue(videoModeVal);
+    }
     return itemInfo;
   }
 
@@ -1008,7 +1019,10 @@ export struct PhotoPickerComponent {
   private handlePhotoBrowserChange(wantParam: Record<string, RecordData>): void {
     let browserItemInfo: BaseItemInfo = new BaseItemInfo();
     browserItemInfo.uri = wantParam['uri'] as string;
-    browserItemInfo.photoSubType = checkValueRetUndefined<photoAccessHelper.PhotoSubtype>(wantParam['photoSubType']);
+    let val = checkValueRetUndefined<int>(wantParam['photoSubType']);
+    if (val !== undefined) {
+      browserItemInfo.photoSubType = photoAccessHelper.PhotoSubtype.fromValue(val);
+    }
     browserItemInfo.mimeType = checkValueRetUndefined<string>(wantParam['mimeType']);
     if (this.onPhotoBrowserChanged) {
       this.onPhotoBrowserChanged!(browserItemInfo);
@@ -1110,9 +1124,12 @@ export struct PhotoPickerComponent {
 
   private onMovingPhotoBadgeStateChangeSend(wantParam: Record<string, RecordData>): void {
     let uri: string = wantParam['uri'] as string;
-    let state: photoAccessHelper.MovingPhotoBadgeStateType =
-      wantParam['enabledMovingPhotoBadge'] as photoAccessHelper.MovingPhotoBadgeStateType;
-    if (uri && this.onMovingPhotoBadgeStateChanged) {
+    let state: photoAccessHelper.MovingPhotoBadgeStateType | undefined = undefined;
+    let stateVal = checkValueRetUndefined<int>(wantParam['enabledMovingPhotoBadge']);
+    if (stateVal !== undefined) {
+      state = photoAccessHelper.MovingPhotoBadgeStateType.fromValue(stateVal);
+    }
+    if (uri && state !== undefined  && this.onMovingPhotoBadgeStateChanged) {
       this.onMovingPhotoBadgeStateChanged!(uri, state);
     }
     console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChange');
@@ -1135,9 +1152,15 @@ export struct PhotoPickerComponent {
   private handleOnPhotoBrowserChangeStart(wantParam: Record<string, RecordData>): void {
     let targetPhotoInfo: BaseItemInfo = new BaseItemInfo();
     targetPhotoInfo.uri = checkValueRetUndefined<string>(wantParam['uri']);
-    targetPhotoInfo.photoSubType = checkValueRetUndefined<photoAccessHelper.PhotoSubtype>(wantParam['photoSubType']);
-    targetPhotoInfo.movingPhotoBadgeState =
-      checkValueRetUndefined<photoAccessHelper.MovingPhotoBadgeStateType>(wantParam['movingPhotoBadgeState']);
+    let val = checkValueRetUndefined<int>(wantParam['photoSubType']);
+    if (val !== undefined) {
+      targetPhotoInfo.photoSubType = photoAccessHelper.PhotoSubtype.fromValue(val);
+    }
+    val = checkValueRetUndefined<int>(wantParam['movingPhotoBadgeState']);
+    if (val !== undefined) {
+      targetPhotoInfo.movingPhotoBadgeState =
+        photoAccessHelper.MovingPhotoBadgeStateType.fromValue(val);
+    }
     if (this.onPhotoBrowserChangeStart) {
       this.onPhotoBrowserChangeStart!(targetPhotoInfo);
     }

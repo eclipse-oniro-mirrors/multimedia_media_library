@@ -19,6 +19,7 @@
 
 #include "media_assets_controller_service.h"
 #include "media_assets_service.h"
+#include "media_albums_service.h"
 #include "media_share_assets_service.h"
 #include "media_log.h"
 #include "create_asset_vo.h"
@@ -29,6 +30,8 @@
 #include "parameter_utils.h"
 #include "commit_edited_asset_vo.h"
 #include "delete_photos_completed_vo.h"
+#include "delete_local_assets_and_get_uris_vo.h"
+#include "recover_assets_and_get_uris_vo.h"
 #include "asset_change_vo.h"
 #include "delete_photos_vo.h"
 #include "trash_photos_vo.h"
@@ -594,10 +597,6 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::Restore
     },
     {
-        static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC),
-        &MediaAssetsControllerService::AsyncRestore
-    },
-    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL),
         &MediaAssetsControllerService::StopRestore
     },
@@ -656,6 +655,14 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_DELETE_LOCAL_ASSETS_WITH_URI),
         &MediaAssetsControllerService::DeleteLocalAssetsWithUri
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_DELETE_LOCAL_ASSETS_AND_GET_URIS),
+        &MediaAssetsControllerService::DeleteLocalAssetsAndGetUris
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_RECOVER_ASSETS_AND_GET_URIS),
+        &MediaAssetsControllerService::RecoverAssetsAndGetUris
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_DELETE_CLOUD_ASSETS_WITH_URI),
@@ -3074,31 +3081,6 @@ int32_t MediaAssetsControllerService::Restore(MessageParcel &data, MessageParcel
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
-int32_t MediaAssetsControllerService::AsyncRestore(MessageParcel &data, MessageParcel &reply)
-{
-    MEDIA_INFO_LOG("enter AsyncRestore");
-    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC);
-    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
-    DfxTimer dfxTimer(operationCode, timeout, true);
-    RestoreReqBody reqBody;
-
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("Restore Read Request Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    ret = ParameterUtils::CheckRestore(reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("params is invalid");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-    auto dto = RestoreDto::Create(reqBody);
-    ret = MediaAssetsService::GetInstance().AsyncRestore(dto);
-    CHECK_AND_PRINT_LOG(ret == E_OK, "Restore failed");
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-}
-
 int32_t MediaAssetsControllerService::StopRestore(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("enter StopRestore");
@@ -3262,6 +3244,46 @@ int32_t MediaAssetsControllerService::DeleteLocalAssetsWithUri(MessageParcel &da
     }
     ret = this->mediaAssetsDeleteService_.DeleteLocalAssets(reqBody.fileIds);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::DeleteLocalAssetsAndGetUris(MessageParcel &data, MessageParcel &reply)
+{
+    DeleteLocalAssetsAndGetUrisReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("DeleteLocalAssetsAndGetUris Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = ParameterUtils::CheckDeletePhotosCompleted(reqBody.fileIds);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("fileIds is invalid");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    DeleteLocalAssetsAndGetUrisRespBody respBody;
+    ret = this->mediaAssetsDeleteService_.DeleteLocalAssetsAndGetUris(reqBody.fileIds, respBody.results);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAssetsControllerService::RecoverAssetsAndGetUris(MessageParcel &data, MessageParcel &reply)
+{
+    RecoverAssetsAndGetUrisReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("RecoverAssetsAndGetUris Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = ParameterUtils::CheckDeletePhotosCompleted(reqBody.assets);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("assets is invalid");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ChangeRequestRecoverAssetsDto dto;
+    dto.assets = reqBody.assets;
+    RecoverAssetsAndGetUrisRespBody respBody;
+    ret = MediaAlbumsService::GetInstance().RecoverAssetsAndGetResults(dto, respBody.results);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 
 int32_t MediaAssetsControllerService::DeleteCloudAssetsWithUri(MessageParcel &data, MessageParcel &reply)
