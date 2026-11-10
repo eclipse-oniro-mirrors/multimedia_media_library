@@ -21,6 +21,7 @@
 
 #include "gtest/gtest.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_restore.h"
 #include "post_event_utils.h"
@@ -48,7 +49,7 @@ constexpr int32_t TEST_FAILURES = 1;
 
 std::string CreateRecoveryTestDirectory()
 {
-    if (!MediaFileUtils::CreateDirectory("/data/test/media_library_restore")) {
+    if (!MediaPureFileUtils::CreateDirectory("/data/test/media_library_restore")) {
         return {};
     }
     char directory[] = "/data/test/media_library_restore/window_XXXXXX";

@@ -150,10 +150,8 @@ bool ReadMarkerTime(const std::string &directory, const std::string &marker, int
 }
 
 int InstallMarker(const std::string &directory, const std::vector<std::string> &oldMarkers,
-    const std::string &name, int64_t mtimeMs, bool verified, std::string &installed)
+    const std::string &marker, int64_t mtimeMs, std::string &installed)
 {
-    const std::string prefix = verified ? RECOVERY_BUCKET_MARKER_PREFIX : RECOVERY_BUCKET_UNVERIFIED_PREFIX;
-    const std::string marker = prefix + std::to_string(mtimeMs) + "_" + name + ".idx";
     const std::string path = directory + "/" + marker;
     int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
     if (fd < 0) {
@@ -250,8 +248,10 @@ int PrepareRecoveryBucketWrite(const std::string &directory, const std::string &
         ParseRecoveryBucketMarker(markers.front(), oldMs, previousName) :
         ReadMarkerTime(directory, markers.front(), oldMs));
     const bool verified = previousValid ? nowMs >= oldMs : CanCertifyBucket(directory, nowMs);
+    const std::string prefix = verified ? RECOVERY_BUCKET_MARKER_PREFIX : RECOVERY_BUCKET_UNVERIFIED_PREFIX;
+    const std::string marker = prefix + std::to_string(nowMs) + "_" + name + ".idx";
     std::string installed;
-    error = InstallMarker(directory, markers, name, nowMs, verified, installed);
+    error = InstallMarker(directory, markers, marker, nowMs, installed);
     if (error == 0 && !installed.empty()) {
         g_markers[directory] = installed;
     } else {

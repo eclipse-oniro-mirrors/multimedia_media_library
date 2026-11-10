@@ -19,6 +19,7 @@
 
 #include "gtest/gtest.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "recovery_event_limiter.h"
 
 namespace OHOS::Media {
@@ -37,7 +38,7 @@ class RecoveryEventLimiterTest : public testing::Test {
 public:
     void SetUp() override
     {
-        ASSERT_TRUE(MediaFileUtils::CreateDirectory("/data/test/media_library_restore"));
+        ASSERT_TRUE(MediaPureFileUtils::CreateDirectory("/data/test/media_library_restore"));
         char name[] = "/data/test/media_library_restore/event_XXXXXX";
         ASSERT_NE(mkdtemp(name), nullptr);
         directory_ = name;

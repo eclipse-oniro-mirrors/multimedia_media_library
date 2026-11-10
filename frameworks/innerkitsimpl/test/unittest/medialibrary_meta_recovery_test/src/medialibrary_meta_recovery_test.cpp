@@ -1198,6 +1198,20 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_StatisticSave_Test_001, 
 
     MediaLibraryMetaRecovery::GetInstance().StatisticSave();
 
+    MediaLibraryMetaRecovery::GetInstance().backupSuccCnt_ = 0;
+    MediaLibraryMetaRecovery::GetInstance().backupCostTime_ = 0;
+    MediaLibraryMetaRecovery::GetInstance().recoveryTotalBackupCnt_ = 0;
+    MediaLibraryMetaRecovery::GetInstance().recoverySuccCnt_ = 0;
+    MediaLibraryMetaRecovery::GetInstance().recoveryCostTime_ = 0;
+
+    MediaLibraryMetaRecovery::GetInstance().StatisticRestore();
+
+    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().backupSuccCnt_, 100);
+    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().backupCostTime_, 5000);
+    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().recoveryTotalBackupCnt_, 150);
+    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().recoverySuccCnt_, 120);
+    EXPECT_EQ(MediaLibraryMetaRecovery::GetInstance().recoveryCostTime_, 3000);
+
     MEDIA_INFO_LOG("MetaRecovery_StatisticSave_Test_001::End");
 }
 
@@ -1692,6 +1706,11 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_GetInstance_Test_001, Te
     MediaLibraryMetaRecovery &instance2 = MediaLibraryMetaRecovery::GetInstance();
 
     EXPECT_EQ(&instance1, &instance2);
+    auto stateBefore = instance1.recoveryState_.load();
+    instance2.recoveryState_ = MediaLibraryMetaRecoveryState::STATE_BACKING_UP;
+    EXPECT_EQ(instance1.recoveryState_.load(), MediaLibraryMetaRecoveryState::STATE_BACKING_UP);
+    instance1.recoveryState_ = stateBefore;
+    EXPECT_EQ(instance2.recoveryState_.load(), stateBefore);
 
     MEDIA_INFO_LOG("MetaRecovery_GetInstance_Test_001::End");
 }

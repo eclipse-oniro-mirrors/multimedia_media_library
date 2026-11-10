@@ -26,6 +26,7 @@
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "parameter.h"
 #include "parameters.h"
@@ -125,7 +126,7 @@ static RecoveryWindowResult RegisterRecoveryTask(DatabaseRecoveryReport &report,
 {
     report.stage = DatabaseRecoveryStage::WINDOW_REGISTRATION;
     const int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
-    CHECK_AND_PRINT_LOG(MediaFileUtils::CreateDirectory(RECOVERY_WINDOW_DIRECTORY),
+    CHECK_AND_PRINT_LOG(MediaPureFileUtils::CreateDirectory(RECOVERY_WINDOW_DIRECTORY),
         "Could not prepare recovery task directory");
     auto window = RegisterRecoveryWindowFile(RECOVERY_WINDOW_DIRECTORY, replicaTime, endTime);
     MEDIA_INFO_LOG("Recovery window start=%{public}lld end=%{public}lld errno=%{public}d merged=%{public}d "

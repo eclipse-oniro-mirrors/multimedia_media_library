@@ -213,7 +213,7 @@ static bool GetPhotoAlbumFromJsonPart1(const nlohmann::json &j, PhotoAlbum &phot
 
     optional<int64_t> isLocal = GetNumberFromJson(j, PhotoAlbumColumns::ALBUM_IS_LOCAL);
     if (isLocal.has_value()) {
-        photoAlbum.SetIsLocal((int32_t)isLocal.value());
+        photoAlbum.SetIsLocal(static_cast<int32_t>(isLocal.value()));
     } else {
         ret = false;
     }
@@ -227,14 +227,14 @@ static bool GetPhotoAlbumFromJsonPart1(const nlohmann::json &j, PhotoAlbum &phot
 
     optional<int64_t> priority = GetNumberFromJson(j, PhotoAlbumColumns::ALBUM_PRIORITY);
     if (priority.has_value()) {
-        photoAlbum.SetPriority((int32_t)priority.value());
+        photoAlbum.SetPriority(static_cast<int32_t>(priority.value()));
     } else {
         ret = false;
     }
 
     optional<int64_t> uploadStatus = GetNumberFromJson(j, PhotoAlbumColumns::UPLOAD_STATUS);
     if (uploadStatus.has_value()) {
-        photoAlbum.SetUploadStatus((int32_t)uploadStatus.value());
+        photoAlbum.SetUploadStatus(static_cast<int32_t>(uploadStatus.value()));
     } else {
         ret = false;
     }
@@ -325,7 +325,7 @@ static void ReadLegacyAlbumMappings(const shared_ptr<NativeRdb::ResultSet> &resu
         string lPath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
         mappings[lPath] = albumId;
         MEDIA_INFO_LOG("lpathToNewAlbumId, path=%{public}s db id %{public}d",
-            MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
+            MediaPathUtils::DesensitizePath(lPath).c_str(), albumId);
     }
 }
 
@@ -359,7 +359,7 @@ static int32_t ReadCurrentAlbumMappings(const shared_ptr<NativeRdb::ResultSet> &
             }
             mappings[lPath] = albumId;
             MEDIA_INFO_LOG("lpathToNewAlbumId, path=%{public}s db id %{public}d",
-                MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
+                MediaPathUtils::DesensitizePath(lPath).c_str(), albumId);
         }
     }
     return ret;
@@ -393,7 +393,7 @@ int32_t MediaLibraryMetaRecovery::LoadAlbumMaps(const string &path, std::set<std
         }
         oldAlbumIdToLpath[it->GetAlbumId()] = it->GetLPath();
         MEDIA_INFO_LOG("oldAlbumIdToLpath, json id %{public}d, path=%{public}s", it->GetAlbumId(),
-            MediaFileUtils::DesensitizePath(it->GetLPath()).c_str());
+            MediaPathUtils::DesensitizePath(it->GetLPath()).c_str());
     }
     // 2. db PhotoAlbum to lpathToNewAlbumId
     NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
@@ -409,7 +409,7 @@ int32_t MediaLibraryMetaRecovery::LoadAlbumMaps(const string &path, std::set<std
     ret = ReadCurrentAlbumMappings(resultSet, lpathToNewAlbumId, ambiguousPaths);
     resultSet->Close();
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "read current album mappings failed, error=%{public}d", ret);
-    if (ambiguousPaths != nullptr && !ambiguousPaths->empty()) {
+    if (!ambiguousPaths->empty()) {
         MEDIA_WARN_LOG("Album paths with multiple identities=%{public}zu; ambiguous mappings will not be used",
             ambiguousPaths->size());
     }
@@ -818,7 +818,7 @@ bool MediaLibraryMetaRecovery::WriteJsonFile(const std::string &filePath, const 
         if (localPath.empty()) {
             return false;
         }
-        indexDirectory = MediaFileUtils::GetParentPath(localPath);
+        indexDirectory = MediaPathUtils::GetParentPath(localPath);
         const int64_t nowMs = chrono::duration_cast<chrono::milliseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
         int error = PrepareRecoveryBucketWrite(indexDirectory, MediaFileUtils::GetFileName(localPath), nowMs);
@@ -841,7 +841,7 @@ bool MediaLibraryMetaRecovery::WriteJsonFile(const std::string &filePath, const 
         if (!indexDirectory.empty()) {
             InvalidateRecoveryBucketIndex(indexDirectory);
         }
-        MEDIA_ERR_LOG("Writing JSON failed, path=%{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_ERR_LOG("Writing JSON failed, path=%{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
     return true;
