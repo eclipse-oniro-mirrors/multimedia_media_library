@@ -70,10 +70,7 @@ ReplicaRecoveryDecision CheckReplicaRecovery(int32_t error, const NativeRdb::Pri
     if (primaryTime <= 0 || replicaTime <= 0) {
         return ReplicaRecoveryDecision::INVALID_TIME;
     }
-    if (replicaTime > primaryTime) {
-        return ReplicaRecoveryDecision::REPLICA_NEWER;
-    }
-    const int64_t gap = primaryTime - replicaTime;
+    const int64_t gap = std::max(primaryTime, replicaTime) - std::min(primaryTime, replicaTime);
     return gap <= MAX_REPLICA_GAP_MS ? ReplicaRecoveryDecision::ALLOW : ReplicaRecoveryDecision::TOO_OLD;
 }
 } // namespace OHOS::Media

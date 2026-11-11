@@ -19,6 +19,7 @@
 
 #include "gtest/gtest.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "recovery_event_limiter.h"
 
 namespace OHOS::Media {
@@ -37,7 +38,7 @@ class RecoveryEventLimiterTest : public testing::Test {
 public:
     void SetUp() override
     {
-        ASSERT_TRUE(MediaFileUtils::CreateDirectory("/data/test/media_library_restore"));
+        ASSERT_TRUE(MediaPureFileUtils::CreateDirectory("/data/test/media_library_restore"));
         char name[] = "/data/test/media_library_restore/event_XXXXXX";
         ASSERT_NE(mkdtemp(name), nullptr);
         directory_ = name;
@@ -109,7 +110,14 @@ HWTEST_F(RecoveryEventLimiterTest, InvalidOrMissingPersistenceDoesNotPermitRepor
 
 HWTEST_F(RecoveryEventLimiterTest, ClockRollbackDoesNotPermitExtraReports, TestSize.Level1)
 {
+    int64_t now = TEST_TIME;
+    EXPECT_EQ(ReserveRecoveryEvent(directory_, RecoveryEventKind::DATABASE_CORRUPTION, now), 0);
+    EXPECT_EQ(ReserveRecoveryEvent(directory_, RecoveryEventKind::DATABASE_CORRUPTION, now), 0);
+    // Clock rolls back to before the first event; the limiter must still reject.
+    EXPECT_EQ(ReserveRecoveryEvent(directory_, RecoveryEventKind::DATABASE_CORRUPTION, TEST_TIME - 1), EAGAIN);
     EXPECT_TRUE(IsRecoveryEventRecent(TEST_TIME, TEST_TIME - 1));
     EXPECT_FALSE(IsRecoveryEventRecent(TEST_TIME, TEST_TIME + HOUR_MS));
+    // After the rolling hour window from the original event, a new report is allowed.
+    EXPECT_EQ(ReserveRecoveryEvent(directory_, RecoveryEventKind::DATABASE_CORRUPTION, TEST_TIME + HOUR_MS), 0);
 }
 } // namespace OHOS::Media

@@ -52,12 +52,13 @@ int RemoveRecoveryWindow(const RecoveryWindow &window);
 int IgnoreCompletedRecoveryWindow(const RecoveryWindow &window);
 int RunForCurrentRecoveryWindow(const RecoveryWindow &window, const std::function<int()> &operation);
 bool TryBeginDatabaseRecovery(std::atomic<bool> &restoring);
-int RunWhileDatabaseAvailable(const std::atomic<bool> &restoring, const std::function<int()> &operation);
+int RunWhileDatabaseAvailable(const std::function<bool()> &isRestoring, const std::function<int()> &operation);
 // If the task directory cannot be read, abandon this attempt and do not block backup.
 bool HasPendingRecoveryWindow(const std::string &directory);
 // Task creation and ordinary metadata writes use the same lock.
 int RunWithoutPendingRecoveryWindow(const std::string &directory, const std::function<int()> &operation);
 bool IsInRecoveryWindow(int64_t mtimeMs, const RecoveryWindow &window);
+bool IsAtOrAfterRecoveryStart(int64_t mtimeMs, const RecoveryWindow &window);
 bool ShouldApplyRecoveryJson(int64_t mtimeMs, int64_t databaseMtimeMs, const RecoveryWindow &window);
 bool ShouldScanRecoveryFile(int64_t mtimeMs, int64_t size, int64_t databaseMtimeMs, int64_t databaseSize,
     const RecoveryWindow &window);

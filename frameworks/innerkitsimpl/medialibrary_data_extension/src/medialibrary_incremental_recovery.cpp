@@ -37,6 +37,7 @@
 #include "media_path_utils.h"
 #include "media_scanner_manager.h"
 #include "media_string_utils.h"
+#include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_rdbstore.h"
@@ -58,6 +59,8 @@
 
 #ifdef MEDIALIB_RECOVERY_UNIT_TEST
 #include "incremental_recovery_test_hooks.h"
+#else
+#include "media_assets_service.h"
 #endif
 
 namespace OHOS::Media {
@@ -78,6 +81,17 @@ struct RecoveryTestPaths {
 };
 thread_local const RecoveryTestPaths *g_testPaths = nullptr;
 #endif
+
+// Snapshots taken before applying a JSON record; referenced only during this call.
+struct JsonRecoveryFiles {
+    const struct stat &jsonInfo;
+    const struct stat &fileInfo;
+};
+
+struct JsonRecoveryResult {
+    bool damaged = false;
+    bool inserted = false;
+};
 
 struct PhotoRecord {
     bool exists = false;
@@ -417,19 +431,23 @@ private:
     int32_t ProcessDirectoryEntry(fs::recursive_directory_iterator &entry, bool jsonPass,
         const RecoveryWindow &window, BucketScanState &bucket);
     int32_t ProcessJson(const std::string &path, const struct stat &info, const RecoveryWindow &window,
-        bool allowOutsideForNew = false, bool *damaged = nullptr);
+        bool allowOutsideForNew = false, JsonRecoveryResult *result = nullptr);
     int32_t ProcessFile(const std::string &path, const struct stat &info, const RecoveryWindow &window);
+    int32_t ProcessExistingFile(const std::string &path, const std::string &cloud, const struct stat &info,
+        const RecoveryWindow &window, const PhotoRecord &row);
     int32_t ProcessNewFile(const std::string &path, const std::string &cloud, const struct stat &info,
         const RecoveryWindow &window, MediaType type);
+    int32_t RecoverFileWithoutJson(const std::string &path, const std::string &cloud,
+        const struct stat &info, MediaType type);
     int32_t ApplyJson(const std::string &path, const std::string &cloudPath, const json &metadata,
-        const PhotoRecord &row, const struct stat &jsonInfo, const struct stat &fileInfo);
+        const PhotoRecord &row, const JsonRecoveryFiles &files);
     int32_t CollectJsonFields(const json &metadata, NativeRdb::ValuesBucket &values) const;
     int32_t AddJsonAlbum(const json &metadata, const PhotoRecord &row, NativeRdb::ValuesBucket &values,
         int32_t &fieldCount);
     void AddNewPhotoDefaults(const json &metadata, const std::string &cloudPath, NativeRdb::ValuesBucket &values) const;
     void SetJsonRecoveryFlags(const json &metadata, const PhotoRecord &row, NativeRdb::ValuesBucket &values) const;
     int32_t WriteJsonValues(const std::string &path, const std::string &cloudPath, const PhotoRecord &row,
-        const struct stat &jsonInfo, const struct stat &fileInfo, NativeRdb::ValuesBucket &values);
+        const JsonRecoveryFiles &files, NativeRdb::ValuesBucket &values);
     int32_t ScanOriginal(const std::string &path, const PhotoRecord &row, const struct stat &info);
     int32_t SetFallbackAlbum(const std::string &path, const PhotoRecord &row, const PhotoRecord &current);
     int32_t GetOtherAlbum(int32_t &id);
@@ -606,14 +624,14 @@ void IncrementalRecovery::SetJsonRecoveryFlags(const json &metadata, const Photo
 }
 
 int32_t IncrementalRecovery::WriteJsonValues(const std::string &path, const std::string &cloudPath,
-    const PhotoRecord &row, const struct stat &jsonInfo, const struct stat &fileInfo, NativeRdb::ValuesBucket &values)
+    const PhotoRecord &row, const JsonRecoveryFiles &files, NativeRdb::ValuesBucket &values)
 {
     struct stat currentJson {};
     struct stat currentFile {};
     const std::string local = MediaPathUtils::ConvertCloudPathToLocalPath(cloudPath);
     CHECK_AND_RETURN_RET(Allowed(), NativeRdb::E_CANCEL);
-    CHECK_AND_RETURN_RET(lstat(path.c_str(), &currentJson) == 0 && SameFile(jsonInfo, currentJson) &&
-        lstat(local.c_str(), &currentFile) == 0 && SameFile(fileInfo, currentFile), E_FILE_OPER_FAIL);
+    CHECK_AND_RETURN_RET(lstat(path.c_str(), &currentJson) == 0 && SameFile(files.jsonInfo, currentJson) &&
+        lstat(local.c_str(), &currentFile) == 0 && SameFile(files.fileInfo, currentFile), E_FILE_OPER_FAIL);
     AccurateRefresh::AssetAccurateRefresh refresh;
     int32_t ret = E_OK;
     if (row.exists) {
@@ -649,7 +667,7 @@ int32_t IncrementalRecovery::WriteJsonValues(const std::string &path, const std:
 }
 
 int32_t IncrementalRecovery::ApplyJson(const std::string &path, const std::string &cloudPath, const json &metadata,
-    const PhotoRecord &row, const struct stat &jsonInfo, const struct stat &fileInfo)
+    const PhotoRecord &row, const JsonRecoveryFiles &files)
 {
     if (IsDeletedRecoveryJson(metadata)) {
         return E_OK;
@@ -665,33 +683,45 @@ int32_t IncrementalRecovery::ApplyJson(const std::string &path, const std::strin
         AddNewPhotoDefaults(metadata, cloudPath, values);
     }
     SetJsonRecoveryFlags(metadata, row, values);
-    return WriteJsonValues(path, cloudPath, row, jsonInfo, fileInfo, values);
+    return WriteJsonValues(path, cloudPath, row, files, values);
+}
+
+static int32_t ReadPhotoRecoveryJson(const std::string &path, json &metadata,
+    std::string &cloudPath, JsonRecoveryResult *result)
+{
+    const auto jsonStatus = ReadRecoveryJsonFile(path, metadata);
+    if (result != nullptr) {
+        result->damaged = jsonStatus == RecoveryJsonStatus::INVALID;
+    }
+    CHECK_AND_RETURN_RET(jsonStatus == RecoveryJsonStatus::OK, E_FILE_OPER_FAIL);
+    auto data = metadata.find(MediaColumn::MEDIA_FILE_PATH);
+    CHECK_AND_RETURN_RET(data != metadata.end() && data->is_string(), E_INVALID_PATH);
+    cloudPath = data->get<std::string>();
+    const std::string photoRoot = ROOT_MEDIA_DIR + "Photo/";
+    CHECK_AND_RETURN_RET(MediaStringUtils::StartsWith(cloudPath, photoRoot) &&
+        fs::path(cloudPath).lexically_normal().string() == cloudPath, E_INVALID_PATH);
+    const MediaType type = MediaFileUtils::GetMediaType(cloudPath);
+    CHECK_AND_RETURN_RET(type == MEDIA_TYPE_IMAGE || type == MEDIA_TYPE_VIDEO, E_INVALID_PATH);
+    return E_OK;
 }
 
 int32_t IncrementalRecovery::ProcessJson(const std::string &path, const struct stat &info,
-    const RecoveryWindow &window, bool allowOutsideForNew, bool *damaged)
+    const RecoveryWindow &window, bool allowOutsideForNew, JsonRecoveryResult *result)
 {
+    if (result != nullptr) {
+        result->inserted = false;
+    }
     int64_t mtime = 0;
     CHECK_AND_RETURN_RET(GetFileMtime(info, mtime), E_INVALID_VALUES);
     if (!allowOutsideForNew && !IsInRecoveryWindow(mtime, window)) {
         return E_OK;
     }
     json metadata;
-    const auto jsonStatus = ReadRecoveryJsonFile(path, metadata);
-    if (damaged != nullptr) {
-        *damaged = jsonStatus == RecoveryJsonStatus::INVALID;
-    }
-    CHECK_AND_RETURN_RET(jsonStatus == RecoveryJsonStatus::OK, E_FILE_OPER_FAIL);
-    auto data = metadata.find(MediaColumn::MEDIA_FILE_PATH);
-    CHECK_AND_RETURN_RET(data != metadata.end() && data->is_string(), E_INVALID_PATH);
-    const std::string cloudPath = data->get<std::string>();
-    const std::string photoRoot = ROOT_MEDIA_DIR + "Photo/";
-    CHECK_AND_RETURN_RET(MediaStringUtils::StartsWith(cloudPath, photoRoot) &&
-        fs::path(cloudPath).lexically_normal().string() == cloudPath, E_INVALID_PATH);
-    const MediaType type = MediaFileUtils::GetMediaType(cloudPath);
-    CHECK_AND_RETURN_RET(type == MEDIA_TYPE_IMAGE || type == MEDIA_TYPE_VIDEO, E_INVALID_PATH);
+    std::string cloudPath;
+    int32_t ret = ReadPhotoRecoveryJson(path, metadata, cloudPath, result);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
     PhotoRecord row;
-    int32_t ret = QueryPhoto(cloudPath, row);
+    ret = QueryPhoto(cloudPath, row);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
     if (row.exists && (!CanProcessPhoto(row) || allowOutsideForNew ||
         !ShouldApplyRecoveryJson(mtime, row.modified, window))) {
@@ -714,7 +744,13 @@ int32_t IncrementalRecovery::ProcessJson(const std::string &path, const struct s
     if (!S_ISREG(fileInfo.st_mode)) {
         return E_OK;
     }
-    return ApplyJson(path, cloudPath, metadata, row, info, fileInfo);
+    const bool canInsert = !row.exists && !IsDeletedRecoveryJson(metadata);
+    const JsonRecoveryFiles files {info, fileInfo};
+    ret = ApplyJson(path, cloudPath, metadata, row, files);
+    if (ret == E_OK && canInsert && result != nullptr) {
+        result->inserted = true;
+    }
+    return ret;
 }
 
 int32_t IncrementalRecovery::SetFallbackAlbum(const std::string &path, const PhotoRecord &row,
@@ -788,14 +824,14 @@ int32_t IncrementalRecovery::ScanOriginal(const std::string &path, const PhotoRe
 }
 
 // A moving photo video is not a separate Photos asset. Check its image side before importing a new video.
-bool HasPossibleMovingImage(const std::string &localPath)
+static std::string FindPossibleMovingImage(const std::string &localPath)
 {
     if (!MediaFileUtils::CheckMovingPhotoVideoExtension(MediaFileUtils::GetExtensionFromPath(localPath))) {
-        return false;
+        return {};
     }
     const auto dot = localPath.find_last_of('.');
     if (dot == std::string::npos) {
-        return false;
+        return {};
     }
     const std::string stem = localPath.substr(0, dot);
     for (const auto &extension : {".jpg", ".jpeg", ".heic", ".heif", ".JPG", ".JPEG", ".HEIC", ".HEIF"}) {
@@ -803,23 +839,79 @@ bool HasPossibleMovingImage(const std::string &localPath)
         struct stat info {};
         if (MediaFileUtils::GetMovingPhotoVideoPath(image) == localPath &&
             lstat(image.c_str(), &info) == 0 && S_ISREG(info.st_mode)) {
-            return true;
+            return image;
         }
     }
-    return false;
+    return {};
 }
 
-static bool IsOriginalCandidateInWindow(const std::string &path, MediaType type, int64_t mtime,
+// A separate video record or its own JSON takes precedence over name matching.
+static int32_t HasIndependentVideo(const std::string &cloudVideo, bool &independent)
+{
+    PhotoRecord row;
+    int32_t ret = QueryPhoto(cloudVideo, row);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    independent = row.exists;
+    if (independent) {
+        return E_OK;
+    }
+    std::string jsonCloud;
+    ret = PhotoFileUtils::GetMetaPathFromOrignalPath(cloudVideo, jsonCloud);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    const std::string jsonPath = MediaPathUtils::ConvertCloudPathToLocalPath(jsonCloud);
+    CHECK_AND_RETURN_RET(!jsonPath.empty(), E_INVALID_PATH);
+    struct stat jsonInfo {};
+    if (lstat(jsonPath.c_str(), &jsonInfo) != 0) {
+        return errno == ENOENT ? E_OK : E_FILE_OPER_FAIL;
+    }
+    CHECK_AND_RETURN_RET(S_ISREG(jsonInfo.st_mode), E_FILE_OPER_FAIL);
+    json metadata;
+    const auto status = ReadRecoveryJsonFile(jsonPath, metadata);
+    CHECK_AND_RETURN_RET(status != RecoveryJsonStatus::READ_ERROR, E_FILE_OPER_FAIL);
+    auto data = metadata.find(MediaColumn::MEDIA_FILE_PATH);
+    independent = status == RecoveryJsonStatus::OK && data != metadata.end() && data->is_string() &&
+        data->get<std::string>() == cloudVideo;
+    return E_OK;
+}
+
+static int32_t SubmitMovingPhotoWithoutJson(const std::string &cloudImage, const std::string &cloudVideo, int32_t &id)
+{
+    const std::string imageName = MediaFileUtils::GetFileName(cloudImage);
+    NativeRdb::ValuesBucket values;
+    values.Put(CONST_CACHE_FILE_NAME, imageName);
+    values.Put(MEDIA_DATA_DB_NAME, imageName);
+    values.Put(CONST_ASSET_EXTENTION, MediaPathUtils::GetExtension(imageName));
+    values.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(MEDIA_TYPE_IMAGE));
+    values.Put(CONST_MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(imageName));
+    values.Put(CONST_IMPORT_CACHE_FILE_PATH, cloudImage);
+    values.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, MediaFileUtils::GetFileName(cloudVideo));
+    values.Put(CONST_COMPAT_FILE_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+#ifdef MEDIALIB_RECOVERY_UNIT_TEST
+    id = SubmitRecoveryMovingPhotoForTest(values);
+    return id > 0 ? E_OK : id;
+#else
+    SubmitCacheDto dto {};
+    dto.isOriginalImageResource = false;
+    dto.isWriteGpsAdvanced = false;
+    dto.values = values;
+    int32_t ret = MediaAssetsService::GetInstance().SubmitExistFileDBRecord(dto);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    id = dto.fileId;
+    return id > 0 ? E_OK : E_HAS_DB_ERROR;
+#endif
+}
+
+static bool IsOriginalCandidateAtOrAfterStart(const std::string &path, MediaType type, int64_t mtime,
     const RecoveryWindow &window)
 {
-    if (IsInRecoveryWindow(mtime, window)) {
+    if (IsAtOrAfterRecoveryStart(mtime, window)) {
         return true;
     }
     struct stat video {};
     int64_t videoTime = 0;
     const std::string videoPath = type == MEDIA_TYPE_IMAGE ? MediaFileUtils::GetMovingPhotoVideoPath(path) : "";
     return !videoPath.empty() && lstat(videoPath.c_str(), &video) == 0 && S_ISREG(video.st_mode) &&
-        GetFileMtime(video, videoTime) && IsInRecoveryWindow(videoTime, window);
+        GetFileMtime(video, videoTime) && IsAtOrAfterRecoveryStart(videoTime, window);
 }
 
 int32_t IncrementalRecovery::ProcessFile(const std::string &path, const struct stat &info,
@@ -834,28 +926,84 @@ int32_t IncrementalRecovery::ProcessFile(const std::string &path, const struct s
     if (type != MEDIA_TYPE_IMAGE && type != MEDIA_TYPE_VIDEO) {
         return E_OK;
     }
-    // A moving photo's video can change after its image. Avoid querying the database for
-    // an out-of-window image unless its potential video is also in the window.
-    if (!IsOriginalCandidateInWindow(path, type, mtime, window)) {
+    // A moving photo video can change after its image. Check its mtime as well.
+    if (!IsOriginalCandidateAtOrAfterStart(path, type, mtime, window)) {
         return E_OK;
     }
     PhotoRecord row;
     int32_t ret = QueryPhoto(cloud, row);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
     if (row.exists) {
-        int64_t size = info.st_size;
-        if (IsMovingPhoto(row)) {
-            CHECK_AND_RETURN_RET(GetMovingPhotoInfo(path, info, mtime, size) == E_OK, E_FILE_OPER_FAIL);
-        }
-        if (!CanProcessPhoto(row) || !ShouldScanRecoveryFile(mtime, size, row.modified, row.size, window)) {
-            return E_OK;
-        }
-        return ScanOriginal(cloud, row, info);
+        return ProcessExistingFile(path, cloud, info, window, row);
     }
-    if (!IsInRecoveryWindow(mtime, window)) {
+    if (!IsAtOrAfterRecoveryStart(mtime, window)) {
         return E_OK;
     }
     return ProcessNewFile(path, cloud, info, window, type);
+}
+
+int32_t IncrementalRecovery::ProcessExistingFile(const std::string &path, const std::string &cloud,
+    const struct stat &info, const RecoveryWindow &window, const PhotoRecord &row)
+{
+    int64_t mtime = 0;
+    CHECK_AND_RETURN_RET(GetFileMtime(info, mtime), E_INVALID_VALUES);
+    int64_t size = info.st_size;
+    if (IsMovingPhoto(row)) {
+        CHECK_AND_RETURN_RET(GetMovingPhotoInfo(path, info, mtime, size) == E_OK, E_FILE_OPER_FAIL);
+    }
+    if (!CanProcessPhoto(row) || !ShouldScanRecoveryFile(mtime, size, row.modified, row.size, window)) {
+        return E_OK;
+    }
+    return ScanOriginal(cloud, row, info);
+}
+
+int32_t IncrementalRecovery::RecoverFileWithoutJson(const std::string &path, const std::string &cloud,
+    const struct stat &info, MediaType type)
+{
+    if (type == MEDIA_TYPE_VIDEO && !FindPossibleMovingImage(path).empty()) {
+        MEDIA_DEBUG_LOG("Skip possible moving-photo companion: %{public}s", DfxUtils::GetSafePath(path).c_str());
+        return E_OK;
+    }
+    if (type != MEDIA_TYPE_IMAGE) {
+        return ScanOriginal(cloud, PhotoRecord {}, info);
+    }
+    const std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(path);
+    struct stat videoInfo {};
+    if (videoPath.empty() || lstat(videoPath.c_str(), &videoInfo) != 0) {
+        CHECK_AND_RETURN_RET(videoPath.empty() || errno == ENOENT, E_FILE_OPER_FAIL);
+        return ScanOriginal(cloud, PhotoRecord {}, info);
+    }
+    if (!S_ISREG(videoInfo.st_mode)) {
+        return ScanOriginal(cloud, PhotoRecord {}, info);
+    }
+    if (FindPossibleMovingImage(videoPath) != path) {
+        return ScanOriginal(cloud, PhotoRecord {}, info);
+    }
+    const std::string cloudVideo = MediaFileUtils::GetMovingPhotoVideoPath(cloud);
+    bool independent = false;
+    int32_t ret = HasIndependentVideo(cloudVideo, independent);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    if (independent) {
+        return ScanOriginal(cloud, PhotoRecord {}, info);
+    }
+    CHECK_AND_RETURN_RET(Allowed(), NativeRdb::E_CANCEL);
+    int32_t id = 0;
+    ret = SubmitMovingPhotoWithoutJson(cloud, cloudVideo, id);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    CHECK_AND_RETURN_RET(Allowed(), NativeRdb::E_CANCEL);
+    PhotoRecord current;
+    ret = QueryPhoto(cloud, current);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    CHECK_AND_RETURN_RET(current.exists && current.id == id &&
+        current.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) && current.pending == 0, E_HAS_DB_ERROR);
+    struct stat after {};
+    CHECK_AND_RETURN_RET(lstat(path.c_str(), &after) == 0 && SameFile(info, after), E_FILE_OPER_FAIL);
+    ret = SetFallbackAlbum(cloud, PhotoRecord {}, current);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    IncrementCount(report_->fileScanned);
+    IncrementCount(report_->fileInserted);
+    MEDIA_DEBUG_LOG("Recovered moving-photo record: %{public}s", DfxUtils::GetSafePath(cloud).c_str());
+    return E_OK;
 }
 
 int32_t IncrementalRecovery::ProcessNewFile(const std::string &path, const std::string &cloud,
@@ -869,29 +1017,30 @@ int32_t IncrementalRecovery::ProcessNewFile(const std::string &path, const std::
     struct stat jsonInfo {};
     if (lstat(jsonPath.c_str(), &jsonInfo) == 0) {
         CHECK_AND_RETURN_RET(S_ISREG(jsonInfo.st_mode), E_FILE_OPER_FAIL);
-        bool damaged = false;
-        ret = ProcessJson(jsonPath, jsonInfo, window, true, &damaged);
-        if (ret == E_OK || ret == NativeRdb::E_CANCEL || ret == NativeRdb::E_SQLITE_CORRUPT) {
+        JsonRecoveryResult result;
+        ret = ProcessJson(jsonPath, jsonInfo, window, true, &result);
+        if (ret == E_OK) {
+            if (!result.inserted) {
+                return E_OK;
+            }
+            PhotoRecord row;
+            ret = QueryPhoto(cloud, row);
+            CHECK_AND_RETURN_RET(ret == E_OK && row.exists, ret == E_OK ? E_HAS_DB_ERROR : ret);
+            return ProcessExistingFile(path, cloud, info, window, row);
+        }
+        if (ret == NativeRdb::E_CANCEL || ret == NativeRdb::E_SQLITE_CORRUPT) {
             return ret;
         }
         struct stat currentJson {};
-        if (!damaged || lstat(jsonPath.c_str(), &currentJson) != 0 ||
+        if (!result.damaged || lstat(jsonPath.c_str(), &currentJson) != 0 ||
             !SameFile(jsonInfo, currentJson)) {
             return ret;
         }
         RecordEntryFailure(*report_, true, ret, jsonPath);
-        if (type == MEDIA_TYPE_VIDEO && HasPossibleMovingImage(path)) {
-            MEDIA_DEBUG_LOG("Skip possible moving-photo companion: %{public}s", DfxUtils::GetSafePath(path).c_str());
-            return E_OK;
-        }
-        return ScanOriginal(cloud, PhotoRecord {}, info);
+        return RecoverFileWithoutJson(path, cloud, info, type);
     }
     CHECK_AND_RETURN_RET(errno == ENOENT, E_FILE_OPER_FAIL);
-    if (type == MEDIA_TYPE_VIDEO && HasPossibleMovingImage(path)) {
-        MEDIA_DEBUG_LOG("Skip possible moving-photo companion: %{public}s", DfxUtils::GetSafePath(path).c_str());
-        return E_OK;
-    }
-    return ScanOriginal(cloud, PhotoRecord {}, info);
+    return RecoverFileWithoutJson(path, cloud, info, type);
 }
 
 void IncrementalRecovery::FinishBucket(BucketScanState &bucket, bool complete)
@@ -1201,7 +1350,14 @@ void MediaLibraryMetaRecovery::StartIncrementalRecovery()
     if (!MedialibrarySubscriber::IsCurrentStatusOn()) {
         return;
     }
-    int result = RunWhileDatabaseAvailable(MediaLibraryRestore::GetInstance().isRestoring_, [this]() {
+    std::vector<RecoveryWindow> windows;
+    if (ListRecoveryWindows(RECOVERY_WINDOW_DIRECTORY, windows) == 0 && !windows.empty()) {
+        DatabaseRecoveryReport report;
+        if (LoadRecoverySummary(windows.front().path, report) == 0 && IsWaitingForDatabaseRecovery(report)) {
+            return;
+        }
+    }
+    int result = RunWhileDatabaseAvailable([] { return MediaLibraryRestore::GetInstance().IsRestoring(); }, [this]() {
         auto expected = MediaLibraryMetaRecoveryState::STATE_NONE;
         if (!recoveryState_.compare_exchange_strong(
             expected, MediaLibraryMetaRecoveryState::STATE_INCREMENTAL_RECOVERING)) {
@@ -1292,7 +1448,8 @@ int32_t MediaLibraryMetaRecovery::RunIncrementalRecovery(const std::string &dire
 {
     std::vector<RecoveryWindow> windows;
     int error = ListRecoveryWindows(directory, windows);
-    CHECK_AND_RETURN_RET_LOG(error == 0, E_FILE_OPER_FAIL, "Cannot list recovery windows, errno=%{public}d", error);
+    CHECK_AND_RETURN_RET_LOG(error == 0, E_FILE_OPER_FAIL,
+        "Cannot list recovery windows, errno=%{public}d", error);
     for (const auto &window : windows) {
         CHECK_AND_RETURN_RET(IsIncrementalRecoveryAllowed(), NativeRdb::E_CANCEL);
         DatabaseRecoveryReport report;
@@ -1303,8 +1460,6 @@ int32_t MediaLibraryMetaRecovery::RunIncrementalRecovery(const std::string &dire
             report.windowEnd = window.endMs;
             report.decision = static_cast<int32_t>(ReplicaRecoveryDecision::ALLOW);
         }
-        // A known failed Force remains pending until a later recovery makes the database usable.
-        // An unknown result after interruption follows the normal scan if the database is available.
         if (summaryError == 0 && IsWaitingForDatabaseRecovery(report)) {
             MEDIA_WARN_LOG("Incremental recovery waits for a subsequent successful database recovery");
             return NativeRdb::E_CANCEL;
@@ -1318,7 +1473,9 @@ int32_t MediaLibraryMetaRecovery::RunIncrementalRecovery(const std::string &dire
         if (ret != E_OK) {
             MEDIA_WARN_LOG("Incremental recovery cannot continue; close failed task, error=%{public}d", ret);
         }
-        int32_t finish = CompleteRecoveryWindow(window, report, [this]() { return IsIncrementalRecoveryAllowed(); });
+        int32_t finish = CompleteRecoveryWindow(window, report, [this]() {
+            return IsIncrementalRecoveryAllowed();
+        });
         CHECK_AND_RETURN_RET(finish == E_OK, finish);
         CHECK_AND_RETURN_RET(ret == E_OK, ret);
     }

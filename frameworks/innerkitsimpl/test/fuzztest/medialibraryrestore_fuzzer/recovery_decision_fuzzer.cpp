@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <fuzzer/FuzzedDataProvider.h>
@@ -29,6 +30,7 @@ namespace {
 constexpr int64_t VALID_VERSION = 1;
 constexpr int64_t VALID_SIZE = 4096;
 constexpr int64_t VALID_TIME = 1000000;
+constexpr int64_t MAX_REPLICA_GAP_MS = 72LL * 60 * 60 * 1000;
 constexpr int BUCKET_SAMPLES = 3;
 constexpr size_t MAX_BUCKET_NAME = 64;
 
@@ -74,8 +76,13 @@ void FuzzDiagnosisAndForce(FuzzedDataProvider &input)
     }
     auto decision = OHOS::Media::CheckReplicaRecovery(diagnosticError, info, expectedVersion);
     const bool eligible = decision == OHOS::Media::ReplicaRecoveryDecision::ALLOW;
-    if (eligible && info.GetReplicaLastModifyTime() > info.GetPrimaryLastModifyTime()) {
-        __builtin_trap();
+    if (eligible) {
+        const int64_t primaryTime = info.GetPrimaryLastModifyTime();
+        const int64_t replicaTime = info.GetReplicaLastModifyTime();
+        if (primaryTime <= 0 || replicaTime <= 0 ||
+            std::max(primaryTime, replicaTime) - std::min(primaryTime, replicaTime) > MAX_REPLICA_GAP_MS) {
+            __builtin_trap();
+        }
     }
     const int error = input.ConsumeIntegral<int>();
     int forceCalls = 0;
@@ -110,7 +117,9 @@ void FuzzWindow(FuzzedDataProvider &input)
     const int64_t databaseTime = input.ConsumeIntegral<int64_t>();
     const int64_t databaseSize = input.ConsumeIntegral<int64_t>();
     const bool inWindow = OHOS::Media::IsInRecoveryWindow(mtime, window);
-    if (!inWindow && (OHOS::Media::ShouldApplyRecoveryJson(mtime, databaseTime, window) ||
+    const bool atOrAfterStart = OHOS::Media::IsAtOrAfterRecoveryStart(mtime, window);
+    if ((!inWindow && OHOS::Media::ShouldApplyRecoveryJson(mtime, databaseTime, window)) ||
+        (!atOrAfterStart &&
         OHOS::Media::ShouldScanRecoveryFile(mtime, sizeOnDisk, databaseTime, databaseSize, window))) {
         __builtin_trap();
     }

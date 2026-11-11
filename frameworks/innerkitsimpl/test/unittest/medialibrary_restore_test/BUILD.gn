@@ -31,6 +31,8 @@ ohos_unittest("medialibrary_restore_test") {
     "${MEDIALIB_UTILS_PATH}/include",
   ]
 
+  cflags_cc = [ "-fno-access-control" ]
+
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_restore_test.cpp",
