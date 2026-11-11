@@ -45,6 +45,7 @@ private:
     EXPORT int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
 
 public:
+    EXPORT UnifiedIPCClient();
     EXPORT UnifiedIPCClient &SetTraceId(const std::string &traceId);
     EXPORT std::string GetTraceId() const;
     EXPORT UnifiedIPCClient &SetUserId(const int32_t &userId);
