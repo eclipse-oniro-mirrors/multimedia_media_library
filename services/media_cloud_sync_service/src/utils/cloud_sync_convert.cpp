@@ -402,9 +402,11 @@ static bool ComputeRiskFromScaDetailList(const std::vector<ScaDetailDataDto> &sc
 int32_t CloudSyncConvert::CompensateAssetShareRisk(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
+    int32_t shareType = CloudMediaContext::GetInstance().GetSceneType();
+    CHECK_AND_RETURN_RET(shareType == static_cast<int32_t>(SceneType::SHARE), E_OK);
     int32_t shareRiskStatus = -1;
     std::string shareRiskType;
-    if (data.sharePhotoDetailDtoOp.has_value()) {
+    if (!data.sharePhotoDetailDtoOp.has_value()) {
         MEDIA_ERR_LOG("CompensateAssetShareRisk: no share photo detail, cloudId:%{public}s",
             data.cloudId.c_str());
         return E_CLOUDSYNC_INVAL_ARG;
