@@ -266,10 +266,11 @@ HWTEST_F(MediaLibraryAlbumFusionUtilsTest, AlbumFusionUtils_test_004, TestSize.L
     MediaLibraryAlbumFusionUtils::CopyLocalSingleFile(rdbStorePtr, ALBUM_NUM, resultSet,
         assetId, displayName);
 
-    MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(upgradeStore, assetId, ALBUM_NUM,
-        resultSet, assetId);
-    MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(rdbStorePtr, assetId, ALBUM_NUM,
-        resultSet, assetId);
+    MediaLibraryAlbumFusionUtils::CloudCopyParam cloudParam;
+    cloudParam.assetId = static_cast<int32_t>(assetId);
+    cloudParam.ownerAlbumId = ALBUM_NUM;
+    MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(upgradeStore, cloudParam, resultSet);
+    MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(rdbStorePtr, cloudParam, resultSet);
 
     MediaLibraryAlbumFusionUtils::SetRefreshAlbum(true);
     MediaLibraryAlbumFusionUtils::SetRefreshAlbum(false);

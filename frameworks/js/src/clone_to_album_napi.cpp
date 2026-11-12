@@ -303,7 +303,8 @@ napi_value GetNapiValueArray(napi_env env, napi_value arg, vector<napi_value> &v
     return result;
 }
 
-static napi_value ParseFileAssetArray(napi_env env, napi_value arg, std::vector<std::string>& assetArray)
+static napi_value ParseFileAssetArray(napi_env env, napi_value arg, std::vector<std::string>& assetArray,
+    bool isSupportCloudClone = false)
 {
     vector<napi_value> napiValues;
     napi_valuetype valueType = napi_undefined;
@@ -319,9 +320,12 @@ static napi_value ParseFileAssetArray(napi_env env, napi_value arg, std::vector<
         //待复制资产是否是隐藏或回收站资产,或是纯云资产
         CHECK_COND_WITH_ERR_MESSAGE(env, !fileAsset->IsHidden(), JS_E_PARAM_INVALID, "asset is hidden");
         CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset->GetIsTrash() == 0, JS_E_PARAM_INVALID, "asset is in trash");
-        CHECK_COND_WITH_ERR_MESSAGE(env,
-            fileAsset->GetPosition() != static_cast<int32_t>(PhotoPositionType::CLOUD), JS_E_PARAM_INVALID,
-            "asset is pure cloud");
+        //cloneToAlbum接口支持纯云资产复制
+        if (!isSupportCloudClone) {
+            CHECK_COND_WITH_ERR_MESSAGE(env,
+                fileAsset->GetPosition() != static_cast<int32_t>(PhotoPositionType::CLOUD), JS_E_PARAM_INVALID,
+                "asset is pure cloud");
+        }
         assetArray.push_back(fileAsset->GetUri());
     }
     RETURN_NAPI_TRUE(env);
@@ -383,7 +387,7 @@ napi_value MediaLibraryNapi::JSCloneToAlbum(napi_env env, napi_callback_info inf
     CHECK_COND_RET(status == napi_ok, nullptr, "Failed to get object info");
 
     std::vector<std::string> assetArray;
-    CHECK_COND_WITH_ERR_MESSAGE(env, ParseFileAssetArray(env, ctx->argv[PARAM0], ctx->cloneCtx.fileUris),
+    CHECK_COND_WITH_ERR_MESSAGE(env, ParseFileAssetArray(env, ctx->argv[PARAM0], ctx->cloneCtx.fileUris, true),
         JS_E_PARAM_INVALID, "Failed to parse assets");
 
     shared_ptr<PhotoAlbum> targetAlbum = nullptr;

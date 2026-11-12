@@ -667,18 +667,19 @@ struct MediaAssetCopyInfo {
     std::string shareAlbumOwner = "";
     int64_t shareDateDay {0};
     int64_t shareGroup {0};
+    bool keepBurstSubtype {false};
     MediaAssetCopyInfo(const std::string& targetPath, bool isCopyThumbnail, int32_t ownerAlbumId,
         const std::string& displayName = "", bool isCopyDateAdded = true, bool isCopyCeAvailable = false,
         bool isCopyPackageName = true, bool isCopyOwnerPackage = true, bool isCopyFileManger = false,
         const std::string& targetRealPath = "", bool supportRename = true, bool isShareAlbum = false,
         const std::string& shareOwnerInfo = "", const std::string& shareAlbumOwner = "",
-        int64_t shareDateDay = 0, int64_t shareGroup = 0)
+        int64_t shareDateDay = 0, int64_t shareGroup = 0, bool keepBurstSubtype = false)
         : targetPath(targetPath), isCopyThumbnail(isCopyThumbnail), ownerAlbumId(ownerAlbumId),
         displayName(displayName), isCopyDateAdded(isCopyDateAdded), isCopyCeAvailable(isCopyCeAvailable),
         isCopyPackageName(isCopyPackageName), isCopyOwnerPackage(isCopyOwnerPackage),
         isCopyFileManger(isCopyFileManger), targetRealPath(targetRealPath), supportRename(supportRename),
         isShareAlbum(isShareAlbum), shareOwnerInfo(shareOwnerInfo), shareAlbumOwner(shareAlbumOwner),
-        shareDateDay(shareDateDay), shareGroup(shareGroup) {}
+        shareDateDay(shareDateDay), shareGroup(shareGroup), keepBurstSubtype(keepBurstSubtype) {}
 };
 
 static void HandleLowQualityAssetValuesBucket(shared_ptr<NativeRdb::ResultSet>& resultSet,
@@ -742,11 +743,11 @@ static string GetOwnerPackage()
 }
 
 static void HandleBurstPhotoSubtype(shared_ptr<NativeRdb::ResultSet>& resultSet,
-    NativeRdb::ValuesBucket& values, bool isShareAlbum)
+    NativeRdb::ValuesBucket& values, bool isShareAlbum, bool keepBurstSubtype = false)
 {
     int32_t subType = -1;
     GetIntValueFromResultSet(resultSet, PhotoColumn::PHOTO_SUBTYPE, subType);
-    if (subType == static_cast<int32_t>(PhotoSubType::BURST) && !isShareAlbum) {
+    if (subType == static_cast<int32_t>(PhotoSubType::BURST) && !isShareAlbum && !keepBurstSubtype) {
         values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     }
 }
@@ -907,17 +908,21 @@ static void HandleCopyFieldOverrides(NativeRdb::ValuesBucket &values,
     values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
 }
 
+static std::string GetOriginalAssetCloudId(shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    std::string cloudId = "";
+    GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_CLOUD_ID, cloudId);
+    if (cloudId.empty()) {
+        GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
+    }
+    return cloudId;
+}
+
 static void HandleCloudCopyFields(NativeRdb::ValuesBucket &values,
     shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     // Indicate original file cloud_id for cloud copy
-    std::string cloudId = "";
-    GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_CLOUD_ID, cloudId);
-    if (cloudId.empty()) {
-        // copy from copyed asset, may not synced, need copy from original asset
-        GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
-    }
-    values.PutString(PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
+    values.PutString(PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, GetOriginalAssetCloudId(resultSet));
     values.PutInt(PhotoColumn::PHOTO_POSITION, POSITION_CLOUD_FLAG);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, CLOUD_COPY_DIRTY_FLAG);
 }
@@ -951,7 +956,7 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
         HandleCloudCopyFields(values, resultSet);
     }
     HandleCopyFieldOverrides(values, resultSet, copyInfo);
-    HandleBurstPhotoSubtype(resultSet, values, copyInfo.isShareAlbum);
+    HandleBurstPhotoSubtype(resultSet, values, copyInfo.isShareAlbum, copyInfo.keepBurstSubtype);
     HandleLowQualityAssetValuesBucket(resultSet, values);
     HandleTempFileAssetValuesBucket(resultSet, values);
     HandleCeAvailableValuesBucket(copyInfo, resultSet, values);
@@ -990,6 +995,8 @@ struct MediaAssetInfo {
     int32_t ownerAlbumId = -1;
     std::string targetPath = "";
     bool isShareAlbum = false;
+    int32_t position = -1;
+    bool isSupportCloudClone = false;
 };
 
 static int32_t UpdateRelationship(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const MediaAssetInfo &assetInfo,
@@ -1359,8 +1366,9 @@ static int32_t CopyLocalSingleFileSync(shared_ptr<AccurateRefresh::AssetAccurate
 
     //刷新状态
     err = UpdateCopyInfo(upgradeStore, {prepareResult.assetId, targetAssetInfo.newAssetId, ownerAlbumId,
-	    targetAssetInfo.targetRealPath, targetAssetInfo.isShareAlbumTarget}, targetAssetInfo.cloneCallbackType,
-        resultSet, assetRefresh);
+	    targetAssetInfo.targetRealPath, targetAssetInfo.isShareAlbumTarget, targetAssetInfo.position,
+	    targetAssetInfo.isSupportCloudClone},
+        targetAssetInfo.cloneCallbackType, resultSet, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, FinishCloneWithCleanup(upgradeStore, prepareResult.pendingFileId, E_OK),
         "Failed to update copy info, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
         "ownerAlbumId: %{public}d, ret = %{public}d", prepareResult.assetId, targetAssetInfo.newAssetId,
@@ -1381,15 +1389,15 @@ void MediaLibraryAlbumFusionUtils::SetRefreshAlbum(bool needRefresh)
 }
 
 int32_t MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,
-    const int32_t &assetId, const int32_t &ownerAlbumId, shared_ptr<NativeRdb::ResultSet> &resultSet,
-    int64_t &newAssetId)
+    CloudCopyParam &param, shared_ptr<NativeRdb::ResultSet> &resultSet,
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh)
 {
     if (upgradeStore == nullptr) {
         MEDIA_INFO_LOG("fail to get rdbstore");
         return E_DB_FAIL;
     }
     MEDIA_INFO_LOG("Begin copy cloud file, fileId is %{public}d, and target album is %{public}d",
-        assetId, ownerAlbumId);
+        param.assetId, param.ownerAlbumId);
     std::string srcPath = "";
     std::string targetPath = "";
     GetSourceFilePath(srcPath, resultSet);
@@ -1408,7 +1416,8 @@ int32_t MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(const std::shared_ptr<
     int32_t err = CopyOriginThumbnail(srcPath, targetPath);
     CHECK_AND_RETURN_RET(err == E_OK, err);
 
-    MediaAssetCopyInfo copyInfo(targetPath, true, ownerAlbumId);
+    MediaAssetCopyInfo copyInfo(targetPath, true, param.ownerAlbumId, "", true, false, true, true, false, "", true,
+        false, "", "", 0, 0, param.keepBurstSubtype);
     NativeRdb::ValuesBucket values;
     err = BuildInsertValuesBucket(upgradeStore, values, resultSet, copyInfo);
     if (err != E_OK) {
@@ -1416,17 +1425,17 @@ int32_t MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(const std::shared_ptr<
         DeleteThumbnail(targetPath);
         return err;
     }
-    err = copyMetaData(upgradeStore, newAssetId, values);
+    err = copyMetaData(upgradeStore, param.newAssetId, values);
     if (err != E_OK) {
         // If insert fails, delete the moved file to avoid wasted space
         MEDIA_ERR_LOG("Build meta data fail and delete migrated file %{public}s ", targetPath.c_str());
         DeleteThumbnail(targetPath);
         return err;
     }
-    ThumbnailService::GetInstance()->CreateAstcCloudDownload(to_string(newAssetId), true);
-    err = UpdateRelationship(upgradeStore, {assetId, newAssetId, ownerAlbumId});
+    ThumbnailService::GetInstance()->CreateAstcCloudDownload(to_string(param.newAssetId), true);
+    err = UpdateRelationship(upgradeStore, {param.assetId, param.newAssetId, param.ownerAlbumId}, assetRefresh);
     CHECK_AND_RETURN_RET(err == E_OK, err);
-    UpdateCoverInfoForAlbum(upgradeStore, assetId, ownerAlbumId, newAssetId, targetPath);
+    UpdateCoverInfoForAlbum(upgradeStore, param.assetId, param.ownerAlbumId, param.newAssetId, targetPath);
     return E_OK;
 }
 
@@ -1854,7 +1863,10 @@ int32_t MediaLibraryAlbumFusionUtils::HandleRestData(const std::shared_ptr<Media
         MEDIA_INFO_LOG("file is cloud asset %{public}d", assetId);
         // skip first one, already handled
         for (size_t i = 0; i < restOwnerAlbumIds.size(); i++) {
-            int32_t err = CopyCloudSingleFile(upgradeStore, assetId, restOwnerAlbumIds[i], resultSet, newAssetId);
+            MediaLibraryAlbumFusionUtils::CloudCopyParam param;
+            param.assetId = assetId;
+            param.ownerAlbumId = restOwnerAlbumIds[i];
+            int32_t err = CopyCloudSingleFile(upgradeStore, param, resultSet);
             if (err != E_OK) {
                 MEDIA_WARN_LOG("Copy cloud file fails, fileId is %{public}d", assetId);
                 continue;
@@ -1902,7 +1914,11 @@ int32_t MediaLibraryAlbumFusionUtils::HandleSingleFileCopy(const shared_ptr<Medi
     if (isLocalAsset(resultSet)) {
         err = CopyLocalSingleFile(upgradeStore, ownerAlbumId, resultSet, newAssetId);
     } else {
-        err = CopyCloudSingleFile(upgradeStore, assetId, ownerAlbumId, resultSet, newAssetId);
+        MediaLibraryAlbumFusionUtils::CloudCopyParam param;
+        param.assetId = assetId;
+        param.ownerAlbumId = ownerAlbumId;
+        err = CopyCloudSingleFile(upgradeStore, param, resultSet);
+        newAssetId = param.newAssetId;
     }
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Copy file fails, is file local : %{public}d,"
         " fileId is %{public}d", isLocalAsset(resultSet), assetId);
@@ -2620,8 +2636,10 @@ static void HandleNewCloudDirtyDataImp(const std::shared_ptr<MediaLibraryRdbStor
         MEDIA_INFO_LOG("File is cloud asset %{public}d", assetId);
         // skip first one, already handled
         for (size_t i = 0; i < restOwnerAlbumIds.size(); i++) {
-            int32_t err = MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(upgradeStore,
-                assetId, restOwnerAlbumIds[i], resultSet, newAssetId);
+            MediaLibraryAlbumFusionUtils::CloudCopyParam param;
+            param.assetId = assetId;
+            param.ownerAlbumId = restOwnerAlbumIds[i];
+            int32_t err = MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(upgradeStore, param, resultSet);
             if (err != E_OK) {
                 MEDIA_WARN_LOG("Copy cloud file fails, fileId is %{public}d", assetId);
                 continue;
@@ -3150,6 +3168,8 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
     targetAssetInfo.shareAlbumOwner = cloneAssetInfo.shareAlbumOwner;
     targetAssetInfo.shareDateDay = cloneAssetInfo.shareDateDay;
     targetAssetInfo.shareGroup = cloneAssetInfo.shareGroup;
+    targetAssetInfo.position = cloneAssetInfo.position;
+    targetAssetInfo.isSupportCloudClone = cloneAssetInfo.isSupportCloudClone;
     err = CopyLocalSingleFileSync(assetRefresh, targetAlbumId, resultSet, targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err,
         "Clone local asset failed, ret = %{public}d, assetId = %{public}" PRId64, err, cloneAssetInfo.fileId);
@@ -3160,6 +3180,55 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
     SendNewAssetNotify(newFileAssetUri, rdbStore, assetRefresh);
     newAssetIds = std::to_string(targetAssetInfo.newAssetId);
     MEDIA_INFO_LOG("End clone asset, newAssetId = %{public}lld", (long long)targetAssetInfo.newAssetId);
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumFusionUtils::CloneCloudAsset(const CloneAssetInfo &cloneAssetInfo, int64_t &newAssetId)
+{
+    auto upgradeStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(upgradeStore != nullptr, E_DB_FAIL, "fail to get rdbstore");
+
+    const std::string queryAssetSql = "SELECT * FROM Photos WHERE file_id = ?";
+    std::vector<NativeRdb::ValueObject> params = { cloneAssetInfo.fileId };
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = upgradeStore->QuerySql(queryAssetSql, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK, E_DB_FAIL,
+        "Query clone cloud asset failed, assetId: %{public}" PRId64, cloneAssetInfo.fileId);
+    int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
+    if (position != POSITION_CLOUD_FLAG) {
+        resultSet->Close();
+        MEDIA_ERR_LOG("Asset is not pure cloud, position: %{public}d, assetId: %{public}" PRId64,
+            position, cloneAssetInfo.fileId);
+        return E_SCENE_PARAM_INVALID;
+    }
+
+    // 纯云资产（position = 2）走云端复制，真实文件由云侧直接复制
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>(
+        AccurateRefresh::CLONE_SINGLE_ASSET_BUSSINESS_NAME);
+    CloudCopyParam param;
+    param.assetId = static_cast<int32_t>(cloneAssetInfo.fileId);
+    param.ownerAlbumId = cloneAssetInfo.albumId;
+    param.keepBurstSubtype = true;
+    int32_t err = CopyCloudSingleFile(upgradeStore, param, resultSet, assetRefresh);
+    newAssetId = param.newAssetId;
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Copy cloud single file failed, ret = %{public}d", err);
+    MEDIA_INFO_LOG("Clone cloud asset success, srcAssetId: %{public}" PRId64 ", newAssetId: %{public}" PRId64,
+        cloneAssetInfo.fileId, newAssetId);
+    if (newAssetId > 0) {
+        const std::string queryNewAssetSql = "SELECT * FROM Photos WHERE file_id = ?";
+        std::vector<NativeRdb::ValueObject> newParams = { newAssetId };
+        std::shared_ptr<NativeRdb::ResultSet> newResultSet = upgradeStore->QuerySql(queryNewAssetSql, newParams);
+        if (newResultSet != nullptr && newResultSet->GoToFirstRow() == NativeRdb::E_OK) {
+            std::string newFilePath = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, newResultSet);
+            std::string newDisplayName = GetStringVal(MediaColumn::MEDIA_NAME, newResultSet);
+            std::string newFileAssetUri = MediaFileUtils::GetFileAssetUri(
+                newFilePath, newDisplayName, static_cast<int32_t>(newAssetId));
+            SendNewAssetNotify(newFileAssetUri, upgradeStore, assetRefresh);
+        }
+        if (newResultSet != nullptr) {
+            newResultSet->Close();
+        }
+    }
     return E_OK;
 }
 
