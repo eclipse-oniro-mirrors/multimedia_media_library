@@ -27,6 +27,7 @@
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_command.h"
+#include "medialibrary_data_manager_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_type_const.h"
@@ -45,6 +46,7 @@
 #include "multistages_capture_request_task_manager.h"
 #include "request_policy.h"
 #include "result_set_utils.h"
+#include "userfile_manager_types.h"
 #include "userfilemgr_uri.h"
 #include "medialibrary_transcode_data_aging_operation.h"
 #include "media_edit_utils.h"
@@ -92,8 +94,15 @@ shared_ptr<OHOS::NativeRdb::ResultSet> MultiStagesPhotoCaptureManager::HandleMul
 {
     switch (cmd.GetOprnType()) {
         case OperationType::PROCESS_IMAGE: {
-            int fileId = std::stoi(columns[0]); // 0 indicates file id
-            int deliveryMode = std::stoi(columns[1]); // 1 indicates delivery mode
+            CHECK_AND_RETURN_RET_LOG(columns.size() >= 2, nullptr, "columns size is invalid"); // 2: id and mode
+            string fileIdStr = columns[0]; // 0 indicates file id
+            string deliveryModeStr = columns[1]; // 1 indicates delivery mode
+            CHECK_AND_RETURN_RET_LOG(MediaLibraryDataManagerUtils::IsNumber(fileIdStr) &&
+                fileIdStr.length() <= MAX_INT32_STR_LEN, nullptr, "file id is invalid");
+            CHECK_AND_RETURN_RET_LOG(MediaLibraryDataManagerUtils::IsNumber(deliveryModeStr) &&
+                deliveryModeStr.length() <= MAX_INT32_STR_LEN, nullptr, "delivery mode is invalid");
+            int fileId = stoi(fileIdStr);
+            int deliveryMode = stoi(deliveryModeStr);
             ProcessImage(fileId, deliveryMode);
             MultiStagesCaptureDfxTriggerRatio::GetInstance().SetTrigger(MultiStagesCaptureTriggerType::THIRD_PART);
             break;

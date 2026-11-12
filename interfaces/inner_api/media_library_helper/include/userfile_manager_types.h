@@ -245,6 +245,8 @@ enum class VideoEnhancementType : int32_t {
 };
 
 const std::string URI_PARAM_API_VERSION = "api_version";
+constexpr size_t MAX_INT32_STR_LEN = 9; // max digits of int32_t, prevent stoi out_of_range
+constexpr size_t MAX_API_VERSION_LEN = MAX_INT32_STR_LEN;
 
 enum class MediaLibraryApi : uint32_t {
     API_START = 8,

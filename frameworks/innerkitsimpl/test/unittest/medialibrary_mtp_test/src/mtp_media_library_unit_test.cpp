@@ -16,8 +16,11 @@
 #include <cstdlib>
 #include <thread>
 #include <unistd.h>
+#include <fstream>
+#include <system_error>
 #include "mtp_media_library_unit_test.h"
 #include "mtp_media_library.h"
+#include "fdsan_fd.h"
 #include "medialibrary_errno.h"
 #include "media_log.h"
 #include "mtp_storage_manager.h"
@@ -27,6 +30,7 @@
 
 using namespace std;
 using namespace testing::ext;
+namespace sf = std::filesystem;
 
 namespace OHOS {
 namespace Media {
@@ -886,9 +890,10 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_039, TestSi
     uint32_t handle = 0;
     mtpMediaLib_->GetIdByPath(FILE_PATH, handle);
     context->handle = handle;
-    int32_t outFd = 0;
-    mtpMediaLib_->GetFd(context, outFd);
-    int32_t result = mtpMediaLib_->CloseFd(context,outFd);
+    int32_t rawFd = 0;
+    mtpMediaLib_->GetFd(context, rawFd);
+    FdsanFd outFd(rawFd);
+    int32_t result = mtpMediaLib_->CloseFd(context, outFd);
     EXPECT_NE(result, MTP_SUCCESS);
 }
 
@@ -944,8 +949,9 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_041, TestSi
     uint32_t handle = 0;
     mtpMediaLib_->GetIdByPath(FILE_PATH, handle);
     context->handle = handle;
-    int32_t outFd = 0;
-    mtpMediaLib_->GetFd(context, outFd);
+    int32_t rawFd = 0;
+    mtpMediaLib_->GetFd(context, rawFd);
+    FdsanFd outFd(rawFd);
     int32_t result = mtpMediaLib_->CloseFd(context, outFd);
     EXPECT_NE(result, MTP_SUCCESS);
 }
@@ -1035,8 +1041,9 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_048, TestSi
     uint32_t handle = 0;
     mtpMediaLib_->GetIdByPath(FILE_PATH, handle);
     context->handle = handle;
-    int32_t outFd = 0;
-    mtpMediaLib_->GetFd(context, outFd);
+    int32_t rawFd = 0;
+    mtpMediaLib_->GetFd(context, rawFd);
+    FdsanFd outFd(rawFd);
     int32_t errcode = 1;
     errcode = mtpMediaLib_->CloseFd(context, outFd);
     EXPECT_NE(errcode, MTP_SUCCESS);
@@ -1428,7 +1435,7 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_066, TestSi
 
     std::string root = FILE_PATH;
     std::shared_ptr<UInt32List> out = nullptr;
-    int32_t errcode = 0;
+    uint32_t errcode = 0;
     errcode = mtpMediaLib_->ScanDirNoDepth(root, out);
     EXPECT_EQ(errcode, E_ERR);
 }
@@ -2372,72 +2379,6 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_106, TestSi
  * SubFunction: NA
  * FunctionPoints: NA
  * EnvConditions: NA
- * CaseDescription: GetFd CondCloseFd
- */
-HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_107, TestSize.Level1)
-{
-    ASSERT_NE(mtpMediaLib_, nullptr);
-    mtpMediaLib_->Clear();
-    std::shared_ptr<MtpOperationContext> context = nullptr;
-    bool condition = false;
-    int fd = 0;
-    mtpMediaLib_->CondCloseFd(condition, fd);
-
-    int32_t outFd = 0;
-    int32_t errcode = mtpMediaLib_->GetFd(context, outFd);
-    EXPECT_EQ(errcode, MTP_ERROR_STORE_NOT_AVAILABLE);
-}
-
-/*
- * Feature: MediaLibraryMTP
- * Function:
- * SubFunction: NA
- * FunctionPoints: NA
- * EnvConditions: NA
- * CaseDescription: GetFd CondCloseFd
- */
-HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_108, TestSize.Level1)
-{
-    ASSERT_NE(mtpMediaLib_, nullptr);
-    mtpMediaLib_->Clear();
-    std::shared_ptr<MtpOperationContext> context = nullptr;
-    bool condition = true;
-    int fd = 0;
-    mtpMediaLib_->CondCloseFd(condition, fd);
-
-    int32_t outFd = 0;
-    int32_t errcode = mtpMediaLib_->GetFd(context, outFd);
-    EXPECT_EQ(errcode, MTP_ERROR_STORE_NOT_AVAILABLE);
-}
-
-/*
- * Feature: MediaLibraryMTP
- * Function:
- * SubFunction: NA
- * FunctionPoints: NA
- * EnvConditions: NA
- * CaseDescription: GetFd CondCloseFd
- */
-HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_109, TestSize.Level1)
-{
-    ASSERT_NE(mtpMediaLib_, nullptr);
-    mtpMediaLib_->Clear();
-    std::shared_ptr<MtpOperationContext> context = nullptr;
-    bool condition = false;
-    int fd = 1;
-    mtpMediaLib_->CondCloseFd(condition, fd);
-
-    int32_t outFd = 0;
-    int32_t errcode = mtpMediaLib_->GetFd(context, outFd);
-    EXPECT_EQ(errcode, MTP_ERROR_STORE_NOT_AVAILABLE);
-}
-
-/*
- * Feature: MediaLibraryMTP
- * Function:
- * SubFunction: NA
- * FunctionPoints: NA
- * EnvConditions: NA
  * CaseDescription: GetGalleryObjectInfo
  */
 HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_110, TestSize.Level1)
@@ -2740,6 +2681,744 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_121, TestSi
     int32_t errcode = -1;
     errcode = mtpMediaLib_->GetObjectPropValue(context, outIntVal, outLongVal, outStrVal);
     EXPECT_EQ(errcode, MTP_SUCCESS);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: IsPathInMtpRoot
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: normal basename under mtp root should succeed and return valid handle
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_122, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    context->format = MTP_FORMAT_TEXT_CODE;
+    context->name = "1.txt";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_SUCCESS);
+    EXPECT_NE(outHandle, 0);
+    EXPECT_EQ(outStorageID, context->storageID);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: IsPathInMtpRoot
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: name ".." from a child dir resolves to storage root itself and must be rejected
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_123, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    // STORAGE_FILE is a direct child of the mtp root, so ".." resolves to the root itself
+    mtpMediaLib_->ObserverAddPathToMap(STORAGE_FILE);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(STORAGE_FILE, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = parent;
+    context->format = MTP_FORMAT_ASSOCIATION_CODE;
+    context->name = "..";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_ERROR_STORE_NOT_AVAILABLE);
+    EXPECT_EQ(outHandle, 0);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: IsPathInMtpRoot
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: name ".." from storage root escapes to parent dir and must be rejected
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_124, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    context->format = MTP_FORMAT_ASSOCIATION_CODE;
+    context->name = "..";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_ERROR_STORE_NOT_AVAILABLE);
+    EXPECT_EQ(outHandle, 0);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: ContainsInvalidName
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: names containing ".." combinations must be rejected
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_125, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::vector<std::string> invalidNames = { "../..", "a/../.." };
+    for (const auto &invalidName : invalidNames) {
+        std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+        ASSERT_NE(context, nullptr);
+        context->storageID = INNER_STORAGE_ID;
+        context->parent = 0;
+        context->format = MTP_FORMAT_TEXT_CODE;
+        context->name = invalidName;
+
+        uint32_t outStorageID = 0;
+        uint32_t outParent = 0;
+        uint32_t outHandle = 0;
+        int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+        EXPECT_EQ(result, MTP_ERROR_STORE_NOT_AVAILABLE) << "name: " << invalidName;
+        EXPECT_EQ(outHandle, 0) << "name: " << invalidName;
+    }
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: ContainsInvalidName
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: name with "../" prefix must be rejected by ContainsInvalidName
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_126, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    context->format = MTP_FORMAT_TEXT_CODE;
+    context->name = "../etc/passwd";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_ERROR_STORE_NOT_AVAILABLE);
+    EXPECT_EQ(outHandle, 0);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: IsPathInMtpRoot
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: name "." canonicalizes to storage root itself and must be rejected
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_127, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    context->format = MTP_FORMAT_ASSOCIATION_CODE;
+    context->name = ".";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_ERROR_STORE_NOT_AVAILABLE);
+    EXPECT_EQ(outHandle, 0);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: IsPathInMtpRoot
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: multi-level legal subpath under mtp root should succeed
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_128, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    mtpMediaLib_->ObserverAddPathToMap(FILE_PATH);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(FILE_PATH, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = parent;
+    context->format = MTP_FORMAT_TEXT_CODE;
+    context->name = "sub.txt";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_SUCCESS);
+    EXPECT_NE(outHandle, 0);
+    EXPECT_EQ(outStorageID, context->storageID);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: IsPathInMtpRoot
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: empty storageIdToPathMap must reject all SendObjectInfo requests
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_129, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    // storage root parent: GetPathByContextParent fails on empty storageIdToPathMap
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    context->format = MTP_FORMAT_TEXT_CODE;
+    context->name = "1.txt";
+
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_EQ(result, MTP_ERROR_STORE_NOT_AVAILABLE);
+    EXPECT_EQ(outHandle, 0);
+
+    // registered parent: IsPathInMtpRoot rejects on empty storageIdToPathMap
+    mtpMediaLib_->ObserverAddPathToMap(FILE_PATH);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(FILE_PATH, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> childContext = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(childContext, nullptr);
+    childContext->storageID = INNER_STORAGE_ID;
+    childContext->parent = parent;
+    childContext->format = MTP_FORMAT_TEXT_CODE;
+    childContext->name = "1.txt";
+
+    uint32_t childOutStorageID = 0;
+    uint32_t childOutParent = 0;
+    uint32_t childOutHandle = 0;
+    int32_t childResult = mtpMediaLib_->SendObjectInfo(childContext, childOutStorageID, childOutParent,
+        childOutHandle);
+    EXPECT_EQ(childResult, MTP_ERROR_STORE_NOT_AVAILABLE);
+    EXPECT_EQ(childOutHandle, 0);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath (CopyGalleryPhoto callpoint semantics, host-controlled name)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: normal name and ".hidden" name in CopyGalleryPhoto are allowed and copied
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_130, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    std::string srcFile1 = FILE_PATH + "/src_130_normal.jpg";
+    std::string srcFile2 = FILE_PATH + "/src_130_hidden.jpg";
+    {
+        std::ofstream ofs1(srcFile1);
+        ofs1 << "normal";
+        std::ofstream ofs2(srcFile2);
+        ofs2 << "hidden";
+    }
+    ASSERT_TRUE(sf::exists(srcFile1));
+    ASSERT_TRUE(sf::exists(srcFile2));
+    PathMap paths;
+    paths[srcFile1] = "normal_130.jpg";
+    paths[srcFile2] = ".hidden_130.jpg";
+    uint32_t outObjectHandle = 0;
+    int32_t res = mtpMediaLib_->CopyGalleryPhoto(context, paths, outObjectHandle);
+    sf::remove(srcFile1);
+    sf::remove(srcFile2);
+    EXPECT_EQ(res, MTP_SUCCESS);
+    // both names allowed (".hidden" is a legal basename), copies landed under STORAGE_FILE
+    // CopyGalleryPhoto assigns outObjectHandle per copy (last one wins), both non-zero
+    EXPECT_NE(outObjectHandle, 0);
+    EXPECT_TRUE(sf::exists(STORAGE_FILE + "/normal_130.jpg"));
+    EXPECT_TRUE(sf::exists(STORAGE_FILE + "/.hidden_130.jpg"));
+    sf::remove(STORAGE_FILE + "/normal_130.jpg");
+    sf::remove(STORAGE_FILE + "/.hidden_130.jpg");
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath (CopyGalleryPhoto callpoint semantics, host-controlled name)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: hostile names in CopyGalleryPhoto are rejected without copying
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_131, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    std::string srcFile = FILE_PATH + "/src_131.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    // invalid_argument: contains '/', absolute-ish, nested; ".." : permission_denied
+    std::vector<std::string> hostileNames = { "a/b.jpg", "sub/../esc.jpg", "/etc/passwd", ".." };
+    for (const auto &hostileName : hostileNames) {
+        PathMap paths;
+        paths[srcFile] = hostileName;
+        uint32_t outObjectHandle = 0;
+        int32_t res = mtpMediaLib_->CopyGalleryPhoto(context, paths, outObjectHandle);
+        EXPECT_EQ(res, MTP_SUCCESS) << "name: " << hostileName; // loop continues on join failure
+        EXPECT_EQ(outObjectHandle, 0) << "name: " << hostileName;
+        EXPECT_FALSE(sf::exists(sf::path(STORAGE_FILE) / hostileName)) << "name: " << hostileName;
+    }
+    // no file escaped to STORAGE_FILE itself or its obvious targets
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/b.jpg"));
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/esc.jpg"));
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/passwd"));
+    sf::remove(srcFile);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath / IsPathInMtpRoot (CopyGalleryAlbum callpoint semantics)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: normal albumName is allowed in CopyGalleryAlbum and album dir with photo is created
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_132, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    std::string srcFile = FILE_PATH + "/src_132.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    PathMap paths;
+    paths[srcFile] = "photo_132.jpg";
+    uint32_t outObjectHandle = 0;
+    int32_t res = mtpMediaLib_->CopyGalleryAlbum(context, "album_132", paths, outObjectHandle);
+    EXPECT_EQ(res, MTP_SUCCESS);
+    EXPECT_NE(outObjectHandle, 0); // album dir registered
+    std::string albumDir = STORAGE_FILE + "/album_132";
+    EXPECT_TRUE(sf::is_directory(albumDir));
+    EXPECT_TRUE(sf::exists(albumDir + "/photo_132.jpg"));
+    sf::remove_all(albumDir);
+    sf::remove(srcFile);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath (CopyGalleryAlbum callpoint semantics)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: hostile albumName is rejected by CopyGalleryAlbum before any fs mutation
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_133, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    std::string srcFile = FILE_PATH + "/src_133.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    PathMap paths;
+    paths[srcFile] = "photo_133.jpg";
+    uint32_t outObjectHandle = 0;
+    int32_t res = mtpMediaLib_->CopyGalleryAlbum(context, "sub/../../escape_133", paths, outObjectHandle);
+    EXPECT_EQ(res, MTP_ERROR_PARAMETER_NOT_SUPPORTED);
+    EXPECT_EQ(outObjectHandle, 0);
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/escape_133"));
+    EXPECT_FALSE(sf::exists("/escape_133"));
+    sf::remove(srcFile);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath (SetObjectPropValue callpoint semantics, host-controlled rename value)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: normal objectFileName rename via SetObjectPropValue succeeds
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_134, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::string oldFile = STORAGE_FILE + "/old_134.txt";
+    std::string newFile = STORAGE_FILE + "/new_134.txt";
+    {
+        std::ofstream ofs(oldFile);
+        ofs << "rename-target";
+    }
+    ASSERT_TRUE(sf::exists(oldFile));
+    // register the file into handle-path maps, otherwise GetIdByPath fails
+    mtpMediaLib_->ObserverAddPathToMap(oldFile);
+    uint32_t handle = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(oldFile, handle), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->handle = static_cast<int32_t>(handle);
+    context->property = MTP_PROPERTY_OBJECT_FILE_NAME_CODE;
+    context->properType = MTP_TYPE_STRING_CODE;
+    context->properStrValue = "new_134.txt";
+    int32_t res = mtpMediaLib_->SetObjectPropValue(context);
+    EXPECT_EQ(res, MTP_SUCCESS);
+    EXPECT_FALSE(sf::exists(oldFile));
+    EXPECT_TRUE(sf::exists(newFile));
+    sf::remove(newFile);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath (SetObjectPropValue callpoint semantics)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: traversal rename values are rejected by SetObjectPropValue
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_135, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::string oldFile = STORAGE_FILE + "/old_135.txt";
+    {
+        std::ofstream ofs(oldFile);
+        ofs << "keep";
+    }
+    ASSERT_TRUE(sf::exists(oldFile));
+    // register the file into handle-path maps, otherwise GetIdByPath fails
+    mtpMediaLib_->ObserverAddPathToMap(oldFile);
+    uint32_t handle = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(oldFile, handle), E_SUCCESS);
+    // "..": permission_denied (E_HAS_FS_ERROR -> default MTP_ERROR_INVALID_OBJECTPROPCODE)
+    // "a/b.txt" & "/etc/passwd": ContainsInvalidName hit or '/' in name (E_HAS_DB_ERROR -> format error)
+    std::vector<std::string> hostileNames = { "..", "a/b.txt", "/etc/passwd" };
+    for (const auto &hostileName : hostileNames) {
+        std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+        ASSERT_NE(context, nullptr);
+        context->handle = static_cast<int32_t>(handle);
+        context->property = MTP_PROPERTY_OBJECT_FILE_NAME_CODE;
+        context->properType = MTP_TYPE_STRING_CODE;
+        context->properStrValue = hostileName;
+        int32_t res = mtpMediaLib_->SetObjectPropValue(context);
+        EXPECT_NE(res, MTP_SUCCESS) << "name: " << hostileName;
+        EXPECT_TRUE(sf::exists(oldFile)) << "name: " << hostileName; // original untouched
+    }
+    EXPECT_FALSE(sf::exists("/etc"));
+    sf::remove(oldFile);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath / IsPathInMtpRoot (symlink boundary)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: symlink pointing outside the mtp root as target parent must be rejected
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_136, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    // symlink dir under STORAGE_FILE root pointing to the UT process CWD (outside mtp root)
+    std::string linkDir = STORAGE_FILE + "/link_136";
+    std::error_code linkEc;
+    sf::remove(linkDir);
+    sf::create_directory_symlink(sf::current_path(linkEc), linkDir, linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    // register the symlink so GetPathByContextParent resolves it as parent
+    mtpMediaLib_->ObserverAddPathToMap(linkDir);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(linkDir, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = parent;
+    context->format = MTP_FORMAT_TEXT_CODE;
+    context->name = "esc_136.txt";
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    // safe: ec=permission_denied -> E_HAS_FS_ERROR -> MTP_ERROR_INVALID_OBJECTHANDLE
+    EXPECT_EQ(result, MTP_ERROR_INVALID_OBJECTHANDLE);
+    EXPECT_EQ(outHandle, 0);
+    sf::remove(linkDir);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath / IsPathInMtpRoot (symlink boundary)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: parent dir containing symlink to outside as intermediate must be rejected
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_137, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::string linkDir = STORAGE_FILE + "/sub_137";
+    sf::remove_all(linkDir);
+    sf::create_directory(linkDir);
+    std::error_code linkEc;
+    sf::create_directory_symlink(sf::current_path(linkEc), linkDir + "/outside", linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    mtpMediaLib_->ObserverAddPathToMap(linkDir);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(linkDir, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = parent;
+    context->format = MTP_FORMAT_TEXT_CODE;
+    // "outside" is a symlink to CWD; resolve would land outside the mtp root
+    context->name = "outside";
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_NE(result, MTP_SUCCESS);
+    EXPECT_EQ(outHandle, 0);
+    sf::remove_all(linkDir);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath (symlink boundary)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: symlink escape is rejected in CopyGalleryPhoto name position as well
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_138, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::string linkName = STORAGE_FILE + "/esc_link_138";
+    std::error_code linkEc;
+    sf::remove(linkName);
+    // symlink to /etc (outside all mtp roots)
+    sf::create_directory_symlink("/etc", linkName, linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    std::string srcFile = FILE_PATH + "/src_138.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    PathMap paths;
+    // name resolves (via symlink) to /etc itself -> root escape -> skipped, no copy happens
+    paths[srcFile] = "esc_link_138";
+    uint32_t outObjectHandle = 0;
+    int32_t res = mtpMediaLib_->CopyGalleryPhoto(context, paths, outObjectHandle);
+    EXPECT_EQ(res, MTP_SUCCESS);
+    EXPECT_EQ(outObjectHandle, 0);
+    sf::remove(srcFile);
+    sf::remove(linkName);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath / IsPathInMtpRoot (symlink boundary)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: symlink escape is rejected in CopyGalleryAlbum albumName position as well
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_139, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
+    std::string linkName = STORAGE_FILE + "/esc_link_139";
+    std::error_code linkEc;
+    sf::remove(linkName);
+    sf::create_directory_symlink("/etc", linkName, linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    mtpMediaLib_->ObserverAddPathToMap(linkName);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(linkName, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0;
+    std::string srcFile = FILE_PATH + "/src_139.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    PathMap paths;
+    paths[srcFile] = "photo_139.jpg";
+    uint32_t outObjectHandle = 0;
+    // albumName resolves via symlink to /etc -> IsPathInMtpRoot false -> parameter not supported
+    int32_t res = mtpMediaLib_->CopyGalleryAlbum(context, "esc_link_139", paths, outObjectHandle);
+    EXPECT_EQ(res, MTP_ERROR_PARAMETER_NOT_SUPPORTED);
+    EXPECT_EQ(outObjectHandle, 0);
+    sf::remove(srcFile);
+    sf::remove(linkName);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath / IsPathInMtpRoot (empty storageIdToPathMap boundary)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: empty storageIdToPathMap must reject all CopyGalleryPhoto and CopyGalleryAlbum requests
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_140, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear(); // storageIdToPathMap is now empty
+    std::string srcFile = FILE_PATH + "/src_140.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0; // root: GetPathByContextParent fails on empty map
+    PathMap paths;
+    paths[srcFile] = "photo_140.jpg";
+    uint32_t outObjectHandle = 0;
+    int32_t res = mtpMediaLib_->CopyGalleryPhoto(context, paths, outObjectHandle);
+    EXPECT_EQ(res, MTP_ERROR_INVALID_OBJECTHANDLE);
+    EXPECT_EQ(outObjectHandle, 0);
+    // with a registered (symlinked) parent but empty storageIdToPathMap, the whitelist rejects
+    // the join result; CopyGalleryPhoto skips the entry and returns MTP_SUCCESS without copying
+    mtpMediaLib_->ObserverAddPathToMap(FILE_PATH);
+    uint32_t parent = 0;
+    ASSERT_EQ(mtpMediaLib_->GetIdByPath(FILE_PATH, parent), E_SUCCESS);
+    std::shared_ptr<MtpOperationContext> childContext = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(childContext, nullptr);
+    childContext->storageID = INNER_STORAGE_ID;
+    childContext->parent = parent;
+    PathMap childPaths;
+    childPaths[srcFile] = "photo_140.jpg";
+    uint32_t childOutHandle = 0;
+    int32_t childRes = mtpMediaLib_->CopyGalleryPhoto(childContext, childPaths, childOutHandle);
+    EXPECT_EQ(childRes, MTP_SUCCESS);
+    EXPECT_EQ(childOutHandle, 0u); // skipped before AddPathToMap, handle untouched
+    EXPECT_FALSE(sf::exists(FILE_PATH + "/photo_140.jpg"));
+    sf::remove(srcFile);
+    mtpMediaLib_->Clear();
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: SafeJoinPath / IsPathInMtpRoot (empty storageIdToPathMap boundary)
+ * FunctionPoints: path traversal fix regression
+ * EnvConditions: NA
+ * CaseDescription: empty storageIdToPathMap must also reject CopyGalleryAlbum
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_141, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear(); // storageIdToPathMap is now empty
+    std::string srcFile = FILE_PATH + "/src_141.jpg";
+    {
+        std::ofstream ofs(srcFile);
+        ofs << "src";
+    }
+    ASSERT_TRUE(sf::exists(srcFile));
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = INNER_STORAGE_ID;
+    context->parent = 0; // root: GetPathByContextParent fails on empty map
+    PathMap paths;
+    paths[srcFile] = "photo_141.jpg";
+    uint32_t outObjectHandle = 0;
+    int32_t res = mtpMediaLib_->CopyGalleryAlbum(context, "album_141", paths, outObjectHandle);
+    EXPECT_EQ(res, MTP_ERROR_INVALID_OBJECTHANDLE);
+    EXPECT_EQ(outObjectHandle, 0);
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/album_141"));
+    sf::remove(srcFile);
+    mtpMediaLib_->Clear();
 }
 } // namespace Media
 } // namespace OHOS

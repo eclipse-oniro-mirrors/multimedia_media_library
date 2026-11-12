@@ -357,8 +357,9 @@ void MediaLibraryCommand::SetApiFromQuerySetMap()
         api_ = MediaLibraryApi::API_OLD;
     } else {
         string apiString = querySetMap_[URI_PARAM_API_VERSION];
-        if (!MediaLibraryDataManagerUtils::IsNumber(apiString)) {
-            api_ = MediaLibraryApi::API_OLD;
+        if (!MediaLibraryDataManagerUtils::IsNumber(apiString) ||
+            apiString.length() > MAX_API_VERSION_LEN) {
+            MEDIA_ERR_LOG("this api version is invalid: %{public}s", apiString.c_str());
             return;
         }
         int32_t apiNum = stoi(apiString);

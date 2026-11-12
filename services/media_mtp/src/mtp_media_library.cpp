@@ -23,6 +23,7 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "mtp_error_utils.h"
 #include "mtp_file_observer.h"
@@ -32,6 +33,8 @@
 #include "post_proc.h"
 #include "image_packer.h"
 #include "avmetadatahelper.h"
+#include "fdsan_fd.h"
+
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -117,6 +120,47 @@ static bool ContainsInvalidName(const std::string &str)
 {
     return str.find("./") != std::string::npos ||
            str.find("../") != std::string::npos;
+}
+
+static bool IsPathInMtpRoot(const std::string &path)
+{
+    // path is produced by SafeJoinPath whose name is a single plain component (no '/' or ".."),
+    // so weakly_canonical never leaves a trailing '/' here — plain prefix compare is enough
+    ReadLock lock(g_mutex);
+    for (const auto &it : storageIdToPathMap) {
+        const std::string &root = it.second;
+        if (root.empty() || path.compare(0, root.size(), root) != 0) {
+            continue;
+        }
+        // the storage root itself is not a valid new object
+        if (path.size() > root.size() && path[root.size()] == '/') {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Join a parent directory and a name (from DB/host), then canonicalize and bound the result to
+// mtp roots. Returns true and fills outPath on success; returns false if the name is invalid or
+// the resolved path escapes all mtp storage roots.
+static bool SafeJoinPath(const std::string &parent, const std::string &name, std::string &outPath)
+{
+    // "." and ".." would make weakly_canonical keep a trailing '/' or escape upward; reject them
+    // up front (same idea as ContainsInvalidName) instead of normalizing the result afterwards
+    if (name.empty() || name == "." || name == ".." || name.find('/') != std::string::npos) {
+        return false;
+    }
+    std::error_code ec;
+    sf::path joined = sf::weakly_canonical(sf::path(parent) / name, ec);
+    if (ec) {
+        return false;
+    }
+    std::string joinedStr = joined.string();
+    if (!IsPathInMtpRoot(joinedStr)) {
+        return false;
+    }
+    outPath = joinedStr;
+    return true;
 }
 
 static bool IsHiddenDirectory(const std::string &dir)
@@ -552,12 +596,11 @@ int32_t MtpMediaLibrary::GetVideoThumb(const std::shared_ptr<MtpOperationContext
     int error = GetFd(context, fd);
     CHECK_AND_RETURN_RET_LOG(error == MTP_SUCCESS, MTP_ERROR_NO_THUMBNAIL_PRESENT, "GetFd failed");
     struct stat64 st;
-    int32_t ret = fstat64(fd, &st);
-    CondCloseFd(ret != 0, fd);
+    FdsanFd thumbFd(fd);
+    int32_t ret = fstat64(thumbFd.Get(), &st);
     CHECK_AND_RETURN_RET_LOG(ret == 0, MTP_ERROR_NO_THUMBNAIL_PRESENT, "Get file state failed, err %{public}d", errno);
     int64_t length = static_cast<int64_t>(st.st_size);
-    ret = avMetadataHelper->SetSource(fd, 0, length, AV_META_USAGE_PIXEL_MAP);
-    CondCloseFd(ret != 0, fd);
+    ret = avMetadataHelper->SetSource(thumbFd.Get(), 0, length, AV_META_USAGE_PIXEL_MAP);
     CHECK_AND_RETURN_RET_LOG(ret == 0, MTP_ERROR_NO_THUMBNAIL_PRESENT, "SetSource failed, ret %{public}d", ret);
     auto resultMap = avMetadataHelper->ResolveMetadata();
     int32_t width = NORMAL_WIDTH;
@@ -571,10 +614,9 @@ int32_t MtpMediaLibrary::GetVideoThumb(const std::shared_ptr<MtpOperationContext
     };
     shared_ptr<PixelMap> sPixelMap = avMetadataHelper->FetchFrameYuv(0,
         AVMetadataQueryOption::AV_META_QUERY_NEXT_SYNC, param);
-    CondCloseFd(sPixelMap == nullptr, fd);
     CHECK_AND_RETURN_RET_LOG(sPixelMap != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "sPixelMap is nullptr");
     sPixelMap->SetAlphaType(AlphaType::IMAGE_ALPHA_TYPE_UNPREMUL);
-    CloseFd(context, fd);
+    CloseFd(context, thumbFd);
     bool isCompressImageSuccess = CompressImage(*sPixelMap.get(), *outThumb);
     CHECK_AND_RETURN_RET_LOG(isCompressImageSuccess == true, MTP_ERROR_NO_THUMBNAIL_PRESENT, "CompressImage is fail");
     return MTP_SUCCESS;
@@ -620,45 +662,34 @@ int32_t MtpMediaLibrary::GetPictureThumb(const std::shared_ptr<MtpOperationConte
     errorCode = static_cast<uint32_t>(GetFd(context, fd));
     CHECK_AND_RETURN_RET_LOG(errorCode == MTP_SUCCESS, MTP_ERROR_NO_THUMBNAIL_PRESENT, "GetFd failed");
 
+    FdsanFd thumbFd(fd);
     SourceOptions opts;
-    std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(fd, opts, errorCode);
-    CondCloseFd(imageSource == nullptr, fd);
+    std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(thumbFd.Get(), opts, errorCode);
     CHECK_AND_RETURN_RET_LOG(imageSource != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "imageSource is nullptr");
 
     ImageInfo imageInfo;
     imageSource->GetImageInfo(imageInfo);
     int width = imageInfo.size.width;
     int height = imageInfo.size.height;
-    CHECK_AND_RETURN_RET_LOG(ResizeThumb(width, height), MTP_ERROR_NO_THUMBNAIL_PRESENT, "resize thumb fail");
+    CHECK_AND_PRINT_LOG(ResizeThumb(width, height), "resize thumb fail");
     DecodeOptions decodeOpts;
     decodeOpts.desiredSize = {
         .width = width,
-        .height = height,
+        .height = height
     };
 
     std::unique_ptr<PixelMap> cropPixelMap = imageSource->CreatePixelMap(decodeOpts, errorCode);
-    CondCloseFd(cropPixelMap == nullptr, fd);
     CHECK_AND_RETURN_RET_LOG(cropPixelMap != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "cropPixelMap is nullptr");
     int32_t imageOrientation = 0;
     errorCode = imageSource->GetImagePropertyInt(0, PHOTO_DATA_IMAGE_ORIENTATION, imageOrientation);
     if (errorCode == E_OK && imageOrientation != 0) {
         PostProc::RotateInRectangularSteps(*(cropPixelMap.get()), static_cast<float>(imageOrientation), true);
     }
-    CloseFd(context, fd);
+    CloseFd(context, thumbFd);
     bool isCompressImageSuccess = CompressImage(*cropPixelMap, *outThumb);
     CHECK_AND_RETURN_RET_LOG(isCompressImageSuccess == true, MTP_ERROR_NO_THUMBNAIL_PRESENT, "CompressImage is fail");
     return MTP_SUCCESS;
 }
-
-void MtpMediaLibrary::CondCloseFd(const bool condition, const int fd)
-{
-    if (!condition || fd <= 0) {
-        return;
-    }
-    int32_t ret = close(fd);
-    CHECK_AND_PRINT_LOG(ret == MTP_SUCCESS, "DealFd CloseFd fail!");
-}
-
 
 int32_t MtpMediaLibrary::GetThumb(const std::shared_ptr<MtpOperationContext> &context,
     std::shared_ptr<UInt8List> &outThumb)
@@ -688,20 +719,21 @@ int32_t MtpMediaLibrary::SendObjectInfo(const std::shared_ptr<MtpOperationContex
     CHECK_AND_RETURN_RET_LOG(GetPathByContextParent(context, doc) == MTP_SUCCESS,
         MtpErrorUtils::SolveSendObjectInfoError(E_HAS_DB_ERROR),
             "MtpMediaLibrary::SendObjectInfo parent not found");
+
     CHECK_AND_RETURN_RET_LOG(!ContainsInvalidName(context->name),
         MtpErrorUtils::SolveSendObjectInfoError(E_HAS_DB_ERROR),
         "MtpMediaLibrary::SendObjectInfo context->name is invalid");
-    std::string path = doc + "/" + context->name;
+    // resolve symlinks before any filesystem change, then bound the result to mtp roots
+    std::string path;
+    CHECK_AND_RETURN_RET_LOG(SafeJoinPath(doc, context->name, path),
+        MtpErrorUtils::SolveSendObjectInfoError(E_HAS_FS_ERROR),
+        "MtpMediaLibrary::SendObjectInfo path[%{public}s] is invalid or out of mtp root",
+        MediaPathUtils::DesensitizePath(doc + "/" + context->name).c_str());
     if (context->format == MTP_FORMAT_ASSOCIATION_CODE) {
         std::error_code ec;
         bool cond = (!sf::create_directory(path, ec) || ec.value() != MTP_SUCCESS);
         CHECK_AND_RETURN_RET_LOG(!cond, MtpErrorUtils::SolveGetObjectInfoError(E_HAS_DB_ERROR),
             "MtpMediaLibrary::GetThumb handle not found");
-    } else {
-        std::error_code ec;
-        path = sf::weakly_canonical(path, ec);
-        CHECK_AND_RETURN_RET_LOG(ec.value() == MTP_SUCCESS, MtpErrorUtils::SolveSendObjectInfoError(E_HAS_FS_ERROR),
-            "MtpMediaLibrary::SendObjectInfo normalized path failed");
     }
     uint32_t outObjectHandle;
     {
@@ -732,6 +764,8 @@ int32_t MtpMediaLibrary::GetPathByContextParent(const std::shared_ptr<MtpOperati
 {
     CHECK_AND_RETURN_RET_LOG(context != nullptr, MTP_ERROR_CONTEXT_IS_NULL, "context is nullptr");
     if (context->parent == 0 || context->parent == MTP_ALL_HANDLE_ID) {
+        // storage mount/unmount writes storageIdToPathMap; guard the lookup against concurrent writes
+        ReadLock lock(g_mutex);
         auto it = storageIdToPathMap.find(context->storageID);
         if (it != storageIdToPathMap.end()) {
             path = it->second;
@@ -773,7 +807,7 @@ int32_t MtpMediaLibrary::GetRealPath(const std::string &path, std::string &outPa
         return MTP_SUCCESS;
     }
     MEDIA_ERR_LOG("MtpMediaLibrary::GetRealPath path[%{public}s] error",
-        MediaFileUtils::DesensitizePath(path).c_str());
+        MediaPathUtils::DesensitizePath(path).c_str());
     return E_ERR;
 }
 
@@ -944,12 +978,17 @@ int32_t MtpMediaLibrary::SetObjectPropValue(const std::shared_ptr<MtpOperationCo
     CHECK_AND_RETURN_RET_LOG(GetPathById(context->handle, path) == MTP_SUCCESS,
         MtpErrorUtils::SolveObjectPropValueError(E_HAS_DB_ERROR),
         "MtpMediaLibrary::SetObjectPropValue handle not found");
-    std::error_code ec;
+
     CHECK_AND_RETURN_RET_LOG(!ContainsInvalidName(get<std::string>(colValue)),
         MtpErrorUtils::SolveObjectPropValueError(E_HAS_DB_ERROR),
         "MtpMediaLibrary::SetObjectPropValue colValue is invalid");
-    string to = sf::path(path).parent_path().string() + "/" + get<std::string>(colValue);
-    bool cond = (sf::exists(to, ec) || ec.value() != MTP_SUCCESS);
+    // resolve symlinks before any filesystem change, then bound the result to mtp roots
+    std::string to;
+    CHECK_AND_RETURN_RET_LOG(SafeJoinPath(sf::path(path).parent_path().string(), get<std::string>(colValue), to),
+        MtpErrorUtils::SolveObjectPropValueError(E_HAS_FS_ERROR),
+        "MtpMediaLibrary::SetObjectPropValue new path is invalid or out of mtp root");
+    std::error_code ec;
+    bool cond = sf::exists(to, ec);
     CHECK_AND_RETURN_RET_LOG(!cond, MtpErrorUtils::SolveObjectPropValueError(E_HAS_DB_ERROR),
         "MtpMediaLibrary::SetObjectPropValue rename failed, file/doc exists");
     {
@@ -965,11 +1004,11 @@ int32_t MtpMediaLibrary::SetObjectPropValue(const std::shared_ptr<MtpOperationCo
     return MTP_SUCCESS;
 }
 
-int32_t MtpMediaLibrary::CloseFd(const std::shared_ptr<MtpOperationContext> &context, int32_t fd)
+int32_t MtpMediaLibrary::CloseFd(const std::shared_ptr<MtpOperationContext> &context, FdsanFd &fdsanFd)
 {
-    MEDIA_DEBUG_LOG("MtpMediaLibrary::CloseFd fd=[%{public}d]", fd);
-    CHECK_AND_RETURN_RET_LOG(fd > 0, E_ERR, "wrong fd");
-    int errCode = close(fd);
+    MEDIA_DEBUG_LOG("MtpMediaLibrary::CloseFd fd=[%{public}d]", fdsanFd.Get());
+    CHECK_AND_RETURN_RET_LOG(fdsanFd.Get() > 0, E_ERR, "wrong fd");
+    int errCode = fdsanFd.Close();
     return MtpErrorUtils::SolveCloseFdError(errCode);
 }
 
@@ -1372,7 +1411,9 @@ int32_t MtpMediaLibrary::CopyGalleryPhoto(const std::shared_ptr<MtpOperationCont
     std::error_code ec;
     for (const auto &it : paths) {
         CHECK_AND_CONTINUE_INFO_LOG(sf::exists(it.first, ec), "from path not exists err %{public}d", errno);
-        auto toPath = sf::path(to) / it.second;
+        // filename comes from device-side asset names, re-validate before any fs mutation
+        std::string toPath;
+        CHECK_AND_CONTINUE_INFO_LOG(SafeJoinPath(to, it.second, toPath), "CopyGalleryPhoto join path failed");
         sf::copy(sf::path(it.first), toPath, sf::copy_options::recursive | sf::copy_options::overwrite_existing, ec);
         CHECK_AND_RETURN_RET_LOG(ec.value() == MTP_SUCCESS, MTP_ERROR_PARAMETER_NOT_SUPPORTED, "CopyObject failed");
 
@@ -1399,7 +1440,10 @@ int32_t MtpMediaLibrary::CopyGalleryAlbum(const std::shared_ptr<MtpOperationCont
     std::error_code ec;
     CHECK_AND_RETURN_RET_LOG(sf::is_directory(to, ec), MTP_ERROR_INVALID_OBJECTHANDLE, "parent path is not dir");
 
-    auto toPath = sf::path(to) / sf::path(albumName);
+    // albumName comes from device-side album data, re-validate before any fs mutation
+    std::string toPath;
+    CHECK_AND_RETURN_RET_LOG(SafeJoinPath(to, albumName, toPath), MTP_ERROR_PARAMETER_NOT_SUPPORTED,
+        "join path failed");
     sf::create_directory(toPath, ec);
     CHECK_AND_RETURN_RET_LOG(ec.value() == MTP_SUCCESS, MTP_ERROR_PARAMETER_NOT_SUPPORTED, "create folder failed");
 
@@ -1412,7 +1456,10 @@ int32_t MtpMediaLibrary::CopyGalleryAlbum(const std::shared_ptr<MtpOperationCont
     CHECK_AND_RETURN_RET_LOG(!paths.empty(), MTP_SUCCESS, "from is empty, empty folder");
     for (auto it = paths.begin(); it != paths.end(); it++) {
         CHECK_AND_CONTINUE_INFO_LOG(sf::exists(it->first, ec), "from path not exists err %{public}d", errno);
-        auto toPhoto = toPath / it->second;
+        // photo names come from device-side asset names, re-validate before any fs mutation
+        std::string toPhoto;
+        CHECK_AND_CONTINUE_INFO_LOG(SafeJoinPath(toPath, it->second, toPhoto),
+            "CopyGalleryAlbum join path failed");
         sf::copy(it->first, toPhoto, sf::copy_options::recursive | sf::copy_options::overwrite_existing, ec);
         CHECK_AND_CONTINUE_INFO_LOG(ec.value() == MTP_SUCCESS, "CopyGalleryAlbum err %{public}d", errno);
         MEDIA_DEBUG_LOG("from[%{public}s], to[%{public}s]", it->first.c_str(), toPhoto.c_str());
