@@ -446,7 +446,11 @@ int32_t CloudMediaPhotoControllerService::OnCompletePull(MessageParcel &data, Me
     optRet.errorCode = reqBody.errorCode;
     optRet.errorMsg = reqBody.errorMsg;
     MEDIA_INFO_LOG("photo OnCompletePull: %{public}s", reqBody.ToString().c_str());
-    ret = this->photosService_.OnCompletePull(optRet);
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->photosService_.OnCompletePull(optRet);
+    } else {
+        ret = this->sharePhotosService_.OnCompletePull(optRet);
+    }
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 

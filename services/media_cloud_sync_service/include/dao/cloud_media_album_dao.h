@@ -67,6 +67,7 @@ public:
     int32_t OnCreateRecords(const std::vector<PhotoAlbumDto> &albums, int32_t &failSize);
     int32_t ResetAlbumDirty(
         std::shared_ptr<MediaLibraryRdbStore> rdbStore, const std::string &cloudId, DirtyType dirty);
+    int32_t ResetAlbumDirtyByAlbumId(int32_t albumId, DirtyType dirty);
     int32_t IsEmptyAlbum(std::shared_ptr<MediaLibraryRdbStore> rdbStore, const std::string &cloudId);
     int32_t OnMdirtyAlbumRecords(const std::string &cloudId);
     int32_t OnDeleteAlbumRecords(const std::string &cloudId);
@@ -86,6 +87,7 @@ public:
     int32_t GetPhotoAlbum(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfoOp);
     int32_t GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count);
     int32_t GetShareAlbumsIsSdirty(std::vector<int32_t> &albumIds);
+    int32_t GetShareDirtyAlbums(std::vector<PhotoAlbumPo> &albumList);
 
 private:
     int32_t InsertAlbums(const PhotoAlbumDto &record,

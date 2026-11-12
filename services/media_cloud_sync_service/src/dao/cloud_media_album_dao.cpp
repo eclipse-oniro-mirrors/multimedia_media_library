@@ -838,6 +838,23 @@ int32_t CloudMediaAlbumDao::ResetAlbumDirty(
     return E_OK;
 }
 
+int32_t CloudMediaAlbumDao::ResetAlbumDirtyByAlbumId(int32_t albumId, DirtyType dirty)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "ResetAlbumDirtyByAlbumId get rdbStore failed");
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(dirty));
+    int32_t changedRows = -1;
+    int32_t ret = rdbStore->Update(changedRows, PhotoAlbumColumns::TABLE, values,
+        PhotoAlbumColumns::ALBUM_ID + "=?", {std::to_string(albumId)});
+    MEDIA_INFO_LOG("ResetAlbumDirtyByAlbumId changedRows: %{public}d, ret: %{public}d, albumId: %{public}d",
+        changedRows, ret, albumId);
+    if (ret != NativeRdb::E_OK || changedRows <= 0) {
+        return E_ERR;
+    }
+    return E_OK;
+}
+
 int32_t CloudMediaAlbumDao::QueryDeleteAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -1438,6 +1455,19 @@ int32_t CloudMediaAlbumDao::GetShareAlbumsIsSdirty(std::vector<int32_t> &albumId
     return E_OK;
 }
 
+int32_t CloudMediaAlbumDao::GetShareDirtyAlbums(std::vector<PhotoAlbumPo> &albumList)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "GetShareDirtyAlbums Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(Media::PhotoAlbumType::SHARE));
+    predicates.In(PhotoAlbumColumns::ALBUM_DIRTY, std::vector<std::string> {"2", "3"});
+    auto resultSet = rdbStore->Query(predicates, QUERY_ALBUM_COLUMNS);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetShareDirtyAlbums Failed to query.");
+    albumList = ResultSetReader<PhotoAlbumPoWriter, PhotoAlbumPo>(resultSet).ReadRecords();
+    resultSet->Close();
+    return E_OK;
+}
 void CloudMediaAlbumDao::HandleDateAdded(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
 {
     int64_t dateAdded = record.albumDateAdded;
