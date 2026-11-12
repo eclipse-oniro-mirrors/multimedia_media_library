@@ -2379,6 +2379,72 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_106, TestSi
  * SubFunction: NA
  * FunctionPoints: NA
  * EnvConditions: NA
+ * CaseDescription: GetFd CondCloseFd
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_107, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = nullptr;
+    bool condition = false;
+    int fd = 0;
+    mtpMediaLib_->CondCloseFd(condition, fd);
+ 
+    int32_t outFd = 0;
+    int32_t errcode = mtpMediaLib_->GetFd(context, outFd);
+    EXPECT_EQ(errcode, MTP_ERROR_STORE_NOT_AVAILABLE);
+}
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: GetFd CondCloseFd
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_108, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = nullptr;
+    bool condition = true;
+    int fd = 0;
+    mtpMediaLib_->CondCloseFd(condition, fd);
+ 
+    int32_t outFd = 0;
+    int32_t errcode = mtpMediaLib_->GetFd(context, outFd);
+    EXPECT_EQ(errcode, MTP_ERROR_STORE_NOT_AVAILABLE);
+}
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: GetFd CondCloseFd
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_109, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = nullptr;
+    bool condition = false;
+    int fd = 1;
+    mtpMediaLib_->CondCloseFd(condition, fd);
+ 
+    int32_t outFd = 0;
+    int32_t errcode = mtpMediaLib_->GetFd(context, outFd);
+    EXPECT_EQ(errcode, MTP_ERROR_STORE_NOT_AVAILABLE);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
  * CaseDescription: GetGalleryObjectInfo
  */
 HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_110, TestSize.Level1)
