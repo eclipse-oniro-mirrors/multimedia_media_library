@@ -520,6 +520,10 @@ int32_t CloudMediaAlbumDao::IsEmptyAlbum(std::shared_ptr<MediaLibraryRdbStore> r
     predicates.EqualTo(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_TRASHED, 0);
     predicates.EqualTo(PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_CLEAN_FLAG, 0);
     auto resultSet = rdbStore->Query(predicates, {});
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("IsEmptyAlbum query Failed");
+        return E_ERR;
+    }
     int32_t rowCount = -1;
     int32_t ret = resultSet->GetRowCount(rowCount);
     MEDIA_INFO_LOG("IsEmptyAlbum rowCount: %{public}d, cloudId: %{public}s", rowCount, cloudId.c_str());
