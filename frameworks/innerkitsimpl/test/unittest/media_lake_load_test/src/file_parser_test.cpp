@@ -1184,6 +1184,126 @@ HWTEST_F(FileParserTest, SetByPhotosRowData_With_Negative_DateTaken, TestSize.Le
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
 
+HWTEST_F(FileParserTest, SetByPhotosRowData_With_Parse_Failed_Video, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    InnerFileInfo parsedInfo = parser.GetFileInfo();
+    EXPECT_EQ(parsedInfo.dateTaken, 0);
+
+    FileParser::PhotosRowData rowData;
+    rowData.fileId = 100;
+    rowData.ownerAlbumId = 1;
+    rowData.ownerPackage = "com.test";
+    rowData.packageName = "TestAlbum";
+    rowData.data = "/storage/cloud/files/test.mp4";
+    rowData.editTime = 1234567890;
+    rowData.dateTaken = 1762646400000;
+    rowData.detailTime = "2025-11-09 00:00:00";
+    rowData.dateYear = "2025";
+    rowData.dateMonth = "11";
+    rowData.dateDay = "09";
+
+    parser.SetByPhotosRowData(rowData);
+    InnerFileInfo fileInfo = parser.GetFileInfo();
+    EXPECT_EQ(fileInfo.dateTaken, 1762646400000);
+    EXPECT_EQ(fileInfo.detailTime, "2025-11-09 00:00:00");
+    EXPECT_EQ(fileInfo.dateYear, "2025");
+    EXPECT_EQ(fileInfo.dateMonth, "11");
+    EXPECT_EQ(fileInfo.dateDay, "09");
+
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+}
+
+HWTEST_F(FileParserTest, SetByPhotosRowData_With_Parse_Failed_And_Zero_Db_DateTaken, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    FileParser::PhotosRowData rowData;
+    rowData.fileId = 100;
+    rowData.ownerAlbumId = 1;
+    rowData.ownerPackage = "com.test";
+    rowData.packageName = "TestAlbum";
+    rowData.data = "/storage/cloud/files/test.mp4";
+    rowData.editTime = 1234567890;
+    rowData.dateTaken = 0;
+
+    parser.SetByPhotosRowData(rowData);
+    InnerFileInfo fileInfo = parser.GetFileInfo();
+    EXPECT_EQ(fileInfo.fileId, 100);
+    EXPECT_EQ(fileInfo.dateTaken, 0);
+
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+}
+
+HWTEST_F(FileParserTest, SetByPhotosRowData_With_Parse_Failed_And_Negative_Db_DateTaken, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    FileParser::PhotosRowData rowData;
+    rowData.fileId = 100;
+    rowData.ownerAlbumId = 1;
+    rowData.ownerPackage = "com.test";
+    rowData.packageName = "TestAlbum";
+    rowData.data = "/storage/cloud/files/test.mp4";
+    rowData.editTime = 1234567890;
+    rowData.dateTaken = -1;
+
+    parser.SetByPhotosRowData(rowData);
+    InnerFileInfo fileInfo = parser.GetFileInfo();
+    EXPECT_EQ(fileInfo.fileId, 100);
+    EXPECT_EQ(fileInfo.dateTaken, -1);
+
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+}
+
+HWTEST_F(FileParserTest, SetByPhotosRowData_With_Larger_Db_DateTaken, TestSize.Level1)
+{
+    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+
+    constexpr int64_t FIXED_MTIME_MS = 1762646400000;
+    struct timespec times[2] = {};
+    times[0].tv_sec = FIXED_MTIME_MS / MSEC_TO_SEC;
+    times[1].tv_sec = FIXED_MTIME_MS / MSEC_TO_SEC;
+    EXPECT_EQ(utimensat(AT_FDCWD, TEST_IMAGE_PATH.c_str(), times, 0), 0);
+
+    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    InnerFileInfo parsedInfo = parser.GetFileInfo();
+    EXPECT_EQ(parsedInfo.dateTaken, FIXED_MTIME_MS);
+
+    FileParser::PhotosRowData rowData;
+    rowData.fileId = 100;
+    rowData.ownerAlbumId = 1;
+    rowData.ownerPackage = "com.test";
+    rowData.packageName = "TestAlbum";
+    rowData.data = "/storage/cloud/files/test.jpg";
+    rowData.editTime = 1234567890;
+    rowData.dateTaken = 9000000000000;
+    rowData.detailTime = "2255-06-05 00:00:00";
+    rowData.dateYear = "2255";
+    rowData.dateMonth = "06";
+    rowData.dateDay = "05";
+
+    parser.SetByPhotosRowData(rowData);
+    InnerFileInfo fileInfo = parser.GetFileInfo();
+    EXPECT_EQ(fileInfo.dateTaken, FIXED_MTIME_MS);
+    EXPECT_EQ(fileInfo.dateYear, "2025");
+    EXPECT_EQ(fileInfo.dateMonth, "202511");
+
+    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+}
+
 HWTEST_F(FileParserTest, TransFileInfoToBucket_With_Large_AlbumId, TestSize.Level1)
 {
     MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
