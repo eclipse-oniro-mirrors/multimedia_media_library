@@ -1337,7 +1337,20 @@ shared_ptr<ResultSet> MediaLibraryAlbumOperations::QueryPhotoAlbum(MediaLibraryC
     if (cmd.GetAbsRdbPredicates()->GetOrder().empty()) {
         cmd.GetAbsRdbPredicates()->OrderByAsc(PhotoAlbumColumns::ALBUM_ORDER);
     }
-    return MediaLibraryRdbStore::QueryWithFilter(*(cmd.GetAbsRdbPredicates()), columns);
+    AbsRdbPredicates &predicates = *(cmd.GetAbsRdbPredicates());
+    if (predicates.GetTableName() == PhotoAlbumColumns::TABLE && (cmd.GetOprnType() == OperationType::QUERY_HIDDEN ||
+        cmd.GetOprnType() == OperationType::QUERY)) {
+        string whereClause = predicates.GetWhereClause();
+        vector<string> whereArgs = predicates.GetWhereArgs();
+        if (!whereClause.empty()) {
+            whereClause += " AND ";
+        }
+        whereClause += PhotoAlbumColumns::ALBUM_TYPE + " <> ?";
+        whereArgs.push_back(std::to_string(static_cast<int32_t>(PhotoAlbumType::SHARE)));
+        predicates.SetWhereClause(whereClause);
+        predicates.SetWhereArgs(whereArgs);
+    }
+    return MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
 }
 
 static int32_t CheckIsSpecialSourceAlbum(const shared_ptr<MediaLibraryRdbStore>& rdbStore, int32_t oldAlbumId)

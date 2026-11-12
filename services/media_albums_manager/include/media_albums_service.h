@@ -67,6 +67,7 @@
 #include "delete_member_share_album_vo.h"
 #include "set_share_cover_uri_vo.h"
 #include "reset_share_cover_uri_vo.h"
+#include "get_share_album_member_vo.h"
 
 namespace OHOS::Media {
 class MediaAlbumsService {
@@ -84,8 +85,10 @@ public:
     int32_t AlbumRemoveAssets(const AlbumRemoveAssetsDto& removeAssetsDto, AlbumPhotoQueryRespBody& respBody);
     int32_t AlbumRecoverAssets(const AlbumRecoverAssetsDto& recoverAssetsDto);
     std::shared_ptr<DataShare::DataShareResultSet> AlbumGetAssets(AlbumGetAssetsDto &dto, int32_t passCode = 0);
+    std::shared_ptr<DataShare::DataShareResultSet> AlbumGetShareAssets(AlbumGetAssetsDto &dto, int32_t passCode);
     std::shared_ptr<DataShare::DataShareResultSet> AlbumGetSelectedAssets(AlbumGetSelectedAssetsDto &dto);
     int32_t QueryAlbums(QueryAlbumsDto &dto);
+    int32_t QueryShareAlbums(QueryAlbumsDto &dto);
     int32_t QueryHiddenAlbums(QueryAlbumsDto &dto);
     int32_t QueryAlbumsLpath(QueryAlbumsDto &dto);
     int32_t QueryAlbumsLpaths(QueryAlbumsDto &dto);
@@ -127,6 +130,7 @@ public:
     int32_t DeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody);
     int32_t SetShareCoverUri(const SetShareCoverUriReqBody &reqBody);
     int32_t ResetShareCoverUri(const ResetShareCoverUriReqBody &reqBody);
+    int32_t GetShareAlbumMember(const GetShareAlbumMemberReqBody &reqBody, GetShareAlbumMemberRespBody &respBody);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

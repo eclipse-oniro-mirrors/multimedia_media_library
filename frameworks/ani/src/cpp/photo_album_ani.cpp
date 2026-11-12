@@ -355,6 +355,10 @@ static int32_t GetPredicatesByAlbumTypes(const shared_ptr<PhotoAlbum> &photoAlbu
         return E_INVALID_ARGUMENTS;
     }
     auto type = photoAlbum->GetPhotoAlbumType();
+    if (PhotoAlbum::IsShareAlbum(type, subType)) {
+        return MediaLibraryAniUtils::GetShareAlbumPredicates(photoAlbum->GetAlbumId(), predicates, hiddenOnly);
+    }
+
     if ((!PhotoAlbum::CheckPhotoAlbumType(type)) || (!PhotoAlbum::CheckPhotoAlbumSubType(subType))) {
         return E_INVALID_ARGUMENTS;
     }
@@ -468,10 +472,13 @@ static void PhotoAccessGetPhotoAssetsExecute(ani_env *env, unique_ptr<PhotoAlbum
     ConvertColumnsForPortrait(context);
     int32_t errCode = 0;
     int32_t userId = DEFAULT_USER_ID;
+    bool isShareAlbum = false;
     if (context->objectInfo != nullptr) {
         shared_ptr<PhotoAlbum> photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
         if (photoAlbum != nullptr) {
             userId = photoAlbum->GetUserId();
+            isShareAlbum = photoAlbum->IsShareAlbum(photoAlbum->GetPhotoAlbumType(),
+                photoAlbum->GetPhotoAlbumSubType());
         }
     }
     auto [accessSandbox, resultSet] =
@@ -486,9 +493,9 @@ static void PhotoAccessGetPhotoAssetsExecute(ani_env *env, unique_ptr<PhotoAlbum
         reqBody.predicates = context->predicates;
         reqBody.columns = context->fetchColumn;
         AlbumGetAssetsRespBody respBody;
-        uint32_t businessCode = context->isSystemApi
-                                    ? static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_ASSETS)
-                                    : static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_ASSETS);
+        uint32_t businessCode = isShareAlbum ? static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS)
+            : context->isSystemApi ? static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_ASSETS)
+            : static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_ASSETS);
         errCode = IPC::UserDefineIPCClient().SetUserId(userId).Call(businessCode, reqBody, respBody);
         if (errCode == E_OK) {
             resultSet = respBody.resultSet;

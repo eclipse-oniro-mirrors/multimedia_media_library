@@ -55,75 +55,143 @@
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_date_added ON Photos (" \
     "owner_album_id,hidden,clean_flag,sync_status,date_trashed,time_pending," \
-    "is_temp,burst_cover_level,date_added DESC,display_name DESC, file_id, position);"
+    "is_temp,burst_cover_level,is_shared,date_added DESC,display_name DESC, file_id, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_date_taken ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending,is_temp," \
-    "burst_cover_level,owner_album_id,date_taken DESC,display_name DESC, file_id, position);"
+    "burst_cover_level,owner_album_id,is_shared,date_taken DESC,display_name DESC, file_id, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_display_name ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp," \
-    "burst_cover_level,owner_album_id,display_name DESC, date_taken DESC, file_id DESC, position);"
+    "burst_cover_level,owner_album_id,is_shared,display_name DESC, date_taken DESC, file_id DESC, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_in_album_size ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, " \
-    "is_temp,burst_cover_level,owner_album_id,size DESC,file_id DESC, date_taken DESC, position);"
+    "is_temp,burst_cover_level,owner_album_id,is_shared,size DESC,file_id DESC, date_taken DESC, position);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_media_type_date_added ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending,is_temp," \
-    "burst_cover_level,media_type,date_added DESC,display_name DESC, strong_association,file_id DESC);"
+    "burst_cover_level,media_type,is_shared,date_added DESC,display_name DESC, strong_association,file_id DESC);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_media_type_date_taken ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending,is_temp," \
-    "burst_cover_level,media_type,date_taken DESC,display_name DESC, strong_association,file_id DESC);"
+    "burst_cover_level,media_type,is_shared,date_taken DESC,display_name DESC, strong_association,file_id DESC);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_media_type_display_name ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp," \
-    "burst_cover_level,media_type,display_name DESC,strong_association,date_taken DESC, file_id DESC);"
+    "burst_cover_level,media_type,is_shared,display_name DESC,strong_association,date_taken DESC, file_id DESC);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_sort_media_type_size ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
-    "media_type,size DESC,file_id DESC,strong_association,display_name DESC);"
+    "media_type,is_shared,size DESC,file_id DESC,strong_association,display_name DESC);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_FAVORITE_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_photo_is_favorite ON Photos (" \
     "sync_status,clean_flag,hidden,time_pending,date_trashed,is_temp,is_favorite," \
-    "burst_cover_level,date_taken DESC, display_name DESC, file_id DESC);"
+    "burst_cover_level,is_shared,date_taken DESC, display_name DESC, file_id DESC);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_shooting_mode_album_general ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
-    "shooting_mode,date_taken DESC,display_name DESC, file_id);"
+    "shooting_mode,is_shared,date_taken DESC,display_name DESC, file_id);"
 
 #define SQL_UPGRADE_CREATE_PHOTO_MOVING_PHOTO_ALBUM_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_moving_photo_album ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
-    "date_taken DESC,display_name DESC, file_id) " \
+    "is_shared,date_taken DESC,display_name DESC, file_id) " \
     "WHERE (subtype = 6 OR (moving_photo_effect_mode = 1 AND subtype = 0));"
 
 #define SQL_UPGRADE_CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_raw_image_album ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
-    "mime_type,date_taken DESC,display_name DESC, file_id DESC);"
+    "mime_type,is_shared,date_taken DESC,display_name DESC, file_id DESC);"
 
 #define SQL_UPGRADE_INDEX_SCTHP_PHOTO_DATEADDED \
     "CREATE INDEX IF NOT EXISTS idx_schpt_date_added_new ON Photos (" \
     "sync_status,clean_flag,date_trashed,hidden,time_pending,is_temp,burst_cover_level," \
-    "date_added DESC, thumbnail_visible,display_name DESC, file_id DESC);"
+    "is_shared,date_added DESC, thumbnail_visible,display_name DESC, file_id DESC);"
 
 #define SQL_UPGRADE_CREATE_SCHPT_HIDDEN_TIME_INDEX \
     "CREATE INDEX IF NOT EXISTS idx_schpt_hidden_time ON Photos (" \
     "sync_status,clean_flag,hidden,time_pending,date_trashed,is_temp,burst_cover_level," \
-    "hidden_time DESC, media_type,owner_album_id,display_name DESC, file_id DESC);"
+    "is_shared,hidden_time DESC, media_type,owner_album_id,display_name DESC, file_id DESC);"
 
 #define SQL_UPGRADE_CREATE_LPATH_INDEX \
+    "CREATE INDEX IF NOT EXISTS lpath_index ON tab_cover_record (" \
+    "album_type,album_subtype,lpath COLLATE NOCASE)"
+
+// Indexs that need is_shared added
+#define INDEX_BURST_MODE_ALBUM "idx_burst_mode_album"
+#define INDEX_FRONT_CAMERA_ALBUM "idx_front_camera_album"
+#define INDEX_QUERY_THUBNAIL_WHITE_BLOCKS "idx_query_thumbnail_white_blocks_num"
+#define INDEX_SCHPT_DATE_DAY "idx_schpt_date_day"
+#define INDEX_SCHPT_DATE_YEAR_READY "idx_schpt_date_year_ready"
+#define INDEX_SCHPT_DATE_MONTH_READY "idx_schpt_date_month_ready"
+#define INDEX_SCHPT_MEDIA_TYPE "idx_schpt_media_type"
+#define INDEX_SCHPT_THUBNAIL_READY "idx_schpt_thumbnail_ready"
+#define INDEX_SCHPT_SHARE_DATE_ADDED "idx_schpt_share_date_added"
+
+
+#define SQL_UPGRADE_CREATE_QUERY_THUMBNAIL_WHITE_BLOCKS_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_query_thumbnail_white_blocks_num ON Photos (" \
+    "media_type,sync_status,lcd_visite_time,position,thumb_status,clean_flag," \
+    "thumbnail_visible,is_shared);"
+
+#define SQL_UPGRADE_CREATE_SCHPT_DATE_DAY_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_date_day ON Photos (" \
+    "sync_status,clean_flag,date_trashed,time_pending,hidden,is_temp,burst_cover_level," \
+    "is_shared,date_day DESC,thumbnail_visible);"
+
+#define SQL_UPGRADE_CREATE_SCHPT_DATE_YEAR_READY_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_date_year_ready ON Photos (" \
+    "sync_status,clean_flag,date_trashed,time_pending,hidden,is_temp,burst_cover_level," \
+    "is_shared,date_year DESC,thumbnail_visible);"
+
+#define SQL_UPGRADE_CREATE_SCHPT_DATE_MONTH_READY_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_date_month_ready ON Photos (" \
+    "sync_status,clean_flag,date_trashed,time_pending,hidden,is_temp,burst_cover_level," \
+    "is_shared,date_month DESC,thumbnail_visible);"
+
+#define SQL_UPGRADE_CREATE_SCHPT_MEDIA_TYPE_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_media_type ON Photos (" \
+    "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
+    "media_type,is_shared,date_added DESC,thumbnail_visible);"
+
+#define SQL_UPGRADE_CREATE_SCHPT_THUBNAIL_READY_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_thumbnail_ready ON Photos (" \
+    "sync_status,clean_flag,date_trashed,time_pending, hidden,is_temp,burst_cover_level," \
+    "is_shared,date_taken DESC,file_id DESC,thumbnail_visible);"
+
+#define SQL_UPGRADE_CREATE_SCHPT_SHARE_DATE_ADDED_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_share_date_added ON Photos (" \
+    "owner_album_id,sync_status,clean_flag,date_trashed,hidden,time_pending," \
+    "is_temp,burst_cover_level,is_shared,photo_visibility,share_group DESC,date_taken DESC,display_name DESC);"
+
+#define SQL_UPGRADE_CREATE_PHOTO_BURST_MODE_ALBUM_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_burst_mode_album ON Photos (" \
+    "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
+    "subtype,is_shared,date_taken DESC,display_name DESC,burst_key);"
+
+#define SQL_UPGRADE_CREATE_PHOTO_FRONT_CAMERA_ALBUM_INDEX \
+    "CREATE INDEX IF NOT EXISTS idx_front_camera_album ON Photos (" \
+    "sync_status,clean_flag,date_trashed,hidden,time_pending, is_temp,burst_cover_level," \
+    "front_camera,is_shared,date_taken DESC,display_name DESC);"
+
+#define SQL_UPGRADE_CREATE_PHOTO_FAVORITE_INDEX_ADD_IS_SHARED \
+    "CREATE INDEX IF NOT EXISTS idx_photo_is_favorite ON Photos (" \
+    "sync_status,clean_flag,hidden,time_pending,date_trashed,is_temp,is_favorite," \
+    "burst_cover_level,is_shared,date_taken DESC, display_name DESC, file_id DESC);"
+
+#define INDEX_LPATH_INDEX "lpath_index"
+
+#define SQL_UPGRADE_CREATE_LPATH_INDEX_REBUILD \
     "CREATE INDEX IF NOT EXISTS lpath_index ON tab_cover_record (" \
     "album_type,album_subtype,lpath COLLATE NOCASE)"
 

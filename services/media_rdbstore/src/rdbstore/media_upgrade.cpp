@@ -177,8 +177,8 @@ const std::string PhotoUpgrade::CREATE_SCHPT_DAY_INDEX = BaseColumn::CreateIndex
     PhotoColumn::PHOTOS_TABLE + " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," +
     PhotoColumn::PHOTO_CLEAN_FLAG + "," + PhotoColumn::MEDIA_DATE_TRASHED + "," +
     MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_HIDDEN + "," +
-    PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
-    PhotoColumn::PHOTO_DATE_DAY + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
+    PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED +
+    "," + PhotoColumn::PHOTO_DATE_DAY + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
 
 const std::string PhotoUpgrade::DROP_SCHPT_DAY_INDEX = BaseColumn::DropIndex() + PhotoColumn::PHOTO_SCHPT_DAY_INDEX;
 
@@ -193,22 +193,22 @@ const std::string PhotoUpgrade::CREATE_SCHPT_MEDIA_TYPE_INDEX = BaseColumn::Crea
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," +
-    MediaColumn::MEDIA_DATE_ADDED + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," + PhotoColumn::PHOTO_IS_SHARED +
+    "," + MediaColumn::MEDIA_DATE_ADDED + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
 
 const std::string PhotoUpgrade::CREATE_SCHPT_YEAR_COUNT_READY_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SCHPT_DATE_YEAR_COUNT_READY_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE + " (" +
     PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," + MediaColumn::MEDIA_DATE_TRASHED +
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_HIDDEN + "," + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_DATE_YEAR + " DESC, " +
-    PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED +
+    "," + PhotoColumn::PHOTO_DATE_YEAR + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
 
 const std::string PhotoUpgrade::CREATE_SCHPT_MONTH_COUNT_READY_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SCHPT_DATE_MONTH_COUNT_READY_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE + " (" +
     PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," + MediaColumn::MEDIA_DATE_TRASHED +
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_HIDDEN + "," + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_DATE_MONTH + " DESC, " +
-    PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED +
+    "," + PhotoColumn::PHOTO_DATE_MONTH + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
 
 const std::string PhotoUpgrade::CREATE_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE + " (" +
@@ -242,9 +242,10 @@ const std::string PhotoUpgrade::CREATE_SCHPT_HIDDEN_TIME_INDEX =
     BaseColumn::CreateIndex() + PhotoColumn::PHOTO_SCHPT_HIDDEN_TIME_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_HIDDEN + "," + MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_DATE_TRASHED +
-    "," + PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
-    PhotoColumn::PHOTO_HIDDEN_TIME + " DESC, " + MediaColumn::MEDIA_TYPE + "," +
-    PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
+    "," + PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL +
+    "," + PhotoColumn::PHOTO_IS_SHARED + "," + PhotoColumn::PHOTO_HIDDEN_TIME + " DESC, " + MediaColumn::MEDIA_TYPE +
+    "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID +
+    " DESC);";
 
 const std::string PhotoUpgrade::DROP_SCHPT_HIDDEN_TIME_INDEX = BaseColumn::DropIndex() +
     PhotoColumn::PHOTO_SCHPT_HIDDEN_TIME_INDEX;
@@ -254,7 +255,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_FAVORITE_INDEX =
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_HIDDEN + "," + MediaColumn::MEDIA_TIME_PENDING + "," + MediaColumn::MEDIA_DATE_TRASHED +
     "," + PhotoColumn::PHOTO_IS_TEMP + "," + MediaColumn::MEDIA_IS_FAV + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " +
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED + "," +
+    MediaColumn::MEDIA_DATE_TAKEN + " DESC, " +
     MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::DROP_PHOTO_FAVORITE_INDEX = BaseColumn::DropIndex() +
@@ -310,6 +312,7 @@ const std::string PhotoUpgrade::INDEX_SCTHP_PHOTO_DATEADDED =
     PhotoColumn::PHOTO_CLEAN_FLAG + "," + MediaColumn::MEDIA_DATE_TRASHED + "," +
     MediaColumn::MEDIA_HIDDEN + "," + MediaColumn::MEDIA_TIME_PENDING + "," +
     PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
+    PhotoColumn::PHOTO_IS_SHARED + "," +
     MediaColumn::MEDIA_DATE_ADDED + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + "," +
     MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
@@ -331,7 +334,8 @@ const std::string PhotoUpgrade::INDEX_QUERY_THUMBNAIL_WHITE_BLOCKS =
     " ON " + PhotoColumn::PHOTOS_TABLE + " (" + MediaColumn::MEDIA_TYPE + "," +
     PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_LCD_VISIT_TIME +
     "," + PhotoColumn::PHOTO_POSITION + "," + PhotoColumn::PHOTO_THUMB_STATUS + "," +
-    PhotoColumn::PHOTO_CLEAN_FLAG + "," + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + " );";
+    PhotoColumn::PHOTO_CLEAN_FLAG + "," + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + "," +
+    PhotoColumn::PHOTO_IS_SHARED + " );";
 
 const std::string PhotoUpgrade::UPDATE_PHOTO_QUALITY_OF_NULL_PHOTO_ID =
     " UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " + PhotoColumn::PHOTO_QUALITY + " = 0 WHERE " +
@@ -352,7 +356,7 @@ const std::string PhotoUpgrade::INDEX_SCHPT_READY = BaseColumn::CreateIndex() +
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG +
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_TIME_PENDING +
     ", " + MediaColumn::MEDIA_HIDDEN + "," + PhotoColumn::PHOTO_IS_TEMP + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_DATE_TAKEN +
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_DATE_TAKEN +
     " DESC, " + MediaColumn::MEDIA_ID + " DESC, " + PhotoColumn::PHOTO_THUMBNAIL_VISIBLE + ");";
 
 const std::string PhotoUpgrade::DROP_INDEX_SCHPT_READY = BaseColumn::DropIndex() + PhotoColumn::PHOTO_SCHPT_READY_INDEX;
@@ -362,7 +366,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX = 
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE +
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," + PhotoColumn::PHOTO_IS_SHARED +
     "," + MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME +
     " DESC, " + PhotoColumn::PHOTO_STRONG_ASSOCIATION + "," + MediaColumn::MEDIA_ID + " DESC);";
 
@@ -371,8 +375,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX = 
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG +
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," +
-    MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," + PhotoColumn::PHOTO_IS_SHARED +
+    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
     " DESC, " + PhotoColumn::PHOTO_STRONG_ASSOCIATION + "," + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX = BaseColumn::CreateIndex() +
@@ -380,8 +384,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX = Ba
     " (" + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," + MediaColumn::MEDIA_HIDDEN + "," +
     PhotoColumn::PHOTO_CLEAN_FLAG + "," +  PhotoColumn::PHOTO_SYNC_STATUS + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_TIME_PENDING + "," +
-    PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," +
-    MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
+    PhotoColumn::PHOTO_IS_TEMP + "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED +
+    "," + MediaColumn::MEDIA_DATE_ADDED + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
     MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX = BaseColumn::CreateIndex() +
@@ -389,17 +393,17 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX = Ba
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
-    MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," +
+    PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
+    " DESC, " + MediaColumn::MEDIA_ID + "," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_IN_ALBUM_SIZE_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-    "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC, " +
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," +
+    PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC, " +
     MediaColumn::MEDIA_DATE_TAKEN + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX = BaseColumn::CreateIndex() +
@@ -407,7 +411,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX = BaseCo
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE +
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," + PhotoColumn::PHOTO_IS_SHARED +
     "," + MediaColumn::MEDIA_SIZE + " DESC," + MediaColumn::MEDIA_ID + " DESC," +
     PhotoColumn::PHOTO_STRONG_ASSOCIATION + "," + MediaColumn::MEDIA_NAME + " DESC);";
 
@@ -416,16 +420,16 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX = 
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
     MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP + "," +
-    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-    "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " +
-    MediaColumn::MEDIA_ID + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," +
+    PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_DATE_TAKEN +
+    " DESC, " + MediaColumn::MEDIA_ID + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG +
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE +
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_TYPE + "," + PhotoColumn::PHOTO_IS_SHARED +
     "," + MediaColumn::MEDIA_NAME + " DESC," + PhotoColumn::PHOTO_STRONG_ASSOCIATION +
     "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
@@ -434,17 +438,17 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX =
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG +
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_SHOOTING_MODE +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
-    MediaColumn::MEDIA_ID + ");";
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_SHOOTING_MODE + "," +
+    PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
+    " DESC, " + MediaColumn::MEDIA_ID + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_BURST_MODE_ALBUM_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_BURST_MODE_ALBUM_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG +
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_SUBTYPE +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_SUBTYPE + "," +
+    PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME +
     " DESC," + PhotoColumn::PHOTO_BURST_KEY + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_FRONT_CAMERA_ALBUM_INDEX = BaseColumn::CreateIndex() +
@@ -453,7 +457,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_FRONT_CAMERA_ALBUM_INDEX = BaseColu
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_FRONT_CAMERA +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC);";
+    "," + PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," +
+    MediaColumn::MEDIA_NAME + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_RAW_IMAGE_ALBUM_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
@@ -461,19 +466,30 @@ const std::string PhotoUpgrade::CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX = BaseColumn:
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
     "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + MediaColumn::MEDIA_MIME_TYPE +
-    "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " +
-    MediaColumn::MEDIA_ID + " DESC);";
+    "," + PhotoColumn::PHOTO_IS_SHARED + "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," +
+    MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTO_MOVING_PHOTO_ALBUM_INDEX = BaseColumn::CreateIndex() +
     PhotoColumn::PHOTO_MOVING_PHOTO_ALBUM_INDEX + " ON " + PhotoColumn::PHOTOS_TABLE +
     " (" + PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG +
     "," + MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN +
     "," + MediaColumn::MEDIA_TIME_PENDING + ", " + PhotoColumn::PHOTO_IS_TEMP +
-    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL +
+    "," + PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED +
     "," + MediaColumn::MEDIA_DATE_TAKEN + " DESC," + MediaColumn::MEDIA_NAME + " DESC, " + MediaColumn::MEDIA_ID + ") "
     "WHERE (subtype = " + to_string(static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) +
         " OR (moving_photo_effect_mode = " + to_string(static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) +
             " AND subtype = " + to_string(static_cast<int32_t>(PhotoSubType::DEFAULT)) + "));";
+
+const std::string PhotoUpgrade::CREATE_PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX =
+    BaseColumn::CreateIndex() + PhotoColumn::PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX + " ON " +
+    PhotoColumn::PHOTOS_TABLE + " (" + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "," +
+    PhotoColumn::PHOTO_SYNC_STATUS + "," + PhotoColumn::PHOTO_CLEAN_FLAG + "," +
+    MediaColumn::MEDIA_DATE_TRASHED + "," + MediaColumn::MEDIA_HIDDEN + "," +
+    MediaColumn::MEDIA_TIME_PENDING + "," + PhotoColumn::PHOTO_IS_TEMP + "," +
+    PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED + "," +
+    PhotoColumn::PHOTO_VISIBILITY + "," + PhotoColumn::PHOTO_SHARE_GROUP + " DESC," +
+    MediaColumn::MEDIA_DATE_TAKEN + " DESC," +
+    MediaColumn::MEDIA_NAME + " DESC);";
 
 const std::string PhotoUpgrade::CREATE_PHOTOS_DELETE_TRIGGER =
                         "CREATE TRIGGER IF NOT EXISTS photos_delete_trigger AFTER UPDATE ON " +

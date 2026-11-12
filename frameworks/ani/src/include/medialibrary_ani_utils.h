@@ -459,6 +459,8 @@ public:
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     static int32_t GetUserAlbumPredicates(const int32_t albumId,
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
+    static int32_t GetShareAlbumPredicates(const int32_t albumId,
+        DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     static int32_t GetAnalysisAlbumPredicates(const int32_t albumId, DataShare::DataSharePredicates &predicates);
     static int32_t GetFeaturedSinglePortraitAlbumPredicates(
         const int32_t albumId, DataShare::DataSharePredicates &predicates);

@@ -121,6 +121,7 @@ std::shared_ptr<MediaLibraryAsyncContext> MediaAniNativeImpl::GetAssetsContext(a
     predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+    predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
     return context;
 }
 

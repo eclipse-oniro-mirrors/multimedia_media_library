@@ -2187,6 +2187,8 @@ static const vector<string> onCreateSqlStrs = {
     SQL_CREATE_MAP_CODE_DELETE_TRIGGER,
     SQL_CREATE_MAPCODE_LEVEL_5_INDEX,
     SQL_CREATE_MAPCODE_LEVEL_20_INDEX,
+
+    PhotoUpgrade::CREATE_PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX,
 };
 
 static int32_t ExecuteSql(RdbStore &store)

@@ -52,7 +52,11 @@ public:
     PhotoAlbumType GetPhotoAlbumType() const;
     PhotoAlbumSubType GetPhotoAlbumSubType() const;
     int32_t GetUploadStatus() const;
+    int32_t GetShareRiskStatus() const;
+    const std::string& GetShareRiskType() const;
     std::shared_ptr<PhotoAlbum> GetPhotoAlbumInstance() const;
+    const std::string& GetShareAlbumOwner() const;
+    const std::string& GetCloudId() const;
 
     void SetHiddenOnly(const bool hiddenOnly);
     bool GetHiddenOnly() const;
@@ -82,6 +86,10 @@ private:
     EXPORT static napi_value JSPhotoAccessGetPhotoAssetsSync(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSPhotoAccessGetSharedPhotoAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetUploadStatus(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetShareRiskStatus(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetShareRiskType(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetShareAlbumOwner(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetCloudId(napi_env env, napi_callback_info info);
 
     EXPORT static napi_value PhotoAccessHelperCommitModify(napi_env env, napi_callback_info info);
     EXPORT static napi_value ConvertToPhotoAlbum(napi_env env, napi_callback_info info);

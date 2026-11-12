@@ -127,6 +127,12 @@ const std::unordered_map<std::string, ResultSetDataType> &MediaResultTypeMapUtil
         {PhotoColumn::PHOTO_IS_SHARED, TYPE_INT32},
         {PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, TYPE_INT32},
         {PhotoColumn::LOCAL_ENHANCEMENT_STATUS, TYPE_INT32},
+        {PhotoColumn::PHOTO_SHARE_OWNER_INFO, TYPE_STRING},
+        {PhotoColumn::PHOTO_SHARE_RISK_STATUS, TYPE_INT32},
+        {PhotoColumn::PHOTO_VISIBILITY, TYPE_INT32},
+        {PhotoColumn::PHOTO_SHARE_GROUP, TYPE_INT64},
+        {PhotoColumn::PHOTO_SHARE_RISK_TYPE, TYPE_STRING},
+        {PhotoColumn::PHOTO_SHARE_DATE_DAY, TYPE_INT64},
     };
     return RESULT_TYPE_MAP;
 }

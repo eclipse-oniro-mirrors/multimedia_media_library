@@ -211,6 +211,14 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_BASE_WITH_INT_CODE(env, cond, err, retVal)                     \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return retVal;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_ARGS_WITH_CODE(env, cond, err)                     \
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
@@ -295,6 +303,14 @@
     do {                                                            \
         if ((cond) != napi_ok) {                                    \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_ARGS_WITH_INT_MSG(env, cond, err, msg)                 \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, msg); \
             return nullptr;                                          \
         }                                                           \
     } while (0)
@@ -655,6 +671,8 @@ public:
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     EXPORT static int32_t GetAnalysisPhotoMapPredicates(const int32_t albumId,
         DataShare::DataSharePredicates &predicates);
+    EXPORT static int32_t GetShareAlbumPredicates(const int32_t albumId,
+        DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     EXPORT static int32_t GetFeaturedSinglePortraitAlbumPredicates(
         const int32_t albumId, DataShare::DataSharePredicates &predicates);
     EXPORT static int32_t GetPortraitAlbumPredicates(const int32_t albumId, DataShare::DataSharePredicates &predicates);

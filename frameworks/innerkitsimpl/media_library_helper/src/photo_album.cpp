@@ -340,7 +340,7 @@ bool PhotoAlbum::CheckPhotoAlbumSubType(const PhotoAlbumSubType albumSubType)
     return (albumSubType == PhotoAlbumSubType::USER_GENERIC) || (albumSubType == PhotoAlbumSubType::ANY) ||
            ((albumSubType >= PhotoAlbumSubType::SYSTEM_START) && (albumSubType <= PhotoAlbumSubType::SYSTEM_END)) ||
            ((albumSubType >= PhotoAlbumSubType::ANALYSIS_START) && (albumSubType <= PhotoAlbumSubType::ANALYSIS_END)) ||
-           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC) ||
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC) || (albumSubType == PhotoAlbumSubType::SHARE_GENERIC) ||
            (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
 }
 
@@ -465,6 +465,26 @@ void PhotoAlbum::SetFileHidden(bool fileHidden)
 bool PhotoAlbum::IsFileHidden() const
 {
     return fileHidden_;
+}
+
+void PhotoAlbum::SetShareRiskStatus(const int32_t shareRiskStatus)
+{
+    shareRiskStatus_ = shareRiskStatus;
+}
+
+int32_t PhotoAlbum::GetShareRiskStatus() const
+{
+    return shareRiskStatus_;
+}
+
+void PhotoAlbum::SetShareRiskType(const std::string &shareRiskType)
+{
+    shareRiskType_ = shareRiskType;
+}
+
+const std::string& PhotoAlbum::GetShareRiskType() const
+{
+    return shareRiskType_;
 }
 
 bool PhotoAlbum::IsUserPhotoAlbumByType(const PhotoAlbumType albumType)

@@ -77,6 +77,7 @@ private:
     EXPORT static napi_value PhotoAccessGetBurstAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetPhotoAlbums(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetSharedPhotoAssets(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessGetShareAlbums(napi_env env, napi_callback_info info);
 
     EXPORT static napi_value PahGetHiddenAlbums(napi_env env, napi_callback_info info);
 
@@ -165,6 +166,8 @@ struct SendablePhotoAccessHelperAsyncContext : public NapiError {
     int32_t hiddenAlbumFetchMode = -1;
     std::string formId;
     std::string indexProgress;
+    uint32_t businessCode = 0;
+    int32_t userId = -1;
 };
 
 struct SendablePhotoAccessHelperInitContext : public NapiError  {
