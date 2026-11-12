@@ -32,6 +32,7 @@
 #include "medialibrary_tracer.h"
 #include "mimetype_utils.h"
 #include "scan_camera_file_vo.h"
+#include "thread_qos_utils.h"
 #include "user_inner_ipc_client.h"
 #include "userfilemgr_uri.h"
 
@@ -554,12 +555,14 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &photoProxy)
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} MultistagesCapture, photoId: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, photoProxy->GetPhotoId().c_str());
 
+    OHOS::Media::ThreadQosUtils::SetThreadQos();
     CreatePhotoAsset(photoProxy, "", GetCameraPipelineType(photoProxy, cameraShotType_, false));
     if (cameraShotType_ == CameraShotType::VIDEO || cameraShotType_ == CameraShotType::CINEMATIC_VIDEO) {
         photoProxy->Release();
         MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} "
             "MultistagesCapture exit for VIDEO or CINEMATIC_VIDEO, type: %{public}d",
             MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(cameraShotType_));
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
         return;
     }
 
@@ -572,9 +575,11 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &photoProxy)
         photoProxy->Release();
         MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} MultistagesCapture exit for YUV",
             MLOG_TAG, __FUNCTION__, __LINE__);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
         return;
     }
 
+    OHOS::Media::ThreadQosUtils::ResetThreadQos();
     SaveFileForImage(photoProxy, nullptr);
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} MultistagesCapture exit", MLOG_TAG, __FUNCTION__, __LINE__);
 }
@@ -596,12 +601,14 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy,
 
     // 2.创建数据photoAsset
     bool hasEditData = !editData.empty();
+    OHOS::Media::ThreadQosUtils::SetThreadQos();
     CreatePhotoAsset(editPhotoProxy, editData, GetCameraPipelineType(editPhotoProxy, cameraShotType_, hasEditData));
 
     // 3.视频模式, 仅创建数据即可
     if (cameraShotType_ == CameraShotType::VIDEO || cameraShotType_ == CameraShotType::CINEMATIC_VIDEO) {
         MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} nMultistagesCapture exit for video mode: %{public}d",
             MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(cameraShotType_));
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
         return;
     }
 
@@ -615,12 +622,13 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy,
     if (editPhotoProxy->GetFormat() == PhotoFormat::YUV) {
         MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} nMultistagesCapture exit for YUV",
             MLOG_TAG, __FUNCTION__, __LINE__);
+        OHOS::Media::ThreadQosUtils::ResetThreadQos();
         return;
     }
 
     // 6.非YUV模式, 需要落盘
     SaveFileForImage(editPhotoProxy, srcPhotoProxy);
-
+    OHOS::Media::ThreadQosUtils::ResetThreadQos();
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} nMultistagesCapture exit", MLOG_TAG, __FUNCTION__, __LINE__);
 }
 // LCOV_EXCL_STOP
@@ -669,7 +677,9 @@ int32_t PhotoAssetProxy::GetVideoFd(VideoType videoType)
     }
     MediaUriUtils::AppendKeyValue(videoUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openVideoUri(videoUri);
+    OHOS::Media::ThreadQosUtils::SetThreadQos();
     int32_t fd = dataShareHelper_->OpenFile(openVideoUri, MEDIA_FILEMODE_READWRITE);
+    OHOS::Media::ThreadQosUtils::ResetThreadQos();
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} video path: %{public}s, fd: %{public}d",
         MLOG_TAG, __FUNCTION__, __LINE__, MediaUriUtils::GetSafeUri(videoUri).c_str(), fd);
     return fd;
@@ -695,7 +705,9 @@ void PhotoAssetProxy::NotifyVideoSaveFinished(VideoType videoType)
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileId_);
     valuesBucket.Put(CONST_NOTIFY_VIDEO_SAVE_FINISHED, uri_);
+    OHOS::Media::ThreadQosUtils::SetThreadQos();
     dataShareHelper_->Insert(uri, valuesBucket);
+    OHOS::Media::ThreadQosUtils::ResetThreadQos();
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} video save finished %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, uri_.c_str());
 }
