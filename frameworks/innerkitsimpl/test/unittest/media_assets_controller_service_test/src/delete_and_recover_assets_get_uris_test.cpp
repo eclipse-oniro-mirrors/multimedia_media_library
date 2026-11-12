@@ -25,6 +25,8 @@
 #include <thread>
 #include <vector>
 
+#include <message_parcel.h>
+
 #include "media_assets_controller_service.h"
 #include "asset_uri_result_vo.h"
 #include "delete_local_assets_and_get_uris_vo.h"
@@ -343,6 +345,110 @@ HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, RecoverAssetsAndGetUris_TrashedAsset
     EXPECT_EQ(results[0].originalFileId, to_string(assetId));
     EXPECT_TRUE(results[0].isSuccess);
     EXPECT_EQ(results[0].resultUri, trashedUri);
+}
+
+/*
+ * @tc.name: AssetUriResult_Unmarshalling_ReadOriginalFileIdFail_008
+ * @tc.desc: Empty parcel makes the originalFileId read fail, then Unmarshalling returns false
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, AssetUriResult_Unmarshalling_ReadOriginalFileIdFail_008, TestSize.Level0)
+{
+    MessageParcel parcel;
+    AssetUriResult result;
+    EXPECT_FALSE(result.Unmarshalling(parcel));
+}
+
+/*
+ * @tc.name: AssetUriResult_Unmarshalling_ReadResultUriFail_009
+ * @tc.desc: Parcel with only originalFileId makes the resultUri read fail, then Unmarshalling returns false
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, AssetUriResult_Unmarshalling_ReadResultUriFail_009, TestSize.Level0)
+{
+    MessageParcel parcel;
+    ASSERT_TRUE(parcel.WriteString("100"));
+    parcel.RewindRead(0);
+
+    AssetUriResult result;
+    EXPECT_FALSE(result.Unmarshalling(parcel));
+    EXPECT_EQ(result.originalFileId, "100");
+}
+
+/*
+ * @tc.name: AssetUriResult_Unmarshalling_ReadIsSuccessFail_010
+ * @tc.desc: Parcel without isSuccess makes the bool read fail, then Unmarshalling returns false
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, AssetUriResult_Unmarshalling_ReadIsSuccessFail_010, TestSize.Level0)
+{
+    MessageParcel parcel;
+    ASSERT_TRUE(parcel.WriteString("100"));
+    ASSERT_TRUE(parcel.WriteString("file://media/Photo/100"));
+    parcel.RewindRead(0);
+
+    AssetUriResult result;
+    EXPECT_FALSE(result.Unmarshalling(parcel));
+    EXPECT_EQ(result.resultUri, "file://media/Photo/100");
+    EXPECT_FALSE(result.isSuccess);
+}
+
+/*
+ * @tc.name: AssetUriResult_Marshalling_WriteOriginalFileIdFail_011
+ * @tc.desc: originalFileId larger than the parcel max capacity makes WriteString fail, then Marshalling returns false
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, AssetUriResult_Marshalling_WriteOriginalFileIdFail_011, TestSize.Level0)
+{
+    MessageParcel parcel;
+    const size_t capacity = parcel.GetMaxCapacity();
+    ASSERT_GT(capacity, 0);
+
+    AssetUriResult result;
+    result.originalFileId = std::string(capacity, 'a');
+    EXPECT_FALSE(result.Marshalling(parcel));
+}
+
+/*
+ * @tc.name: AssetUriResult_Marshalling_WriteResultUriFail_012
+ * @tc.desc: resultUri larger than the parcel remaining capacity makes WriteString fail, then Marshalling returns false
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, AssetUriResult_Marshalling_WriteResultUriFail_012, TestSize.Level0)
+{
+    MessageParcel parcel;
+    const size_t capacity = parcel.GetMaxCapacity();
+    ASSERT_GT(capacity, 0);
+
+    AssetUriResult result;
+    result.originalFileId = "100";
+    result.resultUri = std::string(capacity, 'a');
+    EXPECT_FALSE(result.Marshalling(parcel));
+}
+
+/*
+ * @tc.name: AssetUriResult_Marshalling_WriteIsSuccessFail_013
+ * @tc.desc: Two strings fill the parcel capacity exactly, then writing isSuccess fails and Marshalling returns false
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(DeleteAndRecoverAssetsGetUrisTest, AssetUriResult_Marshalling_WriteIsSuccessFail_013, TestSize.Level0)
+{
+    MessageParcel parcel;
+    const size_t capacity = parcel.GetMaxCapacity();
+    ASSERT_GT(capacity, sizeof(int32_t) * 2 + sizeof(int32_t) * 2);
+
+    // Each string takes a 4-byte length prefix plus a 4-byte aligned payload,
+    // so split the remaining capacity by the alignment unit to fill the parcel exactly.
+    size_t payloadBudget = (capacity - sizeof(int32_t) * 2) / sizeof(int32_t) * sizeof(int32_t);
+    size_t firstPayload = payloadBudget / 2 / sizeof(int32_t) * sizeof(int32_t);
+    size_t secondPayload = payloadBudget - firstPayload;
+    ASSERT_GE(firstPayload, sizeof(int32_t));
+    ASSERT_GE(secondPayload, sizeof(int32_t));
+
+    AssetUriResult result;
+    result.originalFileId = std::string(firstPayload - 1, 'a');
+    result.resultUri = std::string(secondPayload - 1, 'b');
+    EXPECT_FALSE(result.Marshalling(parcel));
 }
 
 }  // namespace OHOS::Media
