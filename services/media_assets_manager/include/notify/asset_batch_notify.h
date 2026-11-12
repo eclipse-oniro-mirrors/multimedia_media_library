@@ -29,7 +29,7 @@ namespace OHOS::Media {
 class AssetBatchNotify {
 public:
     int32_t TryNotifyAssetsChange(const std::vector<std::string> &fileIds);
-    int32_t FinalNotifyAssetsChange();
+    int32_t FinalNotifyAssetsChange(bool needUpdateAllAlbums = true);
 
 private:
     int32_t TryUpdateAllAlbums();

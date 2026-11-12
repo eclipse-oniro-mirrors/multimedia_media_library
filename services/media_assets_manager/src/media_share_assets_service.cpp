@@ -69,7 +69,7 @@ int32_t MediaShareAssetsService::MarkShareAssetsToRemove()
         batchAssetNotify.TryNotifyAssetsChange(updateFileIds);
         hasRecords = this->shareAssetsDao_.HasShareAssetToMarkDeleted(updateFileIds, lastFileId);
     }
-    batchAssetNotify.FinalNotifyAssetsChange();
+    batchAssetNotify.FinalNotifyAssetsChange(false);
     MEDIA_INFO_LOG("end MarkShareAssetsToRemove, ret: %{public}d", ret);
     return ret;
 }
