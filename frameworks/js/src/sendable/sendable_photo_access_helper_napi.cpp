@@ -30,6 +30,9 @@
 #include "userfile_client.h"
 #include "album_operation_uri.h"
 #include "media_audio_column.h"
+#include "query_albums_vo.h"
+#include "medialibrary_business_code.h"
+#include "user_define_ipc_client.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -99,6 +102,7 @@ napi_value SendablePhotoAccessHelper::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getAlbums", PhotoAccessGetPhotoAlbums),
         DECLARE_NAPI_FUNCTION("getHiddenAlbums", PahGetHiddenAlbums),
         DECLARE_NAPI_FUNCTION("getSharedPhotoAssets", PhotoAccessGetSharedPhotoAssets),
+        DECLARE_NAPI_FUNCTION("getShareAlbums", PhotoAccessGetShareAlbums),
     };
     napi_define_sendable_class(env, SENDABLE_PHOTOACCESSHELPER_NAPI_CLASS_NAME.c_str(), NAPI_AUTO_LENGTH,
                                MediaLibraryNapiConstructor, nullptr, sizeof(props) / sizeof(props[0]),
@@ -482,6 +486,10 @@ static void AddDefaultColumnsForNonAnalysisAlbums(SendablePhotoAccessHelperAsync
         context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_IMAGE_COUNT);
         context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
         context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
+        context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+        context.fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+        context.fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+        context.fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
     }
 }
 
@@ -505,9 +513,8 @@ static napi_value ParseArgsGetAssets(napi_env env, napi_callback_info info,
         }
         case TYPE_PHOTO: {
             if (needExtraOption) {
-                bool isAddDefaultColumn =
-                    std::find(context->fetchColumn.begin(), context->fetchColumn.end(), CONST_MEDIA_DATA_DB_URI) !=
-                        context->fetchColumn.end();
+                bool isAddDefaultColumn = std::find(context->fetchColumn.begin(), context->fetchColumn.end(),
+                    CONST_MEDIA_DATA_DB_URI) != context->fetchColumn.end();
                 if (isAddDefaultColumn) {
                     CHECK_NULLPTR_RET(SendableMediaLibraryNapiUtils::AddDefaultAssetColumns(env, context->fetchColumn,
                         PhotoColumn::IsPhotoColumn, TYPE_PHOTO));
@@ -535,6 +542,7 @@ static napi_value ParseArgsGetAssets(napi_env env, napi_callback_info info,
         predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
         predicates.EqualTo(
             PhotoColumn::PHOTO_BURST_COVER_LEVEL, to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+        predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
     }
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
@@ -739,6 +747,7 @@ napi_value SendablePhotoAccessHelper::CreateAlbumTypeEnum(napi_env env)
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SYSTEM", PhotoAlbumType::SYSTEM), JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SMART", PhotoAlbumType::SMART), JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SOURCE", PhotoAlbumType::SOURCE), JS_INNER_FAIL);
+    CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SHARE", PhotoAlbumType::SOURCE), JS_INNER_FAIL);
 
     CHECK_ARGS(env, napi_create_reference(env, result, NAPI_INIT_REF_COUNT, &sAlbumType_), JS_INNER_FAIL);
     return result;
@@ -767,6 +776,7 @@ napi_value SendablePhotoAccessHelper::CreateAlbumSubTypeEnum(napi_env env)
         CHECK_ARGS(env, AddIntegerNamedProperty(env, result, analysisAlbumSubType[i],
             PhotoAlbumSubType::GEOGRAPHY_LOCATION + i), JS_INNER_FAIL);
     }
+    CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SHARE", PhotoAlbumSubType::SHARE_GENERIC), JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "ANY", PhotoAlbumSubType::ANY), JS_INNER_FAIL);
 
     CHECK_ARGS(env, napi_create_reference(env, result, NAPI_INIT_REF_COUNT, &sAlbumSubType_), JS_INNER_FAIL);
@@ -917,6 +927,8 @@ static void RestrictAlbumSubtypeOptions(unique_ptr<SendablePhotoAccessHelperAsyn
     } else {
         context->predicates.And()->NotEqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::HIDDEN));
     }
+    context->predicates.And()->NotEqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE,
+        to_string(PhotoAlbumSubType::SHARE_GENERIC));
 }
 
 static napi_value ParseArgsGetPhotoAlbum(napi_env env, napi_callback_info info,
@@ -1061,6 +1073,7 @@ napi_value ParseArgsGetHiddenAlbums(napi_env env, napi_callback_info info,
     }
     CHECK_NULLPTR_RET(ParseHiddenPhotosDisplayMode(env, context, fetchMode));
     CHECK_NULLPTR_RET(AddDefaultPhotoAlbumColumns(env, context->fetchColumn));
+    AddDefaultColumnsForNonAnalysisAlbums(*context);
     context->hiddenAlbumFetchMode = fetchMode;
     if (fetchMode == HiddenPhotosDisplayMode::ASSETS_MODE) {
         return result;
@@ -1587,6 +1600,157 @@ int32_t SendablePhotoAccessHelper::GetUserId()
 void SendablePhotoAccessHelper::SetUserId(const int32_t &userId)
 {
     userId_ = userId;
+}
+
+static bool CheckAlbumFetchColumns(const vector<string> &fetchColumn)
+{
+    for (const auto &column : fetchColumn) {
+        if (!PhotoAlbumColumns::IsPhotoAlbumColumn(column) && column.compare(CONST_MEDIA_DATA_DB_URI) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void SetUserIdFromObjectInfo(unique_ptr<SendablePhotoAccessHelperAsyncContext> &asyncContext)
+{
+    if (asyncContext == nullptr || asyncContext->objectInfo == nullptr) {
+        NAPI_ERR_LOG("objectInfo is nullptr");
+        return;
+    }
+    asyncContext->userId = asyncContext->objectInfo->GetUserId();
+}
+
+static napi_value ParseArgsGetShareAlbums(napi_env env, napi_callback_info info,
+    unique_ptr<SendablePhotoAccessHelperAsyncContext> &context)
+{
+    if (!SendableMediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system app");
+        return nullptr;
+    }
+
+    constexpr size_t minArgs = ARGS_ZERO;
+    constexpr size_t maxArgs = ARGS_ONE;
+    CHECK_ARGS_WITH_INT(env, SendableMediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context,
+        minArgs, maxArgs), JS_E_PARAM_INVALID);
+
+    if (context->argc == maxArgs) {
+        napi_valuetype valueType = napi_undefined;
+        if (napi_typeof(env, context->argv[PARAM1], &valueType) == napi_ok &&
+            (valueType == napi_undefined || valueType == napi_null)) {
+            context->argc -= 1;
+        }
+    }
+
+    if (context->argc == maxArgs) {
+        auto status =
+            SendableMediaLibraryNapiUtils::GetFetchOption(env, context->argv[maxArgs - 1], ALBUM_FETCH_OPT, context);
+        CHECK_ARGS_WITH_INT_MSG(env, status, JS_E_INNER_FAIL, "Failed to get fetch option");
+    }
+    RestrictAlbumSubtypeOptions(context);
+
+    CHECK_ARGS_WITH_INT_MEG(env, CheckAlbumFetchColumns(context->fetchColumn), JS_E_INNER_FAIL,
+        "Invalid fetch columns");
+
+    napi_value result = nullptr;
+    CHECK_ARGS_WITH_INT_MSG(env, napi_get_boolean(env, true, &result), JS_E_INNER_FAIL,
+        "Failed to create boolean value");
+    return result;
+}
+
+
+static void JSPahGetShareAlbumsExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSPahGetAlbumsExecute");
+
+    int errCode = 0;
+    auto *context = static_cast<SendablePhotoAccessHelperAsyncContext*>(data);
+
+    QueryAlbumsReqBody reqBody;
+    QueryAlbumsRespBody respBody;
+    reqBody.columns = context->fetchColumn;
+    reqBody.predicates = context->predicates;
+    errCode = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(context->businessCode, reqBody, respBody);
+    if (errCode != 0) {
+        NAPI_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
+        return;
+    }
+    std::shared_ptr<DataShareResultSet> resultSet = respBody.resultSet;
+
+    if (resultSet == nullptr) {
+        NAPI_ERR_LOG("resultSet == nullptr, errCode is %{public}d", errCode);
+        if (errCode == E_PERMISSION_DENIED || errCode == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(errCode);
+        } else {
+            context->SaveError(E_HAS_DB_ERROR);
+        }
+        return;
+    }
+
+    context->fetchPhotoAlbumResult = make_unique<FetchResult<PhotoAlbum>>(move(resultSet));
+    context->fetchPhotoAlbumResult->SetResultNapiType(context->resultNapiType);
+    context->fetchPhotoAlbumResult->SetHiddenOnly(false);
+    context->fetchPhotoAlbumResult->SetLocationOnly(false);
+    context->fetchPhotoAlbumResult->SetUserId(context->userId);
+}
+
+static void GetShareAlbumQueryResult(napi_env env, SendablePhotoAccessHelperAsyncContext *context,
+    unique_ptr<SendableJSAsyncContextOutput> &jsContext)
+{
+    napi_value fileResult = SendableFetchFileResultNapi::CreateFetchFileResult(env,
+        move(context->fetchPhotoAlbumResult));
+    if (fileResult == nullptr) {
+        CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+            "Failed to initialize data failed");
+        SendableMediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, ERR_INVALID_OUTPUT,
+            "Failed to create js object for Fetch Album Result", true);
+        return;
+    }
+    jsContext->data = fileResult;
+    jsContext->status = true;
+    CHECK_ARGS_RET_VOID_WITH_INT(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+}
+
+static void JSGetShareAlbumsCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSGetShareAlbumsCompleteCallback");
+
+    auto *context = static_cast<SendablePhotoAccessHelperAsyncContext*>(data);
+    unique_ptr<SendableJSAsyncContextOutput> jsContext = make_unique<SendableJSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID_WITH_INT(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+    if (context->error == ERR_DEFAULT || context->fetchPhotoAlbumResult == nullptr) {
+        CHECK_ARGS_RET_VOID_WITH_INT(env, napi_get_undefined(env, &jsContext->data), JS_INNER_FAIL);
+        context->HandleError(env, jsContext->error);
+    } else {
+        GetShareAlbumQueryResult(env, context, jsContext);
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        SendableMediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value SendablePhotoAccessHelper::PhotoAccessGetShareAlbums(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessGetShareAlbums");
+
+    unique_ptr<SendablePhotoAccessHelperAsyncContext> asyncContext =
+        make_unique<SendablePhotoAccessHelperAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+
+    CHECK_NULLPTR_RET(ParseArgsGetShareAlbums(env, info, asyncContext));
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
+    SetUserIdFromObjectInfo(asyncContext);
+    return SendableMediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessGetShareAlbums",
+        JSPahGetShareAlbumsExecute, JSGetShareAlbumsCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS

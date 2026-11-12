@@ -212,6 +212,7 @@ public:
     // PhotoAccessHelper
     static ani_object GetPhotoAlbums([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
         ani_enum_item albumTypeAni, ani_enum_item albumSubtypeAni, ani_object fetchOptions);
+    static ani_object GetShareAlbums(ani_env *env, ani_object object, ani_object fetchOptions);
     static ani_object GetHiddenAlbums([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
         ani_enum_item albumModeAni, ani_object fetchOptions);
     static ani_status Release([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object);

@@ -2430,7 +2430,14 @@ static shared_ptr<NativeRdb::ResultSet> HandleAnalysisAlbumQuery(MediaLibraryCom
     if (cmd.GetOprnType() == OperationType::QUERY_ORDER) {
         return MediaLibraryRdbStore::QueryWithFilter(RdbUtils::ToPredicates(predicates, cmd.GetTableName()), columns);
     }
-    return PhotoMapOperations::QueryPhotoAssets(RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE), columns);
+    RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
+    if (cmd.GetOprnType() == OperationType::QUERY && cmd.GetOprnObject() == OperationObject::PHOTO_MAP) {
+        std::string queryCondition = rdbPredicate.GetWhereClause();
+        std::string filter = PhotoColumn::PHOTO_IS_SHARED + " = " + std::to_string(0);
+        queryCondition = queryCondition.empty() ? filter : filter + " AND " + queryCondition;
+        rdbPredicate.SetWhereClause(queryCondition);
+    }
+    return PhotoMapOperations::QueryPhotoAssets(rdbPredicate, columns);
 }
 
 shared_ptr<ResultSetBridge> MediaLibraryDataManager::Query(MediaLibraryCommand &cmd,
@@ -2727,7 +2734,10 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QueryInternal(MediaLib
                 columns);
         case OperationObject::GEO_DICTIONARY:
         case OperationObject::GEO_KNOWLEDGE:
+            return MediaLibraryRdbStore::QueryWithFilter(RdbUtils::ToPredicates(predicates, cmd.GetTableName()),
+                columns);
         case OperationObject::GEO_PHOTO:
+            return MediaLibraryPhotoOperations::QueryGeoPhoto(cmd, columns, predicates);
         case OperationObject::CONVERT_PHOTO:
         case OperationObject::STORY_ALBUM:
         case OperationObject::STORY_COVER:

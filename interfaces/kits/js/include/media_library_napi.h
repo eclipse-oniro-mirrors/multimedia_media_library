@@ -54,6 +54,7 @@ namespace Media {
 static const std::string MEDIA_LIB_NAPI_CLASS_NAME = "MediaLibrary";
 static const std::string USERFILE_MGR_NAPI_CLASS_NAME = "UserFileManager";
 static const std::string PHOTOACCESSHELPER_NAPI_CLASS_NAME = "PhotoAccessHelper";
+static const std::string SHARE_ALBUM_MEMBER_INFO = "ShareAlbumMemberInfo";
 static const std::string MEDIA_URI_PREFIX = "file://media";
 
 enum ListenerType {
@@ -492,6 +493,7 @@ private:
     EXPORT static napi_value CanPerformDeepOptimizeSpace(napi_env env, napi_callback_info info);
     EXPORT static napi_value GetDeepOptimizeSpace(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessTransAssetToCompatibleAsset(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessGetShareAlbums(napi_env env, napi_callback_info info);
 
     int32_t GetListenerType(const std::string &str) const;
     void RegisterChange(napi_env env, const std::string &type, ChangeListenerNapi &listObj);

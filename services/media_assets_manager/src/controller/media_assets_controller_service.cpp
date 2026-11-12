@@ -1615,7 +1615,7 @@ int32_t MediaAssetsControllerService::GetBurstAssets(
     }
 
     dto.predicates.OrderByAsc(MediaColumn::MEDIA_NAME);
-    auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto, passCode);
+    auto resultSet = MediaAssetsService::GetInstance().GetBurstAssets(dto, passCode);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);

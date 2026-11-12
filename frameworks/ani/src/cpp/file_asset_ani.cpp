@@ -474,6 +474,13 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_THUMB_STATUS,
         PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
         PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
+        PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+        PhotoColumn::PHOTO_IS_SHARED,
+        PhotoColumn::PHOTO_SHARE_RISK_STATUS,
+        PhotoColumn::PHOTO_VISIBILITY,
+        PhotoColumn::PHOTO_SHARE_GROUP,
+        PhotoColumn::PHOTO_SHARE_RISK_TYPE,
+        PhotoColumn::PHOTO_SHARE_DATE_DAY,
     };
 
     if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryAniUtils::IsSystemApp()) {

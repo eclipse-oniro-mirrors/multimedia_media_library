@@ -1689,4 +1689,6 @@ export default {
   PickerColorMode: PickerColorMode,
   ShareMemberStatus: photoAccessHelper.ShareMemberStatus,
   ShareAlbumRiskStatus: photoAccessHelper.ShareAlbumRiskStatus,
+  MemberInfo: photoAccessHelper.MemberInfo,
+  ShareAlbumMemberInfo: photoAccessHelper.ShareAlbumMemberInfo,
 };

@@ -262,6 +262,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperOffCallback)},
     ani_native_function {"getAlbumsInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetPhotoAlbums)},
+    ani_native_function {"getShareAlbumsInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::GetShareAlbums)},
     ani_native_function {"getAlbumsByIdsInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetAlbumsByIds)},
     ani_native_function {"getHiddenAlbumsInner", nullptr,
@@ -1396,6 +1398,7 @@ static ani_status ParseArgsGetAssets(ani_env *env, ani_object options, unique_pt
         predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
         predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
             to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+        predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
     }
 
     return ANI_OK;
@@ -2201,6 +2204,9 @@ static void AddDefaultColumnsForNonAnalysisAlbums(unique_ptr<MediaLibraryAsyncCo
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+        context->fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+        context->fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+        context->fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
     }
 }
 
@@ -2239,6 +2245,10 @@ static void AddNoSmartFetchColumns(std::vector<std::string> &fetchColumn)
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
 }
 
 static void RestrictAlbumSubtypeOptions(DataSharePredicates &predicates)
@@ -2452,6 +2462,23 @@ static ani_status ParseArgsPahGetAlbums(ani_env *env, ani_enum_item albumTypeIte
     return ANI_OK;
 }
 
+static ani_status ParseArgsPahGetShareAlbums(ani_env *env, ani_object fetchOptions,
+    std::unique_ptr<MediaLibraryAsyncContext>& context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    // Parse fetchOptions if exists.
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(fetchOptions, &isUndefined);
+    if (!isUndefined) {
+        CHECK_COND_WITH_RET_MESSAGE(env, GetAlbumFetchOption(env, context, fetchOptions) == ANI_OK,
+            ANI_INVALID_ARGS, "GetAlbumFetchOption error");
+    } else {
+        ANI_INFO_LOG("fetchOptions is undefined. There is no need to parse fetchOptions.");
+    }
+    return ANI_OK;
+}
+
 ani_object MediaLibraryAni::GetPhotoAlbums(ani_env *env, ani_object object, ani_enum_item albumTypeItem,
     ani_enum_item albumSubtypeItem, ani_object fetchOptions)
 {
@@ -2462,6 +2489,20 @@ ani_object MediaLibraryAni::GetPhotoAlbums(ani_env *env, ani_object object, ani_
     CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsPahGetAlbums(env, albumTypeItem, albumSubtypeItem,
         fetchOptions, asyncContext) == ANI_OK, nullptr, "Failed to parse get albums options");
     asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_PHOTO_ALBUMS);
+    SetUserIdFromObjectInfo(asyncContext);
+    GetPhotoAlbumsExecute(env, asyncContext);
+    return GetPhotoAlbumsComplete(env, asyncContext);
+}
+
+ani_object MediaLibraryAni::GetShareAlbums(ani_env *env, ani_object object, ani_object fetchOptions)
+{
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsPahGetShareAlbums(env, fetchOptions, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse get albums options");
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
     SetUserIdFromObjectInfo(asyncContext);
     GetPhotoAlbumsExecute(env, asyncContext);
     return GetPhotoAlbumsComplete(env, asyncContext);
@@ -2565,6 +2606,15 @@ static void SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<DataShareResult
         resultSet, TYPE_INT32));
     photoAlbumData->SetImageCount(imageCount);
     photoAlbumData->SetVideoCount(videoCount);
+
+    photoAlbumData->SetCloudId(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_CLOUD_ID,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareAlbumOwner(get<string>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_ALBUM_OWNER, resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareRiskType(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::SHARE_RISK_TYPE,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareRiskStatus(get<int32_t>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_RISK_STATUS, resultSet, TYPE_INT32)));
 }
 
 static void BuildAlbumMap(std::unordered_map<int32_t, unique_ptr<PhotoAlbum>> &albumMap,
@@ -3210,6 +3260,10 @@ static ani_status ParseArgsGetPhotoAlbumsWithoutSubtype(ani_env *env, ani_object
     } else {
         ANI_INFO_LOG("fetchOptions is undefined. There is no need to parse fetchOptions.");
     }
+
+    if (context->photoAlbumType != PhotoAlbumType::SMART && !context->isAnalysisAlbum) {
+        AddNoSmartFetchColumns(context->fetchColumn);
+    }
     RestrictAlbumSubtypeOptions(context->predicates);
     return ANI_OK;
 }
@@ -3516,6 +3570,7 @@ static std::shared_ptr<DataShareResultSet> CallPahGetHiddenAlbums(unique_ptr<Med
 
     Uri uri(CONST_PAH_QUERY_HIDDEN_ALBUM);
     AddDefaultPhotoAlbumColumns(context->fetchColumn);
+    AddDefaultColumnsForNonAnalysisAlbums(context);
     if (context->hiddenAlbumFetchMode == ALBUMS_MODE) {
         context->fetchColumn.push_back(PhotoAlbumColumns::HIDDEN_COUNT);
         context->fetchColumn.push_back(PhotoAlbumColumns::HIDDEN_COVER);

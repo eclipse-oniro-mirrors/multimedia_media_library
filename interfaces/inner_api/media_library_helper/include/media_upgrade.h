@@ -67,6 +67,7 @@ public:
     static const std::string DROP_SCHPT_MONTH_COUNT_READY_INDEX EXPORT;
     static const std::string DROP_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX EXPORT;
     static const std::string CREATE_SCHPT_CLOUD_ENHANCEMENT_ALBUM_INDEX EXPORT;
+    static const std::string CREATE_PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX EXPORT;
     static const std::string INDEX_SCHPT_ALBUM_GENERAL EXPORT;
     static const std::string INDEX_SCHPT_ALBUM EXPORT;
     static const std::string INDEX_SCTHP_PHOTO_DATEADDED EXPORT;

@@ -26,6 +26,8 @@
 #include "napi_error.h"
 #include "photo_album_napi.h"
 #include "values_bucket.h"
+#include "member_info.h"
+#include "share_album_member_info.h"
 
 namespace OHOS {
 namespace Media {
@@ -61,6 +63,7 @@ private:
     EXPORT static napi_value JSDeleteMemberShareAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetShareCoverUri(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSResetShareCoverUri(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetShareAlbumMemberInfo(napi_env env, napi_callback_info info);
 
     static thread_local napi_ref constructor_;
     std::shared_ptr<PhotoAlbum> photoAlbum_ = nullptr;
@@ -134,6 +137,11 @@ struct MediaShareAlbumChangeRequestAsyncContext : public NapiError {
     std::string deleteMemberAlbumOwner;
     std::string shareCoverOwner;
     std::string coverUri;
+    int32_t shareAlbumAlbumId = 0;
+    std::vector<MemberInfo> respShareAlbumMembers;
+    std::unique_ptr<ShareAlbumMemberInfo> shareAlbumMemberInfo;
+    std::string inputShareAlbumOwner;
+    std::string respShareAlbumOwner;
 };
 
 } // namespace Media

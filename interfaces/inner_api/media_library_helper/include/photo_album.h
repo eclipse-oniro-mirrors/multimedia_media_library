@@ -149,6 +149,12 @@ public:
 
     EXPORT void SetShareType(const int32_t shareType);
     EXPORT int32_t GetShareType() const;
+    
+    EXPORT void SetShareRiskStatus(const int32_t shareRiskStatus);
+    EXPORT int32_t GetShareRiskStatus() const;
+
+    EXPORT void SetShareRiskType(const std::string &shareRiskType);
+    EXPORT const std::string& GetShareRiskType() const;
 
     EXPORT void SetShareAlbumOwner(const std::string &shareAlbumOwner);
     EXPORT const std::string& GetShareAlbumOwner() const;
@@ -189,6 +195,8 @@ private:
     std::string cloudId_;
     int32_t sceneId_ = 0;
     int32_t shareType_ = 0;
+    int32_t shareRiskStatus_ = 0;
+    std::string shareRiskType_;
     std::string shareAlbumOwner_;
 };
 } // namespace Media

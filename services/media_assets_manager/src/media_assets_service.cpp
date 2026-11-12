@@ -1022,6 +1022,10 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
     MediaLibraryPhotoOperations::HandleIllegalKey(dto.predicates);
     // MEDIALIBRARY_TABLE just for RdbPredicates
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    std::string queryCondition = rdbPredicate.GetWhereClause();
+    std::string filter = PhotoColumn::PHOTO_IS_SHARED + " = " + std::to_string(0);
+    queryCondition = queryCondition.empty() ? filter : filter + " AND " + queryCondition;
+    rdbPredicate.SetWhereClause(queryCondition);
     MediaLibraryRdbUtils::BuildDoubleCheckPredicates(rdbPredicate, static_cast<uint32_t>(dto.tokenId), passCode);
     if (passCode == E_READ_CLOUD_PERMISSION_CHECK) {
         CloudReadPermissionCheck::AddCloudAssetFilter(rdbPredicate);
@@ -1034,6 +1038,32 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
     }
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, dto.columns);
     CHECK_AND_RETURN_RET_LOG(resultSet, nullptr, "Failed to query assets");
+    auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
+    return make_shared<DataShare::DataShareResultSet>(resultSetBridge);
+}
+
+
+std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetBurstAssets(GetAssetsDto &dto, int32_t passCode)
+{
+    MEDIA_INFO_LOG("MediaAssetsService::GetAssets enter");
+    MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd.SetDataSharePred(dto.predicates);
+    MediaLibraryPhotoOperations::HandleIllegalKey(dto.predicates);
+    // MEDIALIBRARY_TABLE just for RdbPredicates
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    MediaLibraryRdbUtils::BuildDoubleCheckPredicates(rdbPredicate, static_cast<uint32_t>(dto.tokenId), passCode);
+    if (passCode == E_READ_CLOUD_PERMISSION_CHECK) {
+        CloudReadPermissionCheck::AddCloudAssetFilter(rdbPredicate);
+    }
+    MediaLibraryRdbUtils::AddQueryIndex(rdbPredicate, dto.columns);
+
+    if (!dto.columns.empty()) {
+        dto.columns.push_back(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+        dto.columns.push_back(PhotoColumn::PHOTO_TRANSCODE_TIME);
+    }
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, dto.columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet, nullptr, "Failed to query burst assets");
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     return make_shared<DataShare::DataShareResultSet>(resultSetBridge);
 }

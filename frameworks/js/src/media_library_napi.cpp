@@ -650,6 +650,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("canPerformDeepOptimizeSpace", CanPerformDeepOptimizeSpace),
             DECLARE_NAPI_FUNCTION("getDeepOptimizeSpace", GetDeepOptimizeSpace),
             DECLARE_NAPI_FUNCTION("transAssetToCompatibleAsset", PhotoAccessTransAssetToCompatibleAsset),
+            DECLARE_NAPI_FUNCTION("getShareAlbums", PhotoAccessGetShareAlbums),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -4718,6 +4719,10 @@ static void AddDefaultColumnsForNonAnalysisAlbums(MediaLibraryAsyncContext& cont
         context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
         context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
         context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+        context.fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+        context.fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+        context.fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+        context.fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
     }
 }
 
@@ -6872,6 +6877,7 @@ static napi_value ParseArgsGetAssets(napi_env env, napi_callback_info info,
         predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
         predicates.EqualTo(
             PhotoColumn::PHOTO_BURST_COVER_LEVEL, to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+        predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
     }
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
@@ -9519,6 +9525,27 @@ static void GetPhotoAlbumQueryResult(napi_env env, MediaLibraryAsyncContext *con
     CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
 }
 
+static void GetShareAlbumQueryResult(napi_env env, MediaLibraryAsyncContext *context,
+    unique_ptr<JSAsyncContextOutput> &jsContext)
+{
+    napi_value fileResult;
+    if (context->albumIds.empty()) {
+        fileResult = FetchFileResultNapi::CreateFetchFileResult(env, move(context->fetchPhotoAlbumResult));
+    } else {
+        fileResult = GetPhotoAlbumMap(env, move(context->albumMap));
+    }
+    if (fileResult == nullptr) {
+        CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+            "Failed to initialize data failed");
+        MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, ERR_INVALID_OUTPUT,
+            "Failed to create js object for Fetch Album Result", true);
+        return;
+    }
+    jsContext->data = fileResult;
+    jsContext->status = true;
+    CHECK_ARGS_RET_VOID_WITH_INT(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+}
+
 static void SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<DataShareResultSet> &resultSet)
 {
     int32_t albumId = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_ID, resultSet,
@@ -9559,6 +9586,15 @@ static void SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<DataShareResult
         resultSet, TYPE_INT32));
     photoAlbumData->SetImageCount(imageCount);
     photoAlbumData->SetVideoCount(videoCount);
+
+    photoAlbumData->SetCloudId(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_CLOUD_ID,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareAlbumOwner(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::SHARE_ALBUM_OWNER,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareRiskType(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::SHARE_RISK_TYPE,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareRiskStatus(get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::SHARE_RISK_STATUS,
+        resultSet, TYPE_INT32)));
 }
 
 static void BuildAlbumMap(std::unordered_map<int32_t, unique_ptr<PhotoAlbum>> &albumMap,
@@ -9907,6 +9943,7 @@ napi_value MediaLibraryNapi::CreateAlbumTypeEnum(napi_env env)
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SYSTEM", PhotoAlbumType::SYSTEM), JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SMART", PhotoAlbumType::SMART), JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SOURCE", PhotoAlbumType::SOURCE), JS_INNER_FAIL);
+    CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SHARE", PhotoAlbumType::SHARE), JS_INNER_FAIL);
 
     CHECK_ARGS(env, napi_create_reference(env, result, NAPI_INIT_REF_COUNT, &sAlbumType_), JS_INNER_FAIL);
     return result;
@@ -9935,6 +9972,7 @@ napi_value MediaLibraryNapi::CreateAlbumSubTypeEnum(napi_env env)
         CHECK_ARGS(env, AddIntegerNamedProperty(env, result, analysisAlbumSubType[i],
             PhotoAlbumSubType::GEOGRAPHY_LOCATION + i), JS_INNER_FAIL);
     }
+    CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SHARE", PhotoAlbumSubType::SHARE_GENERIC), JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "ANY", PhotoAlbumSubType::ANY), JS_INNER_FAIL);
 
     CHECK_ARGS(env, napi_create_reference(env, result, NAPI_INIT_REF_COUNT, &sAlbumSubType_), JS_INNER_FAIL);
@@ -10821,6 +10859,10 @@ static void AddNoSmartFetchColumns(std::vector<std::string> &fetchColumn)
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
 }
 
 static void AddPhotoAlbumTypeFilter(DataSharePredicates &predicates, int32_t albumType, int32_t albumSubType)
@@ -19214,6 +19256,102 @@ napi_value MediaLibraryNapi::PhotoAccessShareAlbumUnregisterCallback(napi_env en
     napi_get_undefined(env, &undefinedResult);
     UnregisterAnalysisAccessCallbackInternal(env, info, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI);
     return undefinedResult;
+}
+
+
+static napi_value ParseArgsGetShareAlbums(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+                "This interface can be called only by system app");
+        return nullptr;
+    }
+
+    constexpr size_t minArgs = ARGS_ZERO;
+    constexpr size_t maxArgs = ARGS_ONE;
+    CHECK_ARGS_WITH_INT(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_E_PARAM_INVALID);
+
+    if (context->argc == maxArgs) {
+        napi_valuetype valueType = napi_undefined;
+        if (napi_typeof(env, context->argv[PARAM1], &valueType) == napi_ok &&
+            (valueType == napi_undefined || valueType == napi_null)) {
+            context->argc -= 1;
+        }
+    }
+
+    if (context->argc == maxArgs) {
+        auto status =
+            MediaLibraryNapiUtils::GetFetchOption(env, context->argv[maxArgs - 1], ALBUM_FETCH_OPT, context);
+        CHECK_ARGS_WITH_INT_MSG(env, status, JS_E_INNER_FAIL, "Failed to get fetch option");
+    }
+    RestrictAlbumSubtypeOptions(context->predicates);
+
+    CHECK_ARGS_WITH_INT_MSG(env, CheckAlbumFetchColumns(context->fetchColumn), JS_E_INNER_FAIL,
+        "Invalid fetch columns");
+    AddNoSmartFetchColumns(context->fetchColumn);
+
+    napi_value result = nullptr;
+    CHECK_ARGS_WITH_INT_MSG(env, napi_get_boolean(env, true, &result),
+        JS_E_INNER_FAIL, "Failed to create boolean value");
+    return result;
+}
+
+static void JSGetShareAlbumsCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSGetShareAlbumsCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL,
+        "Failed to initialize error failed");
+    if (context->error == ERR_DEFAULT && context->albumMap.empty() && context->albumIds.size() > 0) {
+        napi_status status;
+        napi_value mapNapiValue {nullptr};
+        status = napi_create_map(env, &mapNapiValue);
+        if (status != napi_ok || mapNapiValue == nullptr) {
+            CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+                "Failed to initialize data failed");
+            context->HandleError(env, jsContext->error);
+        } else {
+            jsContext->data = mapNapiValue;
+            jsContext->status = true;
+            CHECK_ARGS_RET_VOID_WITH_INT(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+        }
+    } else if (context->error != ERR_DEFAULT  ||
+        (context->fetchPhotoAlbumResult == nullptr && context->albumMap.empty())) {
+        CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+            "Failed to initialize data failed");
+        context->HandleError(env, jsContext->error);
+    } else {
+        GetShareAlbumQueryResult(env, context, jsContext);
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessGetShareAlbums(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessGetShareAlbums");
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->photoAlbumType = PhotoAlbumType::SHARE;
+    asyncContext->photoAlbumSubType = PhotoAlbumSubType::SHARE_GENERIC;
+    CHECK_NULLPTR_RET(ParseArgsGetShareAlbums(env, info, asyncContext));
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessGetShareAlbums", JSPahGetAlbumsExecute,
+        JSGetShareAlbumsCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS

@@ -493,6 +493,18 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::Query(
     return MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
 }
 
+shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::QueryGeoPhoto(
+    MediaLibraryCommand &cmd, const vector<string> &columns, const DataShare::DataSharePredicates &predicates)
+{
+    DataShare::DataSharePredicates predicatesCopy = predicates;
+    if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE &&
+        cmd.GetOprnType() == OperationType::QUERY) {
+        predicatesCopy.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, std::string(0));
+    }
+    return MediaLibraryRdbStore::QueryWithFilter(RdbUtils::ToPredicates(predicatesCopy, cmd.GetTableName()),
+        columns);
+}
+
 int32_t MediaLibraryPhotoOperations::Update(MediaLibraryCommand &cmd)
 {
     switch (cmd.GetApi()) {

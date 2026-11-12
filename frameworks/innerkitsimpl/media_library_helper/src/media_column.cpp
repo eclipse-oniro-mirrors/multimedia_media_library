@@ -188,6 +188,7 @@ const std::string PhotoColumn::PHOTO_BURST_MODE_ALBUM_INDEX = "idx_burst_mode_al
 const std::string PhotoColumn::PHOTO_FRONT_CAMERA_ALBUM_INDEX = "idx_front_camera_album";
 const std::string PhotoColumn::PHOTO_RAW_IMAGE_ALBUM_INDEX = "idx_raw_image_album";
 const std::string PhotoColumn::PHOTO_MOVING_PHOTO_ALBUM_INDEX = "idx_moving_photo_album";
+const std::string PhotoColumn::PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX = "idx_schpt_share_date_added";
 
 const std::string PhotoColumn::PHOTO_DATE_YEAR_FORMAT = "%Y";
 const std::string PhotoColumn::PHOTO_DATE_MONTH_FORMAT = "%Y%m";
