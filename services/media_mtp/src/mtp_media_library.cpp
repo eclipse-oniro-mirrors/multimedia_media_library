@@ -33,8 +33,6 @@
 #include "post_proc.h"
 #include "image_packer.h"
 #include "avmetadatahelper.h"
-#include "fdsan_fd.h"
-
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -596,11 +594,12 @@ int32_t MtpMediaLibrary::GetVideoThumb(const std::shared_ptr<MtpOperationContext
     int error = GetFd(context, fd);
     CHECK_AND_RETURN_RET_LOG(error == MTP_SUCCESS, MTP_ERROR_NO_THUMBNAIL_PRESENT, "GetFd failed");
     struct stat64 st;
-    FdsanFd thumbFd(fd);
-    int32_t ret = fstat64(thumbFd.Get(), &st);
+    int32_t ret = fstat64(fd, &st);
+    CondCloseFd(ret != 0, fd);
     CHECK_AND_RETURN_RET_LOG(ret == 0, MTP_ERROR_NO_THUMBNAIL_PRESENT, "Get file state failed, err %{public}d", errno);
     int64_t length = static_cast<int64_t>(st.st_size);
-    ret = avMetadataHelper->SetSource(thumbFd.Get(), 0, length, AV_META_USAGE_PIXEL_MAP);
+    ret = avMetadataHelper->SetSource(fd, 0, length, AV_META_USAGE_PIXEL_MAP);
+    CondCloseFd(ret != 0, fd);
     CHECK_AND_RETURN_RET_LOG(ret == 0, MTP_ERROR_NO_THUMBNAIL_PRESENT, "SetSource failed, ret %{public}d", ret);
     auto resultMap = avMetadataHelper->ResolveMetadata();
     int32_t width = NORMAL_WIDTH;
@@ -614,9 +613,10 @@ int32_t MtpMediaLibrary::GetVideoThumb(const std::shared_ptr<MtpOperationContext
     };
     shared_ptr<PixelMap> sPixelMap = avMetadataHelper->FetchFrameYuv(0,
         AVMetadataQueryOption::AV_META_QUERY_NEXT_SYNC, param);
+    CondCloseFd(sPixelMap == nullptr, fd);
     CHECK_AND_RETURN_RET_LOG(sPixelMap != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "sPixelMap is nullptr");
     sPixelMap->SetAlphaType(AlphaType::IMAGE_ALPHA_TYPE_UNPREMUL);
-    CloseFd(context, thumbFd);
+    CloseFd(context, fd);
     bool isCompressImageSuccess = CompressImage(*sPixelMap.get(), *outThumb);
     CHECK_AND_RETURN_RET_LOG(isCompressImageSuccess == true, MTP_ERROR_NO_THUMBNAIL_PRESENT, "CompressImage is fail");
     return MTP_SUCCESS;
@@ -662,9 +662,9 @@ int32_t MtpMediaLibrary::GetPictureThumb(const std::shared_ptr<MtpOperationConte
     errorCode = static_cast<uint32_t>(GetFd(context, fd));
     CHECK_AND_RETURN_RET_LOG(errorCode == MTP_SUCCESS, MTP_ERROR_NO_THUMBNAIL_PRESENT, "GetFd failed");
 
-    FdsanFd thumbFd(fd);
     SourceOptions opts;
-    std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(thumbFd.Get(), opts, errorCode);
+    std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(fd, opts, errorCode);
+    CondCloseFd(imageSource == nullptr, fd);
     CHECK_AND_RETURN_RET_LOG(imageSource != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "imageSource is nullptr");
 
     ImageInfo imageInfo;
@@ -679,17 +679,28 @@ int32_t MtpMediaLibrary::GetPictureThumb(const std::shared_ptr<MtpOperationConte
     };
 
     std::unique_ptr<PixelMap> cropPixelMap = imageSource->CreatePixelMap(decodeOpts, errorCode);
+    CondCloseFd(cropPixelMap == nullptr, fd);
     CHECK_AND_RETURN_RET_LOG(cropPixelMap != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "cropPixelMap is nullptr");
     int32_t imageOrientation = 0;
     errorCode = imageSource->GetImagePropertyInt(0, PHOTO_DATA_IMAGE_ORIENTATION, imageOrientation);
     if (errorCode == E_OK && imageOrientation != 0) {
         PostProc::RotateInRectangularSteps(*(cropPixelMap.get()), static_cast<float>(imageOrientation), true);
     }
-    CloseFd(context, thumbFd);
+    CloseFd(context, fd);
     bool isCompressImageSuccess = CompressImage(*cropPixelMap, *outThumb);
     CHECK_AND_RETURN_RET_LOG(isCompressImageSuccess == true, MTP_ERROR_NO_THUMBNAIL_PRESENT, "CompressImage is fail");
     return MTP_SUCCESS;
 }
+
+void MtpMediaLibrary::CondCloseFd(const bool condition, const int fd)
+{
+    if (!condition || fd <= 0) {
+        return;
+    }
+    int32_t ret = close(fd);
+    CHECK_AND_PRINT_LOG(ret == MTP_SUCCESS, "DealFd CloseFd fail!");
+}
+
 
 int32_t MtpMediaLibrary::GetThumb(const std::shared_ptr<MtpOperationContext> &context,
     std::shared_ptr<UInt8List> &outThumb)
@@ -1004,11 +1015,11 @@ int32_t MtpMediaLibrary::SetObjectPropValue(const std::shared_ptr<MtpOperationCo
     return MTP_SUCCESS;
 }
 
-int32_t MtpMediaLibrary::CloseFd(const std::shared_ptr<MtpOperationContext> &context, FdsanFd &fdsanFd)
+int32_t MtpMediaLibrary::CloseFd(const std::shared_ptr<MtpOperationContext> &context, int32_t fd)
 {
-    MEDIA_DEBUG_LOG("MtpMediaLibrary::CloseFd fd=[%{public}d]", fdsanFd.Get());
-    CHECK_AND_RETURN_RET_LOG(fdsanFd.Get() > 0, E_ERR, "wrong fd");
-    int errCode = fdsanFd.Close();
+    MEDIA_DEBUG_LOG("MtpMediaLibrary::CloseFd fd=[%{public}d]", fd);
+    CHECK_AND_RETURN_RET_LOG(fd > 0, E_ERR, "wrong fd");
+    int errCode = close(fd);
     return MtpErrorUtils::SolveCloseFdError(errCode);
 }
 

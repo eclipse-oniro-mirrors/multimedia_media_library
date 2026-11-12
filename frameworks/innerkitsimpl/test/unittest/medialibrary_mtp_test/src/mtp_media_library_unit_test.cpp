@@ -20,7 +20,6 @@
 #include <system_error>
 #include "mtp_media_library_unit_test.h"
 #include "mtp_media_library.h"
-#include "fdsan_fd.h"
 #include "medialibrary_errno.h"
 #include "media_log.h"
 #include "mtp_storage_manager.h"
@@ -890,10 +889,9 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_039, TestSi
     uint32_t handle = 0;
     mtpMediaLib_->GetIdByPath(FILE_PATH, handle);
     context->handle = handle;
-    int32_t rawFd = 0;
-    mtpMediaLib_->GetFd(context, rawFd);
-    FdsanFd outFd(rawFd);
-    int32_t result = mtpMediaLib_->CloseFd(context, outFd);
+    int32_t outFd = 0;
+    mtpMediaLib_->GetFd(context, outFd);
+    int32_t result = mtpMediaLib_->CloseFd(context,outFd);
     EXPECT_NE(result, MTP_SUCCESS);
 }
 
@@ -949,9 +947,8 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_041, TestSi
     uint32_t handle = 0;
     mtpMediaLib_->GetIdByPath(FILE_PATH, handle);
     context->handle = handle;
-    int32_t rawFd = 0;
-    mtpMediaLib_->GetFd(context, rawFd);
-    FdsanFd outFd(rawFd);
+    int32_t outFd = 0;
+    mtpMediaLib_->GetFd(context, outFd);
     int32_t result = mtpMediaLib_->CloseFd(context, outFd);
     EXPECT_NE(result, MTP_SUCCESS);
 }
@@ -1041,9 +1038,8 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_048, TestSi
     uint32_t handle = 0;
     mtpMediaLib_->GetIdByPath(FILE_PATH, handle);
     context->handle = handle;
-    int32_t rawFd = 0;
-    mtpMediaLib_->GetFd(context, rawFd);
-    FdsanFd outFd(rawFd);
+    int32_t outFd = 0;
+    mtpMediaLib_->GetFd(context, outFd);
     int32_t errcode = 1;
     errcode = mtpMediaLib_->CloseFd(context, outFd);
     EXPECT_NE(errcode, MTP_SUCCESS);
