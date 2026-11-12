@@ -1450,7 +1450,7 @@ napi_value MediaAssetChangeRequestNapi::JSSetTitleByFile(napi_env env, napi_call
 
     std::string extension = MediaFileUtils::SplitByChar(changeRequest->GetFileAssetInstance()->GetDisplayName(), '.');
     std::string displayName = title + "." + extension;
-    CHECK_COND_WITH_ERR_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, false, true) == E_OK,
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, false, false) == E_OK,
         JS_E_PARAM_INVALID, "Invalid display name.");
     changeRequest->GetFileAssetInstance()->SetDisplayName(displayName);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_DISPLAY_NAME_BY_FILE);

@@ -208,6 +208,15 @@ enum class PhotoPositionType : int32_t {
     LOCAL_AND_CLOUD = 3
 };
 
+// 成员显式赋值，互异性不受编译器保证，编译期防护（成员显式赋值重复在 C++ 中合法）
+static_assert(PhotoPositionType::INVALID != PhotoPositionType::LOCAL &&
+    PhotoPositionType::INVALID != PhotoPositionType::CLOUD &&
+    PhotoPositionType::INVALID != PhotoPositionType::LOCAL_AND_CLOUD &&
+    PhotoPositionType::LOCAL != PhotoPositionType::CLOUD &&
+    PhotoPositionType::LOCAL != PhotoPositionType::LOCAL_AND_CLOUD &&
+    PhotoPositionType::CLOUD != PhotoPositionType::LOCAL_AND_CLOUD,
+    "PhotoPositionType members must be pairwise distinct");
+
 enum class VideoMode : int32_t {
     DEFAULT = -1,
     NOT_LOG_VIDEO = 0,

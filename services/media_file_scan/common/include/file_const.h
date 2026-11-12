@@ -16,6 +16,7 @@
 #ifndef OHOS_MEDIA_LAKE_DEFINES_H
 #define OHOS_MEDIA_LAKE_DEFINES_H
 
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 
@@ -51,7 +52,54 @@ enum class FileUpdateType : int32_t {
     DELETE, // only for clone restore
     TRASH,  // for file manager assets
     RECOVER,
+    DOT_RENAME_RELEASE, // for dot-file rename: release local only
+    DOT_RENAME_RECOVER, // for dot-file rename: recover to local and merge
 };
+
+// DOT_RENAME 枚举成员须与其余成员互异，编译期防护（成员显式赋值重复在 C++ 中合法）
+static_assert(FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::UPDATE &&
+    FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::UPDATE_ALBUM &&
+    FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::INSERT &&
+    FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::NO_CHANGE &&
+    FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::DELETE &&
+    FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::TRASH &&
+    FileUpdateType::DOT_RENAME_RELEASE != FileUpdateType::RECOVER,
+    "DOT_RENAME_RELEASE must be distinct from other FileUpdateType members");
+static_assert(FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::UPDATE &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::UPDATE_ALBUM &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::INSERT &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::NO_CHANGE &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::DELETE &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::TRASH &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::RECOVER &&
+    FileUpdateType::DOT_RENAME_RECOVER != FileUpdateType::DOT_RENAME_RELEASE,
+    "DOT_RENAME_RECOVER must be distinct from other FileUpdateType members");
+
+// 点号重命名释放/恢复的文件名首字符判定（FileManagerParser 与 LakeFileParser 共用逻辑，
+// 与 FileManagerParser::IsDotRenameRelease / LakeFileParser::IsDotRenameRelease 语义一致）
+// beforePath 不以.开头 且 afterPath 以.开头 -> 释放本地
+inline bool IsDotRenameReleaseLogic(const std::string &beforePath, const std::string &afterPath)
+{
+    if (beforePath.empty() || afterPath.empty()) {
+        return false;
+    }
+    std::string beforeFileName = std::filesystem::path(beforePath).filename().string();
+    std::string afterFileName = std::filesystem::path(afterPath).filename().string();
+    return !beforeFileName.empty() && beforeFileName[0] != '.' &&
+           !afterFileName.empty() && afterFileName[0] == '.';
+}
+
+// beforePath 以.开头 且 afterPath 不以.开头 -> 恢复名称重新入库
+inline bool IsDotRenameRecoverLogic(const std::string &beforePath, const std::string &afterPath)
+{
+    if (beforePath.empty() || afterPath.empty()) {
+        return false;
+    }
+    std::string beforeFileName = std::filesystem::path(beforePath).filename().string();
+    std::string afterFileName = std::filesystem::path(afterPath).filename().string();
+    return !beforeFileName.empty() && beforeFileName[0] == '.' &&
+           !afterFileName.empty() && afterFileName[0] != '.';
+}
 
 struct InnerFileInfo {
     std::string bundleName;

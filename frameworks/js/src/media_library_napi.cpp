@@ -11413,7 +11413,7 @@ napi_value MediaLibraryNapi::CreateShareAlbumRiskStatusEnum(napi_env env)
     return CreateNumberEnumProperty(env, shareAlbumRiskStatusEnum, sShareAlbumRiskStatusEnumRef_);
 }
 
-static bool CheckTitleCompatible(MediaLibraryAsyncContext* context)
+static bool CheckTitleValid(MediaLibraryAsyncContext* context)
 {
     if (!context->isCreateByComponent) {
         return true;
@@ -11423,7 +11423,7 @@ static bool CheckTitleCompatible(MediaLibraryAsyncContext* context)
     if (!hasTitleParam) {
         return true;
     }
-    return MediaFileUtils::CheckTitleCompatible(title) == E_OK;
+    return MediaFileUtils::CheckTitleForPhoto(title) == E_OK;
 }
 
 static int32_t CallPhotoAccessCreateAsset(MediaLibraryAsyncContext* context, std::string &outUri)
@@ -11465,7 +11465,7 @@ static void PhotoAccessCreateAssetExecute(napi_env env, void *data)
         context->error = JS_E_DISPLAYNAME;
         return;
     }
-    if (!CheckTitleCompatible(context)) {
+    if (!CheckTitleValid(context)) {
         context->error = JS_E_DISPLAYNAME;
         context->errorMsg = "Title is invalid";
         return;
@@ -11976,7 +11976,7 @@ static void PhotoAccessAgentCreateAssetsExecute(napi_env env, void *data)
     for (const auto& valuesBucket : context->valuesBucketArray) {
         bool inValid = false;
         string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, inValid);
-        if (!context->isContainsAlbumUri && !title.empty() && MediaFileUtils::CheckTitleCompatible(title) != E_OK) {
+        if (!context->isContainsAlbumUri && !title.empty() && MediaFileUtils::CheckTitleForPhoto(title) != E_OK) {
             NAPI_ERR_LOG("Title contains invalid characters: %{private}s, skipping", title.c_str());
             context->uriArray.push_back(to_string(E_INVALID_DISPLAY_NAME));
             continue;
@@ -14442,7 +14442,10 @@ static bool ParseAndSetConfigArray(const napi_env &env, OHOS::AAFwk::Want &want,
         if (!ParseConfigObject(env, element, config)) {
             return false;
         }
-
+        if (!config.title.empty() && MediaFileUtils::CheckTitleForPhoto(config.title) != E_OK) {
+            NAPI_ERR_LOG("Title contains invalid characters: %{private}s, skipping", config.title.c_str());
+            continue;
+        }
         titleList.emplace_back(config.title);
         extensionList.emplace_back(config.fileNameExtension);
         photoTypeList.emplace_back(config.photoType);
@@ -14605,6 +14608,10 @@ static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCa
     PhotoCreationConfig config;
     napi_value element = args[PARAM1];
     if (!ParseConfigObject(env, element, config)) {
+        return false;
+    }
+    if (!config.title.empty() && MediaFileUtils::CheckTitleForPhoto(config.title) != E_OK) {
+        NAPI_ERR_LOG("Title contains invalid characters: %{private}s", config.title.c_str());
         return false;
     }
     want.SetParam(SHORT_TERM_TAG, true);

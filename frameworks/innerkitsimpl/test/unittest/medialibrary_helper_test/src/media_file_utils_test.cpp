@@ -253,31 +253,84 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_004, T
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_005, TestSize.Level1)
 {
     string displayName = "test.test.jpg";
-    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName), 0);
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName), E_OK);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_006, TestSize.Level1)
 {
     string displayName = "test.jpg";
-    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName), 0);
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName), E_OK);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_007, TestSize.Level1)
 {
     string displayName = ".hidden.jpg";
-    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, true), E_OK);
+    // 以 '.' 开头应返回 -EINVAL，使用等式断言精准验证错误码
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, true), -EINVAL);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_008, TestSize.Level1)
 {
     string displayName = "test..jpg";
-    EXPECT_LT(MediaFileUtils::CheckDisplayName(displayName, false, true), 0);
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, true), E_OK);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_009, TestSize.Level1)
 {
     string displayName = "test.test.jpg";
-    EXPECT_LT(MediaFileUtils::CheckDisplayName(displayName, true, false), 0);
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, true, false), E_OK);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_011, TestSize.Level1)
+{
+    string displayName = "Com.hahaha.jpg";
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, false), E_OK);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_012, TestSize.Level1)
+{
+    string displayName = "Com.hahaha.jpg";
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, true, false), E_OK);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_013, TestSize.Level1)
+{
+    string displayName = "hi.test.jpg";
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, false), E_OK);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_014, TestSize.Level1)
+{
+    string displayName = ".hidden.jpg";
+    // 以 '.' 开头应返回 -EINVAL，使用等式断言精准验证错误码
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, false), -EINVAL);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_015, TestSize.Level1)
+{
+    string displayName = "..jpg";
+    // 以 '.' 开头应返回 -EINVAL，使用等式断言精准验证错误码
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, false), -EINVAL);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_016, TestSize.Level1)
+{
+    string displayName = "";
+    // 空串由 CheckStringSize 拒绝，应返回 -EINVAL，使用等式断言精准验证错误码
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, false), -EINVAL);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_017, TestSize.Level1)
+{
+    string displayName = "..";
+    // 以 '.' 开头应返回 -EINVAL，使用等式断言精准验证错误码
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, false), -EINVAL);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_018, TestSize.Level1)
+{
+    string displayName = "my..file.jpg";
+    EXPECT_EQ(MediaFileUtils::CheckDisplayName(displayName, false, true), E_OK);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckDisplayName_Test_010, TestSize.Level1)

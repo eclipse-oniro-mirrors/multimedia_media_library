@@ -35,6 +35,8 @@ private:
     bool IsSkipDirectory(const std::string &dir) override;
     
     bool IsSkipCurrentFile(const std::string &filePath);
+    void HandleFileUpdateType(MediaNotifyInfo &fileInfo, FileUpdateType updateType,
+        FileManagerParser &fileManagerParser);
     void RefreshTrashedAssetInfo(FileManagerParser &fileManagerParser);
     void RefreshNeedReoverAssetInfo(FileManagerParser &fileManagerParser);
     void RefreshInsertAssetInfo() override;

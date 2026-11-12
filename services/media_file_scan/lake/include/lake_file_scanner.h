@@ -24,6 +24,8 @@
 
 namespace OHOS::Media {
 
+class LakeFileParser;
+
 class LakeFileScanner : public FileScanner {
 public:
     LakeFileScanner(ScanMode scanMode = ScanMode::INCREMENT);
@@ -34,6 +36,10 @@ private:
     bool IsIncrementScanConflict(std::vector<MediaNotifyInfo> fileInfos) override;
     bool IsSkipDirectory(const std::string &dir) override;
     std::shared_ptr<FolderParser> BuildFolderParser(const std::string &path) override;
+
+private:
+    void RefreshTrashedAssetInfo(LakeFileParser &lakefileParser);
+    void RefreshNeedReoverAssetInfo(LakeFileParser &lakefileParser);
 };
 }
 

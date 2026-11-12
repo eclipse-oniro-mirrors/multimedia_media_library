@@ -789,7 +789,7 @@ static bool CheckDisplayNameInCommitModify(unique_ptr<FileAssetContext> &context
             return false;
         }
         if (context->objectPtr->GetMediaType() != MediaType::MEDIA_TYPE_FILE) {
-            if (MediaFileUtils::CheckDisplayName(context->objectPtr->GetDisplayName(), true) != E_OK) {
+            if (MediaFileUtils::CheckDisplayName(context->objectPtr->GetDisplayName(), false) != E_OK) {
                 context->error = JS_E_DISPLAYNAME;
                 return false;
             }
@@ -800,7 +800,7 @@ static bool CheckDisplayNameInCommitModify(unique_ptr<FileAssetContext> &context
             }
         }
     } else {
-        if (MediaFileUtils::CheckTitleCompatible(context->objectPtr->GetTitle()) != E_OK) {
+        if (MediaFileUtils::CheckTitleForPhoto(context->objectPtr->GetTitle()) != E_OK) {
             context->error = JS_E_DISPLAYNAME;
             return false;
         }
@@ -1817,7 +1817,7 @@ ani_object FileAssetAni::PhotoAccessHelperCloneAsset(ani_env * env, ani_object o
     MediaLibraryAniUtils::GetString(env, title, str_title);
     string extension = MediaFileUtils::SplitByChar(context->objectPtr->GetDisplayName(), '.');
     string displayName = str_title + "." + extension;
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, false) == E_OK,
                             "Input title is invalid");
 
     context->title = str_title;
@@ -1836,7 +1836,7 @@ ani_object FileAssetAni::PhotoAccessHelperCloneAsset(ani_env * env, ani_object o
 static bool CheckConvertFormatParams(const std::string &title, const std::string &extension)
 {
     std::string displayName = title + "." + extension;
-    if (MediaFileUtils::CheckDisplayName(displayName, true) != E_OK) {
+    if (MediaFileUtils::CheckDisplayName(displayName, false) != E_OK) {
         ANI_ERR_LOG("displayName: %{public}s is invalid", displayName.c_str());
         return false;
     }

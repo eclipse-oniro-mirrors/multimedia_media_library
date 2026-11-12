@@ -37,6 +37,7 @@ ohos_unittest("media_library_helper_test") {
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/include",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -73,6 +74,8 @@ ohos_unittest("media_library_helper_test") {
     "./src/media_edit_utils_test.cpp",
     "./src/photos_po_test.cpp",
     "./src/single_file_moving_photo_utils_test.cpp",
+    "./src/check_title_for_photo_test.cpp",
+    "./src/dot_rename_test.cpp",
   ]
 
   deps = [
