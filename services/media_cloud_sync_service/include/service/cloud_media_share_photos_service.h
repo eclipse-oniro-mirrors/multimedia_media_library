@@ -23,6 +23,7 @@
 #include "cloud_media_common_dao.h"
 #include "cloud_media_define.h"
 #include "cloud_media_photos_dao.h"
+#include "cloud_media_data_dao.h"
 #include "cloud_media_photos_service.h"
 #include "cloud_media_photos_delete_service.h"
 #include "cloud_media_pull_data_dto.h"
@@ -31,6 +32,7 @@
 #include "photos_dto.h"
 #include "photos_po.h"
 #include "cloud_media_photos_risk_service.h"
+#include "cloud_media_photos_album_hidden_service.h"
 #include "cloud_media_share_check_service.h"
 // LCOV_EXCL_START
 
@@ -50,6 +52,13 @@ public:
         std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
     int32_t OnDentryFileInsert(
         const std::vector<CloudMediaPullDataDto> &pullDatas, std::vector<std::string> &failedRecords);
+    int32_t OnCompletePull(const MediaOperateResult &optRet);
+    // 共享资产当前用户ID: 下行保存(内存+xml), 上行校验使用
+    std::string GetCurrentUserId();
+    void SaveCurrentUserId(const std::string &userId);
+    void SaveCurrentUserIdFromPullData(std::vector<CloudMediaPullDataDto> &pullDataList);
+    // 共享资产上行拦截: 当前用户既非相册 owner 也非资产创建者时不允许上云, dirty 置 0
+    void FilterSharePhotosByCurrentUser(std::vector<PhotosPo> &photoList);
 
 private:
     int32_t HandleRecords(std::vector<CloudMediaPullDataDto> &pullDataList, CloudMediaPullDataHandleDto &handleDto);
@@ -81,6 +90,12 @@ private:
     CloudMediaPhotosDeleteService photosDeleteService_;
     CloudMediaPhotosService photosService_;
     CloudMediaPhotosRiskService photosRiskService_;
+    CloudMediaDataDao dataDao_;
+    CloudMediaPhotosAlbumHiddenService photosAlbumHiddenService_;
+    // 进程内当前用户ID, 由下行流程写入(内存)并同步 xml 持久化
+    std::string currentUserId_ = "";
+    // 下行完成后是否需要恢复 SmartData 相册(南向云 + 恢复模式)
+    bool needRecoverSmartData_{false};
     CloudMediaShareCheckService shareCheckService_;
 };
 }  // namespace OHOS::Media::CloudSync
