@@ -9587,7 +9587,7 @@ static void JSGetPhotoAlbumsExecute(napi_env env, void *data)
     MediaLibraryTracer tracer;
     tracer.Start("JSGetPhotoAlbumsExecute");
 
-    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    MediaLibraryAsyncContext * volatile context = static_cast<MediaLibraryAsyncContext *>(data);
     string queryUri;
     if (context->hiddenOnly || context->hiddenAlbumFetchMode == ASSETS_MODE) {
         queryUri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
