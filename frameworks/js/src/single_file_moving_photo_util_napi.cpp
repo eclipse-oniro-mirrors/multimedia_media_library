@@ -238,14 +238,15 @@ static napi_value BuildTwoStringArray(napi_env env, const std::string &imagePath
     return result;
 }
 
-// 校验入参合一文件后缀并拆分出主名：只允许 jpeg/jpg/heif/heic（大小写不敏感），其余后缀按参数错误拒绝。
-static bool CheckSingleFileSourceName(napi_env env, const std::string& srcUri, std::string& title)
+// 源文件只要求非空且可打开，
+// 格式由容器 metadata 判定；这里只保证主名非空。
+static bool ResolveSourceTitle(napi_env env, const std::string& srcUri, std::string& title)
 {
-    std::string sourceExtension;
+    std::string sourceExtension;  // 仅用于拆分主名，不参与任何后缀校验
     SplitFileName(GetFileNameFromUri(srcUri), title, sourceExtension);
-    if (!SingleFileMovingPhotoUtils::IsSupportedImageExtension(sourceExtension)) {
-        MEDIA_ERR_LOG("Unsupported single file moving photo extension:%{public}s", sourceExtension.c_str());
-        ThrowJsError(env, JS_E_PARAM_INVALID, "The single-file moving photo must be .jpeg/.jpg/.heif/.heic");
+    if (title.empty()) {
+        MEDIA_ERR_LOG("ResolveSourceTitle failed, source file name is empty");
+        ThrowJsError(env, JS_E_PARAM_INVALID, "The file name of the single-file moving photo is invalid");
         return false;
     }
     return true;
@@ -280,7 +281,7 @@ napi_value SingleFileMovingPhotoUtil::JSUnpackingSingleFileMovingPhoto(napi_env 
     }
 
     std::string title;
-    if (!CheckSingleFileSourceName(env, srcUri, title)) {
+    if (!ResolveSourceTitle(env, srcUri, title)) {
         return nullptr;
     }
     SingleFileMovingPhotoInfo movingPhotoInfo;
@@ -410,11 +411,6 @@ napi_value SingleFileMovingPhotoUtil::JSGetVideoOffset(napi_env env, napi_callba
     if (srcFd.Get() < 0) {
         MEDIA_ERR_LOG("getVideoOffset failed to open src uri");
         return ThrowJsError(env, JS_E_PARAM_INVALID, "Failed to open the single-file moving photo");
-    }
-    // 入参合一文件后缀只允许 jpeg/jpg/heif/heic，其它后缀按参数错误拒绝
-    if (SingleFileMovingPhotoUtils::CheckImageSourceExtension(RealPathOf(srcUri)) != E_OK) {
-        MEDIA_ERR_LOG("getVideoOffset failed, unsupported source extension");
-        return ThrowJsError(env, JS_E_PARAM_INVALID, "The single-file moving photo must be .jpeg/.jpg/.heif/.heic");
     }
     int64_t offset = 0;
     int32_t ret = SingleFileMovingPhotoUtils::GetVideoOffset(srcFd.Get(), offset);
