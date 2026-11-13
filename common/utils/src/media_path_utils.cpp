@@ -343,7 +343,8 @@ bool MediaPathUtils::CheckIsCloudFile(const std::string &sandboxPath)
     constexpr const char* CLOUD_LOCATION_ATTR = "user.cloud.location";
     char cloudvalue[MAX_ATTR_NAME] = {'\0'};
     auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
-    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
+    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s",
+        DesensitizePath(sandboxPath).c_str());
     constexpr const char FILE_POSITION_CLOUD = '2';
     return cloudvalue[0] == FILE_POSITION_CLOUD;
 }
@@ -352,7 +353,8 @@ std::string MediaPathUtils::ConvertCloudPathToLocalPath(const std::string &cloud
 {
     CHECK_AND_RETURN_RET_LOG(!cloudPath.empty(), EMPTY_STRING, "cloudPath is empty");
     if (!MediaStringUtils::StartsWith(cloudPath, STORAGE_CLOUD_DIR)) {
-        MEDIA_ERR_LOG("cloudPath %{public}s not start with %{public}s", cloudPath.c_str(), STORAGE_CLOUD_DIR.c_str());
+        MEDIA_ERR_LOG("cloudPath %{public}s not start with %{public}s",
+            DesensitizePath(cloudPath).c_str(), STORAGE_CLOUD_DIR.c_str());
         return cloudPath;
     }
     return STORAGE_LOCAL_DIR + cloudPath.substr(STORAGE_CLOUD_DIR.length());
@@ -362,7 +364,8 @@ std::string MediaPathUtils::ConvertLocalPathToCloudPath(const std::string &local
 {
     CHECK_AND_RETURN_RET_LOG(!localPath.empty(), EMPTY_STRING, "localPath is empty");
     if (!MediaStringUtils::StartsWith(localPath, STORAGE_LOCAL_DIR)) {
-        MEDIA_ERR_LOG("localPath %{public}s not start with %{public}s", localPath.c_str(), STORAGE_LOCAL_DIR.c_str());
+        MEDIA_ERR_LOG("localPath %{public}s not start with %{public}s",
+            DesensitizePath(localPath).c_str(), STORAGE_LOCAL_DIR.c_str());
         return localPath;
     }
     return STORAGE_CLOUD_DIR + localPath.substr(STORAGE_LOCAL_DIR.length());
