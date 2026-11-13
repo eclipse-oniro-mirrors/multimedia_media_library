@@ -63,7 +63,7 @@ private:
     bool IsQueryGroupPhotoAlbumAssets(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
         const std::string& albumId);
     std::shared_ptr<NativeRdb::RdbStore> rdbStore_ {nullptr};
-    int64_t openedRdbTimeMs_ {0};
+    int64_t openedMarkerTimeMs_ {0};
     std::mutex mutex_;
     NativeRdb::RdbStoreConfig config_ {""};
 };

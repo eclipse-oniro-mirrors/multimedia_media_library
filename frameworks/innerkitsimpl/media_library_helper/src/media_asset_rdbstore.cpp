@@ -218,6 +218,9 @@ int32_t MediaAssetRdbStore::OpenRdbStore(bool isIgnoreSELinux)
     config_.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
     config_.SetCollatorLocales("zh_CN");
 
+    // Snapshot the marker before opening to detect changes during the open.
+    int64_t markerTime = 0;
+    const bool hasMarker = GetReverseRestoreMarkerTime(markerTime);
     MediaLibraryAssetCallBack rdbDataCallBack;
     rdbStore_ = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
     if (rdbStore_ == nullptr || errCode != NativeRdb::E_OK) {
@@ -225,8 +228,9 @@ int32_t MediaAssetRdbStore::OpenRdbStore(bool isIgnoreSELinux)
         rdbStore_ = nullptr;
         return errCode;
     }
-    openedRdbTimeMs_ = MediaFileUtils::UTCTimeMilliSeconds();
-    MEDIA_INFO_LOG("visitor rdb opened, openedRdbTimeMs=%{public}lld", static_cast<long long>(openedRdbTimeMs_));
+    openedMarkerTimeMs_ = hasMarker ? markerTime : 0;
+    MEDIA_INFO_LOG("visitor rdb opened, openedMarkerTimeMs=%{public}lld",
+        static_cast<long long>(openedMarkerTimeMs_));
     return NativeRdb::E_OK;
 }
 
@@ -255,9 +259,9 @@ std::shared_ptr<NativeRdb::RdbStore> MediaAssetRdbStore::GetRdbStoreForQuery(boo
     std::unique_lock<std::mutex> lock(mutex_);
     int64_t markerTime = 0;
     if (rdbStore_ != nullptr && GetReverseRestoreMarkerTime(markerTime) &&
-        markerTime > openedRdbTimeMs_) {
-        MEDIA_INFO_LOG("reverse restore marker newer than visitor rdb, openedRdbTimeMs=%{public}lld, "
-            "markerTimeMs=%{public}lld", static_cast<long long>(openedRdbTimeMs_), static_cast<long long>(markerTime));
+        markerTime != openedMarkerTimeMs_) {
+        MEDIA_INFO_LOG("reverse restore marker changed, openedMarkerTimeMs=%{public}lld, markerTimeMs=%{public}lld",
+            static_cast<long long>(openedMarkerTimeMs_), static_cast<long long>(markerTime));
         // 5s内链接未释放完毕，也要清理缓存
         CloseRdbStore(rdbStore_, config_, MILLIS_FIVE_SECONDS);
     }
