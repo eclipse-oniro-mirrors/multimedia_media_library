@@ -545,6 +545,9 @@ struct MediaLibraryAsyncContext : public AniError {
     bool isAsyncRefreshAlbum = false;
     bool canDeepOptimize = false;
     int64_t lcdOptimizableSize = 0;
+    bool getAssetsAsUri = false;
+    bool isUnionOnlyQuery = false;
+    bool allowSharedAssetInUnionOnly = false;
 };
 } // namespace Media
 } // namespace OHOS

@@ -117,8 +117,8 @@ void MediaOnNotifyNewObserverAni::ProcessObserverBranches(NewJsOnChangeCallbackW
     callbackWrapper.changeListenScene = PhotoChangeListenScene::Other;
 
     if (singleClientObserverAnis_.find(NotifyUriType::SINGLE_PHOTO_URI) != singleClientObserverAnis_.end() &&
-        ClientObserverAnis_.find(NotifyUriType::PHOTO_URI) != ClientObserverAnis_.end() &&
-        infoUriType == NotifyUriType::PHOTO_URI) {
+        ClientObserverAnis_.find(infoUriType) != ClientObserverAnis_.end() &&
+        (infoUriType == NotifyUriType::PHOTO_URI || infoUriType == NotifyUriType::SHARE_PHOTO_URI)) {
         auto outerIt = singleClientObserverAnis_.find(NotifyUriType::SINGLE_PHOTO_URI);
         CHECK_AND_RETURN_LOG(outerIt != singleClientObserverAnis_.end(),
             "SINGLE_PHOTO_URI not found in singleClientObserverAnis_");

@@ -118,6 +118,7 @@ public:
         std::vector<DataShare::OperationItem> operations = {});
     static bool IsPredicateValid(shared_ptr<DataShare::DataShareAbsPredicates> &predicate,
         const FetchOptionType &fetchOptType);
+    static bool IsUnionOnlyQuery(const DataShare::DataSharePredicates &predicates);
 
     template <class AsyncContext>
     static napi_status AsyncContextSetObjectInfo(napi_env env, napi_callback_info info, AsyncContext &asyncContext,

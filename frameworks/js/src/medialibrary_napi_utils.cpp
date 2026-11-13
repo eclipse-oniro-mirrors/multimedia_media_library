@@ -487,6 +487,30 @@ static void HandleSpecialOrPredicate(vector<OperationItem> &operations, bool ope
     }
 }
 
+bool MediaLibraryNapiUtils::IsUnionOnlyQuery(const DataSharePredicates &predicates)
+{
+    constexpr int32_t FIELD_IDX = 0;
+    const auto &operations = predicates.GetOperationList();
+    for (const auto &item : operations) {
+        if (item.singleParams.empty()) {
+            continue;
+        }
+        const string &field = static_cast<string>(item.GetSingle(FIELD_IDX));
+        if (field == CONST_MEDIA_DATA_DB_ID) {
+            continue;
+        }
+        if (item.operation == DataShare::ORDER_BY_ASC || item.operation == DataShare::ORDER_BY_DESC ||
+            item.operation == DataShare::LIMIT || item.operation == DataShare::OFFSET ||
+            item.operation == DataShare::DISTINCT || item.operation == DataShare::GROUP_BY ||
+            item.operation == DataShare::INDEXED_BY || item.operation == DataShare::NOT_EQUAL_TO) {
+            continue;
+        }
+        return false;
+    }
+    NAPI_INFO_LOG("MediaLibraryNapiUtils::IsUnionOnlyQuery,predicates only contain uri");
+    return true;
+}
+
 template <class AsyncContext>
 bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared_ptr<DataShareAbsPredicates> &predicate,
     const FetchOptionType &fetchOptType, vector<OperationItem> operations)

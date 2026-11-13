@@ -24,6 +24,7 @@ public:
     DataShare::DataSharePredicates predicates;
     std::vector<std::string> columns;
     uint64_t tokenId;
+    bool uriOnly = false;
 
     static GetAssetsDto Create(const GetAssetsReqBody &req);
 };

@@ -1375,6 +1375,7 @@ static ani_status ParseArgsGetAssets(ani_env *env, ani_object options, unique_pt
     CHECK_STATUS_RET(MediaLibraryAniUtils::GetFetchOption(env, options, ASSET_FETCH_OPT, context),
         "invalid predicate");
     auto &predicates = context->predicates;
+    context->isUnionOnlyQuery = context->getAssetsAsUri && MediaLibraryAniUtils::IsUnionOnlyQuery(predicates);
     switch (context->assetType) {
         case TYPE_AUDIO: {
             CHECK_STATUS_RET(MediaLibraryAniUtils::AddDefaultAssetColumns(env, context->fetchColumn,
@@ -1398,7 +1399,9 @@ static ani_status ParseArgsGetAssets(ani_env *env, ani_object options, unique_pt
         predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
         predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
             to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
-        predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
+        if (!context->isUnionOnlyQuery && context->allowSharedAssetInUnionOnly) {
+            predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
+        }
     }
 
     return ANI_OK;
@@ -1477,6 +1480,7 @@ ani_object MediaLibraryAni::GetPhotoAssets(ani_env *env, [[maybe_unused]] ani_ob
         return nullptr;
     }
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     if (ANI_OK != ParseArgsGetAssets(env, options, asyncContext)) {
         AniError::ThrowError(env, JS_INNER_FAIL);
         return nullptr;
@@ -5750,20 +5754,6 @@ ani_int MediaLibraryAni::PhotoAccessGrantPhotoUrisPermission(ani_env *env, ani_o
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return DEFAULT_ERR_ANI_DOUBLE;
     }
-    vector<string> fileIds;
-    for (const auto &valuesBucket : context->valuesBucketArray) {
-        bool isValid = false;
-        int32_t fileId = valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
-        if (isValid && fileId >= 0) {
-            fileIds.push_back(to_string(fileId));
-        }
-    }
-    if (!fileIds.empty() && MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds)) {
-        ANI_ERR_LOG("PhotoAccessGrantPhotoUrisPermission does not support shared album asset");
-        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-            "This operation is not supported for assets in shared albums");
-        return DEFAULT_ERR_ANI_DOUBLE;
-    }
 
     PhotoAccessGrantPhotoUrisPermissionExecute(env, context);
     return PhotoUriPermissionComplete(env, context);
@@ -5855,18 +5845,6 @@ ani_int MediaLibraryAni::PhotoAccessCancelPhotoUriPermission(ani_env *env, ani_o
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return DEFAULT_ERR_ANI_DOUBLE;
     }
-    bool isValid = false;
-    int32_t fileId = context->valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
-    do {
-        CHECK_AND_BREAK(isValid && fileId >= 0);
-        vector<string> fileIds = { to_string(fileId) };
-        if (MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds)) {
-            ANI_ERR_LOG("PhotoAccessCancelPhotoUriPermission does not support shared album asset");
-            AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-                "This operation is not supported for assets in shared albums");
-            return DEFAULT_ERR_ANI_DOUBLE;
-        }
-    } while (false);
     PhotoAccessCancelPhotoUriPermissionExecute(env, context);
     return PhotoUriPermissionComplete(env, context);
 }
@@ -6742,6 +6720,7 @@ ani_object MediaLibraryAni::PhotoAccessGetSharedPhotoAssets([[maybe_unused]] ani
     auto asyncContext = std::make_unique<MediaLibraryAsyncContext>();
     CHECK_COND_WITH_RET_MESSAGE(env, asyncContext != nullptr, returnObj, "asyncContext is nullptr");
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsGetAssets(env, options, asyncContext) == ANI_OK, returnObj,
         "objectInfo is nullptr");
 

@@ -26,7 +26,7 @@ bool GetAssetsReqBody::Unmarshalling(MessageParcel &parcel)
 
     CHECK_AND_RETURN_RET_LOG(status, false, "predicates Unmarshal failed");
 
-    return ITypesUtil::Unmarshal(parcel, columns, burstKey);
+    return ITypesUtil::Unmarshal(parcel, columns, burstKey, uriOnly);
 }
 
 bool GetAssetsReqBody::Marshalling(MessageParcel &parcel) const
@@ -35,7 +35,7 @@ bool GetAssetsReqBody::Marshalling(MessageParcel &parcel) const
 
     CHECK_AND_RETURN_RET_LOG(status, false, "predicates Marshal failed");
 
-    return ITypesUtil::Marshal(parcel, columns, burstKey);
+    return ITypesUtil::Marshal(parcel, columns, burstKey, uriOnly);
 }
 
 bool GetAssetsRespBody::Unmarshalling(MessageParcel &parcel)
