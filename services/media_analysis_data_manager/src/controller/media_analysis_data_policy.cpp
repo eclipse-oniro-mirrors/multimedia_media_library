@@ -65,6 +65,8 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_REMOVE_CLOUD_LCD), { {SYSTEMINNERAPI_PERM, WRITE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INVOKE_ANALYSIS_TOOL), {{SYSTEMAPI_PERM, ANALYSIS_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CANCEL_ANALYSIS_TOOL), {{SYSTEMAPI_PERM, ANALYSIS_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_LABEL), {{SYSTEMINNERAPI_PERM, READ_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_CAPTION), {{SYSTEMINNERAPI_PERM, READ_PERM}}},
 };
  
  

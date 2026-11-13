@@ -55,6 +55,7 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dto",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
   ]
 
   include_media_ipc_common = [
@@ -94,9 +95,14 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/set_photo_critical_vo.cpp",
   ]
 
+  media_analysis_data_vo_source = [
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_assets_analysis_metadata_vo.cpp",
+  ]
+
   include_dirs += user_ipc_client_include_dirs
   sources += media_albums_manager_vo_source
   sources += media_assets_manager_vo_source
+  sources += media_analysis_data_vo_source
 
   public_configs = [ ":media_library_manager_config" ]
 

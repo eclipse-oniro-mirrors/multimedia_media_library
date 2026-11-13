@@ -61,6 +61,9 @@ public:
     EXPORT int32_t PrepareLcd(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t RemoveCloudLcd(MessageParcel &data, MessageParcel &reply);
 
+    EXPORT int32_t GetAssetsLabel(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetAssetsCaption(MessageParcel &data, MessageParcel &reply);
+
 private:
     int32_t GetPermissionPolicy(
         uint32_t code, std::vector<std::vector<PermissionType>> &permissionPolicy, bool &isBypass) override;
@@ -173,6 +176,14 @@ private:
         {
             static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_REMOVE_CLOUD_LCD),
             &MediaAnalysisDataControllerService::RemoveCloudLcd
+        },
+        {
+            static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_LABEL),
+            &MediaAnalysisDataControllerService::GetAssetsLabel
+        },
+        {
+            static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_CAPTION),
+            &MediaAnalysisDataControllerService::GetAssetsCaption
         },
     };
 };
