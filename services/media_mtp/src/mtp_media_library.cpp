@@ -148,19 +148,12 @@ static bool SafeJoinPath(const std::string &parent, const std::string &name, std
     if (name.empty() || name == "." || name == ".." || name.find('/') != std::string::npos) {
         return false;
     }
-    // join with string concatenation: path::operator/ is reported as a division by the static
-    // checker (G.EXP.22-CPP), and '/' is the only separator used by mtp storage paths
-    std::string joinedStr = parent;
-    if (!joinedStr.empty() && joinedStr.back() != '/') {
-        joinedStr.push_back('/');
-    }
-    joinedStr.append(name);
     std::error_code ec;
-    sf::path joined = sf::weakly_canonical(joinedStr, ec);
+    sf::path joined = sf::weakly_canonical(sf::path(parent) / name, ec);
     if (ec) {
         return false;
     }
-    joinedStr = joined.string();
+    std::string joinedStr = joined.string();
     if (!IsPathInMtpRoot(joinedStr)) {
         return false;
     }
