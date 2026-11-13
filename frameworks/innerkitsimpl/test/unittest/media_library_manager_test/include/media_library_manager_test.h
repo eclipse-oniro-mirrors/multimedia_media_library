@@ -16,7 +16,10 @@
 #ifndef MEDIA_LIBRARY_MANANGER_TEST_H
 #define MEDIA_LIBRARY_MANANGER_TEST_H
 
+#include <string>
+
 #include "gtest/gtest.h"
+#include "image_source.h"
 #include "media_library_manager.h"
 
 namespace OHOS {
@@ -28,6 +31,15 @@ public:
     void SetUp();
     void TearDown();
     MediaLibraryManager manager;
+};
+
+struct UriParams {
+    std::string path;
+    std::string fileUri;
+    Size size;
+    bool isAstc;
+    DecodeDynamicRange dynamicRange;
+    std::string user;
 };
 } // namespace Media
 } // namespace OHOS

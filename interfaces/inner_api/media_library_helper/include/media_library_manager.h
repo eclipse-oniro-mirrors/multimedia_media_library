@@ -23,7 +23,11 @@
 #include "unique_fd.h"
 #include "media_library_extend_manager.h"
 #include "userfile_manager_types.h"
+#include <cstdint>
 #include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace OHOS {
 namespace Media {
@@ -498,6 +502,25 @@ public:
      */
     EXPORT int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
 
+    /**
+     * @brief 批量查询本地照片或视频资产的分类标签，需要调用方具有只读媒体库访问能力。
+     * @param uris 1 至 100 个本地 Photo URI，不支持远端或跨用户 URI。
+     * @param result 输出参数，成功时包含输入 URI 到标签列表的映射；无标签时列表为空。
+     * @return E_OK 表示成功；输入非法返回 E_INVALID_ARGUMENTS；IPC 或查询失败返回对应错误码。
+     */
+    EXPORT int32_t GetAssetsLabel(const std::vector<std::string> &uris,
+        std::unordered_map<std::string, std::vector<std::string>> &result);
+
+    /**
+     * @brief 批量查询本地照片或视频资产的 caption，需要调用方 UID 安全SA且具有只读媒体库访问能力。
+     * @param uris 1 至 100 个本地 Photo URI，不支持远端或跨用户 URI。
+     * @param result 输出参数，成功时包含输入 URI 到 caption 的映射；无记录或 caption 为 NULL 时为空字符串。
+     * @return E_OK 表示成功；输入非法返回 E_INVALID_ARGUMENTS；UID 不允许返回 E_PERMISSION_DENIED；
+     *         IPC 或查询失败返回对应错误码。
+     */
+    EXPORT int32_t GetAssetsCaption(const std::vector<std::string> &uris,
+        std::unordered_map<std::string, std::string> &result);
+
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);
     static int OpenThumbnail(std::string &uriStr, const std::string &path, const Size &size, bool isAstc);
@@ -512,6 +535,14 @@ private:
     static int32_t userId_;
     static shared_ptr<DataShare::DataShareHelper> currentDataShareHelper_;
     std::mutex mutex_;
+
+    struct AssetsAnalysisMetadataQuery {
+        std::vector<int32_t> fileIds;
+        std::unordered_map<int32_t, std::vector<std::string>> urisByFileId;
+    };
+
+    static bool BuildAssetsAnalysisMetadataQuery(const std::vector<std::string> &uris,
+        AssetsAnalysisMetadataQuery &query);
 };
 } // namespace Media
 } // namespace OHOS

@@ -17,10 +17,13 @@
 
 #include "media_library_manager.h"
 
+#include <charconv>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/xattr.h>
 #include <map>
+#include <unordered_set>
+#include <unistd.h>
 
 #include "accesstoken_kit.h"
 #include "directory_ex.h"
@@ -37,6 +40,7 @@
 #include "medialibrary_manager_notify_observer_manager.h"
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_tracer.h"
+#include "medialibrary_type_const.h"
 #include "media_app_uri_permission_column.h"
 #include "media_app_uri_sensitive_column.h"
 #include "media_library_tab_old_photos_client.h"
@@ -75,6 +79,7 @@
 #include "get_assets_vo.h"
 #include "batch_update_metadata_modified_vo.h"
 #include "set_photo_critical_vo.h"
+#include "get_assets_analysis_metadata_vo.h"
 #include "fetch_result.h"
 #include "userfilemgr_uri.h"
 
@@ -1853,6 +1858,138 @@ int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskS
     }
     return E_OK;
 }
+
+static bool GetAnalysisAssetFileId(const std::string &uri, int32_t &fileId)
+{
+    std::string fileIdString = MediaFileUtils::GetIdFromUri(uri);
+    CHECK_AND_RETURN_RET_LOG(!fileIdString.empty(), false, "Analysis asset file id is empty");
+    constexpr size_t fileIdOffset = sizeof("file://media/Photo/") - 1;
+    CHECK_AND_RETURN_RET_LOG(uri.size() > fileIdOffset && fileIdString.front() >= '1' &&
+        fileIdString.front() <= '9', false, "Non-canonical analysis asset file id");
+    const size_t delimiter = uri.find_first_of("/?#", fileIdOffset);
+    const size_t rawIdLength = (delimiter == std::string::npos ? uri.size() : delimiter) - fileIdOffset;
+    CHECK_AND_RETURN_RET_LOG(rawIdLength == fileIdString.size() &&
+        uri.compare(fileIdOffset, rawIdLength, fileIdString) == 0, false, "Encoded analysis asset file id");
+    const char *end = fileIdString.data() + fileIdString.size();
+    auto [parseEnd, parseError] = std::from_chars(fileIdString.data(), end, fileId);
+    CHECK_AND_RETURN_RET_LOG(parseError == std::errc() && parseEnd == end && fileId > 0, false,
+        "Invalid analysis asset file id");
+    return true;
+}
+
+bool MediaLibraryManager::BuildAssetsAnalysisMetadataQuery(const std::vector<std::string> &uris,
+    AssetsAnalysisMetadataQuery &query)
+{
+    CHECK_AND_RETURN_RET_LOG(!uris.empty() && uris.size() <= ANALYSIS_METADATA_MAX_BATCH_SIZE, false,
+        "Invalid analysis metadata URI count: %{public}zu", uris.size());
+    std::unordered_set<std::string> seenUris;
+    for (const auto &uri : uris) {
+        if (!seenUris.emplace(uri).second) {
+            continue;
+        }
+        // Remote, cross-user and non-photo URIs must not be resolved as local file IDs.
+        CHECK_AND_RETURN_RET_LOG(CheckPhotoUri(uri) && MediaFileUtils::GetNetworkIdFromUri(uri).empty() &&
+            uri.find(MULTI_USER_URI_FLAG) == std::string::npos, false, "Invalid photo URI for analysis metadata query");
+        int32_t fileId = 0;
+        CHECK_AND_RETURN_RET_LOG(GetAnalysisAssetFileId(uri, fileId), false, "Failed to parse analysis asset file id");
+        auto [fileIdIt, inserted] = query.urisByFileId.emplace(fileId, std::vector<std::string>());
+        fileIdIt->second.emplace_back(uri);
+        if (inserted) {
+            query.fileIds.emplace_back(fileId);
+        }
+    }
+    CHECK_AND_RETURN_RET_LOG(!query.fileIds.empty(), false, "No analysis asset file ids");
+    return true;
+}
+
+static int32_t QueryAssetsAnalysisMetadata(const std::vector<int32_t> &fileIds,
+    const std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper, uint32_t businessCode,
+    GetAssetsAnalysisMetadataRespBody &respBody)
+{
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_FAIL,
+        "Failed to create dataShareHelper for analysis metadata query");
+    GetAssetsAnalysisMetadataReqBody reqBody;
+    reqBody.fileIds = fileIds;
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper)
+        .Call(businessCode, reqBody, respBody);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
+        "Analysis metadata IPC failed, businessCode: %{public}u, errCode: %{public}d", businessCode, errCode);
+    CHECK_AND_RETURN_RET_LOG(respBody.IsValid(), E_FAIL,
+        "Analysis metadata IPC response invalid, businessCode: %{public}u", businessCode);
+    return E_OK;
+}
+
+int32_t MediaLibraryManager::GetAssetsLabel(const std::vector<std::string> &uris,
+    std::unordered_map<std::string, std::vector<std::string>> &result)
+{
+    result.clear();
+    MEDIA_INFO_LOG("GetAssetsLabel start, uri count: %{public}zu", uris.size());
+    AssetsAnalysisMetadataQuery query;
+    CHECK_AND_RETURN_RET_LOG(BuildAssetsAnalysisMetadataQuery(uris, query), E_INVALID_ARGUMENTS,
+        "GetAssetsLabel rejected input, uri count: %{public}zu", uris.size());
+
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper = GetDataShareHelper();
+    GetAssetsAnalysisMetadataRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_LABEL);
+    MEDIA_INFO_LOG("GetAssetsLabel IPC request, unique file count: %{public}zu", query.fileIds.size());
+    int32_t ret = QueryAssetsAnalysisMetadata(query.fileIds, dataShareHelper, businessCode, respBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetAssetsLabel IPC failed, ret: %{public}d", ret);
+    std::unordered_map<std::string, std::vector<std::string>> queryResult;
+    for (const auto &uri : uris) {
+        queryResult.emplace(uri, std::vector<std::string>());
+    }
+
+    for (size_t index = 0; index < respBody.fileIds.size(); ++index) {
+        auto uriIt = query.urisByFileId.find(respBody.fileIds[index]);
+        CHECK_AND_RETURN_RET_LOG(uriIt != query.urisByFileId.end(), E_FAIL, "Label query returned unknown file id");
+        for (const auto &uri : uriIt->second) {
+            queryResult[uri].emplace_back(respBody.values[index]);
+        }
+    }
+    result.swap(queryResult);
+    MEDIA_INFO_LOG("GetAssetsLabel completed, uri count: %{public}zu, response row count: %{public}zu",
+        result.size(), respBody.fileIds.size());
+    return E_OK;
+}
+
+int32_t MediaLibraryManager::GetAssetsCaption(const std::vector<std::string> &uris,
+    std::unordered_map<std::string, std::string> &result)
+{
+    result.clear();
+    const uid_t callingUid = getuid();
+    MEDIA_INFO_LOG("GetAssetsCaption start, getuid: %{public}u, uri count: %{public}zu",
+        callingUid, uris.size());
+    AssetsAnalysisMetadataQuery query;
+    CHECK_AND_RETURN_RET_LOG(BuildAssetsAnalysisMetadataQuery(uris, query), E_INVALID_ARGUMENTS,
+        "GetAssetsCaption rejected input, uri count: %{public}zu", uris.size());
+    constexpr uid_t CAPTION_QUERY_ALLOWED_UID = 3553;
+    CHECK_AND_RETURN_RET_LOG(callingUid == CAPTION_QUERY_ALLOWED_UID, E_PERMISSION_DENIED,
+        "GetAssetsCaption denied, callingUid: %{public}u", callingUid);
+
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper = GetDataShareHelper();
+    GetAssetsAnalysisMetadataRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_CAPTION);
+    MEDIA_INFO_LOG("GetAssetsCaption IPC request, unique file count: %{public}zu", query.fileIds.size());
+    int32_t ret = QueryAssetsAnalysisMetadata(query.fileIds, dataShareHelper, businessCode, respBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetAssetsCaption IPC failed, ret: %{public}d", ret);
+
+    std::unordered_map<std::string, std::string> queryResult;
+    for (const auto &uri : uris) {
+        queryResult.emplace(uri, "");
+    }
+    for (size_t index = 0; index < respBody.fileIds.size(); ++index) {
+        auto uriIt = query.urisByFileId.find(respBody.fileIds[index]);
+        CHECK_AND_RETURN_RET_LOG(uriIt != query.urisByFileId.end(), E_FAIL, "Caption query returned unknown file id");
+        for (const auto &uri : uriIt->second) {
+            queryResult[uri] = respBody.values[index];
+        }
+    }
+    result.swap(queryResult);
+    MEDIA_INFO_LOG("GetAssetsCaption completed, uri count: %{public}zu, response row count: %{public}zu",
+        result.size(), respBody.fileIds.size());
+    return E_OK;
+}
+
 } // namespace Media
 } // namespace OHOS
 // LCOV_EXCL_STOP
