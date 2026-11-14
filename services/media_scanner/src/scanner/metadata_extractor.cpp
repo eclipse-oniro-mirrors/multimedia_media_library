@@ -16,6 +16,8 @@
 
 #include "metadata_extractor.h"
 
+#include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <fcntl.h>
 #include <regex>
@@ -25,6 +27,7 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_container_types.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
@@ -739,7 +742,7 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
     if (!customMeta->GetData(PHOTO_DATA_VIDEO_IOS_LOCATION, iso6709Str) || iso6709Str.empty()) {
         return;
     }
-    std::regex pattern(R"([+-]\d+\.\d+)");
+    std::regex pattern(R"([+-]\d+(?:\.\d+)?)");
     std::sregex_iterator it(iso6709Str.cbegin(), iso6709Str.cend(), pattern);
     std::sregex_iterator end;
     if (it == end) {
@@ -774,6 +777,12 @@ void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_pt
         return;
     }
     if (customMeta == nullptr) {
+        return;
+    }
+    // com.apple.quicktime.location.ISO6709 是 QuickTime/MOV 容器特有元数据，仅对 MOV 文件解析
+    std::string fileExt = ScannerUtils::GetFileExtension(data->GetFilePath());
+    std::transform(fileExt.begin(), fileExt.end(), fileExt.begin(), ::tolower);
+    if (fileExt != VIDEO_CONTAINER_TYPE_MOV) {
         return;
     }
     ParseIOSVideoLocation(customMeta, data, hasLat, hasLon);

@@ -1063,8 +1063,9 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 
 /**
  * @tc.name: FillExtractedMetadata_location_iso6709_image_type
- * @tc.desc: ISO6709 location parsing for MEDIA_TYPE_IMAGE.
- *           FillExtractedMetadata should also populate location for image media.
+ * @tc.desc: ISO6709 location parsing for non-MOV file (image/jpg).
+ *           com.apple.quicktime.location.ISO6709 is QuickTime/MOV-specific metadata;
+ *           non-MOV files should NOT parse it, latitude/longitude remain 0.
  */
 HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_image_type, TestSize.Level1)
 {
@@ -1081,8 +1082,9 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
     MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
 
-    EXPECT_DOUBLE_EQ(data->GetLatitude(), 48.8566);
-    EXPECT_DOUBLE_EQ(data->GetLongitude(), 2.3522);
+    // Non-MOV file: ISO6709 must NOT be parsed, latitude/longitude remain 0
+    EXPECT_EQ(data->GetLatitude(), 0);
+    EXPECT_EQ(data->GetLongitude(), 0);
 }
 
 /**
