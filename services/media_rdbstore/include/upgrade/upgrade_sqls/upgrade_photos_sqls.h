@@ -195,4 +195,10 @@
     "CREATE INDEX IF NOT EXISTS lpath_index ON tab_cover_record (" \
     "album_type,album_subtype,lpath COLLATE NOCASE)"
 
+#define SQL_UPGRADE_CREATE_SCHPT_SHARE_DATE_ADDED_INDEX_ADD_POSITION \
+    "CREATE INDEX IF NOT EXISTS idx_schpt_share_date_added ON Photos (" \
+    "owner_album_id,sync_status,clean_flag,date_trashed,hidden,time_pending," \
+    "is_temp,burst_cover_level,is_shared,photo_visibility,share_group DESC,date_taken DESC,display_name DESC," \
+    "position);"
+
 #endif // UPGRADE_PHOTOS_SQLS_H

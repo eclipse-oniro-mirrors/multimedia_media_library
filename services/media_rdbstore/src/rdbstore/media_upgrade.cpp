@@ -489,7 +489,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX =
     PhotoColumn::PHOTO_BURST_COVER_LEVEL + "," + PhotoColumn::PHOTO_IS_SHARED + "," +
     PhotoColumn::PHOTO_VISIBILITY + "," + PhotoColumn::PHOTO_SHARE_GROUP + " DESC," +
     MediaColumn::MEDIA_DATE_TAKEN + " DESC," +
-    MediaColumn::MEDIA_NAME + " DESC);";
+    MediaColumn::MEDIA_NAME + " DESC," + PhotoColumn::PHOTO_POSITION + ");";
 
 const std::string PhotoUpgrade::CREATE_PHOTOS_DELETE_TRIGGER =
                         "CREATE TRIGGER IF NOT EXISTS photos_delete_trigger AFTER UPDATE ON " +

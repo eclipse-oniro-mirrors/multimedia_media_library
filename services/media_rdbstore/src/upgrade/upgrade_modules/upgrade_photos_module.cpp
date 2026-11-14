@@ -233,5 +233,17 @@ static vector<pair<int32_t, int32_t>> UpdateIndexedWithFavoriteIsShared(NativeRd
 }
 REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_ADD_FAVRATE_IS_SHARED_TO_INDEXS, PHOTOS_MODULE_NAME,
     UpdateIndexedWithFavoriteIsShared);
+
+static vector<pair<int32_t, int32_t>> UpdateIndexedWithShareDateAddedIndexAddPosition(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder
+        .DropIndex(INDEX_SCHPT_SHARE_DATE_ADDED)
+        .AddRawSql(SQL_UPGRADE_CREATE_SCHPT_SHARE_DATE_ADDED_INDEX)
+        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_SHARE_DATE_ADDED_INDEX, PHOTOS_MODULE_NAME,
+    UpdateIndexedWithShareDateAddedIndexAddPosition);
 } // namespace Media
 } // namespace OHOS
