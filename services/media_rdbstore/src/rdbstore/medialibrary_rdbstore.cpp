@@ -301,6 +301,7 @@ MediaLibraryRdbStore::MediaLibraryRdbStore(const shared_ptr<OHOS::AbilityRuntime
     string realPath = RdbSqlUtils::GetDefaultDatabasePath(databaseDir, name, errCode);
     config_.SetHaMode(HAMode::MANUAL_TRIGGER);
     config_.SetAllowRebuild(true);
+    config_.EnableDumpStackOnFileDeletion(true);
     config_.SetName(move(name));
     config_.SetPath(move(realPath));
     config_.SetBundleName(context->GetBundleName());
