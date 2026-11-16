@@ -42,9 +42,11 @@ int32_t ThumbnailGenerationPostProcess::PostProcess(ThumbnailData& data, const T
     MEDIA_INFO_LOG("lcdVisitTime value is: %{public}d", lcdVisitTime);
     
     CHECK_AND_RETURN_RET(!data.rdbUpdateCache.IsEmpty(), E_OK);
-    bool hasGeneratedThumb = HasGeneratedThumb(data);
-    MEDIA_INFO_LOG("GenRes %{public}d", hasGeneratedThumb);
-    int32_t err = hasGeneratedThumb ? UpdateCachedRdbValueAndNotify(data, opts) : UpdateCachedRdbValue(data, opts);
+    ThumbGenStatus genStatus = HasGeneratedThumb(data);
+    MEDIA_INFO_LOG("GenRes %{public}d", static_cast<int32_t>(genStatus));
+    CHECK_AND_RETURN_RET(genStatus != ThumbGenStatus::NOT_ATTEMPTED, E_OK);
+    int32_t err = genStatus == ThumbGenStatus::GEN_DONE ? UpdateCachedRdbValueAndNotify(data, opts)
+        : UpdateCachedRdbValue(data, opts);
     if (err == E_RDB_UPDATE_NO_ROWS_CHANGED || err == E_RDB_QUERY_NO_RES) {
         auto deleteRes = ThumbnailUtils::DeleteThumbnailDirAndAstc(opts, data);
         MEDIA_ERR_LOG("There is no such id: %{public}s path: %{public}s in the db,"
@@ -147,15 +149,16 @@ int32_t ThumbnailGenerationPostProcess::GetNotifyType(const ThumbnailData& data,
     return E_OK;
 }
 
-bool ThumbnailGenerationPostProcess::HasGeneratedThumb(const ThumbnailData& data)
+ThumbGenStatus ThumbnailGenerationPostProcess::HasGeneratedThumb(const ThumbnailData& data)
 {
     ValueObject valueObject;
     bool hasThumbReadyColumn = data.rdbUpdateCache.GetObject(PhotoColumn::PHOTO_THUMBNAIL_READY, valueObject);
-    CHECK_AND_RETURN_RET_INFO_LOG(hasThumbReadyColumn, false, "Do not cache thumbnail_ready value in photos table");
+    CHECK_AND_RETURN_RET(hasThumbReadyColumn, ThumbGenStatus::NOT_ATTEMPTED);
 
     int64_t thumbReady;
     valueObject.GetLong(thumbReady);
-    return thumbReady != static_cast<int64_t>(ThumbnailReady::GENERATE_THUMB_RETRY);
+    return thumbReady == static_cast<int64_t>(ThumbnailReady::GENERATE_THUMB_RETRY) ? ThumbGenStatus::GEN_FAILED
+        : ThumbGenStatus::GEN_DONE;
 }
 
 int32_t ThumbnailGenerationPostProcess::SetRegenerateAstcStatus(const ThumbnailData& data, const ThumbRdbOpt& opts)
