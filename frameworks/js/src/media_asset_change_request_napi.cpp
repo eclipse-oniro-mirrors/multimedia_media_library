@@ -1042,18 +1042,17 @@ napi_value MediaAssetChangeRequestNapi::JSCreateAssetRequest(napi_env env, napi_
 }
 
 static napi_value ParseFileUri(napi_env env, napi_value arg, MediaType mediaType,
-    unique_ptr<MediaAssetChangeRequestAsyncContext>& context, int32_t pathErrCode = JS_ERR_NO_SUCH_FILE)
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
 {
     string fileUriStr;
-    CHECK_COND_WITH_ERR_MESSAGE(env,
-        MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok, pathErrCode,
+    CHECK_COND_WITH_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok,
         "The fileUri parameter must be a string and within length limit");
     AppFileService::ModuleFileUri::FileUri fileUri(fileUriStr);
     string path = fileUri.GetRealPath();
-    CHECK_COND_WITH_ERR_MESSAGE(env, PathToRealPath(path, context->realPath), pathErrCode,
-        "The file corresponding to the URI is not in the app sandbox");
+    CHECK_COND(env, PathToRealPath(path, context->realPath), JS_ERR_NO_SUCH_FILE);
 
-    CHECK_COND_WITH_ERR_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType(context->realPath), pathErrCode,
+    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType(context->realPath),
         "The file type does not match the expected type");
     RETURN_NAPI_TRUE(env);
 }
@@ -2198,8 +2197,27 @@ static bool PrepareSingleFileExtraData(napi_env env, const std::string &path, in
     return true;
 }
 
+// PRIVATE_MOVING_PHOTO_RESOURCE 专用的 URI 解析：参数形态/媒体类型失败用 paramErrCode，
+// 只有 URI 无法解析到沙箱真实路径时才用 uriErrCode，避免影响非 PRIVATE 调用链。
+static napi_value ParseSingleFileUri(napi_env env, napi_value arg,
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& context, int32_t uriErrCode, int32_t paramErrCode)
+{
+    string fileUriStr;
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamStringPathMax(env, arg, fileUriStr) == napi_ok, paramErrCode,
+        "The fileUri parameter must be a string and within length limit");
+    AppFileService::ModuleFileUri::FileUri fileUri(fileUriStr);
+    string path = fileUri.GetRealPath();
+    CHECK_COND_WITH_ERR_MESSAGE(env, PathToRealPath(path, context->realPath), uriErrCode,
+        "The file corresponding to the URI is not in the app sandbox");
+
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaFileUtils::GetMediaType(context->realPath) == MediaType::MEDIA_TYPE_IMAGE,
+        paramErrCode, "The file type does not match the expected type");
+    RETURN_NAPI_TRUE(env);
+}
+
 // 解析 PRIVATE_MOVING_PHOTO_RESOURCE 的 value：支持沙箱 file uri 与 ArrayBuffer 两种形态。
-// uriErrCode 仅用于 URI 解析、沙箱路径与文件类型类失败；extraData 内容非法属于参数校验失败，统一用 paramErrCode。
+// uriErrCode 仅用于 URI 无法解析到沙箱真实路径；参数形态、文件类型、非普通文件、extraData 非法统一用 paramErrCode。
 napi_value MediaAssetChangeRequestNapi::ParseSingleFileResource(napi_env env,
     unique_ptr<MediaAssetChangeRequestAsyncContext>& asyncContext, int32_t uriErrCode, int32_t paramErrCode)
 {
@@ -2211,12 +2229,14 @@ napi_value MediaAssetChangeRequestNapi::ParseSingleFileResource(napi_env env,
         "Failed to get napi type");
     std::string extraData;
     if (valueType == napi_string) {
-        CHECK_COND(env, ParseFileUri(env, value, MediaType::MEDIA_TYPE_IMAGE, asyncContext, uriErrCode), uriErrCode);
-        // ParseFileUri 已解析真实路径，这里统一复核路径合法性并归一化
+        if (ParseSingleFileUri(env, value, asyncContext, uriErrCode, paramErrCode) == nullptr) {
+            return nullptr;
+        }
+        // ParseSingleFileUri 已解析真实路径，这里统一复核路径合法性并归一化
         std::string normalizedPath;
         CHECK_COND_WITH_ERR_MESSAGE(env,
             SingleFileMovingPhotoUtils::NormalizeExistingFile(asyncContext->realPath, normalizedPath) == E_OK,
-            uriErrCode, "The file corresponding to the URI is invalid");
+            paramErrCode, "The file corresponding to the URI is invalid");
         // extraData 内容非法属于参数校验失败，与 URI 解析失败区分错误码
         if (!PrepareSingleFileExtraData(env, normalizedPath, paramErrCode, extraData)) {
             return nullptr;
