@@ -746,8 +746,8 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
     if (!customMeta->GetData(PHOTO_DATA_VIDEO_IOS_LOCATION, iso6709Str) || iso6709Str.empty()) {
         return;
     }
-    // 严格校验 ISO6709 格式：±DD.DDDD±DDD.DDDD±DD.DDDD/（纬度+经度+高度，必须以/结尾），拒绝空格/字母/多余字符/截断
-    std::regex strictPattern(R"(^[+-]\d+(?:\.\d+)?[+-]\d+(?:\.\d+)?[+-]\d+(?:\.\d+)?/$)");
+    // 严格校验 ISO6709 格式：±DD.DDDD±DDD.DDDD[±DD.DDDD]/（纬度+经度[+高度]，必须以/结尾），拒绝空格/字母/多余字符/截断
+    std::regex strictPattern(R"(^[+-]\d+(?:\.\d+)?[+-]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/$)");
     if (!std::regex_match(iso6709Str, strictPattern)) {
         MEDIA_ERR_LOG("Invalid ISO6709 location string: %{private}s", iso6709Str.c_str());
         return;
