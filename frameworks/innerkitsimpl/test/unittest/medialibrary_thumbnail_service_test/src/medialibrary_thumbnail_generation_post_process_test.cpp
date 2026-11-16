@@ -155,5 +155,21 @@ HWTEST_F(MediaLibraryThumbnailGenerationPostProcessTest, PostProcess_test_004, T
     EXPECT_EQ(ret, E_RDB_QUERY_NO_RES);
 }
 
+HWTEST_F(MediaLibraryThumbnailGenerationPostProcessTest, PostProcess_test_005, TestSize.Level0)
+{
+    NativeRdb::ValuesBucket values;
+    values.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME, static_cast<int64_t>(1000));
+    ThumbnailData data;
+    data.rdbUpdateCache = values;
+    data.id = dataId;
+    ThumbRdbOpt opts;
+    opts.store = store;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+
+    int ret = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(data.rdbUpdateCache.IsEmpty());
+}
+
 } // namespace Media
 } // namespace OHOS
