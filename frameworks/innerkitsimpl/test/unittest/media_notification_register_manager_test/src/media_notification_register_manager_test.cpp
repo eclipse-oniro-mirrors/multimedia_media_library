@@ -1248,24 +1248,5 @@ static void CheckNotifyUriPermission(const std::vector<Notification::NotifyUriTy
     }
 }
 
-// HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_016, TestSize.Level1) {
-//     MEDIA_INFO_LOG("NotifyRegisterPermission_test_016::Start");
-//     CheckNotifyUriPermission(
-//         { Notification::NotifyUriType::PHOTO_URI, Notification::NotifyUriType::PHOTO_ALBUM_URI,
-//           Notification::NotifyUriType::BATCH_DOWNLOAD_PROGRESS_URI, Notification::NotifyUriType::AVAILABILITY_URI },
-//         E_PERMISSION_DENIED);
-//     CheckNotifyUriPermission(
-//         { Notification::NotifyUriType::USER_DEFINE_NOTIFY_URI, Notification::NotifyUriType::SINGLE_PHOTO_URI,
-//           Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
-//         E_OK);
-//     CheckNotifyUriPermission(
-//         { Notification::NotifyUriType::HIDDEN_PHOTO_URI, Notification::NotifyUriType::HIDDEN_ALBUM_URI,
-//           Notification::NotifyUriType::TRASH_PHOTO_URI, Notification::NotifyUriType::TRASH_ALBUM_URI,
-//           Notification::NotifyUriType::ANALYSIS_PHOTO_URI, Notification::NotifyUriType::ANALYSIS_ALBUM_URI,
-//           Notification::NotifyUriType::SHARE_PHOTO_URI, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI },
-//         -E_CHECK_SYSTEMAPP_FAIL);
-//     CheckNotifyUriPermission({ Notification::NotifyUriType::INVALID }, E_ERR);
-//     MEDIA_INFO_LOG("NotifyRegisterPermission_test_016::End");
-// }
 }
 }
