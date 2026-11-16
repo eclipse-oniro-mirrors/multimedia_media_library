@@ -1118,7 +1118,8 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
  *           Latitude and longitude are validated as a whole: if either is invalid,
  *           neither is written, so both remain 0.
  */
-HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_partial_out_of_range, TestSize.Level1)
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_partial_out_of_range,
+    TestSize.Level1)
 {
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
