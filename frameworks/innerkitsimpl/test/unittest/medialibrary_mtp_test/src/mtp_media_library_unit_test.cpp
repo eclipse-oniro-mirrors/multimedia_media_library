@@ -3234,7 +3234,8 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_135, TestSi
         EXPECT_NE(res, MTP_SUCCESS) << "name: " << hostileName;
         EXPECT_TRUE(sf::exists(oldFile)) << "name: " << hostileName; // original untouched
     }
-    EXPECT_FALSE(sf::exists("/etc"));
+    // 恶意名字不得在 mtp 根下产生任何新节点（"a/b.txt" 若被放行会建出 a/）
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/a"));
     sf::remove(oldFile);
     mtpMediaLib_->Clear();
 }
@@ -3252,11 +3253,14 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_136, TestSi
     ASSERT_NE(mtpMediaLib_, nullptr);
     mtpMediaLib_->Clear();
     ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
-    // symlink dir under STORAGE_FILE root pointing to the UT process CWD (outside mtp root)
+    // symlink dir under STORAGE_FILE root pointing outside the mtp root.
+    // 目标固定用 /etc：一定存在且在所有 mtp 根之外，不依赖进程 CWD
+    // （getcwd 失败时 sf::current_path 会返回空路径，建链会失败甚至触发崩溃）
     std::string linkDir = STORAGE_FILE + "/link_136";
     std::error_code linkEc;
-    sf::remove(linkDir);
-    sf::create_directory_symlink(sf::current_path(linkEc), linkDir, linkEc);
+    sf::remove_all(linkDir, linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    sf::create_directory_symlink("/etc", linkDir, linkEc);
     ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
     // register the symlink so GetPathByContextParent resolves it as parent
     mtpMediaLib_->ObserverAddPathToMap(linkDir);
@@ -3272,10 +3276,10 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_136, TestSi
     uint32_t outParent = 0;
     uint32_t outHandle = 0;
     int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
-    // safe: ec=permission_denied -> E_HAS_FS_ERROR -> MTP_ERROR_INVALID_OBJECTHANDLE
+    // 解析后落在 /etc 下，超出 mtp 根 -> E_HAS_FS_ERROR -> MTP_ERROR_INVALID_OBJECTHANDLE
     EXPECT_EQ(result, MTP_ERROR_INVALID_OBJECTHANDLE);
     EXPECT_EQ(outHandle, 0);
-    sf::remove(linkDir);
+    sf::remove(linkDir, linkEc);
     mtpMediaLib_->Clear();
 }
 
@@ -3293,10 +3297,14 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_137, TestSi
     mtpMediaLib_->Clear();
     ASSERT_EQ(mtpMediaLib_->GetStorageIds(), MTP_SUCCESS);
     std::string linkDir = STORAGE_FILE + "/sub_137";
-    sf::remove_all(linkDir);
-    sf::create_directory(linkDir);
+    std::string linkPath = linkDir + "/outside";
     std::error_code linkEc;
-    sf::create_directory_symlink(sf::current_path(linkEc), linkDir + "/outside", linkEc);
+    sf::remove_all(linkDir, linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    sf::create_directory(linkDir, linkEc);
+    ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
+    // 目标固定用 /etc：一定存在且在所有 mtp 根之外，不依赖进程 CWD
+    sf::create_directory_symlink("/etc", linkPath, linkEc);
     ASSERT_FALSE(linkEc) << "linkEc: " << linkEc.message();
     mtpMediaLib_->ObserverAddPathToMap(linkDir);
     uint32_t parent = 0;
@@ -3306,15 +3314,18 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_137, TestSi
     context->storageID = INNER_STORAGE_ID;
     context->parent = parent;
     context->format = MTP_FORMAT_TEXT_CODE;
-    // "outside" is a symlink to CWD; resolve would land outside the mtp root
-    context->name = "outside";
+    // "outside" 是中间目录符号链接，解析后落在 /etc 下，超出 mtp 根
+    context->name = "passwd";
     uint32_t outStorageID = 0;
     uint32_t outParent = 0;
     uint32_t outHandle = 0;
     int32_t result = mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
-    EXPECT_NE(result, MTP_SUCCESS);
+    EXPECT_EQ(result, MTP_ERROR_INVALID_OBJECTHANDLE);
     EXPECT_EQ(outHandle, 0);
-    sf::remove_all(linkDir);
+    EXPECT_FALSE(sf::exists(STORAGE_FILE + "/passwd"));
+    // 先删符号链接再删目录，避免对含外链的目录做递归删除
+    sf::remove(linkPath, linkEc);
+    sf::remove(linkDir, linkEc);
     mtpMediaLib_->Clear();
 }
 
