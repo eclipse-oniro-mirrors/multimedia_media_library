@@ -53,6 +53,10 @@ const double DEGREES2SECONDS = 3600.0;
 constexpr int32_t OFFSET_NUM = 2;
 constexpr int32_t HOURSTOSECOND = 60 * 60;
 constexpr int32_t MINUTESTOSECOND = 60;
+constexpr double LATITUDE_MIN = -90.0;
+constexpr double LATITUDE_MAX = 90.0;
+constexpr double LONGITUDE_MIN = -180.0;
+constexpr double LONGITUDE_MAX = 180.0;
 const string ZEROTIMESTRING = "0000:00:00 00:00:00";
 
 template <class Type>
@@ -742,6 +746,12 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
     if (!customMeta->GetData(PHOTO_DATA_VIDEO_IOS_LOCATION, iso6709Str) || iso6709Str.empty()) {
         return;
     }
+    // 严格校验 ISO6709 格式：±DD.DDDD±DDD.DDDD[±DD.DDDD][/]，拒绝空格/字母/多余字符/截断
+    std::regex strictPattern(R"(^[+-]\d+(?:\.\d+)?[+-]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/?$)");
+    if (!std::regex_match(iso6709Str, strictPattern)) {
+        MEDIA_ERR_LOG("Invalid ISO6709 location string: %{private}s", iso6709Str.c_str());
+        return;
+    }
     std::regex pattern(R"([+-]\d+(?:\.\d+)?)");
     std::sregex_iterator it(iso6709Str.cbegin(), iso6709Str.cend(), pattern);
     std::sregex_iterator end;
@@ -754,10 +764,22 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
     }
     std::string lonStr = it->str();
     if (!hasLat) {
-        data->SetLatitude(std::stod(latStr));
+        double latitude = std::stod(latStr);
+        if (latitude < LATITUDE_MIN || latitude > LATITUDE_MAX) {
+            MEDIA_ERR_LOG("Invalid latitude %{private}s, out of range [%{public}f, %{public}f]",
+                latStr.c_str(), LATITUDE_MIN, LATITUDE_MAX);
+        } else {
+            data->SetLatitude(latitude);
+        }
     }
     if (!hasLon) {
-        data->SetLongitude(std::stod(lonStr));
+        double longitude = std::stod(lonStr);
+        if (longitude < LONGITUDE_MIN || longitude > LONGITUDE_MAX) {
+            MEDIA_ERR_LOG("Invalid longitude %{private}s, out of range [%{public}f, %{public}f]",
+                lonStr.c_str(), LONGITUDE_MIN, LONGITUDE_MAX);
+        } else {
+            data->SetLongitude(longitude);
+        }
     }
 }
 

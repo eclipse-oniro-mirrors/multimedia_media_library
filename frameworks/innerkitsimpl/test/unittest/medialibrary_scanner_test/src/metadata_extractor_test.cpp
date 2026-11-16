@@ -1040,7 +1040,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 /**
  * @tc.name: FillExtractedMetadata_location_iso6709_partial_match
  * @tc.desc: ISO6709 string contains non-numeric characters around valid coordinate pairs.
- *           Regex should still extract the two valid coordinate values.
+ *           Strict format validation rejects the malformed string; latitude/longitude remain 0.
  */
 HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_partial_match, TestSize.Level1)
 {
@@ -1057,8 +1057,8 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
     MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
 
-    EXPECT_DOUBLE_EQ(data->GetLatitude(), 12.3400);
-    EXPECT_DOUBLE_EQ(data->GetLongitude(), 56.7800);
+    EXPECT_EQ(data->GetLatitude(), 0);
+    EXPECT_EQ(data->GetLongitude(), 0);
 }
 
 /**
@@ -1090,7 +1090,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 /**
  * @tc.name: FillExtractedMetadata_location_iso6709_out_of_range
  * @tc.desc: ISO6709 string with out-of-range coordinates (latitude > 90, longitude > 180).
- *           Current implementation does no range validation, so values are stored as-is.
+ *           Out-of-range values are rejected; latitude/longitude remain 0.
  */
 HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_out_of_range, TestSize.Level1)
 {
@@ -1107,9 +1107,9 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
     MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
 
-    // No range validation in current implementation; values stored as parsed
-    EXPECT_DOUBLE_EQ(data->GetLatitude(), 91.0000);
-    EXPECT_DOUBLE_EQ(data->GetLongitude(), 181.0000);
+    // Out-of-range coordinates rejected; values remain default 0
+    EXPECT_EQ(data->GetLatitude(), 0);
+    EXPECT_EQ(data->GetLongitude(), 0);
 }
 
 
