@@ -239,7 +239,7 @@ static vector<pair<int32_t, int32_t>> UpdateIndexedWithShareDateAddedIndexAddPos
     SqlBuilder builder;
     auto commands = builder
         .DropIndex(INDEX_SCHPT_SHARE_DATE_ADDED)
-        .AddRawSql(SQL_UPGRADE_CREATE_SCHPT_SHARE_DATE_ADDED_INDEX)
+        .AddRawSql(SQL_UPGRADE_CREATE_SCHPT_SHARE_DATE_ADDED_INDEX_ADD_POSITION)
         .Build();
     return UpgradeHelper::ExecuteCommands(commands, store, true);
 }
