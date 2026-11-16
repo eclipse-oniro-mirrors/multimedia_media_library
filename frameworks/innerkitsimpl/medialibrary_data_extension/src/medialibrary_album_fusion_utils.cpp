@@ -865,6 +865,10 @@ static void HandleShareAlbumValuesBucket(NativeRdb::ValuesBucket &values,
     values.PutInt(PhotoColumn::PHOTO_ASSOCIATE_FILE_ID, 0);
     values.Delete(PhotoColumn::PHOTO_HAS_CLOUD_WATERMARK);
     values.PutInt(PhotoColumn::PHOTO_HAS_CLOUD_WATERMARK, 0);
+    values.Delete(PhotoColumn::SUPPORTED_WATERMARK_TYPE);
+    values.PutInt(PhotoColumn::SUPPORTED_WATERMARK_TYPE, 0);
+    values.Delete(PhotoColumn::MEDIA_IS_FAV);
+    values.PutInt(PhotoColumn::MEDIA_IS_FAV, 0);
 
     HandleShareAlbumSubtype(values, resultSet);
 
