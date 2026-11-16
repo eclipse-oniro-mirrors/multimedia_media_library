@@ -166,21 +166,50 @@ std::shared_ptr<FileAsset> MediaFileAccessUtils::GetFileAssetFromDb(const std::s
         FILE_INFO_COLUMNS);
 }
 
-std::shared_ptr<FileAsset> MediaFileAccessUtils::GetFileAssetByPathIgnoreCase(const std::string &path)
+std::shared_ptr<FileAsset> MediaFileAccessUtils::GetFileAssetByPathIgnoreCase(const std::string &path,
+    const std::string &fileId)
 {
     CHECK_AND_RETURN_RET_LOG(!path.empty(), nullptr, "path is empty");
-    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.SetWhereClause(MediaColumn::MEDIA_FILE_PATH + " = ? COLLATE NOCASE");
-    predicates.SetWhereArgs({ path });
-    predicates.Limit(1);
     std::vector<std::string> columns = {
         MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_POSITION,
     };
-    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "query file asset by path failed");
-    auto fileAsset = MediaLibraryAssetOperations::GetAssetFromResultSet(resultSet, columns);
-    resultSet->Close();
+    auto query = [&columns](NativeRdb::RdbPredicates &predicates) -> std::shared_ptr<FileAsset> {
+        auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
+        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "query file asset by path failed");
+        auto fileAsset = MediaLibraryAssetOperations::GetAssetFromResultSet(resultSet, columns);
+        resultSet->Close();
+        return fileAsset;
+    };
+ 
+    std::shared_ptr<FileAsset> fileAsset = nullptr;
+    if (!fileId.empty()) {
+        // _id is the primary key, so this lookup is indexed instead of scanning the whole Photos table.
+        int fileIdValue = 0;
+        CHECK_AND_RETURN_RET_LOG(MediaStringUtils::ConvertToInt(fileId, fileIdValue), nullptr, "fileId is invalid");
+        NativeRdb::RdbPredicates idPredicates(PhotoColumn::PHOTOS_TABLE);
+        idPredicates.EqualTo(MediaColumn::MEDIA_ID, fileIdValue);
+        idPredicates.Limit(1);
+        fileAsset = query(idPredicates);
+    } else {
+        NativeRdb::RdbPredicates pathPredicates(PhotoColumn::PHOTOS_TABLE);
+        pathPredicates.SetWhereClause(MediaColumn::MEDIA_FILE_PATH + " = ?");
+        pathPredicates.SetWhereArgs({ path });
+        pathPredicates.Limit(1);
+        fileAsset = query(pathPredicates);
+        if (fileAsset == nullptr) {
+            NativeRdb::RdbPredicates ignoreCasePredicates(PhotoColumn::PHOTOS_TABLE);
+            ignoreCasePredicates.SetWhereClause(MediaColumn::MEDIA_FILE_PATH + " = ? COLLATE NOCASE");
+            ignoreCasePredicates.SetWhereArgs({ path });
+            ignoreCasePredicates.Limit(1);
+            fileAsset = query(ignoreCasePredicates);
+        }
+    }
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, nullptr, "query file asset failed");
+    // Only match when the row's data path equals the requested path ignoring case; otherwise the path
+    // belongs to an auxiliary file (e.g. edit data or live-photo video) of the same asset.
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::EqualToIgnoreCase(fileAsset->GetFilePath(), path), nullptr,
+        "path does not belong to fileId");
     return fileAsset;
 }
 
