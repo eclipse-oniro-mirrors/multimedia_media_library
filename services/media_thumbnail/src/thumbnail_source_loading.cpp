@@ -448,8 +448,7 @@ bool SourceLoader::CreateImagePixelMap(const std::string &sourcePath)
     if (data_.loaderOpts.isHdr && imageSource->IsHdrImage()) {
         CHECK_AND_RETURN_RET_LOG(LoadHdrSource(imageSource, targetSize), false, "LoadHdrSource failed");
     } else {
-        CHECK_AND_RETURN_RET_LOG(GeneratePixelMapSource(imageSource, sourceSize, targetSize),
-            false, "Create sdr pixel map failed");
+        CHECK_AND_RETURN_RET(GeneratePixelMapSource(imageSource, sourceSize, targetSize), false);
     }
     tracer.Finish();
 
