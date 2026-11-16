@@ -763,23 +763,27 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
         return;
     }
     std::string lonStr = it->str();
-    if (!hasLat) {
-        double latitude = std::stod(latStr);
-        if (latitude < LATITUDE_MIN || latitude > LATITUDE_MAX) {
+    // 经纬度作为整体校验：其中一个越界则两个都不写入，避免出现半残的位置数据
+    double latitude = std::stod(latStr);
+    double longitude = std::stod(lonStr);
+    bool latValid = (latitude >= LATITUDE_MIN && latitude <= LATITUDE_MAX);
+    bool lonValid = (longitude >= LONGITUDE_MIN && longitude <= LONGITUDE_MAX);
+    if (!latValid || !lonValid) {
+        if (!latValid) {
             MEDIA_ERR_LOG("Invalid latitude %{private}s, out of range [%{public}f, %{public}f]",
                 latStr.c_str(), LATITUDE_MIN, LATITUDE_MAX);
-        } else {
-            data->SetLatitude(latitude);
         }
-    }
-    if (!hasLon) {
-        double longitude = std::stod(lonStr);
-        if (longitude < LONGITUDE_MIN || longitude > LONGITUDE_MAX) {
+        if (!lonValid) {
             MEDIA_ERR_LOG("Invalid longitude %{private}s, out of range [%{public}f, %{public}f]",
                 lonStr.c_str(), LONGITUDE_MIN, LONGITUDE_MAX);
-        } else {
-            data->SetLongitude(longitude);
         }
+        return;
+    }
+    if (!hasLat) {
+        data->SetLatitude(latitude);
+    }
+    if (!hasLon) {
+        data->SetLongitude(longitude);
     }
 }
 

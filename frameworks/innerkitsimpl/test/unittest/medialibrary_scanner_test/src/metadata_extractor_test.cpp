@@ -1112,6 +1112,33 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     EXPECT_EQ(data->GetLongitude(), 0);
 }
 
+/**
+ * @tc.name: FillExtractedMetadata_location_iso6709_partial_out_of_range
+ * @tc.desc: ISO6709 string with only latitude out of range (longitude valid).
+ *           Latitude and longitude are validated as a whole: if either is invalid,
+ *           neither is written, so both remain 0.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_partial_out_of_range, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    // Latitude 91.0 out of range, longitude 120.0 valid
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+91.0000+120.0000");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    // Atomic validation: invalid latitude causes longitude to also be skipped
+    EXPECT_EQ(data->GetLatitude(), 0);
+    EXPECT_EQ(data->GetLongitude(), 0);
+}
+
 
 } // namespace Media
 } // namespace OHOS
