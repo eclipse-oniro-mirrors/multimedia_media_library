@@ -732,7 +732,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     // Set up nested customInfo containing the ISO6709 location string
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+12.3456+123.4567");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+12.3456+123.4567+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
  
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -755,7 +755,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
  
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "-33.8688-151.2093");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "-33.8688-151.2093+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
  
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -767,7 +767,8 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
  
 /**
  * @tc.name: FillExtractedMetadata_location_iso6709_with_altitude
- * @tc.desc: ISO6709 string includes altitude; latitude/longitude should still be parsed correctly.
+ * @tc.desc: Standard ISO6709 string with latitude, longitude and altitude (3 segments + trailing /).
+ *           Latitude/longitude should be parsed correctly; altitude is not stored.
  */
 HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_with_altitude, TestSize.Level1)
 {
@@ -778,7 +779,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
  
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+31.2304+120.6175+10.5");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+31.2304+120.6175+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
  
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -807,7 +808,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_prior
     meta->SetData(Tag::MEDIA_LONGITUDE, tagLon);
     // Also set customInfo with different ISO6709 values — should be ignored
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+99.9999+88.8888");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+99.9999+88.8888+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
  
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -900,7 +901,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     meta->SetData(Tag::MEDIA_LATITUDE, tagLat);
     // Longitude not set in Tag
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+55.5555+66.6666");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+55.5555+66.6666+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
  
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -977,7 +978,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     meta->SetData(Tag::MEDIA_LONGITUDE, tagLon);
     // Latitude not set in Tag
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+55.5555+66.6666");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+55.5555+66.6666+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
 
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -1003,7 +1004,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+40.7128-074.0060");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+40.7128-074.0060+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
 
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -1027,7 +1028,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+00.0000+000.0000");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+00.0000+000.0000+00.0000/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
 
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -1076,7 +1077,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+48.8566+002.3522");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+48.8566+002.3522+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
 
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -1101,7 +1102,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+91.0000+181.0000");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+91.0000+181.0000+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
 
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
@@ -1129,7 +1130,7 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
     std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
     std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
     // Latitude 91.0 out of range, longitude 120.0 valid
-    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+91.0000+120.0000");
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+91.0000+120.0000+10.5/");
     meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
 
     unordered_map<int32_t, std::string> resultMap = GetResultMap();
