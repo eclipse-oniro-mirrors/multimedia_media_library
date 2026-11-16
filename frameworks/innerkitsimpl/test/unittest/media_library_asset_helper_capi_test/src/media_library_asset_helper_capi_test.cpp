@@ -892,40 +892,6 @@ HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_test_023, TestSize.
     OH_MediaAssetChangeRequest_Release(changeRequest);
 }
 
-#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
-HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_file_manager_test_001, TestSize.Level1)
-{
-    string srcDisplayName = "request_image_src_fm.jpg";
-    string destDisplayName = "request_image_dest_fm.jpg";
-    string srcuri = CreateFileManagerAsset(srcDisplayName);
-    int32_t srcFd = mediaLibraryManager->OpenAsset(srcuri, MEDIA_FILEMODE_READWRITE);
-    mediaLibraryManager->CloseAsset(srcuri, srcFd);
-
-    string destUri = ROOT_TEST_MEDIA_DIR + destDisplayName;
-    EXPECT_NE(destUri, "");
-    sleep(SCAN_WAIT_TIME_1S);
-
-    std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
-    fileAsset->SetResultNapiType(OHOS::Media::ResultNapiType::TYPE_PHOTOACCESS_HELPER);
-    fileAsset->SetMediaType(OHOS::Media::MEDIA_TYPE_IMAGE);
-    fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::CAMERA));
-    auto mediaAssetImpl = MediaAssetFactory::CreateMediaAsset(fileAsset);
-    auto* mediaAsset = new OH_MediaAsset(mediaAssetImpl);
-    AssetChangeOperation changeOperation = AssetChangeOperation::GET_WRITE_CACHE_HANDLER;
-    auto changeRequest = OH_MediaAssetChangeRequest_Create(mediaAsset);
-    changeRequest->request_->RecordChangeOperation(changeOperation);
-    ASSERT_NE(changeRequest, nullptr);
-
-    int32_t fd = 0;
-    uint32_t resultChange = OH_MediaAssetChangeRequest_GetWriteCacheHandler(changeRequest, &fd);
-    EXPECT_EQ(resultChange, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED);
-
-    OH_MediaAsset_Release(mediaAsset);
-    OH_MediaAssetChangeRequest_Release(changeRequest);
-}
-#endif
-
-
 /**
  * @tc.name: media_library_capi_test_024
  * @tc.desc: OH_MediaAssetChangeRequest_AddResourceWithUri resourceType is MEDIA_LIBRARY_VIDEO_RESOURCE

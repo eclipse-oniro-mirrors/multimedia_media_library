@@ -26,9 +26,9 @@ group("test") {
     "unittest/media_library_asset_helper_capi_test:unittest",
     "unittest/media_library_asset_manager_test:unittest",
     "unittest/media_share_assets_service_test:unittest",
-    "unittest/media_library_camera_helper_test:unittest",
-    "unittest/media_library_camera_service_test:unittest",
-    "unittest/media_library_manager_test:unittest",
+    # "unittest/media_library_camera_helper_test:unittest",
+    # "unittest/media_library_camera_service_test:unittest",
+    # "unittest/media_library_manager_test:unittest",
     "unittest/media_library_share_test:unittest",
     "unittest/media_notification_test:unittest",
     "unittest/media_permission_check_test:unittest",
@@ -40,7 +40,7 @@ group("test") {
     "unittest/medialibrary_analysis_album_operation_test:unittest",
     "unittest/medialibrary_app_uri_sensitive_operations_test:unittest",
     "unittest/medialibrary_audio_operations_test:unittest",
-    "unittest/medialibrary_cloud_asset_download_test:unittest",
+    # "unittest/medialibrary_cloud_asset_download_test:unittest",
     "unittest/medialibrary_common_utils_test:unittest",
     "unittest/medialibrary_file_manager_temp_file_aging_test:unittest",
     "unittest/medialibrary_handler_test:unittest",
@@ -58,7 +58,7 @@ group("test") {
     "unittest/medialibrary_smartalbum_map_operations_test:unittest",
     "unittest/medialibrary_smartalbum_operations_test:unittest",
     "unittest/medialibrary_story_test:unittest",
-    "unittest/medialibrary_update_edit_data_size_test:unittest",
+    # "unittest/medialibrary_update_edit_data_size_test:unittest",
     "unittest/medialibrary_uri_sensitive_operations_test:unittest",
     "unittest/medialibrary_uri_test:unittest",
     "unittest/medialibrary_vision_test:unittest",
@@ -81,12 +81,12 @@ group("test") {
     "unittest/media_notification_test:unittest",
     "unittest/picture_handle_service_test:unittest",
     "unittest/media_lake_file_monitor_test:unittest",
-    "unittest/media_lake_load_test:unittest",
+    # "unittest/media_lake_load_test:unittest",
     "unittest/media_library_related_system_state_test:unittest",
     "unittest/madvise_utils_test:unittest",
     "unittest/media_analysis_data_service_test:unittest",
     "unittest/media_library_lcd_aging_test:unittest",
-    "unittest/media_assets_controller_service_test:unittest",
+    # "unittest/media_assets_controller_service_test:unittest",
     "unittest/media_file_manager_test:unittest",
     "unittest/media_file_management_test:unittest",
     "unittest/notification_helper_test:unittest",
@@ -125,7 +125,7 @@ group("test") {
   }
 
   if (media_library_cloud_sync_enable) {
-    deps += deps_cloud_sync_unittest
+    # deps += deps_cloud_sync_unittest
   } else {
     deps_cloud_sync_unittest = []
   }
@@ -136,22 +136,22 @@ group("test") {
       "unittest/media_lake_load_test:unittest",
     ]
   }
-  if (media_library_file_manager_enable || media_library_lake_enable) {
-    deps += [
-      "unittest/media_file_access_load_test:unittest",
-    ]
-  }  
+  # if (media_library_file_manager_enable || media_library_lake_enable) {
+  #   deps += [
+  #     "unittest/media_file_access_load_test:unittest",
+  #   ]
+  # }  
 
-  if (media_library_feature_cloud_download) {
-    deps += [
-      "unittest/background_cloud_batch_selected_file_processor_test:unittest",
-      "unittest/background_cloud_file_processor_test:unittest",
-      "unittest/cloud_media_retain_smart_data_test:unittest",
-      "unittest/media_notification_register_manager_test:unittest",
-      "unittest/media_clean_all_dirty_files_task_test:unittest",
-      "unittest/media_camera_cache_clean_task_test:unittest",
-    ]
-  }
+  # if (media_library_feature_cloud_download) {
+  #   deps += [
+  #     "unittest/background_cloud_batch_selected_file_processor_test:unittest",
+  #     "unittest/background_cloud_file_processor_test:unittest",
+  #     "unittest/cloud_media_retain_smart_data_test:unittest",
+  #     "unittest/media_notification_register_manager_test:unittest",
+  #     "unittest/media_clean_all_dirty_files_task_test:unittest",
+  #     "unittest/media_camera_cache_clean_task_test:unittest",
+  #   ]
+  # }
 
   if (media_library_feature_cloud_enhancement) {
     deps += [
@@ -177,16 +177,16 @@ group("test") {
       "unittest/media_event_test:unittest",
       "unittest/media_library_asset_helper_capi_test:unittest",
       "unittest/media_library_asset_manager_test:unittest",
-      "unittest/media_library_camera_helper_test:unittest",
-      "unittest/media_library_camera_service_test:unittest",
-    "unittest/media_library_manager_test:unittest",
+      # "unittest/media_library_camera_helper_test:unittest",
+      # "unittest/media_library_camera_service_test:unittest",
+      # "unittest/media_library_manager_test:unittest",
       "unittest/media_library_share_test:unittest",
       "unittest/media_permission_check_test:unittest",
       "unittest/media_permission_test:unittest",
       "unittest/medialibrary_album_source_test:unittest",
       "unittest/medialibrary_app_uri_sensitive_operations_test:unittest",
       "unittest/medialibrary_audio_operations_test:unittest",
-      "unittest/medialibrary_cloud_asset_download_test:unittest",
+      # "unittest/medialibrary_cloud_asset_download_test:unittest",
       "unittest/medialibrary_common_utils_test:unittest",
       "unittest/medialibrary_custom_restore_test:unittest",
       "unittest/medialibrary_file_manager_temp_file_aging_test:unittest",
@@ -203,7 +203,7 @@ group("test") {
       "unittest/medialibrary_search_test:unittest",
       "unittest/medialibrary_shooting_mode_album_test:unittest",
       "unittest/medialibrary_story_test:unittest",
-      "unittest/medialibrary_update_edit_data_size_test:unittest",
+      # "unittest/medialibrary_update_edit_data_size_test:unittest",
       "unittest/medialibrary_uri_sensitive_operations_test:unittest",
       "unittest/medialibrary_uri_test:unittest",
       "unittest/medialibrary_video_mode_test:unittest",

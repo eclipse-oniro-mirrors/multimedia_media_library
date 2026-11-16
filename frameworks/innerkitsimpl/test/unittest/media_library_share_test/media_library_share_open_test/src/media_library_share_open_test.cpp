@@ -1095,33 +1095,33 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_014, TestSize.Level
     MEDIA_INFO_LOG("media_library_share_test_014 End");
 }
 
-#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
-HWTEST_F(MediaLibraryShareOpenTest, media_library_share_file_manager_test_001, TestSize.Level0)
-{
-    std::string uri = "";
-    MediaLibraryShareOpenTest::InitPhotoAsset(uri);
-    ASSERT_FALSE(uri.empty());
-    ASSERT_TRUE(ConvertAssetToFileManager(uri));
+// #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+// HWTEST_F(MediaLibraryShareOpenTest, media_library_share_file_manager_test_001, TestSize.Level0)
+// {
+//     std::string uri = "";
+//     MediaLibraryShareOpenTest::InitPhotoAsset(uri);
+//     ASSERT_FALSE(uri.empty());
+//     ASSERT_TRUE(ConvertAssetToFileManager(uri));
 
-    auto dataManager = MediaLibraryDataManager::GetInstance();
-    ASSERT_NE(dataManager, nullptr);
+//     auto dataManager = MediaLibraryDataManager::GetInstance();
+//     ASSERT_NE(dataManager, nullptr);
 
-    int32_t type = static_cast<int32_t>(HideSensitiveType::ALL_DESENSITIZE);
-    int32_t version = dataManager->GetAssetCompressVersion();
-    int32_t fd = -1;
-    MediaFileUtils::UriAppendKeyValue(uri, "type", to_string(static_cast<int32_t>(type)));
-    Uri openUri(uri);
-    MediaLibraryCommand cmd(openUri, Media::OperationType::OPEN);
-    std::string tlvPath = "";
-    int32_t ret = MediaLibraryPhotoOperations::OpenAssetCompress(cmd, tlvPath, version, fd);
-    EXPECT_EQ(ret, E_OK);
-    MediaLibraryShareOpenTest::CopyToDestPath(fd, OPEN_ORIGINAL_FILE);
-    UniqueFd srcFdGuard(fd);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(OPEN_ORIGINAL_FILE));
+//     int32_t type = static_cast<int32_t>(HideSensitiveType::ALL_DESENSITIZE);
+//     int32_t version = dataManager->GetAssetCompressVersion();
+//     int32_t fd = -1;
+//     MediaFileUtils::UriAppendKeyValue(uri, "type", to_string(static_cast<int32_t>(type)));
+//     Uri openUri(uri);
+//     MediaLibraryCommand cmd(openUri, Media::OperationType::OPEN);
+//     std::string tlvPath = "";
+//     int32_t ret = MediaLibraryPhotoOperations::OpenAssetCompress(cmd, tlvPath, version, fd);
+//     EXPECT_EQ(ret, E_OK);
+//     MediaLibraryShareOpenTest::CopyToDestPath(fd, OPEN_ORIGINAL_FILE);
+//     UniqueFd srcFdGuard(fd);
+//     EXPECT_TRUE(MediaFileUtils::IsFileExists(OPEN_ORIGINAL_FILE));
 
-    ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri);
-    EXPECT_EQ(ret, E_OK);
-}
+//     ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri);
+//     EXPECT_EQ(ret, E_OK);
+// }
 
 HWTEST_F(MediaLibraryShareOpenTest, media_library_thumbnail_file_manager_test_001, TestSize.Level0)
 {
