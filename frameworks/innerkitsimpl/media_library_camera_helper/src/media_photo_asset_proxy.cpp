@@ -401,14 +401,6 @@ int PhotoAssetProxy::PackAndSaveImage(int fd, const string &uri, const sptr<Phot
         .height = height
     };
 
-    MEDIA_DEBUG_LOG("start pack PixelMap");
-    Media::InitializationOptions opts;
-    opts.pixelFormat = Media::PixelFormat::RGBA_8888;
-    opts.size = {
-        .width = photoProxy->GetWidth(),
-        .height = photoProxy->GetHeight()
-    };
-
     auto pixelMap = Media::PixelMap::Create(opts);
     CHECK_AND_RETURN_RET_LOG(pixelMap != nullptr, E_ERR, "Create pixelMap failed.");
     pixelMap->SetPixelsAddr(imageAddr, nullptr, imageSize, Media::AllocatorType::SHARE_MEM_ALLOC, nullptr);
