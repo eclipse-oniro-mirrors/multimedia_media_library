@@ -46,8 +46,12 @@ private:
     std::vector<GroupPhotoAlbumDfx> QueryGroupPhotoAlbumInOldDb(int32_t& offset, int32_t& rowCount);
     int32_t QueryGroupPhotoAlbumTbl(const std::vector<std::string>& commonColumns, bool isReverse);
     std::unordered_set<std::string> QueryAllGroupTag();
-    int32_t InsertGroupPhotoAlbum();
-    void UpdateRestoredAlbumIds(const std::unordered_set<int32_t> &committedSourceIds);
+    int32_t InsertGroupPhotoAlbum(bool isReverse = false);
+    bool QueryGroupPhotoAlbumIds(std::unordered_map<std::string, int32_t> &ids);
+    void UpdateRestoredAlbumIds(const std::unordered_set<int32_t> &committedSourceIds,
+        const std::unordered_map<std::string, int32_t> &existingIds,
+        const std::unordered_map<std::string, int32_t> &insertSourceIds);
+    void RestoreReverseCoverUris();
     void UpdateMapInsertValues(std::vector<NativeRdb::ValuesBucket> &values);
     void InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesBucket> &values);
     void RestoreMapsBatch();
@@ -97,6 +101,7 @@ private:
     int64_t albumSuccessCnt_{0};
     int64_t albumDeleteCnt_{0};
     bool isMapOrder_{false};
+    bool hasReusedAlbum_{false};
     std::mutex counterMutex_;
     std::vector<CoverUriInfo> coverUriInfo_;
     std::vector<AnalysisAlbumTbl> groupPhotoAlbumInfos_;
