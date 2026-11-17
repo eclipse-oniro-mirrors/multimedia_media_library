@@ -351,6 +351,8 @@ public:
         ani_object &aniArray);
     static ani_status ToFileAssetAniPtr(ani_env *env, std::unique_ptr<FetchResult<FileAsset>> fileAsset,
         ani_object &aniPtr);
+    static ani_status ToAssetUriResultAniArray(ani_env *env, const std::vector<std::string> &originalUris,
+        const std::vector<std::string> &resultUris, const std::vector<bool> &successFlags, ani_object &aniArray);
 
     static ani_status GetPhotoAlbumAniArray(ani_env *env, ani_object arg, std::vector<PhotoAlbumAni*> &array);
     static ani_status ToPhotoAlbumAniArray(ani_env *env, std::vector<unique_ptr<PhotoAlbum>> &array,

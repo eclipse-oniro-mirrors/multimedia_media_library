@@ -29,6 +29,9 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_rdbstore.h"
+#include "result_set_utils.h"
+
+#include <cstdlib>
 
 #include "media_albums_controller_service.h"
 #include "create_album_vo.h"
@@ -1014,6 +1017,268 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveFileManagerLocalAssetToTrash_Not
 
     int32_t ret = service.CopyAndMoveFileManagerLocalAssetToTrash(photo, targetOp, photoRefresh);
     EXPECT_EQ(ret, E_INVALID_MODE);
+}
+
+/*
+ * @tc.name: DeleteLocalAssetsAndGetUris_EmptyFileIds
+ * @tc.desc: Empty input produces an empty result array without out-of-range access
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, DeleteLocalAssetsAndGetUris_EmptyFileIds, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    std::vector<std::string> fileIds;
+    std::vector<AssetUriResult> results;
+
+    int32_t ret = service.DeleteLocalAssetsAndGetUris(fileIds, results);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(results.empty());
+}
+
+/*
+ * @tc.name: DeleteLocalAssetsAndGetUris_AssetsNotExist
+ * @tc.desc: Returns E_OK with one failed result per input when the assets do not exist
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, DeleteLocalAssetsAndGetUris_AssetsNotExist, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    std::vector<std::string> fileIds = { "1001", "1002", "1003" };
+    std::vector<AssetUriResult> results;
+
+    int32_t ret = service.DeleteLocalAssetsAndGetUris(fileIds, results);
+    EXPECT_EQ(ret, E_OK);
+    ASSERT_EQ(results.size(), fileIds.size());
+    for (size_t i = 0; i < fileIds.size(); i++) {
+        EXPECT_EQ(results[i].originalFileId, fileIds[i]);
+        EXPECT_FALSE(results[i].isSuccess);
+        EXPECT_TRUE(results[i].resultUri.empty());
+    }
+}
+
+/*
+ * @tc.name: DeleteLocalAssetsAndGetUris_DuplicateFileIds
+ * @tc.desc: Duplicated fileIds still produce one result per input without merging or dropping items
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, DeleteLocalAssetsAndGetUris_DuplicateFileIds, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    std::vector<std::string> fileIds = { "1004", "1004" };
+    std::vector<AssetUriResult> results;
+
+    int32_t ret = service.DeleteLocalAssetsAndGetUris(fileIds, results);
+    EXPECT_EQ(ret, E_OK);
+    ASSERT_EQ(results.size(), 2);
+    EXPECT_EQ(results[0].originalFileId, "1004");
+    EXPECT_EQ(results[1].originalFileId, "1004");
+}
+
+/*
+ * @tc.name: BatchCopyAndMoveLocalAssetToTrash_LocalAsset
+ * @tc.desc: A local-only asset is not copied, the original uri is recorded
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, BatchCopyAndMoveLocalAssetToTrash_LocalAsset, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    PhotosPo photo;
+    photo.fileId = 100;
+    photo.data = "/storage/cloud/files/Photo/16/IMG_100.jpg";
+    photo.displayName = "IMG_100.jpg";
+    photo.position = static_cast<int32_t>(PhotoPositionType::LOCAL);
+    photo.dirty = static_cast<int32_t>(DirtyType::TYPE_NEW);
+    photo.burstCoverLevel = 1;
+    photo.dateTrashed = 0;
+    std::vector<PhotosPo> photosList = { photo };
+    std::vector<std::string> targetFileIds;
+    std::unordered_map<std::string, std::string> targetUriMap;
+
+    int32_t ret = service.BatchCopyAndMoveLocalAssetToTrash(photosList, targetFileIds, targetUriMap);
+    EXPECT_EQ(ret, E_OK);
+    ASSERT_EQ(targetFileIds.size(), 1);
+    EXPECT_EQ(targetFileIds[0], photo.BuildFileUri());
+    ASSERT_EQ(targetUriMap.count("100"), 1);
+    EXPECT_EQ(targetUriMap["100"], photo.BuildFileUri());
+}
+
+/*
+ * @tc.name: BatchCopyAndMoveLocalAssetToTrash_CloudOnlyAsset
+ * @tc.desc: A cloud-only asset is skipped and produces no result and no trash target
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, BatchCopyAndMoveLocalAssetToTrash_CloudOnlyAsset, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    PhotosPo photo;
+    photo.fileId = 101;
+    photo.cloudId = "cloud_101";
+    photo.data = "/storage/cloud/files/Photo/16/IMG_101.jpg";
+    photo.displayName = "IMG_101.jpg";
+    photo.position = static_cast<int32_t>(PhotoPositionType::CLOUD);
+    photo.dirty = static_cast<int32_t>(DirtyType::TYPE_NEW);
+    photo.burstCoverLevel = 1;
+    photo.dateTrashed = 0;
+    std::vector<PhotosPo> photosList = { photo };
+    std::vector<std::string> targetFileIds;
+    std::unordered_map<std::string, std::string> targetUriMap;
+
+    int32_t ret = service.BatchCopyAndMoveLocalAssetToTrash(photosList, targetFileIds, targetUriMap);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(targetFileIds.empty());
+    EXPECT_TRUE(targetUriMap.empty());
+}
+
+/*
+ * @tc.name: BatchCopyAndMoveLocalAssetToTrash_BurstMember
+ * @tc.desc: A non-cover burst member is skipped, only the cover is processed
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, BatchCopyAndMoveLocalAssetToTrash_BurstMember, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    PhotosPo photo;
+    photo.fileId = 102;
+    photo.data = "/storage/cloud/files/Photo/16/IMG_102.jpg";
+    photo.displayName = "IMG_102.jpg";
+    photo.position = static_cast<int32_t>(PhotoPositionType::LOCAL);
+    photo.burstCoverLevel = 2;  // member
+    photo.burstKey = "burst_key_102";
+    photo.dateTrashed = 0;
+    std::vector<PhotosPo> photosList = { photo };
+    std::vector<std::string> targetFileIds;
+    std::unordered_map<std::string, std::string> targetUriMap;
+
+    int32_t ret = service.BatchCopyAndMoveLocalAssetToTrash(photosList, targetFileIds, targetUriMap);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(targetFileIds.empty());
+    EXPECT_TRUE(targetUriMap.empty());
+}
+
+/*
+ * @tc.name: BatchCopyAndMoveLocalAssetToTrash_FileDirtyAsset
+ * @tc.desc: A FDIRTY asset goes to trash with its original uri, no local copy is made
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, BatchCopyAndMoveLocalAssetToTrash_FileDirtyAsset, TestSize.Level1)
+{
+    MediaAssetsDeleteService service;
+    PhotosPo photo;
+    photo.fileId = 103;
+    photo.data = "/storage/cloud/files/Photo/16/IMG_103.jpg";
+    photo.displayName = "IMG_103.jpg";
+    photo.position = static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
+    photo.dirty = static_cast<int32_t>(DirtyType::TYPE_FDIRTY);
+    photo.burstCoverLevel = 1;
+    photo.dateTrashed = 0;
+    std::vector<PhotosPo> photosList = { photo };
+    std::vector<std::string> targetFileIds;
+    std::unordered_map<std::string, std::string> targetUriMap;
+
+    int32_t ret = service.BatchCopyAndMoveLocalAssetToTrash(photosList, targetFileIds, targetUriMap);
+    EXPECT_EQ(ret, E_OK);
+    ASSERT_EQ(targetFileIds.size(), 1);
+    EXPECT_EQ(targetFileIds[0], photo.BuildFileUri());
+    ASSERT_EQ(targetUriMap.count("103"), 1);
+    EXPECT_EQ(targetUriMap["103"], photo.BuildFileUri());
+}
+
+static int32_t InsertPhotoAssetForGetUrisCase(const std::string &title)
+{
+    const std::string data = "/storage/cloud/files/Photo/16/IMG_" + title + ".jpg";
+    system("mkdir -p /storage/cloud/files/Photo/16");
+    system(("touch " + data).c_str());
+    std::string sql = "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + "(" + MediaColumn::MEDIA_FILE_PATH + ", " +
+        MediaColumn::MEDIA_SIZE + ", " + MediaColumn::MEDIA_TITLE + ", " + MediaColumn::MEDIA_NAME + ", " +
+        MediaColumn::MEDIA_TYPE + ", " + MediaColumn::MEDIA_OWNER_PACKAGE + ", " + MediaColumn::MEDIA_PACKAGE_NAME +
+        ", " + MediaColumn::MEDIA_DATE_ADDED + ", " + MediaColumn::MEDIA_DATE_MODIFIED + ", " +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + MediaColumn::MEDIA_DURATION + ", " + MediaColumn::MEDIA_IS_FAV +
+        ", " + MediaColumn::MEDIA_DATE_TRASHED + ", " + MediaColumn::MEDIA_HIDDEN + ") VALUES('" + data +
+        "', 175258, '" + title + "', '" + title + ".jpg', 1, 'com.ohos.camera', '相机', 1501924205218, 0, "
+        "1501924205, 0, 0, 0, 0)";
+    int32_t ret = g_rdbStore->ExecuteSql(sql);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, 0, "insert photo failed, ret:%{public}d", ret);
+
+    NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicate.EqualTo(MediaColumn::MEDIA_TITLE, title);
+    vector<string> columns = { MediaColumn::MEDIA_ID };
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("query asset failed, title:%{public}s", title.c_str());
+        return 0;
+    }
+    int32_t fileId = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+    }
+    resultSet->Close();
+    return fileId;
+}
+
+static int64_t QueryDateTrashedForGetUrisCase(int32_t fileId)
+{
+    NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns = { MediaColumn::MEDIA_DATE_TRASHED };
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("query date trashed failed, fileId:%{public}d", fileId);
+        return -1;
+    }
+    int64_t dateTrashed = -1;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        dateTrashed = GetInt64Val(MediaColumn::MEDIA_DATE_TRASHED, resultSet);
+    }
+    resultSet->Close();
+    return dateTrashed;
+}
+
+/*
+ * @tc.name: DeleteLocalAssetsAndGetUris_LocalAsset_ReturnsMap
+ * @tc.desc: Positive service case, a local-only asset is deleted locally and the map holds its uri
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, DeleteLocalAssetsAndGetUris_LocalAsset_ReturnsMap, TestSize.Level1)
+{
+    const std::string title = "svc_map_pic";
+    int32_t assetId = InsertPhotoAssetForGetUrisCase(title);
+    ASSERT_GT(assetId, 0);
+    std::string expectedUri = "file://media/Photo/" + std::to_string(assetId) + "/IMG_" + title + "/" + title + ".jpg";
+
+    auto service = make_shared<MediaAssetsDeleteService>();
+    std::vector<std::string> fileIds = { std::to_string(assetId) };
+    std::unordered_map<std::string, std::string> targetUriMap;
+
+    int32_t ret = service->DeleteLocalAssetsInternal(fileIds, targetUriMap);
+    EXPECT_GE(ret, 0);
+    ASSERT_EQ(targetUriMap.count(std::to_string(assetId)), 1);
+    EXPECT_EQ(targetUriMap[std::to_string(assetId)], expectedUri);
+    EXPECT_GT(QueryDateTrashedForGetUrisCase(assetId), 0);
+}
+
+/*
+ * @tc.name: DeleteLocalAssetsAndGetUris_LocalAsset_ReturnsResults
+ * @tc.desc: Positive service case, a local-only asset is deleted locally and a successful result is returned
+ * @tc.type: FUNCTION
+ */
+HWTEST_F(CloudMediaAssetsDeleteTest, DeleteLocalAssetsAndGetUris_LocalAsset_ReturnsResults, TestSize.Level1)
+{
+    const std::string title = "svc_delete_pic";
+    int32_t assetId = InsertPhotoAssetForGetUrisCase(title);
+    ASSERT_GT(assetId, 0);
+    std::string expectedUri = "file://media/Photo/" + std::to_string(assetId) + "/IMG_" + title + "/" + title + ".jpg";
+
+    auto service = make_shared<MediaAssetsDeleteService>();
+    std::vector<std::string> fileIds = { std::to_string(assetId) };
+    std::vector<AssetUriResult> results;
+
+    int32_t ret = service->DeleteLocalAssetsAndGetUris(fileIds, results);
+    EXPECT_EQ(ret, E_OK);
+    ASSERT_EQ(results.size(), 1);
+    EXPECT_EQ(results[0].originalFileId, std::to_string(assetId));
+    EXPECT_TRUE(results[0].isSuccess);
+    EXPECT_EQ(results[0].resultUri, expectedUri);
+    EXPECT_GT(QueryDateTrashedForGetUrisCase(assetId), 0);
 }
 
 }  // namespace OHOS::Media::CloudSync

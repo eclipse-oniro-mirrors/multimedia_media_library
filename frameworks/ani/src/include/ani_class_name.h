@@ -50,6 +50,8 @@ static const std::string PAH_ANI_CLASS_SIZE = PAH_CLASS_SPACE + "SizeImpl";
 static const std::string PAH_ANI_CLASS_MOVING_PHOTO_HANDLE = PAH_CLASS_SPACE + "MovingPhotoHandle";
 static const std::string PAH_ANI_CLASS_CHANGE_DATA_HANDLE = PAH_CLASS_SPACE + "ChangeDataHandle";
 static const std::string PAH_ANI_CLASS_ASSET_COMPATIBLE_ABILITY = PAH_CLASS_SPACE + "AssetCompatibleCapabilityHandle";
+static const std::string PAH_ANI_CLASS_ASSET_URI_RESULT_HANDLE =
+    PAH_CLASS_SPACE + "AssetUriResultHandle";
 static const std::string PAH_ANI_CLASS_MEDIA_ALBUM_CHANGE_REQUEST = PAH_CLASS_SPACE + "MediaAlbumChangeRequest";
 static const std::string PAH_ANI_CLASS_MEDIA_ANALYSIS_ALBUM_CHANGE_REQUEST =
     PAH_CLASS_SPACE + "MediaAnalysisAlbumChangeRequest";
