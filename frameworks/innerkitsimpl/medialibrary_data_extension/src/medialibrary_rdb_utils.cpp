@@ -557,6 +557,17 @@ static bool ReadCheckedCover(const shared_ptr<ResultSet> &rows, string &uri, boo
     return true;
 }
 
+void MediaLibraryRdbUtils::SetAnalysisDefaultCoverValues(int32_t subtype, const string &oldCover,
+    const string &newCover, ValuesBucket &values)
+{
+    CHECK_AND_RETURN(oldCover != newCover);
+    values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, newCover);
+    const auto albumSubtype = static_cast<PhotoAlbumSubType>(subtype);
+    if (albumSubtype == PhotoAlbumSubType::PORTRAIT || albumSubtype == PhotoAlbumSubType::GROUP_PHOTO) {
+        values.PutInt(IS_COVER_SATISFIED, static_cast<uint8_t>(CoverSatisfiedType::DEFAULT_SETTING));
+    }
+}
+
 static void SetPortraitCover(const shared_ptr<ResultSet> &fileResult, const UpdateAlbumData &data,
     ValuesBucket &values, int newCount, const string *checkedCover = nullptr)
 {
@@ -565,9 +576,8 @@ static void SetPortraitCover(const shared_ptr<ResultSet> &fileResult, const Upda
         newCover = checkedCover == nullptr ? MediaLibraryRdbUtils::GetCover(fileResult) : *checkedCover;
     }
     string oldCover = data.albumCoverUri;
+    MediaLibraryRdbUtils::SetAnalysisDefaultCoverValues(data.albumSubtype, oldCover, newCover, values);
     if (oldCover != newCover) {
-        values.PutInt(IS_COVER_SATISFIED, static_cast<uint8_t>(CoverSatisfiedType::DEFAULT_SETTING));
-        values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, newCover);
         int32_t albumId = data.albumId;
         MEDIA_INFO_LOG("Update portrait album %{public}d. oldCover: %{public}s, newCover: %{public}s",
             albumId, MediaFileUtils::GetUriWithoutDisplayname(oldCover).c_str(),
@@ -628,12 +638,21 @@ static void SetCover(const shared_ptr<ResultSet> &fileResult, const UpdateAlbumD
     string newCover = checkedCover == nullptr ? MediaLibraryRdbUtils::GetCover(fileResult) : *checkedCover;
     const string &targetColumn = hiddenState ? PhotoAlbumColumns::HIDDEN_COVER : PhotoAlbumColumns::ALBUM_COVER_URI;
     string oldCover = hiddenState ? data.hiddenCover : data.albumCoverUri;
+    const auto subtype = static_cast<PhotoAlbumSubType>(data.albumSubtype);
+    const bool analysisDefaultCover = !hiddenState && subtype >= PhotoAlbumSubType::ANALYSIS_START &&
+        subtype <= PhotoAlbumSubType::ANALYSIS_END && subtype != PhotoAlbumSubType::PORTRAIT &&
+        subtype != PhotoAlbumSubType::GROUP_PHOTO;
+    if (analysisDefaultCover) {
+        MediaLibraryRdbUtils::SetAnalysisDefaultCoverValues(data.albumSubtype, oldCover, newCover, values);
+    }
     if (oldCover != newCover) {
         int32_t id = data.albumId;
         MEDIA_INFO_LOG("AccurateRefresh Update album %{public}d %{public}s. oldCover: %{public}s, newCover: %{public}s",
             id, targetColumn.c_str(), MediaFileUtils::GetUriWithoutDisplayname(oldCover).c_str(),
             MediaFileUtils::GetUriWithoutDisplayname(newCover).c_str());
-        values.PutString(targetColumn, newCover);
+        if (!analysisDefaultCover) {
+            values.PutString(targetColumn, newCover);
+        }
         SetCoverDateTime(fileResult, data, values, hiddenState);
         if (data.albumSubtype == static_cast<int32_t>(PhotoAlbumSubType::HIDDEN)) {
             const string &otherColumn = hiddenState ? PhotoAlbumColumns::ALBUM_COVER_URI :
@@ -1236,9 +1255,9 @@ static void SetPortraitValuesWithCache(shared_ptr<UpdateAlbumDataWithCache> port
                        data.albumId, data.albumCount, portraitData->albumCount);
         values.PutInt(PhotoAlbumColumns::ALBUM_COUNT, portraitData->albumCount);
     }
+    MediaLibraryRdbUtils::SetAnalysisDefaultCoverValues(data.albumSubtype, data.albumCoverUri,
+        portraitData->albumCoverUri, values);
     if (data.albumCoverUri != portraitData->albumCoverUri) {
-        values.PutInt(IS_COVER_SATISFIED, static_cast<uint8_t>(CoverSatisfiedType::DEFAULT_SETTING));
-        values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, portraitData->albumCoverUri);
         MEDIA_INFO_LOG("Update with cache: Portrait album %{public}d. oldCover: %{public}s, newCover: %{public}s",
                        data.albumId, MediaFileUtils::GetUriWithoutDisplayname(data.albumCoverUri).c_str(),
                        MediaFileUtils::GetUriWithoutDisplayname(portraitData->albumCoverUri).c_str());

@@ -4172,7 +4172,7 @@ void ReverseCloneRestore::SubmitAbsorbNewPhotosTasks(int32_t totalNumber, int32_
     std::vector<std::string> localErrorInfos(batches);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
-        const size_t errorInfoIdx = batchCount - 1;
+        const size_t errorInfoIdx = static_cast<size_t>(batchCount - 1);
         MEDIA_INFO_LOG("AbsorbNewPhotos: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
             [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
@@ -4201,7 +4201,7 @@ void ReverseCloneRestore::SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber
     std::vector<std::string> localErrorInfos(batches);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
-        const size_t errorInfoIdx = batchCount - 1;
+        const size_t errorInfoIdx = static_cast<size_t>(batchCount - 1);
         MEDIA_INFO_LOG("AbsorbNewPhotosForCloud: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
             [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
