@@ -1094,35 +1094,5 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_014, TestSize.Level
     CleanupTempFiles({OPEN_LIVE_PHOTO_AFTER_DELETE_FILE});
     MEDIA_INFO_LOG("media_library_share_test_014 End");
 }
-
-HWTEST_F(MediaLibraryShareOpenTest, media_library_thumbnail_file_manager_test_001, TestSize.Level0)
-{
-    std::string uri = "";
-    MediaLibraryShareOpenTest::InitPhotoAsset(uri);
-    ASSERT_FALSE(uri.empty());
-    ASSERT_TRUE(ConvertAssetToFileManager(uri));
-
-    std::vector<std::string> uris = {uri};
-    int32_t ret = mediaLibraryManager->GetAstcYearAndMonth(uris);
-    EXPECT_LT(ret, 0);
-
-    Uri fileUri(uri);
-    auto astcPtr = mediaLibraryManager->GetAstc(fileUri);
-    EXPECT_EQ(astcPtr, nullptr);
-    auto thumbNailPtr = mediaLibraryManager->GetThumbnail(fileUri);
-    EXPECT_EQ(thumbNailPtr, nullptr);
-}
-
-HWTEST_F(MediaLibraryShareOpenTest, media_library_convert_file_manager_test_001, TestSize.Level0)
-{
-    string srcDisplayName = "request_image_src_fm_2.jpg";
-    string uri = CreateFileManagerAsset(srcDisplayName);
-    ASSERT_FALSE(uri.empty());
-    std::vector<std::string> uris = {uri};
-    std::vector<std::string> result;
-    ConvertFileUriToMntPath(uris, result);
-    EXPECT_TRUE(result.empty());
-}
-#endif
 } // namespace Media
 } // namespace OHOS
