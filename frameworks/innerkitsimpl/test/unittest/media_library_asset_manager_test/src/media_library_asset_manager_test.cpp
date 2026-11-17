@@ -69,10 +69,6 @@ const std::string ROOT_TEST_MEDIA_DIR =
 const std::string TEST_DISPLAY_NAME = "test_image.png";
 static uint64_t g_shellToken = 0;
 static MediaLibraryMockHapToken* mockToken = nullptr;
-static const unsigned char FILE_CONTENT_JPG[] = {
-    0x49, 0x44, 0x33, 0x03, 0x20, 0x20, 0x20, 0x0c, 0x24, 0x5d, 0x54, 0x45, 0x4e, 0x43, 0x20, 0x20, 0x20, 0x0b,
-    0x20, 0x20, 0x20,
-};
 
 static const unsigned char FILE_CONTENT_MP4[] = {
     0x20, 0x20, 0x20, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0x20, 0x20, 0x02, 0x20, 0x69, 0x73, 0x6f,
@@ -214,17 +210,6 @@ void ClearFile()
         DeleteFile(fileAsset->GetUri());
         fileAsset = fetchFileResult->GetNextObject();
     }
-}
-
-static bool CompareIfArraysEquals(const unsigned char originArray[],
-    const unsigned char targetArray[], int32_t size)
-{
-    for (int i = 0; i < size - 1; i++) {
-        if (originArray[i] != targetArray[i]) {
-            return false;
-        }
-    }
-    return true;
 }
 
 void CallbackFunciton(int32_t result, MediaLibrary_RequestId requestId)
