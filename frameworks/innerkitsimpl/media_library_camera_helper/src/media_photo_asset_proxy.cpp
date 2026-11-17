@@ -385,7 +385,7 @@ int PhotoAssetProxy::PackAndSaveImage(int fd, const string &uri, const sptr<Phot
     CHECK_AND_RETURN_RET_LOG(width > 0 && height > 0, E_ERR,
         "Invalid dimensions: width=%{public}d, height=%{public}d", width, height);
     size_t expectedSize = static_cast<size_t>(width) * static_cast<size_t>(height) * BYTES_PER_PIXEL;
-    CHECK_AND_RETURN_RET_LOG(expectedSize > imageSize, E_ERR,
+    CHECK_AND_RETURN_RET_LOG(imageSize >= expectedSize, E_ERR,
         "fileSize(%{public}zu) != width*height*4(%{public}zu), w=%{public}d, h=%{public}d",
         imageSize, expectedSize, width, height);
 
