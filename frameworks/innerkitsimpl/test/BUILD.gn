@@ -103,16 +103,16 @@ group("test") {
     "unittest/set_share_cover_uri_test:unittest",
   ]
 
-  deps_cloud_sync_unittest = [
-    "unittest/media_library_cloud_sync_client_test:unittest",
-    "unittest/medialibrary_photo_enhance_test:unittest",
-    "unittest/medialibrary_cloud_asset_batch_download_test:unittest",
-    "unittest/medialibrary_client_report_test:unittest",
-    "unittest/cloud_media_asset_retain_compare_test:unittest",
-    "unittest/media_library_cloud_sync_test:unittest",
-    "unittest/media_library_cloud_sync_service_test:unittest",
-    "unittest/media_cloud_sync_data_vo_test:unittest",
-  ]
+  # deps_cloud_sync_unittest = [
+  #   "unittest/media_library_cloud_sync_client_test:unittest",
+  #   "unittest/medialibrary_photo_enhance_test:unittest",
+  #   "unittest/medialibrary_cloud_asset_batch_download_test:unittest",
+  #   "unittest/medialibrary_client_report_test:unittest",
+  #   "unittest/cloud_media_asset_retain_compare_test:unittest",
+  #   "unittest/media_library_cloud_sync_test:unittest",
+  #   "unittest/media_library_cloud_sync_service_test:unittest",
+  #   "unittest/media_cloud_sync_data_vo_test:unittest",
+  # ]
 
   deps_custom_restore_unittest = [
     "unittest/medialibrary_custom_restore_test:unittest",
@@ -124,11 +124,11 @@ group("test") {
     deps_custom_restore_unittest = []
   }
 
-  if (media_library_cloud_sync_enable) {
-    # deps += deps_cloud_sync_unittest
-  } else {
-    deps_cloud_sync_unittest = []
-  }
+  # if (media_library_cloud_sync_enable) {
+  #   deps += deps_cloud_sync_unittest
+  # } else {
+  #   deps_cloud_sync_unittest = []
+  # }
 
   if (media_library_lake_enable) {
     deps += [
