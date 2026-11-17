@@ -382,16 +382,12 @@ int PhotoAssetProxy::PackAndSaveImage(int fd, const string &uri, const sptr<Phot
     constexpr size_t BYTES_PER_PIXEL = 4;
     int32_t width = photoProxy->GetWidth();
     int32_t height = photoProxy->GetHeight();
-    if (width <= 0 || height <= 0) {
-        MEDIA_ERR_LOG("Invalid dimensions: width=%{public}d, height=%{public}d", width, height);
-        return E_ERR;
-    }
+    CHECK_AND_RETURN_RET_LOG(width > 0 && height > 0, E_ERR,
+        "Invalid dimensions: width=%{public}d, height=%{public}d", width, height);
     size_t expectedSize = static_cast<size_t>(width) * static_cast<size_t>(height) * BYTES_PER_PIXEL;
-    if (expectedSize <= imageSize) {
-        MEDIA_ERR_LOG("fileSize(%{public}zu) != width*height*4(%{public}zu), w=%{public}d, h=%{public}d",
-            imageSize, expectedSize, width, height);
-        return E_ERR;
-    }
+    CHECK_AND_RETURN_RET_LOG(expectedSize > imageSize, E_ERR,
+        "fileSize(%{public}zu) != width*height*4(%{public}zu), w=%{public}d, h=%{public}d",
+        imageSize, expectedSize, width, height);
 
     MEDIA_DEBUG_LOG("start pack PixelMap");
     Media::InitializationOptions opts;
