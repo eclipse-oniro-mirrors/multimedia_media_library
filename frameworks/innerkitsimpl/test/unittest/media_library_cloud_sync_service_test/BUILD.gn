@@ -37,6 +37,7 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/background",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dao",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
     "${MEDIALIB_IPC_COMMON}/include/callback",
   ]
@@ -50,6 +51,9 @@ ohos_unittest("media_library_cloud_sync_service_test") {
 
   sources = [
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/create_album_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_uri_result_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_local_assets_and_get_uris_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/recover_assets_and_get_uris_vo.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/controller/cloud_media_album_controller_service.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/service/cloud_lake_file_handler.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dao/cloud_media_download_dao.cpp",

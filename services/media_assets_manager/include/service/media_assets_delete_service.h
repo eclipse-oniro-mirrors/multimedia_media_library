@@ -18,10 +18,13 @@
 
 #include <vector>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 
 #include "media_assets_dao.h"
 #include "cloud_media_define.h"
 #include "cloud_sync_manager.h"
+#include "asset_uri_result_vo.h"
 
 namespace OHOS::Media::Common {
 using namespace OHOS::Media::ORM;
@@ -39,13 +42,17 @@ public: // constructors
 
 public:
     int32_t DeleteLocalAssets(const std::vector<std::string> &fileIds);
+    int32_t DeleteLocalAssetsAndGetUris(const std::vector<std::string> &fileIds,
+        std::vector<AssetUriResult> &results);
     int32_t DeleteCloudAssets(const std::vector<std::string> &fileIds);
     int32_t DeleteCloudAssetSingle(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
 
 private:
-    int32_t BatchCopyAndMoveLocalAssetToTrash(
-        const std::vector<PhotosPo> &photosList, std::vector<std::string> &targetFileIds);
+    int32_t DeleteLocalAssetsInternal(const std::vector<std::string> &fileIds,
+        std::unordered_map<std::string, std::string> &targetUriMap);
+    int32_t BatchCopyAndMoveLocalAssetToTrash(const std::vector<PhotosPo> &photosList,
+        std::vector<std::string> &targetFileIds, std::unordered_map<std::string, std::string> &targetUriMap);
     int32_t BatchCopyAndMoveCloudAssetToTrash(
         const std::vector<PhotosPo> &photoInfoList, std::vector<std::string> &targetFileIds);
     int32_t CopyAndMoveLocalAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,

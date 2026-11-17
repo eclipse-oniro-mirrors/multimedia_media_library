@@ -1017,6 +1017,45 @@ ani_status MediaLibraryAniUtils::ToFileAssetAniArray(ani_env *env, std::vector<s
     return ANI_OK;
 }
 
+ani_status MediaLibraryAniUtils::ToAssetUriResultAniArray(ani_env *env,
+    const std::vector<std::string> &originalUris, const std::vector<std::string> &resultUris,
+    const std::vector<bool> &successFlags, ani_object &aniArray)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    const std::string className = PAH_ANI_CLASS_ASSET_URI_RESULT_HANDLE;
+    ani_class cls {};
+    CHECK_STATUS_RET(env->FindClass(className.c_str(), &cls), "Can't find class %{public}s", className.c_str());
+    ani_method ctor {};
+    CHECK_STATUS_RET(env->Class_FindMethod(cls, "<ctor>", nullptr, &ctor),
+        "Can't find method <ctor> in %{public}s", className.c_str());
+    AniArrayOperator arrayOperator;
+    CHECK_STATUS_RET(InitAniArrayOperator(env, arrayOperator), "InitAniArrayOperator fail");
+
+    CHECK_STATUS_RET(env->Object_New(arrayOperator.cls, arrayOperator.ctorMethod, &aniArray, resultUris.size()),
+        "Call method <ctor> failed.");
+
+    for (size_t i = 0; i < resultUris.size(); i++) {
+        std::string originalUriValue = i < originalUris.size() ? originalUris[i] : std::string();
+        bool successValue = i < successFlags.size() ? successFlags[i] : false;
+        ani_object value {};
+        CHECK_STATUS_RET(env->Object_New(cls, ctor, &value), "Failed to new %{public}s", className.c_str());
+        ani_string originalUri {};
+        CHECK_STATUS_RET(ToAniString(env, originalUriValue, originalUri), "Failed to create originalUri string");
+        CHECK_STATUS_RET(env->Object_SetPropertyByName_Ref(value, "originalUri", static_cast<ani_ref>(originalUri)),
+            "Failed to set originalUri");
+        ani_string resultUri {};
+        CHECK_STATUS_RET(ToAniString(env, resultUris[i], resultUri), "Failed to create resultUri string");
+        CHECK_STATUS_RET(env->Object_SetPropertyByName_Ref(value, "resultUri", static_cast<ani_ref>(resultUri)),
+            "Failed to set resultUri");
+        ani_boolean isSuccess = successValue ? ANI_TRUE : ANI_FALSE;
+        CHECK_STATUS_RET(env->Object_SetPropertyByName_Boolean(value, "isSuccess", isSuccess),
+            "Failed to set isSuccess");
+        CHECK_STATUS_RET(env->Object_CallMethod_Void(aniArray, arrayOperator.setMethod, (ani_int)i, value),
+            "Call method $_set failed.");
+    }
+    return ANI_OK;
+}
+
 ani_status MediaLibraryAniUtils::ToFileAssetAniPtr(ani_env *env, std::unique_ptr<FetchResult<FileAsset>> fileAsset,
     ani_object &aniPtr)
 {
