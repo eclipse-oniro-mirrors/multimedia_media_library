@@ -637,6 +637,7 @@ napi_value SendablePhotoAccessHelper::PhotoAccessGetPhotoAssets(napi_env env, na
     unique_ptr<SendablePhotoAccessHelperAsyncContext> asyncContext =
         make_unique<SendablePhotoAccessHelperAsyncContext>();
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     CHECK_NULLPTR_RET(ParseArgsGetAssets(env, info, asyncContext));
 
     return SendableMediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetPhotoAssets",
@@ -1563,6 +1564,7 @@ napi_value SendablePhotoAccessHelper::PhotoAccessGetSharedPhotoAssets(napi_env e
     unique_ptr<SendablePhotoAccessHelperAsyncContext> asyncContext =
         make_unique<SendablePhotoAccessHelperAsyncContext>();
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     CHECK_NULLPTR_RET(ParseArgsGetAssets(env, info, asyncContext, true));
 
     SendablePhotoAccessHelperAsyncContext* context =

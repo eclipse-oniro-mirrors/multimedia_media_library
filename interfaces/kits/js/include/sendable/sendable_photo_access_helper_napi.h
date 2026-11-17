@@ -168,6 +168,8 @@ struct SendablePhotoAccessHelperAsyncContext : public NapiError {
     std::string indexProgress;
     uint32_t businessCode = 0;
     int32_t userId = -1;
+    bool isUnionOnlyQuery = false;
+    bool allowSharedAssetInUnionOnly = false;
 };
 
 struct SendablePhotoAccessHelperInitContext : public NapiError  {

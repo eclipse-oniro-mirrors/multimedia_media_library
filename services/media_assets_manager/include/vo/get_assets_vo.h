@@ -26,6 +26,7 @@ public:
     DataShare::DataSharePredicates predicates;
     std::vector<std::string> columns;
     std::string burstKey;
+    bool uriOnly = false;
 
     bool Unmarshalling(MessageParcel &parcel) override;
     bool Marshalling(MessageParcel &parcel) const override;

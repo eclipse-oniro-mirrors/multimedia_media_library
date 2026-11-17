@@ -71,7 +71,8 @@ void RegisterUnregisterHandlerFunctionsAni::SyncUpdateNormalListener(ChangeListe
     if (registerUriType == Notification::NotifyUriType::SINGLE_PHOTO_URI) {
         for (auto it = listObj.newObservers_.begin(); it != listObj.newObservers_.end(); it++) {
             Notification::NotifyUriType observerUri = (*it)->uriType_;
-            if (observerUri == Notification::NotifyUriType::PHOTO_URI) {
+            if (observerUri == Notification::NotifyUriType::PHOTO_URI ||
+                observerUri == Notification::NotifyUriType::PHOTO_URI) {
                 std::lock_guard<std::mutex> lock(ChangeListenerAni::trashMutex_);
                 (*it)->singleClientObserverAnis_ = observer->singleClientObserverAnis_;
             }
@@ -90,7 +91,8 @@ void RegisterUnregisterHandlerFunctionsAni::SyncUpdateNormalListener(ChangeListe
 void RegisterUnregisterHandlerFunctionsAni::SyncUpdateSingleListener(ChangeListenerAni &listObj,
     Notification::NotifyUriType &registerUriType, shared_ptr<MediaOnNotifyNewObserverAni> &observer)
 {
-    if (registerUriType == Notification::NotifyUriType::PHOTO_URI) {
+    if (registerUriType == Notification::NotifyUriType::PHOTO_URI ||
+        registerUriType == Notification::NotifyUriType::PHOTO_URI) {
         for (auto it = listObj.newObservers_.begin(); it != listObj.newObservers_.end(); it++) {
             Notification::NotifyUriType observerUri = (*it)->uriType_;
             if (observerUri == Notification::NotifyUriType::SINGLE_PHOTO_URI) {

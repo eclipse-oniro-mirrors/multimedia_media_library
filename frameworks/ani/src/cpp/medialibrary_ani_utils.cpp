@@ -1913,6 +1913,9 @@ bool MediaLibraryAniUtils::HandleUriField(AniContext& context, const OperationIt
     MediaFileUri::RemoveAllFragment(uri);
     MediaFileUri fileUri(uri);
     context->uri = uri;
+    if (fetchOptType != ALBUM_FETCH_OPT) {
+        context->getAssetsAsUri = true;
+    }
     if ((fetchOptType != ALBUM_FETCH_OPT) && (!fileUri.IsApi10())) {
         fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
     }
@@ -2883,6 +2886,30 @@ bool MediaLibraryAniUtils::HasSharedAlbum(const std::vector<std::string>& albumI
     }
     resultSet->Close();
     return hasSharedAlbum;
+}
+
+bool MediaLibraryAniUtils::IsUnionOnlyQuery(const DataSharePredicates &predicates)
+{
+    constexpr int32_t FIELD_IDX = 0;
+    const auto &operations = predicates.GetOperationList();
+    for (const auto &item : operations) {
+        if (item.singleParams.empty()) {
+            continue;
+        }
+        const string &field = static_cast<string>(item.GetSingle(FIELD_IDX));
+        if (field == CONST_MEDIA_DATA_DB_ID) {
+            continue;
+        }
+        if (item.operation == DataShare::ORDER_BY_ASC || item.operation == DataShare::ORDER_BY_DESC ||
+            item.operation == DataShare::LIMIT || item.operation == DataShare::OFFSET ||
+            item.operation == DataShare::DISTINCT || item.operation == DataShare::GROUP_BY ||
+            item.operation == DataShare::INDEXED_BY || item.operation == DataShare::NOT_EQUAL_TO) {
+            continue;
+        }
+        return false;
+    }
+    ANI_INFO_LOG("MediaLibraryAniUtils::IsUnionOnlyQuery, predicates only contain uri");
+    return true;
 }
 
 void MediaLibraryAniUtils::ExtractFileIdsFromUris(const std::vector<std::string>& uriArray,

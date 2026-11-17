@@ -417,6 +417,7 @@ public:
     template <class AniContext>
     static bool HandleSpecialPredicate(AniContext &context,
         DataShare::DataSharePredicates *predicate, FetchOptionType fetchOptType);
+    static bool IsUnionOnlyQuery(const DataShare::DataSharePredicates &predicates);
 
     template <class AniContext>
     static bool ProcessPredicateItems(AniContext& context, const vector<DataShare::OperationItem>& items,

@@ -6300,11 +6300,6 @@ static napi_value ParseArgsGrantPhotoUriPermissionInner(napi_env env, napi_callb
     int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(uri);
     NAPI_ASSERT(env, fileId >= 0, "Invalid uri");
     context->valuesBucket.Put(AppUriPermissionColumn::FILE_ID, fileId);
-    if (MediaLibraryNapiUtils::HasSharedAlbumAsset(vector<string> { to_string(fileId) })) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-            "This operation is not supported for assets in shared albums");
-        return nullptr;
-    }
 
     // parse permissionType
     int32_t permissionType;
@@ -6413,23 +6408,6 @@ static void SetPermissionTokenIds(MediaLibraryAsyncContext &context, napi_env en
     context.valuesBucket.Put(AppUriSensitiveColumn::SOURCE_TOKENID, static_cast<int64_t>(srcTokenId));
 }
 
-static bool ParseAndCheckSharedAlbumUris(napi_env env, const vector<string>& uris)
-{
-    vector<string> fileIds;
-    for (const auto &uri : uris) {
-        int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(uri);
-        if (fileId >= 0) {
-            fileIds.push_back(to_string(fileId));
-        }
-    }
-    if (!fileIds.empty() && MediaLibraryNapiUtils::HasSharedAlbumAsset(fileIds)) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-            "This operation is not supported for assets in shared albums");
-        return false;
-    }
-    return true;
-}
-
 static napi_value ParseArgsGrantPhotoUrisPermission(napi_env env, napi_callback_info info,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
@@ -6471,10 +6449,6 @@ static napi_value ParseArgsGrantPhotoUrisPermission(napi_env env, napi_callback_
         napi_ok, "Invalid uris");
     NAPI_ASSERT(env, ParseUriTypes(uris, context) == napi_ok, "ParseUriTypes failed");
 
-    if (!ParseAndCheckSharedAlbumUris(env, uris)) {
-        return nullptr;
-    }
-
     napi_value result = nullptr;
     NAPI_CALL(env, napi_get_boolean(env, true, &result));
     return result;
@@ -6513,11 +6487,6 @@ static napi_value ParseArgsCancelPhotoUriPermission(napi_env env, napi_callback_
         return nullptr;
     }
     context->valuesBucket.Put(AppUriPermissionColumn::FILE_ID, fileId);
-    if (MediaLibraryNapiUtils::HasSharedAlbumAsset(vector<string> { to_string(fileId) })) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-            "This operation is not supported for assets in shared albums");
-        return nullptr;
-    }
 
     // parse permissionType
     int32_t permissionType;
@@ -9291,6 +9260,7 @@ static int GetAssetsIPCCall(MediaLibraryAsyncContext* context, GetAssetsRespBody
     reqBody.predicates = context->predicates;
     reqBody.columns = context->fetchColumn;
     reqBody.burstKey = context->burstKey;
+    reqBody.uriOnly = context->isUnionOnlyQuery;
     auto client = IPC::UserDefineIPCClient().SetUserId(context->userId);
     string fileId;
     if (MediaLibraryNapiUtils::ParseFileIdFromPredicates(reqBody.predicates, fileId)) {
@@ -9402,6 +9372,7 @@ napi_value MediaLibraryNapi::PhotoAccessGetPhotoAssets(napi_env env, napi_callba
     NAPI_DEBUG_LOG("MediaLibraryNapi::PhotoAccessGetPhotoAssets start");
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     CHECK_NULLPTR_RET(ParseArgsGetAssets(env, info, asyncContext));
     asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ASSETS);
 

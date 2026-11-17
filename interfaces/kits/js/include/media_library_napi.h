@@ -717,6 +717,8 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::string bundleName;
     bool canSupportedCompatibleDuplicate = false;
     std::unordered_map<std::string, std::string> debugDatabaseMap;
+    bool isUnionOnlyQuery = false;
+    bool allowSharedAssetInUnionOnly = false;
     int64_t startTime = 0;
     std::string errCode = "0";
     enum EventType {
