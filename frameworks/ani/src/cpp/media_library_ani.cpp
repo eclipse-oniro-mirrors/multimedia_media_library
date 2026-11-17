@@ -4073,7 +4073,7 @@ static void SetFileAssetByIdV9(int32_t id, const string &networkId, unique_ptr<M
 }
 #endif
 
-static bool CheckTitleCompatible(unique_ptr<MediaLibraryAsyncContext> &context)
+static bool CheckTitleValid(unique_ptr<MediaLibraryAsyncContext> &context)
 {
     CHECK_COND_RET(context != nullptr, false, "context is nullptr");
     if (!context->isCreateByComponent) {
@@ -4084,7 +4084,7 @@ static bool CheckTitleCompatible(unique_ptr<MediaLibraryAsyncContext> &context)
     if (!hasTitleParam) {
         return true;
     }
-    return MediaFileUtils::CheckTitleCompatible(title) == E_OK;
+    return MediaFileUtils::CheckTitleForPhoto(title) == E_OK;
 }
 
 static void PhotoAccessCreateAssetExecute(unique_ptr<MediaLibraryAsyncContext> &context)
@@ -4103,7 +4103,7 @@ static void PhotoAccessCreateAssetExecute(unique_ptr<MediaLibraryAsyncContext> &
         return;
     }
 
-    if (!CheckTitleCompatible(context)) {
+    if (!CheckTitleValid(context)) {
         context->error = JS_E_DISPLAYNAME;
         return;
     }
@@ -5275,7 +5275,7 @@ static void PhotoAccessAgentCreateAssetsExecute(ani_env *env, unique_ptr<MediaLi
     for (const auto& valuesBucket : context->valuesBucketArray) {
         bool inValid = false;
         string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, inValid);
-        if (!context->isContainsAlbumUri && !title.empty() && MediaFileUtils::CheckTitleCompatible(title) != E_OK) {
+        if (!context->isContainsAlbumUri && !title.empty() && MediaFileUtils::CheckTitleForPhoto(title) != E_OK) {
             ANI_ERR_LOG("Title contains invalid characters: %{private}s, skipping", title.c_str());
             context->uriArray.push_back(to_string(E_INVALID_DISPLAY_NAME));
             continue;
@@ -8920,6 +8920,11 @@ static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCa
     CHECK_COND_RET(ParseBundleInfo(params.env, params.appInfo, bundleInfo), false, "ParseBundleInfo fail");
     CHECK_COND_RET(ParseCreateConfig(params.env,
         params.photoCreationConfigs, config), false, "Parse asset create config failed");
+    if (!config.title.empty() && MediaFileUtils::CheckTitleForPhoto(config.title) != E_OK) {
+        // 与 JS 侧 InitShortTermRequest 保持一致：仅记录并返回失败，由外层统一抛错
+        ANI_ERR_LOG("Title contains invalid characters: %{private}s", config.title.c_str());
+        return false;
+    }
 
     want.SetParam(SHORT_TERM_TAG, true);
     want.SetParam(SHORT_TERM_TITLE, config.title);
@@ -9009,6 +9014,12 @@ static bool ParseAndSetConfigArray(ani_env *env, OHOS::AAFwk::Want &want, ani_ob
         PhotoCreationConfig config;
         if (ANI_OK != ParseCreateConfig(env, aniValue, config)) {
             ANI_ERR_LOG("Parse asset create config failed");
+            return false;
+        }
+        if (!config.title.empty() && MediaFileUtils::CheckTitleForPhoto(config.title) != E_OK) {
+            // 与 JS 侧 ParseAndSetConfigArray 保持一致：非法 title 让整个调用失败，
+            // 避免 titleList 与 uri 数组按下标错位。
+            ANI_ERR_LOG("Title contains invalid characters: %{private}s", config.title.c_str());
             return false;
         }
         titleList.emplace_back(config.title);

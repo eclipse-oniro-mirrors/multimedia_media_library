@@ -3845,7 +3845,7 @@ ani_object MediaAssetChangeRequestAni::SetTitleByFile(ani_env *env, ani_object o
 
     std::string extension = MediaFileUtils::SplitByChar(changeRequest->GetFileAssetInstance()->GetDisplayName(), '.');
     std::string displayName = title + "." + extension;
-    CHECK_COND_RET(MediaFileUtils::CheckDisplayName(displayName, false, true) == E_OK,
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, false, false) == E_OK,
         nullptr, "Invalid display name.");
 
     changeRequest->GetFileAssetInstance()->SetDisplayName(displayName);
