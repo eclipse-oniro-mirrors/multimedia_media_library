@@ -148,10 +148,6 @@ public:
         ani_object context, ani_object assetUris);
     static ani_object DeleteAssetsPermanentlyWithUri(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_object assetUris);
-    static ani_object DeleteLocalAssetsAndGetUris(ani_env *env, [[maybe_unused]] ani_class clazz,
-        ani_object context, ani_object assetUris);
-    static ani_object RecoverAssetsAndGetUris(ani_env *env, [[maybe_unused]] ani_class clazz,
-        ani_object context, ani_object assetUris);
     static ani_object SetOrientation(ani_env *env, ani_object aniObject, ani_int orientation);
     static ani_object SetSupportedWatermarkType(ani_env *env, ani_object aniObject,
         ani_enum_item watermarkTypeAni);
@@ -262,9 +258,6 @@ struct MediaAssetChangeRequestAniContext : public AniError {
     int32_t fd;
     int32_t userId_ = -1;
     std::vector<std::string> fileIds;
-    std::vector<std::string> assetUris;
-    std::vector<std::string> resultUris;
-    std::vector<bool> resultSuccess;
     bool isCameraEditData {false};
 };
 } // namespace Media
