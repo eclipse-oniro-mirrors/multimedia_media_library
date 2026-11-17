@@ -271,34 +271,6 @@ static bool MarkAsFileManagerSource(const std::shared_ptr<MediaLibraryRdbStore> 
     return true;
 }
 
-static bool ConvertAssetToFileManager(const std::string &uri)
-{
-    CHECK_AND_RETURN_RET_LOG(!uri.empty() && !FILE_MANAGER_TEST_DIR.empty(), false,
-        "invalid input, uri empty: %{public}d, testDir empty: %{public}d", uri.empty(), FILE_MANAGER_TEST_DIR.empty());
-    std::string fileId = MediaFileUtils::GetIdFromUri(uri);
-    CHECK_AND_RETURN_RET_LOG(!fileId.empty(), false, "failed to parse fileId from uri: %{public}s", uri.c_str());
-    auto rdbStore = TryGetRdbStoreWithInit();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
-    std::string assetPath;
-    CHECK_AND_RETURN_RET_LOG(QueryAssetPathByFileId(rdbStore, fileId, assetPath), false,
-        "query asset path by fileId failed");
-    CHECK_AND_RETURN_RET_LOG(EnsureAssetFileExists(assetPath), false, "ensure asset file exists failed");
-    std::string storagePath;
-    CHECK_AND_RETURN_RET_LOG(BuildFileManagerStoragePath(assetPath, storagePath), false,
-        "build storage path failed");
-    std::string parentDir = MediaFileUtils::GetParentPath(storagePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(parentDir) || MediaFileUtils::CreateDirectory(parentDir),
-        false, "create parentDir failed: %{public}s", parentDir.c_str());
-    CHECK_AND_RETURN_RET_LOG(PhotoFileUtils::CheckFileManagerRealPath(storagePath), false,
-        "invalid file manager real path: %{public}s", storagePath.c_str());
-    if (MediaFileUtils::IsFileExists(storagePath)) {
-        MediaFileUtils::DeleteFile(storagePath);
-    }
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileAndDelSrc(assetPath, storagePath), false,
-        "copy and delete source failed, src=%{public}s, dst=%{public}s", assetPath.c_str(), storagePath.c_str());
-    return MarkAsFileManagerSource(rdbStore, fileId, storagePath);
-}
-
 /**
  * @tc.name: media_library_capi_test_001
  * @tc.desc: OH_MediaAssetChangeRequest_Create entry parameter is MEDIA_TYPE_IMAGE
