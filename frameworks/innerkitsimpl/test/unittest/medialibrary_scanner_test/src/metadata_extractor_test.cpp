@@ -814,6 +814,30 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
 }
 
 /**
+ * @tc.name: FillExtractedMetadata_location_iso6709_without_trailing_slash
+ * @tc.desc: ISO6709 string without trailing slash (2 segments, no altitude, no /).
+ *           Trailing slash is optional; latitude/longitude should be parsed correctly.
+ */
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_without_trailing_slash, TestSize.Level1)
+{
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
+    data->SetFilePath("/storage/cloud/files/test.mov");
+    data->SetFileDateModified(static_cast<int64_t>(11));
+
+    std::shared_ptr<Media::Meta> meta = std::make_shared<Media::Meta>();
+    std::shared_ptr<Media::Meta> customMeta = std::make_shared<Media::Meta>();
+    customMeta->SetData(PHOTO_DATA_VIDEO_IOS_LOCATION, "+12.3456+123.4567");
+    meta->SetData(PHOTO_DATA_VIDEO_CUSTOM_INFO, customMeta);
+
+    unordered_map<int32_t, std::string> resultMap = GetResultMap();
+    MetadataExtractor::FillExtractedMetadata(resultMap, meta, data);
+
+    EXPECT_DOUBLE_EQ(data->GetLatitude(), 12.3456);
+    EXPECT_DOUBLE_EQ(data->GetLongitude(), 123.4567);
+}
+
+/**
  * @tc.name: FillExtractedMetadata_location_priority_tag_over_iso6709
  * @tc.desc: Both Tag::MEDIA_LATITUDE/LONGITUDE and ISO6709 are present.
  *           Tag values should take priority and ISO6709 should NOT override.
