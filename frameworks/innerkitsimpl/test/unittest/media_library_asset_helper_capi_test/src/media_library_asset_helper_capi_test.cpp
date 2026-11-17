@@ -299,15 +299,6 @@ static bool ConvertAssetToFileManager(const std::string &uri)
     return MarkAsFileManagerSource(rdbStore, fileId, storagePath);
 }
 
-static std::string CreateFileManagerAsset(const std::string &displayName)
-{
-    std::string uri = mediaLibraryManager->CreateAsset(displayName);
-    if (!uri.empty()) {
-        EXPECT_TRUE(ConvertAssetToFileManager(uri));
-    }
-    return uri;
-}
-
 /**
  * @tc.name: media_library_capi_test_001
  * @tc.desc: OH_MediaAssetChangeRequest_Create entry parameter is MEDIA_TYPE_IMAGE
