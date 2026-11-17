@@ -4327,18 +4327,15 @@ static int32_t FillValuesBucket(NativeRdb::ValuesBucket& newNameValues, int32_t 
     const shared_ptr<OHOS::Media::MediaLibraryRdbStore>& rdbStore)
 {
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "[absorb] rdbStore is nullptr");
-    const std::string sql = "SELECT (SELECT dirty FROM PhotoAlbum WHERE album_id = ?) AS dirty,"
-        "(SELECT COUNT(hidden_count) FROM PhotoAlbum WHERE album_id IN (?, ?)) AS hidden_count";
+    const std::string sql = "SELECT (SELECT dirty FROM PhotoAlbum WHERE album_id = ?) AS dirty";
 
-    std::vector<NativeRdb::ValueObject> params = { albumId, albumId, absorbAlbumId };
+    std::vector<NativeRdb::ValueObject> params = { albumId };
     auto resultSet = rdbStore->QuerySql(sql, params);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "[absorb] Query failed");
     int32_t dirty = static_cast<int32_t>(DirtyTypes::TYPE_NEW);
-    int32_t hiddenCount = 0;
     auto result = resultSet->GoToFirstRow();
     if (result == NativeRdb::E_OK) {
         dirty = GetInt32Val(PhotoAlbumColumns::ALBUM_DIRTY, resultSet);
-        hiddenCount = GetInt32Val(PhotoAlbumColumns::HIDDEN_COUNT, resultSet);
     }
     resultSet->Close();
     CHECK_AND_RETURN_RET_LOG(result == NativeRdb::E_OK, E_HAS_DB_ERROR, "[absorb] GoToFirstRow failed");
@@ -4353,7 +4350,6 @@ static int32_t FillValuesBucket(NativeRdb::ValuesBucket& newNameValues, int32_t 
     newNameValues.Delete(PhotoAlbumColumns::HIDDEN_COVER_DATE_TIME);
     newNameValues.Delete(PhotoAlbumColumns::ALBUM_RELATIVE_PATH);
     newNameValues.Delete(PhotoAlbumColumns::CONTAINS_HIDDEN);
-    newNameValues.PutInt(PhotoAlbumColumns::CONTAINS_HIDDEN, hiddenCount > 0 ? VALUE_YES : VALUE_NO);
     if (dirty == static_cast<int32_t>(DirtyTypes::TYPE_NEW)) {
         newNameValues.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, dirty);
     } else {

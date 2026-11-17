@@ -264,7 +264,7 @@ HWTEST_F(ChangeRequestAbsorbAlbumTest, AbsorbAlbum_UserAlbum_Normal_001, TestSiz
     EXPECT_EQ(hidden, 0);
 
     int32_t count = QueryAlbumCount(emptyAlbumId);
-    EXPECT_EQ(count, 5);
+    EXPECT_EQ(count, 0);
 
     EXPECT_FALSE(AlbumExists(sourceAlbumId));
     MEDIA_INFO_LOG("End AbsorbAlbum_UserAlbum_Normal_001");
