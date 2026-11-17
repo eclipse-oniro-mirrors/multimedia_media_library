@@ -57,6 +57,7 @@ constexpr double LATITUDE_MIN = -90.0;
 constexpr double LATITUDE_MAX = 90.0;
 constexpr double LONGITUDE_MIN = -180.0;
 constexpr double LONGITUDE_MAX = 180.0;
+constexpr size_t MAX_DOUBLE_STR_LEN = 350;
 const string ZEROTIMESTRING = "0000:00:00 00:00:00";
 
 template <class Type>
@@ -71,7 +72,7 @@ static Type stringToNum(const string &str)
 // 安全地将字符串转换为 double，失败（空串/超长/解析失败/含残留字符）时返回 false
 static bool StringToDouble(const std::string &s, double &out)
 {
-    if (s.empty() || s.size() > 350) {
+    if (s.empty() || s.size() > MAX_DOUBLE_STR_LEN) {
         return false;
     }
     std::istringstream iss(s);

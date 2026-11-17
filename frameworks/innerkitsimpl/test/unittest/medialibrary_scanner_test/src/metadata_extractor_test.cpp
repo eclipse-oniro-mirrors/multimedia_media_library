@@ -818,7 +818,8 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso67
  * @tc.desc: ISO6709 string without trailing slash (2 segments, no altitude, no /).
  *           Trailing slash is optional; latitude/longitude should be parsed correctly.
  */
-HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_without_trailing_slash, TestSize.Level1)
+HWTEST_F(MediaLibraryMetadataExtractorTest, FillExtractedMetadata_location_iso6709_without_trailing_slash,
+    TestSize.Level1)
 {
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_VIDEO));
