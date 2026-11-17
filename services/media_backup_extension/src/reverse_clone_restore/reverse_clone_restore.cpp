@@ -44,6 +44,7 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "rdb_predicates.h"
+#include "rdb_sql_utils.h"
 #include "result_set_utils.h"
 #include "rdb_store.h"
 #include "reverse_clone_resource_inherit_helper.h"
@@ -239,10 +240,12 @@ static void CheckMountPoint(const PathStat &ps, const PathStat &parentPs, const 
     }
 }
 
-static void DiagnoseRenameFailure(const std::string &src, const std::string &dst, int savedErrno)
+static void DiagnoseRenameFailure(const std::string &src, const std::string &dst, int savedErrno = 0)
 {
-    MEDIA_ERR_LOG("DiagnoseRename: rename(%{public}s,%{public}s) errno=%{public}d (%{public}s)",
-        src.c_str(), dst.c_str(), savedErrno, strerror(savedErrno));
+    if (savedErrno != 0) {
+        MEDIA_ERR_LOG("DiagnoseRename: rename(%{public}s,%{public}s) errno=%{public}d (%{public}s)",
+            src.c_str(), dst.c_str(), savedErrno, strerror(savedErrno));
+    }
     PathStat srcPs(src);
     PathStat dstPs(dst);
     LogPathStat("src", srcPs);
@@ -1195,11 +1198,10 @@ static void DeleteDbFileGroup(const std::string& basePath) {
 static void RollbackMovedDbFiles(const std::vector<std::pair<std::string, std::string>>& movedFiles)
 {
     for (auto iter = movedFiles.rbegin(); iter != movedFiles.rend(); ++iter) {
-        if (rename(iter->second.c_str(), iter->first.c_str()) != 0) {
-            int savedErrno = errno;
-            MEDIA_ERR_LOG("MoveDbFileGroup: rollback %{public}s -> %{public}s failed, errno=%{public}d",
-                iter->second.c_str(), iter->first.c_str(), savedErrno);
-            DiagnoseRenameFailure(iter->second, iter->first, savedErrno);
+        if (!NativeRdb::RdbSqlUtils::RenameFile(iter->second, iter->first)) {
+            MEDIA_ERR_LOG("MoveDbFileGroup: rollback %{public}s -> %{public}s failed",
+                iter->second.c_str(), iter->first.c_str());
+            DiagnoseRenameFailure(iter->second, iter->first);
         }
     }
 }
@@ -1213,11 +1215,9 @@ static bool MoveDbFileGroup(const std::string& srcBase, const std::string& dstBa
         std::string src = srcBase + suffix;
         std::string dst = dstBase + suffix;
         if (!IsPathExists(src)) continue;
-        if (rename(src.c_str(), dst.c_str()) != 0) {
-            int savedErrno = errno;
-            MEDIA_ERR_LOG("MoveDbFileGroup: rename %{public}s -> %{public}s failed, errno=%{public}d",
-                src.c_str(), dst.c_str(), savedErrno);
-            DiagnoseRenameFailure(src, dst, savedErrno);
+        if (!NativeRdb::RdbSqlUtils::RenameFile(src, dst)) {
+            MEDIA_ERR_LOG("MoveDbFileGroup: rename %{public}s -> %{public}s failed", src.c_str(), dst.c_str());
+            DiagnoseRenameFailure(src, dst);
             RollbackMovedDbFiles(movedFiles);
             return false;
         }
