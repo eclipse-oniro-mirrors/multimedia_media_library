@@ -1323,7 +1323,7 @@ static bool CheckDisplayNameInCommitModify(FileAssetAsyncContext *context)
             return false;
         }
         if (context->objectPtr->GetMediaType() != MediaType::MEDIA_TYPE_FILE) {
-            if (MediaFileUtils::CheckDisplayName(context->objectPtr->GetDisplayName(), false) != E_OK) {
+            if (MediaFileUtils::CheckDisplayName(context->objectPtr->GetDisplayName(), true) != E_OK) {
                 context->error = JS_E_DISPLAYNAME;
                 context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
                 return false;
@@ -4727,7 +4727,7 @@ napi_value FileAssetNapi::PhotoAccessHelperCloneAsset(napi_env env, napi_callbac
 
     string extension = MediaFileUtils::SplitByChar(fileAsset->GetDisplayName(), '.');
     string displayName = title + "." + extension;
-    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, false) == E_OK,
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
         "The title contains unsupported characters or exceeds the length limit");
 
     asyncContext->title = title;
