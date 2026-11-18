@@ -93,7 +93,7 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
             MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
             return;
         }
-        client.Init(token, activeUser);
+        client.ForceReconnect(activeUser);
         dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(
