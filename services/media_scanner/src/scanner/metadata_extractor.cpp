@@ -16,8 +16,6 @@
 
 #include "metadata_extractor.h"
 
-#include <algorithm>
-#include <cctype>
 #include <charconv>
 #include <fcntl.h>
 #include <regex>
@@ -27,7 +25,6 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_log.h"
-#include "media_container_types.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
@@ -53,11 +50,6 @@ const double DEGREES2SECONDS = 3600.0;
 constexpr int32_t OFFSET_NUM = 2;
 constexpr int32_t HOURSTOSECOND = 60 * 60;
 constexpr int32_t MINUTESTOSECOND = 60;
-constexpr double LATITUDE_MIN = -90.0;
-constexpr double LATITUDE_MAX = 90.0;
-constexpr double LONGITUDE_MIN = -180.0;
-constexpr double LONGITUDE_MAX = 180.0;
-constexpr size_t MAX_DOUBLE_STR_LEN = 350;
 const string ZEROTIMESTRING = "0000:00:00 00:00:00";
 
 template <class Type>
@@ -67,26 +59,6 @@ static Type stringToNum(const string &str)
     Type num;
     iss >> num;
     return num;
-}
-
-// 安全地将字符串转换为 double，失败（空串/超长/解析失败/含残留字符）时返回 false
-static bool StringToDouble(const std::string &s, double &out)
-{
-    if (s.empty() || s.size() > MAX_DOUBLE_STR_LEN) {
-        return false;
-    }
-    std::istringstream iss(s);
-    double tmp{};
-    iss >> tmp;
-    if (iss.fail()) {
-        return false;
-    }
-    iss >> std::ws;
-    if (!iss.eof()) {
-        return false;
-    }
-    out = tmp;
-    return true;
 }
 // LCOV_EXCL_START
 static bool IsMovingPhoto(unique_ptr<Metadata> &data)
@@ -767,13 +739,7 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
     if (!customMeta->GetData(PHOTO_DATA_VIDEO_IOS_LOCATION, iso6709Str) || iso6709Str.empty()) {
         return;
     }
-    // 严格校验 ISO6709 格式：±DD.DDDD±DDD.DDDD[±DD.DDDD][/]（纬度+经度[+高度]，末尾/可选），拒绝空格/字母/多余字符/截断
-    std::regex strictPattern(R"(^[+-]\d+(?:\.\d+)?[+-]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/?$)");
-    if (!std::regex_match(iso6709Str, strictPattern)) {
-        MEDIA_ERR_LOG("Invalid ISO6709 location string: %{private}s", iso6709Str.c_str());
-        return;
-    }
-    std::regex pattern(R"([+-]\d+(?:\.\d+)?)");
+    std::regex pattern(R"([+-]\d+\.\d+)");
     std::sregex_iterator it(iso6709Str.cbegin(), iso6709Str.cend(), pattern);
     std::sregex_iterator end;
     if (it == end) {
@@ -784,31 +750,11 @@ void ParseIOSVideoLocation(const shared_ptr<Meta> &customMeta, std::unique_ptr<M
         return;
     }
     std::string lonStr = it->str();
-    // 经纬度作为整体校验：其中一个解析失败或越界则两个都不写入，避免出现半残的位置数据
-    double latitude{};
-    double longitude{};
-    if (!StringToDouble(latStr, latitude) || !StringToDouble(lonStr, longitude)) {
-        MEDIA_ERR_LOG("Failed to parse latitude/longitude from ISO6709: %{private}s", iso6709Str.c_str());
-        return;
-    }
-    bool latValid = (latitude >= LATITUDE_MIN && latitude <= LATITUDE_MAX);
-    bool lonValid = (longitude >= LONGITUDE_MIN && longitude <= LONGITUDE_MAX);
-    if (!latValid || !lonValid) {
-        if (!latValid) {
-            MEDIA_ERR_LOG("Invalid latitude %{private}s, out of range [%{public}f, %{public}f]",
-                latStr.c_str(), LATITUDE_MIN, LATITUDE_MAX);
-        }
-        if (!lonValid) {
-            MEDIA_ERR_LOG("Invalid longitude %{private}s, out of range [%{public}f, %{public}f]",
-                lonStr.c_str(), LONGITUDE_MIN, LONGITUDE_MAX);
-        }
-        return;
-    }
     if (!hasLat) {
-        data->SetLatitude(latitude);
+        data->SetLatitude(std::stod(latStr));
     }
     if (!hasLon) {
-        data->SetLongitude(longitude);
+        data->SetLongitude(std::stod(lonStr));
     }
 }
 
@@ -828,12 +774,6 @@ void PopulateExtractedAVLocationMeta(std::shared_ptr<Meta> &meta, std::unique_pt
         return;
     }
     if (customMeta == nullptr) {
-        return;
-    }
-    // com.apple.quicktime.location.ISO6709 是 QuickTime/MOV 容器特有元数据，仅对 MOV 文件解析
-    std::string fileExt = ScannerUtils::GetFileExtension(data->GetFilePath());
-    std::transform(fileExt.begin(), fileExt.end(), fileExt.begin(), ::tolower);
-    if (fileExt != VIDEO_CONTAINER_TYPE_MOV) {
         return;
     }
     ParseIOSVideoLocation(customMeta, data, hasLat, hasLon);
