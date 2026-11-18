@@ -1776,7 +1776,7 @@ HWTEST_F(FileParserTest, GenerateThumbnail_Verify_Validation_Scan_Mode_Test, Tes
 HWTEST_F(FileParserTest, GetFileUris_Verify_Empty_Input_Test, TestSize.Level1)
 {
     std::vector<std::string> inodes;
-    for(int i = 0; i <50; i++){
+    for(int i = 0; i < 50; i++) {
         inodes.push_back("inode_" + std::to_string(i));
     }
     std::vector<std::string> result = FileParser::GetFileUris(inodes);
