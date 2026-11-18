@@ -1984,7 +1984,7 @@ int32_t MediaAssetsControllerService::CloneAsset(MessageParcel &data, MessagePar
     }
     string extension = MediaFileUtils::SplitByChar(reqBody.displayName, '.');
     string displayName = reqBody.title + "." + extension;
-    if (MediaFileUtils::CheckDisplayName(displayName, false) != E_OK) {
+    if (MediaFileUtils::CheckDisplayName(displayName, true) != E_OK) {
         MEDIA_ERR_LOG("CloneAsset invalid params");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
     }
