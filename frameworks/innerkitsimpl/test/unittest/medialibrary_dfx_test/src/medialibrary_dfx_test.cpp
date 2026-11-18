@@ -90,11 +90,11 @@ void MediaLibraryDfxTest::SetUpTestCase(void)
         INVALID_BEHAVIOR_XML, COMMON_BEHAVIOR_FOR_FUSE_GETATTER_XML,
         COMMON_BEHAVIOR_FOR_FUSE_TRUNCATE_XML
     };
-    for(const auto &xmlFile::dfxXmlFiles) {
+    for (const auto &xmlFile::dfxXmlFiles) {
         shared_ptr<NativePreferences::Preferences> prefs =
             NativePreferences::PreferencesHelper::GetPreferences(
                 MediaPathUtils::AdaptPerferencesPathForAllDevice(xmlFile, true), errCode);
-        if(prefs) {
+        if (prefs) {
             prefs->Clear();
             prefs->FlushSync();
         }
