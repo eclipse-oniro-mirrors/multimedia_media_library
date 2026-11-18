@@ -113,19 +113,22 @@ PhotoAssetProxy::~PhotoAssetProxy()
         Uri updateUri(uri);
         DataShare::DataSharePredicates predicates;
         DataShare::DataShareValuesBucket valuesBucket;
-        std::string fileId = std::to_string(MediaUriUtils::GetFileId(uri_));
-        if (fileId == "0" || fileId.empty()) {
+        // 析构函数中禁止抛出异常，直接使用 int32_t 判断，避免 std::string 比较抛异常。
+        // GetFileId 在 uri 非法时返回 -1，fileId <= 0 同时覆盖非法 uri 与 fileId 为 0 的场景。
+        int32_t fileId = MediaUriUtils::GetFileId(uri_);
+        if (fileId <= 0) {
             MEDIA_WARN_LOG("%{public}s:{%{public}s:%{public}d} "
-                "Skip degenerate, invalid fileId, uri: %{public}s, original subType: %{public}d",
-                MLOG_TAG, __FUNCTION__, __LINE__, uri_.c_str(), static_cast<int32_t>(subType_));
+                "Skip degenerate, invalid fileId: %{public}d, uri: %{public}s, original subType: %{public}d",
+                MLOG_TAG, __FUNCTION__, __LINE__, fileId, uri_.c_str(), static_cast<int32_t>(subType_));
             return;
         }
-        predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+        std::string fileIdStr = std::to_string(fileId);
+        predicates.EqualTo(MediaColumn::MEDIA_ID, fileIdStr);
         valuesBucket.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
         int32_t changeRows = dataShareHelper_->Update(updateUri, predicates, valuesBucket);
         MEDIA_WARN_LOG("%{public}s:{%{public}s:%{public}d} "
             "Degenerate moving photo, fileId: %{public}s, original subType: %{public}d, ret: %{public}d",
-            MLOG_TAG, __FUNCTION__, __LINE__, fileId.c_str(), static_cast<int32_t>(subType_), changeRows);
+            MLOG_TAG, __FUNCTION__, __LINE__, fileIdStr.c_str(), static_cast<int32_t>(subType_), changeRows);
     }
 }
 
