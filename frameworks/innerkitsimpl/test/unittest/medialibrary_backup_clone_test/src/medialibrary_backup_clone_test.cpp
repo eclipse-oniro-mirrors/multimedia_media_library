@@ -1224,7 +1224,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_RestoreAl
     fileInfos.push_back(fileInfo);
     othersClone->RestoreAlbum(fileInfos);
     ASSERT_EQ(fileInfos.size(), 1);
-    EXPECT_EQ(fileInfos[0].otherSubtype,13);
+    EXPECT_EQ(fileInfos[0].otherSubtype, 13);
     EXPECT_TRUE(fileInfos[0].lPath.empty());
 }
 
