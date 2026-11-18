@@ -86,15 +86,15 @@ void MediaLibraryDfxTest::SetUpTestCase(void)
     DfxManager::GetInstance();
     int32_t errCode;
     const std::vector<std::string> dfxXmlFiles = {
-        THUMBNAIL_ERROR_XML, DELETE_BEHAVIOR_XML,COMMON_BEHAVIOR_XML,
+        THUMBNAIL_ERROR_XML, DELETE_BEHAVIOR_XML, COMMON_BEHAVIOR_XML,
         INVALID_BEHAVIOR_XML, COMMON_BEHAVIOR_FOR_FUSE_GETATTER_XML,
         COMMON_BEHAVIOR_FOR_FUSE_TRUNCATE_XML
     };
-    for(const auto &xmlFile::dfxXmlFiles){
+    for(const auto &xmlFile::dfxXmlFiles) {
         shared_ptr<NativePreferences::Preferences> prefs =
             NativePreferences::PreferencesHelper::GetPreferences(
                 MediaPathUtils::AdaptPerferencesPathForAllDevice(xmlFile, true), errCode);
-        if(prefs){
+        if(prefs) {
             prefs->Clear();
             prefs->FlushSync();
         }
@@ -645,7 +645,7 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportTimeOutOperation_test, TestSize
     EXPECT_EQ(errorsBefore.empty(), true);
     dfxManager->HandleTimeOutOperation(bundleName, 1, 0, 0);
     auto errorsAfter = dfxManager->dfxCollector_->GetThumbnailError();
-    EXPECT_EQ(errorsAfter.empty(),true);
+    EXPECT_EQ(errorsAfter.empty(), true);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportHighMemoryImageThumbnail_test_001, TestSize.Level0)
@@ -835,7 +835,8 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportAnalysisVersion_test_001, TestS
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
             NativePreferences::PreferencesHelper::GetPreferences(
-                MediaPathUtils::AdaptPerferencesPathForAllDevice(COMMON_BEHAVIOR_FOR_FUSE_OPEN_TRUNCATE_XML, true), errCode);
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(COMMON_BEHAVIOR_FOR_FUSE_OPEN_TRUNCATE_XML, true),
+                     errCode);
     ASSERT_NE(prefs, nullptr);
     prefs->PutInt("testBundle_analysis_001", 5);
     prefs->FlushSync();
@@ -844,7 +845,7 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportAnalysisVersion_test_001, TestS
     DfxReporter dfxReporter;
     dfxReporter.ReportCommonBehaviorForFuseOpenTruncate();
 
-     EXPECT_EQ(prefs->GetInt("testBundle_analysis_001", 0), 0);
+    EXPECT_EQ(prefs->GetInt("testBundle_analysis_001", 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportStartResult_test_001, TestSize.Level0)
@@ -1016,13 +1017,10 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_0
 
     EXPECT_EQ(mockVideoInfo.cancelWaitTimeMap.count("videoidcancel4"), 1);
     EXPECT_EQ(mockVideoInfo.processWaitTimeMap.count("videoidprocess4"), 1);
-    EXPECT_EQ(static_cast<int64_t>(mockVideoInfo.cancelWaitTimeMap["videoidcancel4"].startTime), 
-        expectedCancelStart);
-    EXPECT_EQ(static_cast<int64_t>(mockVideoInfo.cancelWaitTimeMap["videoidprocess4"].startTime), 
-        expectedProcessStart);
-
-
-
+    EXPECT_EQ(static_cast<int64_t>(mockVideoInfo.cancelWaitTimeMap["videoidcancel4"].startTime),
+         expectedCancelStart);
+    EXPECT_EQ(static_cast<int64_t>(mockVideoInfo.cancelWaitTimeMap["videoidprocess4"].startTime),
+         expectedProcessStart);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_003, TestSize.Level0)
