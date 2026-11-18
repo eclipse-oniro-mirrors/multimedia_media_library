@@ -26,6 +26,7 @@ ohos_unittest("media_background_task_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include/background",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_PATH}/include",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/cloud_sync_utils",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -53,6 +54,7 @@ ohos_unittest("media_background_task_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_lcd_size_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_scan_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/cloud_sync_utils/cloud_sync_utils.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
