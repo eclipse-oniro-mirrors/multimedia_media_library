@@ -50,6 +50,7 @@
 #undef private
 #include <fstream>
 #include <random>
+#include <algorithm>
 #include "parameters.h"
 #include "media_config_info_column.h"
 #include "values_bucket.h"
@@ -309,13 +310,13 @@ void PrepareFileInfos(const string &tableName, vector<FileInfo> &fileInfos)
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_audio_test_002, TestSize.Level2)
 {
     MEDIA_INFO_LOG("medialibrary_backup_clone_restore_audio_test_002 start");
-    int32_t count = 3;
     CloneSource cloneSource;
     vector<string> tableList = { AudioColumn::AUDIOS_TABLE };
     Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
     restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
     restoreService->CheckTableColumnStatus(restoreService->mediaRdb_, CLONE_TABLE_LISTS_AUDIO);
-    EXPECT_EQ(count, EXPECTED_AUDIO_COUNT);
+    EXPECT_EQ(restoreService->tableColumnStatusMap_.count(AudioColumn::AUDIOS_TABLE), 1);
+    EXPECT_TRUE(restoreService->tableColumnStatusMap_[AudioColumn::AUDIOS_TABLE]);
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
@@ -334,7 +335,10 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_audio_te
     Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
     restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
     restoreService->CheckTableColumnStatus(restoreService->mediaRdb_, CLONE_TABLE_LISTS_AUDIO);
-    EXPECT_EQ(count, EXPECTED_AUDIO_COUNT);
+    EXPECT_EQ(restoreService->tableColumnStatusMap_.count(AudioColumn::AUDIOS_TABLE), 1);
+    EXPECT_TRUE(restoreService->tableColumnStatusMap_[AudioColumn::AUDIOS_TABLE]);
+    int32_t audioCountAfter = GetCountByWhereClause(AudioColumn::AUDIOS_TABLE, g_rdbStore->GetRaw());
+    EXPECT_EQ(audioCountAfter, audioCountBefore);
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
@@ -454,7 +458,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_base_set_error_code_00
     restoreService->SetErrorCode(RestoreError::INIT_FAILED);
     MEDIA_INFO_LOG("Get errorCode: %{public}d, errorInfo: %{public}s", restoreService->errorCode_,
         restoreService->errorInfo_.c_str());
-    EXPECT_GT(restoreService->errorInfo_.size(), 0);
+    EXPECT_EQ(restoreService->errorCode_; static_cast<int32_t>(RestoreError::INIT_FAILED));
+    EXPECT_EQ(restoreService->errorInfo_, "RESTORE_INIT_FAILED");
 }
 
 /*
@@ -487,10 +492,12 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_base_update_failed_fil
     restoreService->UpdateFailedFiles(static_cast<int32_t>(MediaType::MEDIA_TYPE_AUDIO), fileInfo,
         RestoreError::PATH_INVALID);
     MEDIA_INFO_LOG("Get failedFilesMap size: %{public}zu", restoreService->failedFilesMap_.size());
-    EXPECT_GT(restoreService->failedFilesMap_.size(), 0);
-    EXPECT_GT(restoreService->failedFilesMap_.count(STAT_TYPE_PHOTO), 0);
-    EXPECT_GT(restoreService->failedFilesMap_.count(STAT_TYPE_VIDEO), 0);
-    EXPECT_GT(restoreService->failedFilesMap_.count(STAT_TYPE_AUDIO), 0);
+    EXPECT_EQ(restoreService->failedFilesMap_.size(), 3);
+    EXPECT_EQ(restoreService->failedFilesMap_.count(STAT_TYPE_PHOTO), 1);
+    EXPECT_EQ(restoreService->failedFilesMap_.count(STAT_TYPE_VIDEO), 1);
+    EXPECT_EQ(restoreService->failedFilesMap_.count(STAT_TYPE_AUDIO), 1);
+    EXPECT_EQ(restoreService->errorCode_, static_cast<int32_t>(RestoreError::PATH_INVALID));
+    EXPECT_EQ(restoreService->errorCode_, "DEVICE_PATH_INVALID");
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_get_backup_info_001, TestSize.Level2)
@@ -515,7 +522,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_file_get_failed_files_
     };
     string failedFilesStr = BackupFileUtils::GetFailedFilesStr(CLONE_RESTORE_ID, failedFiles, MAX_FAILED_FILES_LIMIT);
     MEDIA_INFO_LOG("Get failedFilesStr: %{public}s", failedFilesStr.c_str());
-    EXPECT_GT(failedFilesStr.size(), 0);
+    EXPECT_EQ(failedFilesStr.front(), '[');
+    EXPECT_EQ(failedFilesStr.back(), ']');
+    EXPECT_EQ(std::count(failedFilesStr.begin(), failedFilesStr.end(), '/'), 3);
 }
 
 /**
@@ -713,7 +722,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_001,
 
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
-    EXPECT_NE(othersClone->Init("/data/photo", "/data/test", true), E_OK);
+        EXPECT_EQ(othersClone->mediaLibraryRdb_, nullptr);
+        EXPECT_EQ(othersClone->Init("/data/photo", "/data/test", true), E_FAIL);
+        EXPECT_EQ(othersClone->errorCode_, 0);
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_002, TestSize.Level2)
@@ -731,7 +742,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_002,
     shared_ptr<NativeRdb::RdbStore> store = NativeRdb::RdbHelper::GetRdbStore(config, 1, helper, errCode);
     ASSERT_NE(store, nullptr);
     othersClone->mediaLibraryRdb_ = store;
-    EXPECT_NE(othersClone->Init("/data/photo", "/data/test", true), E_OK);
+    EXPECT_TRUE(othersClone->backupRestoreDir_.empty());
+    EXPECT_EQ(othersClone->Init("/data/photo", "/data/test", true), ERR_NOT_ACCESSIBLE);
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_003, TestSize.Level2)
@@ -1203,9 +1215,17 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_RestoreAl
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
+    EXPECT_EQ(othersClone->mediaLibraryRdb_, nullptr);
+    FileInfo fileInfo;
+    fileInfo.filePath = "test_DYNAMIC.MOV";
+    EXPECT_EQ(fileInfo.otherSubtype, 0);
+    EXPECT_TRUE(fileInfo.lPath.empty());
     std::vector<FileInfo> fileInfos;
+    fileInfos.push_back(fileInfo);
     othersClone->RestoreAlbum(fileInfos);
-    EXPECT_TRUE(othersClone->photoAlbumDao_.mediaLibraryRdb_ == nullptr);
+    ASSERT_EQ(fileInfos.size(), 1);
+    EXPECT_EQ(fileInfos[0].otherSubtype,13);
+    EXPECT_TRUE(fileInfos[0].lPath.empty());
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_RestoreAlbum_002, TestSize.Level2)
@@ -1215,11 +1235,15 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_RestoreAl
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(OTHERS_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
+    EXPECT_EQ(othersClone->mediaLibraryRdb_, nullptr);
     FileInfo fileInfo;
+    EXPECT_TRUE(fileInfos.filePath.empty());
+    EXPECT_TRUE(fileInfos.lPath.empty());
     std::vector<FileInfo> fileInfos;
     fileInfos.push_back(fileInfo);
     othersClone->RestoreAlbum(fileInfos);
-    EXPECT_TRUE(othersClone->photoAlbumDao_.mediaLibraryRdb_ == nullptr);
+    ASSERT_EQ(fileInfos.size(), 1);
+    EXPECT_EQ(fileInfos[0].lPath, FILE_SEPARATOR);
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HasSameFileForDualClone_001, TestSize.Level2)
@@ -1498,8 +1522,11 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_service_start_backup_0
     EXPECT_TRUE(OHOS::system::SetParameter(CLOUDSYNC_SWITCH_STATUS_KEY, std::to_string(DEFAULT_TIME_STAMP)));
     instance.restoreService_ = nullptr;
     instance.StartBackup(UPGRADE_RESTORE_ID, EMPTY_STR, EMPTY_STR);
+    EXPECT_EQ(instance.restoreService_, nullptr);
     instance.restoreService_ = nullptr;
     instance.StartBackup(CLONE_RESTORE_ID, EMPTY_STR, EMPTY_STR);
+    EXPECT_NE(instance.restoreService_, nullptr);
+    instance.restoreService_ = nullptr;
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_service_start_backup_ex_001, TestSize.Level2)
@@ -1511,10 +1538,14 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_service_start_backup_e
     std::string backupExResult = EMPTY_STR;
     instance.restoreService_ = nullptr;
     instance.StartBackupEx(UPGRADE_RESTORE_ID, EMPTY_STR, EMPTY_STR, EMPTY_STR, backupExResult);
-    EXPECT_NE(backupExResult, EMPTY_STR);
+    EXPECT_NE(backupExResult.find("ErrorInfo"), std::string::npos);
+    EXPECT_NE(backupExResult.find("13500099"), std::string::npos);
     instance.restoreService_ = nullptr;
     instance.StartBackupEx(CLONE_RESTORE_ID, EMPTY_STR, EMPTY_STR, EMPTY_STR, backupExResult);
     EXPECT_NE(backupExResult, EMPTY_STR);
+    ASSERT_NE(instance.restoreService_, nullptr);
+    EXPECT_EQ(instance.restoreService_->sceneCode_, CLONE_RESTORE_ID);
+    instance.restoreService_ = nullptr;
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_service_release_001, TestSize.Level2)
@@ -1523,9 +1554,13 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_service_release_001, T
     BackupRestoreService &instance = BackupRestoreService::GetInstance();
     instance.restoreService_ = nullptr;
     instance.Release(nullptr, UPGRADE_RESTORE_ID, RELEASE_SCENE_RESTORE);
+    EXPECT_EQ(OHOS::system::GetParameter("multimedia.medialibrary.cloneFlag", ""), "0");
+    EXPECT_EQ(OHOS::system::GetParameter("multimedia.medialibrary.restoreFlag", ""), "");
 
     instance.restoreService_ = nullptr;
     instance.Release(nullptr, CLONE_RESTORE_ID, RELEASE_SCENE_RESTORE);
+    EXPECT_EQ(OHOS::system::GetParameter("multimedia.medialibrary.cloneFlag", ""), "0");
+    EXPECT_EQ(OHOS::system::GetParameter("multimedia.medialibrary.restoreFlag", ""), "");
 
     instance.restoreService_ = nullptr;
     instance.Release(nullptr, CLONE_RESTORE_ID, RELEASE_SCENE_BACKUP);
@@ -2076,7 +2111,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_classify
 
     cloneRestoreService->RestoreAnalysisClassify();
     int32_t count = GetCountByWhereClause(VISION_LABEL_TABLE, g_rdbStore->GetRaw());
-    EXPECT_GT(count, 0);
+    EXPECT_EQ(count, 1);
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
     MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_classify_test_007");
@@ -2884,7 +2919,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_test_geo_knowledge_clo
 
     cloneRestoreService->RestoreAnalysisGeo();
     int32_t count = GetCountByWhereClause(GEO_KNOWLEDGE_TABLE, g_rdbStore->GetRaw());
-    EXPECT_GT(count, 0);
+    EXPECT_EQ(count, 1);
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
     MEDIA_INFO_LOG("End medialibrary_backup_test_geo_knowledge_clone_test_002");
@@ -3084,7 +3119,10 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_set_visible_files_in_d
     photosDataHandler_.OnStart(UPGRADE_RESTORE_ID, "", g_rdbStore->GetRaw());
     photosDataHandler_.setVisibleFiles_.emplace_back(DIRTY_FILE_ID);
     int32_t count = photosDataHandler_.SetVisibleFilesInDb();
-    EXPECT_GT(count, EXPECTED_COUNT_0);
+    EXPECT_EQ(count, 1);
+    int32_t visibleResult = INVALID_COUNT;
+    QueryDirtyFileCount(visibleResult);
+    EXPECT_EQ(visibleResult, 1);
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_delete_dirty_files_in_db_test_001, TestSize.Level2)
@@ -3112,7 +3150,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_delete_dirty_files_in_
 
     int32_t result = INVALID_COUNT;
     QueryDirtyFileCount(result);
-    EXPECT_GT(result, 0);
+    EXPECT_EQ(result, 1);
 }
 
 void MediaLibraryBackupCloneTest::InsertSampleSearchIndexData(const std::shared_ptr<NativeRdb::RdbStore>& db,
@@ -3621,8 +3659,13 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_release_001, Tes
     MEDIA_INFO_LOG("Start medialibrary_backup_clone_release_001");
     unique_ptr<CloneRestore> cloneRestoreService = make_unique<CloneRestore>();
     ASSERT_NE(cloneRestoreService.get(), nullptr);
+    cloneRestoreService->SetErrorCode(RestoreError::INIT_FAILED);
     cloneRestoreService->Release(ReleaseScene::BACKUP);
+    EXPECT_EQ(cloneRestoreService->errorCode_, static_cast<int32_t>(RestoreError::INIT_FAILED));
+    EXPECT_EQ(cloneRestoreService->errorInfo_, "RESTORE_INIT_FAILED");
     cloneRestoreService->Release(ReleaseScene::RESTORE);
+    EXPECT_EQ(cloneRestoreService->errorCode_, static_cast<int32_t>(RestoreError::INIT_FAILED));
+    EXPECT_EQ(cloneRestoreService->errorInfo_, "RESTORE_INIT_FAILED");
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_query_old_no_face_status_test_001, TestSize.Level2)
@@ -4823,7 +4866,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_or
         CONFIG_INFO_CLONE_HDC_DEVICE_ID_KEY, DEFAULT_DEVICE_ID));
     
     CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
-    EXPECT_FALSE(expectedConfigInfo == result);
+    EXPECT_EQ(result.switchStatus, SwitchStatus::NONE);
+    EXPECT_EQ(result.deviceId, DEFAULT_DEVICE_ID);
+    EXPECT_TRUE(result.isValid);
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
@@ -5296,8 +5341,9 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_current_clone_config_info
     MEDIA_INFO_LOG("Start medialibrary_get_current_clone_config_info_001");
     CloneRestoreConfigInfo expectedConfigInfo;
     auto config = restoreService->GetCurrentDeviceCloneConfigInfo();
-    bool flag = !config.isValid || config.switchStatus != SwitchStatus::NONE;
-    EXPECT_TRUE(flag);
+    EXPECT_EQ(config.switchStatus, SwitchStatus::NONE);
+    EXPECT_FALSE(config.isValid);
+    EXPECT_TRUE(config.deviceId.empty());
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_hdc_device_id_001, TestSize.Level2)
@@ -5305,8 +5351,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_hdc_device_id_001, TestSi
     MEDIA_INFO_LOG("Start medialibrary_get_hdc_device_id_001");
     std::string deviceId;
     bool ret = SettingsDataManager::GetHdcDeviceId(deviceId);
-    bool flag = ((ret && !deviceId.empty()) || (!ret && deviceId.empty()));
-    EXPECT_TRUE(flag);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(deviceId.empty());
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_deleteExistMapping_test_001, TestSize.Level2) {

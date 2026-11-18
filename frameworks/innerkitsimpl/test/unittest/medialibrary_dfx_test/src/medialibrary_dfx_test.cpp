@@ -84,6 +84,21 @@ void MediaLibraryDfxTest::SetUpTestCase(void)
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     EXPECT_NE((g_rdbStore == nullptr), true);
     DfxManager::GetInstance();
+    int32_t errCode;
+    const std::vector<std::string> dfxXmlFiles = {
+        THUMBNAIL_ERROR_XML, DELETE_BEHAVIOR_XML,COMMON_BEHAVIOR_XML,
+        INVALID_BEHAVIOR_XML, COMMON_BEHAVIOR_FOR_FUSE_GETATTER_XML,
+        COMMON_BEHAVIOR_FOR_FUSE_TRUNCATE_XML
+    };
+    for(const auto &xmlFile::dfxXmlFiles){
+        shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(xmlFile, true), errCode);
+        if(prefs){
+            prefs->Clear();
+            prefs->FlushSync();
+        }
+    }
 }
 
 void MediaLibraryDfxTest::TearDownTestCase(void)
@@ -172,12 +187,17 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_8K_video_test, TestSize.Lev
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_timeout_operation_test_001, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
+    ASSERT_NE(dfxManager->dfxReporter_, nullptr);
     string bundleName = "bundleName";
     int32_t type = 1;
     int32_t object = 0;
     int32_t time = 0;
+    dfxManager->isInitSuccess_ = false;
     dfxManager->HandleTimeOutOperation(bundleName, type, object, time);
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
+    auto thumbnailError = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(thumbnailError.empty(), true);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_timeout_operation_test_002, TestSize.Level0)
@@ -196,11 +216,16 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_timeout_operation_test_002, TestSize.
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_error_test_001, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
     std::string path = "";
     int32_t method = 1;
     int32_t errorCode = 1;
     dfxManager->HandleThumbnailError(path, method, errorCode);
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    auto thumbnailError = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(thumbnailError.empty(), false);
+    EXPECT_EQ(thumbnailError.count(path), 1);
+    EXPECT_EQ(thumbnailError[path].errCode, errCode);
+    EXPECT_EQ(thumbnailError[path].method, method);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_error_test_002, TestSize.Level0)
@@ -212,14 +237,20 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_error_test_002, TestSize.Le
     int32_t errorCode = 1;
     dfxManager->isInitSuccess_ = false;
     dfxManager->HandleThumbnailError(path, method, errorCode);
+    auto thumbnailError = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(thumbnailError.count(path), 0);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_generation_test_001, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
     ThumbnailData::GenerateStats stats;
     dfxManager->HandleThumbnailGeneration(stats);
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    EXPECT_NE(dfxManager->dfxReporter_, nullptr);
+    auto thumbnailError = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(thumbnailError.empty(), true);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_generation_test_002, TestSize.Level0)
@@ -229,48 +260,90 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_thumbnail_generation_test_002, TestSi
     ThumbnailData::GenerateStats stats;
     dfxManager->isInitSuccess_ = false;
     dfxManager->HandleThumbnailGeneration(stats);
+    auto thumbnailError = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(thumbnailError.empty(), true);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_common_behavior_test_001, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
     string bundleName = "bundleName";
     int32_t type = 1;
     dfxManager->HandleCommonBehavior(bundleName, type);
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    auto commonBehavior = dfxManager->dfxCollector_->GetCommonBehavior();
+    EXPECT_EQ(commonBehavior.empty(), false);
+    EXPECT_EQ(commonBehavior.count(bundleName), 1);
+    EXPECT_EQ(commonBehavior[bundleName].times, 1);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_common_behavior_test_002, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
     ASSERT_NE(dfxManager, nullptr);
-    string bundleName = "bundleName";
+    string bundleName = "bundleName_behavior_notinit";
     int32_t type = 1;
     dfxManager->isInitSuccess_ = false;
     dfxManager->HandleCommonBehavior(bundleName, type);
+    auto commonBehavior = dfxManager->dfxCollector_->GetCommonBehavior();
+    EXPECT_EQ(commonBehavior.count(bundleName), 0);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_half_day_missions_test_001, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
+    ASSERT_NE(dfxManager->dfxWorker_, nullptr);
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutLong(LAST_HALF_DAY_REPORT_TIME, 0);
+    prefs->FlushSync();
+    int64_t expectedTime = MediaFileUtils::UTCTimeSeconds();
     dfxManager->HandleHalfDayMissions();
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    int64_t afterTime = prefs->GetLong(LAST_HALF_DAY_REPORT_TIME, 0);
+    EXPECT_EQ(afterTime, expectedTime);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_half_day_missions_test_002, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
     ASSERT_NE(dfxManager, nullptr);
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    int64_t sentinelTime = 12345;
+    prefs->PutLong(LAST_HALF_DAY_REPORT_TIME, sentinelTime);
+    prefs->FlushSync();
     dfxManager->isInitSuccess_ = false;
     dfxManager->HandleHalfDayMissions();
+    int64_t afterTime = prefs->GetLong(LAST_HALF_DAY_REPORT_TIME, 0);
+    EXPECT_EQ(afterTime, sentinelTime);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_half_day_missions_test_003, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
     ASSERT_NE(dfxManager, nullptr);
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    int64_t sentinelTime = 67890;
+    prefs->PutLong(LAST_HALF_DAY_REPORT_TIME, sentinelTime);
+    prefs->FlushSync();
     dfxManager->dfxWorker_ = nullptr;
     dfxManager->HandleHalfDayMissions();
+    int64_t afterTime = prefs->GetLong(LAST_HALF_DAY_REPORT_TIME, 0);
+    EXPECT_EQ(afterTime, sentinelTime);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_directory_exist_test_001, TestSize.Level0)
@@ -286,8 +359,14 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_five_minute_task_test_001, TestSize.L
 {
     auto dfxManager = DfxManager::GetInstance();
     ASSERT_NE(dfxManager, nullptr);
+    string bundleName = "bundleName_fivemin_notinit";
+    int32_t type = 1;
+    dfxManager->dfxCollector_->AddCommonBahavior(bundleName, type);
     dfxManager->isInitSuccess_ = false;
     dfxManager->HandleFiveMinuteTask();
+    auto commonBehavior = dfxManager->dfxCollector_->GetCommonBehavior();
+    EXPECT_EQ(commonBehavior.count(bundleName), 1);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_five_minute_task_test_002, TestSize.Level0)
@@ -310,19 +389,25 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_one_day_report_test_002, TestSize.Lev
 {
     auto dfxManager = DfxManager::GetInstance();
     ASSERT_NE(dfxManager, nullptr);
-    string appName = "appName";
+    string appName = "appName_notinit";
     bool adapted = true;
     dfxManager->isInitSuccess_ = false;
     dfxManager->HandleAdaptationToMovingPhoto(appName, adapted);
+    auto adaptationInfo = dfxManager->dfxCollector_->GetAdaptationToMovingPhotoInfo();
+    EXPECT_EQ(adaptationInfo.adaptedAppPackages.count(appName), 0);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_one_day_report_test_003, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
-    string appName = "appName";
+    ASSERT_NE(dfxManager, nullptr);
+    string appName = "appName_adapted";
     bool adapted = true;
     dfxManager->HandleAdaptationToMovingPhoto(appName, adapted);
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    auto adaptationInfo = dfxManager->dfxCollector_->GetAdaptationToMovingPhotoInfo();
+    EXPECT_EQ(adaptationInfo.adaptedAppPackages.count(appName), 1);
+    EXPECT_EQ(adaptationInfo.unadaptedAppPackages.count(appName), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_init_sync_state_test_001, TestSize.Level0)
@@ -513,7 +598,8 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_split_string_test, TestSize.Level0)
 
 HWTEST_F(MediaLibraryDfxTest, medialib_cloud_manager_test, TestSize.Level0)
 {
-    CloudSyncDfxManager::GetInstance().RunDfx();
+    auto &manager = CloudSyncDfxManager::GetInstance();
+    manager.RunDfx();
     int32_t downloadedThumb = 0;
     int32_t generatedThumb = 0;
     int32_t totalDownload = 0;
@@ -524,39 +610,42 @@ HWTEST_F(MediaLibraryDfxTest, medialib_cloud_manager_test, TestSize.Level0)
     EXPECT_EQ(generatedThumb, 0);
     EXPECT_EQ(totalDownload, 0);
 
-    InitState::StateSwitch(CloudSyncDfxManager::GetInstance());
-    InitState::Process(CloudSyncDfxManager::GetInstance());
-    StartState::StateSwitch(CloudSyncDfxManager::GetInstance());
-    StartState::Process(CloudSyncDfxManager::GetInstance());
-    EndState::StateSwitch(CloudSyncDfxManager::GetInstance());
-    EndState::Process(CloudSyncDfxManager::GetInstance());
-
-    CloudSyncDfxManager::GetInstance().ShutDownTimer();
+    InitState::StateSwitch(manager);
+    EXPECT_EQ(manager.syncState_, SyncState::INIT_STATE);
+    InitState::Process(manager);
+    EXPECT_EQ(manager.timerId_, 0);
+    StartState::StateSwitch(manager);
+    EXPECT_EQ(manager.syncState_, SyncState::INIT_STATE);
+    StartState::Process(manager);
+    EXPECT_EQ(manager.syncState_, SyncState::INIT_STATE);
+    EndState::StateSwitch(manager);
+    EXPECT_EQ(manager.syncState_, SyncState::INIT_STATE);
+    EndState::Process(manager);
+    EXPECT_EQ(manager.syncState_, SyncState::INIT_STATE);
+    manager.ShutDownTimer();
+    EXPECT_EQ(manager.timerId_, 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_one_day_report_test, TestSize.Level0)
 {
-    int64_t result = DfxManager::GetInstance()->HandleOneDayReport();
-    EXPECT_GT(result, 0);
+    auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
+    int64_t expected = MediaFileUtils::UTCTimeSeconds();
+    int64_t result = dfxManager->HandleOneDayReport();
+    EXPECT_GT(result, expected);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportTimeOutOperation_test, TestSize.Level0)
 {
-    std::string bundleName = "bundleName";
-    int32_t type = 1;
-    int32_t object = 0;
-    int32_t time = 0;
-    DfxReporter dfxReporter;
-    dfxReporter.ReportTimeOutOperation(bundleName, type, object, time);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_TIMEOUT_ERROR",
-        HiviewDFX::HiSysEvent::EventType::FAULT,
-        "BUNDLE_NAME", bundleName,
-        "OPERATION_TYPE", type,
-        "OPERATION_OBJECT", object,
-        "TIME", time);
-    EXPECT_EQ(ret, E_OK);
+    auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
+    dfxManager->isInitSuccess_ = false;
+    std::string bundleName = "bundleName_timout";
+    auto errorsBefore = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(errorsBefore.empty(), true);
+    dfxManager->HandleTimeOutOperation(bundleName, 1, 0, 0);
+    auto errorsAfter = dfxManager->dfxCollector_->GetThumbnailError();
+    EXPECT_EQ(errorsAfter.empty(),true);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportHighMemoryImageThumbnail_test_001, TestSize.Level0)
@@ -616,157 +705,166 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportHighMemoryVideoThumbnail_test_0
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportDeleteBehavior_test_001, TestSize.Level0)
 {
-    string bundleName = "";
-    int32_t type = 1;
-    std::string path = "";
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DELETE_BEHAVIOR_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    std::string testkey = "testBundle_del_001|1";
+    int64_t testTimes = 5;
+    prefs->PutInt(testkey, testTimes);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt(testkey, 0), testTimes);
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportDeleteBehavior(bundleName, type, path);
-    EXPECT_EQ(bundleName, "");
+    dfxReporter.ReportDeleteStatistic();
+    EXPECT_EQ(prefs->GetInt(testkey, 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportDeleteBehavior_test_002, TestSize.Level0)
 {
-    string bundleName = "bundleName";
-    int32_t type = 1;
-    std::string path = "/data";
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DELETE_BEHAVIOR_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    std::string key1 = "testBundle_del_002a|2";
+    std::string key2 = "testBundle_del_002b|3";
+    int64_t times1 = 3;
+    int64_t times2 = 7;
+    prefs->PutInt(key1, times1);
+    prefs->PutInt(key2, times2);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt(key1, 0), times1);
+    EXPECT_EQ(prefs->GetInt(key2, 0), times2);
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportDeleteBehavior(bundleName, type, path);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_DELETE_BEHAVIOR",
-        HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
-        "BUNDLE_NAME", bundleName,
-        "TYPE", type,
-        "PATH", path);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportDeleteStatistic();
+    EXPECT_EQ(prefs->GetInt(key1, 0), 0);
+    EXPECT_EQ(prefs->GetInt(key2, 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportPhotoInfo_test_001, TestSize.Level0)
 {
-    PhotoStatistics stats = {};
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DELETE_BEHAVIOR_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutInt("testBundle_photo_001", 5);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt("testBundle_photo_001", 0), 5);
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportPhotoInfo(stats);
-    stats.southDeviceType = 0;
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_PHOTO_INFO",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "LOCAL_IMAGE_COUNT", stats.localImageCount,
-        "LOCAL_VIDEO_COUNT", stats.localVideoCount,
-        "CLOUD_IMAGE_COUNT", stats.cloudImageCount,
-        "CLOUD_VIDEO_COUNT", stats.cloudVideoCount,
-        "SHARED_IMAGE_COUNT", stats.sharedImageCount,
-        "SHARED_VIDEO_COUNT", stats.sharedVideoCount,
-        "SOUTH_DEVICE_TYPE", stats.southDeviceType,
-        "WAITING_COUNT", stats.tasksWaitingCount,
-        "DOWNLOADING_COUNT", stats.tasksDownloadingCount,
-        "PAUSE_COUNT", stats.tasksPauseCount,
-        "FAILED_COUNT", stats.tasksFailedCount,
-        "SUCC_COUNT", stats.tasksSuccessCount,
-        "AUTO_PAUSE_COUNT", stats.tasksAutoPauseCount,
-        "SUCC_TOTAL_SIZE", stats.tasksSuccessTotalSize,
-        "SUCC_TOTAL_TIME", stats.tasksSuccessTotalTime);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportCommonBehavior();
+    EXPECT_EQ(prefs->GetInt("testBundle_photo_001", 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportAstcInfo_test_001, TestSize.Level0)
 {
+    MediaLibraryAstcStat::GetInstance().SetDoubleUpgradeInfo(100, "test_uid");
+    string jsonBefore = MediaLibraryAstcStat::GetInstance().GetJson();
+    EXPECT_NE(jsonBefore.find("\"uid\":\"test_uid\""), string::npos);
     LcdAndAstcCount count = {};
+    count.localLcdCount = 100;
+    count.localAstCount = 50;
+    count.cloudLcdCount = 30;
+    count.cloudAstCount = 20;
     DfxReporter dfxReporter;
     dfxReporter.ReportAstcInfo(count);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_ASTC_INFO",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "LOCAL_LCD_COUNT", count.localLcdCount,
-        "LOCAL_ASTC_COUNT", count.localAstcCount,
-        "CLOUD_LCD_COUNT", count.cloudLcdCount,
-        "CLOUD_ASTC_COUNT", count.cloudAstcCount,
-        "PHASE_DETAIL", MediaLibraryAstcStat::GetInstance().GetJson());
-    EXPECT_EQ(ret, E_OK);
+
+    string jsonAfter = MediaLibraryAstcStat::GetInstance().GetJson();
+    EXPECT_EQ(jsonAfter.find("\"uid\":\"test_uid\""), string::npos);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportAlbumInfo_test_001, TestSize.Level0)
 {
-    std::string albumName = "albumName";
-    int32_t albumImageCount = 1;
-    int32_t albumVideoCount = 1;
-    bool isLocal = true;
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(INVALID_BEHAVIOR_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    std::string testkey = "testBundle_album_001|1";
+    prefs->PutString(testkey, "/data/test/invalid_album");
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetString(testkey, ""), "/data/test/invalid_album");
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportAlbumInfo(albumName, albumImageCount, albumVideoCount, isLocal);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_ALBUM_INFO",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "ALBUM_NAME", albumName,
-        "ALBUM_IMAGE_COUNT", albumImageCount,
-        "ALBUM_VIDEO_COUNT", albumVideoCount,
-        "IS_LOCAL", isLocal);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportInvalidBehvior();
+
+    EXPECT_EQ(prefs->GetString(testkey, ""), "");
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportDirtyCloudPhoto_test_001, TestSize.Level0)
 {
-    std::string data = "data";
-    int32_t dirty = 1;
-    int32_t cloudVersion = 1;
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(THUMBNAIL_ERROR_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    std::string testkey = "/data/test/thumb_dirty|1|1001";
+    std::string testValue = "12345";
+    prefs->PutString(testkey, testValue);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetString(testkey, ""), testValue);
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportDirtyCloudPhoto(data, dirty, cloudVersion);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_DIRTY_CLOUD_PHOTO",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "PATH", data,
-        "DIRTY", dirty,
-        "CLOUD_VERSION", cloudVersion);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportThumbnailError();
+
+    EXPECT_EQ(prefs->GetString(testkey, ""), "");
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportCommonVersion_test_001, TestSize.Level0)
 {
-    int32_t dbVersion = 1;
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(COMMON_BEHAVIOR_FOR_FUSE_GETATTER_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutInt("testBundle_version_001", 3);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt("testBundle_version_001", 0), 3);
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportCommonVersion(dbVersion);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_COMMON_VERSION",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "DB_VERSION", dbVersion,
-        "THUMBNAIL_VERSION", THUMBNAIL_VERSION);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportCommonBehaviorForFuseGetAttr();
+    EXPECT_EQ(prefs->GetInt("testBundle_version_001", 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportAnalysisVersion_test_001, TestSize.Level0)
 {
-    std::string analysisName = "analysisName";
-    int32_t version = 1;
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(COMMON_BEHAVIOR_FOR_FUSE_OPEN_TRUNCATE_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutInt("testBundle_analysis_001", 5);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt("testBundle_analysis_001", 0), 5);
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportAnalysisVersion(analysisName, version);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_ANALYSIS_VERSION",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "NAME", analysisName,
-        "VERSION", version);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportCommonBehaviorForFuseOpenTruncate();
+
+     EXPECT_EQ(prefs->GetInt("testBundle_analysis_001", 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportStartResult_test_001, TestSize.Level0)
 {
-    int32_t scene = 1;
-    int32_t error = 0;
-    int32_t start = 1;
-    int32_t cost = static_cast<int32_t>(MediaFileUtils::UTCTimeMilliSeconds() - start);
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(ADAPTATION_TO_MOVING_PHOTO_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutInt(MOVING_PHOTO_KEY_UNADAPTED_NUM, 2);
+    prefs->PutString(MOVING_PHOTO_KEY_UNADAPTED_PACKAGE, "com.test.unadapted");
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt((MOVING_PHOTO_KEY_UNADAPTED_NUM, 0), 2);
+    EXPECT_EQ(prefs->GetString((MOVING_PHOTO_KEY_UNADAPTED_PACKAGE, ""), "com.test.unadapted");
+
     DfxReporter dfxReporter;
-    dfxReporter.ReportStartResult(scene, error, start);
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_START_RESULT",
-        HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
-        "SCENE", scene,
-        "ERROR", error,
-        "TIME", cost);
-    EXPECT_EQ(ret, E_OK);
+    dfxReporter.ReportAdaptationToMovingPhoto();
+    
+    EXPECT_EQ(prefs->GetInt((MOVING_PHOTO_KEY_UNADAPTED_NUM, 0), 0);
+    EXPECT_EQ(prefs->GetString((MOVING_PHOTO_KEY_UNADAPTED_PACKAGE, ""), "");
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportCloudSyncThumbGenerationStatus_test_001, TestSize.Level0)
@@ -831,22 +929,17 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_QueryFromPhotos_test_001, TestSize.Le
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportCinematicInfo_test_001, TestSize.Level0)
 {
     DfxReporter dfxReporter;
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DFX_CINEMATIC_VIDEO_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES, 5);
+    prefs->FlushSync();
+    EXPECT_EQ(prefs->GetInt((CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES, 0), 5);
+
     dfxReporter.ReportCinematicVideo();
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "CINEMATIC_VIDEO",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "DATE", "00000",
-        "LOW_QUALITY_ACCESS_TIMES", 1,
-        "HIGH_QUALITY_ACCESS_TIMES", 1,
-        "LOW_QUALITY_ACCESS_URI_TIMES", 1,
-        "HIGH_QUALITY_ACCESS_URI_TIMES", 1,
-        "CANCEL_NUM", 1,
-        "CANCEL_WAIT_AVG_TIME", 1,
-        "PROCESS_AVG_TIME", 1,
-        "MULTISTAGE_SUCCESS_TIMES", 1,
-        "MULTISTAGE_FAILED_TIMES", 1);
-    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(prefs->GetInt((CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES, 0), 0);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_cinematic_caul_waittime_test_001, TestSize.Level0)
@@ -914,15 +1007,22 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_0
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_002, TestSize.Level0)
 {
     DfxCollector dfxCollector;
+    int64_t expectedCancelStart = MediaFileUtils::UTCTimeMilliSeconds();
     dfxCollector.CollectCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel4");
+    int64_t expectedProcessStart = MediaFileUtils::UTCTimeMilliSeconds();
     dfxCollector.CollectCinematicVideoAddStartTime(CinematicWaitType::PROCESS_CINEMATIC, "videoidprocess4");
 
     CinematicVideoInfo mockVideoInfo = dfxCollector.GetCinematicVideoInfo();
 
     EXPECT_EQ(mockVideoInfo.cancelWaitTimeMap.count("videoidcancel4"), 1);
     EXPECT_EQ(mockVideoInfo.processWaitTimeMap.count("videoidprocess4"), 1);
-    EXPECT_NE(mockVideoInfo.cancelWaitTimeMap["videoidcancel4"].startTime, 0);
-    EXPECT_NE(mockVideoInfo.processWaitTimeMap["videoidprocess4"].startTime, 0);
+    EXPECT_EQ(static_cast<int64_t>(mockVideoInfo.cancelWaitTimeMap["videoidcancel4"].startTime), 
+        expectedCancelStart);
+    EXPECT_EQ(static_cast<int64_t>(mockVideoInfo.cancelWaitTimeMap["videoidprocess4"].startTime), 
+        expectedProcessStart);
+
+
+
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_003, TestSize.Level0)
@@ -963,16 +1063,26 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_0
     dfxManager->HandleCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
     dfxManager->HandleCinematicVideoAddEndTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
     dfxManager->HandleCinematicVideoMultistageResult(true);
+    CinematicVideoInfo info = dfxManager->dfxCollector_->GetCinematicVideoInfo();
+    EXPECT_EQ(info.accessTimesHigh, 0);
+    EXPECT_EQ(info.accessTimesLow, 0);
+    EXPECT_EQ(info.multistageSuccessTimes, 0);
+    EXPECT_EQ(info.cancelWaitTimeMap.count("videoidcancel1"), 0);
+    EXPECT_EQ(dfxManager->isInitSuccess_, false);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_006, TestSize.Level0)
 {
     auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
     dfxManager->HandleCinematicVideoAccessTimes(true, true);
     dfxManager->HandleCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
     dfxManager->HandleCinematicVideoAddEndTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
     dfxManager->HandleCinematicVideoMultistageResult(true);
-    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+    CinematicVideoInfo info = dfxManager->dfxCollector_->GetCinematicVideoInfo();
+    EXPECT_EQ(info.accessTimesHigh, 1);
+    EXPECT_EQ(info.multistageSuccessTimes, 1);
+    EXPECT_EQ(info.cancelWaitTimeMap.count("videoidcancel1"), 1);
 }
 
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_QueryAlbumInfoBySubtype_test_001, TestSize.Level0)
@@ -1205,15 +1315,33 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportAncoCountFormatInfo_test_001, T
 
 HWTEST_F(MediaLibraryDfxTest, AncoDfxManager_test_001, TestSize.Level0)
 {
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    prefs->PutBool("anco_first_load_flag", false);
+    prefs->FlushSync();
     AncoDfxManager::GetInstance().ReportFirstLoadInfo(100, 200);
+    EXPECT_EQ(prefs->GetBool(("anco_first_load_flag", false), true);
     AncoDfxManager::GetInstance().ReportFirstLoadInfo(300, 400);
-    EXPECT_EQ(0, E_OK);
+    EXPECT_EQ(prefs->GetBool(("anco_first_load_flag", false), true);
 }
 
 HWTEST_F(MediaLibraryDfxTest, AncoDfxManager_test_003, TestSize.Level0)
 {
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPerferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
+    ASSERT_NE(prefs, nullptr);
+    int64_t sentinelTime = 1;
+    prefs->PutLong("anco_opt_change_info_last_report_time", sentinelTime);
+    prefs->FlushSync();
+    int64_t expectedNow = MediaFileUtils::UTCTimeSeconds();
     AncoDfxManager::GetInstance().InnerReportAndResetOptChangeInfo();
-    EXPECT_EQ(0, E_OK);
+    int64_t afterTime = prefs->GetLong("anco_opt_change_info_last_report_time", 0);
+    EXPECT_EQ(afterTime, expectedNow);
 }
 
 HWTEST_F(MediaLibraryDfxTest, QueryAlbumNames_dfx_test_001, TestSize.Level0)

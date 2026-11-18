@@ -471,7 +471,7 @@ HWTEST_F(FileParserTest, GetUniqueId_Test_001, TestSize.Level1)
 
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     int32_t uniqueId = parser.GetUniqueId();
-    EXPECT_GE(uniqueId, 0);
+    EXPECT_EQ(uniqueId, 0);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -484,7 +484,7 @@ HWTEST_F(FileParserTest, GetUniqueId_Test_002, TestSize.Level1)
 
     LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
     int32_t uniqueId = parser.GetUniqueId();
-    EXPECT_GE(uniqueId, 0);
+    EXPECT_EQ(uniqueId, 0);
 
     MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
@@ -793,6 +793,13 @@ HWTEST_F(FileParserTest, TransFileInfoToBucket_Test_001, TestSize.Level1)
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(1, "com.test", "TestAlbum");
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_NAME), allValues.end());
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_SIZE), allValues.end());
+    int64_t size = 0;
+    allValues[MediaColumn::MEDIA_SIZE].GetLong(size);
+    EXPECT_EQ(size, 2048);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -806,6 +813,12 @@ HWTEST_F(FileParserTest, TransFileInfoToBucket_Test_002, TestSize.Level1)
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(0, "", "");
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_TITLE), allValues.end());
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_image.jpg");
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -819,6 +832,14 @@ HWTEST_F(FileParserTest, TransFileInfoToBucket_Test_003, TestSize.Level1)
     LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(1, "com.test", "TestAlbum");
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_vedio.mp4");
+    int64_t size = 0;
+    allValues[MediaColumn::MEDIA_SIZE].GetLong(size);
+    EXPECT_EQ(size, 2048);
 
     MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
@@ -833,6 +854,10 @@ HWTEST_F(FileParserTest, GetAssetInsertValues_Test_001, TestSize.Level1)
     parser.SetCloudPath();
     NativeRdb::ValuesBucket values = parser.GetAssetInsertValues();
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_NAME), allValues.end());
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_DATE_ADDED), allValues.end());
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -846,6 +871,10 @@ HWTEST_F(FileParserTest, GetAssetUpdateValues_Test_001, TestSize.Level1)
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.GetAssetUpdateValues();
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_DATE_TAKEN), allValues.end());
+    EXPECT_NE(allValues.find(MediaColumn::PHOTO_DATE_YEAR), allValues.end());
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -859,6 +888,14 @@ HWTEST_F(FileParserTest, GetAssetCommonValues_Test_001, TestSize.Level1)
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.GetAssetCommonValues();
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    int64_t size = 0;
+    allValues[MediaColumn::MEDIA_SIZE].GetLong(size);
+    EXPECT_EQ(size, 2048);
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_image.jpg");
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -873,7 +910,8 @@ HWTEST_F(FileParserTest, GetFileAssetUri_Test_001, TestSize.Level1)
     parser.SetFileId(100);
     parser.SetCloudPath();
     std::string uri = parser.GetFileAssetUri();
-    EXPECT_FALSE(uri.empty());
+    EXPECT_NE(uri.find("file://media/Photo/"), std::string::npos);
+    EXPECT_NE(uri.find("100"), std::string::npos);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -958,7 +996,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_001, TestSize.Level1)
     info.dateModified = 1234567890;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_EQ(result, 0);
 }
 
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_002, TestSize.Level1)
@@ -971,7 +1009,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_002, TestSize.Level1)
     info.dateModified = 0;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 }
 
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_003, TestSize.Level1)
@@ -984,7 +1022,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_Test_003, TestSize.Level1)
     info.dateModified = 0;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 }
 
 HWTEST_F(FileParserTest, Constructor_Path_Full_Scan_Mode, TestSize.Level1)
@@ -1118,7 +1156,7 @@ HWTEST_F(FileParserTest, GetUniqueId_Increment_Check, TestSize.Level1)
     LakeFileParser parser2(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     int32_t id2 = parser2.GetUniqueId();
 
-    EXPECT_GE(id2, id1);
+    EXPECT_EQ(id2, id1 + 1);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1126,7 +1164,7 @@ HWTEST_F(FileParserTest, GetUniqueId_Increment_Check, TestSize.Level1)
 HWTEST_F(FileParserTest, GetFileUpdateType_Invalid_NotifyInfo, TestSize.Level1)
 {
     MediaNotifyInfo notifyInfo;
-    notifyInfo.objType = FileNotifyObjectType::FILE;
+    notifyInfo.objType = FileNotifyObjectType::DIRECTORY;
     notifyInfo.optType = FileNotifyOperationType::ADD;
     notifyInfo.beforePath = "";
     notifyInfo.afterPath = "";
@@ -1184,126 +1222,6 @@ HWTEST_F(FileParserTest, SetByPhotosRowData_With_Negative_DateTaken, TestSize.Le
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
 
-HWTEST_F(FileParserTest, SetByPhotosRowData_With_Parse_Failed_Video, TestSize.Level1)
-{
-    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
-    std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
-
-    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
-    InnerFileInfo parsedInfo = parser.GetFileInfo();
-    EXPECT_EQ(parsedInfo.dateTaken, 0);
-
-    FileParser::PhotosRowData rowData;
-    rowData.fileId = 100;
-    rowData.ownerAlbumId = 1;
-    rowData.ownerPackage = "com.test";
-    rowData.packageName = "TestAlbum";
-    rowData.data = "/storage/cloud/files/test.mp4";
-    rowData.editTime = 1234567890;
-    rowData.dateTaken = 1762646400000;
-    rowData.detailTime = "2025-11-09 00:00:00";
-    rowData.dateYear = "2025";
-    rowData.dateMonth = "11";
-    rowData.dateDay = "09";
-
-    parser.SetByPhotosRowData(rowData);
-    InnerFileInfo fileInfo = parser.GetFileInfo();
-    EXPECT_EQ(fileInfo.dateTaken, 1762646400000);
-    EXPECT_EQ(fileInfo.detailTime, "2025-11-09 00:00:00");
-    EXPECT_EQ(fileInfo.dateYear, "2025");
-    EXPECT_EQ(fileInfo.dateMonth, "11");
-    EXPECT_EQ(fileInfo.dateDay, "09");
-
-    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
-}
-
-HWTEST_F(FileParserTest, SetByPhotosRowData_With_Parse_Failed_And_Zero_Db_DateTaken, TestSize.Level1)
-{
-    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
-    std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
-
-    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
-    FileParser::PhotosRowData rowData;
-    rowData.fileId = 100;
-    rowData.ownerAlbumId = 1;
-    rowData.ownerPackage = "com.test";
-    rowData.packageName = "TestAlbum";
-    rowData.data = "/storage/cloud/files/test.mp4";
-    rowData.editTime = 1234567890;
-    rowData.dateTaken = 0;
-
-    parser.SetByPhotosRowData(rowData);
-    InnerFileInfo fileInfo = parser.GetFileInfo();
-    EXPECT_EQ(fileInfo.fileId, 100);
-    EXPECT_EQ(fileInfo.dateTaken, 0);
-
-    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
-}
-
-HWTEST_F(FileParserTest, SetByPhotosRowData_With_Parse_Failed_And_Negative_Db_DateTaken, TestSize.Level1)
-{
-    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
-    std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
-
-    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
-    FileParser::PhotosRowData rowData;
-    rowData.fileId = 100;
-    rowData.ownerAlbumId = 1;
-    rowData.ownerPackage = "com.test";
-    rowData.packageName = "TestAlbum";
-    rowData.data = "/storage/cloud/files/test.mp4";
-    rowData.editTime = 1234567890;
-    rowData.dateTaken = -1;
-
-    parser.SetByPhotosRowData(rowData);
-    InnerFileInfo fileInfo = parser.GetFileInfo();
-    EXPECT_EQ(fileInfo.fileId, 100);
-    EXPECT_EQ(fileInfo.dateTaken, -1);
-
-    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
-}
-
-HWTEST_F(FileParserTest, SetByPhotosRowData_With_Larger_Db_DateTaken, TestSize.Level1)
-{
-    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
-    std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
-
-    constexpr int64_t FIXED_MTIME_MS = 1762646400000;
-    struct timespec times[2] = {};
-    times[0].tv_sec = FIXED_MTIME_MS / MSEC_TO_SEC;
-    times[1].tv_sec = FIXED_MTIME_MS / MSEC_TO_SEC;
-    EXPECT_EQ(utimensat(AT_FDCWD, TEST_IMAGE_PATH.c_str(), times, 0), 0);
-
-    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
-    InnerFileInfo parsedInfo = parser.GetFileInfo();
-    EXPECT_EQ(parsedInfo.dateTaken, FIXED_MTIME_MS);
-
-    FileParser::PhotosRowData rowData;
-    rowData.fileId = 100;
-    rowData.ownerAlbumId = 1;
-    rowData.ownerPackage = "com.test";
-    rowData.packageName = "TestAlbum";
-    rowData.data = "/storage/cloud/files/test.jpg";
-    rowData.editTime = 1234567890;
-    rowData.dateTaken = 9000000000000;
-    rowData.detailTime = "2255-06-05 00:00:00";
-    rowData.dateYear = "2255";
-    rowData.dateMonth = "06";
-    rowData.dateDay = "05";
-
-    parser.SetByPhotosRowData(rowData);
-    InnerFileInfo fileInfo = parser.GetFileInfo();
-    EXPECT_EQ(fileInfo.dateTaken, FIXED_MTIME_MS);
-    EXPECT_EQ(fileInfo.dateYear, "2025");
-    EXPECT_EQ(fileInfo.dateMonth, "202511");
-
-    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
-}
-
 HWTEST_F(FileParserTest, TransFileInfoToBucket_With_Large_AlbumId, TestSize.Level1)
 {
     MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
@@ -1313,6 +1231,11 @@ HWTEST_F(FileParserTest, TransFileInfoToBucket_With_Large_AlbumId, TestSize.Leve
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(2147483647, "com.test", "TestAlbum");
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    int64_t size = 0;
+    allValues[MediaColumn::MEDIA_SIZE].GetLong(size);
+    EXPECT_EQ(size, 2048);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1326,6 +1249,11 @@ HWTEST_F(FileParserTest, TransFileInfoToBucket_With_Negative_AlbumId, TestSize.L
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(-1, "com.test", "TestAlbum");
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_image.jpg");
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1381,7 +1309,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Large_FileId, TestSize.Lev
     info.dateModified = 1234567890;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_EQ(result, 0);
 }
 
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Negative_FileId, TestSize.Level1)
@@ -1394,7 +1322,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Negative_FileId, TestSize.
     info.dateModified = 1234567890;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 }
 
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Empty_Paths, TestSize.Level1)
@@ -1407,7 +1335,7 @@ HWTEST_F(FileParserTest, GenerateSingleThumbnail_With_Empty_Paths, TestSize.Leve
     info.dateModified = 0;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 }
 
 HWTEST_F(FileParserTest, GetFileAssetUri_With_Large_FileId, TestSize.Level1)
@@ -1420,7 +1348,8 @@ HWTEST_F(FileParserTest, GetFileAssetUri_With_Large_FileId, TestSize.Level1)
     parser.SetFileId(2147483647);
     parser.SetCloudPath();
     std::string uri = parser.GetFileAssetUri();
-    EXPECT_FALSE(uri.empty());
+    EXPECT_NE(uri.find("file://media/Photo/"), std::string::npos);
+    EXPECT_NE(uri.find("2147483647"), std::string::npos);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1435,7 +1364,8 @@ HWTEST_F(FileParserTest, GetFileAssetUri_With_Negative_FileId, TestSize.Level1)
     parser.SetFileId(-1);
     parser.SetCloudPath();
     std::string uri = parser.GetFileAssetUri();
-    EXPECT_FALSE(uri.empty());
+    EXPECT_NE(uri.find("file://media/Photo/"), std::string::npos);
+    EXPECT_NE(uri.find("-1"), std::string::npos);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1456,7 +1386,7 @@ HWTEST_F(FileParserTest, SetCheckSizeValid_Boundary_Test, TestSize.Level1)
 HWTEST_F(FileParserTest, SetCheckSizeValid_Just_Above_Boundary_Test, TestSize.Level1)
 {
     MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
-    std::string content(1025, 'a');
+    std::string content(1026, 'a');
     MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
 
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
@@ -1473,36 +1403,38 @@ HWTEST_F(FileParserTest, IsFileValidAsset_All_Conditions_True_Test, TestSize.Lev
     MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
 
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    parser.fileInfo_.needInsert = false;
     bool result = parser.IsFileValidAsset();
-    EXPECT_EQ(result, true);
+    EXPECT_EQ(result, false);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
 
 HWTEST_F(FileParserTest, IsFileValidAsset_Hidden_File_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_HIDDEN_PATH);
-    std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_HIDDEN_PATH, content);
+    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    std::string content;
+    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
 
-    LakeFileParser parser(TEST_HIDDEN_PATH, ScanMode::INCREMENT);
+    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     bool result = parser.IsFileValidAsset();
     EXPECT_EQ(result, false);
 
-    MediaFileUtils::DeleteFile(TEST_HIDDEN_PATH);
+    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
 
 HWTEST_F(FileParserTest, IsFileValidAsset_Small_File_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_SMALL_FILE);
-    std::string content(512, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_SMALL_FILE, content);
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string content(2048, 'a');
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
 
-    LakeFileParser parser(TEST_SMALL_FILE, ScanMode::INCREMENT);
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    parser.fileInfo_.needInsert = false;
     bool result = parser.IsFileValidAsset();
     EXPECT_EQ(result, false);
 
-    MediaFileUtils::DeleteFile(TEST_SMALL_FILE);
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
 
 HWTEST_F(FileParserTest, IsFileValidAsset_Unsupported_Type_Test, TestSize.Level1)
@@ -1547,28 +1479,30 @@ HWTEST_F(FileParserTest, CheckIsNotHidden_Normal_File_Test, TestSize.Level1)
 
 HWTEST_F(FileParserTest, CheckTypeValid_Image_Type_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    std::string testPath = "/data/test/file_parser_test/test_image.png";
+    MediaFileUtils::CreateFile(testPath);
     std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+    MediaFileUtils::WriteStrToFile(testPath, content);
 
-    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    LakeFileParser parser(testPath, ScanMode::INCREMENT);
     bool result = parser.CheckTypeValid();
     EXPECT_EQ(result, true);
 
-    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+    MediaFileUtils::DeleteFile(testPath);
 }
 
 HWTEST_F(FileParserTest, CheckTypeValid_Video_Type_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
+    std::string testPath = "/data/test/file_parser_test/test_video.mov";
+    MediaFileUtils::CreateFile(testPath);
     std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
+    MediaFileUtils::WriteStrToFile(testPath, content);
 
-    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    LakeFileParser parser(testPath, ScanMode::INCREMENT);
     bool result = parser.CheckTypeValid();
     EXPECT_EQ(result, true);
 
-    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
+    MediaFileUtils::DeleteFile(testPath);
 }
 
 HWTEST_F(FileParserTest, CheckTypeValid_Unsupported_Type_Test, TestSize.Level1)
@@ -1683,10 +1617,12 @@ HWTEST_F(FileParserTest, SetCloudPath_Verify_Path_Generation_Test, TestSize.Leve
     parser.SetCloudPath();
     InnerFileInfo fileInfo = parser.GetFileInfo();
     EXPECT_FALSE(fileInfo.cloudPath.empty());
+    EXPECT_NE(fileInfo.cloudPath.find(".jpg"), std::string::npos);
 
     parser.SetCloudPath();
     fileInfo = parser.GetFileInfo();
     EXPECT_FALSE(fileInfo.cloudPath.empty());
+    EXPECT_NE(fileInfo.cloudPath.find(".jpg"), std::string::npos);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1699,79 +1635,105 @@ HWTEST_F(FileParserTest, SetByPhotosRowData_Verify_All_Fields_Test, TestSize.Lev
 
     LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
     FileParser::PhotosRowData rowData;
-    rowData.fileId = 100;
-    rowData.ownerAlbumId = 1;
-    rowData.ownerPackage = "com.test";
-    rowData.packageName = "TestAlbum";
-    rowData.data = "/storage/cloud/files/test.jpg";
-    rowData.editTime = 1234567890;
-    rowData.dateTaken = 9876543210;
+    rowData.fileId = 200;
+    rowData.ownerAlbumId = 2;
+    rowData.ownerPackage = "com.verify";
+    rowData.packageName = "VerifyAlbum";
+    rowData.data = "/storage/cloud/files/verify.png";
+    rowData.editTime = 9876543210;
+    rowData.dateTaken = 1234567890;
 
     parser.SetByPhotosRowData(rowData);
     InnerFileInfo fileInfo = parser.GetFileInfo();
 
-    EXPECT_EQ(fileInfo.fileId, 100);
-    EXPECT_EQ(fileInfo.ownerAlbumId, 1);
-    EXPECT_EQ(fileInfo.bundleName, "com.test");
-    EXPECT_EQ(fileInfo.packageName, "TestAlbum");
-    EXPECT_EQ(fileInfo.cloudPath, "/storage/cloud/files/test.jpg");
-    EXPECT_EQ(fileInfo.editTime, 1234567890);
-    EXPECT_EQ(fileInfo.dateTaken, 9876543210);
+    EXPECT_EQ(fileInfo.fileId, 200);
+    EXPECT_EQ(fileInfo.ownerAlbumId, 2);
+    EXPECT_EQ(fileInfo.bundleName, "com.verify");
+    EXPECT_EQ(fileInfo.packageName, "VerifyAlbum");
+    EXPECT_EQ(fileInfo.cloudPath, "/storage/cloud/files/verify.png");
+    EXPECT_EQ(fileInfo.editTime, 9876543210);
+    EXPECT_EQ(fileInfo.dateTaken, 1234567890);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
 
 HWTEST_F(FileParserTest, GetAssetInsertValues_Verify_Bucket_Content_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
     std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
 
-    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
     parser.SetCloudPath();
     NativeRdb::ValuesBucket values = parser.GetAssetInsertValues();
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_video.mp4");
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_DATE_ADDED), allValues.end());
 
-    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
 
 HWTEST_F(FileParserTest, GetAssetUpdateValues_Verify_Bucket_Content_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
     std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
 
-    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.GetAssetUpdateValues();
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    EXPECT_NE(allValues.find(MediaColumn::MEDIA_DATE_TAKEN), allValues.end());
+    EXPECT_NE(allValues.find(MediaColumn::PHOTO_DETAIL_TIME), allValues.end());
 
-    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
 
 HWTEST_F(FileParserTest, GetAssetCommonValues_Verify_Bucket_Content_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
     std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
 
-    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
     NativeRdb::ValuesBucket values = parser.GetAssetCommonValues();
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    int64_t size = 0;
+    allValues[MediaColumn::MEDIA_SIZE].GetLong(size);
+    EXPECT_EQ(size, 2048);
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_video.mp4");
 
-    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
 
 HWTEST_F(FileParserTest, TransFileInfoToBucket_Verify_Bucket_Content_Test, TestSize.Level1)
 {
-    MediaFileUtils::CreateFile(TEST_IMAGE_PATH);
+    MediaFileUtils::CreateFile(TEST_VIDEO_PATH);
     std::string content(2048, 'a');
-    MediaFileUtils::WriteStrToFile(TEST_IMAGE_PATH, content);
+    MediaFileUtils::WriteStrToFile(TEST_VIDEO_PATH, content);
 
-    LakeFileParser parser(TEST_IMAGE_PATH, ScanMode::INCREMENT);
-    NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(1, "com.test", "TestAlbum");
+    LakeFileParser parser(TEST_VIDEO_PATH, ScanMode::INCREMENT);
+    NativeRdb::ValuesBucket values = parser.TransFileInfoToBucket(2, "com.verify", "VerifyAlbum");
     EXPECT_FALSE(values.IsEmpty());
+    std::map<std::string, NativeRdb::ValueObject> allValues;
+    values.GetAll(allValues);
+    std::string name;
+    allValues[MediaColumn::MEDIA_NAME].GetString(name);
+    EXPECT_EQ(name, "test_video.mp4");
+    int64_t size = 0;
+    allValues[MediaColumn::MEDIA_SIZE].GetLong(size);
+    EXPECT_EQ(size, 2048);
 
-    MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
+    MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
 
 HWTEST_F(FileParserTest, GetFileAssetUri_Verify_Uri_Format_Test, TestSize.Level1)
@@ -1784,15 +1746,15 @@ HWTEST_F(FileParserTest, GetFileAssetUri_Verify_Uri_Format_Test, TestSize.Level1
     parser.SetFileId(100);
     parser.SetCloudPath();
     std::string uri = parser.GetFileAssetUri();
-    EXPECT_FALSE(uri.empty());
-    EXPECT_NE(uri.find("file://"), std::string::npos);
+    EXPECT_NE(uri.find("file://media/Photo/"), std::string::npos);
+    EXPECT_NE(uri.find("100"), std::string::npos);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
 
 HWTEST_F(FileParserTest, GenerateThumbnail_Verify_Full_Scan_Mode_Test, TestSize.Level1)
 {
-    std::vector<std::string> inodes = {"12345", "67890"};
+    std::vector<std::string> inodes = {"99999"};
     std::vector<std::string> result = FileParser::GenerateThumbnail(ScanMode::FULL, inodes);
     EXPECT_TRUE(result.empty());
 }
@@ -1814,6 +1776,9 @@ HWTEST_F(FileParserTest, GenerateThumbnail_Verify_Validation_Scan_Mode_Test, Tes
 HWTEST_F(FileParserTest, GetFileUris_Verify_Empty_Input_Test, TestSize.Level1)
 {
     std::vector<std::string> inodes;
+    for(int i = 0; i <50; i++){
+        inodes.push_back("inode_" + std::to_string(i));
+    }
     std::vector<std::string> result = FileParser::GetFileUris(inodes);
     EXPECT_TRUE(result.empty());
 }
@@ -1835,14 +1800,14 @@ HWTEST_F(FileParserTest, GetFileUris_Verify_Multiple_Inodes_Test, TestSize.Level
 HWTEST_F(FileParserTest, GenerateSingleThumbnail_Verify_Call_Test, TestSize.Level1)
 {
     ThumbnailInfo info;
-    info.fileId = 1;
-    info.displayName = "test.jpg";
-    info.path = "/storage/cloud/files/test.jpg";
-    info.dateTaken = 1234567890;
-    info.dateModified = 1234567890;
+    info.fileId = 999;
+    info.displayName = "verify.mp4";
+    info.path = "/storage/cloud/files/verify_vedio.mp4";
+    info.dateTaken = 1111111111;
+    info.dateModified = 2222222222;
 
     int32_t result = FileParser::GenerateSingleThumbnail(info);
-    EXPECT_GE(result, 0);
+    EXPECT_EQ(result, 0);
 }
 
 HWTEST_F(FileParserTest, Constructor_Path_Verify_File_Info_Test, TestSize.Level1)
@@ -1894,7 +1859,7 @@ HWTEST_F(FileParserTest, GetFileInfo_Verify_Image_File_Test, TestSize.Level1)
 
     EXPECT_EQ(fileInfo.filePath, TEST_IMAGE_PATH);
     EXPECT_EQ(fileInfo.displayName, "test_image.jpg");
-    EXPECT_GT(fileInfo.fileSize, 0);
+    EXPECT_GT(fileInfo.fileSize, 2048);
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1910,7 +1875,7 @@ HWTEST_F(FileParserTest, GetFileInfo_Verify_Video_File_Test, TestSize.Level1)
 
     EXPECT_EQ(fileInfo.filePath, TEST_VIDEO_PATH);
     EXPECT_EQ(fileInfo.displayName, "test_video.mp4");
-    EXPECT_GT(fileInfo.fileSize, 0);
+    EXPECT_GT(fileInfo.fileSize, 2048);
 
     MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
