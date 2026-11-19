@@ -444,10 +444,12 @@ int32_t MtpOperationUtils::RecevieSendObject(MtpFileRange &object, int fd)
         "DoRecevieSendObject context_->mtpDriver is null");
 
     int32_t errorCode = context_->mtpDriver->ReceiveObj(object);
-    bool cond = (errorCode != RECEVIE_OBJECT_CANCELLED && errorCode != RECEVIE_OBJECT_FAILED);
-    CHECK_AND_RETURN_RET(!cond, errorCode);
-
-    PreDealFd(errorCode != MTP_SUCCESS, fd);
+    if (errorCode == MTP_SUCCESS) {
+        return MTP_SUCCESS;
+    }
+    // Any HDI error code (e.g. -202 HDF_DEV_ERR_NO_DEVICE) must go through the unified cleanup below,
+    // otherwise writeFd and the partially received object would be left over in service side.
+    PreDealFd(true, fdsanFd);
     string filePath("");
     if (MtpManager::GetInstance().IsMtpMode()) {
         MtpPtpProxy::GetInstance().GetMtpPathById(context_->handle, filePath);
@@ -457,8 +459,14 @@ int32_t MtpOperationUtils::RecevieSendObject(MtpFileRange &object, int fd)
         CHECK_AND_RETURN_RET_LOG(ret == 0, MTP_ERROR_TRANSFER_CANCELLED, "unlink file fail");
     }
     MtpPtpProxy::GetInstance().DeleteCanceledObject(filePath, context_->handle);
-    CHECK_AND_RETURN_RET(errorCode != RECEVIE_OBJECT_FAILED, MTP_ERROR_TRANSFER_FAILED);
-    return MTP_ERROR_TRANSFER_CANCELLED;
+    switch (errorCode) {
+        case RECEVIE_OBJECT_CANCELLED:
+            return MTP_ERROR_TRANSFER_CANCELLED;
+        case RECEVIE_OBJECT_FAILED:
+        default:
+            MEDIA_WARN_LOG("RecevieSendObject transfer failed, errorCode = %{public}d", errorCode);
+            return MTP_ERROR_TRANSFER_FAILED;
+    }
 }
 
 void MtpOperationUtils::PreDealFd(const bool deal, const int fd)

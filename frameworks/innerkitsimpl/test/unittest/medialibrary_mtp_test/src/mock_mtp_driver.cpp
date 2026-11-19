@@ -65,7 +65,9 @@ void MtpDriver::Write(std::vector<uint8_t> &buffer, uint32_t &bufferSize, int32_
 
 int MtpDriver::ReceiveObj(MtpFileRange &mfr)
 {
-    return 0;
+    (void)mfr;
+    // Return code is injected per test case through the MtpTest singleton; 0 by default
+    return MtpTest::GetInstance()->receiveObjRet_;
 }
 
 int MtpDriver::SendObj(MtpFileRange &mfr)
