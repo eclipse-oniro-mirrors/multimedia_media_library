@@ -19,6 +19,7 @@
 #include <charconv>
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <tuple>
 
 #include "analysis_album_refresh_db.h"
@@ -26,6 +27,7 @@
 #include "media_log.h"
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_rdb_utils.h"
 #include "photo_album_column.h"
 
 namespace OHOS::Media {
@@ -405,7 +407,7 @@ struct CoverCandidate {
     CoverState state = CoverState::UNRESOLVED;
     AnalysisAlbumContributionState contribution = AnalysisAlbumContributionState::UNKNOWN;
     std::string uri;
-    uint8_t satisfied = 0;
+    std::optional<uint8_t> satisfied; // Set only when inheriting a candidate's cover status.
     std::tuple<bool, bool, bool, int32_t> priority;
 };
 
@@ -458,13 +460,13 @@ CoverCandidate ResolveCover(const AnalysisAlbumBaseline &baseline, const Analysi
     CoverCandidate candidate;
     candidate.satisfied = baseline.coverSatisfied;
     // Among retained candidates, prefer manual covers, then the new device (SOURCE).
-    candidate.priority = {!IsManualCover(candidate.satisfied), !source,
+    candidate.priority = {!IsManualCover(baseline.coverSatisfied), !source,
         !source && scope.current.albumId != originalId, originalId};
     int32_t fileId = baseline.coverFileId;
     CHECK_AND_RETURN_RET(fileId > 0, candidate);
     candidate.state = baseline.coverUnknown ? CoverState::ERROR : CoverState::UNRESOLVED;
     CHECK_AND_RETURN_RET(!IsSingleSideAnalysisSubtype(scope.current.subtype) ||
-        candidate.satisfied != static_cast<uint8_t>(CoverSatisfiedType::NO_SETTING), candidate);
+        baseline.coverSatisfied != static_cast<uint8_t>(CoverSatisfiedType::NO_SETTING), candidate);
     candidate.fileId = fileId;
     return candidate;
 }
@@ -723,7 +725,7 @@ void PrepareCovers(AnalysisAlbumScope &scope)
     CoverCandidate current;
     current.satisfied = scope.current.coverSatisfied;
     if (!IsSingleSideAnalysisSubtype(scope.current.subtype) ||
-        current.satisfied != static_cast<uint8_t>(CoverSatisfiedType::NO_SETTING)) {
+        scope.current.coverSatisfied != static_cast<uint8_t>(CoverSatisfiedType::NO_SETTING)) {
         current.fileId = scope.current.CoverFileId();
     }
     scope.candidates.push_back(std::move(current));
@@ -765,8 +767,6 @@ CoverCandidate CachedDefaultCover(AnalysisAlbumRefreshDb &db,
     cover.state = db.QueryDefaultCover(
         {scope.current.albumId, scope.current.subtype, scope.current.albumName}, cover.uri) == E_OK ?
         CoverState::VALID : CoverState::ERROR;
-    cover.satisfied = static_cast<uint8_t>(cover.uri.empty() ? CoverSatisfiedType::NO_SETTING :
-        CoverSatisfiedType::DEFAULT_SETTING);
     CHECK_AND_PRINT_LOG(cover.state == CoverState::ERROR || !cover.uri.empty(),
         "No eligible analysis cover subtype=%{public}d",
         scope.current.subtype);
@@ -867,24 +867,28 @@ void ResolveScopeCovers(AnalysisAlbumRefreshDb &db,
     }
 }
 
-void LogPreciseResult(const AnalysisAlbumScope &scope, bool writeNeeded, int32_t ret)
+void LogPreciseResult(const AnalysisAlbumScope &scope, const NativeRdb::ValuesBucket &values, int32_t ret)
 {
     const auto &current = scope.current;
     AnalysisAlbumMetadata proposed;
     const bool keepCover = UsesSpecializedCover(current.subtype) ||
         (scope.finalCount > 0 && scope.cover.state != CoverState::VALID);
     proposed.coverUri = keepCover ? current.coverUri : scope.cover.uri;
+    int32_t satisfied = current.coverSatisfied;
+    NativeRdb::ValueObject object;
+    if (values.GetObject(ANALYSIS_COL_IS_COVER_SATISFIED, object)) {
+        object.GetInt(satisfied);
+    }
     MEDIA_DEBUG_LOG("AccAnalysisRef precise album=%{public}d subtype=%{public}d ret=%{public}d "
         "write=%{public}d old_count=%{public}d proposed_count=%{public}d base=%{public}lld "
         "before=%{public}lld after=%{public}lld cover_action=%{public}s cover_valid=%{public}d "
         "old_cover_id=%{public}d proposed_cover_id=%{public}d uri_changed=%{public}d "
         "old_satisfied=%{public}d proposed_satisfied=%{public}d",
-        current.albumId, current.subtype, ret, writeNeeded, current.count, scope.finalCount,
+        current.albumId, current.subtype, ret, !values.IsEmpty(), current.count, scope.finalCount,
         static_cast<long long>(scope.base), static_cast<long long>(scope.before),
         static_cast<long long>(scope.after), scope.coverAction, scope.cover.state == CoverState::VALID,
         current.CoverFileId(), proposed.CoverFileId(), current.coverUri != proposed.coverUri,
-        static_cast<int32_t>(current.coverSatisfied), keepCover ?
-        static_cast<int32_t>(current.coverSatisfied) : static_cast<int32_t>(scope.cover.satisfied));
+        static_cast<int32_t>(current.coverSatisfied), satisfied);
 }
 
 bool CommitScope(AnalysisAlbumRefreshDb &db, const AnalysisAlbumScope &scope,
@@ -895,18 +899,16 @@ bool CommitScope(AnalysisAlbumRefreshDb &db, const AnalysisAlbumScope &scope,
     const int32_t count = scope.finalCount;
     NativeRdb::ValuesBucket values;
     CHECK_AND_EXECUTE(current.count == count, values.PutInt(PhotoAlbumColumns::ALBUM_COUNT, count));
-    if (!UsesSpecializedCover(current.subtype)) {
-        if (count == 0 && (!current.coverUri.empty() || current.coverSatisfied != 0)) {
-            values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, "");
-            values.PutInt(ANALYSIS_COL_IS_COVER_SATISFIED, static_cast<int32_t>(CoverSatisfiedType::NO_SETTING));
-        } else if (count > 0 && cover.state == CoverState::VALID &&
-            (current.coverUri != cover.uri || current.coverSatisfied != cover.satisfied)) {
+    if (!UsesSpecializedCover(current.subtype) && cover.state == CoverState::VALID) {
+        if (!cover.satisfied) {
+            MediaLibraryRdbUtils::SetAnalysisDefaultCoverValues(current.subtype, current.coverUri, cover.uri, values);
+        } else if (current.coverUri != cover.uri || current.coverSatisfied != *cover.satisfied) {
             values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, cover.uri);
-            values.PutInt(ANALYSIS_COL_IS_COVER_SATISFIED, cover.satisfied);
+            values.PutInt(ANALYSIS_COL_IS_COVER_SATISFIED, *cover.satisfied);
         }
     }
     const int32_t updateRet = db.UpdateAlbum(current.albumId, values);
-    LogPreciseResult(scope, !values.IsEmpty(), updateRet);
+    LogPreciseResult(scope, values, updateRet);
     if (updateRet != E_OK || cover.state != CoverState::VALID) {
         LogScopeDecision(scope, "fallback", updateRet != E_OK ? "write_failed" : "cover_query_failed");
     }

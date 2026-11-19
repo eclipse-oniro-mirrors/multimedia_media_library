@@ -1336,7 +1336,7 @@ static bool CheckDisplayNameInCommitModify(FileAssetAsyncContext *context)
             }
         }
     } else {
-        if (MediaFileUtils::CheckTitleCompatible(context->objectPtr->GetTitle()) != E_OK) {
+        if (MediaFileUtils::CheckTitleForPhoto(context->objectPtr->GetTitle()) != E_OK) {
             context->error = JS_E_DISPLAYNAME;
             context->errorMsg = "The title contains unsupported characters or exceeds the length limit";
             return false;
@@ -3235,6 +3235,12 @@ namespace {
             PhotoColumn::MUSIC_MASTER_MODE,
             PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
             PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
+            PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+            PhotoColumn::PHOTO_SHARE_RISK_STATUS,
+            PhotoColumn::PHOTO_VISIBILITY,
+            PhotoColumn::PHOTO_SHARE_GROUP,
+            PhotoColumn::PHOTO_SHARE_RISK_TYPE,
+            PhotoColumn::PHOTO_SHARE_DATE_DAY,
         };
         return SYSTEM_API_KEYS;
     }

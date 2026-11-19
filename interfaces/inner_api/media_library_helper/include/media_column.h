@@ -241,6 +241,7 @@ public:
     static const std::string PHOTO_FRONT_CAMERA_ALBUM_INDEX;
     static const std::string PHOTO_RAW_IMAGE_ALBUM_INDEX;
     static const std::string PHOTO_MOVING_PHOTO_ALBUM_INDEX;
+    static const std::string PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX;
     // for clone query
     static const std::string PHOTO_DISPLAYNAME_INDEX;
     // for burst query

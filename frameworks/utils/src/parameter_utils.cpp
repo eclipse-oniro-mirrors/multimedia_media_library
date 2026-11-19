@@ -104,14 +104,18 @@ int32_t ParameterUtils::CheckCreateAssetTitle(const std::string &title, bool isS
         return E_OK;
     }
 
+    // 点号规则：拒绝以 '.' 开头，允许中间包含 '.'（含连续点）
+    if (title.at(0) == '.') {
+        return E_INVALID_DISPLAY_NAME;
+    }
+    // 保留各历史入口的字符集差异：系统入口沿用 CheckTitle，普通入口沿用原兼容字符集
     if (isSystem) {
         if (MediaFileUtils::CheckTitle(title) != E_OK) {
             return E_INVALID_DISPLAY_NAME;
         }
         return E_OK;
     }
-
-    if (MediaFileUtils::CheckTitleCompatible(title) != E_OK) {
+    if (MediaFileUtils::CheckTitleForPhoto(title) != E_OK) {
         return E_INVALID_DISPLAY_NAME;
     }
     return E_OK;
@@ -280,7 +284,7 @@ int32_t ParameterUtils::CheckSetAssetTitle(const ModifyAssetsReqBody &reqBody)
 {
     CHECK_AND_RETURN_RET_LOG(reqBody.fileIds.size() == 1, -EINVAL, "Invalid fileIds");
     CHECK_AND_RETURN_RET_LOG(!reqBody.title.empty(), E_INVALID_DISPLAY_NAME, "Invalid title");
-    int32_t errCode = MediaFileUtils::CheckTitleCompatible(reqBody.title);
+    int32_t errCode = MediaFileUtils::CheckTitleForPhoto(reqBody.title);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_INVALID_DISPLAY_NAME, "Invalid title");
     return E_OK;
 }

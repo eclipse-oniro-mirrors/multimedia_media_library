@@ -80,6 +80,7 @@
 #include "photo_owner_album_id_operation.h"
 #include "media_log.h"
 #include "analysis_lcd_aging_dao.h"
+#include "analysis_data_metadata_dao.h"
 
  
 namespace OHOS::Media::AnalysisData {
@@ -767,4 +768,21 @@ int32_t MediaAnalysisDataService::RemoveCloudLcd(const std::vector<int64_t> &fil
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveCloudLcd: Failed to do batch aging LCD");
     return E_OK;
 }
+
+int32_t MediaAnalysisDataService::GetAssetsLabel(const GetAssetsAnalysisMetadataReqBody &reqBody,
+    GetAssetsAnalysisMetadataRespBody &respBody)
+{
+    int32_t ret = AnalysisDataMetadataDao::GetAssetsLabel(reqBody.fileIds, respBody.fileIds, respBody.values);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetAssetsLabel DAO query failed, ret: %{public}d", ret);
+    return E_OK;
+}
+
+int32_t MediaAnalysisDataService::GetAssetsCaption(const GetAssetsAnalysisMetadataReqBody &reqBody,
+    GetAssetsAnalysisMetadataRespBody &respBody)
+{
+    int32_t ret = AnalysisDataMetadataDao::GetAssetsCaption(reqBody.fileIds, respBody.fileIds, respBody.values);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetAssetsCaption DAO query failed, ret: %{public}d", ret);
+    return E_OK;
+}
+
 } // namespace OHOS::Media::AnalysisData

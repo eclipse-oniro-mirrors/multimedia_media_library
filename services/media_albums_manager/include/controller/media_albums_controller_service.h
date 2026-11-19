@@ -42,8 +42,11 @@ public:
     EXPORT int32_t AlbumRemoveAssets(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumRecoverAssets(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumGetAssets(MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context);
+    EXPORT int32_t AlbumGetShareAssets(MessageParcel &data, MessageParcel &reply,
+        OHOS::Media::IPC::IPCContext &context);
     EXPORT int32_t AlbumGetSelectAssets(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t QueryAlbums(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t QueryShareAlbums(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t QueryHiddenAlbums(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAlbumsByIds(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetPhotoIndex(MessageParcel &data, MessageParcel &reply);
@@ -72,6 +75,7 @@ public:
     EXPORT int32_t SetShareCoverUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ResetShareCoverUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ChangeRequestAbsorbAlbum(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetShareAlbumMember(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAlbumsControllerService() = default;

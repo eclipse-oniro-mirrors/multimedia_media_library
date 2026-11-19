@@ -611,7 +611,9 @@ bool MediaFileMonitorRdbUtils::HandleFileManagerCloudAssets(
 
     // 处理端云合一图：创建dentry文件后更新 position 为 CLOUD
     if (!updateFileIds.empty()) {
-        FileManagerParser::CreateDentryFilesByFileIds(updateFileIds);
+        int32_t dentryRet = FileManagerParser::CreateDentryFilesByFileIds(updateFileIds);
+        CHECK_AND_PRINT_LOG(dentryRet == E_OK,
+            "Create dentry files failed, ret: %{public}d, count: %{public}zu", dentryRet, updateFileIds.size());
         NativeRdb::AbsRdbPredicates updatePredicates(PhotoColumn::PHOTOS_TABLE);
         updatePredicates.In(MediaColumn::MEDIA_ID, updateFileIds);
         FileManagerParser::HandleUpdateCloudAsset(updatePredicates, PhotoPositionType::CLOUD);
@@ -704,14 +706,30 @@ bool MediaFileMonitorRdbUtils::DeleteFileByLakePath(const std::string &path,
     std::set<std::string> analysisAlbumSet;
     MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets({to_string(data.fileId)}, analysisAlbumSet);
 
-    // 2. 删除该路径对应的资产
+    // 2. 对端云合一资产仅更新 position 为 CLOUD，不删除记录，通知 UPDATE；对本地资产删除记录，通知 REMOVE
     auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    CHECK_AND_RETURN_RET_LOG(MediaFileMonitorRdbUtils::DeleteAssetByStoragePath(assetRefresh, path), false,
-        "Failed to DeleteAssetByStoragePath, path: %{public}s", DfxUtils::GetSafePath(path).c_str());
-
-    // 3. 删除该图片对应湖外资源
-    MediaFileMonitorRdbUtils::DeleteRelatedResource(data.photoPath,
-        std::to_string(data.fileId), std::to_string(data.dateTaken));
+    NotifyType assetNotifyType = NotifyType::NOTIFY_REMOVE;
+    if (data.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
+        MEDIA_INFO_LOG("DeleteFileByLakePath: LOCAL_AND_CLOUD asset, update position to CLOUD, fileId: %{public}d",
+            data.fileId);
+        // 必须经 AssetAccurateRefresh 落库：既记录变更供后续 RefreshAlbum/Notify 使用，
+        // 也校验 changedRows>0，避免记录不存在时静默成功仍发出 UPDATE 通知。
+        NativeRdb::AbsRdbPredicates updatePredicates(PhotoColumn::PHOTOS_TABLE);
+        updatePredicates.EqualTo(MediaColumn::MEDIA_ID, to_string(data.fileId));
+        NativeRdb::ValuesBucket values;
+        values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int>(PhotoPositionType::CLOUD));
+        int32_t changedRows = 0;
+        int32_t ret = assetRefresh->Update(changedRows, values, updatePredicates);
+        CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && changedRows > 0, false,
+            "Update position to CLOUD failed, ret: %{public}d, changedRows: %{public}d", ret, changedRows);
+        assetNotifyType = NotifyType::NOTIFY_UPDATE;
+    } else {
+        CHECK_AND_RETURN_RET_LOG(MediaFileMonitorRdbUtils::DeleteAssetByStoragePath(assetRefresh, path), false,
+            "Failed to DeleteAssetByStoragePath, path: %{public}s", DfxUtils::GetSafePath(path).c_str());
+        // 3. 删除该图片对应湖外资源
+        MediaFileMonitorRdbUtils::DeleteRelatedResource(data.photoPath,
+            std::to_string(data.fileId), std::to_string(data.dateTaken));
+    }
 
     // 4. 更新相册信息并发送精准通知
     assetRefresh->RefreshAlbum();
@@ -721,7 +739,7 @@ bool MediaFileMonitorRdbUtils::DeleteFileByLakePath(const std::string &path,
     std::vector<std::string> analysisAlbumIds(analysisAlbumSet.begin(), analysisAlbumSet.end());
     MediaFileMonitorRdbUtils::NotifyAlbums({to_string(data.albumId)}, AlbumNotifyType::COMMON_ALBUM);
     MediaFileMonitorRdbUtils::NotifyAlbums(analysisAlbumIds, AlbumNotifyType::ANALYSIS_ALBUM);
-    NotifyAssetChange({to_string(data.fileId)}, NotifyType::NOTIFY_REMOVE);
+    NotifyAssetChange({to_string(data.fileId)}, assetNotifyType);
 
     return true;
 }

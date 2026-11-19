@@ -209,15 +209,16 @@ ani_boolean SingleFileMovingPhotoUtilAni::IsSingleFileMovingPhotoInner(ani_env *
     return SingleFileMovingPhotoUtils::IsSingleFileMovingPhoto(srcFd.Get()) ? ANI_TRUE : ANI_FALSE;
 }
 
-// 校验入参合一文件后缀并拆分出主名：只允许 jpeg/jpg/heif/heic（大小写不敏感），其余后缀按参数错误拒绝。
-bool CheckSingleFileSourceName(ani_env *env, const std::string &srcUri, std::string &title)
+// 源文件只要求非空且可打开，
+// 格式由容器 metadata 判定；这里只保证主名非空。
+bool ResolveSourceTitle(ani_env *env, const std::string &srcUri, std::string &title)
 {
-    std::string sourceExtension;
+    std::string sourceExtension;  // 仅用于拆分主名，不参与任何后缀校验
     SplitFileName(GetFileNameFromUri(srcUri), title, sourceExtension);
-    if (!SingleFileMovingPhotoUtils::IsSupportedImageExtension(sourceExtension)) {
-        ANI_ERR_LOG("Unsupported single file moving photo extension:%{public}s", sourceExtension.c_str());
+    if (title.empty()) {
+        ANI_ERR_LOG("ResolveSourceTitle failed, source file name is empty");
         AniError::ThrowError(env, JS_E_PARAM_INVALID, __FUNCTION__, __LINE__,
-            "The single-file moving photo must be .jpeg/.jpg/.heif/.heic");
+            "The file name of the single-file moving photo is invalid");
         return false;
     }
     return true;
@@ -251,7 +252,7 @@ ani_object SingleFileMovingPhotoUtilAni::UnpackingSingleFileMovingPhotoInner(ani
     }
 
     std::string title;
-    if (!CheckSingleFileSourceName(env, srcUri, title)) {
+    if (!ResolveSourceTitle(env, srcUri, title)) {
         return nullptr;
     }
     SingleFileMovingPhotoInfo movingPhotoInfo;
@@ -345,13 +346,6 @@ ani_long SingleFileMovingPhotoUtilAni::GetVideoOffsetInner(ani_env *env, [[maybe
     UniqueFd srcFd(OpenByUri(uri, O_RDONLY));
     if (srcFd.Get() < 0) {
         AniError::ThrowError(env, JS_E_PARAM_INVALID, __FUNCTION__, __LINE__, "Failed to open source uri");
-        return 0;
-    }
-    // 入参合一文件后缀只允许 jpeg/jpg/heif/heic，其它后缀按参数错误拒绝
-    if (SingleFileMovingPhotoUtils::CheckImageSourceExtension(RealPathOf(uri)) != E_OK) {
-        ANI_ERR_LOG("getVideoOffset failed, unsupported source extension");
-        AniError::ThrowError(env, JS_E_PARAM_INVALID, __FUNCTION__, __LINE__,
-            "The single-file moving photo must be .jpeg/.jpg/.heif/.heic");
         return 0;
     }
     int64_t videoOffset = 0;

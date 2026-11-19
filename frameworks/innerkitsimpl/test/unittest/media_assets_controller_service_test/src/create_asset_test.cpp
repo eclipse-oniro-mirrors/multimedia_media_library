@@ -417,7 +417,12 @@ HWTEST_F(CreateAssetTest, PublicCreateAsset_Test_001, TestSize.Level0)
     int32_t fileId = PublicCreateAsset("xxx");
     ASSERT_LT(fileId, 0);
 
+    // 需求：允许标题包含中间 '.'
     fileId = PublicCreateAsset("jpg", "Public_002.xxx");
+    ASSERT_GT(fileId, 0);
+
+    // 需求：不允许以 '.' 开头
+    fileId = PublicCreateAsset("jpg", ".Public_002.xxx");
     ASSERT_LT(fileId, 0);
 }
 
@@ -474,7 +479,12 @@ HWTEST_F(CreateAssetTest, PublicCreateAssetForApp_Test_001, TestSize.Level0)
     int32_t fileId = PublicCreateAssetForApp(0, "xxx");
     ASSERT_LT(fileId, 0);
 
+    // 需求：允许标题包含中间 '.'
     fileId = PublicCreateAssetForApp(0, "jpg", "ForApp_001.xxx");
+    ASSERT_GT(fileId, 0);
+
+    // 需求：不允许以 '.' 开头
+    fileId = PublicCreateAssetForApp(0, "jpg", ".ForApp_001.xxx");
     ASSERT_LT(fileId, 0);
 }
 

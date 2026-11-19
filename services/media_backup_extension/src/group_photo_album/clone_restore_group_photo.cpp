@@ -238,7 +238,7 @@ int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::s
             groupPhotoAlbumTbl.albumIdNew = isReverse ? groupPhotoAlbumTbl.albumIdOld :
                 std::make_optional<int32_t>(++albumIdNow);
             groupPhotoAlbumInfos_.emplace_back(groupPhotoAlbumTbl);
-            if (groupPhotoAlbumTbl.tagId.has_value() && groupPhotoAlbumTbl.coverUri.has_value()) {
+            if (!isReverse && groupPhotoAlbumTbl.tagId.has_value() && groupPhotoAlbumTbl.coverUri.has_value()) {
                 coverUriInfo_.emplace_back(groupPhotoAlbumTbl.tagId.value(),
                     std::make_pair(groupPhotoAlbumTbl.coverUri.value(),
                     groupPhotoAlbumTbl.isCoverSatisfied.value_or(INVALID_COVER_SATISFIED_STATUS)));
@@ -251,27 +251,57 @@ int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::s
     return E_OK;
 }
 
-int32_t CloneRestoreGroupPhoto::InsertGroupPhotoAlbum()
+bool CloneRestoreGroupPhoto::QueryGroupPhotoAlbumIds(std::unordered_map<std::string, int32_t> &ids)
 {
+    auto rows = mediaLibraryRdb_->QuerySql("SELECT album_id, tag_id FROM AnalysisAlbum "
+        "WHERE album_type = ? AND album_subtype = ? AND tag_id IS NOT NULL AND tag_id <> '' "
+        "AND (is_removed <> 1 OR is_removed IS NULL) ORDER BY album_id", std::vector<std::string> {
+            std::to_string(static_cast<int32_t>(PhotoAlbumType::SMART)),
+            std::to_string(static_cast<int32_t>(PhotoAlbumSubType::GROUP_PHOTO))});
+    return ResultSetUtils::ReadRows(rows, [&ids](const auto &row) {
+        int32_t id = 0;
+        std::string tag;
+        CHECK_AND_RETURN_RET(ResultSetUtils::TryGetValue(ANALYSIS_COL_ALBUM_ID, row, id) && id > 0 &&
+            ResultSetUtils::TryGetValue(ANALYSIS_COL_TAG_ID, row, tag), false);
+        ids.try_emplace(std::move(tag), id);
+        return true;
+    });
+}
+
+int32_t CloneRestoreGroupPhoto::InsertGroupPhotoAlbum(bool isReverse)
+{
+    hasReusedAlbum_ = false;
+    std::unordered_map<std::string, int32_t> existingIds;
+    if (isReverse && !groupPhotoAlbumInfos_.empty() && !QueryGroupPhotoAlbumIds(existingIds)) {
+        MEDIA_ERR_LOG("Failed to query existing group photo albums");
+        return E_HAS_DB_ERROR;
+    }
     std::unordered_set<int32_t> committedSourceIds;
+    std::unordered_map<std::string, int32_t> insertSourceIds;
     // Keep the original single empty-batch attempt when there are no albums.
     const size_t querySize = groupPhotoAlbumInfos_.empty() ? 1 : groupPhotoAlbumInfos_.size();
     for (size_t offset = 0; offset < querySize; offset += QUERY_COUNT) {
         std::vector<NativeRdb::ValuesBucket> values;
+        std::vector<int32_t> sourceIds;
         for (size_t index = 0; index < QUERY_COUNT && index + offset < groupPhotoAlbumInfos_.size(); index++) {
+            const auto &album = groupPhotoAlbumInfos_[index + offset];
+            const int32_t sourceId = album.albumIdOld.value_or(0);
+            if (isReverse && album.tagId.has_value() && !album.tagId->empty() &&
+                (existingIds.count(*album.tagId) > 0 || !insertSourceIds.try_emplace(*album.tagId, sourceId).second)) {
+                continue;
+            }
             NativeRdb::ValuesBucket value;
-            GetAnalysisAlbumInsertValue(value, groupPhotoAlbumInfos_[index + offset]);
+            GetAnalysisAlbumInsertValue(value, album);
             values.emplace_back(value);
+            if (album.albumIdOld.has_value()) {
+                sourceIds.push_back(sourceId);
+            }
         }
         int64_t rowNum = 0;
         int32_t errCode = BatchInsertWithRetry("AnalysisAlbum", values, rowNum);
-        for (size_t index = offset; index < offset + values.size(); ++index) {
-            const auto &album = groupPhotoAlbumInfos_[index];
-            if (errCode == E_OK && rowNum == static_cast<int64_t>(values.size()) && album.albumIdOld.has_value()) {
-                committedSourceIds.insert(album.albumIdOld.value());
-            }
-        }
-        if (errCode != E_OK || rowNum != static_cast<int64_t>(values.size())) {
+        if (errCode == E_OK && rowNum == static_cast<int64_t>(values.size())) {
+            committedSourceIds.insert(sourceIds.begin(), sourceIds.end());
+        } else {
             int64_t failNums = static_cast<int64_t>(values.size()) - rowNum;
             ErrorInfo errorInfo(RestoreError::INSERT_FAILED, 0, std::to_string(errCode),
                 "insert into AnalysisAlbum fail, num:" + std::to_string(failNums));
@@ -280,11 +310,13 @@ int32_t CloneRestoreGroupPhoto::InsertGroupPhotoAlbum()
         }
         albumSuccessCnt_ += rowNum;
     }
-    UpdateRestoredAlbumIds(committedSourceIds);
+    UpdateRestoredAlbumIds(committedSourceIds, existingIds, insertSourceIds);
     return E_OK;
 }
 
-void CloneRestoreGroupPhoto::UpdateRestoredAlbumIds(const std::unordered_set<int32_t> &committedSourceIds)
+void CloneRestoreGroupPhoto::UpdateRestoredAlbumIds(const std::unordered_set<int32_t> &committedSourceIds,
+    const std::unordered_map<std::string, int32_t> &existingIds,
+    const std::unordered_map<std::string, int32_t> &insertSourceIds)
 {
     CHECK_AND_RETURN(!groupPhotoAlbumInfos_.empty());
     auto rows = mediaLibraryRdb_->QuerySql("SELECT album_id, tag_id FROM AnalysisAlbum "
@@ -305,19 +337,73 @@ void CloneRestoreGroupPhoto::UpdateRestoredAlbumIds(const std::unordered_set<int
     });
     int32_t unresolvedCount = 0;
     for (auto &album : groupPhotoAlbumInfos_) {
-        const auto found = ids.find(album.tagId.value_or(""));
-        const int32_t finalId = complete && found != ids.end() ? found->second : 0;
+        const std::string tag = album.tagId.value_or("");
+        const auto existing = existingIds.find(tag);
+        const auto found = ids.find(tag);
         const int32_t sourceId = album.albumIdOld.value_or(0);
-        const bool committed = finalId > 0 && committedSourceIds.count(sourceId) > 0;
-        album.albumIdNew = committed ? std::make_optional(finalId) : std::nullopt;
-        unresolvedCount += finalId <= 0 && committedSourceIds.count(sourceId) > 0;
+        const auto inserted = insertSourceIds.find(tag);
+        const int32_t insertedSourceId = inserted == insertSourceIds.end() ? sourceId : inserted->second;
+        const bool committed = committedSourceIds.count(insertedSourceId) > 0;
+        int32_t finalId = existing != existingIds.end() ? existing->second : 0;
+        if (finalId == 0 && complete && committed && found != ids.end()) {
+            finalId = found->second;
+        }
+        album.albumIdNew = finalId > 0 ? std::make_optional(finalId) : std::nullopt;
+        hasReusedAlbum_ = hasReusedAlbum_ ||
+            (finalId > 0 && (existing != existingIds.end() || insertedSourceId != sourceId));
+        unresolvedCount += finalId <= 0 && committed;
         CHECK_AND_CONTINUE(albumRestoreObserver_);
-        albumRestoreObserver_({sourceId, finalId, 0, PhotoAlbumSubType::GROUP_PHOTO, committed});
+        albumRestoreObserver_({sourceId, finalId, 0, PhotoAlbumSubType::GROUP_PHOTO, finalId > 0});
     }
     CHECK_AND_RETURN(unresolvedCount > 0);
     ErrorInfo errorInfo(RestoreError::UPDATE_FAILED, unresolvedCount, std::to_string(E_HAS_DB_ERROR),
         "Failed to resolve restored group photo album IDs");
     UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).ReportError(errorInfo);
+}
+
+void CloneRestoreGroupPhoto::RestoreReverseCoverUris()
+{
+    std::unordered_map<int32_t, const AnalysisAlbumTbl *> coverAlbums;
+    for (const auto &album : groupPhotoAlbumInfos_) {
+        if (album.albumIdNew && album.tagId && album.coverUri) {
+            coverAlbums[*album.albumIdNew] = &album;
+        }
+    }
+    CHECK_AND_RETURN(!coverAlbums.empty() && !photoInfoMap_.empty());
+
+    std::unordered_map<std::string, int32_t> oldToNewFileId;
+    oldToNewFileId.reserve(photoInfoMap_.size());
+    for (const auto &[fileIdOld, photo] : photoInfoMap_) {
+        oldToNewFileId.emplace(std::to_string(fileIdOld), photo.fileIdNew);
+    }
+
+    constexpr int32_t userSetting = static_cast<int32_t>(CoverSatisfiedType::USER_SETTING);
+    constexpr int32_t userSettingEdited = static_cast<int32_t>(CoverSatisfiedType::USER_SETTING_EDITE);
+    std::vector<std::vector<NativeRdb::ValueObject>> updates;
+    for (const auto &[albumId, album] : coverAlbums) {
+        std::string uri = ProcessUriAndGenNew(*album->tagId, *album->coverUri, oldToNewFileId, photoInfoMap_);
+        CHECK_AND_CONTINUE(!uri.empty());
+        const int32_t satisfied = album->isCoverSatisfied.value_or(INVALID_COVER_SATISFIED_STATUS);
+        updates.push_back({std::move(uri), satisfied, albumId, static_cast<int32_t>(PhotoAlbumSubType::GROUP_PHOTO),
+            satisfied, userSetting, userSettingEdited, userSetting, userSettingEdited});
+    }
+    CHECK_AND_RETURN(!updates.empty());
+
+    const std::string sql = "UPDATE AnalysisAlbum SET cover_uri = ?, "
+        "is_cover_satisfied = COALESCE(NULLIF(?, 0), is_cover_satisfied) "
+        "WHERE album_id = ? AND album_subtype = ? AND "
+        "(? IN (?, ?) OR COALESCE(is_cover_satisfied, 0) NOT IN (?, ?))";
+    TransactionOperations trans {__func__};
+    trans.SetBackupRdbStore(mediaLibraryRdb_);
+    std::function<int(void)> update = [&]() -> int {
+        for (const auto &args : updates) {
+            int32_t updateRet = trans.ExecuteSql(sql, args);
+            CHECK_AND_RETURN_RET(updateRet == E_OK, updateRet);
+        }
+        return E_OK;
+    };
+    int32_t ret = trans.RetryTrans(update, true);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to restore reverse group photo covers, ret: %{public}d", ret);
 }
 
 int32_t CloneRestoreGroupPhoto::RestoreGroupPhotoAlbumInfo(bool isReverse)
@@ -340,9 +426,13 @@ int32_t CloneRestoreGroupPhoto::RestoreGroupPhotoAlbumInfo(bool isReverse)
         EXCLUDED_GROUP_PHOTO_COLUMNS);
     int32_t ret = QueryGroupPhotoAlbumTbl(commonColumns, isReverse);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to query group photo record, ret is %{public}d", ret);
-    ret = InsertGroupPhotoAlbum();
+    ret = InsertGroupPhotoAlbum(isReverse);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to insert group photo record, ret is %{public}d", ret);
-    GenNewCoverUris(coverUriInfo_);
+    if (isReverse) {
+        RestoreReverseCoverUris();
+    } else {
+        GenNewCoverUris(coverUriInfo_);
+    }
     LogGroupPhotoCloneDfx();
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     migrateGroupPhotoTotalTimeCost_ += end - start;
@@ -408,8 +498,19 @@ void CloneRestoreGroupPhoto::UpdateMapInsertValues(std::vector<NativeRdb::Values
 void CloneRestoreGroupPhoto::InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesBucket> &values)
 {
     int64_t rowNum = 0;
-    int32_t errCode = BatchInsertWithRetry("AnalysisPhotoMap", values, rowNum);
-    if (errCode != E_OK || rowNum != static_cast<int64_t>(values.size())) {
+    int32_t errCode = E_OK;
+    if (hasReusedAlbum_ && !values.empty()) {
+        TransactionOperations trans {__func__};
+        trans.SetBackupRdbStore(mediaLibraryRdb_);
+        std::function<int(void)> insert = [&]() {
+            return trans.BatchInsert(rowNum, ANALYSIS_PHOTO_MAP_TABLE, values,
+                NativeRdb::ConflictResolution::ON_CONFLICT_IGNORE);
+        };
+        errCode = trans.RetryTrans(insert, true);
+    } else {
+        errCode = BatchInsertWithRetry("AnalysisPhotoMap", values, rowNum);
+    }
+    if (errCode != E_OK || (!hasReusedAlbum_ && rowNum != static_cast<int64_t>(values.size()))) {
         int64_t failNums = static_cast<int64_t>(values.size()) - rowNum;
         ErrorInfo errorInfo(RestoreError::INSERT_FAILED, 0, std::to_string(errCode),
             "insert into AnalysisPhotoMap fail, num:" + std::to_string(failNums));

@@ -31,6 +31,7 @@ using namespace std;
 
 namespace OHOS {
 namespace Media {
+constexpr int32_t PHOTO_IS_SHARED = 1;
 const std::string RegisterNotifyType::PHOTO_CHANGE = "photoChange";
 const std::string RegisterNotifyType::HIDDEN_PHOTO_CHANGE = "hiddenPhotoChange";
 const std::string RegisterNotifyType::TRASH_PHOTO_CHANGE = "trashedPhotoChange";
@@ -419,7 +420,8 @@ ani_object MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfo(ani_env *env,
         SetValueInt64(env, "hiddenTime", photoAssetChangeInfo.hiddenTime_, retObj);
     }
 
-    if (uriType == Notification::NotifyUriType::SHARE_PHOTO_URI) {
+    if (photoAssetChangeInfo.isShared_ == PHOTO_IS_SHARED) {
+        SetValueInt32(env, "isShared", photoAssetChangeInfo.isShared_, retObj);
         SetValueInt64(env, "shareDateDay", photoAssetChangeInfo.shareDateDay_, retObj);
         SetValueInt64(env, "shareGroup", photoAssetChangeInfo.shareGroup_, retObj);
         SetValueInt32(env, "shareRiskStatus", photoAssetChangeInfo.shareRiskStatus_, retObj);

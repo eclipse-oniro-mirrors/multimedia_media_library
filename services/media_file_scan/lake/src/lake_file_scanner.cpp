@@ -36,6 +36,12 @@ void LakeFileScanner::HandleFiles(MediaNotifyInfo& fileInfo)
 {
     LakeFileParser lakefileParser(fileInfo, scanMode_);
     auto updateType = lakefileParser.GetFileUpdateType();
+    // 点号重命名释放本地场景：释放后文件名变为隐藏文件，不再满足 IsFileValidAsset，需在有效性检查前处理；
+    // 恢复场景仍需经过有效性检查，避免把已失效的文件恢复成本地可用
+    if (updateType == FileUpdateType::DOT_RENAME_RELEASE) {
+        RefreshTrashedAssetInfo(lakefileParser);
+        return;
+    }
     if (!lakefileParser.IsFileValidAsset()) {
         RefreshAssetInfoForSkipFile(lakefileParser, updateType);
         MEDIA_WARN_LOG("invalid lake file");
@@ -59,6 +65,12 @@ void LakeFileScanner::HandleFiles(MediaNotifyInfo& fileInfo)
             break;
         case FileUpdateType::UPDATE_ALBUM:
             RefreshUpdateAssetAlbumInfo(fileInfo, lakefileParser);
+            break;
+        case FileUpdateType::DOT_RENAME_RELEASE:
+            RefreshTrashedAssetInfo(lakefileParser);
+            break;
+        case FileUpdateType::DOT_RENAME_RECOVER:
+            RefreshNeedReoverAssetInfo(lakefileParser);
             break;
         default:
             MEDIA_INFO_LOG("no change");
@@ -84,6 +96,16 @@ bool LakeFileScanner::IsSkipDirectory(const std::string &dir)
 std::shared_ptr<FolderParser> LakeFileScanner::BuildFolderParser(const std::string &path)
 {
     return make_shared<LakeFolderParser>(path, scanMode_);
+}
+
+void LakeFileScanner::RefreshTrashedAssetInfo(LakeFileParser &lakefileParser)
+{
+    lakefileParser.UpdateTrashedAssetInfo();
+}
+
+void LakeFileScanner::RefreshNeedReoverAssetInfo(LakeFileParser &lakefileParser)
+{
+    lakefileParser.UpdateRecoverAssetInfo();
 }
 // LCOV_EXCL_STOP
 }

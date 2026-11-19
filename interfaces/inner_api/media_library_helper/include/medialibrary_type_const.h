@@ -16,6 +16,7 @@
 #ifndef INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_LIB_SERVICE_CONST_H_
 #define INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_LIB_SERVICE_CONST_H_
 
+#include <cstddef>
 #include <unordered_set>
 
 #include "userfile_manager_types.h"
@@ -383,6 +384,8 @@ static constexpr int TIME_PENDING_HIDE_IN_PROGRESS = -5;  // For lake file hide 
 const int32_t DEFAULT_FILE_ID = 0;
 const int32_t DEFAULT_SHARE_COUNT = 0;
 const int32_t DEFAULT_LCD_JUMO_COUNT = 0;
+
+inline constexpr std::size_t ANALYSIS_METADATA_MAX_BATCH_SIZE = 100;
 } // namespace OHOS
 } // namespace Media
 

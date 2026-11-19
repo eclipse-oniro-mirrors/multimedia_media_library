@@ -31,6 +31,7 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_column.h"
+#include "userfile_manager_types.h"
 #include "medialibrary_db_const.h"
 #include "media_file_utils.h"
 #include "media_edit_utils.h"
@@ -303,6 +304,11 @@ int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetIn
     std::string &newFileId, std::atomic<uint64_t> &processedSize,
     std::atomic<uint32_t> &processedCount, const CloneCallbackType &cloneCallbackType)
 {
+    //纯云资产走云端复制，本地不落地原文件
+    if (cloneAssetInfo.position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
+        cloneAssetInfo.isSupportCloudClone) {
+        return HandleCloudAssetClone(cloneAssetInfo, newFileId, processedSize, processedCount, cloneCallbackType);
+    }
     auto progressCb = [&processedSize](uint64_t copiedSize) {
         processedSize.fetch_add(copiedSize);
     };
@@ -327,8 +333,14 @@ int32_t CloneToAlbumService::DoBurstAssetsClone(const CloneAssetInfo &cloneAsset
 {
     for (const auto &asset : cloneAssetInfo.burstCloneAssetList) {
         std::string newFileId = "";
-        int32_t result = MediaLibraryAlbumFusionUtils::CloneProgressAsset(asset,
-        asset.albumId, newFileId, progressCallback, static_cast<int32_t>(CloneCallbackType::PHOTOASSET));
+        int32_t result = E_OK;
+        //纯云资产走云端复制
+        if (asset.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+            result = CloneCloudAssetWithProgress(asset, newFileId, progressCallback);
+        } else {
+            result = MediaLibraryAlbumFusionUtils::CloneProgressAsset(asset,
+                asset.albumId, newFileId, progressCallback, static_cast<int32_t>(CloneCallbackType::PHOTOASSET));
+        }
         if (result != E_OK) {
             MEDIA_ERR_LOG("clone error result %{public}d", result);
             if (asset.burstCoverLevel == 1) {
@@ -419,7 +431,7 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
     uint32_t timerId = timer.Register(timerCallback, COPY_WORKER_TIME_INTERVAL, false);
 
     for (const auto &asset : cloneTaskInfo.cloneAssetInfo) {
-        if (cloneTaskInfo.isShareAlbumTarget) {
+        if (cloneTaskInfo.isShareAlbumTarget || cloneTaskInfo.isSupportCloudClone) {
             int64_t freeSize = MediaFileUtils::GetFreeSize();
             if (freeSize < MIN_FREE_SPACE_FOR_SHARE_CLONE) {
                 MEDIA_ERR_LOG("Insufficient free space during copy, freeSize=%{public}" PRId64, freeSize);
@@ -510,6 +522,10 @@ int32_t CloneToAlbumService::CloneToAlbum(CloneToAlbumReqBody &reqBody)
     }
     cloneTaskInfo.progressCallback = reqBody.progressCallback;
     cloneTaskInfo.cloneCallbackType = CloneCallbackType::PHOTOASSET;
+    cloneTaskInfo.isSupportCloudClone = true;
+    for (auto &asset : cloneTaskInfo.cloneAssetInfo) {
+        asset.isSupportCloudClone = cloneTaskInfo.isSupportCloudClone;
+    }
     // 创建线程
     std::thread([this, totalSize, totalCount, taskInfo = cloneTaskInfo ]() {
         CloneTaskInfo cloneTaskInfotmp = taskInfo;
@@ -1089,6 +1105,41 @@ int32_t CloneToAlbumService::CloneWithShareAlbum(CloneToAlbumReqBody &reqBody)
         CloneTaskInfo cloneTaskInfotmp = taskInfo;
         this->StartCopy(totalSize, totalCount, cloneTaskInfotmp);
     }).detach();
+    return E_OK;
+}
+
+int32_t CloneToAlbumService::HandleCloudAssetClone(const CloneAssetInfo &cloneAssetInfo,
+    std::string &newFileId, std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount,
+    const CloneCallbackType &cloneCallbackType)
+{
+    MEDIA_INFO_LOG("clone cloud asset start, fileId=%{public}" PRId64, cloneAssetInfo.fileId);
+    auto progressCb = [&processedSize](uint64_t copiedSize) {
+        processedSize.fetch_add(copiedSize);
+    };
+    int32_t result = CloneCloudAssetWithProgress(cloneAssetInfo, newFileId, progressCb);
+    CHECK_AND_RETURN_RET_LOG(result == E_OK, result, "Failed to clone cloud asset.");
+    processedCount.fetch_add(1);
+    //如果是连拍，对齐本地克隆链路 HandleAssetClone：仅 PHOTOASSET 回调类型才展开连拍兄弟资产
+    if (!cloneAssetInfo.burstKey.empty() && cloneCallbackType == CloneCallbackType::PHOTOASSET) {
+        int32_t ret = DoBurstAssetsClone(cloneAssetInfo, progressCb);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed toDoBurstAssetsClone.");
+    }
+    return E_OK;
+}
+
+int32_t CloneToAlbumService::CloneCloudAssetWithProgress(const CloneAssetInfo &asset,
+    std::string &newFileId, std::function<void(uint64_t)> progressCallback)
+{
+    int64_t newAssetId = -1;
+    int32_t result = MediaLibraryAlbumFusionUtils::CloneCloudAsset(asset, newAssetId);
+    if (result != E_OK) {
+        MEDIA_ERR_LOG("clone cloud asset error result %{public}d", result);
+        return result;
+    }
+    newFileId = std::to_string(newAssetId);
+    if (progressCallback != nullptr) {
+        progressCallback(static_cast<uint64_t>(asset.size));
+    }
     return E_OK;
 }
 

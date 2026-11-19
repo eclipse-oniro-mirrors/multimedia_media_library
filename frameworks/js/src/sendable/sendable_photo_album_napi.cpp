@@ -28,6 +28,9 @@
 #include "userfile_client.h"
 #include "album_operation_uri.h"
 #include "js_interface_helper.h"
+#include "album_get_assets_vo.h"
+#include "medialibrary_business_code.h"
+#include "user_define_ipc_client.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -60,6 +63,10 @@ napi_value SendablePhotoAlbumNapi::PhotoAccessInit(napi_env env, napi_value expo
         DECLARE_NAPI_GETTER("coverUri", JSGetCoverUri),
         DECLARE_NAPI_GETTER("lpath", JSGetAlbumLPath),
         DECLARE_NAPI_GETTER("uploadStatus", JSGetUploadStatus),
+        DECLARE_NAPI_GETTER("shareRiskStatus", JSGetShareRiskStatus),
+        DECLARE_NAPI_GETTER("shareRiskType", JSGetShareRiskType),
+        DECLARE_NAPI_GETTER("shareAlbumOwner", JSGetShareAlbumOwner),
+        DECLARE_NAPI_GETTER("cloudId", JSGetCloudId),
         DECLARE_NAPI_FUNCTION("commitModify", PhotoAccessHelperCommitModify),
         DECLARE_NAPI_FUNCTION("getAssets", JSPhotoAccessGetPhotoAssets),
         DECLARE_NAPI_FUNCTION("convertToPhotoAlbum", ConvertToPhotoAlbum),
@@ -229,6 +236,26 @@ int32_t SendablePhotoAlbumNapi::GetUploadStatus() const
     return photoAlbumPtr->GetUploadStatus();
 }
 
+int32_t SendablePhotoAlbumNapi::GetShareRiskStatus() const
+{
+    return photoAlbumPtr->GetShareRiskStatus();
+}
+
+const std::string& SendablePhotoAlbumNapi::GetShareRiskType() const
+{
+    return photoAlbumPtr->GetShareRiskType();
+}
+
+const std::string& SendablePhotoAlbumNapi::GetShareAlbumOwner() const
+{
+    return photoAlbumPtr->GetShareAlbumOwner();
+}
+
+const std::string& SendablePhotoAlbumNapi::GetCloudId() const
+{
+    return photoAlbumPtr->GetCloudId();
+}
+
 // Constructor callback
 napi_value SendablePhotoAlbumNapi::PhotoAlbumNapiConstructor(napi_env env, napi_callback_info info)
 {
@@ -392,6 +419,61 @@ napi_value SendablePhotoAlbumNapi::JSGetUploadStatus(napi_env env, napi_callback
     return jsResult;
 }
 
+napi_value SendablePhotoAlbumNapi::JSGetShareRiskStatus(napi_env env, napi_callback_info info)
+{
+    CHECK_COND_LOG_THROW_INT_RETURN_RET(env, SendableMediaLibraryNapiUtils::IsSystemApp(), JS_ERR_PERMISSION_DENIED,
+        "JSGetShareRiskStatus permission denied: not a system app", nullptr,
+        "JSGetShareRiskStatus failed: not a system app");
+    SendablePhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_int32(env, obj->GetShareRiskStatus(), &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value SendablePhotoAlbumNapi::JSGetShareRiskType(napi_env env, napi_callback_info info)
+{
+    CHECK_COND_LOG_THROW_INT_RETURN_RET(env, SendableMediaLibraryNapiUtils::IsSystemApp(), JS_ERR_PERMISSION_DENIED,
+        "JSGetShareRiskType permission denied: not a system app", nullptr,
+        "JSGetShareRiskType failed: not a system app");
+    SendablePhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_string_utf8(env, obj->GetShareRiskType().c_str(), NAPI_AUTO_LENGTH,
+        &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value SendablePhotoAlbumNapi::JSGetShareAlbumOwner(napi_env env, napi_callback_info info)
+{
+    CHECK_COND_LOG_THROW_INT_RETURN_RET(env, SendableMediaLibraryNapiUtils::IsSystemApp(), JS_ERR_PERMISSION_DENIED,
+        "JSGetShareAlbumOwner permission denied: not a system app", nullptr,
+        "JSGetShareAlbumOwner failed: not a system app");
+    SendablePhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_string_utf8(env, obj->GetShareAlbumOwner().c_str(), NAPI_AUTO_LENGTH,
+        &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value SendablePhotoAlbumNapi::JSGetCloudId(napi_env env, napi_callback_info info)
+{
+    CHECK_COND_LOG_THROW_INT_RETURN_RET(env, SendableMediaLibraryNapiUtils::IsSystemApp(), JS_ERR_PERMISSION_DENIED,
+        "JSGetCloudId permission denied: not a system app", nullptr,
+        "JSGetCloudId failed: not a system app");
+    SendablePhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_string_utf8(env, obj->GetCloudId().c_str(), NAPI_AUTO_LENGTH, &jsResult),
+        JS_INNER_FAIL);
+    return jsResult;
+}
+
 napi_value GetStringArg(napi_env env, napi_callback_info info, SendablePhotoAlbumNapi **obj, string &output)
 {
     size_t argc = ARGS_ONE;
@@ -487,6 +569,11 @@ static int32_t GetPredicatesByAlbumTypes(const shared_ptr<PhotoAlbum> &photoAlbu
         return SendableMediaLibraryNapiUtils::GetSystemAlbumPredicates(subType, predicates, hiddenOnly);
     }
 
+    if (type == PhotoAlbumType::SHARE) {
+        return SendableMediaLibraryNapiUtils::GetShareAlbumPredicates(photoAlbum->GetAlbumId(),
+            predicates, hiddenOnly);
+    }
+
     NAPI_ERR_LOG("Invalid album type and subtype: type=%{public}d, subType=%{public}d", static_cast<int>(type),
         static_cast<int>(subType));
     return E_INVALID_ARGUMENTS;
@@ -572,13 +659,31 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
     ConvertColumnsForFeaturedSinglePortrait(context);
     int32_t errCode = 0;
     int32_t userId = -1;
+    bool isShareAlbum = false;
     if (context->objectInfo != nullptr) {
         shared_ptr<PhotoAlbum> photoAlbum =  context->objectInfo->GetPhotoAlbumInstance();
         if (photoAlbum != nullptr) {
             userId = photoAlbum->GetUserId();
+            isShareAlbum = photoAlbum->IsShareAlbum(photoAlbum->GetPhotoAlbumType(),
+                photoAlbum->GetPhotoAlbumSubType());
         }
     }
-    auto resultSet = UserFileClient::Query(uri, context->predicates, context->fetchColumn, errCode, userId);
+    shared_ptr<DataShareResultSet> resultSet = nullptr;
+    if (isShareAlbum) {
+        AlbumGetAssetsReqBody reqBody;
+        reqBody.predicates = context->predicates;
+        reqBody.columns = context->fetchColumn;
+        AlbumGetAssetsRespBody respBody;
+        uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS);
+        errCode = IPC::UserDefineIPCClient().SetUserId(userId).Call(businessCode, reqBody, respBody);
+        if (errCode == E_OK) {
+            resultSet = respBody.resultSet;
+        } else {
+            NAPI_ERR_LOG("UserDefineIPCClient Call failed, errCode is %{public}d", errCode);
+        }
+    } else {
+        resultSet = UserFileClient::Query(uri, context->predicates, context->fetchColumn, errCode, userId);
+    }
     if (resultSet == nullptr) {
         context->SaveError(errCode);
         return;

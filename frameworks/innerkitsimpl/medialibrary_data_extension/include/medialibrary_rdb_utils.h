@@ -114,6 +114,9 @@ public:
         const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
         const std::vector<std::string> &albumIds = {},
         std::unordered_set<int32_t> *changedAlbumIds = nullptr);
+    // Build default cover updates from an already selected URI without querying the database.
+    EXPORT static void SetAnalysisDefaultCoverValues(int32_t subtype, const std::string &oldCover,
+        const std::string &newCover, NativeRdb::ValuesBucket &values);
 
     // update cover_uri of albums.
     EXPORT static void UpdateCommonAlbumCover(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,

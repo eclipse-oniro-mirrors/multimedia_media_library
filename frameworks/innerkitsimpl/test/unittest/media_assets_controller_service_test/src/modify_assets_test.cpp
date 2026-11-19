@@ -351,10 +351,17 @@ HWTEST_F(ModifyAssetsTest, SetAssetTitle_Test_001, TestSize.Level0)
     int32_t errCode = SetAssetTitle(assetId, "");
     ASSERT_LT(errCode, 0);
 
-    errCode = SetAssetTitle(assetId, "title.xxx");
+    // 需求：不允许以 '.' 开头
+    errCode = SetAssetTitle(assetId, ".title.xxx");
     ASSERT_LT(errCode, 0);
 
+    // 需求：允许标题包含中间 '.'
     std::string data;
+    errCode = SetAssetTitle(assetId, "title.xxx");
+    ASSERT_GT(errCode, 0);
+    data = GetAssetColumn(assetId, MediaColumn::MEDIA_TITLE);
+    ASSERT_EQ(data, "title.xxx");
+
     errCode = SetAssetTitle(assetId, "title");
     ASSERT_GT(errCode, 0);
     data = GetAssetColumn(assetId, MediaColumn::MEDIA_TITLE);

@@ -30,6 +30,9 @@
 #undef protected
 
 #include "create_asset_vo.h"
+#include "medialibrary_errno.h"
+#include "modify_assets_vo.h"
+#include "parameter_utils.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
@@ -140,6 +143,58 @@ HWTEST_F(SetTitleTest, SetTitleTest_Test_001, TestSize.Level0)
 
     const std::string &title = GetStringVal(MediaColumn::MEDIA_TITLE, resSet);
     EXPECT_EQ(title, reqBody.title);
+}
+
+
+// ---- ParameterUtils 标题校验（需求：允许中间 '.',禁止 '.' 开头与非法字符）----
+HWTEST_F(SetTitleTest, CheckCreateAssetTitle_Empty_001, TestSize.Level1)
+{
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle(""), E_OK);
+}
+
+HWTEST_F(SetTitleTest, CheckCreateAssetTitle_DotInMiddle_001, TestSize.Level1)
+{
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("com.123.photo"), E_OK);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("test..name"), E_OK);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("my.photo.2026"), E_OK);
+}
+
+HWTEST_F(SetTitleTest, CheckCreateAssetTitle_LeadingDot_001, TestSize.Level1)
+{
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle(".hidden"), E_INVALID_DISPLAY_NAME);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("."), E_INVALID_DISPLAY_NAME);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle(".."), E_INVALID_DISPLAY_NAME);
+}
+
+HWTEST_F(SetTitleTest, CheckCreateAssetTitle_IllegalChar_001, TestSize.Level1)
+{
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("test'file"), E_INVALID_DISPLAY_NAME);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("test`file"), E_INVALID_DISPLAY_NAME);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("test{file}"), E_INVALID_DISPLAY_NAME);
+    EXPECT_EQ(ParameterUtils::CheckCreateAssetTitle("test[file]"), E_INVALID_DISPLAY_NAME);
+}
+
+HWTEST_F(SetTitleTest, CheckSetAssetTitle_DotInMiddle_001, TestSize.Level1)
+{
+    ModifyAssetsReqBody reqBody;
+    reqBody.fileIds = { 1 };
+    reqBody.title = "com.123.photo";
+    EXPECT_EQ(ParameterUtils::CheckSetAssetTitle(reqBody), E_OK);
+}
+
+HWTEST_F(SetTitleTest, CheckSetAssetTitle_LeadingDot_001, TestSize.Level1)
+{
+    ModifyAssetsReqBody reqBody;
+    reqBody.fileIds = { 1 };
+    reqBody.title = ".hidden";
+    EXPECT_EQ(ParameterUtils::CheckSetAssetTitle(reqBody), E_INVALID_DISPLAY_NAME);
+}
+
+HWTEST_F(SetTitleTest, CheckSetAssetTitle_Empty_001, TestSize.Level1)
+{
+    ModifyAssetsReqBody reqBody;
+    reqBody.fileIds = { 1 };
+    EXPECT_EQ(ParameterUtils::CheckSetAssetTitle(reqBody), E_INVALID_DISPLAY_NAME);
 }
 
 }  // namespace OHOS::Media

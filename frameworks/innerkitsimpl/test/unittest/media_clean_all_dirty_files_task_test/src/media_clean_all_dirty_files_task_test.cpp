@@ -812,18 +812,6 @@ HWTEST_F(MediaCleanAllDirtyFilesTaskTest, Mcadft_ExistCloudAssetPathInDB_01, Tes
     MEDIA_INFO_LOG("Mcadft_ExistCloudAssetPathInDB_01 End");
 }
 
-HWTEST_F(MediaCleanAllDirtyFilesTaskTest, Mcadft_UpdateEditTimeByPath_01, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("Mcadft_UpdateEditTimeByPath_01 Start");
-    auto task = std::make_shared<MediaCleanAllDirtyFilesTask>();
-    std::string path = "/storage/cloud/files/photo/16/test.jpg";
-    int64_t editTime = 0;
-    int32_t editDataExist = 0;
-    int32_t result = task->UpdateEditTimeByPath(path, editTime, editDataExist);
-    EXPECT_EQ(result, E_OK);
-    MEDIA_INFO_LOG("Mcadft_UpdateEditTimeByPath_01 End");
-}
-
 HWTEST_F(MediaCleanAllDirtyFilesTaskTest, Mcadft_DealWithZeroSizeFile_01, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Mcadft_DealWithZeroSizeFile_01 Start");

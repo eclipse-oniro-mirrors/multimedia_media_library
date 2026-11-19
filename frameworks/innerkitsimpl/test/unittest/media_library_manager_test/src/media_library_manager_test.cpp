@@ -14,8 +14,11 @@
  */
 
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <algorithm>
+#include <unistd.h>
+#include <utility>
 
 #include "media_library_manager_test.h"
 #include "datashare_helper.h"
@@ -46,6 +49,10 @@
 #include "userfile_manager_types.h"
 #include "media_column.h"
 #include "medialibrary_unittest_utils.h"
+#include "analysis_metadata_query_test_helper.h"
+#include "get_assets_analysis_metadata_vo.h"
+#include "media_resp_vo.h"
+#include "media_req_vo.h"
 
 using namespace std;
 using namespace OHOS;
@@ -72,15 +79,6 @@ const int SCAN_WAIT_TIME = 10;
 constexpr int32_t URI_SIZE = 101;
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 const std::string FILE_MANAGER_TEST_DIR = "/storage/media/local/files/Docs/Download/ManagerTest/";
-
-struct UriParams {
-    string path;
-    string fileUri;
-    Size size;
-    bool isAstc;
-    DecodeDynamicRange dynamicRange;
-    string user;
-};
 
 static string JoinFormats(const vector<string> &formats)
 {
@@ -750,6 +748,145 @@ HWTEST_F(MediaLibraryManagerTest, GetUrisByOldUris_001, TestSize.Level1)
     uris.emplace_back("");
     ret = manager.GetUrisByOldUris(uris);
     EXPECT_EQ(ret.empty(), false);
+}
+
+constexpr size_t ANALYSIS_BATCH_MAX_SIZE = 100;
+
+using AnalysisMetadataInvalidInputQuery = std::function<std::pair<int32_t, bool>(const std::vector<std::string> &)>;
+static testing::AssertionResult CheckAnalysisMetadataInvalidInputs(const AnalysisMetadataInvalidInputQuery &query);
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_InvalidInput_001, TestSize.Level1)
+{
+    EXPECT_TRUE(CheckAnalysisMetadataInvalidInputs([this](const std::vector<std::string> &uris) {
+        std::unordered_map<std::string, std::vector<std::string>> result;
+        result.emplace("stale", std::vector<std::string> {"stale"});
+        const int32_t ret = manager.GetAssetsLabel(uris, result);
+        return std::make_pair(ret, result.empty());
+    }));
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_RequestBatch_001, TestSize.Level1)
+{
+    const std::string uriA = "file://media/Photo/2000001001";
+    const std::string uriB = "file://media/Photo/2000001002";
+    const std::string uriC = "file://media/Photo/2000001003";
+    MediaLibraryManager::AssetsAnalysisMetadataQuery query;
+    ASSERT_TRUE(manager.BuildAssetsAnalysisMetadataQuery({uriA, uriB, uriC, uriA}, query));
+    const std::vector<int32_t> expectedFileIds = {2000001001, 2000001002, 2000001003};
+    ASSERT_EQ(query.fileIds, expectedFileIds);
+    ASSERT_EQ(query.urisByFileId.size(), 3U);
+    ASSERT_EQ(query.urisByFileId.count(2000001001), 1U);
+    ASSERT_EQ(query.urisByFileId.count(2000001002), 1U);
+    ASSERT_EQ(query.urisByFileId.count(2000001003), 1U);
+    EXPECT_EQ(query.urisByFileId.at(2000001001), std::vector<std::string> {uriA});
+    EXPECT_EQ(query.urisByFileId.at(2000001002), std::vector<std::string> {uriB});
+    EXPECT_EQ(query.urisByFileId.at(2000001003), std::vector<std::string> {uriC});
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_UriVariants_001, TestSize.Level1)
+{
+    const string uri = "file://media/Photo/2000001001";
+    MediaLibraryManager::AssetsAnalysisMetadataQuery duplicated;
+    ASSERT_TRUE(manager.BuildAssetsAnalysisMetadataQuery({uri, uri}, duplicated));
+    EXPECT_EQ(duplicated.fileIds, vector<int32_t> {2000001001});
+    ASSERT_EQ(duplicated.urisByFileId.count(2000001001), 1U);
+    EXPECT_EQ(duplicated.urisByFileId.at(2000001001), vector<string> {uri});
+    // A-21 / A-22: normalization must not alias a different spelling to an asset ID.
+    for (const string &invalidUri : {"file://media/Photo/02000001001", "file://media/Photo/%32" "000001001",
+        "file://media/Photo/ 2000001001", "file://media/Photo/2000001001 "}) {
+        MediaLibraryManager::AssetsAnalysisMetadataQuery query;
+        EXPECT_FALSE(manager.BuildAssetsAnalysisMetadataQuery({invalidUri}, query));
+        unordered_map<string, vector<string>> labels;
+        labels.emplace("stale", vector<string> {"stale"});
+        EXPECT_EQ(manager.GetAssetsLabel({invalidUri}, labels), E_INVALID_ARGUMENTS);
+        EXPECT_TRUE(labels.empty());
+        unordered_map<string, string> captions;
+        captions.emplace("stale", "stale");
+        EXPECT_EQ(manager.GetAssetsCaption({invalidUri}, captions), E_INVALID_ARGUMENTS);
+        EXPECT_TRUE(captions.empty());
+    }
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_BatchLimit_001, TestSize.Level1)
+{
+    std::vector<std::string> uris;
+    for (size_t i = 0; i < ANALYSIS_BATCH_MAX_SIZE; ++i) {
+        uris.emplace_back("file://media/Photo/" + std::to_string(2000000000 + i));
+    }
+    // A valid 100-item request is built locally; query success requires a permitted Native caller.
+    MediaLibraryManager::AssetsAnalysisMetadataQuery query;
+    ASSERT_TRUE(manager.BuildAssetsAnalysisMetadataQuery(uris, query));
+    EXPECT_EQ(query.fileIds.size(), ANALYSIS_BATCH_MAX_SIZE);
+    EXPECT_EQ(query.urisByFileId.size(), ANALYSIS_BATCH_MAX_SIZE);
+
+    std::unordered_map<std::string, std::vector<std::string>> result;
+    result.emplace("stale", std::vector<std::string> {"stale"});
+    uris.emplace_back("file://media/Photo/" + std::to_string(2000000000 + ANALYSIS_BATCH_MAX_SIZE));
+    EXPECT_EQ(manager.GetAssetsLabel(uris, result), E_INVALID_ARGUMENTS);
+    EXPECT_TRUE(result.empty());
+
+    // The limit applies to input count before URI deduplication.
+    result.emplace("stale", std::vector<std::string> {"stale"});
+    uris.assign(ANALYSIS_BATCH_MAX_SIZE + 1, "file://media/Photo/2000000000");
+    EXPECT_EQ(manager.GetAssetsLabel(uris, result), E_INVALID_ARGUMENTS);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsCaption_InvalidInput_001, TestSize.Level1)
+{
+    EXPECT_TRUE(CheckAnalysisMetadataInvalidInputs([this](const std::vector<std::string> &uris) {
+        std::unordered_map<std::string, std::string> result;
+        result.emplace("stale", "stale");
+        const int32_t ret = manager.GetAssetsCaption(uris, result);
+        return std::make_pair(ret, result.empty());
+    }));
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsCaption_NonNativeCallerDenied_001, TestSize.Level1)
+{
+    ASSERT_EQ(AccessTokenKit::GetTokenTypeFlag(static_cast<uint32_t>(IPCSkeleton::GetSelfTokenID())),
+        ATokenTypeEnum::TOKEN_HAP);
+    const std::vector<std::string> uris = {"file://media/Photo/2000001001", "file://media/Photo/2000001002",
+        "file://media/Photo/2000001003", "file://media/Photo/2000001001"};
+    std::unordered_map<std::string, std::string> result;
+    result.emplace("stale", "stale");
+    // UID 3553 only passes the local UID check; the HAP token still fails SYSTEMINNERAPI_PERM after IPC.
+    const int32_t expectedRet = getuid() == 3553 ? -E_CHECK_SYSTEMAPP_FAIL : E_PERMISSION_DENIED;
+    EXPECT_EQ(manager.GetAssetsCaption(uris, result), expectedRet);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsCaption_BatchLimit_001, TestSize.Level1)
+{
+    std::vector<std::string> uris;
+    for (size_t i = 0; i < ANALYSIS_BATCH_MAX_SIZE; ++i) {
+        uris.emplace_back("file://media/Photo/" + std::to_string(2000000000 + i));
+    }
+    MediaLibraryManager::AssetsAnalysisMetadataQuery query;
+    ASSERT_TRUE(manager.BuildAssetsAnalysisMetadataQuery(uris, query));
+    EXPECT_EQ(query.fileIds.size(), ANALYSIS_BATCH_MAX_SIZE);
+
+    std::unordered_map<std::string, std::string> result;
+    result.emplace("stale", "stale");
+    uris.emplace_back("file://media/Photo/" + std::to_string(2000000000 + ANALYSIS_BATCH_MAX_SIZE));
+    EXPECT_EQ(manager.GetAssetsCaption(uris, result), E_INVALID_ARGUMENTS);
+    EXPECT_TRUE(result.empty());
+
+    result.emplace("stale", "stale");
+    uris.assign(ANALYSIS_BATCH_MAX_SIZE + 1, "file://media/Photo/2000000000");
+    EXPECT_EQ(manager.GetAssetsCaption(uris, result), E_INVALID_ARGUMENTS);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_NonNativeCallerDenied_001, TestSize.Level1)
+{
+    ASSERT_EQ(AccessTokenKit::GetTokenTypeFlag(static_cast<uint32_t>(IPCSkeleton::GetSelfTokenID())),
+        ATokenTypeEnum::TOKEN_HAP);
+    std::unordered_map<std::string, std::vector<std::string>> result;
+    result.emplace("stale", std::vector<std::string> {"stale"});
+    // READ_IMAGEVIDEO and a valid URI do not turn the fixture's HAP token into a Native token.
+    EXPECT_EQ(manager.GetAssetsLabel({"file://media/Photo/2000001001"}, result), -E_CHECK_SYSTEMAPP_FAIL);
+    EXPECT_TRUE(result.empty());
 }
 
 HWTEST_F(MediaLibraryManagerTest, GetMovingPhotoDateModified_002, TestSize.Level1)
@@ -2255,5 +2392,155 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetClonedAssetUris_test_00
     EXPECT_TRUE(uriMap.empty());
     MEDIA_INFO_LOG("MediaLibraryManager_GetClonedAssetUris_test_001 exit");
 }
+
+static void ExpectAnalysisMetadataReply(AnalysisMetadataMockDataShareHelper &helper,
+    const vector<int32_t> &fileIds, const vector<string> &values, const vector<int32_t> &expectedRequestFileIds)
+{
+    GetAssetsAnalysisMetadataRespBody body;
+    body.fileIds = fileIds;
+    body.values = values;
+    EXPECT_CALL(helper, UserDefineFunc(testing::_, testing::_, testing::_))
+        .WillOnce([body, expectedRequestFileIds](MessageParcel &data, MessageParcel &reply, MessageOption &) {
+            EXPECT_FALSE(data.ReadInterfaceToken().empty());
+            IPC::MediaReqVo<GetAssetsAnalysisMetadataReqBody> request;
+            EXPECT_TRUE(request.Unmarshalling(data));
+            EXPECT_EQ(request.GetBody().fileIds, expectedRequestFileIds);
+            IPC::MediaRespVo<GetAssetsAnalysisMetadataRespBody> response;
+            response.SetBody(body);
+            response.SetErrCode(E_OK);
+            response.SetTraceId("analysis-metadata-test");
+            response.SetSuccess(true);
+            return response.Marshalling(reply) ? E_OK : E_FAIL;
+        });
+}
+
+// F-38 / F-25 / F-26: shuffled 1/3/0 results keep their original URI keys.
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_MixedResultsKeepUriKeys, TestSize.Level1)
+{
+    auto helper = make_shared<AnalysisMetadataMockDataShareHelper>();
+    ScopedAnalysisMetadataHelper helperScope(helper);
+    const vector<int32_t> responseFileIds = {102, 101, 102, 102};
+    const vector<string> responseLabels = {"b1", "a1", "b2", "b3"};
+    const vector<int32_t> requestFileIds = {103, 102, 101};
+    ExpectAnalysisMetadataReply(*helper, responseFileIds, responseLabels, requestFileIds);
+    const string uriA = "file://media/Photo/101";
+    const string uriB = "file://media/Photo/102";
+    const string uriC = "file://media/Photo/103";
+    unordered_map<string, vector<string>> result;
+    ASSERT_EQ(manager.GetAssetsLabel({uriC, uriB, uriA}, result), E_OK);
+    ASSERT_EQ(result.size(), 3U);
+    ASSERT_EQ(result.count(uriA), 1U);
+    ASSERT_EQ(result.count(uriB), 1U);
+    ASSERT_EQ(result.count(uriC), 1U);
+    EXPECT_EQ(result.at(uriA), vector<string> {"a1"});
+    const vector<string> expectedB = {"b1", "b2", "b3"};
+    EXPECT_EQ(result.at(uriB), expectedB);
+    EXPECT_TRUE(result.at(uriC).empty());
+}
+
+// C-04 (Label): a late unexpected ID must not expose rows already accumulated locally.
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_UnknownFileIdReturnsNoPartialResult, TestSize.Level1)
+{
+    auto helper = make_shared<AnalysisMetadataMockDataShareHelper>();
+    ScopedAnalysisMetadataHelper helperScope(helper);
+    const vector<int32_t> responseFileIds = {101, 999};
+    const vector<string> responseLabels = {"own", "unexpected"};
+    const vector<int32_t> requestFileIds = {101};
+    ExpectAnalysisMetadataReply(*helper, responseFileIds, responseLabels, requestFileIds);
+    unordered_map<string, vector<string>> result;
+    result.emplace("stale", vector<string> {"stale"});
+    EXPECT_EQ(manager.GetAssetsLabel({"file://media/Photo/101"}, result), E_FAIL);
+    EXPECT_TRUE(result.empty());
+}
+
+// F-02 (Label): one requested URI produces exactly one result key.
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_SingleAssetKeepsOneKey, TestSize.Level1)
+{
+    auto helper = make_shared<AnalysisMetadataMockDataShareHelper>();
+    ScopedAnalysisMetadataHelper helperScope(helper);
+    ExpectAnalysisMetadataReply(*helper, {101}, {"single-label"}, {101});
+    const string uri = "file://media/Photo/101";
+    unordered_map<string, vector<string>> result;
+    result.emplace("stale", vector<string> {"stale"});
+    ASSERT_EQ(manager.GetAssetsLabel({uri}, result), E_OK);
+    ASSERT_EQ(result.size(), 1U);
+    ASSERT_EQ(result.count(uri), 1U);
+    EXPECT_EQ(result.at(uri), vector<string> {"single-label"});
+}
+
+// F-03 (Label): 99 distinct URIs remain distinct result keys.
+HWTEST_F(MediaLibraryManagerTest, GetAssetsLabel_NinetyNineAssetsKeepAllKeys, TestSize.Level1)
+{
+    auto helper = make_shared<AnalysisMetadataMockDataShareHelper>();
+    ScopedAnalysisMetadataHelper helperScope(helper);
+    constexpr int32_t assetCount = 99;
+    vector<string> uris;
+    vector<int32_t> fileIds;
+    vector<string> labels;
+    for (int32_t index = 0; index < assetCount; ++index) {
+        const int32_t fileId = 101 + index;
+        uris.emplace_back("file://media/Photo/" + to_string(fileId));
+        fileIds.emplace_back(fileId);
+        labels.emplace_back("label-" + to_string(fileId));
+    }
+    ExpectAnalysisMetadataReply(*helper, fileIds, labels, fileIds);
+    unordered_map<string, vector<string>> result;
+    result.emplace("stale", vector<string> {"stale"});
+    ASSERT_EQ(manager.GetAssetsLabel(uris, result), E_OK);
+    ASSERT_EQ(result.size(), 99U);
+    for (int32_t index = 0; index < assetCount; ++index) {
+        const string uri = "file://media/Photo/" + to_string(101 + index);
+        ASSERT_EQ(result.count(uri), 1U) << "asset index: " << index;
+        const vector<string> expected = {"label-" + to_string(101 + index)};
+        EXPECT_EQ(result.at(uri), expected) << "asset index: " << index;
+    }
+}
+
+// F-12 / F-17 / F-18: malformed paths are rejected before metadata transport.
+HWTEST_F(MediaLibraryManagerTest, GetAssetsMetadata_InvalidUriShapesDoNotSendIpc, TestSize.Level1)
+{
+    auto helper = make_shared<AnalysisMetadataMockDataShareHelper>();
+    ScopedAnalysisMetadataHelper helperScope(helper);
+    EXPECT_CALL(*helper, UserDefineFunc(testing::_, testing::_, testing::_)).Times(0);
+    for (const string &uri : {"", "file://media/Photo//1234//a.jpg",
+        "file://media/Photo/%2e%2e%2f1234/a.jpg"}) {
+        unordered_map<string, vector<string>> labels;
+        labels.emplace("stale", vector<string> {"stale"});
+        EXPECT_EQ(manager.GetAssetsLabel({uri}, labels), E_INVALID_ARGUMENTS);
+        EXPECT_TRUE(labels.empty());
+        unordered_map<string, string> captions;
+        captions.emplace("stale", "stale");
+        EXPECT_EQ(manager.GetAssetsCaption({uri}, captions), E_INVALID_ARGUMENTS);
+        EXPECT_TRUE(captions.empty());
+    }
+}
+
+static testing::AssertionResult CheckAnalysisMetadataInvalidInputs(const AnalysisMetadataInvalidInputQuery &query)
+{
+    // Empty, non-photo, non-positive, overflowing, traversal, remote, cross-user and mixed batches.
+    const std::vector<std::vector<std::string>> invalidInputs = {
+        {},
+        {"file://media/Audio/1"},
+        {"file://media/Album/1"},
+        {"file://media/Photo/0"},
+        {"file://media/Photo/-1"},
+        {"file://media/Photo/2147483648"},
+        {"file://media/Photo/1/../2"},
+        {"file://media/Photo/1?networkid=remote_device"},
+        {"file://media/Photo/1?user=101"},
+        {"file://media/Photo/1", "file://media/Audio/1"},
+    };
+    for (size_t index = 0; index < invalidInputs.size(); ++index) {
+        const auto [ret, resultEmpty] = query(invalidInputs[index]);
+        if (ret != E_INVALID_ARGUMENTS || !resultEmpty) {
+            MEDIA_ERR_LOG("Invalid input case %{public}zu failed, ret: %{public}d, result empty: %{public}d",
+                index, ret, resultEmpty);
+            return testing::AssertionFailure() << "invalid input case: " << index << ", ret: " << ret
+                << ", expected: " << E_INVALID_ARGUMENTS << ", result empty: " << resultEmpty;
+        }
+    }
+    return testing::AssertionSuccess();
+}
+
 } // namespace Media
 } // namespace OHOS

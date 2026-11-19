@@ -301,6 +301,7 @@ MediaLibraryRdbStore::MediaLibraryRdbStore(const shared_ptr<OHOS::AbilityRuntime
     string realPath = RdbSqlUtils::GetDefaultDatabasePath(databaseDir, name, errCode);
     config_.SetHaMode(HAMode::MANUAL_TRIGGER);
     config_.SetAllowRebuild(true);
+    config_.EnableDumpStackOnFileDeletion(true);
     config_.SetName(move(name));
     config_.SetPath(move(realPath));
     config_.SetBundleName(context->GetBundleName());
@@ -2187,6 +2188,8 @@ static const vector<string> onCreateSqlStrs = {
     SQL_CREATE_MAP_CODE_DELETE_TRIGGER,
     SQL_CREATE_MAPCODE_LEVEL_5_INDEX,
     SQL_CREATE_MAPCODE_LEVEL_20_INDEX,
+
+    PhotoUpgrade::CREATE_PHOTO_SCHPT_SHARE_DATE_ADDED_INDEX,
 };
 
 static int32_t ExecuteSql(RdbStore &store)

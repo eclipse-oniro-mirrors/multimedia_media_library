@@ -131,6 +131,10 @@ napi_value PhotoAlbumNapi::PhotoAccessInit(napi_env env, napi_value exports)
             DECLARE_NAPI_GETTER("changeTime", JSGetChangeTime),
             DECLARE_NAPI_GETTER("uploadStatus", JSGetUploadStatus),
             DECLARE_NAPI_GETTER("hidden", JSPhotoAccessGetPhotoAlbumtHidden),
+            DECLARE_NAPI_GETTER("shareRiskStatus", JSPhotoAccessGetShareRiskStatus),
+            DECLARE_NAPI_GETTER("shareRiskType", JSPhotoAccessGetShareRiskType),
+            DECLARE_NAPI_GETTER("cloudId", JSPhotoAccessGetCloudId),
+            DECLARE_NAPI_GETTER("shareAlbumOwner", JSPhotoAccessGetShareAlbumOwner),
             DECLARE_NAPI_FUNCTION("commitModify", PhotoAccessHelperCommitModify),
             DECLARE_NAPI_FUNCTION("addAssets", PhotoAccessHelperAddAssets),
             DECLARE_NAPI_FUNCTION("removeAssets", PhotoAccessHelperRemoveAssets),
@@ -306,6 +310,26 @@ int64_t PhotoAlbumNapi::GetChangeTime() const
 int32_t PhotoAlbumNapi::GetUploadStatus() const
 {
     return photoAlbumPtr->GetUploadStatus();
+}
+
+int32_t PhotoAlbumNapi::GetShareRiskStatus() const
+{
+    return photoAlbumPtr->GetShareRiskStatus();
+}
+
+const std::string& PhotoAlbumNapi::GetShareRiskType() const
+{
+    return photoAlbumPtr->GetShareRiskType();
+}
+
+const std::string& PhotoAlbumNapi::GetCloudId() const
+{
+    return photoAlbumPtr->GetCloudId();
+}
+
+const std::string& PhotoAlbumNapi::GetShareAlbumOwner() const
+{
+    return photoAlbumPtr->GetShareAlbumOwner();
 }
 
 int32_t PhotoAlbumNapi::GetHidden() const
@@ -495,6 +519,49 @@ napi_value PhotoAlbumNapi::JSPhotoAccessGetPhotoAlbumtHidden(napi_env env, napi_
 
     napi_value jsResult = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, static_cast<bool>(obj->GetHidden()), &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value PhotoAlbumNapi::JSPhotoAccessGetShareRiskStatus(napi_env env, napi_callback_info info)
+{
+    PhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_int32(env, obj->GetShareRiskStatus(), &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value PhotoAlbumNapi::JSPhotoAccessGetShareRiskType(napi_env env, napi_callback_info info)
+{
+    PhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_string_utf8(env, obj->GetShareRiskType().c_str(), NAPI_AUTO_LENGTH,
+        &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value PhotoAlbumNapi::JSPhotoAccessGetCloudId(napi_env env, napi_callback_info info)
+{
+    PhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_string_utf8(env, obj->GetCloudId().c_str(), NAPI_AUTO_LENGTH,
+        &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value PhotoAlbumNapi::JSPhotoAccessGetShareAlbumOwner(napi_env env, napi_callback_info info)
+{
+    PhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_create_string_utf8(env, obj->GetShareAlbumOwner().c_str(), NAPI_AUTO_LENGTH,
+        &jsResult), JS_INNER_FAIL);
     return jsResult;
 }
 
@@ -1252,10 +1319,12 @@ static int32_t GetPredicatesByAlbumTypes(const shared_ptr<PhotoAlbum> &photoAlbu
         return E_INVALID_ARGUMENTS;
     }
     PhotoAlbumType type = photoAlbum->GetPhotoAlbumType();
-    if ((!PhotoAlbum::CheckPhotoAlbumType(type)) || (!PhotoAlbum::CheckPhotoAlbumSubType(subType))) {
-        NAPI_ERR_LOG("Invalid album type or subtype: type=%{public}d, subType=%{public}d", static_cast<int>(type),
-            static_cast<int>(subType));
-        return E_INVALID_ARGUMENTS;
+    if (!PhotoAlbum::IsShareAlbum(type, subType)) {
+        if ((!PhotoAlbum::CheckPhotoAlbumType(type)) || (!PhotoAlbum::CheckPhotoAlbumSubType(subType))) {
+            NAPI_ERR_LOG("Invalid album type or subtype: type=%{public}d, subType=%{public}d", static_cast<int>(type),
+                static_cast<int>(subType));
+            return E_INVALID_ARGUMENTS;
+        }
     }
 
     if (PhotoAlbum::IsUserPhotoAlbum(type, subType)) {
@@ -1272,6 +1341,10 @@ static int32_t GetPredicatesByAlbumTypes(const shared_ptr<PhotoAlbum> &photoAlbu
 
     if (type == PhotoAlbumType::SYSTEM) {
         return MediaLibraryNapiUtils::GetSystemAlbumPredicates(subType, predicates, hiddenOnly);
+    }
+
+    if (type == PhotoAlbumType::SHARE) {
+        return MediaLibraryNapiUtils::GetShareAlbumPredicates(photoAlbum->GetAlbumId(), predicates, hiddenOnly);
     }
 
     NAPI_ERR_LOG("Invalid album type and subtype: type=%{public}d, subType=%{public}d", static_cast<int>(type),
@@ -1383,10 +1456,13 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
     ConvertColumnsForPortrait(context);
     int32_t errCode = 0;
     int32_t userId = -1;
+    bool isShareAlbum = false;
     if (context->objectInfo != nullptr) {
         shared_ptr<PhotoAlbum> photoAlbum =  context->objectInfo->GetPhotoAlbumInstance();
         if (photoAlbum != nullptr) {
             userId = photoAlbum->GetUserId();
+            isShareAlbum = photoAlbum->IsShareAlbum(photoAlbum->GetPhotoAlbumType(),
+                photoAlbum->GetPhotoAlbumSubType());
         }
     }
     auto [accessSandbox, resultSet] =
@@ -1400,9 +1476,10 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
         reqBody.predicates = context->predicates;
         reqBody.columns = context->fetchColumn;
         AlbumGetAssetsRespBody respBody;
-        uint32_t businessCode = context->isSystemApi
-                                    ? static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_ASSETS)
-                                    : static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_ASSETS);
+        uint32_t businessCode = isShareAlbum ?
+            static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS) :
+            context->isSystemApi ? static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_ASSETS) :
+            static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_ASSETS);
         errCode = IPC::UserDefineIPCClient().SetUserId(userId).Call(businessCode, reqBody, respBody);
         if (errCode == E_OK) {
             resultSet = respBody.resultSet;

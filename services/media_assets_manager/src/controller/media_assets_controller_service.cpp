@@ -1104,7 +1104,7 @@ int32_t MediaAssetsControllerService::AssetChangeSetDisplayNameByFile(MessagePar
         MEDIA_ERR_LOG("uri is invalid");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_PARAM_CONVERT_FORMAT);
     }
-    if (MediaFileUtils::CheckDisplayName(reqBody.displayName, false, true) != E_OK) {
+    if (MediaFileUtils::CheckDisplayName(reqBody.displayName, false, false) != E_OK) {
         MEDIA_ERR_LOG("displayName is invalid");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_PARAM_CONVERT_FORMAT);
     }
@@ -1615,7 +1615,7 @@ int32_t MediaAssetsControllerService::GetBurstAssets(
     }
 
     dto.predicates.OrderByAsc(MediaColumn::MEDIA_NAME);
-    auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto, passCode);
+    auto resultSet = MediaAssetsService::GetInstance().GetBurstAssets(dto, passCode);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);

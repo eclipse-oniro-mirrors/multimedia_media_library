@@ -113,8 +113,8 @@ void MediaOnNotifyNewObserver::ProcessObserverBranches(NewJsOnChangeCallbackWrap
     callbackWrapper.ChangeListenScene = PhotoChangeListenScene::Other;
     
     if (singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_URI) != singleClientObservers_.end() &&
-        clientObservers_.find(NotifyUriType::PHOTO_URI) != clientObservers_.end() &&
-        infoUriType == NotifyUriType::PHOTO_URI) {
+        clientObservers_.find(infoUriType) != clientObservers_.end() &&
+        (infoUriType == NotifyUriType::PHOTO_URI || infoUriType == NotifyUriType::SHARE_PHOTO_URI)) {
         auto outerIt = singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_URI);
         CHECK_AND_RETURN_LOG(outerIt != singleClientObservers_.end(),
             "SINGLE_PHOTO_URI not found in singleClientObservers_");

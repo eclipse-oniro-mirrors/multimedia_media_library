@@ -88,13 +88,12 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
     MEDIA_INFO_LOG("userId_: %{public}d -> activeUser: %{public}d", userId_, activeUser);
     if (dataShareHelper_ == nullptr || activeUser != userId_) {
         auto &client = IPC::MediaCommonClient::GetInstance();
-        client.SetUserId(activeUser);
         sptr<IRemoteObject> token = InitToken();
         if (token == nullptr) {
             MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
             return;
         }
-        client.Init(token, activeUser);
+        client.ForceReconnect(activeUser);
         dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(

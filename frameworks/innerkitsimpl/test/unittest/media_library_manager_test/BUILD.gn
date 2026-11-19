@@ -40,6 +40,10 @@ ohos_unittest("media_library_manager_test") {
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/config",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -49,6 +53,7 @@ ohos_unittest("media_library_manager_test") {
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_library_manager_test.cpp",
     "./src/media_library_manager_notify_test.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_assets_analysis_metadata_vo.cpp",
   ]
 
   deps = [
@@ -79,8 +84,10 @@ ohos_unittest("media_library_manager_test") {
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
+    "googletest:gmock_main",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "os_account:os_account_innerkits",
     "relational_store:native_appdatafwk",
     "relational_store:native_dataability",
     "relational_store:native_rdb",

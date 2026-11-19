@@ -67,8 +67,7 @@ static void FilterSingleChanges(MediaChangeInfo& outerElem, std::vector<NotifyIn
     CHECK_AND_RETURN_LOG(!innerChanges.empty(), "FilterSingleChanges: innerChanges is empty, skip");
     const NotifyUriType notifyUri = isPhotoAsset ?
         NotifyUriType::SINGLE_PHOTO_URI : NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
-    Notification::NotifyUriType sourceUri = isPhotoAsset ?
-        NotifyUriType::PHOTO_URI : NotifyUriType::PHOTO_ALBUM_URI;
+    Notification::NotifyUriType sourceUri = outerElem.notifyUri;
     std::vector<ObserverInfo> obsInfos = manager->FindObserver(notifyUri);
     for (auto& obsInfo : obsInfos) {
         if (manager->FindSingleObserverWithUri(sourceUri, obsInfo.callingTokenId)) {
@@ -143,8 +142,7 @@ static void FilterForRecheckChanges(MediaChangeInfo& outerElem, std::vector<Noti
 {
     const NotifyUriType notifyUri = isPhotoAsset ?
         NotifyUriType::SINGLE_PHOTO_URI : NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
-    Notification::NotifyUriType sourceUri = isPhotoAsset ?
-        NotifyUriType::PHOTO_URI : NotifyUriType::PHOTO_ALBUM_URI;
+    Notification::NotifyUriType sourceUri = outerElem.notifyUri;
     std::vector<ObserverInfo> obsInfos = manager->FindObserver(notifyUri);
     for (auto& obsInfo : obsInfos) {
         if (manager->FindSingleObserverWithUri(sourceUri, obsInfo.callingTokenId)) {
@@ -180,7 +178,9 @@ static void MergeNotifyInfoForSingleType(std::vector<MediaChangeInfo>& changeInf
 
     if (!manager->FindObserver(targetUri).empty()) {
         for (auto& outerElem : changeInfos) {
-            if (outerElem.notifyUri != sourceUri) {
+            bool isPhotoSource = outerElem.notifyUri == sourceUri ||
+                (isPhotoAsset && outerElem.notifyUri == NotifyUriType::SHARE_PHOTO_URI);
+            if (!isPhotoSource) {
                 continue;
             }
             FilterSingleChanges(outerElem, notifyInfos, manager, isPhotoAsset);

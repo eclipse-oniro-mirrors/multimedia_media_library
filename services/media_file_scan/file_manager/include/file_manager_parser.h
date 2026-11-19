@@ -30,7 +30,8 @@ public:
     FileUpdateType GetFileUpdateType() override;
     void UpdateTrashedAssetinfo();
     void UpdateRecoverAssetinfo();
-    static void HandleUpdateCloudAsset(NativeRdb::AbsRdbPredicates &predicates, const PhotoPositionType &positionType);
+    static int32_t HandleUpdateCloudAsset(NativeRdb::AbsRdbPredicates &predicates,
+        const PhotoPositionType &positionType);
 
     // FileManager新增缩略图生成接口（调用ThumbnailService）
     static int32_t GenerateThumbnailForFileManager(const ThumbnailInfo &info);
@@ -40,18 +41,21 @@ public:
         const std::vector<std::string> &inodes);
     bool CheckTypeValidForFileManagerParser();
 
-    // 端云场景Dentry文件创建
-    static void BatchCreateDentryFiles(
+    // 端云场景Dentry文件创建，返回创建结果
+    static int32_t BatchCreateDentryFiles(
         const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryInfoList);
-    static void CreateDentryFilesByFileIds(const std::vector<std::string> &fileIds);
+    static int32_t CreateDentryFilesByFileIds(const std::vector<std::string> &fileIds);
 
 private:
     void SetCloudPath() override;
     void SetSubtypeFromMetadata(std::unique_ptr<Metadata> &data) override;
 
     FileUpdateType GetTrashAssetUpdateType();
-    void HandleTrashedLocalAndCloudAsset(NativeRdb::AbsRdbPredicates &predicates);
-    void CreateDentryFileForCloudAsset(const FileParser::PhotosRowData &rowData);
+    int32_t HandleTrashedLocalAndCloudAsset(NativeRdb::AbsRdbPredicates &predicates);
+    int32_t CreateDentryFileForCloudAsset(const FileParser::PhotosRowData &rowData);
+    bool IsDotRenameRelease() const;
+    bool IsDotRenameRecover() const;
+    bool GetDotRenameUpdateType(FileUpdateType &updateType);
 };
 } // namespace OHOS::Media
 #endif // FILE_MANAGER_PARSER_H

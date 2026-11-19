@@ -239,11 +239,9 @@ int32_t MimeTypeUtils::GetExtensionFromMimeType(const std::string &mimeType, std
 {
     extension.clear();
     CHECK_AND_RETURN_RET_LOG(!mimeType.empty(), E_INVALID_VALUES, "Empty mime type");
-    if (IsMimeTypeMapEmpty()) {
-        CreateMapFromJson();
-    }
-    auto iter = mediaJsonMap_.find(mimeType);
-    CHECK_AND_RETURN_RET_LOG(iter != mediaJsonMap_.end() && !iter->second.empty(), E_INVALID_VALUES,
+    const auto &mimeTypeMap = MediaMapConstUtils::GetMimeTypeMap();
+    auto iter = mimeTypeMap.find(mimeType);
+    CHECK_AND_RETURN_RET_LOG(iter != mimeTypeMap.end() && !iter->second.empty(), E_INVALID_VALUES,
         "Failed to find extension of mime type:%{public}s", mimeType.c_str());
     // 同一 MIME 可能对应多个扩展名，优先取最常见写法，其余情况取映射表首位
     for (const auto &ext : iter->second) {

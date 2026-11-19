@@ -39,10 +39,31 @@
 #include "cloud_file_error.h"
 #include "cloud_media_context.h"
 #include "cloud_media_share_photos_merge_dao.h"
+#include "preferences.h"
+#include "preferences_helper.h"
+#include "cloud_share_album_define.h"
+#include "parameters.h"
+#include "cloud_media_retain_smart_data.h"
 
 // LCOV_EXCL_START
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
 namespace OHOS::Media::CloudSync {
+// 共享资产当前用户ID持久化: 下行时保存, 上行时读取校验
+const std::string PHOTOS_CURRENT_USER_ID_CONFIG =
+    "/data/storage/el2/base/preferences/share_album_current_user_id.xml";
+const std::string PHOTOS_CURRENT_USER_ID_KEY = "share_photos_current_user_id";
+
+void CloudMediaSharePhotosService::SaveCurrentUserIdFromPullData(std::vector<CloudMediaPullDataDto> &pullDataList)
+{
+    // 下行保存共享资产携带的当前用户ID, 供上行校验使用
+    for (auto &pullData : pullDataList) {
+        if (pullData.sharePhotoDetailDtoOp.has_value()) {
+            const std::string &userId = pullData.sharePhotoDetailDtoOp.value().currentUserId;
+            this->SaveCurrentUserId(userId);
+        }
+    }
+}
+
 int32_t CloudMediaSharePhotosService::OnFetchRecords(std::vector<CloudMediaPullDataDto> &pullDataList,
     std::vector<PhotosDto> &newData, std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats,
     std::vector<std::string> &failedRecords)
@@ -52,6 +73,7 @@ int32_t CloudMediaSharePhotosService::OnFetchRecords(std::vector<CloudMediaPullD
     MEDIA_INFO_LOG("OnFetchRecords pullDataList: %{public}zu.", pullDataList.size());
     CloudMediaPullDataHandleDto handleDto;
     handleDto.stats = stats;
+    this->SaveCurrentUserIdFromPullData(pullDataList);
     ret = HandleRecords(pullDataList, handleDto);
     newData = handleDto.newData;
     fdirtyData = handleDto.fdirtyData;
@@ -254,7 +276,18 @@ int32_t CloudMediaSharePhotosService::PullUpdate(
     std::vector<int32_t> &stats = handleDto.stats;
     const std::string cloudId = pullData.cloudId;
     MEDIA_DEBUG_LOG("Update cloudId: %{public}s.", cloudId.c_str());
-    CHECK_AND_RETURN_RET_INFO_LOG(!CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, false),
+    const std::string currentUserId = this->GetCurrentUserId();
+    const std::string albumOwner = pullData.localPhotosPoOp.has_value()
+        ? pullData.localPhotosPoOp.value().shareAlbumOwner.value_or("") : "";
+    const std::string ownerInfo = pullData.localPhotosPoOp.has_value()
+        ? pullData.localPhotosPoOp.value().shareOwnerInfo.value_or("") : "";
+    const bool isNotCurrentUser = (!albumOwner.empty() || !ownerInfo.empty()) && !currentUserId.empty() &&
+        currentUserId != albumOwner && currentUserId != ownerInfo;
+    // 非当前用户资产: 跳过 dirty 保护, 强制云覆盖本地
+    MEDIA_INFO_LOG("photo PullUpdate isNotCurrentUser: %{public}d, currentUserId: %{public}s, "
+        "albumOwner: %{public}s, ownerInfo: %{public}s",
+        isNotCurrentUser, currentUserId.c_str(), albumOwner.c_str(), ownerInfo.c_str());
+    CHECK_AND_RETURN_RET_INFO_LOG(isNotCurrentUser || !CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, false),
         E_OK, "local record dirty, ignore cloud update");
     bool mtimeChanged = false;
     int32_t ret = this->photosService_.IsMtimeChanged(pullData, mtimeChanged);
@@ -324,7 +357,15 @@ int32_t CloudMediaSharePhotosService::PullDelete(
         isLocal,
         pullData.ToString().c_str());
     int32_t ret = E_OK;
-    if (isLocal && CloudMediaFileUtils::LocalWriteOpen(localPath)) {
+    const std::string currentUserId = this->GetCurrentUserId();
+    const std::string albumOwner = pullData.localPhotosPoOp.has_value()
+        ? pullData.localPhotosPoOp.value().shareAlbumOwner.value_or("") : "";
+    const std::string ownerInfo = pullData.localPhotosPoOp.has_value()
+        ? pullData.localPhotosPoOp.value().shareOwnerInfo.value_or("") : "";
+    const bool isNotCurrentUser = (!albumOwner.empty() || !ownerInfo.empty()) && !currentUserId.empty() &&
+        currentUserId != albumOwner && currentUserId != ownerInfo;
+    // 非当前用户资产: 跳过 dirty 保护, 云删除强制生效(删除本地记录与文件)
+    if (!isNotCurrentUser && isLocal && CloudMediaSyncUtils::IsLocalDirty(pullData.localDirty, true)) {
         ret = this->photosDao_.SetRetry(cloudId);
         if (ret != E_OK) {
             std::string errMsg = "update retry flag failed, ret = " + to_string(ret);
@@ -439,6 +480,98 @@ int32_t CloudMediaSharePhotosService::DoDataMerge(const CloudMediaPullDataDto &p
         pullData.cloudId.c_str(),
         cloudStd);
     return E_OK;
+}
+
+std::string CloudMediaSharePhotosService::GetCurrentUserId()
+{
+    if (!currentUserId_.empty()) {
+        return currentUserId_;
+    }
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(PHOTOS_CURRENT_USER_ID_CONFIG, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs != nullptr, "", "get preferences error: %{public}d", errCode);
+    std::string userId = prefs->GetString(PHOTOS_CURRENT_USER_ID_KEY, "");
+    if (!userId.empty()) {
+        currentUserId_ = userId;
+    }
+    MEDIA_INFO_LOG("CloudMediaSharePhotosService::GetCurrentUserId: %{public}s", currentUserId_.c_str());
+    return currentUserId_;
+}
+
+void CloudMediaSharePhotosService::SaveCurrentUserId(const std::string &userId)
+{
+    if (userId.empty() || userId == currentUserId_) {
+        return;
+    }
+    currentUserId_ = userId;
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(PHOTOS_CURRENT_USER_ID_CONFIG, errCode);
+    CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
+    prefs->PutString(PHOTOS_CURRENT_USER_ID_KEY, userId);
+    prefs->FlushSync();
+    MEDIA_INFO_LOG("CloudMediaSharePhotosService save currentUserId success, size: %{public}zu", userId.size());
+}
+
+void CloudMediaSharePhotosService::FilterSharePhotosByCurrentUser(std::vector<PhotosPo> &photoList)
+{
+    const int32_t sceneType = CloudMediaContext::GetInstance().GetSceneType();
+    const bool isShareScene = sceneType == static_cast<int32_t>(SceneType::SHARE);
+    CHECK_AND_RETURN_LOG(isShareScene, "FilterSharePhotosByCurrentUser not share scene, skip. sceneType: %{public}d",
+        sceneType);
+    const std::string currentUserId = this->GetCurrentUserId();
+    // 未保存过当前用户ID时不拦截, 保持原有上行行为
+    CHECK_AND_RETURN_LOG(!currentUserId.empty(), "FilterSharePhotosByCurrentUser currentUserId empty, skip filter");
+    std::vector<PhotosPo> result;
+    for (const auto &photo : photoList) {
+        const std::string shareAlbumOwner = photo.shareAlbumOwner.value_or("");
+        const std::string shareOwnerInfo = photo.shareOwnerInfo.value_or("");
+        const bool isSharePhoto = !shareAlbumOwner.empty() || !shareOwnerInfo.empty();
+        // 非共享资产正常上云; 共享资产与相册 owner 或资产创建者相同才允许上云
+        MEDIA_DEBUG_LOG("FilterSharePhotosByCurrentUser allow photo upload, cloudId: %{public}s, "
+            "shareAlbumOwner: %{public}s, shareOwnerInfo: %{public}s, currentUserId: %{public}s",
+            photo.cloudId.value_or("").c_str(), shareAlbumOwner.c_str(), shareOwnerInfo.c_str(),
+            currentUserId.c_str());
+        if (!isSharePhoto || currentUserId == shareAlbumOwner || currentUserId == shareOwnerInfo) {
+            continue;
+        }
+        // 不允许上云: dirty 置 0 不再上行
+        const std::string cloudId = photo.cloudId.value_or("");
+        MEDIA_INFO_LOG("FilterSharePhotosByCurrentUser blocked photo upload, cloudId: %{public}s, "
+            "shareAlbumOwner: %{public}s, shareOwnerInfo: %{public}s, currentUserId: %{public}s",
+            cloudId.c_str(), shareAlbumOwner.c_str(), shareOwnerInfo.c_str(), currentUserId.c_str());
+        if (!cloudId.empty()) {
+            this->dataDao_.UpdateDirty(cloudId, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
+        }
+    }
+}
+
+int32_t CloudMediaSharePhotosService::OnCompletePull(const MediaOperateResult &optRet)
+{
+    const std::string CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
+    auto cloudSyncStatus = system::GetIntParameter(CLOUDSYNC_SWITCH_STATUS_KEY, 0);
+
+    CHECK_AND_RETURN_RET_LOG(optRet.errorCode == 0, E_OK, "photo OnCompletePull errCode:%{public}d", optRet.errorCode);
+
+    if ((cloudSyncStatus == 0) && needRecoverSmartData_ &&
+        GetSmartDataUpdateState() > static_cast<int64_t>(UpdateSmartDataState::IDLE)) {
+        int32_t ret = DoUpdateSmartDataAlbum();
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to schedule DoUpdateSmartDataAlbum task");
+        auto watch = MediaLibraryNotify::GetInstance();
+        CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_FAIL, "Can not get MediaLibraryNotify Instance");
+        watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
+        SetSmartDataUpdateState(UpdateSmartDataState::IDLE);
+    }
+    int32_t ret = this->photosDao_.UpdatePhotoVisible();
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    ret = this->photosAlbumHiddenService_.UpdateEmptyAlbumHidden();
+    // 共享资产上行校验: 非 owner/创建者 的资产不允许上云, dirty 置 0
+    std::vector<PhotosPo> dirtyPhotos;
+    int32_t shareRet = this->photosDao_.GetShareDirtyPhotos(dirtyPhotos);
+    CHECK_AND_PRINT_LOG(shareRet == E_OK, "GetShareDirtyPhotos failed, ret: %{public}d", shareRet);
+    this->FilterSharePhotosByCurrentUser(dirtyPhotos);
+    return ret;
 }
 }  // namespace OHOS::Media::CloudSync
 // LCOV_EXCL_STOP

@@ -24,6 +24,7 @@
 #include "post_event_utils.h"
 #include "settings_data_manager.h"
 #include "hi_audit.h"
+#include "cloud_sync_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -209,7 +210,7 @@ void CloudSyncHelper::OnTimerCallback()
         isThreadPending_ = false;
     }
 
-    if (!IsSyncSwitchOpen()) {
+    if (!IsSyncSwitchOpen() && !CloudSyncUtils::IsSharedAlbumCloudSyncSwitchOn()) {
         return;
     }
 

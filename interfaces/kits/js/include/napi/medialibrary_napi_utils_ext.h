@@ -28,4 +28,14 @@
         }                                                                       \
     } while (0)
 
+
+#define CHECK_COND_LOG_THROW_INT_RETURN_RET(env, cond, err, errmsg, ret, fmt, ...)  \
+    do {                                                                        \
+        if (!(cond)) {                                                          \
+            NAPI_ERR_LOG(fmt, ##__VA_ARGS__);                                   \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__, errmsg);            \
+            return ret;                                                         \
+        }                                                                       \
+    } while (0)
+
 #endif  // INTERFACES_KITS_JS_MEDIALIBRARY_INCLUDE_MEDIALIBRARY_NAPI_UTILS_EXT_H

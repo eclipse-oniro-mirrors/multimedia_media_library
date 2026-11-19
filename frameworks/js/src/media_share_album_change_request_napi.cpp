@@ -40,6 +40,8 @@
 #include "photo_album_napi.h"
 #include "user_define_ipc_client.h"
 #include "userfile_client.h"
+#include "get_share_album_member_vo.h"
+#include "share_album_member_info_napi.h"
 
 using namespace std;
 using namespace OHOS::Security::AccessToken;
@@ -63,6 +65,7 @@ napi_value MediaShareAlbumChangeRequestNapi::Init(napi_env env, napi_value expor
             DECLARE_NAPI_FUNCTION("resetShareCoverUri", JSResetShareCoverUri),
             DECLARE_NAPI_STATIC_FUNCTION("deleteShareAlbum", JSDeleteShareAlbums),
             DECLARE_NAPI_STATIC_FUNCTION("deleteMemberShareAlbum", JSDeleteMemberShareAlbum),
+            DECLARE_NAPI_STATIC_FUNCTION("getShareAlbumMemberInfo", JSGetShareAlbumMemberInfo),
         } };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
     return exports;
@@ -1001,5 +1004,155 @@ napi_value MediaShareAlbumChangeRequestNapi::JSResetShareCoverUri(napi_env env, 
     changeRequest->shareCoverOwner_ = param.owner;
     changeRequest->albumChangeOperations_.push_back(ShareAlbumChangeOperation::RESET_SHARE_COVER_URI);
     RETURN_NAPI_UNDEFINED(env);
+}
+
+static void GetShareAlbumMemberExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetShareAlbumMemberExecute");
+
+    auto *context = static_cast<MediaShareAlbumChangeRequestAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    GetShareAlbumMemberReqBody reqBody;
+    reqBody.owner = context->shareAlbumMemberInfo->GetShareAlbumOwner();
+    reqBody.albumId = context->shareAlbumAlbumId;
+
+    NAPI_INFO_LOG("GetShareAlbumMemberExecute: IPC call with owner=%{private}s, albumId=%{public}d",
+        reqBody.owner.c_str(), reqBody.albumId);
+
+    GetShareAlbumMemberRespBody respBody;
+    int32_t ret = IPC::UnifiedIPCClient().Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_SHARE_ALBUM_MEMBER), reqBody, respBody);
+    if (ret != 0) {
+        NAPI_ERR_LOG("UnifiedIPCClient().Call failed, ret=%{public}d", ret);
+        if (ret == E_PERMISSION_DENIED) {
+            context->error = OHOS_PERMISSION_DENIED_CODE;
+        } else if (ret == MEDIA_LIBRARY_INVALID_PARAMETER_ERROR) {
+            context->error = MEDIA_LIBRARY_INVALID_PARAMETER_ERROR;
+            context->errorMsg = "The owner is not the creator or member of the share album";
+        } else {
+            context->error = MEDIA_LIBRARY_INVALID_PARAMETER_ERROR;
+        }
+        return;
+    }
+
+    NAPI_INFO_LOG("GetShareAlbumMemberExecute: IPC returned owner=%{private}s, membersCount=%{public}zu",
+        respBody.owner.c_str(), respBody.members.size());
+
+    context->respShareAlbumOwner = respBody.owner;
+    context->respShareAlbumMembers.clear();
+    for (const auto &m : respBody.members) {
+        MemberInfo info;
+        info.SetMember(m.member);
+        info.SetStatus(m.status);
+        context->respShareAlbumMembers.push_back(info);
+    }
+}
+
+static void GetShareAlbumMemberCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetShareAlbumMemberCompleteCallback");
+
+    auto *context = static_cast<MediaShareAlbumChangeRequestAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    auto jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL,
+        "Failed to initialize error failed");
+    CHECK_ARGS_RET_VOID_WITH_INT_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+        "Failed to initialize data failed");
+
+    if (status != napi_ok || context->error != ERR_DEFAULT) {
+        NAPI_ERR_LOG("GetShareAlbumMember failed, status: %{public}d, error: %{public}d",
+            status, context->error);
+        context->HandleError(env, jsContext->error, true);
+    } else {
+        std::vector<std::shared_ptr<MemberInfo>> memberInfos;
+        for (auto& memberInfo : context->respShareAlbumMembers) {
+            memberInfos.push_back(std::make_shared<MemberInfo>(memberInfo));
+        }
+
+        NAPI_INFO_LOG("GetShareAlbumMemberCompleteCallback: creating ShareAlbumMemberInfoNapi with"
+            " owner=%{private}s, membersCount=%{public}zu", context->respShareAlbumOwner.c_str(),
+            memberInfos.size());
+        napi_value shareAlbumMemberInfoObj = ShareAlbumMemberInfoNapi::CreatShareAlbumMemberInfoNapi(
+            env, memberInfos, context->respShareAlbumOwner);
+        if (shareAlbumMemberInfoObj == nullptr) {
+            NAPI_ERR_LOG("Failed to create ShareAlbumMemberInfoNapi object");
+            context->error = JS_E_INNER_FAIL;
+            context->HandleError(env, jsContext->error, true);
+        } else {
+            jsContext->data = shareAlbumMemberInfoObj;
+            jsContext->status = true;
+        }
+    }
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaShareAlbumChangeRequestNapi::JSGetShareAlbumMemberInfo(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSGetShareAlbumMemberInfo");
+
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can only be called by system apps");
+        return nullptr;
+    }
+
+    size_t argc = ARGS_THREE;
+    napi_value argv[ARGS_THREE] = { nullptr };
+    napi_value thisVar = nullptr;
+    CHECK_ARGS_WITH_INT(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_INNER_FAIL);
+
+    napi_valuetype ctxType = napi_undefined;
+    napi_typeof(env, argv[PARAM0], &ctxType);
+    CHECK_WITH_INT_ERR_MESSAGE(env, ctxType == napi_object,
+        MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "context is null");
+
+    std::string owner;
+    CHECK_COND_WITH_INT_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamStringPathMax(env, argv[ARGS_ONE], owner) == napi_ok && !owner.empty(),
+        "Failed to get owner string");
+    CHECK_COND_WITH_INT_MESSAGE(env, !owner.empty(), "owner is nullptr");
+
+    shared_ptr<PhotoAlbum> photoAlbum = nullptr;
+    CHECK_WITH_INT_ERR_MESSAGE(env, ParsePhotoAlbum(env, argv[PARAM0], photoAlbum),
+        MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to parse album");
+    CHECK_WITH_INT_ERR_MESSAGE(env, photoAlbum != nullptr, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+        "photoAlbum is nullptr");
+
+    NAPI_INFO_LOG("JSGetShareAlbumMemberInfo: owner=%{private}s, albumId=%{public}d, albumName=%{public}s, "
+        "albumType=%{public}d, albumSubType=%{public}d, shareAlbumOwner=%{public}s",
+        owner.c_str(), photoAlbum->GetAlbumId(), photoAlbum->GetAlbumName().c_str(),
+        static_cast<int32_t>(photoAlbum->GetPhotoAlbumType()),
+        static_cast<int32_t>(photoAlbum->GetPhotoAlbumSubType()),
+        photoAlbum->GetShareAlbumOwner().c_str());
+    if (!PhotoAlbum::IsShareAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "The albums are not share album");
+        return nullptr;
+    }
+
+    unique_ptr<MediaShareAlbumChangeRequestAsyncContext> asyncContext =
+        make_unique<MediaShareAlbumChangeRequestAsyncContext>();
+    
+    if (asyncContext == nullptr) {
+        NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "The context is null");
+        return nullptr;
+    }
+    asyncContext->shareAlbumMemberInfo = make_unique<ShareAlbumMemberInfo>();
+    asyncContext->shareAlbumMemberInfo->SetShareAlbumOwner(owner);
+    asyncContext->inputShareAlbumOwner = owner;
+    asyncContext->shareAlbumAlbumId = photoAlbum->GetAlbumId();
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetShareAlbumMemberInfo",
+        GetShareAlbumMemberExecute, GetShareAlbumMemberCompleteCallback);
 }
 } // namespace OHOS::Media

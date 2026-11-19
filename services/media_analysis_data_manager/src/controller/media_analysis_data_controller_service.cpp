@@ -56,6 +56,8 @@
 #include "change_request_set_default_cover_uri_vo.h"
 #include "prepare_lcd_vo.h"
 #include "remove_cloud_lcd_vo.h"
+#include "get_assets_analysis_metadata_vo.h"
+#include "ipc_skeleton.h"
 // LCOV_EXCL_START
 namespace OHOS::Media::AnalysisData {
 using namespace std;
@@ -727,5 +729,52 @@ int32_t MediaAnalysisDataControllerService::RemoveCloudLcd(MessageParcel &data, 
     MEDIA_INFO_LOG("RemoveCloudLcd result: %{public}d", ret);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
+
+int32_t MediaAnalysisDataControllerService::GetAssetsLabel(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_LABEL);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    GetAssetsAnalysisMetadataReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
+        "GetAssetsLabel Read Request Error");
+    GetAssetsAnalysisMetadataRespBody respBody;
+    ret = MediaAnalysisDataService::GetInstance().GetAssetsLabel(reqBody, respBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret),
+        "GetAssetsLabel query failed, businessCode: %{public}u, file count: %{public}zu, ret: %{public}d",
+        operationCode, reqBody.fileIds.size(), ret);
+    MEDIA_INFO_LOG("GetAssetsLabel finished, businessCode: %{public}u, file count: %{public}zu, "
+        "row count: %{public}zu, ret: %{public}d",
+        operationCode, reqBody.fileIds.size(), respBody.fileIds.size(), ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAnalysisDataControllerService::GetAssetsCaption(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS_CAPTION);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    constexpr int32_t CAPTION_QUERY_ALLOWED_UID = 3553;
+    const int32_t callingUid = IPCSkeleton::GetCallingUid();
+    MEDIA_INFO_LOG("GetAssetsCaption GetCallingUid: %{public}d", callingUid);
+    CHECK_AND_RETURN_RET_LOG(callingUid == CAPTION_QUERY_ALLOWED_UID,
+        IPC::UserDefineIPC().WriteResponseBody(reply, E_PERMISSION_DENIED),
+        "GetAssetsCaption denied, callingUid: %{public}d", callingUid);
+    GetAssetsAnalysisMetadataReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
+        "GetAssetsCaption Read Request Error");
+    GetAssetsAnalysisMetadataRespBody respBody;
+    ret = MediaAnalysisDataService::GetInstance().GetAssetsCaption(reqBody, respBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret),
+        "GetAssetsCaption query failed, businessCode: %{public}u, file count: %{public}zu, ret: %{public}d",
+        operationCode, reqBody.fileIds.size(), ret);
+    MEDIA_INFO_LOG("GetAssetsCaption finished, businessCode: %{public}u, file count: %{public}zu, "
+        "row count: %{public}zu, ret: %{public}d",
+        operationCode, reqBody.fileIds.size(), respBody.fileIds.size(), ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
 } // namespace OHOS::Media::AnalysisData
 // LCOV_EXCL_STOP

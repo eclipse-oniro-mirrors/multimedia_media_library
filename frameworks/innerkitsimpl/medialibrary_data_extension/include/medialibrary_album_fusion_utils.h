@@ -69,6 +69,15 @@ struct TargetAssetInfo {
     std::string shareAlbumOwner = "";
     int64_t shareDateDay {0};
     int64_t shareGroup {0};
+    int32_t position = -1;
+    bool isSupportCloudClone = false;
+};
+
+struct CloudCopyParam {
+    int32_t assetId = -1;
+    int32_t ownerAlbumId = -1;
+    int64_t newAssetId = -1;
+    bool keepBurstSubtype = false;
 };
 
 public:
@@ -96,8 +105,9 @@ public:
         const int32_t &ownerAlbumId, std::shared_ptr<NativeRdb::ResultSet> &resultSet, int64_t &newAssetId,
         std::string displayName = "");
     EXPORT static int32_t CopyCloudSingleFile(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,
-        const int32_t &assetId, const int32_t &ownerAlbumId, std::shared_ptr<NativeRdb::ResultSet> &resultSet,
-        int64_t &newAssetId);
+        CloudCopyParam &param, std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr);
+    EXPORT static int32_t CloneCloudAsset(const CloneAssetInfo &cloneAssetInfo, int64_t &newAssetId);
     EXPORT static int32_t DeleteAlbumAndUpdateRelationship(ExecuteObject& executeObject,
         const int32_t &oldAlbumId, const int64_t &newAlbumId, bool isCloudAblum,
         const std::vector<std::string>* fileIdsInAlbum = nullptr);
