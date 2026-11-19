@@ -1939,7 +1939,7 @@ HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_090, Te
  * SubFunction: unified error cleanup
  * FunctionPoints: driver transfer-failed code maps to TRANSFER_FAILED after cleanup
  * EnvConditions: MtpTest receiveObjRet_ injects the driver return code
- * CaseDescription: ReceiveObj returns -17 (RECEVIE_OBJECT_FAILED), PTP mode skips the
+ * CaseDescription: ReceiveObj returns -17 (RECEIVE_OBJECT_FAILED), PTP mode skips the
  *                  unlink branch, unified cleanup runs and RecevieSendObject returns
  *                  MTP_ERROR_TRANSFER_FAILED
  */
@@ -1952,7 +1952,7 @@ HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_091, Te
     ASSERT_NE(context->mtpDriver, nullptr);
     std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
     ASSERT_NE(mtpOperationUtils, nullptr);
-    MtpTest::GetInstance()->receiveObjRet_ = -17;  // RECEVIE_OBJECT_FAILED
+    MtpTest::GetInstance()->receiveObjRet_ = -17;  // RECEIVE_OBJECT_FAILED
     MtpFileRange object;
     // Harmless /dev/null fd: safe whether or not another suite has initialised the proxies
     FdsanFd fd(open("/dev/null", O_RDWR));
@@ -1967,7 +1967,7 @@ HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_091, Te
  * SubFunction: unified error cleanup
  * FunctionPoints: driver transfer-cancelled code maps to TRANSFER_CANCELLED after cleanup
  * EnvConditions: MtpTest receiveObjRet_ injects the driver return code
- * CaseDescription: ReceiveObj returns -20 (RECEVIE_OBJECT_CANCELLED), PTP mode skips the
+ * CaseDescription: ReceiveObj returns -20 (RECEIVE_OBJECT_CANCELLED), PTP mode skips the
  *                  unlink branch, unified cleanup runs and RecevieSendObject returns
  *                  MTP_ERROR_TRANSFER_CANCELLED
  */
@@ -1980,7 +1980,7 @@ HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_092, Te
     ASSERT_NE(context->mtpDriver, nullptr);
     std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
     ASSERT_NE(mtpOperationUtils, nullptr);
-    MtpTest::GetInstance()->receiveObjRet_ = -20;  // RECEVIE_OBJECT_CANCELLED
+    MtpTest::GetInstance()->receiveObjRet_ = -20;  // RECEIVE_OBJECT_CANCELLED
     MtpFileRange object;
     // Harmless /dev/null fd: safe whether or not another suite has initialised the proxies
     FdsanFd fd(open("/dev/null", O_RDWR));

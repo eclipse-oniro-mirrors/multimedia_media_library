@@ -64,8 +64,8 @@ static constexpr int ERROR_BATTERY = -1;
 #endif
 static constexpr int EMPTY_BATTERY = 0;
 static constexpr int STORAGE_MANAGER_UID = 5003;
-static constexpr int RECEVIE_OBJECT_CANCELLED = -20;
-static constexpr int RECEVIE_OBJECT_FAILED = -17;
+static constexpr int RECEIVE_OBJECT_CANCELLED = -20;
+static constexpr int RECEIVE_OBJECT_FAILED = -17;
 const std::string PUBLIC_DOC = "/storage/media/local/files/Docs";
 
 static constexpr uint32_t HEADER_LEN = 12;
@@ -460,9 +460,9 @@ int32_t MtpOperationUtils::RecevieSendObject(MtpFileRange &object, int fd)
     }
     MtpPtpProxy::GetInstance().DeleteCanceledObject(filePath, context_->handle);
     switch (errorCode) {
-        case RECEVIE_OBJECT_CANCELLED:
+        case RECEIVE_OBJECT_CANCELLED:
             return MTP_ERROR_TRANSFER_CANCELLED;
-        case RECEVIE_OBJECT_FAILED:
+        case RECEIVE_OBJECT_FAILED:
         default:
             MEDIA_WARN_LOG("RecevieSendObject transfer failed, errorCode = %{public}d", errorCode);
             return MTP_ERROR_TRANSFER_FAILED;
