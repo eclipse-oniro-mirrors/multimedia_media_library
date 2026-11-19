@@ -27,7 +27,7 @@
 
 namespace OHOS::Media {
 
-class QueryAlbumsReqBody : public IPC::IMediaParcelable {
+class __attribute__ ((visibility ("default"))) QueryAlbumsReqBody : public IPC::IMediaParcelable {
 public:
     int32_t albumType;
     int32_t albumSubType;
@@ -39,7 +39,7 @@ public:  // functions of Parcelable.
     bool Marshalling(MessageParcel &parcel) const override;
 };
 
-class QueryAlbumsRespBody : public IPC::IMediaParcelable {
+class __attribute__ ((visibility ("default"))) QueryAlbumsRespBody : public IPC::IMediaParcelable {
 public:
     std::shared_ptr<DataShare::DataShareResultSet> resultSet;
 public:  // functions of Parcelable.

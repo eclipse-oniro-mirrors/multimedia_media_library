@@ -21,7 +21,7 @@
 #include "i_media_parcelable.h"
 
 namespace OHOS::Media {
-class AlbumGetAssetsReqBody : public IPC::IMediaParcelable {
+class __attribute__ ((visibility ("default"))) AlbumGetAssetsReqBody : public IPC::IMediaParcelable {
 public:
     DataShare::DataSharePredicates predicates;
     std::vector<std::string> columns;
@@ -30,7 +30,7 @@ public:
     bool Marshalling(MessageParcel &parcel) const override;
 };
 
-class AlbumGetAssetsRespBody : public IPC::IMediaParcelable {
+class __attribute__ ((visibility ("default"))) AlbumGetAssetsRespBody : public IPC::IMediaParcelable {
 public:
     std::shared_ptr<DataShare::DataShareResultSet> resultSet;
 
