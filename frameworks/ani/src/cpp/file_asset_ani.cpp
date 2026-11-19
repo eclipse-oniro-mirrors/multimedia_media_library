@@ -481,6 +481,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_SHARE_GROUP,
         PhotoColumn::PHOTO_SHARE_RISK_TYPE,
         PhotoColumn::PHOTO_SHARE_DATE_DAY,
+        PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
     };
 
     if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryAniUtils::IsSystemApp()) {

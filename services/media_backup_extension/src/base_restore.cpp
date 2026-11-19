@@ -799,6 +799,7 @@ void BaseRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::ValuesBuck
     value.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, data->GetLastVisitTime());
     value.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, data->GetFrontCamera());
     value.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, data->GetXtStyleTemplateName());
+    value.PutInt(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, data->GetXtStyleTemplateNumber());
     value.PutInt(PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE, data->GetDynamicRangeType());
     value.PutInt(PhotoColumn::PHOTO_HDR_MODE, data->GetHdrMode());
     value.PutInt(PhotoColumn::MUSIC_MASTER_MODE, data->GetMusicMasterMode());

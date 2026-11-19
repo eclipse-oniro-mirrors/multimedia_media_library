@@ -1890,6 +1890,7 @@ export class ContextRecoveryInfo {
     MUSIC_MASTER_MODE = 'music_master_mode',
     LOCAL_ENHANCEMENT_ABILITY = 'local_enhancement_ability',
     LOCAL_ENHANCEMENT_STATUS = 'local_enhancement_status',
+    PHOTO_XT_STYLE_TEMPLATE_NUMBER = 'xt_style_template_number',
   }
 
   export enum AlbumKeys {

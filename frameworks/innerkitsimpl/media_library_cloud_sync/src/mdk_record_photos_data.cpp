@@ -419,6 +419,15 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetFrontCamera(const std::string &fron
     this->attributes_[PhotoColumn::PHOTO_FRONT_CAMERA] = MDKRecordField(frontCamera);
     return *this;
 }
+std::optional<int32_t> MDKRecordPhotosData::GetXtStyleTemplateNumber() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetXtStyleTemplateNumber(const int32_t xtStyleTemplateNumber)
+{
+    this->attributes_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER] = MDKRecordField(xtStyleTemplateNumber);
+    return *this;
+}
 std::optional<std::string> MDKRecordPhotosData::GetXtStyleTemplateName() const
 {
     return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME);

@@ -921,6 +921,16 @@ int32_t CloudSyncConvert::CompensateInt64FieldsHashMap(
     // compensate attributes HashMap here.
     HandleLivePhoto4dStatus(data, values);
     HandleMusicMasterModeStatus(data, values);
+    HandleXtStyleTemplateNumberStatus(data, values);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::HandleXtStyleTemplateNumberStatus(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
+{
+    auto it = pullData.int64fields.find(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER);
+    CHECK_AND_RETURN_RET(it != pullData.int64fields.end(), E_OK);
+    values.PutInt(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, static_cast<int32_t>(it->second));
     return E_OK;
 }
 

@@ -219,6 +219,7 @@ int32_t CustomRestoreScannerObj::ConvertToValues()
             item.values.Put(field, item.metadata->GetValue(field));
         }
         item.values.Put(PhotoColumn::MUSIC_MASTER_MODE, item.metadata->GetMusicMasterMode());
+        item.values.Put(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, item.metadata->GetXtStyleTemplateNumber());
     }
     MEDIA_INFO_LOG("ConvertToValues done");
     return E_OK;

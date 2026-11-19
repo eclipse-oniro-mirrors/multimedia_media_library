@@ -150,6 +150,7 @@ struct InnerFileInfo {
     int64_t coverPosition {0};
     int32_t livePhoto4dStatus {0};
     int32_t musicMasterMode {0};
+    int32_t xtStyleTemplateNumber {-2};
 };
 
 enum ScanMode : int32_t {

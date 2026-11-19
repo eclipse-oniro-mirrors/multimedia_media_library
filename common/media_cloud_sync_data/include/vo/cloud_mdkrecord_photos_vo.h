@@ -46,6 +46,7 @@ public:
     int32_t videoMode;
     std::string frontCamera;
     std::string xtStyleTemplateName;  // xt style template name
+    int32_t xtStyleTemplateNumber; // xt style template number
     int64_t editTime;
     int32_t originalSubtype;
     int64_t coverPosition;

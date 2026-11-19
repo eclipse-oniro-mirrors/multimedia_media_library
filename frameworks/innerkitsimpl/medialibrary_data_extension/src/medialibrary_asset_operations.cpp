@@ -193,6 +193,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::PHOTO_THUMB_SIZE, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_FRONT_CAMERA, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, MEMBER_TYPE_STRING },
+    { PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_IS_TEMP, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_CE_STATUS_CODE, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_STRONG_ASSOCIATION, MEMBER_TYPE_INT32 },
@@ -2673,6 +2674,7 @@ const std::unordered_map<std::string, std::vector<VerifyFunction>>
     { PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, { IsInt32 } },
     { PhotoColumn::UNIQUE_ID, { IsString } },
     { PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, { IsInt32 } },
+    { PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, { IsInt32 } },
 };
 
 bool AssetInputParamVerification::CheckParamForUpdate(MediaLibraryCommand &cmd)

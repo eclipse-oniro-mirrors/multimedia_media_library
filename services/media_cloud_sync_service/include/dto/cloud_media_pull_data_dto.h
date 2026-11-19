@@ -93,6 +93,7 @@ public:
     int32_t attributesVideoMode{-1};              /* video_mode */
     std::string attributesFrontCamera;            /* front_camera */
     std::string attributesXtStyleTemplateName;    /* xt_style_template_name */
+    int32_t attributesXtStyleTemplateNumber{-2};  /* xt_style_template_number */
     int64_t attributesEditTime{-1};               /* edit_time */
     int32_t attributesOriginalSubtype{-1};        /* original_subtype */
     int64_t attributesCoverPosition{-1};          /* cover_position */

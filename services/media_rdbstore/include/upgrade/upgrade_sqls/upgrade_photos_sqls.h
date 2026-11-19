@@ -25,6 +25,7 @@
 #define COLUMN_C2PA_CONFIG_INFO "c2pa_config_info"
 #define COLUMN_COMPRESSION_QUALITY "compression_quality"
 #define COLUMN_MUSIC_MASTER_MODE "music_master_mode"
+#define COLUMN_XT_STYLE_TEMPLATE_NUMBER "xt_style_template_number"
 // share photo columns
 #define COLUMN_PHOTO_IS_SHARED "is_shared"
 #define COLUMN_PHOTO_SHARE_OWNER_INFO "share_owner_info"

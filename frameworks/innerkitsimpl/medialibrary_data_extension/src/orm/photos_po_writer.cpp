@@ -536,6 +536,18 @@ bool PhotosPoWriter::GetXtStyleTemplateName(std::string &val)
     return true;
 }
 
+void PhotosPoWriter::SetXtStyleTemplateNumber(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.xtStyleTemplateNumber = std::get<int32_t>(val);
+}
+bool PhotosPoWriter::GetXtStyleTemplateNumber(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.xtStyleTemplateNumber.has_value(), false);
+    val = std::to_string(this->photosPo_.xtStyleTemplateNumber.value());
+    return true;
+}
 void PhotosPoWriter::SetDetailTime(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<std::string>(val);

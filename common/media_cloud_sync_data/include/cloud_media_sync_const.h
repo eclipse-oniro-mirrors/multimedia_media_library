@@ -214,6 +214,7 @@ const std::vector<std::string> PHOTOS_SYNC_COLUMN_INT64 = {
     // Add Photos int64 fields here.
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::MUSIC_MASTER_MODE,
+    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
 };
 
 const std::vector<std::string> ALBUM_SYNC_COLUMN_STRING_TO_CLOUD = {

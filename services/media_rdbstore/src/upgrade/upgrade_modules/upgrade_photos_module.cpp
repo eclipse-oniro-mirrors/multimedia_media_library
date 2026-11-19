@@ -245,5 +245,15 @@ static vector<pair<int32_t, int32_t>> UpdateIndexedWithShareDateAddedIndexAddPos
 }
 REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_SHARE_DATE_ADDED_INDEX, PHOTOS_MODULE_NAME,
     UpdateIndexedWithShareDateAddedIndexAddPosition);
+
+static vector<pair<int32_t, int32_t>> AddPhotoXtStyleTemplateNumberColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_XT_STYLE_TEMPLATE_NUMBER, "INT NOT NULL DEFAULT -2")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_XT_STYLE_TEMPLATE_NUMBER_COLUMN, PHOTOS_MODULE_NAME,
+    AddPhotoXtStyleTemplateNumberColumn);
 } // namespace Media
 } // namespace OHOS

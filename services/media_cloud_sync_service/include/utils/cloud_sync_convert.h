@@ -115,6 +115,8 @@ public:
         NativeRdb::ValuesBucket &values);
     static int32_t HandleMusicMasterModeStatus(
         const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    static int32_t HandleXtStyleTemplateNumberStatus(
+        const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
 
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);

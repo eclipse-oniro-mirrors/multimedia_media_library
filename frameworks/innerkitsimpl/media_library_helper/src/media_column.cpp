@@ -131,6 +131,7 @@ const std::string PhotoColumn::PHOTO_CRITICAL_TYPE =  "critical_type";  // aband
 const std::string PhotoColumn::PHOTO_RISK_STATUS =  "photo_risk_status";
 const std::string PhotoColumn::PHOTO_IS_RECENT_SHOW = "is_recent_show";
 const std::string PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME = "xt_style_template_name";
+const std::string PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER = "xt_style_template_number";
 const std::string PhotoColumn::PHOTO_HAS_APPLINK = "has_applink";
 const std::string PhotoColumn::PHOTO_APPLINK = "applink";
 const std::string PhotoColumn::PHOTO_CHANGE_TIME = "change_time";
@@ -278,6 +279,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_IS_AUTO,
     PhotoColumn::PHOTO_MEDIA_SUFFIX, PhotoColumn::PHOTO_IS_RECENT_SHOW, PhotoColumn::PHOTO_IS_RECTIFICATION_COVER,
     PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME,
+    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
     PhotoColumn::PHOTO_EXIF_ROTATE, PhotoColumn::PHOTO_HAS_APPLINK, PhotoColumn::PHOTO_APPLINK,
     PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
     PhotoColumn::PHOTO_HDR_MODE,

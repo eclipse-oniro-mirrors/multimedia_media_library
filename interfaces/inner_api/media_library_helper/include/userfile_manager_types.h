@@ -217,6 +217,11 @@ static_assert(PhotoPositionType::INVALID != PhotoPositionType::LOCAL &&
     PhotoPositionType::CLOUD != PhotoPositionType::LOCAL_AND_CLOUD,
     "PhotoPositionType members must be pairwise distinct");
 
+enum class XtStyleTemplateNumber : int32_t {
+    UNPROCESSED = -2,
+    INVALID = -1
+};
+
 enum class VideoMode : int32_t {
     DEFAULT = -1,
     NOT_LOG_VIDEO = 0,

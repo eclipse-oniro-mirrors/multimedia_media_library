@@ -26,6 +26,7 @@
 #include "media_thumbnail_acl_task.h"
 #include "media_live_photo_4d_status_task.h"
 #include "media_music_master_mode_task.h"
+#include "media_xt_style_template_task.h"
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 #include "media_critical_label_task.h"
 #endif
@@ -59,6 +60,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaFileManagerTempFileAgingTask>(),
         std::make_shared<MediaVideoModeTask>(),
         std::make_shared<MediaMusicMasterModeTask>(),
+        std::make_shared<MediaXtStyleTemplateTask>(),
         std::make_shared<MediaClearInvalidUserCommentTask>(),
         std::make_shared<MediaDeletedFileTask>(),
         std::make_shared<MediaThumbnailAclTask>(),

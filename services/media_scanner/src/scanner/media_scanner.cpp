@@ -608,7 +608,9 @@ int32_t MediaScannerObj::BuildData(const struct stat &statInfo)
     // file path
     data_->SetFilePath(path_);
     // may need isPending here
-    if (IsFileNotChanged(data_, statInfo) && !isForceScan_) {
+    bool isFileNotChanged = IsFileNotChanged(data_, statInfo);
+    data_->SetFieldsChanged(!isFileNotChanged);
+    if (isFileNotChanged && !isForceScan_) {
         scannedIds_.insert(make_pair(data_->GetTableName(), data_->GetFileId()));
         if (path_.find(ROOT_MEDIA_DIR + PHOTO_BUCKET) != string::npos) {
             MEDIA_WARN_LOG("no need to scan, date_modified:%{public}ld, size:%{public}ld, pending:%{public}ld",

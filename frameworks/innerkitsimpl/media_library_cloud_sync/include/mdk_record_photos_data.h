@@ -136,6 +136,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetFrontCamera(const std::string &frontCamera);
     std::optional<std::string> GetXtStyleTemplateName() const;
     MDKRecordPhotosData &SetXtStyleTemplateName(const std::string &frontCamera);
+    std::optional<int32_t> GetXtStyleTemplateNumber() const;
+    MDKRecordPhotosData &SetXtStyleTemplateNumber(const int32_t xtStyleTemplateNumber);
     std::optional<int64_t> GetEditTime() const;
     MDKRecordPhotosData &SetEditTime(const int64_t editTime);
     std::optional<int32_t> GetOriginalSubType() const;

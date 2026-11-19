@@ -122,6 +122,7 @@ int32_t CloudMediaScanService::ScanDownloadedFile(const string& path, CloudMedia
     result.aspectRatio = data->GetFileAspectRatio();
     result.exifRotate = data->GetExifRotate();
     result.musicMasterMode = data->GetMusicMasterMode();
+    result.xtStyleTemplateNumber = data->GetXtStyleTemplateNumber();
     result.scanSuccess = true;
     MEDIA_INFO_LOG("ScanDownloadedFile, result: %{public}s", result.ToString().c_str());
     return E_OK;
@@ -172,7 +173,8 @@ std::string CloudMediaScanService::ScanResult::ToString() const
        << "shootingModeTag" << shootingModeTag << ", "
        << "frontCamera" << frontCamera << ", "
        << "subType: " << subType << ", "
-       << "extraDataVersion: " << extraDataVersion;
+       << "extraDataVersion: " << extraDataVersion << ", "
+       << "xtStyleTemplateNumber: " << xtStyleTemplateNumber;
     return ss.str();
 }
 

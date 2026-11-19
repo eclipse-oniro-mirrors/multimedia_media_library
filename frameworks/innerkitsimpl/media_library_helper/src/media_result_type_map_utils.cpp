@@ -100,6 +100,7 @@ const std::unordered_map<std::string, ResultSetDataType> &MediaResultTypeMapUtil
         {CustomRecordsColumns::LCD_JUMP_COUNT, TYPE_INT32},
         {PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, TYPE_INT32},
         {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, TYPE_STRING},
+        {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, TYPE_INT32},
         {PhotoColumn::PHOTO_EXIF_ROTATE, TYPE_INT32},
         {PhotoColumn::SUPPORTED_DEFERRED_EFFECTS, TYPE_INT32},
         {PhotoColumn::DEFERRED_EFFECT_STATUS, TYPE_INT32},

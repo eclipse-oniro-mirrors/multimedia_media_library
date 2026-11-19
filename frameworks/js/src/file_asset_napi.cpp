@@ -3241,6 +3241,7 @@ namespace {
             PhotoColumn::PHOTO_SHARE_GROUP,
             PhotoColumn::PHOTO_SHARE_RISK_TYPE,
             PhotoColumn::PHOTO_SHARE_DATE_DAY,
+            PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
         };
         return SYSTEM_API_KEYS;
     }
