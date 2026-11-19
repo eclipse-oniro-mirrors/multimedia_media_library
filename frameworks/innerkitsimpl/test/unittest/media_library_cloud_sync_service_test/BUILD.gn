@@ -34,6 +34,7 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "./include/utils",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/background",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dao",
@@ -134,6 +135,7 @@ ohos_unittest("media_library_cloud_sync_service_dao_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/dto",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   include_media_cloud_sync_data = [
@@ -199,6 +201,7 @@ ohos_unittest("media_library_cloud_sync_service_dto_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/dto",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   include_media_cloud_sync_data = [
@@ -261,6 +264,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_service_test") {
     "include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   include_media_cloud_sync_data = [
@@ -325,6 +329,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
     "include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   sources = [
@@ -390,6 +395,7 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download/cloud_media_retain_smart_data.h",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download/cloud_media_sync_mutex.h",
   ]
@@ -476,6 +482,7 @@ ohos_unittest("media_library_cloud_sync_service_service_ext_test") {
     "include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   include_media_cloud_sync_data = [

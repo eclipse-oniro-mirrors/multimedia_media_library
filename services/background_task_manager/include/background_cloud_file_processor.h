@@ -16,6 +16,8 @@
 #ifndef OHOS_MEDIALIBRARY_BACKGROUND_CLOUD_FILE_PROCESSOR_H
 #define OHOS_MEDIALIBRARY_BACKGROUND_CLOUD_FILE_PROCESSOR_H
 
+#include <atomic>
+
 #include "background_cloud_file_processor_common.h"
 #include "background_cloud_file_download_callback.h"
 
@@ -123,7 +125,7 @@ private:
     static uint32_t cloudDataTimerId_;
     static uint32_t startTimerId_;
     static uint32_t stopTimerId_;
-    static bool isUpdating_;
+    static std::atomic<bool> isUpdating_;
     static int32_t cloudUpdateOffset_;
     static int32_t localImageUpdateOffset_;
     static int32_t localVideoUpdateOffset_;

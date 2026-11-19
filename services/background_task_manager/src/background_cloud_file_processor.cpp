@@ -85,7 +85,7 @@ Utils::Timer BackgroundCloudFileProcessor::timer_("background_cloud_file_process
 uint32_t BackgroundCloudFileProcessor::cloudDataTimerId_ = 0;
 uint32_t BackgroundCloudFileProcessor::startTimerId_ = 0;
 uint32_t BackgroundCloudFileProcessor::stopTimerId_ = 0;
-bool BackgroundCloudFileProcessor::isUpdating_ = true;
+std::atomic<bool> BackgroundCloudFileProcessor::isUpdating_ = true;
 int32_t BackgroundCloudFileProcessor::cloudUpdateOffset_ = 0;
 int32_t BackgroundCloudFileProcessor::localImageUpdateOffset_ = 0;
 int32_t BackgroundCloudFileProcessor::localVideoUpdateOffset_ = 0;
@@ -811,7 +811,7 @@ void BackgroundCloudFileProcessor::UpdateCloudDataExecutor(AsyncTaskData *data)
 
     MEDIA_INFO_LOG("start update %{public}zu cloud files.", updateData.abnormalData.size());
     for (const auto &abnormalData : updateData.abnormalData) {
-        CHECK_AND_RETURN_LOG(isUpdating_, "stop update data, isUpdating_ is %{public}d.", isUpdating_);
+        CHECK_AND_RETURN_LOG(isUpdating_.load(), "stop update data, isUpdating_ is %{public}d.", isUpdating_.load());
         std::unique_ptr<Metadata> metadata = make_unique<Metadata>();
         metadata->SetFilePath(abnormalData.path);
         metadata->SetFileMediaType(abnormalData.mediaType);
@@ -878,7 +878,7 @@ void BackgroundCloudFileProcessor::UpdateAbnormaldata(std::unique_ptr<Metadata> 
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Update operation failed. rdbStore is null");
-    CHECK_AND_RETURN_LOG(isUpdating_, "stop update data,isUpdating_ is %{public}d.", isUpdating_);
+    CHECK_AND_RETURN_LOG(isUpdating_.load(), "stop update data,isUpdating_ is %{public}d.", isUpdating_.load());
 
     int32_t result = rdbStore->Update(updateCount, tableName, values, whereClause, whereArgs);
     bool cond = (result != NativeRdb::E_OK || updateCount <= 0);
@@ -917,7 +917,7 @@ int32_t BackgroundCloudFileProcessor::GetExtractMetadata(std::unique_ptr<Metadat
 
 void BackgroundCloudFileProcessor::StopUpdateData()
 {
-    isUpdating_ = false;
+    isUpdating_.store(false);
 }
 
 void BackgroundCloudFileProcessor::StartTimer()
@@ -929,7 +929,7 @@ void BackgroundCloudFileProcessor::StartTimer()
     uint32_t ret = timer_.Setup();
     CHECK_AND_PRINT_LOG(ret == Utils::TIMER_ERR_OK,
         "Failed to start background download cloud files timer, err: %{public}d", ret);
-    isUpdating_ = true;
+    isUpdating_.store(true);
     cloudDataTimerId_ = timer_.Register(ProcessCloudData, processInterval_);
     if (!GetDownloadLatestFinished()) {
         auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();

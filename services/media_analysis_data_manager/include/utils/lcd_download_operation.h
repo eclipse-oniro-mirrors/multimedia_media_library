@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "safe_vector.h"
 #include "cloud_sync_common.h"
 #include "analysis_lcd_download_callback.h"
 #include "analysis_net_connect_observer.h"
@@ -83,10 +84,11 @@ private:
     std::shared_ptr<AnalysisLcdDownloadCallback> downloadCallback_;
 
     OHOS::sptr<AnalysisNetConnectObserver> netObserver_;
+    std::mutex netObserverMutex_;
     std::mutex mutex_;
     std::condition_variable cv_;
 
-    std::vector<int64_t> downloadIds_;
+    SafeVector<int64_t> downloadIds_;
     std::map<std::string, int64_t> pathToFileIdMap_;  // URI -> fileId 映射
 };
 }  // namespace OHOS::Media

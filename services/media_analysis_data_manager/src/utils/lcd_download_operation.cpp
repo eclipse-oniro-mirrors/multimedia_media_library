@@ -133,24 +133,27 @@ int32_t LcdDownloadOperation::CancelDownload()
     downloadStatus_ = LcdDownloadStatus::IDLE;
     requiredNetBearerBitmap_.store(0);
     pathToFileIdMap_.clear();
-    downloadIds_.clear();
+    downloadIds_.Clear();
 
     return E_OK;
 }
 
 int32_t LcdDownloadOperation::RegisterNetObserver()
 {
-    if (netObserver_ != nullptr) {
-        MEDIA_INFO_LOG("RegisterNetObserver: already registered");
-        return E_OK;
+    OHOS::sptr<AnalysisNetConnectObserver> observer;
+    {
+        std::lock_guard<std::mutex> lock(netObserverMutex_);
+        if (netObserver_ != nullptr) {
+            MEDIA_INFO_LOG("RegisterNetObserver: already registered");
+            return E_OK;
+        }
+        netObserver_ = new (std::nothrow) AnalysisNetConnectObserver();
+        CHECK_AND_RETURN_RET_LOG(netObserver_ != nullptr, E_ERR, "Failed to create netObserver_");
+        observer = netObserver_;
     }
+    observer->SetRequiredNetBearerBitmap(requiredNetBearerBitmap_.load());
 
-    netObserver_ = new (std::nothrow) AnalysisNetConnectObserver();
-    CHECK_AND_RETURN_RET_LOG(netObserver_ != nullptr, E_ERR, "Failed to create netObserver_");
-
-    netObserver_->SetRequiredNetBearerBitmap(requiredNetBearerBitmap_.load());
-
-    int32_t ret = NetConnClient::GetInstance().RegisterNetConnCallback(netObserver_);
+    int32_t ret = NetConnClient::GetInstance().RegisterNetConnCallback(observer);
     CHECK_AND_RETURN_RET_LOG(ret == NETMANAGER_SUCCESS, E_ERR,
         "RegisterNetObserver failed, ret=%{public}d", ret);
     
@@ -161,10 +164,16 @@ int32_t LcdDownloadOperation::RegisterNetObserver()
 
 void LcdDownloadOperation::UnregisterNetObserver()
 {
-    if (netObserver_ != nullptr) {
-        NetConnClient::GetInstance().UnregisterNetConnCallback(netObserver_);
+    OHOS::sptr<AnalysisNetConnectObserver> observer;
+    {
+        std::lock_guard<std::mutex> lock(netObserverMutex_);
+        if (netObserver_ == nullptr) {
+            return;
+        }
+        observer = netObserver_;
         netObserver_ = nullptr;
     }
+    NetConnClient::GetInstance().UnregisterNetConnCallback(observer);
 }
 
 void LcdDownloadOperation::PauseDownloadTask()
@@ -174,13 +183,14 @@ void LcdDownloadOperation::PauseDownloadTask()
     downloadStatus_ = LcdDownloadStatus::PAUSED;
 
     // 调用 CloudSyncManager::StopFileCache 暂停所有批次的下载
-    for (auto downloadId : downloadIds_) {
+    auto downloadIds = downloadIds_.ToVector();
+    for (auto downloadId : downloadIds) {
         if (downloadId != -1) {
             CloudSyncManager::GetInstance().StopFileCache(downloadId, false);
             MEDIA_INFO_LOG("PauseDownloadTask: stop file cache, downloadId=%{public}" PRId64, downloadId);
         }
     }
-    downloadIds_.clear();
+    downloadIds_.Clear();
 }
 
 void LcdDownloadOperation::ResumeDownloadTask()
@@ -237,7 +247,7 @@ bool LcdDownloadOperation::PrepareDownloadUris(std::vector<std::string> &uriVec)
 
 void LcdDownloadOperation::SubmitBatchesAndWait(const std::vector<std::string> &uriVec)
 {
-    downloadIds_.clear();
+    downloadIds_.Clear();
     const int32_t BATCH_SIZE = 100;
     int32_t totalBatches = (uriVec.size() + BATCH_SIZE - 1) / BATCH_SIZE;
     MEDIA_INFO_LOG("SubmitBatchesAndWait: total URIs=%{public}zu, batches=%{public}d",
@@ -256,12 +266,12 @@ void LcdDownloadOperation::SubmitBatchesAndWait(const std::vector<std::string> &
             allSuccess = false;
             HandleBatchFailure(batchUriVec);
         } else {
-            downloadIds_.push_back(downloadId);
+            downloadIds_.PushBack(downloadId);
             MEDIA_INFO_LOG("SubmitBatchesAndWait: batch %{public}d started, downloadId=%{public}" PRId64
                 ", size=%{public}zu", i, downloadId, batchUriVec.size());
         }
     }
-    if (!allSuccess || downloadIds_.empty()) {
+    if (!allSuccess || downloadIds_.Empty()) {
         MEDIA_ERR_LOG("SubmitBatchesAndWait: some batches failed or no valid downloadIds");
         return;
     }

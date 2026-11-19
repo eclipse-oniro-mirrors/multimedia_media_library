@@ -86,7 +86,7 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
     std::lock_guard<std::mutex> lock(mutex_);
     int32_t activeUser = GetCurrentAccountId();
     MEDIA_INFO_LOG("userId_: %{public}d -> activeUser: %{public}d", userId_, activeUser);
-    if (dataShareHelper_ == nullptr || activeUser != userId_) {
+    if (std::atomic_load(&dataShareHelper_) == nullptr || activeUser != userId_) {
         auto &client = IPC::MediaCommonClient::GetInstance();
         sptr<IRemoteObject> token = InitToken();
         if (token == nullptr) {
@@ -94,8 +94,8 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
             return;
         }
         client.ForceReconnect(activeUser);
-        dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
-        if (dataShareHelper_ == nullptr) {
+        std::atomic_store(&dataShareHelper_, client.GetOrCreateDataShareHelper(activeUser));
+        if (std::atomic_load(&dataShareHelper_) == nullptr) {
             MEDIA_ERR_LOG(
                 "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
         }
@@ -105,9 +105,9 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
 
 bool MediaLibraryExtendManager::ForceReconnect()
 {
-    dataShareHelper_ = nullptr;
+    std::atomic_store(&dataShareHelper_, std::shared_ptr<DataShare::DataShareHelper>());
     InitMediaLibraryExtendManager();
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, false, "init manager fail");
+    CHECK_AND_RETURN_RET_LOG(std::atomic_load(&dataShareHelper_) != nullptr, false, "init manager fail");
     return true;
 }
 
@@ -129,7 +129,8 @@ int32_t MediaLibraryExtendManager::OpenAsset(string &uri, const string openMode,
     std::transform(originOpenMode.begin(), originOpenMode.end(),
         originOpenMode.begin(), [](unsigned char c) {return std::tolower(c);});
     CHECK_AND_RETURN_RET(MEDIA_OPEN_MODES.count(originOpenMode), E_ERR);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "Failed to open Asset, datashareHelper is nullptr");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "Failed to open Asset, datashareHelper is nullptr");
 
     string assetUri = uri;
     MediaUriUtils::AppendKeyValue(assetUri, "type", to_string(static_cast<int32_t>(type)));
@@ -137,10 +138,12 @@ int32_t MediaLibraryExtendManager::OpenAsset(string &uri, const string openMode,
     MediaUriUtils::AppendKeyValue(assetUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     MEDIA_DEBUG_LOG("merged uri = %{public}s", assetUri.c_str());
     Uri openUri(assetUri);
-    int ret = dataShareHelper_->OpenFile(openUri, openMode);
+    int ret = helper->OpenFile(openUri, openMode);
     if (ret == DATASHARE_ERR && ForceReconnect()) {
         MEDIA_WARN_LOG("Failed to OpenFile and retry");
-        ret = dataShareHelper_->OpenFile(openUri, openMode);
+        helper = std::atomic_load(&dataShareHelper_);
+        CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "Failed to open Asset after reconnect");
+        ret = helper->OpenFile(openUri, openMode);
     }
     return ret;
 }
@@ -148,7 +151,8 @@ int32_t MediaLibraryExtendManager::OpenAsset(string &uri, const string openMode,
 int32_t MediaLibraryExtendManager::ReadPrivateMovingPhoto(string &uri, const HideSensitiveType type)
 {
     CHECK_AND_RETURN_RET_LOG(CheckUri(uri), E_ERR, "invalid uri: %{public}s", uri.c_str());
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR,
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR,
         "Failed to read video of moving photo, datashareHelper is nullptr");
 
     string movingPhotoUri = uri;
@@ -156,10 +160,12 @@ int32_t MediaLibraryExtendManager::ReadPrivateMovingPhoto(string &uri, const Hid
     MediaUriUtils::AppendKeyValue(movingPhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_LIVE_PHOTO);
     MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openMovingPhotoUri(movingPhotoUri);
-    int ret = dataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
+    int ret = helper->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
     if (ret == DATASHARE_ERR && ForceReconnect()) {
         MEDIA_WARN_LOG("Failed to OpenFile and retry");
-        ret = dataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
+        helper = std::atomic_load(&dataShareHelper_);
+        CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "Failed to read video after reconnect");
+        ret = helper->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
     }
     return ret;
 }
@@ -176,7 +182,8 @@ static bool CheckPhotoUri(const string &uri)
 std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromPhotos(const string &value,
     vector<string> &columns)
 {
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, nullptr, "datashareHelper is nullptr");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, nullptr, "datashareHelper is nullptr");
     if (!CheckPhotoUri(value)) {
         MEDIA_ERR_LOG("Failed to check invalid uri: %{public}s", value.c_str());
         return nullptr;
@@ -188,12 +195,14 @@ std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromP
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_RESULT_SET_FROM_PHOTOS_EXTEND);
     GetResultSetFromDbRespBody respBody;
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
     if (errCode != E_OK) {
         MEDIA_WARN_LOG("errCode: %{public}d, reconnect and retry", errCode);
         if (ForceReconnect()) {
+            helper = std::atomic_load(&dataShareHelper_);
+            CHECK_AND_RETURN_RET_LOG(helper != nullptr, nullptr, "datashareHelper is nullptr after reconnect");
             errCode =
-                IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+                IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
         }
         if (errCode != E_OK) {
             MEDIA_ERR_LOG("errCode: %{public}d", errCode);
@@ -206,14 +215,15 @@ std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromP
 // LCOV_EXCL_START
 int32_t MediaLibraryExtendManager::SendBrokerChangeOperation(string operation)
 {
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "datashareHelper is nullptr");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "datashareHelper is nullptr");
     StartAssetChangeScanReqBody reqBody;
     reqBody.operation = operation;
 
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CHANGE_SCAN_ASSET);
     MEDIA_INFO_LOG("before IPC::UserDefineIPCClient().Call, INNER_CHANGE_SCAN_ASSET");
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody);
     return errCode;
 }
 // LCOV_EXCL_STOP
@@ -221,7 +231,8 @@ int32_t MediaLibraryExtendManager::SendBrokerChangeOperation(string operation)
 std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromDb(string columnName,
     const string &value, vector<string> &columns)
 {
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, nullptr, "dataShareHelper is null");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, nullptr, "dataShareHelper is null");
     if (columnName == MEDIA_DATA_DB_URI) {
         return GetResultSetFromPhotos(value, columns);
     }
@@ -233,12 +244,14 @@ std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromD
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_RESULT_SET_FROM_DB_EXTEND);
     GetResultSetFromDbRespBody respBody;
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
     if (errCode != E_OK) {
         MEDIA_WARN_LOG("errCode: %{public}d, reconnect and retry", errCode);
         if (ForceReconnect()) {
+            helper = std::atomic_load(&dataShareHelper_);
+            CHECK_AND_RETURN_RET_LOG(helper != nullptr, nullptr, "datashareHelper is nullptr after reconnect");
             errCode =
-                IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+                IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
         }
         if (errCode != E_OK) {
             MEDIA_ERR_LOG("errCode: %{public}d", errCode);
@@ -256,7 +269,8 @@ int32_t MediaLibraryExtendManager::OpenAssetCompress(const string &uri, HideSens
 
     CHECK_AND_RETURN_RET_LOG(IPCSkeleton::GetCallingUid() == SHARE_UID, E_ERR, "only support share");
     CHECK_AND_RETURN_RET_LOG(CheckPhotoUri(uri), E_ERR, "Invalid uri");
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "Failed to open Asset, datashareHelper is nullptr");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "Failed to open Asset, datashareHelper is nullptr");
 
     OpenAssetCompressReqBody reqBody;
     reqBody.uri = uri;
@@ -265,12 +279,14 @@ int32_t MediaLibraryExtendManager::OpenAssetCompress(const string &uri, HideSens
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_OPEN_ASSET_COMPRESS);
     OpenAssetCompressRespBody respBody;
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
     if (errCode != E_SUCCESS) {
         MEDIA_WARN_LOG("errCode: %{public}d, reconnect and retry", errCode);
         if (ForceReconnect()) {
+            helper = std::atomic_load(&dataShareHelper_);
+            CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "datashareHelper is nullptr after reconnect");
             errCode =
-                IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+                IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
         }
     }
     if (errCode != E_SUCCESS) {
@@ -286,17 +302,20 @@ int32_t MediaLibraryExtendManager::OpenAssetCompress(const string &uri, HideSens
 int32_t MediaLibraryExtendManager::GetAssetCompressVersion()
 {
     MEDIA_INFO_LOG("GetAssetCompressVersion begin");
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "dataShareHelper is null");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "dataShareHelper is null");
 
     GetAssetCompressVersionRespBody respBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSET_COMPRESS_VERSION);
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Get(businessCode, respBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Get(businessCode, respBody);
     if (errCode != E_SUCCESS) {
         MEDIA_WARN_LOG("errCode: %{public}d, reconnect and retry", errCode);
         if (ForceReconnect()) {
+            helper = std::atomic_load(&dataShareHelper_);
+            CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "datashareHelper is nullptr after reconnect");
             errCode =
-                IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Get(businessCode, respBody);
+                IPC::UserInnerIPCClient().SetDataShareHelper(helper).Get(businessCode, respBody);
         }
         CHECK_AND_RETURN_RET_LOG(errCode == E_SUCCESS, E_ERR,
             "GetAssetCompressVersion failed, errCode: %{public}d", errCode);
@@ -309,19 +328,22 @@ int32_t MediaLibraryExtendManager::NotifyAssetSended(const string &uri, ShareTyp
 {
     MEDIA_INFO_LOG("NotifyAssetSended begin, share type: %{public}d", static_cast<int32_t>(shareType));
     CHECK_AND_RETURN_RET_LOG(CheckPhotoUri(uri), E_ERR, "invalid uri");
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "dataShareHelper is null");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "dataShareHelper is null");
 
     NotifyAssetSendedReqBody reqBody;
     reqBody.uri = uri;
     reqBody.shareType = static_cast<int32_t>(shareType);
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_NOTIFY_ASSET_SENDED);
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody);
     if (errCode != E_SUCCESS) {
         MEDIA_WARN_LOG("errCode: %{public}d, reconnect and retry", errCode);
         if (ForceReconnect()) {
+            helper = std::atomic_load(&dataShareHelper_);
+            CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "datashareHelper is nullptr after reconnect");
             errCode =
-                IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody);
+                IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody);
         }
         CHECK_AND_RETURN_RET_LOG(errCode == E_SUCCESS, E_ERR, "NotifyAssetSended failed, errCode: %{public}d", errCode);
     }
@@ -332,19 +354,22 @@ int32_t MediaLibraryExtendManager::NotifyAssetSended(const string &uri, ShareTyp
 int64_t MediaLibraryExtendManager::GetCompressAssetSize(const std::vector<std::string> &uris)
 {
     MEDIA_INFO_LOG("GetCompressAssetSize begin, count: %{public}zu", uris.size());
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "dataShareHelper is null");
+    auto helper = std::atomic_load(&dataShareHelper_);
+    CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "dataShareHelper is null");
     CHECK_AND_RETURN_RET_LOG(uris.size() > 0 && uris.size() <= COMPRESS_URI_MAX_SIZE, E_ERR, "invalid uris size");
     GetCompressAssetSizeReqBody reqBody;
     reqBody.uris = uris;
     GetCompressAssetSizeRespBody respBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_COMPRESS_ASSET_SIZE);
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
     if (errCode != E_SUCCESS) {
         MEDIA_WARN_LOG("errCode: %{public}d, reconnect and retry", errCode);
         if (ForceReconnect()) {
+            helper = std::atomic_load(&dataShareHelper_);
+            CHECK_AND_RETURN_RET_LOG(helper != nullptr, E_ERR, "datashareHelper is nullptr after reconnect");
             errCode =
-                IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper_).Call(businessCode, reqBody, respBody);
+                IPC::UserInnerIPCClient().SetDataShareHelper(helper).Call(businessCode, reqBody, respBody);
         }
     }
     CHECK_AND_RETURN_RET_LOG(errCode == E_SUCCESS, E_ERR, "GetCompressAssetSize failed, errCode: %{public}d", errCode);

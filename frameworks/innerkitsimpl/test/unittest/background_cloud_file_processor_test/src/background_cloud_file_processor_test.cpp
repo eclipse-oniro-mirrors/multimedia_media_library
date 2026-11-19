@@ -433,18 +433,18 @@ HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_UpdateCurrentOffset_Test_002, T
 HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_StopUpdateData_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Bcfpt_UpdateCurrentOffset_Test_002 Start");
-    BackgroundCloudFileProcessor::isUpdating_ = true;
+    BackgroundCloudFileProcessor::isUpdating_.store(true);
     BackgroundCloudFileProcessor::StopUpdateData();
-    EXPECT_EQ(BackgroundCloudFileProcessor::isUpdating_, false);
+    EXPECT_EQ(BackgroundCloudFileProcessor::isUpdating_.load(), false);
     MEDIA_INFO_LOG("Bcfpt_UpdateCurrentOffset_Test_002 End");
 }
 
 HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_StartTimerStopTimer_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Bcfpt_StartTimerStopTimer_Test_001 Start");
-    BackgroundCloudFileProcessor::isUpdating_ = false;
+    BackgroundCloudFileProcessor::isUpdating_.store(false);
     BackgroundCloudFileProcessor::StartTimer();
-    EXPECT_EQ(BackgroundCloudFileProcessor::isUpdating_, true);
+    EXPECT_EQ(BackgroundCloudFileProcessor::isUpdating_.load(), true);
     BackgroundCloudFileProcessor::StopTimer();
     EXPECT_EQ(BackgroundCloudFileProcessor::stopTimerId_, 0);
     MEDIA_INFO_LOG("Bcfpt_StartTimerStopTimer_Test_001 End");
