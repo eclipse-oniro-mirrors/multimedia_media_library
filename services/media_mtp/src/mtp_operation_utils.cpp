@@ -449,7 +449,7 @@ int32_t MtpOperationUtils::RecevieSendObject(MtpFileRange &object, int fd)
     }
     // Any HDI error code (e.g. -202 HDF_DEV_ERR_NO_DEVICE) must go through the unified cleanup below,
     // otherwise writeFd and the partially received object would be left over in service side.
-    PreDealFd(true, fdsanFd);
+    PreDealFd(true, fd);
     string filePath("");
     if (MtpManager::GetInstance().IsMtpMode()) {
         MtpPtpProxy::GetInstance().GetMtpPathById(context_->handle, filePath);
