@@ -874,7 +874,7 @@ HWTEST_F(FileParserTest, GetAssetUpdateValues_Test_001, TestSize.Level1)
     std::map<std::string, NativeRdb::ValueObject> allValues;
     values.GetAll(allValues);
     EXPECT_NE(allValues.find(MediaColumn::MEDIA_DATE_TAKEN), allValues.end());
-    EXPECT_NE(allValues.find(MediaColumn::PHOTO_DATE_YEAR), allValues.end());
+    EXPECT_NE(allValues.find(PhotoColumn::PHOTO_DATE_YEAR), allValues.end());
 
     MediaFileUtils::DeleteFile(TEST_IMAGE_PATH);
 }
@@ -1689,7 +1689,7 @@ HWTEST_F(FileParserTest, GetAssetUpdateValues_Verify_Bucket_Content_Test, TestSi
     std::map<std::string, NativeRdb::ValueObject> allValues;
     values.GetAll(allValues);
     EXPECT_NE(allValues.find(MediaColumn::MEDIA_DATE_TAKEN), allValues.end());
-    EXPECT_NE(allValues.find(MediaColumn::PHOTO_DETAIL_TIME), allValues.end());
+    EXPECT_NE(allValues.find(PhotoColumn::PHOTO_DETAIL_TIME), allValues.end());
 
     MediaFileUtils::DeleteFile(TEST_VIDEO_PATH);
 }
