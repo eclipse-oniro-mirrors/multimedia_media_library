@@ -1350,6 +1350,7 @@ ohos_shared_library("medialibrary_data_extension") {
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_helper.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/folder_scanner_utils.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/global_scanner.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/media_notify_suppress_manager.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/album_dao.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/photo_dao.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",

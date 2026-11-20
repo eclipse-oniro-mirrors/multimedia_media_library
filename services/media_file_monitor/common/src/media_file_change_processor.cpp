@@ -26,6 +26,7 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_file_monitor_proxy_wrapper.h"
+#include "media_notify_suppress_manager.h"
 #include "parameters.h"
 
 namespace OHOS::Media {
@@ -100,6 +101,15 @@ void MediaFileChangeProcessor::ProcessFileChanged()
 
 void MediaFileChangeProcessor::ProcessSingleFileChange(const FileMonitorService::FileMsgModel &fileInfo)
 {
+    // 抑制窗口内(文件移动+DB更新未完成)的通知直接跳过, 消息随批正常确认
+    auto &suppressor = MediaNotifySuppressManager::GetInstance();
+    if (suppressor.IsSuppressed(fileInfo.fileUri) ||
+        (!fileInfo.oldFileUri.empty() && suppressor.IsSuppressed(fileInfo.oldFileUri))) {
+        MEDIA_DEBUG_LOG("skip suppressed notify, id:%{public}u, type: %{public}d, path: %{private}s",
+            fileInfo.id, fileInfo.opType, DfxUtils::GetSafePath(fileInfo.fileUri).c_str());
+        return;
+    }
+
     auto objType = fileInfo.isFile ? FileNotifyObjectType::FILE : FileNotifyObjectType::DIRECTORY;
 
     // 非媒体文件直接跳过

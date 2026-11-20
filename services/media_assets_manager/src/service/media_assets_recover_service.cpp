@@ -32,6 +32,7 @@
 #include "media_assets_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "lake_file_operations.h"
+#include "media_notify_suppress_manager.h"
 #include "dfx_utils.h"
 #include "medialibrary_album_operations.h"
 #include "medialibrary_photo_operations.h"
@@ -397,6 +398,11 @@ int32_t MediaAssetsRecoverService::MediaAndLakeMergeLocalToCloudAsset(const Phot
     isValid = isValid && targetPhotoInfo.hidden.value_or(0) == 0;      // The target is not in the hidden.
     isValid = isValid && this->mediaAssetsDao_.IsSameAssetIgnoreAlbum(sourcePhotoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
+    // 通知抑制窗口: 覆盖文件移动+DB更新全程, 防止中间态通知触发扫描插入重复记录
+    MediaNotifySuppressScope mergeScope({
+        sourcePhotoInfo.data.value_or(""),        // src: 回收站文件
+        targetPhotoInfo.storagePath.value_or("")  // dst: 湖内storage_path
+    });
     // Move the origianl files to target asset.
     int32_t ret = this->MergeAssetFileFromMediaToLake(sourcePhotoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MergeAssetFile fail, ret: %{public}d", ret);
@@ -406,6 +412,7 @@ int32_t MediaAssetsRecoverService::MediaAndLakeMergeLocalToCloudAsset(const Phot
         sourcePhotoInfo, targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(
         ret == E_OK, ret, "UpdatePositionToBothAndFileSourceTypeToLake fail, ret: %{public}d", ret);
+    mergeScope.Release();
     MEDIA_INFO_LOG(
         "MediaAndLakeMergeLocalToCloudAsset completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d",
