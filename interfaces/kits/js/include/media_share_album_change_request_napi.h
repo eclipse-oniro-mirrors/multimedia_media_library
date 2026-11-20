@@ -43,7 +43,7 @@ enum class ShareAlbumChangeOperation {
 
 class MediaShareAlbumChangeRequestNapi : public MediaChangeRequestNapi {
 public:
-    static napi_value Init(napi_env env, napi_value exports);
+    EXPORT static napi_value Init(napi_env env, napi_value exports);
 
     std::shared_ptr<PhotoAlbum> GetPhotoAlbumInstance() const;
     napi_value ApplyChanges(napi_env env, napi_callback_info info) override;
