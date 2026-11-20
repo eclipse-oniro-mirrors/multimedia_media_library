@@ -32,6 +32,7 @@
 #include "medialibrary_tracer.h"
 #include "mimetype_utils.h"
 #include "scan_camera_file_vo.h"
+#include "fdsan_fd.h"
 #include "thread_qos_utils.h"
 #include "user_inner_ipc_client.h"
 #include "userfilemgr_uri.h"
@@ -690,9 +691,20 @@ int32_t PhotoAssetProxy::GetVideoFd(VideoType videoType)
     OHOS::Media::ThreadQosUtils::SetThreadQos();
     int32_t fd = dataShareHelper_->OpenFile(openVideoUri, MEDIA_FILEMODE_READWRITE);
     OHOS::Media::ThreadQosUtils::ResetThreadQos();
+    FdsanFd::AddTag(fd, MEDIALIBRARY_FDSAN_CLIENT_TAG);
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} video path: %{public}s, fd: %{public}d",
         MLOG_TAG, __FUNCTION__, __LINE__, MediaUriUtils::GetSafeUri(videoUri).c_str(), fd);
     return fd;
+}
+
+int32_t PhotoAssetProxy::ReleaseVideoFd(int32_t fd)
+{
+    CHECK_AND_RETURN_RET_LOG(fd > 0, E_ERR, "invalid fd: %{public}d", fd);
+    int32_t ret = FdsanFd::Close(fd, MEDIALIBRARY_FDSAN_CLIENT_TAG);
+    if (ret != E_SUCCESS) {
+        MEDIA_ERR_LOG("Failed to close video fd, errno: %{public}d.", errno);
+    }
+    return ret;
 }
 
 void PhotoAssetProxy::NotifyVideoSaveFinished(VideoType videoType)
