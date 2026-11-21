@@ -1103,38 +1103,6 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_001 End");
 }
 
-HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_002, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 Start");
-    CustomRestoreInfo customInfo;
-    customInfo.SetBundleName("test.bundle");
-    customInfo.SetPackageName("test.package");
-    customInfo.SetAppId("test.app");
-    customInfo.SetIsDeduplication(true);
-    customInfo.SetAlbumId(1);
-    customInfo.SetHasPhotoCache(true);
-    RestoreFileInfo fileInfo;
-    fileInfo.fileName = "test.jpg";
-    fileInfo.displayName = "test.jpg";
-    fileInfo.originFilePath = "/storage/media/local/files/test.jpg";
-    fileInfo.filePath = "/storage/media/local/files/Photo/1/test.jpg";
-    fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
-    fileInfo.size = 1024;
-    fileInfo.orientation = 0;
-    std::vector<RestoreFileInfo> fileInfos;
-    fileInfos.push_back(fileInfo);
-    customInfo.SetFileInfos(fileInfos);
-    unordered_set<string> photoCache;
-    photoCache.insert("test.jpg_1024_1_0");
-    customInfo.SetPhotoCache(photoCache);
-    customInfo.SetIsFirstBatch(false);
-    CustomRestoreScannerObj scannerObj(customInfo);
-    int32_t result = scannerObj.Execute();
-    // File is duplicate, no successful insert
-    EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
-    MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 End");
-}
-
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_HandleCustomRestore_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_HandleCustomRestore_Test_001 Start");

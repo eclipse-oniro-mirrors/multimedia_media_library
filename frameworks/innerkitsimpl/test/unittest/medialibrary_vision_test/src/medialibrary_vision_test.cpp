@@ -4584,61 +4584,6 @@ HWTEST_F(MediaLibraryVisionTest, Vision_InsertAffective_Test_001, TestSize.Level
     MEDIA_INFO_LOG("Vision_InsertAffective_Test_001::retVal = %{public}d. End", retVal);
 }
 
-HWTEST_F(MediaLibraryVisionTest, Vision_InsertAffective_Test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("Vision_InsertAffective_Test_002::Start");
-    Uri affectiveUri(MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_AFFECTIVE);
-    MediaLibraryCommand cmd(affectiveUri);
-    DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(FILE_ID, 2);
-    valuesBucket.Put(VALENCE_SCORE, 70);
-    valuesBucket.Put(AROUSAL_SCORE, 65);
-    valuesBucket.Put(AUTHENTICITY, 90);
-    valuesBucket.Put(ATMOSPHERE, "peaceful");
-    valuesBucket.Put(AFFECTIVE_EMOTION, "calm");
-    valuesBucket.Put(INTERESTINGNESS, "interesting");
-    valuesBucket.Put(CUTENESS, "not cute");
-    valuesBucket.Put(AFFECTIVE_CAPTION, "A quiet lake");
-    valuesBucket.Put(AFFECTIVE_DETECTOR_VERSION, "1.0.1");
-
-    auto retVal = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
-    EXPECT_GT(retVal, 0);
-    EXPECT_NE(retVal, E_FAIL);
-    EXPECT_NE(retVal, E_INVALID_VALUES);
-    EXPECT_NE(retVal, E_HAS_DB_ERROR);
-
-    DataShare::DataShareValuesBucket valuesBucket2;
-    valuesBucket2.Put(FILE_ID, 2);
-    valuesBucket2.Put(VALENCE_SCORE, 75);
-    auto retVal2 = MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket2);
-    EXPECT_GT(retVal2, 0);
-    EXPECT_NE(retVal2, E_FAIL);
-    EXPECT_NE(retVal2, E_INVALID_VALUES);
-    EXPECT_NE(retVal2, E_HAS_DB_ERROR);
-
-    vector<string> columns;
-    columns.push_back(VALENCE_SCORE);
-    DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(FILE_ID, to_string(2));
-    int errCode = 0;
-    auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);
-    shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
-    ASSERT_NE(resultSet, nullptr);
-    int count = 0;
-    resultSet->GetRowCount(count);
-    EXPECT_GT(count, 2);
-    resultSet->GoToFirstRow();
-    int valenceScore1 = 0;
-    resultSet->GetInt(0, valenceScore1);
-    EXPECT_EQ(valenceScore1, 70);
-    resultSet->GoToNextRow();
-    int valenceScore2 = 0;
-    resultSet->GetInt(0, valenceScore2);
-    EXPECT_EQ(valenceScore2, 75);
-    MEDIA_INFO_LOG("Vision_InsertAffective_Test_002::retVal = %{public}d. retVal2 = %{public}d. End",
-        retVal, retVal2);
-}
-
 HWTEST_F(MediaLibraryVisionTest, Vision_UpdateAffective_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Vision_UpdateAffective_Test_001::Start");

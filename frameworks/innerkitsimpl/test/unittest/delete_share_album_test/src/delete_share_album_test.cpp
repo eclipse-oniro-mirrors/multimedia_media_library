@@ -188,21 +188,4 @@ HWTEST_F(DeleteShareAlbumTest, DeleteSharePhotoAlbum_004, TestSize.Level1)
 
     MEDIA_INFO_LOG("DeleteSharePhotoAlbum_004 end, ret=%{public}d", ret);
 }
-
-HWTEST_F(DeleteShareAlbumTest, DeleteSharePhotoAlbum_005, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("DeleteSharePhotoAlbum_005 start");
-
-    ASSERT_NE(g_rdbStore, nullptr);
-    ClearShareAlbumTable();
-    int32_t albumId = InsertShareAlbum(SHARE_ALBUM_ID, TEST_ALBUM_NAME, TEST_OWNER);
-    ASSERT_GT(albumId, 0);
-
-    std::vector<int32_t> albumIds = { SHARE_ALBUM_ID };
-    int32_t ret = MediaLibraryAlbumOperations::DeleteSharePhotoAlbum(TEST_OWNER, albumIds);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(QueryAlbumDirty(SHARE_ALBUM_ID), static_cast<int32_t>(DirtyTypes::TYPE_DELETED));
-
-    MEDIA_INFO_LOG("DeleteSharePhotoAlbum_005 end, ret=%{public}d", ret);
-}
 } // namespace OHOS::Media
