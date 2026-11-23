@@ -120,7 +120,9 @@ function isValidSearchInfo(searchInfo, validSmartEntityIds) {
 export struct PhotoPickerComponent {
   pickerOptions?: PickerOptions | undefined;
   onSelect?: (uri: string) => void;
+  onSelectEx?: (assetUri: AssetUri) => void;
   onDeselect?: (uri: string) => void;
+  onDeselectEx?: (assetUri: AssetUri) => void;
   onItemClicked?: (itemInfo: ItemInfo, clickType: ClickType) => boolean;
   onItemClickedNotify?: (itemInfo: ItemInfo, clickType: ClickType) => void;
   onUnselectableItemClicked?: (unselectableItemInfo: UnselectableItemInfo) => void;
@@ -135,6 +137,7 @@ export struct PhotoPickerComponent {
   onCurrentAlbumDeleted?: CurrentAlbumDeletedCallback;
   onVideoPlayStateChanged?: VideoPlayStateChangedCallback;
   onMovingPhotoBadgeStateChanged?: (uri: string, state: MovingPhotoBadgeStateType) => void;
+  onMovingPhotoBadgeStateChangedEx?: (assetUri: AssetUri, state: MovingPhotoBadgeStateType) => void;
   badgeConfig?: BadgeConfig;
   batchBadgeConfigSize: number = 1000;
   maxBadgeConfigSize: number = 200000;
@@ -199,6 +202,13 @@ export struct PhotoPickerComponent {
       } else {
         this.pendingSelectUrisData = data?.get('SET_SELECTED_URIS');
         console.info('PhotoPickerComponent pending onChanged: SET_SELECTED_URIS');
+      }
+    } else if (data?.has('SET_SELECTED_ASSET_URIS')) {
+      if (!this.preventUpdateSelectUris) {
+        this.proxy.send({ 'selectAssetUris': data?.get('SET_SELECTED_ASSET_URIS') as Array<AssetUri> });
+        console.info('PhotoPickerComponent onChanged: SET_SELECTED_ASSET_URIS');
+      } else {
+        console.info('PhotoPickerComponent pending onChanged: SET_SELECTED_ASSET_URIS');
       }
     } else if (data?.has('SET_ALBUM_URI')) {
       this.proxy.send({ 'albumUri': data?.get('SET_ALBUM_URI') as string });
@@ -419,10 +429,12 @@ export struct PhotoPickerComponent {
             assetCompatibleCapability: null === (r = this.pickerOptions) || void 0 === r ? void 0 : r.assetCompatibleCapability,
             preferredCompatibleMode: null === (r = this.pickerOptions) || void 0 === r ? void 0 : r.preferredCompatibleMode,
             preselectedUri: this.pickerOptions?.preselectedUris as Array<string>,
+            preselectedAssetUris: this.pickerOptions?.preselectedAssetUris as Array<AssetUri>,
             isFromPickerView: true,
             isNeedActionBar: false,
             isNeedSelectBar: false,
             isSearchSupported: this.pickerOptions?.isSearchSupported as boolean,
+            isShareAlbumSupported: this.pickerOptions?.isShareAlbumSupported as boolean,
             checkBoxColor: this.pickerOptions?.checkBoxColor as string,
             backgroundColor: this.pickerOptions?.backgroundColor as string,
             checkboxTextColor: this.pickerOptions?.checkboxTextColor as string,
@@ -512,6 +524,8 @@ export struct PhotoPickerComponent {
     console.info('PhotoPickerComponent onReceive: dataType = ' + dataType);
     if (dataType === 'selectOrDeselect') {
       this.handleSelectOrDeselect(wantParam);
+    } else if (dataType === 'selectOrDeselectEx') {
+      this.handleSelectOrDeselectEx(wantParam);
     } else if (dataType === 'itemClick') {
       this.handleItemClick(wantParam);
     } else if (dataType === 'itemClickedNotify') {
@@ -556,6 +570,9 @@ export struct PhotoPickerComponent {
     } else if (dataType === 'onMovingPhotoBadgeStateChange') {
       this.onMovingPhotoBadgeStateChangeSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChangeSend');
+    } else if (dataType === 'onMovingPhotoBadgeStateChangeEx') {
+      this.onMovingPhotoBadgeStateChangeSendEx(wantParam)
+      console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChangeSendEx');  
     } else if (dataType === 'onGridLevelChanged') {
       if (this.onPinchGridSwitched) {
         this.onPinchGridSwitched(e.gridLevel);
@@ -603,6 +620,14 @@ export struct PhotoPickerComponent {
     }
   }
 
+  private onMovingPhotoBadgeStateChangeSendEx(wantParam: Record<string, Object>): void {
+    let assetUri = wantParam.assetUri as AssetUri;
+    let enabledMovingPhotoBadge = wantParam.enabledMovingPhotoBadge as MovingPhotoBadgeStateType;
+    if (assetUri && enabledMovingPhotoBadge !== undefined && this.onMovingPhotoBadgeStateChanged) {
+      this.onMovingPhotoBadgeStateChanged(assetUri, enabledMovingPhotoBadge);
+    }
+  }
+ 
   private handleOtherOnReceive(wantParam: Record<string, Object>): void {
     let dataType = wantParam.dataType as string;
     if (dataType === 'exceedMaxSelected') {
@@ -684,6 +709,21 @@ export struct PhotoPickerComponent {
     }
   }
 
+  private handleSelectOrDeselectEx(wantParam: Record<string, Object>): void {
+    let isSelect: boolean = wantParam['isSelect'] as boolean;
+    if (isSelect) {
+      if (this.onSelectEx) {
+        this.onSelectEx(wantParam['select-item-list'] as AssetUri);
+        console.info('PhotoPickerComponent onReceive: onSelect');
+      }
+    } else {
+      if (this.onDeselectEx) {
+        this.onDeselectEx(wantParam['select-item-list'] as AssetUri);
+        console.info('PhotoPickerComponent onReceive: onDeselect');
+      }
+    }
+  }
+ 
   private handleItemClick(wantParam: Record<string, Object>): void {
     if (this.onItemClicked) {
       let clickType: ClickType = this.getClickType(wantParam);
@@ -1106,6 +1146,14 @@ export class PickerController {
           console.info('PhotoPickerComponent SET_SELECTED_URIS' + this.encrypt(JSON.stringify(uriLists)));
         }
       }
+    } else if (type === DataType.SET_SELECTED_ASSET_URIS) {
+      if (data instanceof Array) {
+        let uriLists: Array<AssetUri> = data as Array<AssetUri>;
+        if (uriLists) {
+          this.data = new Map([['SET_SELECTED_ASSET_URIS', [...uriLists]]]);
+          console.info('PhotoPickerComponent SET_SELECTED_ASSET_URIS' + this.encrypt(JSON.stringify(uriLists)));
+        }
+      }  
     } else if (type === DataType.SET_ALBUM_URI) {
       let albumUri: string = data as string;
       if (albumUri !== undefined) {
@@ -1455,6 +1503,7 @@ export class UpdatablePickerConfigs {
   singleSelectionMode?: photoAccessHelper.SingleSelectionMode;
   isRepeatSelectSupported?: boolean;
   preselectedUris?: Array<string>;
+  preselectedAssetUris?: Array<AssetUri>;
   checkBoxColor?: string;
   checkboxTextColor?: string;
   backgroundColor?: string;
@@ -1473,6 +1522,7 @@ export class GridPinchMode {
 
 export class BaseItemInfo {
   uri?: string;
+  assetUri?: AssetUri;
   mimeType?: string;
   width?: number;
   height?: number;
@@ -1580,11 +1630,17 @@ class LivePhotoMode {
   sceneType: SceneType;
 }
 
+class AssetUri {
+  type: AssetType;
+  uri: string;
+}
+ 
 export enum DataType {
   SET_SELECTED_URIS = 1,
   SET_ALBUM_URI = 2,
   SET_SELECTED_INFO = 3,
-  SET_ITEM_CLICK_RESULT = 5
+  SET_ITEM_CLICK_RESULT = 5,
+  SET_SELECTED_ASSET_URIS = 6
 }
 
 export enum GridPinchModeType {
@@ -1685,6 +1741,11 @@ export enum MovingPhotoBadgeStateType {
   MOVING_PHOTO_DISABLED	= 2
 }
 
+export enum AssetType  {
+  Default	= 0,
+  Share	= 1
+}
+ 
 export enum SceneType {
   GRID_TO_PHOTO_BROWSER = 0;
   PHOTO_BROWSER_SWIPE = 1;

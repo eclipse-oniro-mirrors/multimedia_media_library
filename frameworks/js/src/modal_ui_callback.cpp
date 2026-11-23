@@ -57,6 +57,7 @@ void ModalUICallback::OnResultForModal(int32_t resultCode, const OHOS::AAFwk::Wa
     pickerCallBack_->isOrigin = result.GetBoolParam("isOriginal", false);
     pickerCallBack_->resultCode = resultCode;
     pickerCallBack_->albumUri = result.GetStringParam("albumUri");
+    pickerCallBack_->shareAlbumUri = result.GetStringParam("shareAlbumUri");
     pickerCallBack_->time = atoll(result.GetStringParam("time").c_str());
     pickerCallBack_->displayName = result.GetStringParam("displayName");
     pickerCallBack_->recommendationType = result.GetIntParam("recommendationType", 0);

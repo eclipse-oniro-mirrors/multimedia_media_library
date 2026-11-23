@@ -190,6 +190,8 @@ export class PhotoPickerComponent extends ViewPU {
         this.pickerOptions = void 0;
         this.onSelect = void 0;
         this.onDeselect = void 0;
+        this.onSelectEx = void 0;
+        this.onDeselectEx = void 0;
         this.onItemClicked = void 0;
         this.onItemClickedNotify = void 0;
         this.onUnselectableItemClicked = void 0;
@@ -207,6 +209,7 @@ export class PhotoPickerComponent extends ViewPU {
         this.pickerState = PickerState.DEFAULT;
         this.onPickerStateChanged = void 0;
         this.onMovingPhotoBadgeStateChanged = void 0;
+        this.onMovingPhotoBadgeStateChangedEx = void 0;
         this.badgeConfig = void 0;
         this.batchBadgeConfigSize = 1000;
         this.batchPreselectedInfos = 200;
@@ -236,6 +239,8 @@ export class PhotoPickerComponent extends ViewPU {
         void 0 !== e.pickerOptions && (this.pickerOptions = e.pickerOptions);
         void 0 !== e.onSelect && (this.onSelect = e.onSelect);
         void 0 !== e.onDeselect && (this.onDeselect = e.onDeselect);
+        void 0 !== e.onSelectEx && (this.onSelectEx = e.onSelectEx);
+        void 0 !== e.onDeselectEx && (this.onDeselectEx = e.onDeselectEx);
         void 0 !== e.onItemClicked && (this.onItemClicked = e.onItemClicked);
         void 0 !== e.onItemClickedNotify && (this.onItemClickedNotify = e.onItemClickedNotify);
         void 0 !== e.onUnselectableItemClicked && (this.onUnselectableItemClicked = e.onUnselectableItemClicked);
@@ -248,6 +253,7 @@ export class PhotoPickerComponent extends ViewPU {
         void 0 !== e.onCurrentAlbumDeleted && (this.onCurrentAlbumDeleted = e.onCurrentAlbumDeleted);
         void 0 !== e.onVideoPlayStateChanged && (this.onVideoPlayStateChanged = e.onVideoPlayStateChanged);
         void 0 !== e.onMovingPhotoBadgeStateChanged && (this.onMovingPhotoBadgeStateChanged = e.onMovingPhotoBadgeStateChanged);
+        void 0 !== e.onMovingPhotoBadgeStateChangedEx && (this.onMovingPhotoBadgeStateChangedEx = e.onMovingPhotoBadgeStateChangedEx);
         void 0 !== e.pickerOptions?.badgeConfig && (this.badgeConfig = e.pickerOptions?.badgeConfig);
         void 0 !== e.pickerOptions?.preselectedInfos && (this.preselectedInfos = e.pickerOptions?.preselectedInfos);
         void 0 !== e.onScrollStopAtStart && (this.onScrollStopAtStart = e.onScrollStopAtStart);
@@ -339,6 +345,13 @@ export class PhotoPickerComponent extends ViewPU {
                 this.pendingSelectUrisData = o.get('SET_SELECTED_URIS');
                 console.info('PhotoPickerComponent pending onChanged: SET_SELECTED_URIS');
             }
+        } else if (null == o ? void 0 : o.has('SET_SELECTED_ASSET_URIS')) {
+            if (!this.preventUpdateSelectUris) {
+                this.proxy.send({ selectAssetUris: null == o ? void 0 : o.get('SET_SELECTED_ASSET_URIS') });
+                console.info('PhotoPickerComponent onChanged: SET_SELECTED_ASSET_URIS');
+            } else {
+                console.info('PhotoPickerComponent pending onChanged: SET_SELECTED_ASSET_URIS');
+            }    
         } else if (null == o ? void 0 : o.has('SET_ALBUM_URI')) {
             this.proxy.send({ albumUri: null == o ? void 0 : o.get('SET_ALBUM_URI') });
             console.info('PhotoPickerComponent onChanged: SET_ALBUM_URI');
@@ -602,6 +615,7 @@ export class PhotoPickerComponent extends ViewPU {
                     assetCompatibleCapability: null === (r = this.pickerOptions) || void 0 === r ? void 0 : r.assetCompatibleCapability,
                     preferredCompatibleMode: null === (r = this.pickerOptions) || void 0 === r ? void 0 : r.preferredCompatibleMode,
                     preselectedUri: null === (l = this.pickerOptions) || void 0 === l ? void 0 : l.preselectedUris,
+                    preselectedAssetUris: null === (l = this.pickerOptions) || void 0 === l ? void 0 : l.preselectedAssetUris,
                     isFromPickerView: !0,
                     isNeedActionBar: !1,
                     isNeedSelectBar: !1,
@@ -647,6 +661,7 @@ export class PhotoPickerComponent extends ViewPU {
                     backgroundOpacity:  null === (N = this.pickerOptions) || void 0 === N ? void 0 : N.backgroundOpacity,
                     contextRecoveryInfo: null === (recovery = this.pickerOptions) || void 0 === recovery ? void 0 : recovery.contextRecoveryInfo,
                     textColor: null === (s = this.pickerOptions) || void 0 === s ? void 0 : s.textColor,
+                    isShareAlbumSupported: null === (s = this.pickerOptions) || void 0 === s ? void 0 : s.isShareAlbumSupported,
                 }
             }
             , {
@@ -685,6 +700,8 @@ export class PhotoPickerComponent extends ViewPU {
         console.info('PhotoPickerComponent onReceive: dataType = ' + o);
         if ('selectOrDeselect' === o) {
             this.handleSelectOrDeselect(e);
+        } else if ('selectOrDeselectEx' === o) {
+            this.handleSelectOrDeselectEx(e);    
         } else if ('itemClick' === o) {
             this.handleItemClick(e); 
         } else if ('itemClickedNotify' === o) {
@@ -728,6 +745,8 @@ export class PhotoPickerComponent extends ViewPU {
             this.handleBadgeConfigSend(e);
         } else if ('onMovingPhotoBadgeStateChange' === o) {
             this.handleOnMovingPhotoBadgeStateChange(e);
+        } else if ('onMovingPhotoBadgeStateChangeEx' === o) {
+            this.handleOnMovingPhotoBadgeStateChangeEx(e);    
         } else if ('onPhotoBrowserChangeStart' === o) {
             this.handleOnPhotoBrowserChangeStart(e);
         } else if ('onError' === o) {
@@ -764,6 +783,14 @@ export class PhotoPickerComponent extends ViewPU {
         }
     }
 
+    handleOnMovingPhotoBadgeStateChangeEx(e) {
+        let assetUri = e.assetUri;
+        let enabledMovingPhotoBadge = e.enabledMovingPhotoBadge;
+        if (assetUri && enabledMovingPhotoBadge !== undefined && this.onMovingPhotoBadgeStateChangedEx) {
+            this.onMovingPhotoBadgeStateChangedEx(assetUri, enabledMovingPhotoBadge);
+        }
+    }
+ 
     handleOtherOnReceive(e) {
         let o = e.dataType;
         if ('exceedMaxSelected' === o) {
@@ -866,6 +893,18 @@ export class PhotoPickerComponent extends ViewPU {
         }
     }
 
+    handleSelectOrDeselectEx(e) {
+        if (e.isSelect) {
+            if (this.onSelectEx) {
+                this.onSelectEx(e['select-item-list']);
+                console.info('PhotoPickerComponent onReceive: onSelect');
+            }
+        } else if (this.onDeselectEx) {
+            this.onDeselectEx(e['select-item-list']);
+            console.info('PhotoPickerComponent onReceive: onDeselect');
+        }
+    }
+ 
     handleItemClick(e) {
         if (this.onItemClicked) {
             let o = this.getClickType(e);
@@ -1235,6 +1274,14 @@ let PickerController = class {
                     console.info('PhotoPickerComponent SET_SELECTED_URIS' + this.encrypt(JSON.stringify(e)));
                 }
             }
+        } else if (e === DataType.SET_SELECTED_ASSET_URIS) {
+            if (o instanceof Array) {
+                let e = o;
+                if (e) {
+                    this.data = new Map([['SET_SELECTED_ASSET_URIS', [...e]]]);
+                    console.info('PhotoPickerComponent SET_SELECTED_ASSET_URIS' + this.encrypt(JSON.stringify(e)));
+                }
+            }    
         } else if (e === DataType.SET_ALBUM_URI) {
             let e = o;
             if (e !== undefined) {
@@ -1636,6 +1683,7 @@ export let GridLevel;
 export let DataType;
 !function(e) {
     e[e.SET_SELECTED_URIS = 1] = 'SET_SELECTED_URIS';
+    e[e.SET_SELECTED_ASSET_URIS = 6] = 'SET_SELECTED_ASSET_URIS';
     e[e.SET_ALBUM_URI = 2] = 'SET_ALBUM_URI';
     e[e.SET_SELECTED_INFO = 3] = 'SET_SELECTED_INFO';
     e[e.SET_BADGE_CONFIGS = 4] = 'SET_BADGE_CONFIGS';

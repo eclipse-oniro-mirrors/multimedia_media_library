@@ -613,6 +613,7 @@ struct PickerCallBack {
     int32_t resultCode;
     vector<string> uris;
     std::string albumUri;
+    std::string shareAlbumUri;
     int64_t time;
     std::string displayName;
     int32_t recommendationType;
