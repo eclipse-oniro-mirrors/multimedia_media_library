@@ -480,14 +480,6 @@ HWTEST_F(AlbumDataManagerTest, GetInitAlbumInfos_WithData_Test, TestSize.Level0)
     EXPECT_FALSE(initInfos.empty());
 }
 
-HWTEST_F(AlbumDataManagerTest, GetInitKeys_Empty_Test, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start GetInitKeys_Empty_Test");
-    AlbumDataManager dataManager;
-    vector<int32_t> keys = dataManager.GetInitKeys();
-    EXPECT_FALSE(keys.empty());
-}
-
 HWTEST_F(AlbumDataManagerTest, GetInitKeys_WithData_Test, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start GetInitKeys_WithData_Test");

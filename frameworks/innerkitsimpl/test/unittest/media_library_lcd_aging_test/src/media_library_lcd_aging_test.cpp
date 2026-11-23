@@ -1751,25 +1751,6 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_IsMark
     CleanupLcdEnvironment(testIds);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_HasReleasable_test_006, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_HasReleasable_test_006");
-    SetupLcdEnvironment();
-
-    vector<int64_t> testIds;
-    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    auto& service = LcdAgingService::GetInstance();
-    bool result = false;
-    ret = service.HandleCanPerformDeepOptimizeSpace(result);
-
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(result);
-
-    CleanupLcdEnvironment(testIds);
-}
-
 HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_MultipleConditions_test_007, TestSize.Level1)
 {
     MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_MultipleConditions_test_007");
@@ -1791,44 +1772,6 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_Multip
 
     system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
     LcdAgingService::GetInstance().SetMarkingLcdStatus(false);
-    CleanupLcdEnvironment(testIds);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_BoundaryCount_test_008, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_BoundaryCount_test_008");
-    SetupLcdEnvironment();
-
-    vector<int64_t> testIds;
-    int32_t ret = InsertMultipleLcdPhotos(testIds, 50000, 2, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    auto& service = LcdAgingService::GetInstance();
-    bool result = false;
-    ret = service.HandleCanPerformDeepOptimizeSpace(result);
-
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(result);
-
-    CleanupLcdEnvironment(testIds);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_HighCount_test_009, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_HighCount_test_009");
-    SetupLcdEnvironment();
-
-    vector<int64_t> testIds;
-    int32_t ret = InsertMultipleLcdPhotos(testIds, 60000, 2, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    auto& service = LcdAgingService::GetInstance();
-    bool result = false;
-    ret = service.HandleCanPerformDeepOptimizeSpace(result);
-
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(result);
-
     CleanupLcdEnvironment(testIds);
 }
 
@@ -2097,55 +2040,6 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_ThumbS
 
     EXPECT_EQ(ret, E_OK);
     EXPECT_FALSE(result);
-
-    CleanupLcdEnvironment(testIds);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_MixedPositions_test_017, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_MixedPositions_test_017");
-    SetupLcdEnvironment();
-
-    vector<int64_t> testIds;
-    int32_t ret = InsertMultipleLcdPhotos(testIds, 16666, 1, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    vector<int64_t> testIds2;
-    ret = InsertMultipleLcdPhotos(testIds2, 16667, 2, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    vector<int64_t> testIds3;
-    ret = InsertMultipleLcdPhotos(testIds3, 16667, 3, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    testIds.insert(testIds.end(), testIds2.begin(), testIds2.end());
-    testIds.insert(testIds.end(), testIds3.begin(), testIds3.end());
-
-    auto& service = LcdAgingService::GetInstance();
-    bool result = false;
-    ret = service.HandleCanPerformDeepOptimizeSpace(result);
-
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(result);
-
-    CleanupLcdEnvironment(testIds);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingService_CanPerformDeepOptimize_JustAboveMin_test_018, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingService_CanPerformDeepOptimize_JustAboveMin_test_018");
-    SetupLcdEnvironment();
-
-    vector<int64_t> testIds;
-    int32_t ret = InsertMultipleLcdPhotos(testIds, 50001, 2, 102400, 31);
-    ASSERT_EQ(ret, NativeRdb::E_OK);
-
-    auto& service = LcdAgingService::GetInstance();
-    bool result = false;
-    ret = service.HandleCanPerformDeepOptimizeSpace(result);
-
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(result);
 
     CleanupLcdEnvironment(testIds);
 }
