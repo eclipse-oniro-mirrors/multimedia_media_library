@@ -301,20 +301,19 @@ napi_value SingleFileMovingPhotoUtil::JSUnpackingSingleFileMovingPhoto(napi_env 
 }
 
 // 同步接口：打包图片 + 视频为合一文件，返回生成的合一文件路径
-// packing 的严格格式校验：图片后缀需为 jpeg/jpg/heif/heic 且内容为 JPEG/HEIF，
-// 视频后缀需为 mp4 且内容为 video/mp4。
-// 失败时已抛出参数错误；成功时回填由内容决定的产物图片后缀（只有 jpg / heic 两种）。
+// packing 按需求规格只校验后缀，不读取文件内容：图片后缀需为 jpeg/jpg/heif/heic，视频后缀需为 mp4。
+// 失败时已抛出参数错误；成功时回填图片入参的原始后缀（合一文件名与图片入参名一致）。
 static bool CheckPackingSourceFormat(napi_env env, const std::string &imageUri, const std::string &videoUri,
     std::string &imageExtension)
 {
     if (SingleFileMovingPhotoUtils::ResolvePackingImageExtension(RealPathOf(imageUri), imageExtension) != E_OK) {
-        MEDIA_ERR_LOG("packingSingleFileMovingPhoto failed, image is not JPEG or HEIF");
-        ThrowJsError(env, JS_E_PARAM_INVALID, "The image file must be JPEG or HEIF");
+        MEDIA_ERR_LOG("packingSingleFileMovingPhoto failed, image extension is unsupported");
+        ThrowJsError(env, JS_E_PARAM_INVALID, "The image file extension must be jpg, jpeg, heic or heif");
         return false;
     }
     if (SingleFileMovingPhotoUtils::CheckPackingVideoMimetype(RealPathOf(videoUri)) != E_OK) {
-        MEDIA_ERR_LOG("packingSingleFileMovingPhoto failed, video is not MP4");
-        ThrowJsError(env, JS_E_PARAM_INVALID, "The video file must be MP4");
+        MEDIA_ERR_LOG("packingSingleFileMovingPhoto failed, video extension is unsupported");
+        ThrowJsError(env, JS_E_PARAM_INVALID, "The video file extension must be mp4");
         return false;
     }
     return true;
@@ -364,12 +363,12 @@ napi_value SingleFileMovingPhotoUtil::JSPackingSingleFileMovingPhoto(napi_env en
     }
 
     std::string imageTitle;
-    std::string sourceImageExtension;  // 仅用于拆分文件名，产物后缀改由内容 MIME 决定
+    std::string sourceImageExtension;
     SplitFileName(GetFileNameFromUri(imageUri), imageTitle, sourceImageExtension);
     std::string videoTitle;
     std::string videoExtension;
     SplitFileName(GetFileNameFromUri(videoUri), videoTitle, videoExtension);
-    // 严格格式校验：图片后缀 jpeg/jpg/heif/heic + 内容 JPEG/HEIF，视频后缀 mp4 + 内容 video/mp4
+    // 格式校验只校验后缀、不校验内容：图片 jpg/jpeg/heic/heif，视频 mp4
     std::string imageExtension;
     if (!CheckPackingSourceFormat(env, imageUri, videoUri, imageExtension)) {
         return nullptr;
