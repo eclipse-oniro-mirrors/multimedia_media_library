@@ -4252,7 +4252,7 @@ static ani_status ParseArgsCreatePhotoAssetComponent(ani_env* env, ani_enum_item
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get extension");
         return ANI_ERROR;
     }
-    CHECK_COND_WITH_RET_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType("." + extensionStr), ANI_ERROR,
+    CHECK_COND_WITH_RET_MESSAGE(env, mediaType == MediaFileUtils::GetMediaTypeFromExtension(extensionStr), ANI_ERROR,
         "Failed to check extension");
     asyncContext->valuesBucket.Put(CONST_ASSET_EXTENTION, extensionStr);
 
@@ -4294,7 +4294,7 @@ static ani_status ParseArgsCreatePhotoAsset(ani_env* env, ani_enum_item photoTyp
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get extension");
         return ANI_ERROR;
     }
-    CHECK_COND_WITH_RET_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType("." + extensionStr), ANI_ERROR,
+    CHECK_COND_WITH_RET_MESSAGE(env, mediaType == MediaFileUtils::GetMediaTypeFromExtension(extensionStr), ANI_ERROR,
         "Failed to check extension");
     asyncContext->valuesBucket.Put(CONST_ASSET_EXTENTION, extensionStr);
 

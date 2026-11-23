@@ -167,6 +167,7 @@ public:
     EXPORT static std::string GetFileName(const std::string &filePath);
     EXPORT static std::string GetExtension(const std::string &path);
     EXPORT static bool CheckPathTraversal(const std::string& path);
+    EXPORT static bool CheckPathTraversalStrict(const std::string& path);
     EXPORT static bool CheckIsCloudFile(const std::string &sandboxPath);
     /**
      * @brief Convert a cloud path to a local path by replacing the root prefix

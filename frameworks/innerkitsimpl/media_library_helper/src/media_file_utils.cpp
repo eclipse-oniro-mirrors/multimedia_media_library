@@ -1681,6 +1681,17 @@ MediaType MediaFileUtils::GetMediaTypeNotSupported(const string &filePath)
     return MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
 }
 
+MediaType MediaFileUtils::GetMediaTypeFromExtension(const string &extension)
+{
+    if (extension.empty()) {
+        return MEDIA_TYPE_ALL;
+    }
+
+    // The extension is an argument, not a path: no splitting, match the whole string exactly.
+    string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
+    return MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
+}
+
 bool MediaFileUtils::IsSupportedMediaExtension(const std::string &displayName)
 {
     size_t pos = displayName.find_last_of('.');

@@ -218,7 +218,7 @@ MediaAssetChangeRequestImpl::MediaAssetChangeRequestImpl(
     }
     MediaType mediaType = static_cast<MediaType>(photoType);
     if (mediaType != MEDIA_TYPE_IMAGE && mediaType != MEDIA_TYPE_VIDEO &&
-        mediaType != MediaFileUtils::GetMediaType("." + extension)) {
+        mediaType != MediaFileUtils::GetMediaTypeFromExtension(extension)) {
         LOGE("Invalid photoType or failed to check extension");
         *errCode = OHOS_INVALID_PARAM_CODE;
         return;

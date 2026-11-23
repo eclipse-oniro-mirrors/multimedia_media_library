@@ -5948,7 +5948,7 @@ static napi_value ParseArgsCreatePhotoAssetComponent(napi_env env, napi_callback
     string extension;
     NAPI_ASSERT(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_ONE], extension) ==
         napi_ok, "Failed to get extension");
-    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType("." + extension),
+    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaTypeFromExtension(extension),
         "The extension does not match the photoType");
     context->valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
 
@@ -11715,8 +11715,8 @@ static napi_value ParseCreatePhotoAssetComponentArgs(napi_env env, napi_callback
     string extension;
     CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_ONE], extension) ==
         napi_ok, JS_E_PARAM_INVALID, "The extension does not match the photoType");
-    CHECK_COND_WITH_ERR_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType("." + extension), JS_E_PARAM_INVALID,
-        "The extension does not match the photoType");
+    CHECK_COND_WITH_ERR_MESSAGE(env, mediaType == MediaFileUtils::GetMediaTypeFromExtension(extension),
+        JS_E_PARAM_INVALID, "The extension does not match the photoType");
     context->valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
     /* Parse the third argument into albumUri if exists */
     if (context->argc >= ARGS_THREE) {

@@ -236,6 +236,46 @@ HWTEST_F(MediaPathUtilsUnitTest, GetFileName_SingleSlash_Test_001, TestSize.Leve
     EXPECT_EQ(result, "filename.txt");
 }
 
+HWTEST_F(MediaPathUtilsUnitTest, medialib_check_path_traversal_strict_test_001, TestSize.Level1)
+{
+    // '/' 分隔的段级 ".."：开头 ../、中间 /../、结尾 /..、裸 ".." 均判为穿越
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("/storage/../../etc/passwd"));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("/storage/cloud/files/../secret.jpg"));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("../relative/escape.jpg"));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("a/../b"));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("/.."));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict(".."));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("../"));
+    EXPECT_TRUE(MediaPathUtils::CheckPathTraversalStrict("a/.."));
+}
+
+HWTEST_F(MediaPathUtilsUnitTest, medialib_check_path_traversal_strict_test_002, TestSize.Level1)
+{
+    // 仅含 ".." 子串但不是段级形态：合法文件名（displayName 允许中间 '.'）不判为穿越
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("a..b.jpg"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("photo..jpg"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("..a/b.jpg"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("a/.../b"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("/storage/cloud/files/Photos/a..b.jpg"));
+}
+
+HWTEST_F(MediaPathUtilsUnitTest, medialib_check_path_traversal_strict_test_003, TestSize.Level1)
+{
+    // '\' 在 OHOS 是合法文件名字符：Windows 风格形态不按路径分段处理
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("123\\123\\.."));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("dir\\..\\escape"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("..\\win\\escape"));
+}
+
+HWTEST_F(MediaPathUtilsUnitTest, medialib_check_path_traversal_strict_test_004, TestSize.Level1)
+{
+    // 正常路径与空串
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("/storage/cloud/files/Photos/01.jpg"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("photo.jpg"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict("/storage/./current.jpg"));
+    EXPECT_FALSE(MediaPathUtils::CheckPathTraversalStrict(""));
+}
+
 HWTEST_F(MediaPathUtilsUnitTest, GetFileName_MultipleSlashes_Test_001, TestSize.Level1)
 {
     std::string filePath = "/path/to/filename.txt";
