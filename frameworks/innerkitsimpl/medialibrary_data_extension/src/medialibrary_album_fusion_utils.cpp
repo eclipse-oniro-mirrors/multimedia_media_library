@@ -972,11 +972,17 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
 }
 
 static int32_t copyMetaData(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, int64_t &newAssetId,
-    NativeRdb::ValuesBucket &values)
+    NativeRdb::ValuesBucket &values,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr)
 {
-    int32_t ret = rdbStore->Insert(newAssetId, PhotoColumn::PHOTOS_TABLE, values);
+    int32_t ret = -1;
+    if (assetRefresh != nullptr) {
+        ret = assetRefresh->Insert(newAssetId, PhotoColumn::PHOTOS_TABLE, values);
+    } else {
+        ret = rdbStore->Insert(newAssetId, PhotoColumn::PHOTOS_TABLE, values);
+    }
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("upgradeStore->Insert failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("copy meta data Insert failed, ret = %{public}d", ret);
         return E_HAS_DB_ERROR;
     }
     MEDIA_DEBUG_LOG("Insert copy meta data success, rowId=%{public}" PRId64", ret=%{public}d", newAssetId, ret);
@@ -1429,12 +1435,17 @@ int32_t MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(const std::shared_ptr<
         DeleteThumbnail(targetPath);
         return err;
     }
-    err = copyMetaData(upgradeStore, param.newAssetId, values);
+    err = copyMetaData(upgradeStore, param.newAssetId, values, assetRefresh);
     if (err != E_OK) {
         // If insert fails, delete the moved file to avoid wasted space
         MEDIA_ERR_LOG("Build meta data fail and delete migrated file %{public}s ", targetPath.c_str());
         DeleteThumbnail(targetPath);
         return err;
+    }
+    if (assetRefresh != nullptr) {
+        err = UpdateCopyInfo(upgradeStore, {param.assetId, param.newAssetId, param.ownerAlbumId, targetPath, false},
+            static_cast<int32_t>(CloneCallbackType::PHOTOASSET), resultSet, assetRefresh);
+        CHECK_AND_RETURN_RET(err == E_OK, err);
     }
     ThumbnailService::GetInstance()->CreateAstcCloudDownload(to_string(param.newAssetId), true);
     err = UpdateRelationship(upgradeStore, {param.assetId, param.newAssetId, param.ownerAlbumId}, assetRefresh);
