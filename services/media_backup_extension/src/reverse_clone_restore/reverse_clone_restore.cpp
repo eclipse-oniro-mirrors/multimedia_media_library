@@ -2726,12 +2726,13 @@ void ReverseCloneRestore::MergeShootingModeAlbums()
     MEDIA_INFO_LOG("MergeShootingModeAlbums completed");
 }
 
-void ReverseCloneRestore::UpdateReverseRestoreStatusTimestampThread(std::atomic<bool>& shouldUpdate)
+void ReverseCloneRestore::UpdateReverseRestoreStatusTimestampThread(
+    std::shared_ptr<std::atomic<bool>> shouldUpdate)
 {
     MEDIA_INFO_LOG("UpdateReverseRestoreStatusTimestampThread started");
     constexpr int64_t TWO_MINUTES_MS = 2 * 60 * 1000;
 
-    while (shouldUpdate.load()) {
+    while (shouldUpdate->load()) {
         std::string reverseRestoreStatus;
         int32_t ret = SettingsDataManager::GetReverseRestoreStatus(reverseRestoreStatus);
         if (ret == E_OK && !reverseRestoreStatus.empty()) {
@@ -2752,7 +2753,7 @@ void ReverseCloneRestore::UpdateReverseRestoreStatusTimestampThread(std::atomic<
 void ReverseCloneRestore::StopReverseRestoreStatusUpdateThread()
 {
     MEDIA_INFO_LOG("Stopping reverse restore status update thread");
-    shouldUpdateReverseRestoreStatus_.store(false);
+    shouldUpdateReverseRestoreStatus_->store(false);
     if (reverseRestoreStatusUpdateThread_.joinable()) {
         reverseRestoreStatusUpdateThread_.detach();
         MEDIA_INFO_LOG("Reverse restore status update thread detached");
@@ -2838,9 +2839,9 @@ bool ReverseCloneRestore::PreprocessReverseRestore(const string &backupRestorePa
     }
 
     // Start background thread to update reverse restore status timestamp
-    shouldUpdateReverseRestoreStatus_.store(true);
+    shouldUpdateReverseRestoreStatus_->store(true);
     reverseRestoreStatusUpdateThread_ = std::thread(UpdateReverseRestoreStatusTimestampThread,
-        std::ref(shouldUpdateReverseRestoreStatus_));
+        shouldUpdateReverseRestoreStatus_);
     totalNumber_ = reverseRestoreReportInfo_.failedCount;
     MEDIA_INFO_LOG("Started reverse restore status update thread");
 

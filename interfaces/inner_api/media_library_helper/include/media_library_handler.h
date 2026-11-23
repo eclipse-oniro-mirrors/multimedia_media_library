@@ -18,6 +18,7 @@
 
 #include "datashare_helper.h"
 #include "media_file_uri.h"
+#include <mutex>
 
 extern "C" {
 /**
@@ -76,6 +77,7 @@ public:
 private:
     static shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
     static sptr<IRemoteObject> token_;
+    static std::mutex mutex_;
     int32_t userId_;
 };
 } // namespace Media

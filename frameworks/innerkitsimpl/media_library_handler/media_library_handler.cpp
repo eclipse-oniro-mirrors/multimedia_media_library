@@ -67,6 +67,7 @@ namespace OHOS {
 namespace Media {
 shared_ptr<DataShare::DataShareHelper> MediaLibraryHandler::sDataShareHelper_ = nullptr;
 sptr<IRemoteObject> MediaLibraryHandler::token_ = nullptr;
+std::mutex MediaLibraryHandler::mutex_;
 constexpr int32_t DEFAULT_USER_ID = 100;
 const std::string PHOTO_STORAGE_PATH = "storage_path";
 const std::string PHOTO_FILE_SOURCE_TYPE = "file_source_type";
@@ -110,6 +111,7 @@ static int32_t GetCurrentAccountId()
 void MediaLibraryHandler::InitMediaLibraryHandler()
 {
     int32_t activeUser =  GetCurrentAccountId();
+    std::lock_guard<std::mutex> lock(mutex_);
     if (sDataShareHelper_ == nullptr || activeUser != userId_) {
         token_ = InitToken();
         if (token_ != nullptr) {
@@ -171,7 +173,12 @@ int32_t MediaLibraryHandler::GetDataUris(const vector<string> &uris, vector<stri
         MEDIA_ERR_LOG("uris is empty");
         return E_FAIL;
     }
-    if (sDataShareHelper_ == nullptr) {
+    std::shared_ptr<DataShare::DataShareHelper> helper;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        helper = sDataShareHelper_;
+    }
+    if (helper == nullptr) {
         MEDIA_ERR_LOG("dataShareHelper is nullptr");
         return E_FAIL;
     }
@@ -184,7 +191,7 @@ int32_t MediaLibraryHandler::GetDataUris(const vector<string> &uris, vector<stri
 
     vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
         PHOTO_STORAGE_PATH, PHOTO_FILE_SOURCE_TYPE};
-    auto resultSet = GetResultSetFromPhotos(CONST_MEDIA_DATA_DB_ID, realIds, columns, sDataShareHelper_);
+    auto resultSet = GetResultSetFromPhotos(CONST_MEDIA_DATA_DB_ID, realIds, columns, helper);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is nullptr");
         return E_FAIL;

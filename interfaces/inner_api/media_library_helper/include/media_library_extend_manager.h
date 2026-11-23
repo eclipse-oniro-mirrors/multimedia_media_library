@@ -18,6 +18,8 @@
 
 #include "datashare_helper.h"
 #include "media_app_uri_sensitive_column.h"
+#include <atomic>
+#include <memory>
 #include <mutex>
 
 // LCOV_EXCL_START

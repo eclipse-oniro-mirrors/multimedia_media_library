@@ -381,7 +381,7 @@ protected:
     void UpdateSourceOrUserAlbumUploadStatus(const int32_t destAlbumId, const AlbumInfo &albumInfo);
     void UpdateDestOnlyAlbumsUploadStatus();
     int32_t HandleReverseRestoreStatus();
-    static void UpdateReverseRestoreStatusTimestampThread(std::atomic<bool>& shouldUpdate);
+    static void UpdateReverseRestoreStatusTimestampThread(std::shared_ptr<std::atomic<bool>> shouldUpdate);
     void StopReverseRestoreStatusUpdateThread();
     int64_t initialNewMaxFileId_ = 0;   // 第一次迁移后新 db 的最大 file_id
     int64_t initialNewMaxAlbumId_ = 0;  // 第一次迁移后新 db 的最大 album_id
@@ -427,7 +427,7 @@ private:
     std::mutex allDuplicatePlansMutex_;
 
     // 反向恢复状态更新线程
-    std::atomic<bool> shouldUpdateReverseRestoreStatus_{false};
+    std::shared_ptr<std::atomic<bool>> shouldUpdateReverseRestoreStatus_ = std::make_shared<std::atomic<bool>>(false);
     std::thread reverseRestoreStatusUpdateThread_;
 
     // UpdateSystemAlbumFields 拆分方法

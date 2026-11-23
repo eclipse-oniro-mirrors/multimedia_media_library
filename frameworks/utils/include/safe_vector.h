@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_CLOUD_SYNC_SAFE_VECTOR_H
-#define OHOS_MEDIA_CLOUD_SYNC_SAFE_VECTOR_H
+#ifndef OHOS_MEDIA_SAFE_VECTOR_H
+#define OHOS_MEDIA_SAFE_VECTOR_H
 
 #include <vector>
 #include <mutex>
-namespace OHOS::Media::CloudSync {
+namespace OHOS::Media {
 
 template <typename T>
 class SafeVector {
@@ -72,5 +72,5 @@ private:
     std::vector<T> data_;
     mutable std::mutex mutex_;
 };
-}  // namespace OHOS::Media::CloudSync
-#endif  // OHOS_MEDIA_CLOUD_SYNC_SAFE_VECTOR_H
+}  // namespace OHOS::Media
+#endif  // OHOS_MEDIA_SAFE_VECTOR_H
