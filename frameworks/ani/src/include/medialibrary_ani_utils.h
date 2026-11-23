@@ -417,6 +417,7 @@ public:
     template <class AniContext>
     static bool HandleSpecialPredicate(AniContext &context,
         DataShare::DataSharePredicates *predicate, FetchOptionType fetchOptType);
+    static bool IsUnionOnlyQuery(const DataShare::DataSharePredicates &predicates);
 
     template <class AniContext>
     static bool ProcessPredicateItems(AniContext& context, const vector<DataShare::OperationItem>& items,
@@ -458,6 +459,8 @@ public:
     static int32_t GetSystemAlbumPredicates(const PhotoAlbumSubType subType,
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     static int32_t GetUserAlbumPredicates(const int32_t albumId,
+        DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
+    static int32_t GetShareAlbumPredicates(const int32_t albumId,
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     static int32_t GetAnalysisAlbumPredicates(const int32_t albumId, DataShare::DataSharePredicates &predicates);
     static int32_t GetFeaturedSinglePortraitAlbumPredicates(

@@ -80,6 +80,16 @@ public:
     {
         return OHOS::Media::IPC::MediaCommonClient::GetInstance().Update(uri, predicates, value);
     }
+
+    EXPORT static void SetUserId(const int32_t userId)
+    {
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().SetUserId(userId);
+    }
+ 
+    EXPORT static int32_t GetUserId()
+    {
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().GetUserId();
+    }
 };
 }
 }

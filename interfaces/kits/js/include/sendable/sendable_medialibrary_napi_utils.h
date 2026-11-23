@@ -118,6 +118,7 @@ public:
         std::vector<DataShare::OperationItem> operations = {});
     static bool IsPredicateValid(shared_ptr<DataShare::DataShareAbsPredicates> &predicate,
         const FetchOptionType &fetchOptType);
+    static bool IsUnionOnlyQuery(const DataShare::DataSharePredicates &predicates);
 
     template <class AsyncContext>
     static napi_status AsyncContextSetObjectInfo(napi_env env, napi_callback_info info, AsyncContext &asyncContext,
@@ -156,7 +157,7 @@ public:
         std::shared_ptr<DataShare::DataShareAbsPredicates> &predicate);
 
     static void CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
-        const std::string errMsg);
+        const std::string errMsg, bool isIntCode = false);
 
     static void InvokeJSAsyncMethodWithoutWork(napi_env env, napi_deferred deferred, napi_ref callbackRef,
         const SendableJSAsyncContextOutput &asyncContext);
@@ -184,6 +185,8 @@ public:
         const PhotoAlbumSubType subType = PhotoAlbumSubType::USER_GENERIC);
 
     static int32_t GetSystemAlbumPredicates(const PhotoAlbumSubType subType,
+        DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
+    static int32_t GetShareAlbumPredicates(const int32_t albumId,
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);
     static int32_t GetUserAlbumPredicates(const int32_t albumId,
         DataShare::DataSharePredicates &predicates, const bool hiddenOnly);

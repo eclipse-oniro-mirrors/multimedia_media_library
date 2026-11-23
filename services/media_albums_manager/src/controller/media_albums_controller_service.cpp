@@ -101,6 +101,10 @@ const std::map<uint32_t, SpecialRequestHandle> SPECIAL_HANDLERS = {
         &MediaAlbumsControllerService::AlbumGetAssets
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS),
+        &MediaAlbumsControllerService::AlbumGetShareAssets
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSETS),
         &MediaAlbumsControllerService::AlbumGetAssets
     },
@@ -174,6 +178,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_PHOTO_ALBUMS),
         &MediaAlbumsControllerService::QueryAlbums
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS),
+        &MediaAlbumsControllerService::QueryShareAlbums
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_PAH_QUERY_PHOTO_ALBUMS),
@@ -314,6 +322,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM),
         &MediaAlbumsControllerService::ChangeRequestAbsorbAlbum
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_SHARE_ALBUM_MEMBER),
+        &MediaAlbumsControllerService::GetShareAlbumMember
     },
 };
 
@@ -809,6 +821,34 @@ int32_t MediaAlbumsControllerService::QueryAlbums(MessageParcel &data, MessagePa
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
+int32_t MediaAlbumsControllerService::QueryShareAlbums(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    QueryAlbumsReqBody reqBody;
+    QueryAlbumsRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryShareAlbums Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+
+    QueryAlbumsDto dto;
+    dto.albumType = reqBody.albumType;
+    dto.albumSubType = reqBody.albumSubType;
+    dto.columns = reqBody.columns;
+    dto.predicates = reqBody.predicates;
+    ret = MediaAlbumsService::GetInstance().QueryShareAlbums(dto);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryShareAlbums failed, ret:%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+
+    respBody.resultSet = dto.resultSet;
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
+}
+
 int32_t MediaAlbumsControllerService::QueryHiddenAlbums(MessageParcel &data, MessageParcel &reply)
 {
     uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_HIDDEN_ALBUMS);
@@ -940,6 +980,50 @@ int32_t MediaAlbumsControllerService::AlbumGetAssets(
     }
 
     auto resultSet = MediaAlbumsService::GetInstance().AlbumGetAssets(dto, passCode);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("resultSet is null");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);
+    }
+    AlbumGetAssetsRespBody respBody;
+    respBody.resultSet = resultSet;
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
+}
+
+int32_t MediaAlbumsControllerService::AlbumGetShareAssets(
+    MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context)
+{
+    MEDIA_INFO_LOG("enter");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    AlbumGetAssetsReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    bool valid = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause()) == E_OK &&
+        ParameterUtils::HandleIllegalKey(reqBody.predicates) == E_OK;
+    if (!valid) {
+        MEDIA_ERR_LOG("CheckWhereClause fialed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
+    AlbumGetAssetsDto dto = AlbumGetAssetsDto::Create(reqBody);
+    int32_t passCode = E_SUCCESS;
+    if (context.GetByPassCode() == E_PERMISSION_DB_BYPASS) {
+        string clientAppId = GetClientAppId();
+        if (clientAppId.empty()) {
+            MEDIA_ERR_LOG("clientAppId is empty");
+            return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
+        }
+        dto.predicates.And()->EqualTo("owner_appid", clientAppId);
+    } else {
+        MEDIA_DEBUG_LOG("AlbumGetShareAssets by read permission");
+        passCode = E_READ_CLOUD_PERMISSION_CHECK;
+    }
+
+    auto resultSet = MediaAlbumsService::GetInstance().AlbumGetShareAssets(dto, passCode);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);
@@ -1471,5 +1555,26 @@ int32_t MediaAlbumsControllerService::ChangeRequestAbsorbAlbum(MessageParcel &da
     }
     ret = MediaAlbumsService::GetInstance().ChangeRequestAbsorbAlbum(reqBody.albumId, reqBody.absorbAlbumId);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::GetShareAlbumMember(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter GetShareAlbumMember");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_SHARE_ALBUM_MEMBER);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    GetShareAlbumMemberReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetShareAlbumMember Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    GetShareAlbumMemberRespBody respBody;
+    ret = MediaAlbumsService::GetInstance().GetShareAlbumMember(reqBody, respBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetShareAlbumMember failed, ret: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 } // namespace OHOS::Media

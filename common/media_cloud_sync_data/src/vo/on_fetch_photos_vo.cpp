@@ -349,7 +349,7 @@ bool OnFetchPhotosVo::UnmarshallSharePhotoDetailVo(MessageParcel &parcel)
 
 std::string OnFetchPhotosVo::SharePhotoDetailVoToString() const
 {
-    CHECK_AND_RETURN_RET_LOG(this->sharePhotoDetailDtoOp.has_value(), "", "sharePhotoDetailDtoOp has no value");
+    CHECK_AND_RETURN_RET(this->sharePhotoDetailDtoOp.has_value(), "");
     return this->sharePhotoDetailDtoOp.value().ToString();
 }
 }  // namespace OHOS::Media::CloudSync

@@ -208,6 +208,15 @@ enum class PhotoPositionType : int32_t {
     LOCAL_AND_CLOUD = 3
 };
 
+// 成员显式赋值，互异性不受编译器保证，编译期防护（成员显式赋值重复在 C++ 中合法）
+static_assert(PhotoPositionType::INVALID != PhotoPositionType::LOCAL &&
+    PhotoPositionType::INVALID != PhotoPositionType::CLOUD &&
+    PhotoPositionType::INVALID != PhotoPositionType::LOCAL_AND_CLOUD &&
+    PhotoPositionType::LOCAL != PhotoPositionType::CLOUD &&
+    PhotoPositionType::LOCAL != PhotoPositionType::LOCAL_AND_CLOUD &&
+    PhotoPositionType::CLOUD != PhotoPositionType::LOCAL_AND_CLOUD,
+    "PhotoPositionType members must be pairwise distinct");
+
 enum class VideoMode : int32_t {
     DEFAULT = -1,
     NOT_LOG_VIDEO = 0,
@@ -245,6 +254,8 @@ enum class VideoEnhancementType : int32_t {
 };
 
 const std::string URI_PARAM_API_VERSION = "api_version";
+constexpr size_t MAX_INT32_STR_LEN = 9; // max digits of int32_t, prevent stoi out_of_range
+constexpr size_t MAX_API_VERSION_LEN = MAX_INT32_STR_LEN;
 
 enum class MediaLibraryApi : uint32_t {
     API_START = 8,

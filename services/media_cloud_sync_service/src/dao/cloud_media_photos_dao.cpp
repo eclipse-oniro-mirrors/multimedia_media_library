@@ -1068,6 +1068,20 @@ int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<PhotosPo> &photoInfoLis
     return E_OK;
 }
 
+int32_t CloudMediaPhotosDao::GetShareDirtyPhotos(std::vector<PhotosPo> &photoList)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "GetShareDirtyPhotos Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, 1);
+    predicates.In(PhotoColumn::PHOTO_DIRTY, std::vector<std::string> {"2", "3"});
+    auto resultSet = rdbStore->Query(predicates, {});
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetShareDirtyPhotos Failed to query.");
+    photoList = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords();
+    resultSet->Close();
+    return E_OK;
+}
+
 std::vector<PhotosPo> CloudMediaPhotosDao::GetCheckRecords(const std::vector<std::string> cloudIds)
 {
     MEDIA_INFO_LOG("enter GetCheckRecords");

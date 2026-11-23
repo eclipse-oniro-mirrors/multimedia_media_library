@@ -21,6 +21,7 @@
 
 #include "dataobs_mgr_changeinfo.h"
 #include "photo_album_dto.h"
+#include "photos_po.h"
 #include "cloud_media_album_dao.h"
 #include "cloud_media_common_dao.h"
 #include "cloud_media_share_album_member_service.h"
@@ -34,6 +35,8 @@ public:
     int32_t OnFetchRecords(std::vector<PhotoAlbumDto> &albumDtoList,
         std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
     int32_t OnCompletePull(const MediaOperateResult &optRet);
+    // 获取当前用户ID: 内存优先, 为空则读 xml 持久化值; 均为空返回空串(上行流程不拦截)
+    std::string GetCurrentUserId();
 
 private:
     int32_t FindAlbumInfo(PhotoAlbumDto &record);
@@ -51,11 +54,17 @@ private:
     int32_t PullDelete(const PhotoAlbumDto &record, ChangeType &changeType,
         std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
     int32_t PullHandleShareAlbumMembers(PhotoAlbumDto &record);
+    // 下行保存共享相册携带的当前用户ID: 与已保存值不同时更新并同步写入 xml
+    void SaveCurrentUserIdIfNeeded(const PhotoAlbumDto &record);
+    // 相册上行拦截: 当前用户非相册 owner 的共享相册不允许上云, dirty 置 0
+    void FilterShareAlbumsByCurrentUser(std::vector<PhotoAlbumPo> &albumList);
 
 private:
     CloudMediaCommonDao commonDao_;
     CloudMediaAlbumDao albumDao_;
     CloudMediaShareAlbumMemberService shareAlbumMemberService_;
+    // 进程内当前用户ID, 由下行流程写入(内存)并同步 xml 持久化
+    std::string currentUserId_ = "";
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_SHARE_ALBUM_SERVICE_H

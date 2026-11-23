@@ -34,6 +34,8 @@
 #include "cloud_media_download_resources_status_napi.h"
 #include "result_set_napi.h"
 #include "task_signal_napi.h"
+#include "member_info_napi.h"
+#include "share_album_member_info_napi.h"
 
 namespace OHOS {
 namespace Media {
@@ -70,6 +72,8 @@ static napi_value PhotoAccessHelperExport(napi_env env, napi_value exports)
     PhotoAssetCustomRecordNapi::Init(env, exports);
     CloudMediaDownloadResourcesStatusNapi::Init(env, exports);
     TaskSignalNapi::Init(env, exports);
+    MemberInfoNapi::Init(env, exports);
+    ShareAlbumMemberInfoNapi::Init(env, exports);
     SingleFileMovingPhotoUtil::Init(env, exports);
     return exports;
 }

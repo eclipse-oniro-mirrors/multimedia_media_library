@@ -12,16 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INCREMENTAL_RECOVERY_TEST_HOOKS_H
-#define INCREMENTAL_RECOVERY_TEST_HOOKS_H
 
-#include <cstdint>
-#include <memory>
-#include <string>
+#ifndef MEDIA_NOTIFY_SUPPRESS_TEST_H
+#define MEDIA_NOTIFY_SUPPRESS_TEST_H
 
-namespace OHOS::Media {
-class IMediaScannerCallback;
-int32_t ScanRecoveryFileForTest(const std::string &path,
-    const std::shared_ptr<IMediaScannerCallback> &callback, int32_t fileId);
-} // namespace OHOS::Media
-#endif // INCREMENTAL_RECOVERY_TEST_HOOKS_H
+#include <gtest/gtest.h>
+
+namespace OHOS {
+namespace Media {
+class MediaNotifySuppressTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
+};
+} // namespace Media
+} // namespace OHOS
+#endif // MEDIA_NOTIFY_SUPPRESS_TEST_H

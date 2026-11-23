@@ -45,6 +45,8 @@ const std::string RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE = "sharePhotoAlbu
 const std::string RegisterNotifyType::USER_CLIENT_CHANGE = "userDefineChange";
 const std::string RegisterNotifyType::MEDIALIBRARY_AVAILABILITY_CHANGE = "medialibraryAvailabilityChange";
 
+constexpr int32_t SHARED_ASSET_FLAG = 1;
+
 const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
     MediaLibraryNotifyUtils::REGISTER_ASSET_MANAGER_TYPE_MAP = {
     { Notification::NotifyUriType::BATCH_DOWNLOAD_PROGRESS_URI,
@@ -407,7 +409,7 @@ napi_value MediaLibraryNotifyUtils::BuildPhotoAssetChangeInfo(napi_env env,
     SetValueInt64(env, "size", photoAssetChangeInfo.size_, result);
     SetValueInt64(env, "livephoto4dStatus", photoAssetChangeInfo.livephoto4dStatus_, result);
     SetValueInt64(env, "assetSourceType", photoAssetChangeInfo.fileSourceType_, result);
-    if (uriType == Notification::NotifyUriType::SHARE_PHOTO_URI) {
+    if (photoAssetChangeInfo.isShared_ == SHARED_ASSET_FLAG) {
         SetValueInt64(env, "shareDateDay", photoAssetChangeInfo.shareDateDay_, result);
         SetValueInt64(env, "shareGroup", photoAssetChangeInfo.shareGroup_, result);
         SetValueInt32(env, "shareRiskStatus", photoAssetChangeInfo.shareRiskStatus_, result);

@@ -70,6 +70,8 @@
 #include "singleton.h"
 #include "app_mgr_client.h"
 #include "cloud_media_retain_smart_data.h"
+#include "get_share_album_member_vo.h"
+#include "share_member_column.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -477,6 +479,38 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAlbumsService::AlbumGetAsset
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     NativeRdb::RdbPredicates predicates =
         RdbDataShareAdapter::RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    std::string queryCondition = predicates.GetWhereClause();
+    std::string filter = PhotoColumn::PHOTO_IS_SHARED + " = " + std::to_string(0);
+    queryCondition = queryCondition.empty() ? filter : filter + " AND " + queryCondition;
+    predicates.SetWhereClause(queryCondition);
+    if (passCode == E_DOUBLE_CHECK) {
+        uint64_t tokenId = IPCSkeleton::GetCallingFullTokenID();
+        CHECK_AND_RETURN_RET_LOG(tokenId > 0, nullptr, "Get tokenId failed");
+        MediaLibraryRdbUtils::BuildDoubleCheckPredicates(predicates, static_cast<uint32_t>(tokenId), passCode);
+    }
+    if (passCode == E_READ_CLOUD_PERMISSION_CHECK) {
+        CloudReadPermissionCheck::AddCloudAssetFilter(predicates);
+    }
+    auto resultSet = PhotoMapOperations::QueryPhotoAssets(predicates, dto.columns);
+    auto totalCostTime = MediaFileUtils::UTCTimeMilliSeconds() - startTime;
+    AccurateRefresh::DfxRefreshManager::QueryStatementReport(
+        AccurateRefresh::GET_ASSETS_BUSSINESS_NAME, totalCostTime, predicates.GetStatement());
+    CHECK_AND_RETURN_RET_LOG(resultSet, nullptr, "Failed to query album assets");
+    auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
+    return make_shared<DataShare::DataShareResultSet>(resultSetBridge);
+}
+
+std::shared_ptr<DataShare::DataShareResultSet> MediaAlbumsService::AlbumGetShareAssets(
+    AlbumGetAssetsDto &dto, int32_t passCode)
+{
+    auto startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
+    NativeRdb::RdbPredicates predicates =
+        RdbDataShareAdapter::RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    std::string queryCondition = predicates.GetWhereClause();
+    std::string filter = PhotoColumn::PHOTO_IS_SHARED + " = " + std::to_string(1);
+    queryCondition = queryCondition.empty() ? filter : filter + " AND " + queryCondition;
+    predicates.SetWhereClause(queryCondition);
     if (passCode == E_DOUBLE_CHECK) {
         uint64_t tokenId = IPCSkeleton::GetCallingFullTokenID();
         CHECK_AND_RETURN_RET_LOG(tokenId > 0, nullptr, "Get tokenId failed");
@@ -555,6 +589,9 @@ static void AddNoSmartFetchColumns(std::vector<std::string> &fetchColumn)
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
 }
 
 static void AddPhotoAlbumTypeFilter(DataShare::DataSharePredicates &predicates,
@@ -684,6 +721,7 @@ int32_t MediaAlbumsService::QueryAlbums(QueryAlbumsDto &dto)
             sqlStr = cmd.GetAbsRdbPredicates()->GetStatement();
         }
     } else {
+        dto.predicates.And()->NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
         AddNoSmartFetchColumns(columns);
         AddPhotoAlbumTypeFilter(dto.predicates, dto.albumType, dto.albumSubType);
         NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoAlbumColumns::TABLE);
@@ -704,6 +742,31 @@ int32_t MediaAlbumsService::QueryAlbums(QueryAlbumsDto &dto)
     return E_OK;
 }
 
+int32_t MediaAlbumsService::QueryShareAlbums(QueryAlbumsDto &dto)
+{
+    std::shared_ptr<NativeRdb::ResultSet> resultSet;
+    std::vector<std::string> &columns = dto.columns;
+    MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(columns);
+    auto startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    std::string sqlStr = "";
+
+    AddNoSmartFetchColumns(columns);
+
+    dto.predicates.And()->EqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
+    dto.predicates.And()->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SHARE_GENERIC);
+    NativeRdb::RdbPredicates rdbPredicates = RdbUtils::ToPredicates(dto.predicates, PhotoAlbumColumns::TABLE);
+    resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicates, columns);
+    sqlStr = rdbPredicates.GetStatement();
+
+    int64_t totalCostTime = MediaFileUtils::UTCTimeMilliSeconds() - startTime;
+    LogQueryParams(dto.predicates, columns);
+
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet nullptr");
+    auto bridge = RdbUtils::ToResultSetBridge(resultSet);
+    dto.resultSet = make_shared<DataShare::DataShareResultSet>(bridge);
+    return E_OK;
+}
+
 int32_t MediaAlbumsService::QueryHiddenAlbums(QueryAlbumsDto &dto)
 {
     std::vector<std::string> &columns = dto.columns;
@@ -711,6 +774,7 @@ int32_t MediaAlbumsService::QueryHiddenAlbums(QueryAlbumsDto &dto)
         return E_INVALID_VALUES;
     }
 
+    dto.predicates.And()->NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
     AddNoSmartFetchColumns(columns);
     if (dto.hiddenAlbumFetchMode == 1) {
         columns.push_back(PhotoAlbumColumns::HIDDEN_COUNT);
@@ -748,6 +812,7 @@ int32_t MediaAlbumsService::GetPhotoIndex(GetPhotoIndexReqBody &reqBody, QueryRe
     predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(0));
     predicates.And()->EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+    predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
     const string &photoId = reqBody.photoId;
     const string &albumId = reqBody.albumId;
     MEDIA_INFO_LOG("GetPhotoIndex photoId:%{public}s, albumId:%{public}s", photoId.c_str(), albumId.c_str());
@@ -983,6 +1048,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAlbumsService::GetClonedAlbu
 int32_t MediaAlbumsService::GetPhotoAlbumObject(
     GetPhotoAlbumObjectDto &getPhotoAlbumObjectDto, GetPhotoAlbumObjectRespBody &respBody)
 {
+    getPhotoAlbumObjectDto.predicates.And()->NotEqualTo(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SHARE);
     std::vector<std::string> columns = getPhotoAlbumObjectDto.columns;
     NativeRdb::RdbPredicates rdbPredicates =
         RdbDataShareAdapter::RdbUtils::ToPredicates(getPhotoAlbumObjectDto.predicates, PhotoAlbumColumns::TABLE);
@@ -1305,5 +1371,55 @@ int32_t MediaAlbumsService::ChangeRequestAbsorbAlbum(int32_t albumId, int32_t ab
     CHECK_AND_RETURN_RET_LOG(albumId > 0, E_INVALID_VALUES, "albumId <= 0");
     CHECK_AND_RETURN_RET_LOG(absorbAlbumId > 0, E_INVALID_VALUES, "absorbAlbumId <= 0");
     return MediaLibraryAlbumOperations::AbsorbAlbum(albumId, absorbAlbumId);
+}
+
+int32_t MediaAlbumsService::GetShareAlbumMember(
+    const GetShareAlbumMemberReqBody &reqBody, GetShareAlbumMemberRespBody &respBody)
+{
+    MEDIA_INFO_LOG("GetShareAlbumMember start, albumId: %{public}d", reqBody.albumId);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
+
+    std::string shareAlbumOwner = "";
+    bool isOwnerOrMember = false;
+
+    std::vector<NativeRdb::ValueObject> params = {NativeRdb::ValueObject(reqBody.albumId)};
+    std::string sql = "SELECT share_album_owner FROM PhotoAlbum WHERE album_id = ?";
+    auto resultSet = rdbStore->QuerySql(sql, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR,
+        "Query PhotoAlbum failed, albumId: %{public}d not exist", reqBody.albumId);
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t columnIndex = 0;
+        shareAlbumOwner = get<std::string>(ResultSetUtils::GetValFromColumn(
+            PhotoAlbumColumns::SHARE_ALBUM_OWNER, resultSet, TYPE_STRING));
+        respBody.owner = shareAlbumOwner;
+        if (shareAlbumOwner == reqBody.owner) {
+            isOwnerOrMember = true;
+        }
+    }
+    resultSet->Close();
+
+    std::string sql2 = "SELECT share_member, share_member_status FROM tab_share_album_member WHERE album_id = ?";
+    auto shareAlbumMemberResultSet = rdbStore->QuerySql(sql2, params);
+    CHECK_AND_RETURN_RET_LOG(shareAlbumMemberResultSet != nullptr, E_HAS_DB_ERROR,
+        "Query tab_share_album_member failed, albumId: %{public}d not exist", reqBody.albumId);
+    while (shareAlbumMemberResultSet->GoToNextRow() == NativeRdb::E_OK) {
+        MemberInfoInner memberInfo;
+        int32_t columnIndex = 0;
+        memberInfo.member = get<std::string>(ResultSetUtils::GetValFromColumn(
+            ShareMemberColumn::COLUMN_SHARE_MEMBER, shareAlbumMemberResultSet, TYPE_STRING));
+        if (!isOwnerOrMember && memberInfo.member == reqBody.owner) {
+            isOwnerOrMember = true;
+        }
+        memberInfo.status = get<int32_t>(ResultSetUtils::GetValFromColumn(
+            ShareMemberColumn::COLUMN_SHARE_MEMBER_STATUS, shareAlbumMemberResultSet, TYPE_INT32));
+        respBody.members.push_back(memberInfo);
+    }
+    shareAlbumMemberResultSet->Close();
+
+    CHECK_AND_RETURN_RET_LOG(isOwnerOrMember, E_SHARE_ALBUM_INVALID_ID_ARG,
+        "GetShareAlbumMember failed, not owner or member");
+    MEDIA_INFO_LOG("GetShareAlbumMember end, members count: %{public}zu", respBody.members.size());
+    return E_OK;
 }
 } // namespace OHOS::Media

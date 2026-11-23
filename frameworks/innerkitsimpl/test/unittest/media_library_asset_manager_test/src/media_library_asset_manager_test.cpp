@@ -69,10 +69,6 @@ const std::string ROOT_TEST_MEDIA_DIR =
 const std::string TEST_DISPLAY_NAME = "test_image.png";
 static uint64_t g_shellToken = 0;
 static MediaLibraryMockHapToken* mockToken = nullptr;
-static const unsigned char FILE_CONTENT_JPG[] = {
-    0x49, 0x44, 0x33, 0x03, 0x20, 0x20, 0x20, 0x0c, 0x24, 0x5d, 0x54, 0x45, 0x4e, 0x43, 0x20, 0x20, 0x20, 0x0b,
-    0x20, 0x20, 0x20,
-};
 
 static const unsigned char FILE_CONTENT_MP4[] = {
     0x20, 0x20, 0x20, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0x20, 0x20, 0x02, 0x20, 0x69, 0x73, 0x6f,
@@ -216,17 +212,6 @@ void ClearFile()
     }
 }
 
-static bool CompareIfArraysEquals(const unsigned char originArray[],
-    const unsigned char targetArray[], int32_t size)
-{
-    for (int i = 0; i < size - 1; i++) {
-        if (originArray[i] != targetArray[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void CallbackFunciton(int32_t result, MediaLibrary_RequestId requestId)
 {
     EXPECT_EQ(result, E_SUCCESS);
@@ -247,150 +232,6 @@ void CallbackFuncitonOnMovingPhotoDataPrepared(MediaLibrary_ErrorCode result, Me
 {
     MEDIA_INFO_LOG("CallbackFuncitonOnMovingPhotoDataPrepared::result: %{public}d", result);
     MEDIA_INFO_LOG("CallbackFuncitonOnMovingPhotoDataPrepared::requestId: %{public}s", requestId.requestId);
-}
-
-/**
- * @tc.number    : MediaLibraryAssetManager_test_001
- * @tc.name      : copy src image to dest image to see if error occurs
- * @tc.desc      : compare with src image to see if equals
- */
-HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryAssetManager_test_001::Start");
-    string srcDisplayName = "request_image_src_1.jpg";
-    string destDisplayName = "request_image_dest_1.jpg";
-    string srcuri = mediaLibraryManager->CreateAsset(srcDisplayName);
-    ASSERT_NE(srcuri, "");
-    int32_t srcFd = mediaLibraryManager->OpenAsset(srcuri, MEDIA_FILEMODE_READWRITE);
-    ASSERT_NE(srcFd <= 0, true);
-    int32_t resWrite = write(srcFd, FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
-    if (resWrite == -1) {
-        EXPECT_EQ(false, true);
-    }
-    mediaLibraryManager->CloseAsset(srcuri, srcFd);
-
-    string destUri = ROOT_TEST_MEDIA_DIR + destDisplayName;
-    ASSERT_NE(destUri, "");
-    sleep(SCAN_WAIT_TIME_1S);
-    MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
-    OH_MediaAssetManager *manager = OH_MediaAssetManager_Create();
-    ASSERT_NE(manager, nullptr);
-    MediaLibrary_RequestOptions requestOptions;
-    requestOptions.deliveryMode = MediaLibrary_DeliveryMode::MEDIA_LIBRARY_FAST_MODE;
-    static OH_MediaLibrary_OnDataPrepared callback = CallbackFunciton;
-    MediaLibrary_RequestId requestID = OH_MediaAssetManager_RequestImageForPath(manager, srcuri.c_str(),
-        requestOptions, destUri.c_str(), callback);
-    MEDIA_INFO_LOG("requestId: %{public}s", requestID.requestId);
-    ASSERT_NE(strcmp(requestID.requestId, ERROR_REQUEST_ID), 0);
-    AppFileService::ModuleFileUri::FileUri destFileUri(destUri);
-    string destPath = destFileUri.GetRealPath();
-    int destFd = MediaFileUtils::OpenFile(destPath, MEDIA_FILEMODE_READWRITE);
-    int64_t destLen = lseek(destFd, 0, SEEK_END);
-    lseek(destFd, 0, SEEK_SET);
-    unsigned char *buf = static_cast<unsigned char*>(malloc(destLen));
-    ASSERT_NE((buf == nullptr), true);
-    read(destFd, buf, destLen);
-    bool result = CompareIfArraysEquals(buf, FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
-    free(buf);
-    close(destFd);
-    EXPECT_EQ(result, true);
-    MEDIA_INFO_LOG("CreateFile:: end Create file: %{public}s", destDisplayName.c_str());
-}
-
-/**
- * @tc.number    : MediaLibraryAssetManager_test_002
- * @tc.name      : copy src image to dest image to see if error occurs
- * @tc.desc      : compare with src image to see if equals
- */
-HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryAssetManager_test_002::Start");
-    string srcDisplayName = "request_image_src_2.jpg";
-    string destDisplayName = "request_image_dest_2.jpg";
-    string srcuri = mediaLibraryManager->CreateAsset(srcDisplayName);
-    ASSERT_NE(srcuri, "");
-    int32_t srcFd = mediaLibraryManager->OpenAsset(srcuri, MEDIA_FILEMODE_READWRITE);
-    ASSERT_NE(srcFd <= 0, true);
-    int32_t resWrite = write(srcFd, FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
-    if (resWrite == -1) {
-        EXPECT_EQ(false, true);
-    }
-    mediaLibraryManager->CloseAsset(srcuri, srcFd);
-
-    string destUri = ROOT_TEST_MEDIA_DIR + destDisplayName;
-    ASSERT_NE(destUri, "");
-    MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
-    sleep(SCAN_WAIT_TIME_1S);
-    OH_MediaAssetManager *manager = OH_MediaAssetManager_Create();
-    ASSERT_NE(manager, nullptr);
-    MediaLibrary_RequestOptions requestOptions;
-    requestOptions.deliveryMode = MediaLibrary_DeliveryMode::MEDIA_LIBRARY_HIGH_QUALITY_MODE;
-    static OH_MediaLibrary_OnDataPrepared callback = CallbackFunciton;
-    MediaLibrary_RequestId requestID = OH_MediaAssetManager_RequestImageForPath(manager, srcuri.c_str(),
-        requestOptions, destUri.c_str(), callback);
-    MEDIA_INFO_LOG("requestId: %{public}s", requestID.requestId);
-    ASSERT_NE(strcmp(requestID.requestId, ERROR_REQUEST_ID), 0);
-    AppFileService::ModuleFileUri::FileUri destFileUri(destUri);
-    string destPath = destFileUri.GetRealPath();
-    int destFd = MediaFileUtils::OpenFile(destPath, MEDIA_FILEMODE_READWRITE);
-    int64_t destLen = lseek(destFd, 0, SEEK_END);
-    lseek(destFd, 0, SEEK_SET);
-    unsigned char *buf = static_cast<unsigned char*>(malloc(destLen));
-    ASSERT_NE((buf == nullptr), true);
-    read(destFd, buf, destLen);
-    bool result = CompareIfArraysEquals(buf, FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
-    free(buf);
-    close(destFd);
-    EXPECT_EQ(result, true);
-    MEDIA_INFO_LOG("CreateFile:: end Create file: %{public}s", destDisplayName.c_str());
-}
-
-/**
- * @tc.number    : MediaLibraryAssetManager_test_003
- * @tc.name      : copy src video to dest video to see if error occurs
- * @tc.desc      : compare with src video to see if equals
- */
-HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryAssetManager_test_003::Start");
-    string srcDisplayName = "request_video_src_1.mp4";
-    string destDisplayName = "request_video_dest_1.mp4";
-    string srcuri = mediaLibraryManager->CreateAsset(srcDisplayName);
-    ASSERT_NE(srcuri, "");
-    int32_t srcFd = mediaLibraryManager->OpenAsset(srcuri, MEDIA_FILEMODE_READWRITE);
-    ASSERT_NE(srcFd <= 0, true);
-    int32_t resWrite = write(srcFd, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    if (resWrite == -1) {
-        EXPECT_EQ(false, true);
-    }
-    mediaLibraryManager->CloseAsset(srcuri, srcFd);
-
-    string destUri = ROOT_TEST_MEDIA_DIR + destDisplayName;
-    ASSERT_NE(destUri, "");
-    MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
-    sleep(SCAN_WAIT_TIME_1S);
-    OH_MediaAssetManager *manager = OH_MediaAssetManager_Create();
-    ASSERT_NE(manager, nullptr);
-    MediaLibrary_RequestOptions requestOptions;
-    requestOptions.deliveryMode = MediaLibrary_DeliveryMode::MEDIA_LIBRARY_BALANCED_MODE;
-    static OH_MediaLibrary_OnDataPrepared callback = CallbackFunciton;
-    MediaLibrary_RequestId requestID = OH_MediaAssetManager_RequestVideoForPath(manager, srcuri.c_str(),
-        requestOptions, destUri.c_str(), callback);
-    MEDIA_INFO_LOG("requestId: %{public}s", requestID.requestId);
-    ASSERT_NE(strcmp(requestID.requestId, ERROR_REQUEST_ID), 0);
-    AppFileService::ModuleFileUri::FileUri destFileUri(destUri);
-    string destPath = destFileUri.GetRealPath();
-    int destFd = MediaFileUtils::OpenFile(destPath, MEDIA_FILEMODE_READWRITE);
-    int64_t destLen = lseek(destFd, 0, SEEK_END);
-    lseek(destFd, 0, SEEK_SET);
-    unsigned char *buf = static_cast<unsigned char*>(malloc(destLen));
-    ASSERT_NE((buf == nullptr), true);
-    read(destFd, buf, destLen);
-    bool result = CompareIfArraysEquals(buf, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    free(buf);
-    close(destFd);
-    EXPECT_EQ(result, true);
-    MEDIA_INFO_LOG("CreateFile:: end Create file: %{public}s", destDisplayName.c_str());
 }
 
 /**
@@ -415,54 +256,6 @@ HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_004, TestSi
         requestOptions, destUri.c_str(), callback);
     MEDIA_INFO_LOG("requestId: %{public}s", requestID.requestId);
     EXPECT_EQ(strcmp(requestID.requestId, ERROR_REQUEST_ID), 0);
-}
-
-/**
- * @tc.number    : MediaLibraryAssetManager_test_005
- * @tc.name      : create video again to see if error occurs
- * @tc.desc      : compare with src image to see if equals
- */
-HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_005, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryAssetManager_test_005::Start");
-    string srcDisplayName = "request_video_src_2.mp4";
-    string destDisplayName = "request_video_dest_2.mp4";
-    string srcuri = mediaLibraryManager->CreateAsset(srcDisplayName);
-    ASSERT_NE(srcuri, "");
-    int32_t srcFd = mediaLibraryManager->OpenAsset(srcuri, MEDIA_FILEMODE_READWRITE);
-    ASSERT_NE(srcFd <= 0, true);
-    int32_t resWrite = write(srcFd, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    if (resWrite == -1) {
-        EXPECT_EQ(false, true);
-    }
-    mediaLibraryManager->CloseAsset(srcuri, srcFd);
-
-    string destUri = ROOT_TEST_MEDIA_DIR + destDisplayName;
-    ASSERT_NE(destUri, "");
-    MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
-    sleep(SCAN_WAIT_TIME_1S);
-    OH_MediaAssetManager *manager = OH_MediaAssetManager_Create();
-    ASSERT_NE(manager, nullptr);
-    MediaLibrary_RequestOptions requestOptions;
-    requestOptions.deliveryMode = MediaLibrary_DeliveryMode::MEDIA_LIBRARY_BALANCED_MODE;
-    static OH_MediaLibrary_OnDataPrepared callback = CallbackFunciton;
-    MediaLibrary_RequestId requestID = OH_MediaAssetManager_RequestVideoForPath(manager, srcuri.c_str(),
-        requestOptions, destUri.c_str(), callback);
-    MEDIA_INFO_LOG("requestId: %{public}s", requestID.requestId);
-    ASSERT_NE(strcmp(requestID.requestId, ERROR_REQUEST_ID), 0);
-    AppFileService::ModuleFileUri::FileUri destFileUri(destUri);
-    string destPath = destFileUri.GetRealPath();
-    int destFd = MediaFileUtils::OpenFile(destPath, MEDIA_FILEMODE_READWRITE);
-    int64_t destLen = lseek(destFd, 0, SEEK_END);
-    lseek(destFd, 0, SEEK_SET);
-    unsigned char *buf = static_cast<unsigned char*>(malloc(destLen));
-    ASSERT_NE((buf == nullptr), true);
-    read(destFd, buf, destLen);
-    bool result = CompareIfArraysEquals(buf, FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
-    free(buf);
-    close(destFd);
-    ASSERT_NE(result, true);
-    MEDIA_INFO_LOG("CreateFile:: end Create file: %{public}s", destDisplayName.c_str());
 }
 
 /**

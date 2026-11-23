@@ -1913,6 +1913,9 @@ bool MediaLibraryAniUtils::HandleUriField(AniContext& context, const OperationIt
     MediaFileUri::RemoveAllFragment(uri);
     MediaFileUri fileUri(uri);
     context->uri = uri;
+    if (fetchOptType != ALBUM_FETCH_OPT) {
+        context->getAssetsAsUri = true;
+    }
     if ((fetchOptType != ALBUM_FETCH_OPT) && (!fileUri.IsApi10())) {
         fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
     }
@@ -2296,23 +2299,33 @@ ani_status MediaLibraryAniUtils::AddDefaultAssetColumns(ani_env *env, vector<str
     return ANI_OK;
 }
 
-inline void SetDefaultPredicatesCondition(DataSharePredicates &predicates, const int32_t dateTrashed,
-    const bool isHidden, const int32_t timePending, const bool isTemp)
+struct SetDefaultPredicatesConditionParam {
+    int32_t dateTrashed;
+    bool isHidden;
+    int32_t timePending;
+    bool isTemp;
+    bool isShared;
+};
+
+inline void SetDefaultPredicatesCondition(DataSharePredicates &predicates,
+    const SetDefaultPredicatesConditionParam &param)
 {
-    predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(dateTrashed));
-    predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, to_string(isHidden));
-    predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(timePending));
-    predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(isTemp));
+    predicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(param.dateTrashed));
+    predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, to_string(param.isHidden));
+    predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(param.timePending));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(param.isTemp));
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(param.isShared));
 }
+
 
 static int32_t GetFavoritePredicates(DataSharePredicates &predicates, const bool hiddenOnly)
 {
     predicates.BeginWrap();
     constexpr int32_t IS_FAVORITE = 1;
     predicates.EqualTo(MediaColumn::MEDIA_IS_FAV, to_string(IS_FAVORITE));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2321,7 +2334,7 @@ static int32_t GetVideoPredicates(DataSharePredicates &predicates, const bool hi
 {
     predicates.BeginWrap();
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2329,7 +2342,7 @@ static int32_t GetVideoPredicates(DataSharePredicates &predicates, const bool hi
 static int32_t GetHiddenPredicates(DataSharePredicates &predicates)
 {
     predicates.BeginWrap();
-    SetDefaultPredicatesCondition(predicates, 0, 1, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, 1, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2342,6 +2355,7 @@ static int32_t GetTrashPredicates(DataSharePredicates &predicates)
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
     predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(0));
     predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(0));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2350,7 +2364,7 @@ static int32_t GetScreenshotPredicates(DataSharePredicates &predicates, const bo
 {
     predicates.BeginWrap();
     predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, to_string(static_cast<int32_t>(PhotoSubType::SCREENSHOT)));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2359,7 +2373,7 @@ static int32_t GetCameraPredicates(DataSharePredicates &predicates, const bool h
 {
     predicates.BeginWrap();
     predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, to_string(static_cast<int32_t>(PhotoSubType::CAMERA)));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2368,7 +2382,7 @@ static int32_t GetAllImagesPredicates(DataSharePredicates &predicates, const boo
 {
     predicates.BeginWrap();
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2379,7 +2393,7 @@ static int32_t GetCloudEnhancementPredicates(DataSharePredicates &predicates, co
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
     predicates.EqualTo(PhotoColumn::PHOTO_STRONG_ASSOCIATION,
         to_string(static_cast<int32_t>(StrongAssociationType::CLOUD_ENHANCEMENT)));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EndWrap();
     return E_SUCCESS;
 }
@@ -2387,7 +2401,7 @@ static int32_t GetCloudEnhancementPredicates(DataSharePredicates &predicates, co
 static int32_t GetLivePhoto4DPredicates(DataSharePredicates &predicates, const bool hiddenOnly)
 {
     predicates.BeginWrap();
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     predicates.EqualTo(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
     predicates.EndWrap();
@@ -2436,7 +2450,16 @@ int32_t MediaLibraryAniUtils::GetUserAlbumPredicates(
     const int32_t albumId, DataSharePredicates &predicates, const bool hiddenOnly)
 {
     predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
+    return E_SUCCESS;
+}
+
+int32_t MediaLibraryAniUtils::GetShareAlbumPredicates(
+    const int32_t albumId, DataSharePredicates &predicates, const bool hiddenOnly)
+{
+    predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
+    predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 1});
     return E_SUCCESS;
 }
 
@@ -2445,7 +2468,7 @@ int32_t MediaLibraryAniUtils::GetAnalysisAlbumPredicates(const int32_t albumId, 
     string onClause = MediaColumn::MEDIA_ID + " = " + PhotoMap::ASSET_ID;
     predicates.InnerJoin(ANALYSIS_PHOTO_MAP_TABLE)->On({ onClause });
     predicates.EqualTo(PhotoMap::ALBUM_ID, to_string(albumId));
-    SetDefaultPredicatesCondition(predicates, 0, 0, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, 0, 0, false, 0});
     return E_SUCCESS;
 }
 
@@ -2484,7 +2507,7 @@ int32_t MediaLibraryAniUtils::GetFeaturedSinglePortraitAlbumPredicates(
     predicates.InnerJoin(VISION_POSE_TABLE)->On({ onClause });
 
     predicates.EqualTo(PhotoMap::ALBUM_ID, to_string(albumId));
-    SetDefaultPredicatesCondition(predicates, 0, 0, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, 0, 0, false, 0});
     return E_SUCCESS;
 }
 
@@ -2501,14 +2524,14 @@ int32_t MediaLibraryAniUtils::GetPortraitAlbumPredicates(const int32_t albumId, 
     onClause = "ag." + GROUP_TAG + " = " + ANALYSIS_ALBUM_TABLE + "." + GROUP_TAG;
     clauses = { onClause };
     predicates.InnerJoin(tempTable)->On(clauses);
-    SetDefaultPredicatesCondition(predicates, 0, 0, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, 0, 0, false, 0});
     predicates.Distinct();
     return E_SUCCESS;
 }
 
 int32_t MediaLibraryAniUtils::GetAllLocationPredicates(DataSharePredicates &predicates)
 {
-    SetDefaultPredicatesCondition(predicates, 0, 0, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, 0, 0, false, 0});
     predicates.And()->NotEqualTo(PhotoColumn::PHOTO_LATITUDE, to_string(0));
     predicates.And()->NotEqualTo(PhotoColumn::PHOTO_LONGITUDE, to_string(0));
     return E_SUCCESS;
@@ -2519,7 +2542,7 @@ int32_t MediaLibraryAniUtils::GetSourceAlbumPredicates(const int32_t albumId, Da
 {
     predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
-    SetDefaultPredicatesCondition(predicates, 0, hiddenOnly, 0, false);
+    SetDefaultPredicatesCondition(predicates, {0, hiddenOnly, 0, false, 0});
     return E_SUCCESS;
 }
 
@@ -2863,6 +2886,30 @@ bool MediaLibraryAniUtils::HasSharedAlbum(const std::vector<std::string>& albumI
     }
     resultSet->Close();
     return hasSharedAlbum;
+}
+
+bool MediaLibraryAniUtils::IsUnionOnlyQuery(const DataSharePredicates &predicates)
+{
+    constexpr int32_t FIELD_IDX = 0;
+    const auto &operations = predicates.GetOperationList();
+    for (const auto &item : operations) {
+        if (item.singleParams.empty()) {
+            continue;
+        }
+        const string &field = static_cast<string>(item.GetSingle(FIELD_IDX));
+        if (field == CONST_MEDIA_DATA_DB_ID) {
+            continue;
+        }
+        if (item.operation == DataShare::ORDER_BY_ASC || item.operation == DataShare::ORDER_BY_DESC ||
+            item.operation == DataShare::LIMIT || item.operation == DataShare::OFFSET ||
+            item.operation == DataShare::DISTINCT || item.operation == DataShare::GROUP_BY ||
+            item.operation == DataShare::INDEXED_BY || item.operation == DataShare::NOT_EQUAL_TO) {
+            continue;
+        }
+        return false;
+    }
+    ANI_INFO_LOG("MediaLibraryAniUtils::IsUnionOnlyQuery, predicates only contain uri");
+    return true;
 }
 
 void MediaLibraryAniUtils::ExtractFileIdsFromUris(const std::vector<std::string>& uriArray,

@@ -12,19 +12,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OHOS_MEDIA_RECOVERY_JSON_UTILS_H
-#define OHOS_MEDIA_RECOVERY_JSON_UTILS_H
+#define MLOG_TAG "MemberInfo"
 
-#include <string>
+#include "member_info.h"
 
-#include <nlohmann/json.hpp>
-#include "values_bucket.h"
+using namespace std;
 
-namespace OHOS::Media {
-enum class RecoveryJsonStatus { OK, READ_ERROR, INVALID };
-RecoveryJsonStatus ReadRecoveryJsonFile(const std::string &path, nlohmann::json &value);
-// Invalid or absent fields are not added to the update bucket.
-bool PutRecoveryJsonValue(NativeRdb::ValuesBucket &values, const std::string &name,
-    const nlohmann::json &value, const std::string &type);
-} // namespace OHOS::Media
-#endif // OHOS_MEDIA_RECOVERY_JSON_UTILS_H
+namespace OHOS {
+namespace Media {
+MemberInfo::MemberInfo()
+{
+    status_ = 0;
+    member_ = "";
+}
+
+MemberInfo::~MemberInfo() = default;
+
+void MemberInfo::SetMember(const std::string &member)
+{
+    member_ = member;
+}
+
+const std::string& MemberInfo::GetMember() const
+{
+    return member_;
+}
+
+void MemberInfo::SetStatus(const int32_t status)
+{
+    status_ = status;
+}
+
+int32_t MemberInfo::GetStatus() const
+{
+    return status_;
+}
+}  // namespace Media
+}  // namespace OHOS

@@ -31,9 +31,21 @@
 #include "photo_album_column.h"
 #include "photo_album_po_writer.h"
 #include "photos_dto.h"
+#include "preferences.h"
+#include "preferences_helper.h"
 #include "result_set_reader.h"
+#include "cloud_media_context.h"
+#include "cloud_share_album_define.h"
+#include "medialibrary_unistore_manager.h"
+#include "parameters.h"
+#include "cloud_media_retain_smart_data.h"
 
 namespace OHOS::Media::CloudSync {
+
+// 共享相册当前用户ID持久化: 下行时保存, 上行时读取校验
+const std::string SHARE_ALBUM_CURRENT_USER_ID_CONFIG =
+    "/data/storage/el2/base/preferences/share_album_current_user_id.xml";
+const std::string SHARE_ALBUM_CURRENT_USER_ID_KEY = "share_album_current_user_id";
 
 int32_t CloudMediaShareAlbumService::OnFetchRecords(
     std::vector<PhotoAlbumDto> &albumDtoList, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords)
@@ -45,6 +57,8 @@ int32_t CloudMediaShareAlbumService::OnFetchRecords(
         ret = FindAlbumInfo(record);
         CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "GetPhotoAlbum failed, ret: %{public}d, record: %{public}s",
             ret, record.ToString().c_str());
+        // 保存共享相册下行携带的当前用户ID
+        this->SaveCurrentUserIdIfNeeded(record);
         // 再处理记录
         ChangeType changeType = ChangeType::INVAILD;
         ret = HandleRecord(record, changeType, stats, failedRecords);
@@ -66,6 +80,72 @@ int32_t CloudMediaShareAlbumService::OnFetchRecords(
     }
     MediaGallerySyncNotify::GetInstance().FinalNotify();
     return E_OK;
+}
+
+void CloudMediaShareAlbumService::SaveCurrentUserIdIfNeeded(const PhotoAlbumDto &record)
+{
+    CHECK_AND_RETURN(record.shareAlbumDetailDtoOp.has_value());
+    const std::string &userId = record.shareAlbumDetailDtoOp.value().currentUserId;
+    // 一个账号只有一个 userId, 与已保存值相同则无需处理
+    CHECK_AND_RETURN(!userId.empty() && userId != this->currentUserId_);
+    this->currentUserId_ = userId;
+    // 同步写入 xml 持久化, 供上行流程读取校验
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(SHARE_ALBUM_CURRENT_USER_ID_CONFIG, errCode);
+    CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
+    prefs->PutString(SHARE_ALBUM_CURRENT_USER_ID_KEY, userId);
+    prefs->FlushSync();
+    MEDIA_INFO_LOG("save currentUserId success, size: %{public}zu", userId.size());
+}
+
+std::string CloudMediaShareAlbumService::GetCurrentUserId()
+{
+    if (!currentUserId_.empty()) {
+        return currentUserId_;
+    }
+    // 内存为空, 读取 xml 持久化值; xml 也为空则返回空串, 上行流程不做拦截
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(SHARE_ALBUM_CURRENT_USER_ID_CONFIG, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs != nullptr, "", "get preferences error: %{public}d", errCode);
+    std::string userId = prefs->GetString(SHARE_ALBUM_CURRENT_USER_ID_KEY, "");
+    if (!userId.empty()) {
+        currentUserId_ = userId;
+    }
+    MEDIA_INFO_LOG("CloudMediaShareAlbumService::GetCurrentUserId: %{public}s", currentUserId_.c_str());
+    return currentUserId_;
+}
+
+void CloudMediaShareAlbumService::FilterShareAlbumsByCurrentUser(std::vector<PhotoAlbumPo> &albumList)
+{
+    const int32_t sceneType = CloudMediaContext::GetInstance().GetSceneType();
+    const bool isShareScene = sceneType == static_cast<int32_t>(SceneType::SHARE);
+    CHECK_AND_RETURN_LOG(isShareScene, "FilterShareAlbumsByCurrentUser not share scene, skip. sceneType: %{public}d",
+        sceneType);
+    const std::string currentUserId = this->GetCurrentUserId();
+    CHECK_AND_RETURN_LOG(!currentUserId.empty(), "FilterShareAlbumsByCurrentUser currentUserId empty, skip filter");
+    for (const auto &album : albumList) {
+        const std::string shareAlbumOwner = album.shareAlbumOwner.value_or("");
+        // 非共享相册(无 owner)正常上云; 共享相册仅 owner 本人允许上云
+        if (shareAlbumOwner.empty() || shareAlbumOwner == currentUserId) {
+            MEDIA_DEBUG_LOG("FilterShareAlbumsByCurrentUser allow album upload, albumId: %{public}d, "
+                "cloudId: %{public}s, shareAlbumOwner: %{public}s, currentUserId: %{public}s",
+                album.albumId.value_or(0), album.cloudId.value_or("").c_str(),
+                shareAlbumOwner.c_str(), currentUserId.c_str());
+            continue;
+        }
+        // 当前用户非相册 owner, 不允许上云: dirty 置 0 不再上行
+        MEDIA_INFO_LOG("FilterShareAlbumsByCurrentUser blocked album upload, albumId: %{public}d, "
+            "shareAlbumOwner: %{public}s, currentUserId: %{public}s",
+            album.albumId.value_or(0), shareAlbumOwner.c_str(), currentUserId.c_str());
+        if (album.albumId.has_value()) {
+            int32_t resetRet =
+                this->albumDao_.ResetAlbumDirtyByAlbumId(album.albumId.value(), DirtyType::TYPE_SYNCED);
+            CHECK_AND_PRINT_LOG(resetRet == E_OK,
+                "FilterShareAlbumsByCurrentUser reset dirty failed, albumId: %{public}d", album.albumId.value());
+        }
+    }
 }
 
 int32_t CloudMediaShareAlbumService::FindAlbumInfo(PhotoAlbumDto &record)
@@ -202,9 +282,17 @@ int32_t CloudMediaShareAlbumService::PullUpdate(
     CHECK_AND_RETURN_RET_LOG(updateFlag, E_INVALID_VALUES, "invalid data");
     const PhotoAlbumPo &albumInfo = record.localAlbumInfo.value();
 
+    const std::string currentUserId = this->GetCurrentUserId();
+    const std::string albumOwner = albumInfo.shareAlbumOwner.value_or("");
+    const bool isNotCurrentUser =
+        !albumOwner.empty() && !currentUserId.empty() && albumOwner != currentUserId;
+
     const int32_t dirty = albumInfo.dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
-    bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
-                   dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);
+    bool isValid = isNotCurrentUser ||
+        (dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
+         dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED));
+    MEDIA_INFO_LOG("album PullUpdate isNotCurrentUser: %{public}d, currentUserId: %{public}s, albumOwner: %{public}s",
+        isNotCurrentUser, currentUserId.c_str(), albumOwner.c_str());
     CHECK_AND_RETURN_RET_WARN_LOG(isValid, E_OK, "lpath is dirty, skip. cloudId: %{public}s", record.cloudId.c_str());
     // Process
     changeType = ChangeType::UPDATE;
@@ -235,9 +323,18 @@ int32_t CloudMediaShareAlbumService::PullDelete(
     // Check
     const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
     CHECK_AND_RETURN_RET_LOG(deleteFlag, E_INVALID_VALUES, "invalid data");
-    int32_t dirty = record.localAlbumInfo.value().dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
-    bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
-                   dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);
+    const PhotoAlbumPo &albumInfo = record.localAlbumInfo.value();
+    const std::string currentUserId = this->GetCurrentUserId();
+    const std::string albumOwner = albumInfo.shareAlbumOwner.value_or("");
+    const bool isNotCurrentUser =
+        !albumOwner.empty() && !currentUserId.empty() && albumOwner != currentUserId;
+
+    int32_t dirty = albumInfo.dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
+    bool isValid = isNotCurrentUser ||
+        (dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
+         dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED));
+    MEDIA_INFO_LOG("album PullDelete isNotCurrentUser: %{public}d, currentUserId: %{public}s, albumOwner: %{public}s",
+        isNotCurrentUser, currentUserId.c_str(), albumOwner.c_str());
     CHECK_AND_RETURN_RET_WARN_LOG(isValid, E_OK, "lpath is dirty, skip. cloudId: %{public}s", record.cloudId.c_str());
     // Process
     changeType = ChangeType::DELETE;
@@ -278,6 +375,12 @@ int32_t CloudMediaShareAlbumService::OnCompletePull(const MediaOperateResult &op
     MEDIA_INFO_LOG("OnCompletePull found SDIRTY share album count: %{public}zu", albumIds.size());
     ret = MediaShareAssetsService::GetInstance().RemoveShareAssetsByAlbumIds(albumIds);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveShareAssetsByAlbumIds failed, ret: %{public}d", ret);
+
+    // 共享相册上行校验: 非当前用户 owner 的脏相册不允许上云, dirty 置 0
+    std::vector<PhotoAlbumPo> dirtyAlbums;
+    ret = this->albumDao_.GetShareDirtyAlbums(dirtyAlbums);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "GetShareDirtyAlbums failed, ret: %{public}d", ret);
+    this->FilterShareAlbumsByCurrentUser(dirtyAlbums);
     return ret;
 }
 

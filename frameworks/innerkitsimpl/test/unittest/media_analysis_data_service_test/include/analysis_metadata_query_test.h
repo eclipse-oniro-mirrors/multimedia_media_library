@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,22 +12,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef RECOVERY_EVENT_LIMITER_H
-#define RECOVERY_EVENT_LIMITER_H
 
-#include <cstdint>
-#include <string>
+#ifndef OHOS_ANALYSIS_METADATA_QUERY_TEST_H
+#define OHOS_ANALYSIS_METADATA_QUERY_TEST_H
+
+#include <gtest/gtest.h>
 
 namespace OHOS::Media {
-enum class RecoveryEventKind {
-    DATABASE_CORRUPTION,
-    META_RECOVERY_INFO,
-    META_RECOVERY_ERROR,
+class AnalysisMetadataQueryTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
 };
-
-const char *RecoveryEventName(RecoveryEventKind kind);
-bool IsRecoveryEventRecent(int64_t eventMs, int64_t nowMs);
-int ReserveRecoveryEvent(const std::string &directory, RecoveryEventKind kind, int64_t nowMs);
-int ReserveRecoveryEvent(RecoveryEventKind kind);
 } // namespace OHOS::Media
-#endif // RECOVERY_EVENT_LIMITER_H
+
+#endif // OHOS_ANALYSIS_METADATA_QUERY_TEST_H

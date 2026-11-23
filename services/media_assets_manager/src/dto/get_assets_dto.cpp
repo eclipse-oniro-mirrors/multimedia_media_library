@@ -21,6 +21,7 @@ GetAssetsDto GetAssetsDto::Create(const GetAssetsReqBody &req)
     GetAssetsDto dto;
     dto.predicates = req.predicates;
     dto.columns = req.columns;
+    dto.uriOnly = req.uriOnly;
     return dto;
 }
 }  // namespace OHOS::Media

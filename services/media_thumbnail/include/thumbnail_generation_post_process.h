@@ -23,6 +23,11 @@ namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 
+enum class ThumbGenStatus : int32_t {
+    NOT_ATTEMPTED = 0,  // no thumbnail_ready value cached, generation not attempted
+    GEN_FAILED,         // generation attempted but failed, retry needed
+    GEN_DONE,           // generation attempted and completed
+};
 class ThumbnailGenerationPostProcess {
 public:
     ThumbnailGenerationPostProcess() = delete;
@@ -33,7 +38,7 @@ public:
 private:
     EXPORT static int32_t UpdateCachedRdbValue(ThumbnailData& data, const ThumbRdbOpt& opts);
     EXPORT static int32_t UpdateCachedRdbValueAndNotify(ThumbnailData& data, const ThumbRdbOpt& opts);
-    EXPORT static bool HasGeneratedThumb(const ThumbnailData& data); // do not check lcd
+    EXPORT static ThumbGenStatus HasGeneratedThumb(const ThumbnailData& data); // do not check lcd
     EXPORT static int32_t GetNotifyType(const ThumbnailData& data, const ThumbRdbOpt& opts, NotifyType& notifyType);
     EXPORT static int32_t Notify(const ThumbnailData& data, const NotifyType notifyType);
 };

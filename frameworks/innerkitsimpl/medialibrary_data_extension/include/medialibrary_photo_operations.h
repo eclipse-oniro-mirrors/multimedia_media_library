@@ -214,6 +214,9 @@ public:
     EXPORT static int32_t NotifyAssetSended(const std::string &uri,
         ServiceShareType shareType = ServiceShareType::ASSET_LEVEL);
     EXPORT static void BatchStoreThumbnailSize(const std::vector<std::pair<std::string, std::string>>& photoIdPathList);
+
+    EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryGeoPhoto(MediaLibraryCommand &cmd,
+        const vector<string> &columns, const DataShare::DataSharePredicates &predicates);
     EXPORT static int32_t FilterSharedAssets(std::vector<std::string> &fileIds, bool excludeShared);
     EXPORT static void HandleIllegalKey(DataShare::DataSharePredicates &predicates);
 

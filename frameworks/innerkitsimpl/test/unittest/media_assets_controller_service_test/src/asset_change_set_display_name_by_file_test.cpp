@@ -236,20 +236,20 @@ HWTEST_F(AssetChangeSetDisplayNameByFileTest, SetDisplayNameByFile_FileManagerAl
     MEDIA_INFO_LOG("end SetDisplayNameByFile_FileManagerAlbum_001");
 }
 
-HWTEST_F(AssetChangeSetDisplayNameByFileTest, SetDisplayNameByFile_InvalidName_Dots_001, TestSize.Level0)
+HWTEST_F(AssetChangeSetDisplayNameByFileTest, SetDisplayNameByFile_ValidName_Dots_001, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetDisplayNameByFile_InvalidName_Dots_001");
-    
+    MEDIA_INFO_LOG("Start SetDisplayNameByFile_ValidName_Dots_001");
+
     string uri = GetAssetUri(g_userAlbumAssetId);
     ASSERT_FALSE(uri.empty());
 
     int32_t ret = SetDisplayNameByFile(uri, "test..name.jpg");
-    EXPECT_LT(ret, 0);
+    EXPECT_EQ(ret, E_OK);
 
     ret = SetDisplayNameByFile(uri, "test...name.jpg");
-    EXPECT_LT(ret, 0);
+    EXPECT_EQ(ret, E_OK);
 
-    MEDIA_INFO_LOG("end SetDisplayNameByFile_InvalidName_Dots_001");
+    MEDIA_INFO_LOG("end SetDisplayNameByFile_ValidName_Dots_001");
 }
 
 HWTEST_F(AssetChangeSetDisplayNameByFileTest, SetDisplayNameByFile_InvalidName_OnlyDots_001, TestSize.Level0)

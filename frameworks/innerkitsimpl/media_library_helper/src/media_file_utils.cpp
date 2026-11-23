@@ -1224,6 +1224,26 @@ int32_t MediaFileUtils::CheckTitleCompatible(const string& title)
     return E_OK;
 }
 
+int32_t MediaFileUtils::CheckTitleForPhoto(const string& title)
+{
+    if (title.empty()) {
+        MEDIA_ERR_LOG("Title is empty.");
+        return -EINVAL;
+    }
+    // 禁止以.开头
+    if (title.at(0) == '.') {
+        MEDIA_ERR_LOG("Photo title starts with dot: %{private}s", title.c_str());
+        return -EINVAL;
+    }
+    // 图片标题非法字符：\ / : * ? " ' ` < > | { } [ ] （不含.，允许标题中包含.）
+    static const string titleRegexCheck = R"([\\/:*?"'`<>|{}\[\]])";
+    if (RegexCheck(title, titleRegexCheck)) {
+        MEDIA_ERR_LOG("Failed to check photo title regex: %{private}s", title.c_str());
+        return -EINVAL;
+    }
+    return E_OK;
+}
+
 int32_t MediaFileUtils::CheckTitleAndExtensionSize(const string &title, const string &extension)
 {
     CHECK_AND_RETURN_RET_LOG(title.length() <= DISPLAYNAME_MAX, -ENAMETOOLONG,
@@ -1256,24 +1276,21 @@ int32_t MediaFileUtils::CheckDisplayName(const string &displayName, const bool c
     if (err < 0) {
         return err;
     }
-    if (useDotCompatibleRule) {
-        if (displayName.find("..") != string::npos) {
-            MEDIA_ERR_LOG("Failed to check displayname dot rules: %{private}s", displayName.c_str());
-            return -EINVAL;
-        }
-    } else {
-        if (displayName.at(0) == '.') {
-            return -EINVAL;
-        }
+    // 统一点号规则：禁止以 '.' 开头、禁止整体为 "." / ".."；允许中间包含 '.'.
+    if (displayName.at(0) == '.') {
+        return -EINVAL;
     }
+
+    // 无扩展名时 GetTitleFromDisplayName 返回空串，按非法 displayName 拒绝
     string title = GetTitleFromDisplayName(displayName);
     if (title.empty()) {
         return -EINVAL;
     }
 
+    // 保留历史入口的字符集差异：兼容入口沿用 CheckTitleCompatible 的字符集（仅放开中间 '.'），
+    // 宽松入口沿用 CheckTitle，避免影响音频等历史调用方。
     if (compatibleCheckTitle) {
-        // 为了向前兼容，此处进行老版本的title校验
-        return CheckTitleCompatible(title);
+        return CheckTitleForPhoto(title);
     }
     return CheckTitle(title);
 }
@@ -1743,15 +1760,15 @@ int32_t MediaFileUtils::OpenFile(const string &filePath, const string &mode, con
                       errno, filePath.c_str());
         return errCode;
     }
-    MEDIA_INFO_LOG("File absFilePath is %{private}s", absFilePath.c_str());
+    MEDIA_DEBUG_LOG("File absFilePath is %{private}s", absFilePath.c_str());
     int32_t fd = open(absFilePath.c_str(), MEDIA_OPEN_MODE_MAP.at(mode));
     if (fd >= 0) {
-        MEDIA_INFO_LOG("File fd succ %{private}d", fd);
+        MEDIA_DEBUG_LOG("File fd succ %{private}d", fd);
     } else {
         MEDIA_ERR_LOG("File fd %{private}d", fd);
     }
     if (clientbundleName.empty()) {
-        MEDIA_ERR_LOG("ClientbundleName is empty,failed to to set caller_info to fd");
+        MEDIA_DEBUG_LOG("ClientbundleName is empty,failed to to set caller_info to fd");
     } else {
         SendHmdfsCallerInfoToIoctl(fd, clientbundleName);
     }

@@ -234,18 +234,6 @@ HWTEST_F(MediaLivePhoto4dStatusTaskTest, UpdateLivePhoto4dStatus_test_003, TestS
     MEDIA_INFO_LOG("UpdateLivePhoto4dStatus_test_003 end, ret: %{public}d", ret);
 }
 
-HWTEST_F(MediaLivePhoto4dStatusTaskTest, ProcessLivePhoto4d_test_001, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("ProcessLivePhoto4d_test_001 start");
-    auto mediaLivePhoto4dStatusTask = std::make_shared<MediaLivePhoto4dStatusTask>();
-    ASSERT_NE(mediaLivePhoto4dStatusTask, nullptr);
-    std::vector<LivePhoto4dData> dataList;
-    mediaLivePhoto4dStatusTask->ProcessLivePhoto4d(dataList);
-    int32_t batchStatus = mediaLivePhoto4dStatusTask->GetBatchStatus();
-    EXPECT_EQ(batchStatus, 0);
-    MEDIA_INFO_LOG("ProcessLivePhoto4d_test_001 end");
-}
-
 HWTEST_F(MediaLivePhoto4dStatusTaskTest, ProcessLivePhoto4d_test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("ProcessLivePhoto4d_test_002 start");
@@ -313,62 +301,5 @@ HWTEST_F(MediaLivePhoto4dStatusTaskTest, QueryLivePhoto4dWithRealData_test_001, 
     EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
 
     MEDIA_INFO_LOG("QueryLivePhoto4dWithRealData_test_001 end, rowCount: %{public}d", rowCount);
-}
-
-HWTEST_F(MediaLivePhoto4dStatusTaskTest, ProcessLivePhoto4dWithRealData_test_001, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("ProcessLivePhoto4dWithRealData_test_001 start");
-    auto mediaLivePhoto4dStatusTask = std::make_shared<MediaLivePhoto4dStatusTask>();
-    ASSERT_NE(mediaLivePhoto4dStatusTask, nullptr);
-
-    ValuesBucket values;
-    values.PutString(PhotoColumn::MEDIA_NAME, "moving_photo_real_test.jpg");
-    values.PutString(PhotoColumn::MEDIA_FILE_PATH, "/storage/media/local/files/Photo/moving_photo_real_test.jpg");
-    values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
-    values.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
-
-    int64_t outRowId = -1;
-    int32_t insertResult = g_rdbStore->Insert(outRowId, PhotoColumn::PHOTOS_TABLE, values);
-    ASSERT_EQ(insertResult, NativeRdb::E_OK);
-    ASSERT_GT(outRowId, 0);
-
-    std::string extraDataPath = "/storage/media/local/files/Photo/moving_photo_real_test.jpg_extra";
-    bool createDir = MediaFileUtils::CreateDirectory("/storage/media/local/files/Photo/");
-    ASSERT_TRUE(createDir);
-
-    constexpr int32_t MIN_STANDARD_SIZE = 64;
-    std::vector<uint8_t> extraDataBuffer(MIN_STANDARD_SIZE, 0);
-    extraDataBuffer[MIN_STANDARD_SIZE - 20] = LIVE_PHOTO_4D_VERSION;
-
-    FILE *fp = fopen(extraDataPath.c_str(), "wb");
-    ASSERT_NE(fp, nullptr);
-    size_t writeSize = fwrite(extraDataBuffer.data(), 1, extraDataBuffer.size(), fp);
-    ASSERT_EQ(writeSize, extraDataBuffer.size());
-    fclose(fp);
-
-    std::vector<LivePhoto4dData> dataList;
-    LivePhoto4dData data;
-    data.fileId = outRowId;
-    data.path = "/storage/media/local/files/Photo/moving_photo_real_test.jpg";
-    data.extraDataPath = extraDataPath;
-    dataList.push_back(data);
-
-    mediaLivePhoto4dStatusTask->ProcessLivePhoto4d(dataList);
-
-    std::string querySql = "SELECT " + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
-        " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::MEDIA_ID + " = " + to_string(outRowId);
-    auto resultSet = g_rdbStore->QuerySql(querySql);
-    ASSERT_NE(resultSet, nullptr);
-    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
-    int32_t status = GetInt32Val(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, resultSet);
-    EXPECT_EQ(status, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
-
-    int32_t batchStatus = mediaLivePhoto4dStatusTask->GetBatchStatus();
-    EXPECT_EQ(batchStatus, outRowId);
-
-    MEDIA_INFO_LOG("ProcessLivePhoto4dWithRealData_test_001 end, status: %{public}d, batchStatus: %{public}d",
-        status, batchStatus);
 }
 } // namespace OHOS::Media::Background

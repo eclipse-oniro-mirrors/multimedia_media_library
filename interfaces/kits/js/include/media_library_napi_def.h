@@ -69,6 +69,12 @@ static const unordered_set<std::string> PUBLIC_PHOTO_KEYS = {
     PhotoColumn::PHOTO_ASPECT_RATIO,
     PhotoColumn::PHOTO_IS_CRITICAL,
     PhotoColumn::LOCAL_ASSET_SIZE,
+    PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+    PhotoColumn::PHOTO_SHARE_RISK_STATUS,
+    PhotoColumn::PHOTO_VISIBILITY,
+    PhotoColumn::PHOTO_SHARE_GROUP,
+    PhotoColumn::PHOTO_SHARE_RISK_TYPE,
+    PhotoColumn::PHOTO_SHARE_DATE_DAY,
 };
 static const unordered_set<std::string> PUBLIC_ALBUM_KEYS = {
     CONST_MEDIA_DATA_DB_URI,
@@ -76,7 +82,11 @@ static const unordered_set<std::string> PUBLIC_ALBUM_KEYS = {
     PhotoAlbumColumns::ALBUM_LPATH,
     CONST_MEDIA_DATA_DB_MEDIA_TYPE,
     CONST_MEDIA_DATA_DB_DATE_ADDED,
-    PhotoAlbumColumns::CHANGE_TIME
+    PhotoAlbumColumns::CHANGE_TIME,
+    PhotoAlbumColumns::SHARE_RISK_STATUS,
+    PhotoAlbumColumns::SHARE_RISK_TYPE,
+    PhotoAlbumColumns::ALBUM_CLOUD_ID,
+    PhotoAlbumColumns::SHARE_ALBUM_OWNER,
 };
 
 } // namespace Media

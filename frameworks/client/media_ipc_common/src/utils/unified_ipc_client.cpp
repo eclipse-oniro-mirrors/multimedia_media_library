@@ -22,6 +22,14 @@
 namespace OHOS::Media::IPC {
 static const std::u16string DESCRIPTOR = u"OHOS.DataShare.IDataShare";
 
+UnifiedIPCClient::UnifiedIPCClient()
+{
+    // Keep default userId in sync with the global MediaCommonClient (same source
+    // as UserFileClient::GetUserId()), so UnifiedIPCClient Call/Post follow the
+    // account set via UserFileClient::SetUserId unless overridden by SetUserId().
+    userId_ = MediaCommonClient::GetInstance().GetUserId();
+}
+
 UnifiedIPCClient &UnifiedIPCClient::SetTraceId(const std::string &traceId)
 {
     this->traceId_ = traceId;

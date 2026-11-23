@@ -2248,6 +2248,10 @@ NativeRdb::ValuesBucket CloneRestore::GetCloudInsertValue(const FileInfo &fileIn
     values.PutInt(MediaColumn::MEDIA_TYPE, fileInfo.fileType);
     values.PutString(MediaColumn::MEDIA_NAME, fileInfo.displayName);
     values.PutString(MediaColumn::MEDIA_TITLE, fileInfo.title);
+    if (fileInfo.fileType == MediaType::MEDIA_TYPE_IMAGE || fileInfo.fileType == MediaType::MEDIA_TYPE_VIDEO) {
+        values.PutString(PhotoColumn::UNIQUE_ID,
+            (fileInfo.uuid == "" || fileInfo.uuid == "-1") ? MediaFileUtils::GenerateUUID() : fileInfo.uuid);
+    }
     // [time info]date_added, date_modified, date_taken, detail_time, date_year, date_month, date_day
     SetTimeInfo(fileInfo, values);
     values.PutInt(PhotoColumn::PHOTO_ORIENTATION, fileInfo.orientation); // photos need orientation

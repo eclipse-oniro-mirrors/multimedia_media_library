@@ -114,6 +114,8 @@ ohos_shared_library("media_library") {
     "src/media_operation_log_column.cpp",
     "src/media_compatible_info_column.cpp",
     "src/notification_helper.cpp",
+    "src/member_info.cpp",
+    "src/share_album_member_info.cpp",
     "src/persist_permission_column.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_change_info.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/photo_asset_change_info.cpp",

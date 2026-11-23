@@ -501,6 +501,30 @@ std::string FileScanUtils::GetCurrentInLakeLogicPrefix()
     return "/data/service/el2/" + userId + "/hmdfs/account/files/Docs/HO_DATA_EXT_MISC/";
 }
 
+std::vector<std::string> FileScanUtils::ExpandPathForms(const std::string &path)
+{
+    std::vector<std::string> forms;
+    std::string normalized = path;
+    while (!normalized.empty() && normalized.back() == '/') {
+        normalized.pop_back();
+    }
+    if (normalized.empty()) {
+        return forms;
+    }
+    forms.push_back(normalized);
+
+    // 湖内逻辑/物理前缀互转(monitor监听湖内目录并上报hmdfs逻辑形态, 登记侧使用物理形态)
+    // 预留: 文管Docs等其他路径形态的互转, 待对应场景接入时在此扩展
+    static const std::string inLakePhysicalPrefix = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
+    std::string inLakeLogicPrefix = GetCurrentInLakeLogicPrefix();
+    if (normalized.compare(0, inLakeLogicPrefix.size(), inLakeLogicPrefix) == 0) {
+        forms.push_back(inLakePhysicalPrefix + normalized.substr(inLakeLogicPrefix.size()));
+    } else if (normalized.compare(0, inLakePhysicalPrefix.size(), inLakePhysicalPrefix) == 0) {
+        forms.push_back(inLakeLogicPrefix + normalized.substr(inLakePhysicalPrefix.size()));
+    }
+    return forms;
+}
+
 bool FileScanUtils::IsDefaultAccount()
 {
     int32_t userId = GetCurrentAccountId();

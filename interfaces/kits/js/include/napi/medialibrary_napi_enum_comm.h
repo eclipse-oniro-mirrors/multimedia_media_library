@@ -384,6 +384,12 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("THUMB_STATUS",              PhotoColumn::PHOTO_THUMB_STATUS),
     std::make_pair("LOCAL_ENHANCEMENT_ABILITY", PhotoColumn::LOCAL_ENHANCEMENT_ABILITY),
     std::make_pair("LOCAL_ENHANCEMENT_STATUS",  PhotoColumn::LOCAL_ENHANCEMENT_STATUS),
+    std::make_pair("SHARE_OWNER_INFO",          PhotoColumn::PHOTO_SHARE_OWNER_INFO),
+    std::make_pair("SHARE_RISK_STATUS",         PhotoColumn::PHOTO_SHARE_RISK_STATUS),
+    std::make_pair("PHOTO_VISIBILITY",          PhotoColumn::PHOTO_VISIBILITY),
+    std::make_pair("SHARE_GROUP",               PhotoColumn::PHOTO_SHARE_GROUP),
+    std::make_pair("SHARE_RISK_TYPE",           PhotoColumn::PHOTO_SHARE_RISK_TYPE),
+    std::make_pair("SHARE_DATE_DAY",            PhotoColumn::PHOTO_SHARE_DATE_DAY),
     //If you have added a public key, please also add it to PUBLIC_PHOTO_KEYS
 };
 
@@ -400,6 +406,10 @@ const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES 
     std::make_pair("UPLOAD_STATUS",             PhotoAlbumColumns::UPLOAD_STATUS),
     std::make_pair("HIDDEN",                    PhotoAlbumColumns::ALBUM_HIDDEN),
     std::make_pair("FILE_HIDDEN",               PhotoAlbumColumns::ALBUM_FILE_HIDDEN),
+    std::make_pair("SHARE_RISK_STATUS",         PhotoAlbumColumns::SHARE_RISK_STATUS),
+    std::make_pair("SHARE_RISK_TYPE",           PhotoAlbumColumns::SHARE_RISK_TYPE),
+    std::make_pair("CLOUD_ID",                  PhotoAlbumColumns::ALBUM_CLOUD_ID),
+    std::make_pair("SHARE_ALBUM_OWNER",         PhotoAlbumColumns::SHARE_ALBUM_OWNER),
 };
 
 const std::vector<std::pair<std::string, std::string>> DEFAULT_URI_ENUM_PROPERTIES = {

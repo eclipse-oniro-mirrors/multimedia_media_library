@@ -39,6 +39,7 @@ ohos_unittest("medialibrary_rdb_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/cloud_sync_utils/cloud_sync_utils.cpp",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -63,6 +64,7 @@ ohos_unittest("medialibrary_rdb_test") {
     "./src/medialibrary_subscriber_test.cpp",
     "./src/moving_photo_processor_test.cpp",
     "./src/medialibrary_rdb_upgrade_test.cpp"
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/cloud_sync_utils/cloud_sync_utils.cpp",
   ]
 
   deps = [

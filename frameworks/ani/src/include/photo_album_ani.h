@@ -113,6 +113,7 @@ struct PhotoAlbumAniContext : public AniError {
     std::vector<std::string> uris;
     std::vector<std::string> attributeArray;
     std::vector<std::unordered_map<std::string, std::string>> attributeQueryResults;
+    bool getAssetsAsUri = false;
 };
 
 } // namespace Media

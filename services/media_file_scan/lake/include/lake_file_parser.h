@@ -27,9 +27,24 @@ public:
 
     FileUpdateType GetFileUpdateType() override;
     void SetCloudPath() override;
+    // 释放本地：对端云合一图仅更新 position 为 CLOUD，对本地图片删除记录
+    void UpdateTrashedAssetInfo();
+    // 恢复名称后重新入库：对纯云图更新 position 为 LOCAL_AND_CLOUD
+    void UpdateRecoverAssetInfo();
+    // 更新云端 position（端云合一 -> 纯云图），返回数据库操作结果
+    static int32_t HandleUpdateCloudAsset(NativeRdb::AbsRdbPredicates &predicates,
+        const PhotoPositionType &positionType);
 
 private:
     void SetSubtypeFromMetadata(std::unique_ptr<Metadata> &data) override;
+
+    // 端云合一图释放本地时创建 dentry 文件，保证纯云图仍可访问
+    int32_t CreateDentryFileForCloudAsset(const FileParser::PhotosRowData &rowData);
+    // 仅本地图释放本地：删除记录并清理关联资源，返回数据库操作结果
+    int32_t HandleTrashedLocalAndCloudAsset(NativeRdb::AbsRdbPredicates &predicates);
+
+    bool IsDotRenameRelease() const;
+    bool IsDotRenameRecover() const;
 
     int32_t GetUniqueId();
 

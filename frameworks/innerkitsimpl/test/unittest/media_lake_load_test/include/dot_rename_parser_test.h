@@ -12,19 +12,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OHOS_MEDIA_REPLICA_RECOVERY_POLICY_H
-#define OHOS_MEDIA_REPLICA_RECOVERY_POLICY_H
-#include <cstdint>
+
+#ifndef MEDIALIBRARY_DOT_RENAME_PARSER_TEST_H
+#define MEDIALIBRARY_DOT_RENAME_PARSER_TEST_H
+
+#include <gtest/gtest.h>
+
 namespace OHOS {
-namespace NativeRdb { struct PrimaryAndReplicaInfo; }
 namespace Media {
-enum class ReplicaRecoveryDecision : int32_t {
-    ALLOW, DIAGNOSIS_UNAVAILABLE, VERSION_MISMATCH, INVALID_TIME, TOO_OLD,
-    FILE_INFO_UNAVAILABLE, TABLE_INFO_UNAVAILABLE, ROW_GAP_TOO_LARGE, REPLICA_NEWER,
+class DotRenameParserTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
 };
-// A rejected diagnosis prevents window registration and ForceRestore.
-ReplicaRecoveryDecision CheckReplicaRecovery(int32_t error, const NativeRdb::PrimaryAndReplicaInfo &info,
-    int64_t expectedVersion);
-}
-}
-#endif
+
+class DotRenameUpdateTypeTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
+};
+} // namespace Media
+} // namespace OHOS
+#endif // MEDIALIBRARY_DOT_RENAME_PARSER_TEST_H

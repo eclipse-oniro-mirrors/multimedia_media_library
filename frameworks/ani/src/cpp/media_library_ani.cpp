@@ -262,6 +262,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperOffCallback)},
     ani_native_function {"getAlbumsInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetPhotoAlbums)},
+    ani_native_function {"getShareAlbumsInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::GetShareAlbums)},
     ani_native_function {"getAlbumsByIdsInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetAlbumsByIds)},
     ani_native_function {"getHiddenAlbumsInner", nullptr,
@@ -1373,6 +1375,7 @@ static ani_status ParseArgsGetAssets(ani_env *env, ani_object options, unique_pt
     CHECK_STATUS_RET(MediaLibraryAniUtils::GetFetchOption(env, options, ASSET_FETCH_OPT, context),
         "invalid predicate");
     auto &predicates = context->predicates;
+    context->isUnionOnlyQuery = context->getAssetsAsUri && MediaLibraryAniUtils::IsUnionOnlyQuery(predicates);
     switch (context->assetType) {
         case TYPE_AUDIO: {
             CHECK_STATUS_RET(MediaLibraryAniUtils::AddDefaultAssetColumns(env, context->fetchColumn,
@@ -1396,6 +1399,9 @@ static ani_status ParseArgsGetAssets(ani_env *env, ani_object options, unique_pt
         predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
         predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
             to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+        if (!context->isUnionOnlyQuery && context->allowSharedAssetInUnionOnly) {
+            predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, to_string(0));
+        }
     }
 
     return ANI_OK;
@@ -1474,6 +1480,7 @@ ani_object MediaLibraryAni::GetPhotoAssets(ani_env *env, [[maybe_unused]] ani_ob
         return nullptr;
     }
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     if (ANI_OK != ParseArgsGetAssets(env, options, asyncContext)) {
         AniError::ThrowError(env, JS_INNER_FAIL);
         return nullptr;
@@ -2201,6 +2208,9 @@ static void AddDefaultColumnsForNonAnalysisAlbums(unique_ptr<MediaLibraryAsyncCo
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+        context->fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+        context->fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+        context->fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
     }
 }
 
@@ -2239,6 +2249,10 @@ static void AddNoSmartFetchColumns(std::vector<std::string> &fetchColumn)
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_ALBUM_OWNER);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_TYPE);
+    fetchColumn.push_back(PhotoAlbumColumns::SHARE_RISK_STATUS);
 }
 
 static void RestrictAlbumSubtypeOptions(DataSharePredicates &predicates)
@@ -2452,6 +2466,23 @@ static ani_status ParseArgsPahGetAlbums(ani_env *env, ani_enum_item albumTypeIte
     return ANI_OK;
 }
 
+static ani_status ParseArgsPahGetShareAlbums(ani_env *env, ani_object fetchOptions,
+    std::unique_ptr<MediaLibraryAsyncContext>& context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    // Parse fetchOptions if exists.
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(fetchOptions, &isUndefined);
+    if (!isUndefined) {
+        CHECK_COND_WITH_RET_MESSAGE(env, GetAlbumFetchOption(env, context, fetchOptions) == ANI_OK,
+            ANI_INVALID_ARGS, "GetAlbumFetchOption error");
+    } else {
+        ANI_INFO_LOG("fetchOptions is undefined. There is no need to parse fetchOptions.");
+    }
+    return ANI_OK;
+}
+
 ani_object MediaLibraryAni::GetPhotoAlbums(ani_env *env, ani_object object, ani_enum_item albumTypeItem,
     ani_enum_item albumSubtypeItem, ani_object fetchOptions)
 {
@@ -2462,6 +2493,20 @@ ani_object MediaLibraryAni::GetPhotoAlbums(ani_env *env, ani_object object, ani_
     CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsPahGetAlbums(env, albumTypeItem, albumSubtypeItem,
         fetchOptions, asyncContext) == ANI_OK, nullptr, "Failed to parse get albums options");
     asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_PHOTO_ALBUMS);
+    SetUserIdFromObjectInfo(asyncContext);
+    GetPhotoAlbumsExecute(env, asyncContext);
+    return GetPhotoAlbumsComplete(env, asyncContext);
+}
+
+ani_object MediaLibraryAni::GetShareAlbums(ani_env *env, ani_object object, ani_object fetchOptions)
+{
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsPahGetShareAlbums(env, fetchOptions, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse get albums options");
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS);
     SetUserIdFromObjectInfo(asyncContext);
     GetPhotoAlbumsExecute(env, asyncContext);
     return GetPhotoAlbumsComplete(env, asyncContext);
@@ -2565,6 +2610,15 @@ static void SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<DataShareResult
         resultSet, TYPE_INT32));
     photoAlbumData->SetImageCount(imageCount);
     photoAlbumData->SetVideoCount(videoCount);
+
+    photoAlbumData->SetCloudId(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_CLOUD_ID,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareAlbumOwner(get<string>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_ALBUM_OWNER, resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareRiskType(get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::SHARE_RISK_TYPE,
+        resultSet, TYPE_STRING)));
+    photoAlbumData->SetShareRiskStatus(get<int32_t>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_RISK_STATUS, resultSet, TYPE_INT32)));
 }
 
 static void BuildAlbumMap(std::unordered_map<int32_t, unique_ptr<PhotoAlbum>> &albumMap,
@@ -3210,6 +3264,10 @@ static ani_status ParseArgsGetPhotoAlbumsWithoutSubtype(ani_env *env, ani_object
     } else {
         ANI_INFO_LOG("fetchOptions is undefined. There is no need to parse fetchOptions.");
     }
+
+    if (context->photoAlbumType != PhotoAlbumType::SMART && !context->isAnalysisAlbum) {
+        AddNoSmartFetchColumns(context->fetchColumn);
+    }
     RestrictAlbumSubtypeOptions(context->predicates);
     return ANI_OK;
 }
@@ -3516,6 +3574,7 @@ static std::shared_ptr<DataShareResultSet> CallPahGetHiddenAlbums(unique_ptr<Med
 
     Uri uri(CONST_PAH_QUERY_HIDDEN_ALBUM);
     AddDefaultPhotoAlbumColumns(context->fetchColumn);
+    AddDefaultColumnsForNonAnalysisAlbums(context);
     if (context->hiddenAlbumFetchMode == ALBUMS_MODE) {
         context->fetchColumn.push_back(PhotoAlbumColumns::HIDDEN_COUNT);
         context->fetchColumn.push_back(PhotoAlbumColumns::HIDDEN_COVER);
@@ -4018,7 +4077,7 @@ static void SetFileAssetByIdV9(int32_t id, const string &networkId, unique_ptr<M
 }
 #endif
 
-static bool CheckTitleCompatible(unique_ptr<MediaLibraryAsyncContext> &context)
+static bool CheckTitleValid(unique_ptr<MediaLibraryAsyncContext> &context)
 {
     CHECK_COND_RET(context != nullptr, false, "context is nullptr");
     if (!context->isCreateByComponent) {
@@ -4029,7 +4088,7 @@ static bool CheckTitleCompatible(unique_ptr<MediaLibraryAsyncContext> &context)
     if (!hasTitleParam) {
         return true;
     }
-    return MediaFileUtils::CheckTitleCompatible(title) == E_OK;
+    return MediaFileUtils::CheckTitleForPhoto(title) == E_OK;
 }
 
 static void PhotoAccessCreateAssetExecute(unique_ptr<MediaLibraryAsyncContext> &context)
@@ -4048,7 +4107,7 @@ static void PhotoAccessCreateAssetExecute(unique_ptr<MediaLibraryAsyncContext> &
         return;
     }
 
-    if (!CheckTitleCompatible(context)) {
+    if (!CheckTitleValid(context)) {
         context->error = JS_E_DISPLAYNAME;
         return;
     }
@@ -5220,7 +5279,7 @@ static void PhotoAccessAgentCreateAssetsExecute(ani_env *env, unique_ptr<MediaLi
     for (const auto& valuesBucket : context->valuesBucketArray) {
         bool inValid = false;
         string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, inValid);
-        if (!context->isContainsAlbumUri && !title.empty() && MediaFileUtils::CheckTitleCompatible(title) != E_OK) {
+        if (!context->isContainsAlbumUri && !title.empty() && MediaFileUtils::CheckTitleForPhoto(title) != E_OK) {
             ANI_ERR_LOG("Title contains invalid characters: %{private}s, skipping", title.c_str());
             context->uriArray.push_back(to_string(E_INVALID_DISPLAY_NAME));
             continue;
@@ -5695,20 +5754,6 @@ ani_int MediaLibraryAni::PhotoAccessGrantPhotoUrisPermission(ani_env *env, ani_o
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return DEFAULT_ERR_ANI_DOUBLE;
     }
-    vector<string> fileIds;
-    for (const auto &valuesBucket : context->valuesBucketArray) {
-        bool isValid = false;
-        int32_t fileId = valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
-        if (isValid && fileId >= 0) {
-            fileIds.push_back(to_string(fileId));
-        }
-    }
-    if (!fileIds.empty() && MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds)) {
-        ANI_ERR_LOG("PhotoAccessGrantPhotoUrisPermission does not support shared album asset");
-        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-            "This operation is not supported for assets in shared albums");
-        return DEFAULT_ERR_ANI_DOUBLE;
-    }
 
     PhotoAccessGrantPhotoUrisPermissionExecute(env, context);
     return PhotoUriPermissionComplete(env, context);
@@ -5800,18 +5845,6 @@ ani_int MediaLibraryAni::PhotoAccessCancelPhotoUriPermission(ani_env *env, ani_o
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return DEFAULT_ERR_ANI_DOUBLE;
     }
-    bool isValid = false;
-    int32_t fileId = context->valuesBucket.Get(AppUriPermissionColumn::FILE_ID, isValid);
-    do {
-        CHECK_AND_BREAK(isValid && fileId >= 0);
-        vector<string> fileIds = { to_string(fileId) };
-        if (MediaLibraryAniUtils::HasSharedAlbumAsset(fileIds)) {
-            ANI_ERR_LOG("PhotoAccessCancelPhotoUriPermission does not support shared album asset");
-            AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID,
-                "This operation is not supported for assets in shared albums");
-            return DEFAULT_ERR_ANI_DOUBLE;
-        }
-    } while (false);
     PhotoAccessCancelPhotoUriPermissionExecute(env, context);
     return PhotoUriPermissionComplete(env, context);
 }
@@ -6687,6 +6720,7 @@ ani_object MediaLibraryAni::PhotoAccessGetSharedPhotoAssets([[maybe_unused]] ani
     auto asyncContext = std::make_unique<MediaLibraryAsyncContext>();
     CHECK_COND_WITH_RET_MESSAGE(env, asyncContext != nullptr, returnObj, "asyncContext is nullptr");
     asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->allowSharedAssetInUnionOnly = true;
     CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsGetAssets(env, options, asyncContext) == ANI_OK, returnObj,
         "objectInfo is nullptr");
 
@@ -8865,6 +8899,11 @@ static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCa
     CHECK_COND_RET(ParseBundleInfo(params.env, params.appInfo, bundleInfo), false, "ParseBundleInfo fail");
     CHECK_COND_RET(ParseCreateConfig(params.env,
         params.photoCreationConfigs, config), false, "Parse asset create config failed");
+    if (!config.title.empty() && MediaFileUtils::CheckTitleForPhoto(config.title) != E_OK) {
+        // 与 JS 侧 InitShortTermRequest 保持一致：仅记录并返回失败，由外层统一抛错
+        ANI_ERR_LOG("Title contains invalid characters: %{private}s", config.title.c_str());
+        return false;
+    }
 
     want.SetParam(SHORT_TERM_TAG, true);
     want.SetParam(SHORT_TERM_TITLE, config.title);
@@ -8954,6 +8993,12 @@ static bool ParseAndSetConfigArray(ani_env *env, OHOS::AAFwk::Want &want, ani_ob
         PhotoCreationConfig config;
         if (ANI_OK != ParseCreateConfig(env, aniValue, config)) {
             ANI_ERR_LOG("Parse asset create config failed");
+            return false;
+        }
+        if (!config.title.empty() && MediaFileUtils::CheckTitleForPhoto(config.title) != E_OK) {
+            // 与 JS 侧 ParseAndSetConfigArray 保持一致：非法 title 让整个调用失败，
+            // 避免 titleList 与 uri 数组按下标错位。
+            ANI_ERR_LOG("Title contains invalid characters: %{private}s", config.title.c_str());
             return false;
         }
         titleList.emplace_back(config.title);

@@ -41,6 +41,12 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
     auto updateType = fileManagerParser.GetFileUpdateType();
     CHECK_AND_EXECUTE(MediaFileUtils::IsFileExists(fileInfo.afterPath),
         DirScanAnomalyHelper::AddAnomalyDir(MediaFileUtils::GetParentPath(fileInfo.afterPath)));
+    // 点号重命名释放本地场景：释放后文件名变为隐藏文件，不再满足 IsFileValidAsset，需在有效性检查前处理；
+    // 恢复场景仍需经过有效性检查，避免把已失效的文件恢复成本地可用
+    if (updateType == FileUpdateType::DOT_RENAME_RELEASE) {
+        RefreshTrashedAssetInfo(fileManagerParser);
+        return;
+    }
     if (!fileManagerParser.IsFileValidAsset()) {
         RefreshAssetInfoForSkipFile(fileManagerParser, updateType);
         MEDIA_WARN_LOG("invalid file manager file");
@@ -54,6 +60,12 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
         return;
     }
 
+    HandleFileUpdateType(fileInfo, updateType, fileManagerParser);
+}
+
+void FileManagerScanner::HandleFileUpdateType(MediaNotifyInfo &fileInfo, FileUpdateType updateType,
+    FileManagerParser &fileManagerParser)
+{
     switch (updateType) {
         case FileUpdateType::UPDATE:
             RefreshUpdateAssetInfo(fileManagerParser);
@@ -70,6 +82,12 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
         case FileUpdateType::RECOVER:
             RefreshNeedReoverAssetInfo(fileManagerParser);
             break;
+        case FileUpdateType::DOT_RENAME_RELEASE:
+            RefreshTrashedAssetInfo(fileManagerParser);
+            break;
+        case FileUpdateType::DOT_RENAME_RECOVER:
+            RefreshNeedReoverAssetInfo(fileManagerParser);
+            break;
         default:
             MEDIA_INFO_LOG("no change");
             break;
@@ -79,7 +97,7 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
 bool FileManagerScanner::IsSkipCurrentFile(const std::string &filePath)
 {
     std::string fileName = fs::path(filePath).filename().string();
-    if (fileName.empty() || fileName.find("?") != std::string::npos || fileName[0] == '.') {
+    if (fileName.empty() || fileName.find("?") != std::string::npos) {
         MEDIA_INFO_LOG("Error file manager file: %{public}s", FileScanUtils::GarbleFile(fileName).c_str());
         return true;
     }

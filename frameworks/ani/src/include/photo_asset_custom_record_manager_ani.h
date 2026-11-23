@@ -66,6 +66,7 @@ struct CustomRecordAsyncAniContext : public AniError {
     std::unique_ptr<FetchResult<PhotoAssetCustomRecord>> fetchCustomRecordsResult;
     std::string networkId;
     std::string uri;
+    bool getAssetsAsUri = false;
 };
 } // namespace Media
 } // namespace OHOS

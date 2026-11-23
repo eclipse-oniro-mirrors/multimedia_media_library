@@ -46,6 +46,7 @@
 #include "change_request_set_default_cover_uri_dto.h"
 #include "create_analysis_album_dto.h"
 #include "analysis_lcd_aging_dao.h"
+#include "get_assets_analysis_metadata_vo.h"
  
 namespace OHOS::Media::AnalysisData {
 class MediaAnalysisDataService {
@@ -82,6 +83,11 @@ public:
     int32_t PrepareLcd(const std::vector<int64_t> &fileIds, uint32_t netBearerBitmap,
         std::unordered_map<uint64_t, int32_t> &results);
     int32_t RemoveCloudLcd(const std::vector<int64_t> &fileIds);
+
+    int32_t GetAssetsLabel(const GetAssetsAnalysisMetadataReqBody &reqBody,
+        GetAssetsAnalysisMetadataRespBody &respBody);
+    int32_t GetAssetsCaption(const GetAssetsAnalysisMetadataReqBody &reqBody,
+        GetAssetsAnalysisMetadataRespBody &respBody);
 
 private:
     MediaAnalysisDataService() = default;

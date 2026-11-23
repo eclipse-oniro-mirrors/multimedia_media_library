@@ -17,6 +17,7 @@
 #define FILE_SCAN_UTILS_H
 
 #include <string>
+#include <vector>
 
 #include "file_const.h"
 #include "metadata.h"
@@ -67,6 +68,9 @@ public:
     static int32_t GetCurrentAccountId();
     EXPORT static std::string GetCurrentInLakeLogicPrefix();
     static bool IsDefaultAccount();
+
+    /* 展开路径全部可匹配形态(当前仅湖内逻辑/物理前缀互转, 其余原样返回), 供通知抑制跨形态匹配 */
+    EXPORT static std::vector<std::string> ExpandPathForms(const std::string &path);
 
     static std::vector<std::string> GetFileIdsFromUris(const std::vector<std::string> &uris);
     static void UpdateAndNotifyAnalysisAlbum(const std::vector<std::string>& fileIds);

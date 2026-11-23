@@ -62,6 +62,8 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_GET_ALBUMS_BY_IDS), { {SYSTEMAPI_PERM, READ_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_PHOTO_INDEX), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_ASSETS), {{SYSTEMAPI_PERM, READ_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_SHARE_ASSETS),
+        {{SYSTEMAPI_PERM, READ_PERM, MANAGE_SHARE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_SELECTED_ASSETS), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_ASSETS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_RESET_COVER_URI), {{SYSTEMAPI_PERM}}},
@@ -114,6 +116,10 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_RESET_SHARE_COVER_URI),
         {{SYSTEMAPI_PERM, WRITE_PERM, MANAGE_SHARE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ABSORB_ALBUM), {{SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_SHARE_ALBUMS),
+        {{SYSTEMAPI_PERM, READ_PERM, MANAGE_SHARE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_SHARE_ALBUM_MEMBER),
+        {{SYSTEMAPI_PERM, READ_PERM, MANAGE_SHARE_PERM}}},
 };
 
 static std::unordered_set<uint32_t> mediaAlbumsPermissionDbBypass = {

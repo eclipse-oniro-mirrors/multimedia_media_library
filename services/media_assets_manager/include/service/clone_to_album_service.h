@@ -62,6 +62,7 @@ struct CloneAssetInfo {
     int64_t shareGroup {0};
     bool isShareAlbumTarget {false};
     int32_t burstCoverLevel {0};
+    bool isSupportCloudClone {false};
 };
 
 enum CloneCallbackType {
@@ -81,6 +82,7 @@ struct CloneTaskInfo {
     std::string targetDir = "";
     CloneCallbackType cloneCallbackType {CloneCallbackType::URI};
     bool isShareAlbumTarget {false};
+    bool isSupportCloudClone {false};
     std::string owner = "";
     int64_t shareGroup {0};
     std::string shareAlbumOwner = "";
@@ -135,6 +137,11 @@ private:
     int32_t HandleAssetClone(const CloneAssetInfo &asset, std::string &newFileId,
         std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount,
         const CloneCallbackType &cloneCallbackType);
+    int32_t HandleCloudAssetClone(const CloneAssetInfo &asset, std::string &newFileId,
+        std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount,
+        const CloneCallbackType &cloneCallbackType = CloneCallbackType::PHOTOASSET);
+    int32_t CloneCloudAssetWithProgress(const CloneAssetInfo &asset, std::string &newFileId,
+        std::function<void(uint64_t)> progressCallback);
     int32_t QueryAssetInfo(const std::string &fileId, CloneAssetInfo &info);
     int32_t DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo,
         std::function<void(uint64_t)> progressCallback);
