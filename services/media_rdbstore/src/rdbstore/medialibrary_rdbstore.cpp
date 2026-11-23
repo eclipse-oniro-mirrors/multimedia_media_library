@@ -1481,7 +1481,9 @@ std::shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryInternal(const 
     PrintPredicatesInfo(predicates, columns);
 
     auto resultSet = MediaLibraryRdbStore::GetRaw()->QueryByStep(predicates, columns, preCount);
-    MediaLibraryRestore::GetInstance().CheckResultSet(resultSet);
+    if (preCount) {
+        MediaLibraryRestore::GetInstance().CheckResultSet(resultSet);
+    }
     if (resultSet == nullptr) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
             {KEY_OPT_TYPE, OptType::QUERY}};
