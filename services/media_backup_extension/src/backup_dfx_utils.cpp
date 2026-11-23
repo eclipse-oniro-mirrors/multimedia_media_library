@@ -31,14 +31,18 @@ const std::string KEY_TOTAL_TIME_COST = "TOTAL_TIME_COST";
 void BackupDfxUtils::PostPortraitStat(uint32_t albumCount, uint64_t photoCount, uint64_t faceCount,
     uint64_t totalTimeCost)
 {
+    string albumCount =
+        KEY_ALBUM_COUNT + " : " + std::to_string(albumCount) + "," +
+        KEY_PHOTO_COUNT + " : " + std::to_string(photoCount) + "," +
+        KEY_FACE_COUNT + " : " + std::to_string(faceCount) + ";";
+
     int32_t ret = HiSysEventWrite(
         MEDIA_LIBRARY,
-        "MEDIALIB_BACKUP_PORTRAIT_STAT",
+        "MEDIALIB_BACKUP_RESTORE_RESULT",
         HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        KEY_ALBUM_COUNT, albumCount,
-        KEY_PHOTO_COUNT, photoCount,
-        KEY_FACE_COUNT, faceCount,
-        KEY_TOTAL_TIME_COST, totalTimeCost);
+        "PERFECT_RESTORE_TIME", totalTimeCost,
+        "CLONE_RESTORE_INFO", "PORTRAIT_ALBUM",
+        "CLONE_RESTORE_COUNT", albumCount);
     CHECK_AND_PRINT_LOG(ret==0, "PostPortraitStat error:%{public}d", ret);
 }
 } // namespace Media
