@@ -45,7 +45,6 @@ using namespace std;
 namespace {
 // 重名冲突：原名失败后追加 _<时间戳(ms)>，最多再尝试 10 次，超出即判定失败
 constexpr int32_t MAX_CONFLICT_INDEX = 10;
-constexpr const char *DEFAULT_IMAGE_EXTENSION = "jpg";
 constexpr const char *HEIC_IMAGE_EXTENSION = "heic";
 constexpr const char *DEFAULT_VIDEO_EXTENSION = "mp4";
 constexpr const char *DECODE_FILE_SUFFIX = "_decode";
@@ -99,13 +98,24 @@ bool IsSupportedImageExtensionName(const string &normalizedExt)
         normalizedExt == HEIC_IMAGE_EXTENSION || normalizedExt == HEIF_IMAGE_EXTENSION;
 }
 
-// 对外产物图片后缀只有 jpg / heic 两种：jpeg / jpg → jpg，heic / heif → heic，其余 → jpg
-string NormalizeOutputImageExtensionName(const string &normalizedExt)
+// 取路径中的原始后缀（保留大小写、不含点）：打包产物沿用图片入参后缀，不做归一化
+string GetRawExtensionFromPath(const string &path)
 {
-    if (normalizedExt == HEIC_IMAGE_EXTENSION || normalizedExt == HEIF_IMAGE_EXTENSION) {  // heif 统一为 heic
-        return HEIC_IMAGE_EXTENSION;
+    const size_t slashIndex = path.rfind('/');
+    const size_t dotIndex = path.rfind('.');
+    if (dotIndex == string::npos || (slashIndex != string::npos && dotIndex < slashIndex)) {
+        return "";
     }
-    return DEFAULT_IMAGE_EXTENSION;  // jpeg / jpg 及其它一律归一化为 jpg
+    return path.substr(dotIndex + 1);
+}
+
+// 去掉后缀可能带的前导点，保留原始大小写
+string StripLeadingDot(const string &ext)
+{
+    if (!ext.empty() && ext.front() == '.') {
+        return ext.substr(1);
+    }
+    return ext;
 }
 
 // 取路径中的后缀（不含点、已转小写）：无后缀或点落在目录段时返回空串
@@ -329,8 +339,6 @@ int32_t SingleFileMovingPhotoUtils::PackingSingleFileMovingPhoto(const int32_t i
 {
     CHECK_AND_RETURN_RET_LOG(imageFd >= 0 && videoFd >= 0 && !outSingleFilePath.empty(), E_INVALID_VALUES,  // 入参校验
         "Invalid fd or empty path");  // 记录失败日志
-    CHECK_AND_RETURN_RET_LOG(!IsSingleFileMovingPhoto(imageFd), E_INVALID_VALUES,  // 图片入参本身已是合一文件
-        "Image fd is already a single file moving photo");
     // 复用端云合并实现：内部写 image + video + 60B 尾部三段标签（v3_f0 / 0:0 / LIVE_<videoSize+20>），
     // 与既有手写尾部字节等价，且格式演进自动跟随端云实现
     return MovingPhotoFileUtils::ConvertToLivePhoto(imageFd, videoFd, outSingleFilePath, 0);  // coverPosition 固定 0
@@ -385,33 +393,22 @@ int32_t SingleFileMovingPhotoUtils::ResolvePackingImageExtension(const std::stri
     std::string &extension)
 {
     extension.clear();
-    // 后缀白名单：只允许 jpeg / jpg / heif / heic（大小写不敏感），其它后缀直接拒绝
+    // 需求规格只校验后缀：白名单 jpeg / jpg / heif / heic（大小写不敏感），其它后缀直接拒绝，
+    // 不读取文件内容，避免把后缀合法但内容不同的文件拒之门外
     CHECK_AND_RETURN_RET_LOG(CheckImageSourceExtension(imagePath) == E_OK, E_INVALID_VALUES,
         "Unsupported packing image extension, path:%{private}s", imagePath.c_str());
-    // 内容校验：只接受 JPEG 与 HEIF 两类图片，其余（PNG/GIF/BMP/WebP/TIFF/AVIF 等）一律拒绝
-    string mimeType;
-    CHECK_AND_RETURN_RET_LOG(MimeTypeUtils::GetImageMimetype(imagePath, mimeType) == E_OK, E_INVALID_VALUES,
-        "Failed to get image mimetype, path:%{private}s", imagePath.c_str());
-    const bool isHeifContent = (mimeType == "image/heic" || mimeType == "image/heif");
-    CHECK_AND_RETURN_RET_LOG(isHeifContent || mimeType == "image/jpeg", E_INVALID_VALUES,
-        "Unsupported packing image mimetype:%{public}s", mimeType.c_str());
-    // 产物后缀只有 jpg / heic 两种，由图片内容决定：heic / heif → heic，其余（jpeg / jpg）→ jpg
-    extension = isHeifContent ? HEIC_IMAGE_EXTENSION : DEFAULT_IMAGE_EXTENSION;
+    // 产物后缀与图片入参保持一致：入参是什么后缀就回填什么后缀（保留大小写），不归一化为 jpg/heic
+    extension = GetRawExtensionFromPath(imagePath);
     return E_OK;
 }
 
 int32_t SingleFileMovingPhotoUtils::CheckPackingVideoMimetype(const std::string &videoPath)
 {
     CHECK_AND_RETURN_RET_LOG(!videoPath.empty(), E_INVALID_VALUES, "Video path is empty");
-    // 视频后缀只允许 mp4，与图片四种后缀组合成 jpeg/jpg/heif/heic + mp4
+    // 需求规格只校验后缀：视频后缀只允许 mp4，与图片四种后缀组合成 jpeg/jpg/heif/heic + mp4，
+    // 不读取文件内容
     CHECK_AND_RETURN_RET_LOG(GetImageExtensionFromPath(videoPath) == DEFAULT_VIDEO_EXTENSION, E_INVALID_VALUES,
         "Unsupported packing video extension, path:%{private}s", videoPath.c_str());
-    // 严格按内容识别：不依赖扩展名，避免把非 MP4 文件改个名字就放行
-    string mimeType;
-    CHECK_AND_RETURN_RET_LOG(MimeTypeUtils::GetVideoMimetype(videoPath, mimeType) == E_OK, E_INVALID_VALUES,
-        "Failed to get video mimetype, path:%{private}s", videoPath.c_str());
-    CHECK_AND_RETURN_RET_LOG(mimeType == "video/mp4", E_INVALID_VALUES,
-        "Unsupported packing video mimetype:%{public}s", mimeType.c_str());
     return E_OK;
 }
 
@@ -517,14 +514,12 @@ int32_t SingleFileMovingPhotoUtils::PackingSingleFileMovingPhotoToFolder(const P
 
     string imageExtension = NormalizeExtension(request.imageExt);  // 图片后缀大小写不敏感
     CHECK_AND_RETURN_RET_LOG(IsSupportedImageExtensionName(imageExtension), E_INVALID_VALUES,
-        "Unsupported image extension:%{public}s", imageExtension.c_str());  // 仅支持 jpg/jpeg/heic/heif
+        "Unsupported image extension:%{public}s", request.imageExt.c_str());  // 仅支持 jpg/jpeg/heic/heif
     CHECK_AND_RETURN_RET_LOG(NormalizeExtension(request.videoExt) == DEFAULT_VIDEO_EXTENSION, E_INVALID_VALUES,
         "Unsupported video extension:%{public}s", request.videoExt.c_str());  // 仅支持 mp4
-    CHECK_AND_RETURN_RET_LOG(!IsSingleFileMovingPhoto(request.imageFd), E_INVALID_VALUES,
-        "Image fd is already a single file moving photo");  // 图片入参本身已是合一文件
 
-    // 产物后缀只有 jpg / heic 两种：jpeg / jpg → jpg，heif / heic → heic，不保留入参原后缀
-    const string outputExtension = NormalizeOutputImageExtensionName(imageExtension);
+    // 合一文件的命名就是图片入参的命名：后缀原样沿用图片入参后缀（保持入参大小写），不做归一化
+    const string outputExtension = StripLeadingDot(request.imageExt);
     const int64_t baseTs = MediaTimeUtils::UTCTimeMilliSeconds();
     int32_t attempt = 0;  // 0 表示原名，1~10 表示冲突后追加 _<时间戳>
     while (attempt <= MAX_CONFLICT_INDEX) {

@@ -2334,7 +2334,8 @@ napi_value MediaAssetChangeRequestNapi::JSAddResource(napi_env env, napi_callbac
     if (resourceType == static_cast<int32_t>(ResourceType::PRIVATE_MOVING_PHOTO_RESOURCE)) {
         CHECK_COND_WITH_MESSAGE(env, fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE ||
             changeRequest->IsMovingPhoto(), "The resourceType does not match the media type of the asset");
-        if (ParseSingleFileResource(env, asyncContext, JS_ERR_NO_SUCH_FILE, OHOS_INVALID_PARAM_CODE) == nullptr) {
+        // 单文件分支的 URI 解析失败与其它参数错误统一按 401 返回
+        if (ParseSingleFileResource(env, asyncContext, OHOS_INVALID_PARAM_CODE, OHOS_INVALID_PARAM_CODE) == nullptr) {
             return nullptr;
         }
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE);

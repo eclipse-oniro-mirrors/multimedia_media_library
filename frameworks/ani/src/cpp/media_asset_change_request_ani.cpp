@@ -977,6 +977,24 @@ static ani_object ParseFileUri(ani_env *env, ani_object fileUriAni, MediaType me
     return reinterpret_cast<ani_object>(true);
 }
 
+// PRIVATE_MOVING_PHOTO_RESOURCE 专用的 URI 解析：参数形态与 URI 解析失败统一按参数错误(401)返回。
+static ani_object ParseSingleFileUri(ani_env *env, ani_object fileUriAni,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &context)
+{
+    ANI_CHECK_RETURN_RET_LOG(context != nullptr, nullptr, "context is null");
+    std::string fileUriStr;
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryAniUtils::GetParamStringPathMax(env, fileUriAni, fileUriStr) == ANI_OK,
+        "Failed to get fileUri");
+    OHOS::AppFileService::ModuleFileUri::FileUri fileUri(fileUriStr);
+    std::string path = fileUri.GetRealPath();
+    CHECK_COND_WITH_MESSAGE(env, OHOS::PathToRealPath(path, context->realPath),
+        "The file corresponding to the URI is not in the app sandbox");
+
+    CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::GetMediaType(context->realPath) == MediaType::MEDIA_TYPE_IMAGE,
+        "Invalid file type");
+    return reinterpret_cast<ani_object>(true);
+}
+
 static ani_object ParseArgsCreateAssetFromFileUri(ani_env *env, ani_object context, ani_object fileUriAni,
     MediaType mediaType, std::unique_ptr<MediaAssetChangeRequestAniContext> &aniContext)
 {
@@ -1454,8 +1472,9 @@ ani_object MediaAssetChangeRequestAni::AddSingleFileResourceByFileUri(ani_env *e
         changeRequest->IsMovingPhoto(), "The resourceType does not match the media type of the asset");
     auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
     CHECK_COND_WITH_MESSAGE(env, aniContext != nullptr, "aniContext is null");
-    CHECK_COND(env, ParseFileUri(env, fileUri, MediaType::MEDIA_TYPE_IMAGE, aniContext), OHOS_INVALID_PARAM_CODE);
-    // ParseFileUri 已解析真实路径，这里统一复核路径合法性并归一化
+    // 单文件分支的 URI 解析失败与其它参数错误统一按 401 返回
+    CHECK_COND(env, ParseSingleFileUri(env, fileUri, aniContext), OHOS_INVALID_PARAM_CODE);
+    // ParseSingleFileUri 已解析真实路径，这里统一复核路径合法性并归一化
     std::string normalizedPath;
     CHECK_COND_WITH_MESSAGE(env,
         SingleFileMovingPhotoUtils::NormalizeExistingFile(aniContext->realPath, normalizedPath) == E_OK,

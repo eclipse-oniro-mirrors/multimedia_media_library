@@ -73,7 +73,7 @@ public:
         int32_t videoFd = -1;
         std::string outDir;        // 输出目录（未归一化，内部会校验）
         std::string imageTitle;    // 产物文件名主名
-        std::string imageExt;      // 图片后缀，最终归一化为 jpg / heic
+        std::string imageExt;      // 图片后缀，产物原样沿用（保留大小写），仅校验属 jpg/jpeg/heic/heif
         std::string videoExt;      // 视频后缀，固定 mp4
     };
     /**
@@ -139,15 +139,15 @@ public:
     EXPORT static int32_t CheckImageSourceExtension(const std::string &path);
 
     /**
-     * @brief packing 的严格图片格式校验：后缀必须是 jpeg/jpg/heif/heic，内容必须是 JPEG 或 HEIF。
-     * @return 成功返回 E_OK 并回填归一化产物后缀（由内容决定：jpeg/jpg → "jpg"，heic/heif → "heic"）；
-     *         不满足任一条件时返回 E_INVALID_VALUES。
+     * @brief packing 的图片后缀校验：后缀必须是 jpeg/jpg/heif/heic，按需求规格不校验文件内容。
+     * @return 成功返回 E_OK 并回填入参图片的原始后缀（保留大小写，如 "jpeg"、"HEIC"）；
+     *         后缀不满足时返回 E_INVALID_VALUES。
      */
     EXPORT static int32_t ResolvePackingImageExtension(const std::string &imagePath, std::string &extension);
 
     /**
-     * @brief packing 的严格视频格式校验：后缀必须是 mp4，内容必须是 MP4。
-     * @return 满足条件返回 E_OK，其余（含识别失败）返回 E_INVALID_VALUES。
+     * @brief packing 的视频后缀校验：后缀必须是 mp4，按需求规格不校验文件内容。
+     * @return 满足条件返回 E_OK，其余返回 E_INVALID_VALUES。
      */
     EXPORT static int32_t CheckPackingVideoMimetype(const std::string &videoPath);
 
@@ -172,7 +172,8 @@ public:
 
     /**
      * @brief 将图片和视频打包到指定目录，命名为图片原名，同名时追加 _(1)~(10)。
-     * imageExt 仅支持 jpg/jpeg/heic/heif，videoExt 仅支持 mp4；imageFd 本身是合一文件时返回参数错误。
+     * imageExt 仅支持 jpg/jpeg/heic/heif，videoExt 仅支持 mp4；只校验后缀，不校验文件内容。
+     * 合一文件命名与图片入参命名一致：后缀原样沿用 imageExt（保留大小写），不做 jpg/heic 归一化。
      * 失败时只清理本次调用创建的文件，不删除目录。
      */
     EXPORT static int32_t PackingSingleFileMovingPhotoToFolder(const PackToFolderRequest &request,

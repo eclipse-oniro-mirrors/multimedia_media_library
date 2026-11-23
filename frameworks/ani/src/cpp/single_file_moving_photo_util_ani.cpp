@@ -105,19 +105,20 @@ void SplitFileName(const std::string &fileName, std::string &title, std::string 
     title = fileName.substr(0, index);
     extension = fileName.substr(index + 1);
 }
-// packing 的严格格式校验：图片后缀需为 jpeg/jpg/heif/heic 且内容为 JPEG/HEIF，
-// 视频后缀需为 mp4 且内容为 video/mp4。
-// 失败时已抛出参数错误；成功时回填由内容决定的产物图片后缀（只有 jpg / heic 两种）。
+// packing 按需求规格只校验后缀，不读取文件内容：图片后缀需为 jpeg/jpg/heif/heic，
+// 视频后缀需为 mp4。
+// 失败时已抛出参数错误；成功时回填图片入参的原始后缀（合一文件名与图片入参名一致）。
 bool CheckPackingSourceFormat(ani_env *env, const std::string &imageUri, const std::string &videoUri,
     std::string &imageExtension)
 {
     if (SingleFileMovingPhotoUtils::ResolvePackingImageExtension(RealPathOf(imageUri), imageExtension) != E_OK) {
         AniError::ThrowError(env, JS_E_PARAM_INVALID, __FUNCTION__, __LINE__,
-            "The image file must be JPEG or HEIF");
+            "The image file extension must be jpg, jpeg, heic or heif");
         return false;
     }
     if (SingleFileMovingPhotoUtils::CheckPackingVideoMimetype(RealPathOf(videoUri)) != E_OK) {
-        AniError::ThrowError(env, JS_E_PARAM_INVALID, __FUNCTION__, __LINE__, "The video file must be MP4");
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, __FUNCTION__, __LINE__,
+            "The video file extension must be mp4");
         return false;
     }
     return true;
@@ -303,12 +304,12 @@ ani_object SingleFileMovingPhotoUtilAni::PackingSingleFileMovingPhotoInner(ani_e
     }
 
     std::string imageTitle;
-    std::string sourceImageExtension;  // 仅用于拆分文件名，产物后缀改由内容 MIME 决定
+    std::string sourceImageExtension;
     SplitFileName(GetFileNameFromUri(args.imageUri), imageTitle, sourceImageExtension);
     std::string videoTitle;
     std::string videoExtension;
     SplitFileName(GetFileNameFromUri(args.videoUri), videoTitle, videoExtension);
-    // 严格格式校验：图片后缀 jpeg/jpg/heif/heic + 内容 JPEG/HEIF，视频后缀 mp4 + 内容 video/mp4
+    // 格式校验只校验后缀、不校验内容：图片 jpg/jpeg/heic/heif，视频 mp4
     std::string imageExtension;
     if (!CheckPackingSourceFormat(env, args.imageUri, args.videoUri, imageExtension)) {
         return nullptr;
