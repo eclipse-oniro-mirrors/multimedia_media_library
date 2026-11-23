@@ -124,6 +124,7 @@ export class AlbumPickerComponent extends ViewPU {
                     themeColorMode: null === (n = this.albumPickerOptions) || void 0 === n ? void 0 : n.themeColorMode,
                     filterType: null === (m = this.albumPickerOptions) || void 0 === m ? void 0 : m.filterType,
                     fontSize: null === (i = this.albumPickerOptions) || void 0 === i ? void 0 : i.fontSize,
+                    isShareAlbumSupported : null === (i = this.albumPickerOptions) || void 0 === i ? void 0 : i.isShareAlbumSupported,
                 }
             },
             {
@@ -171,6 +172,7 @@ export class AlbumPickerComponent extends ViewPU {
                 let e = new AlbumInfo;
                 e.uri = o.albumUri;
                 e.albumName = o.albumName;
+                e.shareAlbumUri = o.shareAlbumUri;
                 this.onAlbumClick(e);
             }
         } else if ('emptyAreaClick' === n) {

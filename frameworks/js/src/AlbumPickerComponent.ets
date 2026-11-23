@@ -38,6 +38,7 @@ export struct AlbumPickerComponent {
             themeColorMode: this.albumPickerOptions?.themeColorMode,
             filterType: this.albumPickerOptions?.filterType,
             fontSize: this.albumPickerOptions?.fontSize,
+            isShareAlbumSupported : this.albumPickerOptions?.isShareAlbumSupported,
           }
         },
         {
@@ -88,6 +89,7 @@ private handleOnReceive(wantParam: Record<string, Object>): void {
       let albumInfo: AlbumInfo = new AlbumInfo();
       albumInfo.uri = wantParam.albumUri as string;
       albumInfo.albumName = wantParam.albumName. as string;
+      albumInfo.shareAlbumUri = wantParam.shareAlbumUri. as string;
       this.onAlbumClick(albumInfo);
     }
   } else if (dataType === 'emptyAreaClick') {
@@ -109,11 +111,13 @@ export class AlbumPickerOptions {
   public themeColorMode?: PickerColorMode;
   public filterType?: photoAccessHelper.PhotoViewMIMETypes;
   public fontSize?: number | string;
+  public isShareAlbumSupported?: boolean;
 }
 
 export class AlbumInfo {
   public uri?: string;
   public albumName?: string;
+  public shareAlbumUri?: string;
 }
 
 @Observed

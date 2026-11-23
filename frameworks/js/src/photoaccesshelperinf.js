@@ -1181,6 +1181,7 @@ function setPickerOptionParams(params, option) {
   params.assetCompatibleCapability = option.assetCompatibleCapability;
   params.preferredCompatibleMode = option.preferredCompatibleMode;
   params.preselectedUris = option.preselectedUris;
+  params.preselectedAssetUris = option.preselectedAssetUris;
   params.isPreviewForSingleSelectionSupported = option.isPreviewForSingleSelectionSupported;
   params.singleSelectionMode = option.singleSelectionMode;
   params.isOriginalSupported = option.isOriginalSupported;
@@ -1197,6 +1198,7 @@ function setPickerOptionParams(params, option) {
   params.combinedMediaTypeFilter = option.combinedMediaTypeFilter;
   params.isPc = deviceinfo.deviceType === '2in1';
   params.isMovingPhotoBadgeShown = option.isMovingPhotoBadgeShown;
+  params.isShareAlbumSupported = option.isShareAlbumSupported;
   params.assetFilter = option.assetFilter;
   params.isDestroyedWithNavigation = option.isDestroyedWithNavigation;
   params.isReturnToPhotoBrowserEnabled = option.isReturnToPhotoBrowserEnabled;
@@ -1487,6 +1489,7 @@ function BaseSelectOptions() {
   this.isPreviewForSingleSelectionSupported = true;
   this.singleSelectionMode = SingleSelectionMode.BROWSER_MODE;
   this.isMovingPhotoBadgeShown = false;
+  this.isShareAlbumSupported = false;
   this.autoPlayScenes = [];
 }
 

@@ -14996,6 +14996,14 @@ static void getPhotoPickerContextRecoveryInfo(napi_env env, napi_status status, 
         NAPI_ERR_LOG("napi_set_named_property albumUri failed");
     }
 
+    napi_value shareAlbumUri = nullptr;
+    const string &jsShareAlbumUri = context->pickerCallBack->shareAlbumUri;
+    napi_create_string_utf8(env, jsShareAlbumUri.c_str(), NAPI_AUTO_LENGTH, &shareAlbumUri);
+    status = napi_set_named_property(env, recoverInfo, "shareAlbumUri", shareAlbumUri);
+    if (status != napi_ok) {
+        NAPI_ERR_LOG("napi_set_named_property shareAlbumUri failed");
+    }
+ 
     napi_value time = nullptr;
     napi_create_int64(env, context->pickerCallBack->time, &time);
     status = napi_set_named_property(env, recoverInfo, "time", time);
