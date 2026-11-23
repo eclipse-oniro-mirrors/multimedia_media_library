@@ -37,6 +37,7 @@ public:
     std::string detailTime;
     std::string frontCamera;
     std::string xtStyleTemplateName;
+    int32_t xtStyleTemplateNumber;
     std::string editDataCamera;
     std::string title;
     std::string relativePath;

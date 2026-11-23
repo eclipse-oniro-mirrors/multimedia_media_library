@@ -73,6 +73,7 @@ const std::vector<std::string> PULL_QUERY_COLUMNS = {
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
     PhotoColumn::PHOTO_STORAGE_PATH,
     PhotoColumn::MUSIC_MASTER_MODE,
+    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
 };
 
 struct KeyData {

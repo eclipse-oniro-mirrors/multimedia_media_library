@@ -206,6 +206,9 @@ public:
     EXPORT const std::string &GetXtStyleTemplateName() const;
     EXPORT void SetXtStyleTemplateName(const std::string &xtStyleTemplateName);
 
+    EXPORT int32_t GetXtStyleTemplateNumber() const;
+    EXPORT void SetXtStyleTemplateNumber(int32_t xtStyleTemplateNumber);
+
     EXPORT const std::string &GetUserComment() const;
     EXPORT void SetUserComment(const std::string &userComment);
 

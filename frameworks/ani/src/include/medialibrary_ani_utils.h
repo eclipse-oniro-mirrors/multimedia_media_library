@@ -256,6 +256,7 @@ public:
             {PhotoColumn::MUSIC_MASTER_MODE, {TYPE_INT32, "musicMasterMode"}},
             {PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, {TYPE_INT32, "localEnhancementAbility"}},
             {PhotoColumn::LOCAL_ENHANCEMENT_STATUS, {TYPE_INT32, "localEnhancementStatus"}},
+            {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, {TYPE_INT32, "xtStyleTemplateNumber"}},
             {CONST_MEDIA_DATA_DB_COUNT, {TYPE_INT32, "count"}},
             {PhotoAlbumColumns::ALBUM_ID, {TYPE_INT32, "albumId"}},
             {PhotoAlbumColumns::ALBUM_TYPE, {TYPE_INT32, "albumType"}},

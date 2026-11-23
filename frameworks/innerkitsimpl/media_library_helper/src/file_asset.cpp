@@ -612,6 +612,17 @@ void FileAsset::SetXtStyleTemplateName(const string &xtStyleTemplateName)
     member_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = xtStyleTemplateName;
 }
 
+int32_t FileAsset::GetXtStyleTemplateNumber() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER);
+}
+
+void FileAsset::SetXtStyleTemplateNumber(int32_t xtStyleTemplateNumber)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER] = xtStyleTemplateNumber;
+}
+
 const std::string &FileAsset::GetUserComment() const
 {
     return GetStrMember(PhotoColumn::PHOTO_USER_COMMENT);

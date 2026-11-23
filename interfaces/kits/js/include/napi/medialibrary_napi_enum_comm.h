@@ -382,6 +382,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("ATTACHMENT_SIZE",           PhotoColumn::ATTACHMENT_SIZE),
     std::make_pair("LCD_FILE_SIZE",             PhotoColumn::PHOTO_LCD_FILE_SIZE),
     std::make_pair("THUMB_STATUS",              PhotoColumn::PHOTO_THUMB_STATUS),
+    std::make_pair("XT_STYLE_TEMPLATE_NUMBER",  PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER),
     std::make_pair("LOCAL_ENHANCEMENT_ABILITY", PhotoColumn::LOCAL_ENHANCEMENT_ABILITY),
     std::make_pair("LOCAL_ENHANCEMENT_STATUS",  PhotoColumn::LOCAL_ENHANCEMENT_STATUS),
     std::make_pair("SHARE_OWNER_INFO",          PhotoColumn::PHOTO_SHARE_OWNER_INFO),

@@ -54,6 +54,7 @@ bool CloudMdkRecordPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(exifRotate), false, "exifRotate");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(xtStyleTemplateNumber), false, "xtStyleTemplateNumber");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(strongAssociation), false, "strongAssociation");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(compressionQuality), false, "compressionQuality");
@@ -132,6 +133,7 @@ bool CloudMdkRecordPhotosVo::ReadBasicInfo(Parcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(exifRotate), false, "exifRotate");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(supportedWatermarkType), false, "supportedWatermarkType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(xtStyleTemplateNumber), false, "xtStyleTemplateNumber");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(musicMasterMode), false, "musicMasterMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(strongAssociation), false, "strongAssociation");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(compressionQuality), false, "compressionQuality");
@@ -262,6 +264,7 @@ void CloudMdkRecordPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"exifRotate\": " << exifRotate << ","
        << "\"movingPhotoEffectMode\": " << movingPhotoEffectMode << ","
        << "\"supportedWatermarkType\": " << supportedWatermarkType << ","
+       << "\"xtStyleTemplateNumber\": " << xtStyleTemplateNumber << ","
         << "\"musicMasterMode\": " << musicMasterMode << ","
 
        << "\"strongAssociation\": " << strongAssociation << ","

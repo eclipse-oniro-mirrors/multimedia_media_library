@@ -354,6 +354,20 @@ string MetadataExtractor::GetCompatibleUserComment(const string& userComment)
     return userComment;
 }
 
+static int32_t ParseXtStyleTemplateNumber(const std::string &value)
+{
+    // 相机写入的非负整数才是有效色号(0 也是有效值)，空值/占位值/非数字一律视为无法解析
+    int32_t number = FILE_XT_STYLE_TEMPLATE_NUMBER_INVALID;
+    const char *begin = value.data();
+    const char *end = begin + value.size();
+    auto result = std::from_chars(begin, end, number);
+    // 非纯数字、越界、负数(含相机占位值 -1 / default_exif_value)均视为无法解析
+    if (result.ec != std::errc() || result.ptr != end || number < 0) {
+        return FILE_XT_STYLE_TEMPLATE_NUMBER_INVALID;
+    }
+    return number;
+}
+
 int32_t MetadataExtractor::ExtractImageExif(std::unique_ptr<ImageSource> &imageSource, std::unique_ptr<Metadata> &data)
 {
     if (imageSource == nullptr) {
@@ -377,6 +391,15 @@ int32_t MetadataExtractor::ExtractImageExif(std::unique_ptr<ImageSource> &imageS
 
     err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_FRONT_CAMERA, propertyStr);
     data->SetFrontCamera(err == 0 ? propertyStr : "0");
+
+    err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_XT_STYLE_TEMPLATE_NAME, propertyStr);
+    data->SetXtStyleTemplateName(err == 0 ? propertyStr : FILE_XT_STYLE_TEMPLATE_NAME_DEFAULT);
+
+    if (data->GetFieldsChanged() ||
+        data->GetXtStyleTemplateNumber() == FILE_XT_STYLE_TEMPLATE_NUMBER_DEFAULT) {
+        data->SetXtStyleTemplateNumber(err == 0 ? ParseXtStyleTemplateNumber(propertyStr) :
+            FILE_XT_STYLE_TEMPLATE_NUMBER_INVALID);
+    }
 
     for (auto &exifKey : exifInfoKeys) {
         err = imageSource->GetImagePropertyString(0, exifKey, propertyStr);

@@ -200,6 +200,12 @@ public:
     EXPORT void SetXtStyleTemplateName(const VariantData &xtStyleTemplateName);
     EXPORT std::string GetXtStyleTemplateName() const;
 
+    EXPORT void SetXtStyleTemplateNumber(const VariantData &xtStyleTemplateNumber);
+    EXPORT int32_t GetXtStyleTemplateNumber() const;
+
+    EXPORT void SetFieldsChanged(bool fieldsChanged);
+    EXPORT bool GetFieldsChanged() const;
+
     EXPORT void SetFileSourceType(const VariantData &fileSourceType);
     EXPORT int32_t GetFileSourceType() const;
 
@@ -318,6 +324,10 @@ private:
 
     // xt style template name
     std::string xtStyleTemplateName_;
+    // -2: 未处理, -1: 无法解析(待智慧分析)
+    int32_t xtStyleTemplateNumber_;
+    // 文件内容是否变化，扫描更新时用于判断数据库字段是否允许被覆盖，默认允许以兼容插入场景
+    bool fieldsChanged_ { true };
 
     int32_t fileSourceType_;
     int32_t needThumbnail_ = 1;

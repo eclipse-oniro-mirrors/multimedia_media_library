@@ -49,6 +49,7 @@ public:
         int64_t localAssetSize{0};
         uint32_t extraDataVersion{0};
         int32_t musicMasterMode{0};
+        int32_t xtStyleTemplateNumber{-2};
 
     public:
         std::string ToString() const;

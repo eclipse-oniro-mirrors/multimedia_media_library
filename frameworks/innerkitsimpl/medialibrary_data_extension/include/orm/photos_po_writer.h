@@ -101,6 +101,8 @@ private:
         {PhotoColumn::PHOTO_FRONT_CAMERA, {&PhotosPoWriter::GetFrontCamera, &PhotosPoWriter::SetFrontCamera}},
         {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME,
             {&PhotosPoWriter::GetXtStyleTemplateName, &PhotosPoWriter::SetXtStyleTemplateName}},
+        {PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
+            {&PhotosPoWriter::GetXtStyleTemplateNumber, &PhotosPoWriter::SetXtStyleTemplateNumber}},
         {PhotoColumn::PHOTO_DETAIL_TIME, {&PhotosPoWriter::GetDetailTime, &PhotosPoWriter::SetDetailTime}},
         {PhotoColumn::PHOTO_EDIT_TIME, {&PhotosPoWriter::GetEditTime, &PhotosPoWriter::SetEditTime}},
         {PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
@@ -239,6 +241,8 @@ private:
     bool GetFrontCamera(std::string &val);
     void SetXtStyleTemplateName(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetXtStyleTemplateName(std::string &val);
+    void SetXtStyleTemplateNumber(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetXtStyleTemplateNumber(std::string &val);
     void SetDetailTime(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetDetailTime(std::string &val);
     void SetEditTime(std::variant<int32_t, int64_t, double, std::string> &val);

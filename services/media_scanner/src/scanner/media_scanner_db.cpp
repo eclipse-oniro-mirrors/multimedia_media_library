@@ -29,6 +29,7 @@
 #include "media_audio_column.h"
 #include "media_values_bucket_utils.h"
 #include "moving_photo_file_utils.h"
+#include "scanner_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -353,6 +354,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     values.PutLong(PhotoColumn::PHOTO_COVER_POSITION, metadata.GetCoverPosition());
     values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, metadata.GetFrontCamera());
     values.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, metadata.GetXtStyleTemplateName());
+    values.PutInt(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, metadata.GetXtStyleTemplateNumber());
     values.PutString(PhotoColumn::PHOTO_DETAIL_TIME, metadata.GetDetailTime());
     values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutString(PhotoColumn::MEDIA_MIME_TYPE, metadata.GetFileMimeType());
@@ -657,6 +659,7 @@ static void GetQueryParamsByPath(const string &path, MediaLibraryApi api, vector
                 PhotoColumn::PHOTO_BURST_COVER_LEVEL, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
                 PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_VIDEO_MODE,
                 PhotoColumn::PHOTO_NEED_THUMBNAIL,
+                PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER,
             };
         } else if (oprnObject == OperationObject::FILESYSTEM_AUDIO) {
             columns = {
