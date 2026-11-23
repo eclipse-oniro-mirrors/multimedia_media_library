@@ -87,6 +87,7 @@ public:
     EXPORT void AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy, const sptr<PhotoProxy> &srcPhotoProxy,
         const std::string &editData);
     EXPORT int32_t GetVideoFd(VideoType videoType);
+    EXPORT int32_t ReleaseVideoFd(int32_t fd);
     EXPORT void NotifyVideoSaveFinished(VideoType videoType);
     EXPORT void UpdatePhotoProxy(const sptr<PhotoProxy> &photoProxy);
 
