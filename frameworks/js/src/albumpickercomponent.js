@@ -172,7 +172,7 @@ export class AlbumPickerComponent extends ViewPU {
                 let e = new AlbumInfo;
                 e.uri = o.albumUri;
                 e.albumName = o.albumName;
-                e.shareAlbumUri  = o.shareAlbumUri;
+                e.shareAlbumUri = o.shareAlbumUri;
                 this.onAlbumClick(e);
             }
         } else if ('emptyAreaClick' === n) {

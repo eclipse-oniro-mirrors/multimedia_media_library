@@ -1489,7 +1489,7 @@ function BaseSelectOptions() {
   this.isPreviewForSingleSelectionSupported = true;
   this.singleSelectionMode = SingleSelectionMode.BROWSER_MODE;
   this.isMovingPhotoBadgeShown = false;
-  this.isShareAlbumSupported  = false;
+  this.isShareAlbumSupported = false;
   this.autoPlayScenes = [];
 }
 
