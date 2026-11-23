@@ -77,6 +77,7 @@ private:
     int32_t MoveLocalAssetFile(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
     int32_t CreateCloudTrashedPhotosPo(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo);
     int32_t CreateCloudAssetThumbnail(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
+    int32_t CreateCloudAssetEditData(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
     int32_t CreateCloudAssetWithDentryFile(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t ResetPhotosToLocalOnly(
@@ -137,6 +138,7 @@ private:
     int32_t ResetUniqueId(PhotosPo &photoInfo);
     int32_t ResetTransCode(PhotosPo &photoInfo);
     int32_t ResetStoragePath(PhotosPo &photoInfo);
+    int32_t ResetLocalAssetSize(PhotosPo &photoInfo);
 
 private:
     MediaAssetsDao mediaAssetsDao_;

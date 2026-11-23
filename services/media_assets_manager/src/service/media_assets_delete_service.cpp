@@ -497,6 +497,7 @@ int32_t MediaAssetsDeleteService::CreateCloudTrashedPhotosPo(const PhotosPo &pho
     this->ResetVirtualPath(targetPhotoInfo);
     this->SetDateTrashed(targetPhotoInfo, MediaFileUtils::UTCTimeMilliSeconds());
     this->SetPosition(targetPhotoInfo, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    this->ResetLocalAssetSize(targetPhotoInfo);  // Cloud-only asset, local_asset_size = 0.
     this->ResetNullableFields(targetPhotoInfo);
     // Scenario, Cloud pulled data, require targetPhotoInfo's dirty should be same as photoInfo.
     CHECK_AND_EXECUTE(this->isCloudPullData_, this->SetMdirty(targetPhotoInfo));
@@ -520,6 +521,14 @@ int32_t MediaAssetsDeleteService::CreateCloudAssetThumbnail(const PhotosPo &phot
     return E_OK;
 }
 
+int32_t MediaAssetsDeleteService::CreateCloudAssetEditData(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo)
+{
+    PhotoFileOperation fileOperation;
+    int32_t ret = fileOperation.CopyCloudAssetEditData(photoInfo, targetPhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyCloudAssetEditData fail, ret: %{public}d", ret);
+    return E_OK;
+}
+
 int32_t MediaAssetsDeleteService::CreateCloudAssetWithDentryFile(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo,
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
@@ -527,6 +536,8 @@ int32_t MediaAssetsDeleteService::CreateCloudAssetWithDentryFile(const PhotosPo 
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudTrashedPhotosPo fail, ret: %{public}d", ret);
     ret = this->CreateCloudAssetThumbnail(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetThumbnail fail, ret: %{public}d", ret);
+    ret = this->CreateCloudAssetEditData(photoInfo, targetPhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetEditData fail, ret: %{public}d", ret);
     // Must Clean the cloud info of original asset firstly, to avoid duplicate cloud info in the database.
     // Clear cloud info of the LOCAL_AND_CLOUD asset record to LOCAL asset record (local only).
     ret = this->ResetPhotosToLocalOnly(photoInfo, photoRefresh);
@@ -680,6 +691,8 @@ int32_t MediaAssetsDeleteService::CreateCloudAssetWithoutDentryFile(const Photos
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudTrashedPhotosPo fail, ret: %{public}d", ret);
     ret = this->CreateCloudAssetThumbnail(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetThumbnail fail, ret: %{public}d", ret);
+    ret = this->CreateCloudAssetEditData(photoInfo, targetPhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetEditData fail, ret: %{public}d", ret);
     // Must Clean the cloud info of original asset firstly, to avoid duplicate cloud info in the database.
     // Clear cloud info of the LOCAL_AND_CLOUD asset record to LOCAL asset record (local only).
     ret = this->ResetPhotosToLocalOnly(photoInfo, photoRefresh);
@@ -1141,6 +1154,12 @@ int32_t MediaAssetsDeleteService::ResetTransCode(PhotosPo &photoInfo)
 int32_t MediaAssetsDeleteService::ResetStoragePath(PhotosPo &photoInfo)
 {
     photoInfo.storagePath.reset();
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::ResetLocalAssetSize(PhotosPo &photoInfo)
+{
+    photoInfo.localAssetSize.emplace(0);
     return E_OK;
 }
 }  // namespace OHOS::Media::Common
