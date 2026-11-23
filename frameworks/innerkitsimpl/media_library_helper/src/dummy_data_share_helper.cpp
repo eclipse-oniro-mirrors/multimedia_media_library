@@ -25,7 +25,7 @@ std::shared_ptr<DummyDataShareHelper> DummyDataShareHelper::instance_ = nullptr;
 std::shared_ptr<DummyDataShareHelper> DummyDataShareHelper::GetInstance()
 {
     // Function-local static: created on first use, never destroyed before process exit.
-    if (instance_ == nullptr){
+    if (instance_ == nullptr) {
         instance_ = std::make_shared<DummyDataShareHelper>();
     }
     return instance_;

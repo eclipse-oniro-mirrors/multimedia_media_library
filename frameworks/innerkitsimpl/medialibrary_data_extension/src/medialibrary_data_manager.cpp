@@ -425,7 +425,7 @@ __attribute__((no_sanitize("cfi"))) int32_t MediaLibraryDataManager::InitMediaLi
         AlbumsRefreshManager::GetInstance().AddAlbumRefreshTask(info);
     }
     auto shareHelper = MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
-    if(shareHelper == nullptr){
+    if (shareHelper == nullptr) {
         MEDIA_INFO_LOG("init: shareHelper is nullptr, create dummy");
         shareHelper = DummyDataShareHelper::GetInstance();
     }
@@ -1080,7 +1080,7 @@ __attribute__((no_sanitize("cfi"))) void MediaLibraryDataManager::ClearMediaLibr
     BackgroundCloudFileProcessor::StopTimer();
 #endif
     auto shareHelper = MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
-    if(shareHelper == nullptr){
+    if (shareHelper == nullptr) {
         // same as InitMediaLibraryMgr
         shareHelper = DummyDataShareHelper::GetInstance();
     }

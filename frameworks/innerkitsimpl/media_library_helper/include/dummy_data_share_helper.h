@@ -29,7 +29,7 @@ namespace Media {
  * media library provider process.
  *
  * MediaLibraryHelperContainer is never populated in this process: creating a real
- * DataShareHelper here would connect back to our own DataShareExtension through AMS
+ * DataShareHelper here would connect back to our own DataShareExtension
  * (self-connect). Callers that still need a non-null DataShareHelper object (e.g.
  * InitMediaLibraryMgr calls RegisterObserverExt on it) can fall back to this stub to keep
  * a valid vtable (CFI safe) without introducing any connection, thread or member state.
