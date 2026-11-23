@@ -19,11 +19,16 @@
 
 namespace OHOS {
 namespace Media {
+
+std::shared_ptr<DummyDataShareHelper> DummyDataShareHelper::instance_ = nullptr;
+
 std::shared_ptr<DummyDataShareHelper> DummyDataShareHelper::GetInstance()
 {
     // Function-local static: created on first use, never destroyed before process exit.
-    static std::shared_ptr<DummyDataShareHelper> instance(new DummyDataShareHelper());
-    return instance;
+    if (instance_ == nullptr){
+        instance_ = std::make_shared<DummyDataShareHelper>();
+    }
+    return instance_;
 }
 
 bool DummyDataShareHelper::Release()

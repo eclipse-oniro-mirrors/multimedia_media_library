@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-#ifndef FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_DUMMY_DATA_SHARE_HELPER_H_
-#define FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_DUMMY_DATA_SHARE_HELPER_H_
-
 #include "datashare_helper.h"
 
 #include <functional>
@@ -103,8 +100,7 @@ public:
 
 private:
     DummyDataShareHelper() = default;
+    static std::shared_ptr<DummyDataShareHelper> instance_;
 };
 } // namespace Media
 } // namespace OHOS
-
-#endif // FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_DUMMY_DATA_SHARE_HELPER_H_
