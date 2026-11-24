@@ -6057,7 +6057,9 @@ static ani_status CreateVerifyPhotoAssetUrisMap(ani_env *env, const std::vector<
         ani_string key {};
         CHECK_STATUS_RET(MediaLibraryAniUtils::ToAniString(env, uri, key), "ToAniString key[%{public}s] fail",
             uri.c_str());
-        ani_boolean value = IsPhotoAssetUri(uri) ? ANI_TRUE : ANI_FALSE;
+        ani_object value {};
+        CHECK_STATUS_RET(MediaLibraryAniUtils::ToAniBooleanObject(env, IsPhotoAssetUri(uri), value),
+            "ToAniBooleanObject fail");
         ani_ref setResult {};
         CHECK_STATUS_RET(env->Object_CallMethod_Ref(aniMap, setMethod, &setResult, key, value),
             "Call method set fail");
