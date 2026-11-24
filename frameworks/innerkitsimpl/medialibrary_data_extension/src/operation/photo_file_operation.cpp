@@ -27,6 +27,7 @@
 #include "media_file_utils.h"
 #include "moving_photo_file_utils.h"
 #include "media_column.h"
+#include "media_path_utils.h"
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
@@ -1335,6 +1336,61 @@ int32_t PhotoFileOperation::CopyLocalThumbnail(const PhotosPo &sourcePhotosPo, c
     targetPhotoInfo.thumbnailFolder = this->BuildThumbnailFolder(targetPhotoInfo);
 
     return this->CopyPhotoRelatedThumbnail(sourcePhotoInfo, targetPhotoInfo);
+}
+
+int32_t PhotoFileOperation::CopyCloudAssetEditData(const PhotosPo &sourcePhotosPo, const PhotosPo &targetPhotosPo)
+{
+    bool isValid = sourcePhotosPo.data.has_value() && targetPhotosPo.data.has_value();
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_ARGUMENTS, "Invalid arguments");
+
+    PhotoAssetInfo sourcePhotoInfo;
+    sourcePhotoInfo.filePath = sourcePhotosPo.data.value_or("");
+    sourcePhotoInfo.editDataFolder = this->FindEditDataFolder(sourcePhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(!sourcePhotoInfo.editDataFolder.empty(), E_OK,
+        "Source editData folder not exists, skip copy. filePath: %{public}s", sourcePhotoInfo.filePath.c_str());
+
+    PhotoAssetInfo targetPhotoInfo;
+    targetPhotoInfo.filePath = targetPhotosPo.data.value_or("");
+    targetPhotoInfo.editDataFolder = this->BuildEditDataFolder(targetPhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(!targetPhotoInfo.editDataFolder.empty(), E_INVALID_PATH,
+        "Target editData folder is empty. filePath: %{public}s", targetPhotoInfo.filePath.c_str());
+
+    std::string ext = MediaPathUtils::GetExtension(sourcePhotoInfo.filePath);
+    const std::string SOURCE_BACK_PREFIX = "/source_back.";
+    const std::string EDITDATA_CAMERA = "/editdata_camera";
+    std::string srcSourceBack = sourcePhotoInfo.editDataFolder + SOURCE_BACK_PREFIX + ext;
+    std::string targetSourceBack = targetPhotoInfo.editDataFolder + SOURCE_BACK_PREFIX + ext;
+    std::string srcEditDataCamera = sourcePhotoInfo.editDataFolder + EDITDATA_CAMERA;
+    std::string targetEditDataCamera = targetPhotoInfo.editDataFolder + EDITDATA_CAMERA;
+
+    bool hasSourceBack = MediaFileUtils::IsFileExists(srcSourceBack);
+    bool hasEditDataCamera = MediaFileUtils::IsFileExists(srcEditDataCamera);
+    CHECK_AND_RETURN_RET_LOG(hasSourceBack || hasEditDataCamera, E_OK,
+        "No source_back or editdata_camera, skip copy. filePath: %{public}s", sourcePhotoInfo.filePath.c_str());
+
+    if (!MediaFileUtils::IsFileExists(targetPhotoInfo.editDataFolder) &&
+        !MediaFileUtils::CreateDirectory(targetPhotoInfo.editDataFolder)) {
+        MEDIA_ERR_LOG("CreateDirectory failed. dir: %{public}s",
+            MediaFileUtils::DesensitizePath(targetPhotoInfo.editDataFolder).c_str());
+        return E_HAS_FS_ERROR;
+    }
+
+    if (hasSourceBack && !MediaFileUtils::CopyFileSafe(srcSourceBack, targetSourceBack)) {
+        MEDIA_ERR_LOG("Copy source_back failed. src: %{public}s",
+            MediaFileUtils::DesensitizePath(srcSourceBack).c_str());
+        return E_HAS_FS_ERROR;
+    }
+    if (hasEditDataCamera && !MediaFileUtils::CopyFileSafe(srcEditDataCamera, targetEditDataCamera)) {
+        MEDIA_ERR_LOG("Copy editdata_camera failed. src: %{public}s",
+            MediaFileUtils::DesensitizePath(srcEditDataCamera).c_str());
+        return E_HAS_FS_ERROR;
+    }
+    MEDIA_INFO_LOG("CopyCloudAssetEditData completed, "
+        "sourceFileId: %{public}d, hasSourceBack: %{public}d, hasEditDataCamera: %{public}d",
+        sourcePhotosPo.fileId.value_or(0),
+        hasSourceBack,
+        hasEditDataCamera);
+    return E_OK;
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media
