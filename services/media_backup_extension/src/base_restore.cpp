@@ -2265,8 +2265,14 @@ void BaseRestore::ReportPortraitStat(int32_t sceneCode)
     MEDIA_INFO_LOG("PortraitStat: album %{public}zu, photo %{public}lld, face %{public}lld, cost %{public}lld",
         portraitAlbumIdMap_.size(), (long long)migratePortraitPhotoNumber_, (long long)migratePortraitFaceNumber_,
         (long long)migratePortraitTotalTimeCost_);
-    BackupDfxUtils::PostPortraitStat(static_cast<uint32_t>(portraitAlbumIdMap_.size()), migratePortraitPhotoNumber_,
-        migratePortraitFaceNumber_, migratePortraitTotalTimeCost_);
+    PostPortraitInfo info;
+    info.sceneCode = sceneCode_;
+    info.taskId = taskId_;
+    info.albumCount = static_cast<uint32_t>(portraitAlbumIdMap_.size());
+    info.photoCount = migratePortraitPhotoNumber_;
+    info.faceCount = migratePortraitFaceNumber_;
+    info.totalTimeCost = migratePortraitTotalTimeCost_;
+    BackupDfxUtils::PostPortraitStat(info);
 }
 
 int32_t BaseRestore::GetUniqueId(int32_t fileType)

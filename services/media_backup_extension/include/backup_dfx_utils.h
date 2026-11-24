@@ -20,9 +20,17 @@
 
 namespace OHOS {
 namespace Media {
+struct PostPortraitInfo {
+    int32_t sceneCode{-1};
+    std::string taskId;
+    uint32_t albumCount{0};
+    uint64_t photoCount{0};
+    uint64_t faceCount{0};
+    uint64_t totalTimeCost{0};
+};
 class BackupDfxUtils {
 public:
-    static void PostPortraitStat(uint32_t albumCount, uint64_t photoCount, uint64_t faceCount, uint64_t totalTimeCost);
+    static void PostPortraitStat(const PostPortraitInfo &info);
 };
 } // namespace Media
 } // namespace OHOS

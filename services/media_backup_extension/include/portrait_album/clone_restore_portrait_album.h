@@ -21,6 +21,7 @@
 
 #include "analysis_album_refresh.h"
 #include "backup_const.h"
+#include "backup_dfx_utils.h"
 #include "backup_file_utils.h"
 #include "clone_restore_analysis_total.h"
 #include "clone_restore_portrait_base.h"
@@ -100,7 +101,7 @@ private:
         std::shared_ptr<NativeRdb::ResultSet> resultSet);
     NativeRdb::ValuesBucket GetMapInsertValue(int32_t albumId, int32_t fileId, std::optional<int32_t> &order);
     void InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesBucket> &values);
-    void ReportPortraitCloneStat(int32_t sceneCode);
+    void ReportPortraitCloneStat(PostPortraitInfo &info);
     void RestoreAnalysisTotalFaceStatus();
     void RestoreAnalysisTotalFacialDetectionStatus();
     bool UpdatePortraitTblAlbumId(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl, int32_t minId);

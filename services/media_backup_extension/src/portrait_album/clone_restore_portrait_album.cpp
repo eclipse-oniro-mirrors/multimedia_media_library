@@ -272,7 +272,10 @@ void CloneRestorePortrait::Restore(bool isReverse)
     RestoreAnalysisTotalFacialDetectionStatus();
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     migratePortraitTotalTimeCost_ += end - start;
-    ReportPortraitCloneStat(sceneCode_);
+    PostPortraitInfo info;
+    info.sceneCode = sceneCode_;
+    info.taskId = taskId_;
+    ReportPortraitCloneStat(info);
 }
 
 void CloneRestorePortrait::RestoreAnalysisTotalFaceStatus()
@@ -1182,9 +1185,9 @@ void CloneRestorePortrait::InsertAnalysisPhotoMap(std::vector<NativeRdb::ValuesB
     mapSuccessCnt_ += rowNum;
 }
 
-void CloneRestorePortrait::ReportPortraitCloneStat(int32_t sceneCode)
+void CloneRestorePortrait::ReportPortraitCloneStat(PostPortraitInfo &info)
 {
-    CHECK_AND_RETURN_LOG(sceneCode == CLONE_RESTORE_ID, "err scenecode %{public}d", sceneCode);
+    CHECK_AND_RETURN_LOG(info.sceneCode == CLONE_RESTORE_ID, "err scenecode %{public}d", info.sceneCode);
 
     MEDIA_INFO_LOG("PortraitStat: analysisAlbum %{public}lld, faceTag %{public}lld"
         ", imageFace %{public}lld, photoMap %{public}lld, cost %{public}lld",
@@ -1192,8 +1195,11 @@ void CloneRestorePortrait::ReportPortraitCloneStat(int32_t sceneCode)
         (long long)migratePortraitFaceNumber_, (long long)migratePortraitAnalysisPhotoMapNumber_,
         (long long)migratePortraitTotalTimeCost_);
 
-    BackupDfxUtils::PostPortraitStat(static_cast<uint32_t>(migratePortraitAlbumNumber_), migratePortraitPhotoNumber_,
-        migratePortraitFaceNumber_, migratePortraitTotalTimeCost_);
+    info.albumCount = static_cast<uint32_t>(migratePortraitAlbumNumber_);
+    info.photoCount = migratePortraitPhotoNumber_;
+    info.faceCount = migratePortraitFaceNumber_;
+    info.totalTimeCost = migratePortraitTotalTimeCost_;
+    BackupDfxUtils::PostPortraitStat(info);
 }
 
 void CloneRestorePortrait::UpdateScoreMask(int32_t fileId, uint32_t mask)
