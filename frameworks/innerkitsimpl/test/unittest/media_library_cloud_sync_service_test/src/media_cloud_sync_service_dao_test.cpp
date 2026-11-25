@@ -487,8 +487,8 @@ HWTEST_F(CloudMediaSyncServiceDaoTest, GetAllSysAlbums_Test_002, TestSize.Level1
     std::vector<std::string> subtypes = {"1", "2"};
     std::vector<std::string> columns = {PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_NAME};
     auto resultSet = photosDao.GetAllSysAlbums(subtypes, columns);
-     ASSERT_NE(resultSet, nullptr);
-     int32_t rowCount = -1;
+    ASSERT_NE(resultSet, nullptr);
+    int32_t rowCount = -1;
     EXPECT_EQ(resultSet->GetRowCount(rowCount), 0);
     EXPECT_EQ(rowCount, 0);
 }
