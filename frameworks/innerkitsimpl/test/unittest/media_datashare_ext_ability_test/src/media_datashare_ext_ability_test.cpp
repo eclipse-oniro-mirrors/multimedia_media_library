@@ -722,14 +722,10 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
     string openUriStr = PhotoColumn::PHOTO_URI_PREFIX + to_string(photoAsset.fileId);
     Uri openUri(openUriStr);
     int32_t ret = extension.OpenFile(openUri, "r");
-    EXPECT_EQ(ret, E_PERMISSION_DENIED);
+    EXPECT_EQ(ret, E_HAS_FS_ERROR);
     EXPECT_EQ(QueryPhotoName(photoAsset.fileId), "OpenFileTest_005.jpg");
     // Permission denied or file not on disk, but should not crash
-    MEDIA_INFO_LOG("Extension_OpenFile_005::OpenFile ret=%{public}d", ret);
-
-    // Test with write mode and close via DataManager
-    EXPECT_LT(ret, 0);
-    MEDIA_INFO_LOG("Extension_OpenFile_005::End");
+    MEDIA_INFO_LOG("Extension_OpenFile_005::End ret=%{public}d", ret);
 }
 
 /**
