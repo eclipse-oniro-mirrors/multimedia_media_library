@@ -2903,25 +2903,49 @@ bool MediaFileUtils::IsValidUuid(const std::string& uuidStr)
 
 void MediaFileUtils::GetFolderListUnderPath(const std::filesystem::path &path, std::vector<std::string> &folders)
 {
-    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-        for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            // 检查是否为目录且非隐藏（不以.开头）
-            if (entry.is_directory() && entry.path().filename().string()[0] != '.') {
-                folders.push_back(entry.path().filename().string());
-            }
+    std::error_code ec;
+    if (!std::filesystem::exists(path, ec) || ec || !std::filesystem::is_directory(path, ec) || ec) {
+        if (ec) {
+            MEDIA_WARN_LOG("Check path failed, path: %{public}s, ec: %{public}d",
+                MediaPathUtils::DesensitizePath(path.string()).c_str(), ec.value());
+        }
+        return;
+    }
+    for (auto it = std::filesystem::directory_iterator(path, ec);
+        !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
+        // 检查是否为目录且非隐藏（不以.开头）
+        std::string fileName = it->path().filename().string();
+        if (it->is_directory(ec) && !ec && !fileName.empty() && fileName[0] != '.') {
+            folders.push_back(fileName);
+        }
+        if (ec) {
+            MEDIA_WARN_LOG("Iterate dir failed, path: %{public}s, ec: %{public}d",
+                MediaPathUtils::DesensitizePath(path.string()).c_str(), ec.value());
+            break;
         }
     }
 }
 
 void MediaFileUtils::GetAllFileNameListUnderPath(const std::filesystem::path &path, std::vector<std::string> &fileNames)
 {
-    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    std::error_code ec;
+    if (std::filesystem::exists(path, ec) && !ec && std::filesystem::is_directory(path, ec) && !ec) {
+        for (auto it = std::filesystem::directory_iterator(path, ec);
+            !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
             // 仅获取普通文件，排除目录
-            if (std::filesystem::is_regular_file(entry) && entry.path().filename().string()[0] != '.') {
-                fileNames.push_back(entry.path().filename().string());
+            std::string fileName = it->path().filename().string();
+            if (!ec && it->is_regular_file(ec) && !ec && !fileName.empty() && fileName[0] != '.') {
+                fileNames.push_back(fileName);
+            }
+            if (ec) {
+                MEDIA_WARN_LOG("Iterate dir failed, path: %{public}s, ec: %{public}d",
+                    MediaPathUtils::DesensitizePath(path.string()).c_str(), ec.value());
+                break;
             }
         }
+    } else if (ec) {
+        MEDIA_WARN_LOG("Check path failed, path: %{public}s, ec: %{public}d",
+            MediaPathUtils::DesensitizePath(path.string()).c_str(), ec.value());
     }
     std::sort(fileNames.begin(), fileNames.end());
 }
