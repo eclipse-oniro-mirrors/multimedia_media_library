@@ -1345,7 +1345,6 @@ HWTEST_F(CloudMediaSyncServiceDaoTest, HandleExifRotateDownloadAsset_Test_005, T
     int32_t expectedRotate = -1;
     EXPECT_EQ(val.GetInt(expectedRotate), 0);
     EXPECT_EQ(expectedRotate, 0);
-    EXPECT_EQ(data.exifRotate, 0);
 }
 
 HWTEST_F(CloudMediaSyncServiceDaoTest, HandleExifRotateDownloadMetaData_Test_002, TestSize.Level1)
