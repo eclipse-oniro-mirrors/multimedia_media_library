@@ -905,6 +905,9 @@ static int32_t WriteSingleFileToSandbox(int32_t srcFd, MovingPhotoAsyncContext *
         int32_t destFd = open(destPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
         CHECK_COND_RET(destFd >= 0, E_HAS_FS_ERROR, "Failed to create dest live photo file");
         UniqueFd uniqueDestFd(destFd);
+        // 前置的 GetMovingPhotoDetailedSize 已把 srcFd 偏移推到文件尾部，整容器导出前必须重置到头部
+        CHECK_COND_RET(lseek(srcFd, 0, SEEK_SET) == 0, E_HAS_FS_ERROR,
+            "Seek single-file to head failed, errno: %{public}d", errno);
         char copyBuffer[4096];
         ssize_t readBytes = 0;
         while ((readBytes = read(srcFd, copyBuffer, sizeof(copyBuffer))) > 0) {
