@@ -1017,7 +1017,7 @@ ohos_shared_library("medialibrary_data_extension") {
 
   sources = [
     "${MEDIALIB_FACARD_PATH}/src/tab_facard_photos_table_event_handler.cpp",
-    "${MEDIALIB_FACARD_PATH}/media_library_helper/src/dummy_data_share_helper.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/dummy_data_share_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_rdbstore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_restore.cpp",
