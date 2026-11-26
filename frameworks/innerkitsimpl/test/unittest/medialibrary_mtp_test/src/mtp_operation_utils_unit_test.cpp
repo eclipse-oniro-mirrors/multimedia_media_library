@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fcntl.h>
 #include <thread>
 #include "mtp_operation_utils_unit_test.h"
 #include "mtp_operation_utils.h"
@@ -22,7 +23,10 @@
 #include "media_mtp_utils.h"
 #include "mtp_manager.h"
 #include "mtp_driver.h"
+#include "mtp_test.h"
 #include "parameters.h"
+#include "mtp_ptp_proxy.h"
+#include "iservice_registry.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -30,6 +34,9 @@ using namespace testing::ext;
 namespace OHOS {
 namespace Media {
 
+
+// Same storage-manager SA id used by MtpPtpProxyTest to obtain a valid Init token.
+static constexpr int MTP_STORAGE_MANAGER_UID = 5003;
 void MtpOperationUtilsUnitTest::SetUpTestCase(void) {}
 void MtpOperationUtilsUnitTest::TearDownTestCase(void) {}
 void MtpOperationUtilsUnitTest::SetUp() {}
@@ -1872,6 +1879,171 @@ HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_088, Te
     uint16_t containerType = DATA_CONTAINER_TYPE;
     uint16_t res = mtpOperationUtils->GetObjectPropValue(data, containerType, errcode);
     EXPECT_EQ(res, MTP_OK_CODE);
+}
+
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function: RecevieSendObject
+ * SubFunction: unified error cleanup
+ * FunctionPoints: MtpDriver::ReceiveObj success short-circuit
+ * EnvConditions: MtpTest receiveObjRet_ injects the driver return code
+ * CaseDescription: ReceiveObj returns 0 (MTP_SUCCESS), no cleanup path is taken,
+ *                  RecevieSendObject returns MTP_SUCCESS directly
+ */
+HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_089, TestSize.Level1)
+{
+    OHOS::Media::MtpManager::GetInstance().mtpMode_ = OHOS::Media::MtpManager::MtpMode::MTP_MODE;
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    context->mtpDriver = std::make_shared<MtpDriver>();
+    std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
+    MtpTest::GetInstance()->receiveObjRet_ = 0;
+    MtpFileRange object;
+    int32_t rawFd = open("/dev/null", O_RDWR);
+    ASSERT_GT(rawFd, 0);
+    FdsanFd fd(rawFd);
+    int32_t errcode = mtpOperationUtils->RecevieSendObject(object, fd);
+    EXPECT_EQ(errcode, MTP_SUCCESS);
+    // Success path must short-circuit before PreDealFd: the fd stays open and is only
+    // released later by the FdsanFd destructor, not by the cleanup path.
+    EXPECT_EQ(fd.Get(), rawFd);
+    EXPECT_GT(fd.Get(), 0);
+    MtpTest::GetInstance()->receiveObjRet_ = 0;
+}
+ 
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function: RecevieSendObject
+ * SubFunction: unified error cleanup
+ * FunctionPoints: HDI error code goes through unified cleanup and maps to TRANSFER_FAILED
+ * EnvConditions: MtpTest receiveObjRet_ injects the driver return code
+ * CaseDescription: ReceiveObj returns -202 (HDF_DEV_ERR_NO_DEVICE), PTP mode skips the
+ *                  unlink branch, unified cleanup runs and RecevieSendObject returns
+ *                  MTP_ERROR_TRANSFER_FAILED instead of the raw -202
+ */
+HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_090, TestSize.Level1)
+{
+    OHOS::Media::MtpManager::GetInstance().mtpMode_ = OHOS::Media::MtpManager::MtpMode::PTP_MODE;
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    context->mtpDriver = std::make_shared<MtpDriver>();
+    std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
+    // Initialise the proxies so PreDealFd -> CloseReadFd really closes the fd instead of
+    // bailing out on the null-global guard (which would let the destructor mask the fix).
+    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    ASSERT_NE(saManager, nullptr);
+    auto token = saManager->GetSystemAbility(MTP_STORAGE_MANAGER_UID);
+    MtpPtpProxy::GetInstance().Init(token, context);
+    MtpTest::GetInstance()->receiveObjRet_ = -202;  // HDF_DEV_ERR_NO_DEVICE
+    MtpFileRange object;
+    int32_t rawFd = open("/dev/null", O_RDWR);
+    ASSERT_GT(rawFd, 0);
+    FdsanFd fd(rawFd);
+    int32_t errcode = mtpOperationUtils->RecevieSendObject(object, fd);
+    EXPECT_EQ(errcode, MTP_ERROR_TRANSFER_FAILED);
+    // Unified cleanup must have closed the fd through CloseReadFd (fd_ reset to -1).
+    EXPECT_EQ(fd.Get(), -1);
+    MtpTest::GetInstance()->receiveObjRet_ = 0;
+}
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function: RecevieSendObject
+ * SubFunction: unified error cleanup
+ * FunctionPoints: driver transfer-failed code maps to TRANSFER_FAILED after cleanup
+ * EnvConditions: MtpTest receiveObjRet_ injects the driver return code
+ * CaseDescription: ReceiveObj returns -17 (RECEIVE_OBJECT_FAILED), PTP mode skips the
+ *                  unlink branch, unified cleanup runs and RecevieSendObject returns
+ *                  MTP_ERROR_TRANSFER_FAILED
+ */
+HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_091, TestSize.Level1)
+{
+    OHOS::Media::MtpManager::GetInstance().mtpMode_ = OHOS::Media::MtpManager::MtpMode::PTP_MODE;
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    context->mtpDriver = std::make_shared<MtpDriver>();
+    std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
+    // Initialise the proxies so PreDealFd -> CloseReadFd really closes the fd.
+    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    ASSERT_NE(saManager, nullptr);
+    auto token = saManager->GetSystemAbility(MTP_STORAGE_MANAGER_UID);
+    MtpPtpProxy::GetInstance().Init(token, context);
+    MtpTest::GetInstance()->receiveObjRet_ = -17;  // RECEVIE_OBJECT_FAILED
+    MtpFileRange object;
+    int32_t rawFd = open("/dev/null", O_RDWR);
+    ASSERT_GT(rawFd, 0);
+    FdsanFd fd(rawFd);
+    int32_t errcode = mtpOperationUtils->RecevieSendObject(object, fd);
+    EXPECT_EQ(errcode, MTP_ERROR_TRANSFER_FAILED);
+    // Unified cleanup must have closed the fd through CloseReadFd (fd_ reset to -1).
+    EXPECT_EQ(fd.Get(), -1);
+    MtpTest::GetInstance()->receiveObjRet_ = 0;
+}
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function: RecevieSendObject
+ * SubFunction: unified error cleanup
+ * FunctionPoints: driver transfer-cancelled code maps to TRANSFER_CANCELLED after cleanup
+ * EnvConditions: MtpTest receiveObjRet_ injects the driver return code
+ * CaseDescription: ReceiveObj returns -20 (RECEIVE_OBJECT_CANCELLED), PTP mode skips the
+ *                  unlink branch, unified cleanup runs and RecevieSendObject returns
+ *                  MTP_ERROR_TRANSFER_CANCELLED
+ */
+HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_092, TestSize.Level1)
+{
+    OHOS::Media::MtpManager::GetInstance().mtpMode_ = OHOS::Media::MtpManager::MtpMode::PTP_MODE;
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    context->mtpDriver = std::make_shared<MtpDriver>();
+    std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
+    // Initialise the proxies so PreDealFd -> CloseReadFd really closes the fd.
+    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    ASSERT_NE(saManager, nullptr);
+    auto token = saManager->GetSystemAbility(MTP_STORAGE_MANAGER_UID);
+    MtpPtpProxy::GetInstance().Init(token, context);
+    MtpTest::GetInstance()->receiveObjRet_ = -20;  // RECEVIE_OBJECT_CANCELLED
+    MtpFileRange object;
+    int32_t rawFd = open("/dev/null", O_RDWR);
+    ASSERT_GT(rawFd, 0);
+    FdsanFd fd(rawFd);
+    int32_t errcode = mtpOperationUtils->RecevieSendObject(object, fd);
+    EXPECT_EQ(errcode, MTP_ERROR_TRANSFER_CANCELLED);
+    // Unified cleanup must have closed the fd through CloseReadFd (fd_ reset to -1).
+    EXPECT_EQ(fd.Get(), -1);
+    MtpTest::GetInstance()->receiveObjRet_ = 0;
+}
+ 
+/*
+ * Feature: MediaLibraryMTP
+ * Function: RecevieSendObject
+ * SubFunction: unified error cleanup
+ * FunctionPoints: MTP mode empty-path guard maps cleanup failure to TRANSFER_CANCELLED
+ * EnvConditions: MtpTest receiveObjRet_ injects the driver return code; proxies initialised
+ * CaseDescription: ReceiveObj returns -202 in MTP mode; GetMtpPathById yields an empty
+ *                  path (handle 0 is absent from the path map), the empty-path guard returns
+ *                  MTP_ERROR_TRANSFER_CANCELLED before the unlink attempt
+ */
+HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_093, TestSize.Level1)
+{
+    OHOS::Media::MtpManager::GetInstance().mtpMode_ = OHOS::Media::MtpManager::MtpMode::MTP_MODE;
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    context->mtpDriver = std::make_shared<MtpDriver>();
+    std::shared_ptr<MtpOperationUtils> mtpOperationUtils = std::make_shared<MtpOperationUtils>(context);
+    // Initialise the proxies so PreDealFd -> CloseReadFd really closes the fd. The default
+    // handle (0) is not present in the path map, so GetMtpPathById still yields an empty path.
+    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    ASSERT_NE(saManager, nullptr);
+    auto token = saManager->GetSystemAbility(MTP_STORAGE_MANAGER_UID);
+    MtpPtpProxy::GetInstance().Init(token, context);
+    MtpTest::GetInstance()->receiveObjRet_ = -202;  // HDF_DEV_ERR_NO_DEVICE
+    MtpFileRange object;
+    int32_t rawFd = open("/dev/null", O_RDWR);
+    ASSERT_GT(rawFd, 0);
+    FdsanFd fd(rawFd);
+    int32_t errcode = mtpOperationUtils->RecevieSendObject(object, fd);
+    EXPECT_EQ(errcode, MTP_ERROR_TRANSFER_CANCELLED);
+    // Cleanup runs before the empty-path guard, so the fd must already be closed.
+    EXPECT_EQ(fd.Get(), -1);
+    MtpTest::GetInstance()->receiveObjRet_ = 0;
 }
 } // namespace Media
 } // namespace OHOS

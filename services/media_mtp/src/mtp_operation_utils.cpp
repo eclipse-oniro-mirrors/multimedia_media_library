@@ -64,8 +64,8 @@ static constexpr int ERROR_BATTERY = -1;
 #endif
 static constexpr int EMPTY_BATTERY = 0;
 static constexpr int STORAGE_MANAGER_UID = 5003;
-static constexpr int RECEVIE_OBJECT_CANCELLED = -20;
-static constexpr int RECEVIE_OBJECT_FAILED = -17;
+static constexpr int RECEIVE_OBJECT_CANCELLED = -20;
+static constexpr int RECEIVE_OBJECT_FAILED = -17;
 const std::string PUBLIC_DOC = "/storage/media/local/files/Docs";
 
 static constexpr uint32_t HEADER_LEN = 12;
@@ -444,10 +444,12 @@ int32_t MtpOperationUtils::RecevieSendObject(MtpFileRange &object, int fd)
         "DoRecevieSendObject context_->mtpDriver is null");
 
     int32_t errorCode = context_->mtpDriver->ReceiveObj(object);
-    bool cond = (errorCode != RECEVIE_OBJECT_CANCELLED && errorCode != RECEVIE_OBJECT_FAILED);
-    CHECK_AND_RETURN_RET(!cond, errorCode);
-
-    PreDealFd(errorCode != MTP_SUCCESS, fd);
+    if (errorCode == MTP_SUCCESS) {
+        return MTP_SUCCESS;
+    }
+    // Any HDI error code (e.g. -202 HDF_DEV_ERR_NO_DEVICE) must go through the unified cleanup below,
+    // otherwise writeFd and the partially received object would be left over in service side.
+    PreDealFd(true, fd);
     string filePath("");
     if (MtpManager::GetInstance().IsMtpMode()) {
         MtpPtpProxy::GetInstance().GetMtpPathById(context_->handle, filePath);
@@ -457,8 +459,14 @@ int32_t MtpOperationUtils::RecevieSendObject(MtpFileRange &object, int fd)
         CHECK_AND_RETURN_RET_LOG(ret == 0, MTP_ERROR_TRANSFER_CANCELLED, "unlink file fail");
     }
     MtpPtpProxy::GetInstance().DeleteCanceledObject(filePath, context_->handle);
-    CHECK_AND_RETURN_RET(errorCode != RECEVIE_OBJECT_FAILED, MTP_ERROR_TRANSFER_FAILED);
-    return MTP_ERROR_TRANSFER_CANCELLED;
+    switch (errorCode) {
+        case RECEIVE_OBJECT_CANCELLED:
+            return MTP_ERROR_TRANSFER_CANCELLED;
+        case RECEIVE_OBJECT_FAILED:
+        default:
+            MEDIA_WARN_LOG("RecevieSendObject transfer failed, errorCode = %{public}d", errorCode);
+            return MTP_ERROR_TRANSFER_FAILED;
+    }
 }
 
 void MtpOperationUtils::PreDealFd(const bool deal, const int fd)

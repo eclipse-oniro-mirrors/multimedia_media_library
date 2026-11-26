@@ -27,7 +27,9 @@ public:
     void getOutBuffer(std::vector<uint8_t> &outBuffer);
     
     std::vector<uint8_t> testData_;
-	
+	// Injection point for MtpDriver::ReceiveObj return code in mock_mtp_driver.cpp; 0 means success
+    int32_t receiveObjRet_ = 0;
+    
 private:
     static std::shared_ptr<MtpTest> mtpTestInstance_;
     static std::mutex instanceLock_;
