@@ -43,7 +43,7 @@ namespace Media {
 class DummyDataShareHelper : public DataShare::DataShareHelper {
 public:
     EXPORT static std::shared_ptr<DummyDataShareHelper> GetInstance();
-
+    DummyDataShareHelper() = default;
     ~DummyDataShareHelper() override = default;
 
     bool Release() override;
@@ -99,7 +99,6 @@ public:
         int64_t subscriberId) override;
 
 private:
-    DummyDataShareHelper() = default;
     static std::shared_ptr<DummyDataShareHelper> instance_;
 };
 } // namespace Media
