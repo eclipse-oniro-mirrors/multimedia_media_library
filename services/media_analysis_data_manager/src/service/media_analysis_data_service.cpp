@@ -14,7 +14,9 @@
  */
  
 #define MLOG_TAG "Analysis_Data_Service"
- 
+
+#include <algorithm>
+#include <cctype>
 #include "media_analysis_data_service.h"
  
 #include "analysis_album_accurate_refresh.h"
@@ -82,7 +84,6 @@
 #include "analysis_lcd_aging_dao.h"
 #include "analysis_data_metadata_dao.h"
 
- 
 namespace OHOS::Media::AnalysisData {
 constexpr int32_t SHARED_ASSET_FLAG = 1;
 using namespace std;
@@ -162,6 +163,13 @@ const map<int32_t, struct HighlightAlbumInfo> GetHighlightAlbumInfoMap()
     return HIGHLIGHT_ALBUM_INFO_MAP;
 }
  
+static bool IsValidLanguage(const std::string &language)
+{
+    return std::all_of(language.begin(), language.end(), [](unsigned char c) {
+        return std::isalnum(c) != 0 || c == '_' || c == '-';
+    });
+}
+
 int32_t MediaAnalysisDataService::GetAssetAnalysisData(GetAssetAnalysisDataDto &dto)
 {
     MEDIA_INFO_LOG("fileId:%{public}d, analysisType:%{public}d, language:%{public}s, analysisTotal:%{public}d",
@@ -189,6 +197,8 @@ int32_t MediaAnalysisDataService::GetAssetAnalysisData(GetAssetAnalysisDataDto &
             rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, to_string(dto.fileId));
             resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, config.columns);
         } else if (dto.analysisType == ANALYSIS_DETAIL_ADDRESS) {
+            CHECK_AND_RETURN_RET_LOG(IsValidLanguage(dto.language), -EINVAL,
+                "Invalid language:%{public}s", dto.language.c_str());
             string onClause = GEO_KNOWLEDGE_TABLE + "." + LANGUAGE + " = \'" + dto.language + "\' AND " +
                 PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_ID + " = " + GEO_KNOWLEDGE_TABLE + "." + FILE_ID;
             rdbPredicate.LeftOuterJoin(GEO_KNOWLEDGE_TABLE)->On({ onClause });

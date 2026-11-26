@@ -15,6 +15,8 @@
 
 #define MLOG_TAG "Media_Background"
 
+#include <charconv>
+
 #include "media_clean_all_dirty_files_task.h"
 
 #include "dfx_utils.h"
@@ -102,9 +104,9 @@ static std::vector<int32_t> ConvertBucketNameVector(const std::vector<std::strin
     std::vector<int32_t> vecInt;
     for (const auto& s : vecStr) {
         if (all_of(s.begin(), s.end(), ::isdigit)) {
-            size_t processCount = 0;
-            int32_t val = std::stoi(s, &processCount);
-            if (processCount == s.length()) {
+            int32_t val = 0;
+            auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), val);
+            if (ec == std::errc{} && ptr == s.data() + s.size()) {
                 vecInt.push_back(val);
             }
         } else {
