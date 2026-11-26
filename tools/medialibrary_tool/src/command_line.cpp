@@ -48,6 +48,7 @@ const std::string SEND_CREATE_THUMBNAIL_SYNC = "-ts";
 const std::string SEND_CREATE_THUMBNAIL_ASYNC = "-tas";
 const std::string SEND_CREATE_REMOVE_ORIGIN_FILE = "-rf";
 const std::string SEND_CREATE_UNREMOVE_ORIGIN_FILE = "-urf";
+const std::string SEND_RECOGNIZE_MOVING_PHOTO = "-im";
 
 const std::string DELETE_ONLY_DATABASE = "-db";
 
@@ -55,9 +56,9 @@ static void ShowUsage(bool isRoot)
 {
     std::string str;
     str.append("usage:\n");
+    str.append("  send file from path to medialibrary\n");
+    str.append("    command: mediatool send <file-or-dir-path> [-ts] [-tas] [-rf] [-urf] [-im]\n");
     if (isRoot) {
-        str.append("  send file from path to medialibrary\n");
-        str.append("    command: mediatool send <file-or-dir-path> [-ts] [-tas] [-rf] [-urf]\n");
         str.append("  list media assets in medialibrary\n");
         str.append("    command: mediatool list <media-uri>\n");
     }
@@ -187,6 +188,9 @@ static void CheckExtraArgsInSend(ExecEnv &env)
         if (param == SEND_CREATE_UNREMOVE_ORIGIN_FILE) {
             env.sendParam.isRemoveOriginFileInSend = false;
         }
+        if (param == SEND_RECOGNIZE_MOVING_PHOTO) {
+            env.sendParam.isRecognizeMovingPhotoInSend = true;
+        }
     }
 }
 
@@ -211,6 +215,11 @@ static bool CheckSend(ExecEnv &env)
         return false;
     }
     CheckExtraArgsInSend(env);
+    if (env.sendParam.isRecognizeMovingPhotoInSend && env.sendParam.isFile) {
+        printf("%s moving photo recognition requires a directory. path:%s\n", STR_FAIL.c_str(),
+            env.sendParam.sendPath.c_str());
+        return false;
+    }
     return true;
 }
 

@@ -15,9 +15,13 @@
 
 #ifndef MEDIATOOL_URI_H_
 #define MEDIATOOL_URI_H_
+#include <cstdint>
 #include "base_data_uri.h"
 namespace OHOS {
 namespace Media {
+constexpr int32_t TOOL_MOVING_PHOTO_JPEG_VERSION = 3;
+constexpr int32_t TOOL_MOVING_PHOTO_HEIF_VERSION = 6;
+
 #define CONST_TOOL_PHOTO "mediatool_photo_operation"
 #define CONST_TOOL_AUDIO "mediatool_audio_operation"
 #define CONST_TOOL_ALBUM "mediatool_album_operation"
@@ -41,6 +45,7 @@ namespace Media {
 
 #define CONST_IS_TOOL_OPEN "is_mediatool_open_operation"
 #define CONST_TOOL_OPEN_TRUE "1"
+#define CONST_TOOL_MOVING_PHOTO_VERSION "mediatool_moving_photo_version"
 } // namespace Media
 } // namespace OHOS
 

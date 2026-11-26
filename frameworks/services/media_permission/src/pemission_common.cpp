@@ -21,6 +21,7 @@
 
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_operation.h"
+#include "media_column.h"
 #include "parameters.h"
 #include "permission_utils.h"
 #include "mediatool_uri.h"
@@ -56,8 +57,47 @@ static bool IsHdcShellMediatoolCommand(MediaLibraryCommand &cmd, const std::stri
         cmd.GetOprnType() == Media::OperationType::QUERY_ACTIVE_USER_ID;
 }
 
+static bool IsMediatoolSendOperation(MediaLibraryCommand &cmd, const std::string &openFileMode)
+{
+    const auto object = cmd.GetOprnObject();
+    const bool isPhotoOrAudio = object == OperationObject::TOOL_PHOTO || object == OperationObject::TOOL_AUDIO ||
+        object == OperationObject::FILESYSTEM_PHOTO || object == OperationObject::FILESYSTEM_AUDIO;
+    std::string operationUri = cmd.GetUri().ToString();
+    operationUri = operationUri.substr(0, operationUri.find('?'));
+    if (cmd.GetOprnType() == OperationType::OPEN) {
+        const bool isMovingPhoto = object == OperationObject::PAH_MOVING_PHOTO &&
+            operationUri.rfind(PhotoColumn::PHOTO_URI_PREFIX, 0) == 0;
+        return (isPhotoOrAudio || isMovingPhoto) &&
+            cmd.GetQuerySetParam(CONST_IS_TOOL_OPEN) == CONST_TOOL_OPEN_TRUE &&
+            openFileMode.find('w') != std::string::npos;
+    }
+    if (!isPhotoOrAudio) {
+        return false;
+    }
+    if (cmd.GetOprnType() == OperationType::CREATE) {
+        return operationUri == CONST_TOOL_CREATE_PHOTO || operationUri == CONST_TOOL_CREATE_AUDIO;
+    }
+    if (cmd.GetOprnType() == OperationType::CLOSE) {
+        return operationUri == CONST_TOOL_CLOSE_PHOTO || operationUri == CONST_TOOL_CLOSE_AUDIO;
+    }
+    return false;
+}
+
 bool IsDeveloperMediaTool(MediaLibraryCommand &cmd, const std::string &openFileMode)
 {
+    if (IsMediatoolSendOperation(cmd, openFileMode)) {
+        if (PermissionUtils::IsRootShell()) {
+            return true;
+        }
+        const bool allowed = PermissionUtils::IsHdcShell() &&
+            OHOS::system::GetBoolParameter("const.security.developermode.state", true);
+        if (!allowed) {
+            MEDIA_ERR_LOG("Mediatool send denied: non-shell caller or developer mode disabled, "
+                "object:%{public}d, operation:%{public}d",
+                static_cast<int32_t>(cmd.GetOprnObject()), static_cast<int32_t>(cmd.GetOprnType()));
+        }
+        return allowed;
+    }
     if (!PermissionUtils::IsRootShell() &&
         !(PermissionUtils::IsHdcShell() && IsHdcShellMediatoolCommand(cmd, openFileMode))) {
         MEDIA_ERR_LOG("Mediatool permission check failed: target is not root");

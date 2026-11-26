@@ -98,6 +98,7 @@
 #include "file_asset.h"
 #include "media_duplicate_checker_utils.h"
 #include "photo_file_utils.h"
+#include "mediatool_uri.h"
 #include "file_parser.h"
 #include "media_values_bucket_utils.h"
 #include "medialibrary_rdb_helper.h"
@@ -887,6 +888,72 @@ int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string
     return ret;
 }
 
+static int32_t CheckToolMovingPhotoClose(MediaLibraryCommand &cmd, const shared_ptr<FileAsset> &fileAsset,
+    int32_t &movingPhotoVersion, string &extraDataPath)
+{
+    string operationUri = cmd.GetUri().ToString();
+    operationUri = operationUri.substr(0, operationUri.find('?'));
+    CHECK_AND_RETURN_RET_LOG(operationUri == CONST_TOOL_CLOSE_PHOTO, E_INVALID_VALUES,
+        "Invalid mediatool moving photo close operation, fileId:%{public}d", fileAsset->GetId());
+    const ValuesBucket &values = cmd.GetValueBucket();
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetInt(values, CONST_TOOL_MOVING_PHOTO_VERSION,
+        movingPhotoVersion) && (movingPhotoVersion == TOOL_MOVING_PHOTO_JPEG_VERSION ||
+        movingPhotoVersion == TOOL_MOVING_PHOTO_HEIF_VERSION), E_INVALID_VALUES,
+        "Invalid mediatool moving photo version, fileId:%{public}d, version:%{public}d",
+        fileAsset->GetId(), movingPhotoVersion);
+    CHECK_AND_RETURN_RET_LOG(fileAsset->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE &&
+        fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO), E_INVALID_VALUES,
+        "Invalid mediatool moving photo subtype, fileId:%{public}d, subtype:%{public}d",
+        fileAsset->GetId(), fileAsset->GetPhotoSubType());
+    size_t imageSize = 0;
+    size_t videoSize = 0;
+    string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(fileAsset->GetPath());
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::GetFileSize(fileAsset->GetPath(), imageSize) && imageSize > 0 &&
+        MediaFileUtils::GetFileSize(videoPath, videoSize) && videoSize > 0, E_HAS_FS_ERROR,
+        "Mediatool moving photo files incomplete, fileId:%{public}d, imageSize:%{public}zu, videoSize:%{public}zu",
+        fileAsset->GetId(), imageSize, videoSize);
+    extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(fileAsset->GetPath());
+    CHECK_AND_RETURN_RET_LOG(!extraDataPath.empty(), E_INVALID_PATH,
+        "Invalid mediatool extra data path, fileId:%{public}d", fileAsset->GetId());
+    return E_OK;
+}
+
+static int32_t CompleteToolMovingPhotoClose(const shared_ptr<FileAsset> &completedAsset,
+    const string &extraDataPath, int32_t movingPhotoVersion)
+{
+    CHECK_AND_RETURN_RET_LOG(completedAsset != nullptr && completedAsset->GetTimePending() == 0 &&
+        completedAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO), E_HAS_DB_ERROR,
+        "Mediatool moving photo scan result invalid, fileId:%{public}d, requestedVersion:%{public}d",
+        completedAsset == nullptr ? -1 : completedAsset->GetId(), movingPhotoVersion);
+    const string mimeType = completedAsset->GetMimeType();
+    const int32_t expectedVersion = mimeType == "image/jpeg" ? TOOL_MOVING_PHOTO_JPEG_VERSION :
+        ((mimeType == "image/heic" || mimeType == "image/heif") ? TOOL_MOVING_PHOTO_HEIF_VERSION : 0);
+    CHECK_AND_RETURN_RET_LOG(expectedVersion == movingPhotoVersion, E_INVALID_VALUES,
+        "Mediatool moving photo MIME/version mismatch, fileId:%{public}d, mime:%{public}s, version:%{public}d",
+        completedAsset->GetId(), mimeType.c_str(), movingPhotoVersion);
+    uint32_t actualVersion = 0;
+    int32_t errCode = MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, actualVersion);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
+        "Read mediatool extra data version failed, fileId:%{public}d, ret:%{public}d",
+        completedAsset->GetId(), errCode);
+    if (actualVersion != static_cast<uint32_t>(movingPhotoVersion)) {
+        MEDIA_INFO_LOG("Update mediatool extra data version, fileId:%{public}d, from:%{public}u, to:%{public}d",
+            completedAsset->GetId(), actualVersion, movingPhotoVersion);
+        errCode = MovingPhotoFileUtils::ModifyExtraDataVersion(extraDataPath,
+            static_cast<uint32_t>(movingPhotoVersion));
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
+            "Update mediatool extra data version failed, fileId:%{public}d, ret:%{public}d",
+            completedAsset->GetId(), errCode);
+        errCode = MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, actualVersion);
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK && actualVersion == static_cast<uint32_t>(movingPhotoVersion),
+            E_HAS_FS_ERROR, "Verify mediatool extra data failed, fileId:%{public}d, ret:%{public}d, version:%{public}u",
+            completedAsset->GetId(), errCode, actualVersion);
+    }
+    MEDIA_INFO_LOG("Mediatool moving photo complete, fileId:%{public}d, version:%{public}u",
+        completedAsset->GetId(), actualVersion);
+    return errCode;
+}
+
 int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
@@ -905,6 +972,15 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
         return E_SHARE_ASSET_NOT_SUPPORT_PARAM_ERR;
     }
 
+    ValueObject movingPhotoVersionValue;
+    bool isToolMovingPhoto = values.GetObject(CONST_TOOL_MOVING_PHOTO_VERSION, movingPhotoVersionValue);
+    int32_t movingPhotoVersion = 0;
+    string extraDataPath;
+    if (isToolMovingPhoto) {
+        int32_t ret = CheckToolMovingPhotoClose(cmd, fileAsset, movingPhotoVersion, extraDataPath);
+        CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    }
+
     int32_t isSync = 0;
     int32_t errCode = 0;
     if (MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), CLOSE_CREATE_THUMB_STATUS, isSync) &&
@@ -913,7 +989,15 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
     } else {
         errCode = CloseAsset(fileAsset, false);
     }
-    return errCode;
+    if (errCode != E_OK || !isToolMovingPhoto) {
+        if (isToolMovingPhoto) {
+            MEDIA_ERR_LOG("Close mediatool moving photo failed, fileId:%{public}d, ret:%{public}d",
+                fileAsset->GetId(), errCode);
+        }
+        return errCode;
+    }
+    auto completedAsset = GetFileAssetByUri(uriString, true, PHOTO_COLUMN_VECTOR, pendingStatus);
+    return CompleteToolMovingPhotoClose(completedAsset, extraDataPath, movingPhotoVersion);
 }
 
 static inline void SetPhotoTypeByRelativePath(const string &relativePath, FileAsset &fileAsset)
