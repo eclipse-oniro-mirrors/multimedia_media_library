@@ -16,6 +16,7 @@
 #define MLOG_TAG "FileManagerOfflineCleanupTaskTest"
 
 #include "media_file_manager_offline_cleanup_task_test.h"
+#include "media_pure_file_utils.h"
 
 #include "media_file_manager_offline_cleanup_task.h"
 
@@ -469,7 +470,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ShouldMarkForDeletion_SkipsWhen
     const std::string dataPath = "/data/local/tmp/offline_cleanup_sandbox_copy.jpg";
     ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateFileFS(dataPath));
     ASSERT_TRUE(MediaFileUtils::WriteStrToFile(dataPath, "sandbox_copy_content"));
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(dataPath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(dataPath));
 
     MediaFileManagerOfflineCleanupTask task;
     OfflineCleanupPhotoRecord photo;
@@ -621,7 +622,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, CorrectSandboxAnomaly_MovesDisp
     const std::string storagePath = "/data/local/tmp/offline_cleanup_anomaly_storage.jpg";
     ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateFileFS(dataPath));
     ASSERT_TRUE(MediaFileUtils::WriteStrToFile(dataPath, "displaced_copy_content"));
-    ASSERT_FALSE(MediaFileUtils::IsFileExists(storagePath));
+    ASSERT_FALSE(MediaPureFileUtils::IsFileExists(storagePath));
 
     MediaFileManagerOfflineCleanupTask task;
     OfflineCleanupPhotoRecord photo;
@@ -630,8 +631,8 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, CorrectSandboxAnomaly_MovesDisp
     photo.data = dataPath;
 
     EXPECT_TRUE(task.CorrectSandboxAnomaly(photo));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(storagePath));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(dataPath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(storagePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(dataPath));
     size_t movedSize = 0;
     ASSERT_TRUE(MediaFileUtils::GetFileSize(storagePath, movedSize));
     EXPECT_GT(movedSize, 0);

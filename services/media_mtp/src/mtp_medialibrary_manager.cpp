@@ -24,6 +24,7 @@
 #include "mtp_ipc_utils.h"
 #include "media_library_manager.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_tracer.h"
 #include "moving_photo_file_utils.h"
 #include "photo_album_column.h"
@@ -850,7 +851,7 @@ int32_t MtpMedialibraryManager::GetFd(const shared_ptr<MtpOperationContext> &con
     std::string realPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(sourcePath, realPath),
         MtpErrorUtils::SolveGetFdError(E_HAS_DB_ERROR), "fail to get realPath");
-    MEDIA_DEBUG_LOG("mtp Getfd realPath %{public}s", MediaFileUtils::DesensitizePath(realPath).c_str());
+    MEDIA_DEBUG_LOG("mtp Getfd realPath %{public}s", MediaPathUtils::DesensitizePath(realPath).c_str());
     std::error_code ec;
     int openMode = (mode.compare(MEDIA_FILEMODE_READWRITE) == 0) ? O_RDWR : O_RDONLY;
     outFd = open(realPath.c_str(), openMode);

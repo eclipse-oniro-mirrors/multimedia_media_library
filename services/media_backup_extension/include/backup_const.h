@@ -125,14 +125,8 @@ struct ReverseRestoreReportInfo {
     int32_t migratedNonHoLakeVideoCount{0};
 };
 
-const std::string RESTORE_FILES_CLOUD_DIR = "/storage/cloud/files/";
-const std::string RESTORE_FILES_LOCAL_DIR = "/storage/media/local/files/";
-const std::string RESTORE_CLOUD_DIR = "/storage/cloud/files/Photo";
 const std::string RESTORE_DENTRY_DIR = "/storage/media/cloud/files/Photo";
-const std::string RESTORE_AUDIO_CLOUD_DIR = "/storage/cloud/files/Audio";
-const std::string RESTORE_THUMB_CLOUD_DIR = "/storage/cloud/files/.thumbs/Photo";
 const std::string RESTORE_THUMB_DENTRY_DIR = "/storage/media/cloud/files/.thumbs/Photo";
-const std::string RESTORE_LOCAL_DIR = "/storage/media/local/files/Photo";
 const std::string RESTORE_MUSIC_LOCAL_DIR = "/storage/media/local/files/Docs/UpdateBackup/";
 const std::string UPGRADE_FILE_DIR = "/storage/media/local/files/data";
 const std::string GARBLE_DUAL_FRAME_CLONE_DIR = "/storage/media/local/files/.backup/restore/storage/emulated";

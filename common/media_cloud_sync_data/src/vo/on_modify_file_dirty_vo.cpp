@@ -22,7 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnFileDirtyRecord::Unmarshalling(MessageParcel &parcel)
@@ -82,7 +82,7 @@ std::string OnFileDirtyRecord::ToString() const
        << "\"rotation\": \"" << rotation << "\","
        << "\"fileType\": \"" << fileType << "\","
        << "\"size\": \"" << size << "\","
-       << "\"path\": \"" << MediaFileUtils::DesensitizePath(path) << "\","
+       << "\"path\": \"" << MediaPathUtils::DesensitizePath(path) << "\","
        << "\"createTime\": \"" << createTime << "\","
        << "\"modifyTime\": \"" << modifyTime << "\","
        << "\"version\": \"" << version << "\","

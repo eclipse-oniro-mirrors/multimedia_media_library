@@ -31,6 +31,12 @@ class CustomRestoreScannerObj {
 public:
     explicit CustomRestoreScannerObj(CustomRestoreInfo& info);
     ~CustomRestoreScannerObj() = default;
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    void SetAccountId(int32_t accountId) { accountId_ = accountId; }
+    int32_t GetAccountId() const { return accountId_; }
+#endif
+
     int32_t Execute();
 private:
     // Pipeline steps
@@ -48,12 +54,14 @@ private:
         std::unique_ptr<Metadata> metadata;
         NativeRdb::ValuesBucket values;
         bool isDuplicate = false;
+        bool metadataResolved = false;
     };
- 
+
     std::vector<CustomRestoreItem> items_;
     CustomRestoreInfo& customRestoreInfo_;
+    int32_t accountId_ = -1;
 };
- 
+
 } // namespace Media
 } // namespace OHOS
  

@@ -175,7 +175,7 @@ int32_t CloudMediaDownloadDao::UpdateDownloadThm(const std::vector<std::string> 
             SET sync_status = 0, \
                 thumb_status = thumb_status & ? \
         WHERE cloud_id IN ({0});";
-    std::vector<std::string> params = {CloudMediaDaoUtils::ToStringWithCommaAndQuote(cloudIds)};
+    std::vector<std::string> params = {MediaStringUtils::ToStringWithCommaAndQuote(cloudIds)};
     std::string execSql = MediaStringUtils::FillParams(sql, params);
     std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(~THM_TO_DOWNLOAD_MASK)};
     int32_t ret = rdbStore->ExecuteSql(execSql, bindArgs);
@@ -196,7 +196,7 @@ int32_t CloudMediaDownloadDao::UpdateDownloadLcd(const std::vector<std::string> 
         UPDATE Photos \
             SET thumb_status = thumb_status & ? \
         WHERE cloud_id IN ({0});";
-    std::vector<std::string> params = {CloudMediaDaoUtils::ToStringWithCommaAndQuote(cloudIds)};
+    std::vector<std::string> params = {MediaStringUtils::ToStringWithCommaAndQuote(cloudIds)};
     std::string execSql = MediaStringUtils::FillParams(sql, params);
     std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(~LCD_TO_DOWNLOAD_MASK)};
     int32_t ret = rdbStore->ExecuteSql(execSql, bindArgs);

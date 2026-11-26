@@ -16,6 +16,7 @@
 #define MLOG_TAG "MediaAlbumsControllerServiceTest"
  
 #include "get_data_analysis_process_test.h"
+#include "media_pure_file_utils.h"
  
 #include <string>
 #include <vector>
@@ -139,9 +140,9 @@ static void InsertHighLightAlbumTable()
 
 HWTEST_F(GetDataAnalysisProcessTest, GetLabelAnalysisProgress_Test_001, TestSize.Level0)
 {
-    bool createDirRes = MediaFileUtils::CreateDirectory("/data/local/tmp");
+    bool createDirRes = MediaPureFileUtils::CreateDirectory("/data/local/tmp");
     std::string filePath = "/data/local/tmp/IMG_1501924305_001.jpg";
-    if (!MediaFileUtils::IsFileExists(filePath)) {
+    if (!MediaPureFileUtils::IsFileExists(filePath)) {
         EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     }
     InsertAssetIntoPhotosTable(filePath);

@@ -35,6 +35,10 @@ constexpr int32_t SYNC_INTERVAL = 20000;
 // LCOV_EXCL_START
 void CloudSyncSwitchObserver::OnChange()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MEDIA_INFO_LOG("multi acount not support cloud");
+    return;
+#endif
     MEDIA_INFO_LOG("Cloud Sync Switch Status change");
     lock_guard<mutex> lock(syncMutex_);
         if (!isPending_) {

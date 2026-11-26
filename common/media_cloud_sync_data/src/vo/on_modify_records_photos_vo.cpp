@@ -22,7 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnModifyRecord::Unmarshalling(MessageParcel &parcel)
@@ -71,7 +71,7 @@ std::string OnModifyRecord::ToString() const
        << "\"fileId\": \"" << fileId << "\","
        << "\"modifyTime\": \"" << modifyTime << "\","
        << "\"metaDateModified\": \"" << metaDateModified << "\","
-       << "\"path\": \"" << MediaFileUtils::DesensitizePath(path) << "\","
+       << "\"path\": \"" << MediaPathUtils::DesensitizePath(path) << "\","
        << "\"isSuccess\": \"" << std::to_string(isSuccess) << "\","
        << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
        << "\"serverErrorCode\": " << serverErrorCode << ","

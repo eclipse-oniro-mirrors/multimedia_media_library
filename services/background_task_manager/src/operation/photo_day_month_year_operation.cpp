@@ -22,6 +22,7 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "media_column.h"
 #include "medialibrary_subscriber.h"
@@ -629,8 +630,8 @@ int32_t PhotoDayMonthYearOperation::RepairDateTime()
     CHECK_AND_RETURN_RET_WARN_LOG(lock.try_lock(), E_OK, "Repair date time has started, skipping this operation");
 
     int32_t errCode = E_OK;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(REPAIR_DATE_TIME_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(REPAIR_DATE_TIME_XML, false), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, E_ERR, "get preferences error: %{public}d", errCode);
 
     int32_t curFileId = 0;
@@ -704,8 +705,8 @@ void PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo()
         "UpdatePhotoDateAddedDateInfo has started, skipping this operation");
     MEDIA_INFO_LOG("Start updating photo date added date info");
     int32_t errCode = E_OK;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DATE_ADDED_DATE_UPGRADE_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DATE_ADDED_DATE_UPGRADE_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     const string fileIdProgressKeyName = "task_progress";
     const string isFinishedKeyName = "is_task_finished";

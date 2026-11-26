@@ -248,7 +248,7 @@ public:
 
     EXPORT static std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelperByUser(const int32_t userId)
     {
-        return OHOS::Media::IPC::MediaCommonClient::GetInstance().GetOrCreateDataShareHelper(userId);
+        return OHOS::Media::IPC::MediaCommonClient::GetInstance().GetDataShareHelper(userId);
     }
 
     EXPORT static std::string GetBundleName()
@@ -258,17 +258,7 @@ public:
 
     EXPORT static void GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo)
     {
-        auto bundleMgr = OHOS::Media::IPC::MediaDataShareClient::GetInstance().GetSysBundleManager();
-        if (bundleMgr == nullptr) {
-            NAPI_ERR_LOG("bundleMgr is null");
-            return;
-        }
-        int32_t flags = static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_ABILITY) +
-            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_SIGNATURE_INFO);
-        auto ret = bundleMgr->GetBundleInfoForSelf(flags, bundleInfo);
-        if (ret != ERR_OK) {
-            NAPI_ERR_LOG("get bundle info failed");
-        }
+        OHOS::Media::IPC::MediaCommonClient::GetInstance().GetBundleInfo(bundleInfo);
     }
 
     EXPORT static int32_t RegisterObserverExtProvider(const Uri &uri,

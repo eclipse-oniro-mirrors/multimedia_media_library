@@ -27,6 +27,7 @@
 #include "fetch_result.h"
 #include "get_self_permissions.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_smart_map_column.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -255,7 +256,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_DeleteMetaDataByPath_Tes
     int ret = E_OK;
     string photoPath = "/storage/cloud/files/Photo/test_file.jpg";
     string photoMetaPath = "/storage/cloud/files/.meta/Photo/test_file.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
     MediaFileUtils::CreateFile(photoMetaPath);
     ret = MediaLibraryMetaRecovery::GetInstance().DeleteMetaDataByPath(photoPath);
     EXPECT_EQ(ret, E_OK);
@@ -357,7 +358,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_LoadAlbumMaps_Test_001, 
     MEDIA_INFO_LOG("MetaRecovery_LoadAlbumMaps_Test_001::Start");
 
     string albumMetaPath = "/storage/cloud/files/.meta/album.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     vector<shared_ptr<PhotoAlbum>> vecPhotoAlbum;
     auto album1 = make_shared<PhotoAlbum>();
@@ -437,7 +438,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_InsertMetadataInDb_Test_
     testAsset.SetSize(1024);
 
     string metaPath = "/storage/cloud/files/.meta/Photo/test_insert.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
     MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
 
     ClearPhotoApi10();
@@ -636,7 +637,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WriteMetadataToFile_Test
     testAsset.SetMimeType("image/jpeg");
 
     string metaPath = "/storage/cloud/files/.meta/Photo/write_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
     EXPECT_EQ(ret, E_OK);
@@ -673,7 +674,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_ReadMetadataFromFile_Tes
     testAsset.SetAlbum("Test Album");
 
     string metaPath = "/storage/cloud/files/.meta/Photo/read_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
     EXPECT_EQ(ret, E_OK);
@@ -729,7 +730,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WritePhotoAlbumToFile_Te
     vecPhotoAlbum.push_back(album1);
 
     string albumPath = "/storage/cloud/files/.meta/album_write_test.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumPath, vecPhotoAlbum);
     EXPECT_EQ(ret, E_OK);
@@ -784,7 +785,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WriteMetaStatusToFile_Te
     MEDIA_INFO_LOG("MetaRecovery_WriteMetaStatusToFile_Test_001::Start");
 
     string statusPath = "/storage/cloud/files/.meta/status.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetaStatusToFile("1", 10);
     EXPECT_EQ(ret, E_OK);
@@ -861,7 +862,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_DoDataBaseRecovery_Test_
     MEDIA_INFO_LOG("MetaRecovery_DoDataBaseRecovery_Test_001::Start");
 
     string albumMetaPath = "/storage/cloud/files/.meta/album.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     vector<shared_ptr<PhotoAlbum>> vecPhotoAlbum;
     auto album1 = make_shared<PhotoAlbum>();
@@ -910,7 +911,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_AlbumRecovery_Test_002, 
     rdbStore->ExecuteSql(CLEAR_ALBUMS);
 
     string albumMetaPath = "/storage/cloud/files/.meta/album_recovery.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     vector<shared_ptr<PhotoAlbum>> vecPhotoAlbum;
     auto album1 = make_shared<PhotoAlbum>();
@@ -1116,7 +1117,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_WriteJsonFile_Test_001, 
     testJson["key3"] = 456.789;
 
     string testPath = "/storage/cloud/files/.meta/test_write.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     bool ret = MediaLibraryMetaRecovery::GetInstance().WriteJsonFile(testPath, testJson);
     EXPECT_TRUE(ret);
@@ -1152,7 +1153,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_DeleteMetaDataByPath_Tes
 
     string photoPath = "/storage/cloud/files/Photo/delete_test.jpg";
     string photoMetaPath = "/storage/cloud/files/.meta/Photo/delete_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
     MediaFileUtils::CreateFile(photoMetaPath);
 
     EXPECT_EQ(access(photoMetaPath.c_str(), F_OK), 0);
@@ -1193,7 +1194,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_MultipleAlbums_Test_001,
     }
 
     string albumPath = "/storage/cloud/files/.meta/multi_albums.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumPath, vecPhotoAlbum);
     EXPECT_EQ(ret, E_OK);
@@ -1222,7 +1223,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_EdgeCases_Test_001, Test
 
     FileAsset emptyAsset;
     string emptyMetaPath = "/storage/cloud/files/.meta/Photo/empty_test.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(emptyMetaPath, emptyAsset);
     EXPECT_EQ(ret, E_OK);
@@ -1339,7 +1340,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_DuplicateHandling_Test_0
     testAsset.SetSize(16384);
 
     string metaPath = "/storage/cloud/files/.meta/Photo/duplicate_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
     MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
 
     int32_t ret1 = MediaLibraryMetaRecovery::GetInstance().InsertMetadataInDb(testAsset);
@@ -1377,7 +1378,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_RetryMechanism_Test_001,
     testAsset.SetSize(32768);
 
     string metaPath = "/storage/cloud/files/.meta/Photo/retry_test.jpg.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta/Photo");
     MediaLibraryMetaRecovery::GetInstance().WriteMetadataToFile(metaPath, testAsset);
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().InsertMetadataInDbRetry(testAsset);
@@ -1399,7 +1400,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_Cleanup_Test_001, TestSi
     MEDIA_INFO_LOG("MetaRecovery_Cleanup_Test_001::Start");
 
     string testMetaDir = "/storage/cloud/files/.meta/Photo/cleanup_test";
-    MediaFileUtils::CreateDirectory(testMetaDir);
+    MediaPureFileUtils::CreateDirectory(testMetaDir);
 
     for (int i = 0; i < 5; i++) {
         FileAsset testAsset;
@@ -1461,7 +1462,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_Comprehensive_Test_001, 
     vecPhotoAlbum.push_back(album1);
 
     string albumPath = "/storage/cloud/files/.meta/comprehensive_album.json";
-    MediaFileUtils::CreateDirectory("/storage/cloud/files/.meta");
+    MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.meta");
 
     int32_t ret = MediaLibraryMetaRecovery::GetInstance().WritePhotoAlbumToFile(albumPath, vecPhotoAlbum);
     EXPECT_EQ(ret, E_OK);
@@ -1470,7 +1471,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_Comprehensive_Test_001, 
     EXPECT_EQ(ret, E_OK);
 
     string testMetaDir = "/storage/cloud/files/.meta/Photo/comprehensive_test";
-    MediaFileUtils::CreateDirectory(testMetaDir);
+    MediaPureFileUtils::CreateDirectory(testMetaDir);
 
     for (int i = 0; i < 3; i++) {
         FileAsset testAsset;

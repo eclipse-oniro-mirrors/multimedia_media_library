@@ -41,7 +41,9 @@
 #include "get_self_permissions.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_mock_tocken.h"
 #include "medialibrary_operation.h"
@@ -153,7 +155,7 @@ void MediaLibraryShareOpenTest::ProcessPermission()
 
 int32_t CreateFileWithData(const std::string &filePath, const std::string &data)
 {
-    std::string parentPath = MediaFileUtils::GetParentPath(filePath);
+    std::string parentPath = MediaPathUtils::GetParentPath(filePath);
     if (!MediaFileUtils::IsDirExists(parentPath)) {
         std::filesystem::create_directories(std::filesystem::path(filePath).parent_path());
     }
@@ -251,25 +253,25 @@ int32_t MediaLibraryShareOpenTest::CreatePhotoApi10(int mediaType, const string 
 
 void MediaLibraryShareOpenTest::CheckTestFileExistence()
 {
-    bool isFileExist = MediaFileUtils::IsFileExists(EFFECT_FILE_PATH);
+    bool isFileExist = MediaPureFileUtils::IsFileExists(EFFECT_FILE_PATH);
     EXPECT_TRUE(isFileExist);
-    isFileExist = MediaFileUtils::IsFileExists(EDIT_DATA_PATH);
+    isFileExist = MediaPureFileUtils::IsFileExists(EDIT_DATA_PATH);
     EXPECT_TRUE(isFileExist);
-    isFileExist = MediaFileUtils::IsFileExists(EDIT_DATA_CAMERA_PATH);
+    isFileExist = MediaPureFileUtils::IsFileExists(EDIT_DATA_CAMERA_PATH);
     EXPECT_TRUE(isFileExist);
-    isFileExist = MediaFileUtils::IsFileExists(EDIT_DATA_SOURCE_BACK_PATH);
+    isFileExist = MediaPureFileUtils::IsFileExists(EDIT_DATA_SOURCE_BACK_PATH);
     EXPECT_TRUE(isFileExist);
-    isFileExist = MediaFileUtils::IsFileExists(EDIT_DATA_SOURCE_PATH);
+    isFileExist = MediaPureFileUtils::IsFileExists(EDIT_DATA_SOURCE_PATH);
     EXPECT_TRUE(isFileExist);
-    isFileExist = MediaFileUtils::IsFileExists(VIDEO_TEST_FILE_PATH);
+    isFileExist = MediaPureFileUtils::IsFileExists(VIDEO_TEST_FILE_PATH);
     EXPECT_TRUE(isFileExist);
 }
 
 bool CheckAndCreateDir(const std::string &assetPath)
 {
-    std::string assetParentPath = MediaFileUtils::GetParentPath(assetPath);
+    std::string assetParentPath = MediaPathUtils::GetParentPath(assetPath);
     if (!MediaFileUtils::IsDirExists(assetParentPath)) {
-        MediaFileUtils::CreateDirectory(assetParentPath);
+        MediaPureFileUtils::CreateDirectory(assetParentPath);
     }
     bool isParentDirExist = MediaFileUtils::IsDirExists(assetParentPath);
     return isParentDirExist;
@@ -318,14 +320,14 @@ static bool QueryAssetPathByFileId(const std::shared_ptr<MediaLibraryRdbStore> &
 
 static bool EnsureAssetFileExists(const std::string &assetPath)
 {
-    if (MediaFileUtils::IsFileExists(assetPath)) {
+    if (MediaPureFileUtils::IsFileExists(assetPath)) {
         return true;
     }
-    std::string assetParentDir = MediaFileUtils::GetParentPath(assetPath);
+    std::string assetParentDir = MediaPathUtils::GetParentPath(assetPath);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(assetParentDir) ||
-        MediaFileUtils::CreateDirectory(assetParentDir), false,
+        MediaPureFileUtils::CreateDirectory(assetParentDir), false,
         "create asset parent dir failed: %{public}s", assetParentDir.c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(EFFECT_FILE_PATH), false,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(EFFECT_FILE_PATH), false,
         "effect source file not exist: %{public}s", EFFECT_FILE_PATH.c_str());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafe(EFFECT_FILE_PATH, assetPath), false,
         "copy effect file to assetPath failed, src=%{public}s, dst=%{public}s",
@@ -380,12 +382,12 @@ static bool ConvertAssetToFileManager(const std::string &assetUri)
     std::string storagePath;
     CHECK_AND_RETURN_RET_LOG(BuildFileManagerStoragePath(assetPath, storagePath), false,
         "build storage path failed");
-    std::string parentDir = MediaFileUtils::GetParentPath(storagePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(parentDir) || MediaFileUtils::CreateDirectory(parentDir),
+    std::string parentDir = MediaPathUtils::GetParentPath(storagePath);
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(parentDir) || MediaPureFileUtils::CreateDirectory(parentDir),
         false, "create parentDir failed: %{public}s", parentDir.c_str());
     CHECK_AND_RETURN_RET_LOG(PhotoFileUtils::CheckFileManagerRealPath(storagePath), false,
         "invalid file manager real path: %{public}s", storagePath.c_str());
-    if (MediaFileUtils::IsFileExists(storagePath)) {
+    if (MediaPureFileUtils::IsFileExists(storagePath)) {
         MediaFileUtils::DeleteFile(storagePath);
     }
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileAndDelSrc(assetPath, storagePath), false,
@@ -430,7 +432,7 @@ void InitAsset(std::string &dataFileUri, const string &displayName, MediaType ty
     bool isParentDirExist = CheckAndCreateDir(assetPath);
     
     MediaFileUtils::CopyFileSafe(EFFECT_FILE_PATH, assetPath);
-    bool isfileExist = MediaFileUtils::IsFileExists(assetPath);
+    bool isfileExist = MediaPureFileUtils::IsFileExists(assetPath);
     EXPECT_TRUE(isfileExist);
     MEDIA_INFO_LOG("InitAsset end");
 }
@@ -524,7 +526,7 @@ void MediaLibraryShareOpenTest::InitPhotoAsset(std::string &dataFileUri, bool is
     bool isParentDirExist = CheckAndCreateDir(assetPath);
 
     MediaFileUtils::CopyFileSafe(EFFECT_FILE_PATH, assetPath);
-    bool isfileExist = MediaFileUtils::IsFileExists(assetPath);
+    bool isfileExist = MediaPureFileUtils::IsFileExists(assetPath);
     EXPECT_NE(assetPath, "");
 
     if (isEdited) {
@@ -570,7 +572,7 @@ static bool PrepareMovingPhotoFiles(const std::string &assetUri, std::string &as
     }
 
     cachePath = MovingPhotoFileUtils::GetLivePhotoCachePath(assetPath);
-    if (MediaFileUtils::IsFileExists(cachePath)) {
+    if (MediaPureFileUtils::IsFileExists(cachePath)) {
         MediaFileUtils::DeleteFile(cachePath);
     }
     MEDIA_INFO_LOG("PrepareMovingPhotoFiles end");
@@ -625,7 +627,7 @@ static bool GenerateCompressCache(const std::string &assetUri, std::string &cach
         MEDIA_ERR_LOG("GenerateCompressCache failed, cachePath is empty");
         return false;
     }
-    if (MediaFileUtils::IsFileExists(cachePath)) {
+    if (MediaPureFileUtils::IsFileExists(cachePath)) {
         MediaFileUtils::DeleteFile(cachePath);
     }
 
@@ -645,7 +647,7 @@ static bool GenerateCompressCache(const std::string &assetUri, std::string &cach
     close(fd);
     cachePath = tlvPath;
     MEDIA_INFO_LOG("GenerateCompressCache end, cachePath: %{public}s", cachePath.c_str());
-    return MediaFileUtils::IsFileExists(cachePath);
+    return MediaPureFileUtils::IsFileExists(cachePath);
 }
 
 static int32_t OpenCompressCacheFd(const std::string &assetUri, std::string &cachePath)
@@ -678,7 +680,7 @@ static int32_t OpenCompressCacheFd(const std::string &assetUri, std::string &cac
 static void CleanupTempFiles(const std::initializer_list<std::string> &paths)
 {
     for (const auto &path : paths) {
-        if (!path.empty() && MediaFileUtils::IsFileExists(path)) {
+        if (!path.empty() && MediaPureFileUtils::IsFileExists(path)) {
             EXPECT_TRUE(MediaFileUtils::DeleteFile(path));
         }
     }
@@ -733,16 +735,16 @@ void MediaLibraryShareOpenTest::CopyToDestPath(int32_t srcFd, const std::string 
 {
     MEDIA_INFO_LOG("CopyToDestPath start, destPath: %{public}s", destPath.c_str());
     int32_t ret = E_OK;
-    std::string destDir = MediaFileUtils::GetParentPath(destPath);
+    std::string destDir = MediaPathUtils::GetParentPath(destPath);
     if (!MediaFileUtils::IsDirExists(destDir)) {
         MEDIA_INFO_LOG("CopyToDestPath destDir is not exist, create dir: %{public}s", destDir.c_str());
-        ret = MediaFileUtils::CreateDirectory(destDir);
+        ret = MediaPureFileUtils::CreateDirectory(destDir);
         if (ret != E_OK) {
             std::filesystem::create_directories(destDir);
             MEDIA_INFO_LOG("destDir is exist? : %{public}d", MediaFileUtils::IsDirExists(destDir));
         }
     }
-    if (MediaFileUtils::IsFileExists(destPath)) {
+    if (MediaPureFileUtils::IsFileExists(destPath)) {
         ret = MediaFileUtils::DeleteFile(destPath);
     }
 
@@ -757,7 +759,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_001, TestSize.Level
 {
     ASSERT_TRUE(MediaLibraryShareOpenTest::IsValid());
     std::string dataPath = "/data/local/tmp/assets_share_resources/assets_share/CreateImageLcdTest_001.jpg";
-    bool isFileExist = MediaFileUtils::IsFileExists(dataPath);
+    bool isFileExist = MediaPureFileUtils::IsFileExists(dataPath);
     MEDIA_INFO_LOG("media_library_share_test_001 file exist: %{public}d", isFileExist);
     EXPECT_TRUE(isFileExist);
 }
@@ -784,7 +786,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_002, TestSize.Level
     EXPECT_EQ(ret, E_OK);
     MediaLibraryShareOpenTest::CopyToDestPath(fd, TLV_FILE_CACHE_FILE);
     UniqueFd srcFdGuard(fd);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(TLV_FILE_CACHE_FILE));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(TLV_FILE_CACHE_FILE));
 
     std::unordered_map<TlvTag, std::string> extractedFiles = {};
     ret = TlvUtil::ExtractTlv(TLV_FILE_CACHE_FILE, TLV_FILE_CACHE, extractedFiles);
@@ -816,7 +818,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_003, TestSize.Level
         MediaLibraryPhotoOperations::OpenAssetCompress(cmd, tlvPath, version, fd);
     MediaLibraryShareOpenTest::CopyToDestPath(fd, OPEN_ORIGINAL_FILE);
     UniqueFd srcFdGuard(fd);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(OPEN_ORIGINAL_FILE));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(OPEN_ORIGINAL_FILE));
 
     ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri);
     EXPECT_EQ(ret, E_OK);
@@ -829,7 +831,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_004, TestSize.Level
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
 
     string tlvPathAccept = TLV_FILE_CACHE_FILE;
-    if (!MediaFileUtils::IsFileExists(tlvPathAccept)) {
+    if (!MediaPureFileUtils::IsFileExists(tlvPathAccept)) {
         MEDIA_ERR_LOG("TLV file does not exist: %{public}s", tlvPathAccept.c_str());
     }
     RestoreTaskInfo restoreTaskInfo;
@@ -882,13 +884,13 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_006, TestSize.Level
     ASSERT_TRUE(PrepareMovingPhotoFiles(uri, assetPath, cachePath));
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
     ASSERT_TRUE(GenerateLivePhotoCache(uri));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::NON_ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     CleanupTempFiles({compressCachePath});
     MEDIA_INFO_LOG("media_library_share_test_006 End");
 }
@@ -904,13 +906,13 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_007, TestSize.Level
     std::string compressCachePath;
     ASSERT_TRUE(PrepareMovingPhotoFiles(uri, assetPath, cachePath));
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
-    ASSERT_FALSE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    ASSERT_FALSE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::NON_ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     CleanupTempFiles({compressCachePath});
     MEDIA_INFO_LOG("media_library_share_test_007 End");
 }
@@ -922,11 +924,11 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_008, TestSize.Level
     InitPhotoAsset(uri, false);
     std::string compressCachePath;
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::NON_ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     CleanupTempFiles({compressCachePath});
     MEDIA_INFO_LOG("media_library_share_test_008 End");
 }
@@ -942,13 +944,13 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_009, TestSize.Level
     ASSERT_TRUE(PrepareMovingPhotoFiles(uri, assetPath, cachePath));
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
     ASSERT_TRUE(GenerateLivePhotoCache(uri));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended("", ServiceShareType::NON_ASSET_LEVEL);
     EXPECT_EQ(ret, E_ERR);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     CleanupTempFiles({cachePath, compressCachePath});
     MEDIA_INFO_LOG("media_library_share_test_009 End");
 }
@@ -966,23 +968,23 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_010, TestSize.Level
     ASSERT_TRUE(CheckAndCreateDir(assetPath));
     ASSERT_TRUE(MediaFileUtils::CopyFileSafe(EFFECT_FILE_PATH, assetPath));
     cachePath = MovingPhotoFileUtils::GetLivePhotoCachePath(assetPath);
-    if (MediaFileUtils::IsFileExists(cachePath)) {
+    if (MediaPureFileUtils::IsFileExists(cachePath)) {
         EXPECT_TRUE(MediaFileUtils::DeleteFile(cachePath));
     }
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     std::string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(assetPath);
-    if (MediaFileUtils::IsFileExists(videoPath)) {
+    if (MediaPureFileUtils::IsFileExists(videoPath)) {
         EXPECT_TRUE(MediaFileUtils::DeleteFile(videoPath));
     }
     EXPECT_FALSE(GenerateLivePhotoCache(uri));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(cachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(cachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::NON_ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     CleanupTempFiles({compressCachePath});
     MEDIA_INFO_LOG("media_library_share_test_010 End");
 }
@@ -998,13 +1000,13 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_011, TestSize.Level
     ASSERT_TRUE(PrepareMovingPhotoFiles(uri, assetPath, cachePath));
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
     ASSERT_TRUE(GenerateLivePhotoCache(uri));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, static_cast<ServiceShareType>(-1));
     EXPECT_EQ(ret, E_ERR);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     CleanupTempFiles({cachePath, compressCachePath});
     MEDIA_INFO_LOG("media_library_share_test_011 End");
 }
@@ -1021,13 +1023,13 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_012, TestSize.Level
     ASSERT_TRUE(PrepareMovingPhotoFiles(uri, assetPath, livePhotoCachePath));
     ASSERT_TRUE(GenerateCompressCache(uri, compressCachePath));
     ASSERT_TRUE(GenerateLivePhotoCache(uri));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(livePhotoCachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(livePhotoCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(compressCachePath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(livePhotoCachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(compressCachePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(livePhotoCachePath));
     CleanupTempFiles({livePhotoCachePath});
     MEDIA_INFO_LOG("media_library_share_test_012 End");
 }
@@ -1042,18 +1044,18 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_013, TestSize.Level
     int32_t fd = OpenCompressCacheFd(uri, compressCachePath);
     ASSERT_GE(fd, 0);
     UniqueFd srcFdGuard(fd);
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(compressCachePath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(compressCachePath));
     FileDigestInfo expectedDigest = CalculateFileDigest(compressCachePath);
     ASSERT_TRUE(expectedDigest.valid);
     ASSERT_GT(expectedDigest.size, 0);
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(compressCachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(compressCachePath));
 
     ASSERT_NE(lseek(fd, 0, SEEK_SET), -1);
     MediaLibraryShareOpenTest::CopyToDestPath(fd, OPEN_COMPRESS_AFTER_DELETE_FILE);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(OPEN_COMPRESS_AFTER_DELETE_FILE));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(OPEN_COMPRESS_AFTER_DELETE_FILE));
     FileDigestInfo actualDigest = CalculateFileDigest(OPEN_COMPRESS_AFTER_DELETE_FILE);
     EXPECT_TRUE(actualDigest.valid);
     EXPECT_EQ(actualDigest.size, expectedDigest.size);
@@ -1075,18 +1077,18 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_014, TestSize.Level
     int32_t fd = OpenLivePhotoCacheFd(uri);
     ASSERT_GE(fd, 0);
     UniqueFd srcFdGuard(fd);
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(livePhotoCachePath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(livePhotoCachePath));
     FileDigestInfo expectedDigest = CalculateFileDigest(livePhotoCachePath);
     ASSERT_TRUE(expectedDigest.valid);
     ASSERT_GT(expectedDigest.size, 0);
 
     int32_t ret = MediaLibraryPhotoOperations::NotifyAssetSended(uri, ServiceShareType::NON_ASSET_LEVEL);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(livePhotoCachePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(livePhotoCachePath));
 
     ASSERT_NE(lseek(fd, 0, SEEK_SET), -1);
     MediaLibraryShareOpenTest::CopyToDestPath(fd, OPEN_LIVE_PHOTO_AFTER_DELETE_FILE);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(OPEN_LIVE_PHOTO_AFTER_DELETE_FILE));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(OPEN_LIVE_PHOTO_AFTER_DELETE_FILE));
     FileDigestInfo actualDigest = CalculateFileDigest(OPEN_LIVE_PHOTO_AFTER_DELETE_FILE);
     EXPECT_TRUE(actualDigest.valid);
     EXPECT_EQ(actualDigest.size, expectedDigest.size);

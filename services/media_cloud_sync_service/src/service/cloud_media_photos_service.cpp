@@ -64,6 +64,7 @@
 #include "parameters.h"
 #include "cloud_file_error.h"
 #include "medialibrary_related_system_state_manager.h"
+#include "media_path_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_vision_operations.h"
 #endif
@@ -158,7 +159,7 @@ void CloudMediaPhotosService::ExtractEditDataCamera(const CloudMediaPullDataDto 
     MEDIA_INFO_LOG("editDataCameraPath: %{public}s , editDataCamera: %{public}s",
         editDataCameraPath.c_str(),
         editDataCamera.c_str());
-    ForceCreateDirectory(MediaFileUtils::GetParentPath(editDataCameraPath));
+    ForceCreateDirectory(MediaPathUtils::GetParentPath(editDataCameraPath));
     if (!SaveStringToFile(editDataCameraPath, editDataCamera)) {
         MEDIA_ERR_LOG("save editDataCamera failed");
     }
@@ -190,7 +191,9 @@ int32_t CloudMediaPhotosService::ClearLocalData(const CloudMediaPullDataDto &pul
         photoInfo.thumbStatus.value_or(0));
     fdirtyData.emplace_back(dto);
     bool isLocal = CloudMediaSyncUtils::FileIsLocal(photoInfo.position.value_or(-1));
-    CloudMediaSyncUtils::RemoveThmParentPath(cloudPath, PhotoColumn::FILES_CLOUD_DIR);
+
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    CloudMediaSyncUtils::RemoveThmParentPath(cloudPath, cloudFilesDir);
     if (isLocal) {
         CloudMediaSyncUtils::RemoveMetaDataPath(cloudPath);
         CloudMediaSyncUtils::RemoveEditDataPath(cloudPath);
@@ -1126,7 +1129,7 @@ std::string CloudMediaPhotosService::GetCloudPath(const std::string &filePath)
     size_t pos = filePath.find(sandboxPrefix);
     bool isInValid = (pos != 0 || pos == std::string::npos);
     CHECK_AND_RETURN_RET_LOG(!isInValid, "", "GetCloudPath, invalid path %{public}s",
-        MediaFileUtils::DesensitizePath(filePath).c_str());
+        MediaPathUtils::DesensitizePath(filePath).c_str());
     return dfsPrefix + filePath.substr(sandboxPrefix.length());
 }
 
@@ -1337,9 +1340,11 @@ int32_t CloudMediaPhotosService::RemoveLocalFile(const CloudMediaPullDataDto &pu
     int32_t ret = unlink(targetPath.c_str());
     MEDIA_INFO_LOG("RemoveLocalFile, ret: %{public}d, targetPath: %{public}s",
         ret,
-        MediaFileUtils::DesensitizePath(targetPath).c_str());
+        MediaPathUtils::DesensitizePath(targetPath).c_str());
     std::string cloudPath = photoInfo.data.value_or("");
-    CloudMediaSyncUtils::RemoveThmParentPath(cloudPath, PhotoColumn::FILES_CLOUD_DIR);
+
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    CloudMediaSyncUtils::RemoveThmParentPath(cloudPath, cloudFilesDir);
     CloudMediaSyncUtils::RemoveEditDataParentPath(cloudPath);
     CloudMediaSyncUtils::RemoveMetaDataPath(cloudPath);
     CloudMediaSyncUtils::InvalidVideoCache(cloudPath);
@@ -1598,8 +1603,8 @@ int32_t CloudMediaPhotosService::HandleInvalidCloudResource(
                              E_DATA,
                              "HandleInvalidCloudResource push again, "
                              "path: %{public}s, fileStoragePath: %{public}s",
-                             MediaFileUtils::DesensitizePath(photosData).c_str(),
-                             MediaFileUtils::DesensitizePath(fileStoragePath).c_str());
+                             MediaPathUtils::DesensitizePath(photosData).c_str(),
+                             MediaPathUtils::DesensitizePath(fileStoragePath).c_str());
     // Scenario: device has record but file not exists, Handle: delete records and remove files.
     int32_t ret = this->photosDao_.DeleteFileNotExistPhoto(photosData, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK,
@@ -1611,12 +1616,13 @@ int32_t CloudMediaPhotosService::HandleInvalidCloudResource(
     CHECK_AND_RETURN_RET_LOG(!cloudPath.empty(),
                              E_DATA,
                              "cloudPath is empty, path: %{public}s, PhotosDto: %{public}s",
-                             MediaFileUtils::DesensitizePath(photosData).c_str(),
+                             MediaPathUtils::DesensitizePath(photosData).c_str(),
                              photo.ToString().c_str());
     bool isValid = (unlink(cloudPath.c_str()) >= 0);
     CHECK_AND_PRINT_LOG(isValid, "unlink fail, path: %{public}s, err: %{public}d",
-        MediaFileUtils::DesensitizePath(cloudPath).c_str(), errno);
-    CloudMediaSyncUtils::RemoveThmParentPath(photosData, PhotoColumn::FILES_CLOUD_DIR);
+        MediaPathUtils::DesensitizePath(cloudPath).c_str(), errno);
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    CloudMediaSyncUtils::RemoveThmParentPath(photosData, cloudFilesDir);
     return E_DATA;
 }
 

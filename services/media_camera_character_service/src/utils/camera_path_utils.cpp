@@ -18,6 +18,7 @@
 #include "camera_path_utils.h"
 
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "media_path_utils.h"
 #include "medialibrary_db_const.h"
@@ -152,13 +153,13 @@ int32_t CameraPathUtils::SaveEditDataCameraByString(const std::string& path, con
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_ERR, "Failed to get asset path");
     std::string editDataDirPath = GetEditDataDir(path);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_ERR, "Can not get editdara dir path");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_ERR,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(editDataDirPath), E_ERR,
         "failed to create dir %{private}s", editDataDirPath.c_str());
 
     std::string editDataCameraPath;
     GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, path, editDataCameraPath);
     CHECK_AND_RETURN_RET_LOG(!editDataCameraPath.empty(), E_ERR, "Failed to get edit data path");
-    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(editDataCameraPath), E_ERR,
             "Failed to create file %{private}s", editDataCameraPath.c_str());
     }
@@ -209,13 +210,13 @@ int32_t CameraPathUtils::SaveEditDataCameraByStruct(const std::string& path, con
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_ERR, "Failed to get asset path");
     std::string editDataDirPath = GetEditDataDir(path);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_ERR, "Can not get editdara dir path");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_ERR,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(editDataDirPath), E_ERR,
         "failed to create dir %{private}s", editDataDirPath.c_str());
 
     std::string editDataCameraPath;
     GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, path, editDataCameraPath);
     CHECK_AND_RETURN_RET_LOG(!editDataCameraPath.empty(), E_ERR, "Failed to get edit data path");
-    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(editDataCameraPath), E_ERR,
             "Failed to create file %{private}s", editDataCameraPath.c_str());
     }
@@ -294,7 +295,7 @@ bool CameraPathUtils::SaveTemporaryImage(const std::string& realPath, const std:
 
 std::string CameraPathUtils::GetEditDataDir(const std::string& originPath, int32_t userId)
 {
-    if (!MediaPathUtils::CheckPhotoPath(originPath)) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, originPath)) {
         return "";
     }
  
@@ -303,7 +304,7 @@ std::string CameraPathUtils::GetEditDataDir(const std::string& originPath, int32
 
 std::string CameraPathUtils::GetCacheDir(const std::string& originPath, int32_t userId)
 {
-    if (!MediaPathUtils::CheckPhotoPath(originPath)) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, originPath)) {
         return "";
     }
     return MediaPathUtils::AppendUserId(MEDIA_CACHE_DIR, userId) + originPath.substr(ROOT_MEDIA_DIR.length());

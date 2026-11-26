@@ -100,7 +100,6 @@ public:
     EXPORT static bool IsExists(const std::string &path);
     EXPORT static std::string GetFileNameFromUri(const std::string &path);
     EXPORT static std::string GetFileExtension(const std::string &path);
-    EXPORT static std::string GetParentPath(const std::string &path);
     EXPORT static bool IsFileHidden(const std::string &path);
     EXPORT static bool IsDirectory(const std::string &path);
     EXPORT static bool IsRegularFile(const std::string &path);

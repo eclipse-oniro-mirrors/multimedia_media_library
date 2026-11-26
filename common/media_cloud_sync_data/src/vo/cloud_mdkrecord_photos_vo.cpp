@@ -22,7 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "itypes_util.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool CloudMdkRecordPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
@@ -204,7 +204,7 @@ bool CloudMdkRecordPhotosVo::Unmarshalling(MessageParcel &parcel)
 void CloudMdkRecordPhotosVo::GetAlbumInfo(std::stringstream &ss) const
 {
     ss << "\"albumCloudId\": \"" << albumCloudId << "\","
-       << "\"albumLPath\": \"" << MediaFileUtils::DesensitizePath(albumLPath) << "\"";
+       << "\"albumLPath\": \"" << MediaPathUtils::DesensitizePath(albumLPath) << "\"";
 }
 
 void CloudMdkRecordPhotosVo::GetBasicInfo(std::stringstream &ss) const
@@ -268,7 +268,7 @@ void CloudMdkRecordPhotosVo::GetAttributesInfo(std::stringstream &ss) const
         << "\"musicMasterMode\": " << musicMasterMode << ","
 
        << "\"strongAssociation\": " << strongAssociation << ","
-       << "\"data\": \"" << MediaFileUtils::DesensitizePath(data) << "\","
+       << "\"data\": \"" << MediaPathUtils::DesensitizePath(data) << "\","
        << "\"latitude_has_value\": " << (latitude != 0) << ","
        << "\"longitude_has_value\": " << (longitude != 0) << ","
        << "\"height\": " << height << ","

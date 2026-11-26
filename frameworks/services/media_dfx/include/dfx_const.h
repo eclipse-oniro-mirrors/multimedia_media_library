@@ -174,8 +174,6 @@ const std::string MULTISHOT_INFO_KEY_MULTISHOT_NUM = "multishotNum";
 const std::string MULTISHOT_INFO_KEY_SUP_DEF_EFF_TIMES = "supportedDeferredEffectsNum";
 const std::string MULTISHOT_INFO_KEY_UPD_ORI_RES_TIMES = "updateOriImageResourceTimes";
 
-const std::string CLOUD_PHOTO_PATH = "/storage/cloud/files/Photo/";
-const std::string CLOUD_FILE_PATH = "/storage/cloud/files/";
 const std::string GARBLE = "*";
 const std::string SPLIT_PATH = "/";
 const std::string DOT = ".";

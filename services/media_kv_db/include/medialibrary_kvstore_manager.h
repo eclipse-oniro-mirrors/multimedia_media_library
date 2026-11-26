@@ -18,6 +18,9 @@
 
 #include <atomic>
 #include <safe_map.h>
+#include <map>
+#include <set>
+#include <tuple>
 
 #include "medialibrary_kvstore.h"
 #include "timer.h"
@@ -50,7 +53,26 @@ public:
     EXPORT int32_t CloneKvStore(const std::string &oldKvStoreId, const std::string &oldBaseDir,
         const std::string &newKvStoreId, const std::string &newBaseDir);
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT static bool ResolveRoute(MediaLibraryKvStoreRoute &route);
+    EXPORT std::shared_ptr<MediaLibraryKvStore> GetKvStore(const KvStoreRoleType &roleType,
+        const KvStoreValueType &valueType, const MediaLibraryKvStoreRoute &route);
+    EXPORT bool InitAccountKvStores(int32_t accountId);
+    EXPORT std::shared_ptr<MediaLibraryKvStore> GetKvStoreForPath(const KvStoreValueType &valueType,
+        const std::string &path);
+    EXPORT int32_t DeleteAccountKvStores(const MediaLibraryKvStoreRoute &route);
+#endif
+
 private:
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    using AccountStoreKey = std::tuple<int32_t, KvStoreRoleType, KvStoreValueType>;
+    std::map<AccountStoreKey, KvStoreSharedPtr> accountStores_;
+    std::set<int32_t> deletingAccounts_;
+    std::set<int32_t> deletedAccounts_;
+    KvStoreSharedPtr GetAccountStoreLocked(const KvStoreRoleType &roleType,
+        const KvStoreValueType &valueType, const MediaLibraryKvStoreRoute &route);
+    bool CloseAccountStoresLocked(int32_t accountId);
+#endif
     void DoRefreshKvStore(int64_t markerMtimeMs);
     MediaLibraryKvStoreManager() = default;
     ~MediaLibraryKvStoreManager() = default;

@@ -24,6 +24,7 @@
 
 #include "datashare_values_bucket.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_values_bucket_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -186,7 +187,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_GetExtraDataLen_ImageOutsideMed
 // ---- CreateExtraData：version 显式透传时写入源文件版本号，未透传时保持 v3 规则 ----
 static bool PrepareExtraDataTestFile(const string &dir, const string &imagePath, const string &videoPath)
 {
-    if (!MediaFileUtils::CreateDirectory(dir)) {
+    if (!MediaPureFileUtils::CreateDirectory(dir)) {
         return false;
     }
     MediaFileUtils::CreateAsset(imagePath);
@@ -519,7 +520,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CreateExtraData_InvalidExtraDat
     off_t fileSize = 0;
     EXPECT_EQ(MovingPhotoFileUtils::CreateExtraData(params, fileSize), E_INVALID_VALUES);
     string extraPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(imagePath);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(extraPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(extraPath));
     MediaFileUtils::DeleteFile(extraPath);
     MediaFileUtils::DeleteFile(imagePath);
     MediaFileUtils::DeleteFile(videoPath);
@@ -531,7 +532,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CreateExtraData_VideoNotExist_0
     const string dir = "/storage/media/local/files/single_file_extra_video_missing";
     const string imagePath = dir + "/img.jpg";
     const string videoPath = dir + "/not_exist.mp4";
-    ASSERT_TRUE(MediaFileUtils::CreateDirectory(dir)) << "Failed to create dir " << dir;
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(dir)) << "Failed to create dir " << dir;
     MediaFileUtils::CreateAsset(imagePath);
     MediaFileUtils::DeleteFile(videoPath);
     const string extraPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(imagePath);
@@ -543,7 +544,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MovingPhoto_CreateExtraData_VideoNotExist_0
     off_t fileSize = 0;
     EXPECT_EQ(MovingPhotoFileUtils::CreateExtraData(params, fileSize), E_HAS_FS_ERROR);
     EXPECT_EQ(fileSize, 0);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(extraPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(extraPath));
     MediaFileUtils::DeleteFile(imagePath);
 }
 } // namespace Media

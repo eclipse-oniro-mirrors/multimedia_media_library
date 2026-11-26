@@ -19,6 +19,7 @@
 
 
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_notify.h"

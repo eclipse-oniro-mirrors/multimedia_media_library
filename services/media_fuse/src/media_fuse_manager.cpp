@@ -28,6 +28,8 @@
 #include "media_fuse_daemon.h"
 #include "media_fuse_hdc_operations.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_db_const.h"
@@ -63,7 +65,10 @@
 #endif
 #include "medialibrary_bundle_manager.h"
 #include "transcode_compatible_info_operations.h"
-#include "tokenid_kit.h"
+#include "media_path_utils.h"
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "media_fuse_account_task.h"
+#endif
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -132,6 +137,99 @@ static const map<uint32_t, string> MEDIA_OPEN_MODE_MAP = {
 SafeMap<int, time_t> MEDIA_OPEN_WRITE_MAP;
 SafeMap<std::string, bool> MEDIA_CREATE_WRITE_MAP;
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+int32_t CloseCancelledFuseFile(const char *path, int fd)
+{
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, -EBADF, "Invalid cancelled file descriptor");
+    MEDIA_OPEN_WRITE_MAP.Erase(fd);
+    (void)path;
+    std::string createdPath;
+    FuseCreatedFiles::GetInstance().Take(fd, createdPath);
+    int result = close(fd);
+    fd = -1;
+    if (result != 0) {
+        int closeError = errno;
+        MEDIA_ERR_LOG("Close cancelled FUSE file failed, errno=%{public}d", closeError);
+        return -closeError;
+    }
+    CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "HDC unlink cancelled");
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        return ReleaseAccountHdcFile(path, fd);
+    }
+#endif
+        int flags = fcntl(fd, F_GETFL);
+        if (flags >= 0 && (flags & O_ACCMODE) == O_RDONLY) {
+            int ownedFd = fd;
+            int closeResult = close(ownedFd);
+            ownedFd = -1;
+            return closeResult == 0 ? E_SUCCESS : -errno;
+        }
+    MEDIA_INFO_LOG("Cancelled FUSE file closed without scan");
+    return E_OK;
+}
+#endif
+
+static bool IsFuseTaskCancelled()
+{
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    return FuseAccountTaskScope::IsCancelled();
+#else
+    return false;
+#endif
+}
+
+static void BeginHdcCreate(const std::string &path)
+{
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        return;
+    }
+#endif
+    MEDIA_CREATE_WRITE_MAP.EnsureInsert(path, false);
+}
+
+static int32_t CompleteHdcCreate(const std::string &path, int &fd)
+{
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        if (!FuseCreatedFiles::GetInstance().Insert(fd, path)) {
+            close(fd);
+            fd = -1;
+            MEDIA_ERR_LOG("Failed to retain HDC create state");
+            return -EIO;
+        }
+        return E_SUCCESS;
+    }
+#else
+    (void)fd;
+#endif
+    MEDIA_CREATE_WRITE_MAP.EnsureInsert(path, true);
+    return E_SUCCESS;
+}
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+static int32_t ReleaseAccountHdcFile(const char *path, int fd)
+{
+    std::string createdPath;
+    if (!FuseCreatedFiles::GetInstance().Take(fd, createdPath)) {
+        int flags = fcntl(fd, F_GETFL);
+        if (flags >= 0 && (flags & O_ACCMODE) == O_RDONLY) {
+            return close(fd) == 0 ? E_SUCCESS : -errno;
+        }
+        return MediaFuseManager::GetInstance().DoRelease(path, fd);
+    }
+    MEDIA_OPEN_WRITE_MAP.Erase(fd);
+    int result = close(fd);
+    fd = -1;
+    if (result != 0) {
+        return -errno;
+    }
+    CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "HDC close cancelled before scan");
+    return MediaFuseHdcOperations::ScanFileByPath(createdPath);
+}
+#endif
+
 static bool IsCriticalPhoto(const string &fileId)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -198,12 +296,12 @@ bool MediaFuseManager::CheckDeviceInLinux()
 
 void MediaFuseManager::Start()
 {
+    // A repeated lifecycle notification must not unmount the daemon that is already serving requests.
+    CHECK_AND_RETURN_INFO_LOG(fuseDaemon_ == nullptr, "Fuse daemon already started");
     int32_t ret = E_OK;
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
 
     UMountFuse();
-
-    CHECK_AND_RETURN_INFO_LOG(fuseDaemon_ == nullptr, "Fuse daemon already started");
 
     /* init current device is in linux or not */
     isInLinux_ = CheckDeviceInLinux();
@@ -288,7 +386,7 @@ static int32_t GetFileIdFromUri(string &fileId, const string &uri)
     if (splitCount == URI_SLASH_NUM_API9) {
         CHECK_AND_RETURN_RET(!tmpPath.empty(), E_ERR);
         CHECK_AND_RETURN_RET(all_of(tmpPath.begin(), tmpPath.end(), ::isdigit), E_ERR);
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(tmpPath), E_ERR, "virtual id invalid");
+        CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(tmpPath), E_ERR, "virtual id invalid");
         int32_t virtualId = stoi(tmpPath);
         bool cond = ((virtualId + FUSE_PHOTO_VIRTUAL_IDENTIFIER) % FUSE_VIRTUAL_ID_DIVIDER == 0);
         CHECK_AND_RETURN_RET_LOG(cond, E_ERR, "virtual id err");
@@ -315,7 +413,7 @@ static int32_t GetMessageFromUriForGetAttr(string &fileId, string &storageName, 
             tmpPath = tmpPath.substr(0, pos);
         }
         CHECK_AND_RETURN_RET(all_of(tmpPath.begin(), tmpPath.end(), ::isdigit), E_ERR);
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(tmpPath), E_ERR, "virtual id invalid");
+        CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(tmpPath), E_ERR, "virtual id invalid");
         fileId = tmpPath;
         displayName = MediaFileUtils::GetFileName(uri);
         CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::GetExtensionFromPath(displayName).empty(), E_ERR,
@@ -338,44 +436,39 @@ static int32_t GetMessageFromUriForGetAttr(string &fileId, string &storageName, 
 
 static int32_t GetPathFromFileId(string &filePath, const string &fileId)
 {
+    filePath.clear();
+    CHECK_AND_RETURN_RET_LOG(!fileId.empty(), E_ERR, "Empty file ID");
     NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
     rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, fileId);
     rdbPredicate.And()->EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
     rdbPredicate.And()->EqualTo(MediaColumn::MEDIA_HIDDEN, to_string(0));
 
-    vector<string> columns;
-    columns.push_back(MediaColumn::MEDIA_FILE_PATH);
-    columns.push_back(MediaColumn::MEDIA_DATE_TRASHED);
-    columns.push_back(MediaColumn::MEDIA_HIDDEN);
-    columns.push_back(PhotoColumn::PHOTO_STORAGE_PATH);
-    columns.push_back(PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+    vector<string> columns = {
+        MediaColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_DATE_TRASHED, MediaColumn::MEDIA_HIDDEN,
+        PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_FILE_SOURCE_TYPE
+    };
     auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
-    int32_t numRows = 0;
-    if (resultSet == nullptr) {
-        MEDIA_ERR_LOG("Failed to get rslt");
-        return E_ERR;
-    }
-    int32_t ret = resultSet->GetRowCount(numRows);
-    if ((ret != NativeRdb::E_OK) || (numRows <= 0)) {
-        MEDIA_ERR_LOG("Failed to get filePath");
-        return E_ERR;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Failed to query file path");
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-#ifdef MEDIALIBRARY_LAKE_SUPPORT
-        int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-        filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
-            GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
-            GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-#else
-        filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-#endif
+        resultSet->Close();
+        return E_ERR;
     }
-    return E_SUCCESS;
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+    int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+    filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
+        GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
+        GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+#else
+    filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+#endif
+    resultSet->Close();
+    return filePath.empty() ? E_ERR : E_SUCCESS;
 }
 
 static int32_t GetPathFromFileIdForGetAttr(string &filePath, const string &fileId,
     CloudAssetTimeQueryParams &cloudAssetTimeQueryParams, PathValidationParams &pathValidationParams)
 {
+    filePath.clear();
     NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
     rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, fileId);
     rdbPredicate.And()->EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
@@ -393,13 +486,12 @@ static int32_t GetPathFromFileIdForGetAttr(string &filePath, const string &fileI
     columns.push_back(PhotoColumn::PHOTO_OWNER_ALBUM_ID);
     columns.push_back(MediaColumn::MEDIA_NAME);
     auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
-    int32_t numRows = 0;
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Failed to get rslt");
-    int32_t ret = resultSet->GetRowCount(numRows);
-    bool cond = ((ret != NativeRdb::E_OK) || (numRows <= 0));
-    CHECK_AND_RETURN_RET_LOG(!cond, E_ERR, "Failed to get filePath");
-
-    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Failed to query file path");
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
+        return E_ERR;
+    }
+    {
         int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
         filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
             GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
@@ -414,7 +506,7 @@ static int32_t GetPathFromFileIdForGetAttr(string &filePath, const string &fileI
         pathValidationParams.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
     }
     resultSet->Close();
-    return E_SUCCESS;
+    return filePath.empty() ? E_ERR : E_SUCCESS;
 }
 
 static int32_t CheckMediaLibraryPathValidity(string &filePath, string &fileId, string storageName,
@@ -592,12 +684,12 @@ static int32_t GetTranscodeUri(string &filePath, const string &mode,
     CHECK_AND_RETURN_RET_INFO_LOG(isHighPixel || isHeif, E_INNER_FAIL, "[transcode] not high, not heif");
     CHECK_AND_RETURN_RET_LOG(compatibleMode != 0, E_INNER_FAIL,
         "Is not have transcode file, filePath: %{private}s", filePath.c_str());
-    string path = MediaEditUtils::GetEditDataDir(filePath);
+    string path = MediaEditUtils::GetEditDataDirForCloud(filePath);
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INNER_FAIL,
         "Get edit data dir path failed, filePath: %{private}s", filePath.c_str());
     MEDIA_INFO_LOG("GetTranscodeUri path: %{private}s", path.c_str());
     string tempPath = path + "/transcode.jpg";
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists((tempPath)), E_INNER_FAIL, "transcode.jpg is not exist");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists((tempPath)), E_INNER_FAIL, "transcode.jpg is not exist");
 
     if (IsUriTranscoded(filePath, uri)) {
         MEDIA_INFO_LOG("fileAsset uri is transcoded, fileAsset uri: %{public}s", uri.c_str());
@@ -631,40 +723,36 @@ static int32_t GetTranscodeUri(string &filePath, const string &mode,
 
 int32_t MediaFuseManager::DoGetAttr(const char *path, struct stat *stbuf)
 {
+    CHECK_AND_RETURN_RET_LOG(path != nullptr && path[0] != '\0' && stbuf != nullptr,
+        E_ERR, "Invalid getattr argument");
     string fileId;
     string storageName;
     string displayName;
     string target = path;
-    bool cond = (path == nullptr || strlen(path) == 0);
-
-    CHECK_AND_RETURN_RET_LOG(!cond, E_ERR, "Invalid path, %{public}s", path == nullptr ? "null" : path);
     int32_t ret;
     int32_t splitCount = countSubString(path, "/");
     if (splitCount != URI_SLASH_NUM_API10) {
-        ret = lstat(FUSE_ROOT_MEDIA_DIR.c_str(), stbuf);
+        std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
+        CHECK_AND_RETURN_RET_LOG(!cloudFilesDir.empty(), E_ERR, "Empty photo directory");
+        ret = lstat(cloudFilesDir.c_str(), stbuf);
     } else {
-        fuse_context *ctx = fuse_get_context();
-#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
-        if (ctx != nullptr) {
-            int32_t criticalCheck = PermissionCheck::CheckCriticalPhotoPermission(fileId, ctx->uid);
-            if (criticalCheck != E_SUCCESS) {
-                return E_PERMISSION_DENIED;
-            }
-        }
-#endif
         ret = GetMessageFromUriForGetAttr(fileId, storageName, displayName, path);
         CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, E_ERR, "get attr message fail");
-        MEDIA_INFO_LOG("check fileId = %{public}s", fileId.c_str());
+        fuse_context *ctx = fuse_get_context();
+        CHECK_AND_RETURN_RET_LOG(ctx != nullptr, E_INNER_FAIL, "fuse_get_context returned nullptr");
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+        int32_t criticalCheck = PermissionCheck::CheckCriticalPhotoPermission(fileId, ctx->uid);
+        CHECK_AND_RETURN_RET(criticalCheck == E_SUCCESS, E_PERMISSION_DENIED);
+#endif
         CloudAssetTimeQueryParams cloudAssetTimeQueryParams(fileId, 0, 0, 0);
         PathValidationParams pathValidationParams(fileId, "", "", FileSourceType::MEDIA, 0);
         ret = GetPathFromFileIdForGetAttr(target, fileId, cloudAssetTimeQueryParams, pathValidationParams);
         CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, FILE_FAIL, "get attr path fail");
-        CHECK_AND_RETURN_RET_LOG(ctx != nullptr, E_INNER_FAIL, "fuse_get_context returned nullptr");
         ret = CheckMediaLibraryPathValidity(target, fileId, storageName, pathValidationParams, displayName);
         CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, FILE_FAIL, "check attr path validity fail");
         int32_t permGranted = DoMedialibraryReadPermission(fileId, target, ctx->uid);
         CHECK_AND_RETURN_RET_LOG(permGranted > 0, E_PERMISSION_DENIED, "permission denied");
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(target), FILE_FAIL, "file is not exist.");
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(target), FILE_FAIL, "file is not exist");
         TranscodeType type;
         GetTranscodeUri(target, MEDIA_FILEMODE_READONLY, ctx->uid, type, path);
         ret = lstat(target.c_str(), stbuf);
@@ -674,8 +762,9 @@ int32_t MediaFuseManager::DoGetAttr(const char *path, struct stat *stbuf)
             stbuf->st_mtim.tv_sec = cloudAssetTimeQueryParams.changeTime;
         }
     }
-    stbuf->st_mode = stbuf->st_mode | 0x6;
-    MEDIA_DEBUG_LOG("get attr succ");
+    if (ret == E_SUCCESS) {
+        stbuf->st_mode |= 0x6;
+    }
     return ret;
 }
 
@@ -851,7 +940,7 @@ static int32_t GetFileMtime(const string &filePath, time_t &mtime)
     struct stat statInfo {};
     if (stat(filePath.c_str(), &statInfo) != 0) {
         MEDIA_ERR_LOG("Get file mtime failed, path = %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return E_ERR;
     }
     mtime = statInfo.st_mtime;
@@ -860,6 +949,8 @@ static int32_t GetFileMtime(const string &filePath, time_t &mtime)
 
 int32_t MediaFuseManager::DoOpen(const char *path, int flags, int &fd)
 {
+    fd = -1;
+    CHECK_AND_RETURN_RET_LOG(path != nullptr && path[0] != '\0', E_ERR, "Invalid open path");
     uint32_t realFlag = static_cast<uint32_t>(flags) & (O_RDONLY | O_WRONLY | O_RDWR | O_TRUNC | O_APPEND);
     string fileId;
     string target;
@@ -867,8 +958,10 @@ int32_t MediaFuseManager::DoOpen(const char *path, int flags, int &fd)
         MEDIA_ERR_LOG("Open mode err, flag = %{public}u", realFlag);
         return E_ERR;
     }
-    GetFileIdFromUri(fileId, path);
-    GetPathFromFileId(target, fileId);
+    int32_t ret = GetFileIdFromUri(fileId, path);
+    CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, E_ERR, "Failed to parse file ID");
+    ret = GetPathFromFileId(target, fileId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, E_ERR, "Failed to query file path");
     MEDIA_DEBUG_LOG("MediaFuseManager::DoOpen AddVisitCount fileId[%{public}s]", fileId.c_str());
     MediaVisitCountManager::AddVisitCount(MediaVisitCountManager::VisitCountType::PHOTO_FS, fileId);
     fd = OpenFile(target, fileId, MEDIA_OPEN_MODE_MAP.at(realFlag), path);
@@ -886,30 +979,30 @@ int32_t MediaFuseManager::DoOpen(const char *path, int flags, int &fd)
 
 int32_t MediaFuseManager::DoRelease(const char *path, const int &fd)
 {
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, E_ERR, "invalid release fd");
+    time_t oldMtime = 0;
+    bool checkMtime = MEDIA_OPEN_WRITE_MAP.Find(fd, oldMtime);
+    MEDIA_OPEN_WRITE_MAP.Erase(fd);
     string fileId;
     string filePath;
-    GetFileIdFromUri(fileId, path);
-    GetPathFromFileId(filePath, fileId);
-    if (fd < 0) {
-        MEDIA_ERR_LOG("fuse close file fail");
-        return E_ERR;
+    int32_t ret = E_ERR;
+    if (path != nullptr && path[0] != '\0' && GetFileIdFromUri(fileId, path) == E_SUCCESS) {
+        ret = GetPathFromFileId(filePath, fileId);
     }
-    time_t oldMtime = 0;
-    if (MEDIA_OPEN_WRITE_MAP.Find(fd, oldMtime)) {
-        MEDIA_OPEN_WRITE_MAP.Erase(fd);
+    if (ret == E_SUCCESS && checkMtime) {
         time_t newMtime = 0;
-        if (GetFileMtime(filePath, newMtime) != E_OK) {
-            MEDIA_ERR_LOG("Get file mtime failed, path = %{private}s", filePath.c_str());
-            close(fd);
-            return E_ERR;
-        }
-        if (oldMtime != newMtime) {
+        ret = GetFileMtime(filePath, newMtime);
+        if (ret == E_SUCCESS && oldMtime != newMtime && !IsFuseTaskCancelled()) {
             MediaLibraryTranscodeDataAgingOperation::DeleteTransCodeInfo(filePath, fileId, __func__);
         }
     }
-    close(fd);
+    int ownedFd = fd;
+    int closeResult = close(ownedFd);
+    ownedFd = -1;
+    CHECK_AND_RETURN_RET_LOG(closeResult == E_OK, E_ERR, "Failed to close release fd");
+    CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "FUSE close cancelled before scan");
+    CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, E_ERR, "Failed to resolve release asset");
     MediaLibraryObjectUtils::ScanFileAsync(filePath, fileId, MediaLibraryApi::API_10);
-    MEDIA_DEBUG_LOG("fuse close file succ");
     return E_OK;
 }
 
@@ -1004,6 +1097,7 @@ int32_t MediaFuseManager::DoHdcGetAttr(const char *path, struct stat *stbuf, str
 
 int32_t MediaFuseManager::DoHdcOpen(const char *path, int flags, int &fd)
 {
+    fd = -1;
     MEDIA_INFO_LOG("hdc open start, path = %{private}s", path);
     if (path == nullptr || strlen(path) == 0) {
         MEDIA_ERR_LOG("Invalid path");
@@ -1032,14 +1126,15 @@ int32_t MediaFuseManager::DoHdcOpen(const char *path, int flags, int &fd)
             filePath = tempPath;
             displayName = MediaFuseHdcOperations::JpgToMp4(displayName);
         }
+        CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "HDC overwrite cancelled");
         res = MediaFuseHdcOperations::DeletePhotoByFilePath(filePath);
         CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS, E_ERR, "Delete failed");
-        MEDIA_CREATE_WRITE_MAP.EnsureInsert(target, false);
+        BeginHdcCreate(target);
+        CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "HDC create cancelled");
         res = MediaFuseHdcOperations::CreateFd(displayName, albumId, fd);
-        CHECK_AND_RETURN_RET_LOG(fd > 0, E_ERR, "MediaLibraryPhotoOperations::Create failed, path = %{private}s",
-            filePath.c_str());
-        MEDIA_CREATE_WRITE_MAP.EnsureInsert(target, true);
-        return E_SUCCESS;
+        CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS && fd >= 0, E_ERR,
+            "MediaLibraryPhotoOperations::Create failed, path = %{private}s", filePath.c_str());
+        return CompleteHdcCreate(target, fd);
     }
     string localPath;
     res = MediaFuseHdcOperations::ConvertToLocalPhotoPath(filePath, localPath);
@@ -1057,12 +1152,12 @@ int32_t MediaFuseManager::DoHdcOpen(const char *path, int flags, int &fd)
 int32_t MediaFuseManager::DoHdcCreate(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     MEDIA_INFO_LOG("hdc create file start, path=%{private}s", path);
-    if (path == nullptr || strlen(path) == 0) {
+    if (path == nullptr || strlen(path) == 0 || fi == nullptr) {
         MEDIA_ERR_LOG("Invalid path");
         return -EINVAL;
     }
     string target = path;
-    MEDIA_CREATE_WRITE_MAP.EnsureInsert(target, false);
+    BeginHdcCreate(target);
 
     int32_t albumId = -1;
     string filePath;
@@ -1070,14 +1165,14 @@ int32_t MediaFuseManager::DoHdcCreate(const char *path, mode_t mode, struct fuse
     int32_t res = MediaFuseHdcOperations::Parse(target, albumId, filePath, displayName);
     CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS, E_ERR, "Parse fail");
 
-    int32_t fd;
+    int32_t fd = -1;
+    CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "HDC create cancelled");
     res = MediaFuseHdcOperations::CreateFd(displayName, albumId, fd);
-    if (fd <= 0) {
-        MEDIA_ERR_LOG("MediaLibraryPhotoOperations::Create failed, path = %{private}s", filePath.c_str());
-        return res;
-    }
+    CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS && fd >= 0, E_ERR,
+        "MediaLibraryPhotoOperations::Create failed, path = %{private}s", filePath.c_str());
+    res = CompleteHdcCreate(target, fd);
+    CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS, res, "Retain HDC create state failed");
     fi->fh = static_cast<uint64_t>(fd);
-    MEDIA_CREATE_WRITE_MAP.EnsureInsert(target, true);
     return E_SUCCESS;
 }
 
@@ -1099,9 +1194,21 @@ int32_t MediaFuseManager::DoHdcRelease(const char *path, const int32_t &fd)
         return -errno;
     }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        return ReleaseAccountHdcFile(path, fd);
+    }
+#endif
     string target = path;
     bool isCreateWrite = false;
     if (!MEDIA_CREATE_WRITE_MAP.Find(target, isCreateWrite)) {
+        int flags = fcntl(fd, F_GETFL);
+        if (flags >= 0 && (flags & O_ACCMODE) == O_RDONLY) {
+            int ownedFd = fd;
+            int closeResult = close(ownedFd);
+            ownedFd = -1;
+            return closeResult == 0 ? E_SUCCESS : -errno;
+        }
         MEDIA_INFO_LOG("not found, path=%{private}s, try do release.", path);
         int32_t ret = DoRelease(path, static_cast<int>(fd));
         CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, E_ERR, "do release fail");
@@ -1145,11 +1252,9 @@ int32_t MediaFuseManager::DoHdcUnlink(const char *path)
         res = MediaFuseHdcOperations::GetPathFromDisplayname(displayName, albumId, filePath);
         CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS, E_ERR, "GetPathFromDisplayname fail");
     }
+    CHECK_AND_RETURN_RET_LOG(!IsFuseTaskCancelled(), -ECANCELED, "HDC unlink cancelled");
     int ret = MediaFuseHdcOperations::DeletePhotoByFilePath(filePath);
-    if (ret != 0) {
-        MEDIA_ERR_LOG("Unlink failed");
-        return ret;
-    }
+    CHECK_AND_RETURN_RET_LOG(ret == 0, ret, "Unlink failed");
     return E_SUCCESS;
 }
 

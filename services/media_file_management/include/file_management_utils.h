@@ -77,7 +77,6 @@ enum ResultInfoType {
 class FileManagementUtils {
 public:
     EXPORT static int32_t GetRelativeDir(std::string& target, std::string& relativePath);
-    EXPORT static std::string GetLocalPath(const std::string &path);
     EXPORT static std::string ReplaceLastSegment(const std::string& data, const std::string& displayname);
     EXPORT static std::string GetLastDirName(const std::string& path);
     EXPORT static int64_t CalculateTotalSizeByPath(const std::vector<std::string> &assetpaths);

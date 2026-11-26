@@ -4457,7 +4457,7 @@ static void PhotoAccessHelperOpenCallbackComplete(napi_env env, napi_status stat
         return;
     }
     NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", context->fd,
-        MediaFileUtils::DesensitizePath(context->objectPtr->GetUri()).c_str());
+        MediaPathUtils::DesensitizePath(context->objectPtr->GetUri()).c_str());
 
     unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
     jsContext->status = false;
@@ -4596,7 +4596,7 @@ napi_value FileAssetNapi::PhotoAccessHelperClose(napi_env env, napi_callback_inf
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
     NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", asyncContext->fd,
-        MediaFileUtils::DesensitizePath(asyncContext->objectPtr->GetUri()).c_str());
+        MediaPathUtils::DesensitizePath(asyncContext->objectPtr->GetUri()).c_str());
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperClose",
         PhotoAccessHelperCloseExecute, PhotoAccessHelperCloseCallbackComplete);

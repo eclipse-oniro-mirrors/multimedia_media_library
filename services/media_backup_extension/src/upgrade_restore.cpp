@@ -16,6 +16,7 @@
 #define MLOG_TAG "MediaLibraryUpgradeRestore"
 
 #include "upgrade_restore.h"
+#include "media_pure_file_utils.h"
 
 #include "backup_const_column.h"
 #include "backup_database_utils.h"
@@ -93,7 +94,7 @@ int32_t UpgradeRestore::Init(const std::string &backupRestoreDir, const std::str
         photosPreferencesPath =
             backupRestoreDir + "/" + galleryAppName_ + "/ce/shared_prefs/" + galleryAppName_ + "_preferences.xml";
         shouldIncludeSd_ = false;
-        if (!MediaFileUtils::IsFileExists(externalDbPath_)) {
+        if (!MediaPureFileUtils::IsFileExists(externalDbPath_)) {
             ErrorInfo errorInfo(RestoreError::INIT_FAILED, 0, "", "External db is not exist.");
             UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
             MEDIA_ERR_LOG("External db is not exist.");
@@ -262,9 +263,9 @@ void UpgradeRestore::RestoreAudio(void)
         return;
     }
     if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
-        if (!MediaFileUtils::IsFileExists(RESTORE_MUSIC_LOCAL_DIR)) {
+        if (!MediaPureFileUtils::IsFileExists(RESTORE_MUSIC_LOCAL_DIR)) {
             MEDIA_INFO_LOG("music dir is not exists!!!");
-            MediaFileUtils::CreateDirectory(RESTORE_MUSIC_LOCAL_DIR);
+            MediaPureFileUtils::CreateDirectory(RESTORE_MUSIC_LOCAL_DIR);
         }
         RestoreAudioFromFile();
     }
@@ -954,11 +955,11 @@ void UpgradeRestore::HandleRestData(void)
     int64_t startDeleteDir = MediaFileUtils::UTCTimeMilliSeconds();
     std::string photoData = appDataPath_ + "/" + galleryAppName_;
     std::string mediaData = appDataPath_ + "/" + mediaAppName_;
-    if (MediaFileUtils::IsFileExists(photoData)) {
+    if (MediaPureFileUtils::IsFileExists(photoData)) {
         MEDIA_DEBUG_LOG("Start to delete photo data.");
         MediaFileUtils::DeleteDir(photoData);
     }
-    if (MediaFileUtils::IsFileExists(mediaData)) {
+    if (MediaPureFileUtils::IsFileExists(mediaData)) {
         MEDIA_DEBUG_LOG("Start to delete media data.");
         MediaFileUtils::DeleteDir(mediaData);
     }
@@ -1978,7 +1979,7 @@ int32_t UpgradeRestore::InitDb(bool isUpgrade)
         return E_FAIL;
     }
 
-    if (!MediaFileUtils::IsFileExists(galleryDbPath_)) {
+    if (!MediaPureFileUtils::IsFileExists(galleryDbPath_)) {
         MEDIA_ERR_LOG("Gallery media db is not exist.");
     } else {
         int32_t galleryErr = BackupDatabaseUtils::InitDb(galleryRdb_, GALLERY_DB_NAME, galleryDbPath_,
@@ -1992,7 +1993,7 @@ int32_t UpgradeRestore::InitDb(bool isUpgrade)
         }
     }
 
-    if (!MediaFileUtils::IsFileExists(audioDbPath_)) {
+    if (!MediaPureFileUtils::IsFileExists(audioDbPath_)) {
         MEDIA_ERR_LOG("audio mediaInfo db is not exist.");
     } else {
         int32_t audioErr = BackupDatabaseUtils::InitDb(audioRdb_, AUDIO_DB_NAME, audioDbPath_,

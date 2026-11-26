@@ -17,6 +17,7 @@
 
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "reverse_clone_candidate_resolver.h"
 #include "reverse_clone_resource_executor.h"
@@ -47,7 +48,7 @@ ReverseCloneResourcePlan ReverseCloneResourceInheritService::BuildDuplicatePlanB
         "donorStoragePath=%{public}s, donorCloudId=%{public}s",
         plan.absorbed.fileId, plan.donor.fileId, static_cast<int32_t>(plan.matchType),
         static_cast<int32_t>(plan.decision), plan.absorbed.isPureCloud, plan.donor.fileSourceType,
-        MediaFileUtils::DesensitizePath(plan.donor.storagePath).c_str(), plan.donor.fingerprint.cloudId.c_str());
+        MediaPathUtils::DesensitizePath(plan.donor.storagePath).c_str(), plan.donor.fingerprint.cloudId.c_str());
     return plan;
 }
 

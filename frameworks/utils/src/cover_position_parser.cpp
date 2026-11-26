@@ -40,10 +40,10 @@ size_t CoverPositionParser::GetMaxTaskNum() const
     return COVER_POSITION_PARSER_MAX_TASK_NUM;
 }
 
-void CoverPositionParser::ProcessTask(const pair<string, string> &task)
+void CoverPositionParser::ProcessTask(const ParserTask &task)
 {
-    UpdateCoverPosition(task.first);
-    SendUpdateNotify(task.second);
+    UpdateCoverPosition(task.path);
+    SendUpdateNotify(task.fileUri);
 }
 
 void CoverPositionParser::UpdateCoverPosition(const string &path)

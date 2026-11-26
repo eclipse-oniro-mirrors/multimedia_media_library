@@ -29,9 +29,12 @@
 #include "file_uri.h"
 #include "ipc_skeleton.h"
 #include "iservice_registry.h"
+#include "media_common_client.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "file_asset.h"
@@ -424,16 +427,18 @@ void MediaAssetManagerImpl::CreateDataHelper(int32_t systemAbilityId)
         MEDIA_ERR_LOG("GetSystemAbility Service Failed.");
         return;
     }
+    UserFileClient::Init(remoteObj);
     if (sDataShareHelper_ == nullptr) {
         const sptr<IRemoteObject> &token = remoteObj;
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.Init(token);
+        sDataShareHelper_ = client.GetDataShareHelper();
         if (sDataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG("Create DataShareHelper failed.");
             return;
         }
     }
     MediaAssetManagerImpl::mediaLibraryManager_->InitMediaLibraryManager(remoteObj);
-    UserFileClient::Init(remoteObj);
     MEDIA_INFO_LOG("InitMediaLibraryManager success!");
 }
 
@@ -936,15 +941,15 @@ int32_t MediaAssetManagerImpl::GetFdFromSandBoxUri(const std::string &sandBoxUri
 {
     AppFileService::ModuleFileUri::FileUri destUri(sandBoxUri);
     string destPath = destUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         MEDIA_ERR_LOG("Create empty dest file in sandbox failed, path:%{public}s",
-            MediaFileUtils::DesensitizePath(destPath).c_str());
+            MediaPathUtils::DesensitizePath(destPath).c_str());
         return E_FILE_OPER_FAIL;
     }
     string absDestPath;
     if (!PathToRealPath(destPath, absDestPath)) {
         MEDIA_ERR_LOG("PathToRealPath failed, path:%{public}s",
-            MediaFileUtils::DesensitizePath(destPath).c_str());
+            MediaPathUtils::DesensitizePath(destPath).c_str());
         return E_FILE_OPER_FAIL;
     }
     return MediaFileUtils::OpenFile(absDestPath, MEDIA_FILEMODE_WRITETRUNCATE);

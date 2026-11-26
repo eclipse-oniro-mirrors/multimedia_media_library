@@ -28,6 +28,7 @@
 #include "media_column.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_command.h"
@@ -165,7 +166,7 @@ void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -371,7 +372,7 @@ HWTEST_F(MediaLibraryCoverPositionParserTest, medialib_ProcessCoverPosition_test
     instance->processing_ = true;
     string path = "/storage/cloud/files/Photo/1/IMG_000000000_000.jpg";
     string fileUri = "file://media/Photo/38/IMG_000000000_000/111.jpg";
-    instance->tasks_.push(make_pair(path, fileUri));
+    instance->tasks_.push(ParserTask{.path = path, .fileUri = fileUri});
     instance->ProcessTasks();
     EXPECT_EQ(instance->tasks_.size(), 0);
 }

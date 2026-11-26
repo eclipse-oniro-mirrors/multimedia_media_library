@@ -90,6 +90,12 @@ public:
     CustomRestoreInfo& GetCustomRestoreInfo();
     const CustomRestoreInfo& GetCustomRestoreInfo() const;
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    // 多账号支持
+    int32_t GetAccountId() const { return accountId_; }
+    void SetAccountId(int32_t accountId) { accountId_ = accountId; }
+#endif
+
 private:
     ScanConfig() = default;
 
@@ -130,6 +136,9 @@ private:
     // Info 成员（值类型，通过 strategyType_ 区分哪个生效）
     DefaultScanInfo defaultScanInfo_;
     CustomRestoreInfo customRestoreInfo_;
+
+    // 多账号支持
+    int32_t accountId_ = -1;
 };
 
 } // namespace Media

@@ -19,6 +19,8 @@
 #include "dfx_reporter.h"
 #include "hi_audit.h"
 #include "map_operation_flag.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_album_operations.h"
 #include "medialibrary_formmap_operations.h"
 #include "medialibrary_notify.h"
@@ -463,11 +465,11 @@ static std::string getThumbnailPathFromOrignalPath(std::string srcPath)
 
 int32_t CopyDirectory(const std::string &srcDir, const std::string &dstDir)
 {
-    if (!MediaFileUtils::CreateDirectory(dstDir)) {
+    if (!MediaPureFileUtils::CreateDirectory(dstDir)) {
         MEDIA_ERR_LOG("Create dstDir %{public}s failed", dstDir.c_str());
         return E_FAIL;
     }
-    if (!MediaFileUtils::IsFileExists(srcDir)) {
+    if (!MediaPureFileUtils::IsFileExists(srcDir)) {
         MEDIA_WARN_LOG("%{public}s doesn't exist, skip.", srcDir.c_str());
         return E_OK;
     }
@@ -475,7 +477,7 @@ int32_t CopyDirectory(const std::string &srcDir, const std::string &dstDir)
         std::string srcFilePath = dirEntry.path();
         std::string tmpFilePath = srcFilePath;
         std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-        if (!MediaFileUtils::IsFileExists(srcFilePath) || !MediaFileUtils::IsFileValid(srcFilePath)) {
+        if (!MediaPureFileUtils::IsFileExists(srcFilePath) || !MediaFileUtils::IsFileValid(srcFilePath)) {
             MEDIA_ERR_LOG("Copy file from %{public}s failed , because of thumbnail is invalid", srcFilePath.c_str());
         }
         if (!MediaFileUtils::CopyFileUtil(srcFilePath, dstFilePath)) {
@@ -1119,8 +1121,8 @@ static int32_t CopyLocalFile(shared_ptr<NativeRdb::ResultSet> &resultSet, const 
         return E_INVALID_PATH;
     }
     MEDIA_INFO_LOG("begin copy local file, scrPath is %{public}s, and target path is %{public}s",
-        MediaFileUtils::DesensitizePath(srcPath).c_str(),
-        MediaFileUtils::DesensitizePath(targetPath).c_str());
+        MediaPathUtils::DesensitizePath(srcPath).c_str(),
+        MediaPathUtils::DesensitizePath(targetPath).c_str());
     int32_t err;
     if (targetAssetInfo.isShareAlbumTarget) {
         err = PhotoFileOperation().CopyPhotoForShareAlbum(resultSet, targetPath, targetAssetInfo);
@@ -1423,7 +1425,7 @@ int32_t MediaLibraryAlbumFusionUtils::CopyCloudSingleFile(const std::shared_ptr<
         return E_INVALID_PATH;
     }
     MEDIA_INFO_LOG("Begin copy thumbnail original scrPath is %{public}s, and target path is %{public}s",
-        MediaFileUtils::DesensitizePath(srcPath).c_str(), MediaFileUtils::DesensitizePath(targetPath).c_str());
+        MediaPathUtils::DesensitizePath(srcPath).c_str(), MediaPathUtils::DesensitizePath(targetPath).c_str());
     int32_t err = CopyOriginThumbnail(srcPath, targetPath);
     CHECK_AND_RETURN_RET(err == E_OK, err);
 
@@ -1531,8 +1533,8 @@ int32_t MediaLibraryAlbumFusionUtils::CloneSingleAsset(const int64_t &assetId, c
     GetIntValueFromResultSet(resultSet, PhotoColumn::PHOTO_OWNER_ALBUM_ID, ownerAlbumId);
     std::string targetPath = GetRealPath(rdbStore, ownerAlbumId, targetAssetInfo.displayName);
     if (!targetPath.empty()) {
-        std::string parentDir = MediaFileUtils::GetParentPath(targetPath);
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(parentDir), E_FAIL,
+        std::string parentDir = MediaPathUtils::GetParentPath(targetPath);
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(parentDir), E_FAIL,
             "CloneSingleAsset create dir failed, dir: %{public}s", parentDir.c_str());
     }
     targetAssetInfo.targetRealPath = targetPath;
@@ -1622,7 +1624,7 @@ static void SaveDefaultMetaData(NativeRdb::ValuesBucket &values, shared_ptr<Nati
         values.Put(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     }
     if (!sourcePath.empty()) {
-        std::string newSourcePath = MediaFileUtils::GetParentPath(sourcePath) + "/" + displayName;
+        std::string newSourcePath = MediaPathUtils::GetParentPath(sourcePath) + "/" + displayName;
         values.Put(PhotoColumn::PHOTO_SOURCE_PATH, newSourcePath);
     }
 }
@@ -1694,7 +1696,7 @@ static int32_t ConvertFormatFileSync(const std::shared_ptr<MediaLibraryRdbStore>
     MediaLibraryAlbumFusionUtils::BuildTargetFilePath(targetPath, displayName, mediaType);
     std::string extension = MediaFileUtils::GetExtensionFromPath(displayName);
     MEDIA_INFO_LOG("ConvertFormatPhoto failed, displayName: %{public}s, targetPath: %{public}s",
-        MediaFileUtils::DesensitizeName(displayName).c_str(), MediaFileUtils::DesensitizePath(targetPath).c_str());
+        MediaFileUtils::DesensitizeName(displayName).c_str(), MediaPathUtils::DesensitizePath(targetPath).c_str());
     if (!MoveConvertFormatFileToDocRealPath(resultSet, targetPath, displayName)) {
         MEDIA_ERR_LOG("MoveConvertFormatFileToDocRealPath failed");
         DeleteFile(targetPath);
@@ -2017,7 +2019,7 @@ static void QuerySourceAlbumLPath(const std::shared_ptr<MediaLibraryRdbStore> up
     if (lPath.empty()) {
         lPath = "/Pictures/" + album_name;
     }
-    MEDIA_ERR_LOG("Album lPath is %{public}s", MediaFileUtils::DesensitizePath(lPath).c_str());
+    MEDIA_ERR_LOG("Album lPath is %{public}s", MediaPathUtils::DesensitizePath(lPath).c_str());
 }
 
 void MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(
@@ -2489,7 +2491,7 @@ int32_t MediaLibraryAlbumFusionUtils::CompensateLpathForLocalAlbum(
             } else {
                 lpath = "/Pictures/Users/" + album_name;
                 MEDIA_INFO_LOG("Album type is user type and lPath is %{public}s!!!",
-                    MediaFileUtils::DesensitizePath(lpath).c_str());
+                    MediaPathUtils::DesensitizePath(lpath).c_str());
             }
         }
 

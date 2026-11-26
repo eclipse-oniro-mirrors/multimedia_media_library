@@ -16,6 +16,7 @@
 #define MLOG_TAG "Media_Cloud_Utils"
 
 #include "cloud_media_file_utils.h"
+#include "media_path_utils.h"
 
 #include <sys/ioctl.h>
 #include <sys/xattr.h>
@@ -39,7 +40,7 @@ bool CloudMediaFileUtils::GetParentPathAndFilename(
     size_t slashIndex = path.rfind("/");
     size_t pointIndex = path.rfind(".");
     if (slashIndex == std::string::npos || pointIndex == std::string::npos || slashIndex >= pointIndex) {
-        MEDIA_ERR_LOG("Invalid path: %{public}s.", MediaFileUtils::DesensitizePath(path).c_str());
+        MEDIA_ERR_LOG("Invalid path: %{public}s.", MediaPathUtils::DesensitizePath(path).c_str());
         return false;
     }
     parentPath = path.substr(0, slashIndex + 1);

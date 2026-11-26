@@ -26,31 +26,49 @@
 using namespace std;
 
 namespace OHOS::Media {
-const std::string ROOT_MEDIA_DIR = "/storage/cloud/files/";
-const std::string MEDIA_EDIT_DATA_DIR = ROOT_MEDIA_DIR + ".editData/";
-const std::string MEDIA_CACHE_DIR = ROOT_MEDIA_DIR + ".cache/";
-
-string MediaEditUtils::GetEditDataDir(const string& photoPath, int32_t userId)
+std::string MediaEditUtils::GetEditDataDirForCloud(const string& photoPath, int32_t userId)
 {
-    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, photoPath, AdaptAccount::YES)) {
         return "";
     }
-
-    return MediaPathUtils::AppendUserId(MEDIA_EDIT_DATA_DIR, userId) + photoPath.substr(ROOT_MEDIA_DIR.length());
+    std::string rootCloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    std::string cloudEditDataDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_EDIT_DATA, AdaptAccount::YES);
+    return MediaPathUtils::AppendUserId(cloudEditDataDir, userId) + photoPath.substr(rootCloudFilesDir.length());
 }
 
-string MediaEditUtils::GetCacheDir(const string& photoPath, int32_t userId)
+std::string MediaEditUtils::GetEditDataDirForLocal(const string& photoPath, int32_t userId)
 {
-    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::LOCAL_FILES, photoPath, AdaptAccount::YES)) {
         return "";
     }
+    std::string rootMediaFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES);
+    std::string cloudEditDataDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_EDIT_DATA, AdaptAccount::YES);
+    return MediaPathUtils::AppendUserId(cloudEditDataDir, userId) + photoPath.substr(rootMediaFilesDir.length());
+}
 
-    return MediaPathUtils::AppendUserId(MEDIA_CACHE_DIR, userId) + photoPath.substr(ROOT_MEDIA_DIR.length());
+std::string MediaEditUtils::GetCacheDirForCloud(const string& photoPath, int32_t userId)
+{
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, photoPath, AdaptAccount::YES)) {
+        return "";
+    }
+    std::string rootCloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    std::string cloudCacheDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_CACHE, AdaptAccount::YES);
+    return MediaPathUtils::AppendUserId(cloudCacheDir, userId) + photoPath.substr(rootCloudFilesDir.length());
+}
+
+std::string MediaEditUtils::GetCacheDirForLocal(const string& photoPath, int32_t userId)
+{
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::LOCAL_FILES, photoPath, AdaptAccount::YES)) {
+        return "";
+    }
+    std::string rootMediaFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES);
+    std::string cloudCacheDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_CACHE, AdaptAccount::YES);
+    return MediaPathUtils::AppendUserId(cloudCacheDir, userId) + photoPath.substr(rootMediaFilesDir.length());
 }
 
 string MediaEditUtils::GetEditDataPath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetEditDataDir(photoPath, userId);
+    string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -59,7 +77,7 @@ string MediaEditUtils::GetEditDataPath(const string& photoPath, int32_t userId)
 
 string MediaEditUtils::GetEditDataCameraPath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetEditDataDir(photoPath, userId);
+    string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -68,7 +86,7 @@ string MediaEditUtils::GetEditDataCameraPath(const string& photoPath, int32_t us
 
 std::string MediaEditUtils::GetTransCodePath(const std::string &photoPath, int32_t userId)
 {
-    std::string parentPath = GetEditDataDir(photoPath, userId);
+    std::string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -77,7 +95,7 @@ std::string MediaEditUtils::GetTransCodePath(const std::string &photoPath, int32
 
 string MediaEditUtils::GetEditDataSourcePath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetEditDataDir(photoPath, userId);
+    string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -86,7 +104,7 @@ string MediaEditUtils::GetEditDataSourcePath(const string& photoPath, int32_t us
 
 string MediaEditUtils::GetEditDataSourceBackPath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetEditDataDir(photoPath, userId);
+    string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -95,7 +113,7 @@ string MediaEditUtils::GetEditDataSourceBackPath(const string& photoPath, int32_
 
 string MediaEditUtils::GetEditDataTempPath(const string &photoPath, int32_t userId)
 {
-    string parentPath = GetEditDataDir(photoPath, userId);
+    string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -104,7 +122,7 @@ string MediaEditUtils::GetEditDataTempPath(const string &photoPath, int32_t user
 
 string MediaEditUtils::GetEditDataSourceTempPath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetEditDataDir(photoPath, userId);
+    string parentPath = GetEditDataDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
@@ -124,11 +142,11 @@ bool MediaEditUtils::HasEditData(int64_t editTime)
 
 string MediaEditUtils::GetEnhancementTempMovingPhotoVideoPath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetCacheDir(photoPath, userId);
+    string parentPath = GetCacheDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
-    if (!MediaFileUtils::IsDirExists(parentPath) && !MediaFileUtils::CreateDirectory(parentPath)) {
+    if (!MediaFileUtils::IsDirExists(parentPath) && !MediaPureFileUtils::CreateDirectory(parentPath)) {
         MEDIA_ERR_LOG("Cannot create dir %{private}s, errno %{public}d", parentPath.c_str(), errno);
         return "";
     }
@@ -137,11 +155,11 @@ string MediaEditUtils::GetEnhancementTempMovingPhotoVideoPath(const string& phot
 
 string MediaEditUtils::GetEnhancementTempLivePhotoImagePath(const string& photoPath, int32_t userId)
 {
-    string parentPath = GetCacheDir(photoPath, userId);
+    string parentPath = GetCacheDirForCloud(photoPath, userId);
     if (parentPath.empty()) {
         return "";
     }
-    if (!MediaFileUtils::IsDirExists(parentPath) && !MediaFileUtils::CreateDirectory(parentPath)) {
+    if (!MediaFileUtils::IsDirExists(parentPath) && !MediaPureFileUtils::CreateDirectory(parentPath)) {
         MEDIA_ERR_LOG("Cannot create dir %{private}s, errno %{public}d", parentPath.c_str(), errno);
         return "";
     }
@@ -150,9 +168,9 @@ string MediaEditUtils::GetEnhancementTempLivePhotoImagePath(const string& photoP
 
 bool MediaEditUtils::CheckAndCreateEditDataDir(const string& photoPath)
 {
-    string editDataDirPath = MediaEditUtils::GetEditDataDir(photoPath);
+    string editDataDirPath = MediaEditUtils::GetEditDataDirForCloud(photoPath);
     if (!MediaFileUtils::IsDirExists(editDataDirPath)) {
-        if (!MediaFileUtils::CreateDirectory(editDataDirPath)) {
+        if (!MediaPureFileUtils::CreateDirectory(editDataDirPath)) {
             MEDIA_ERR_LOG("Create edit data directory %{public}s failed", editDataDirPath.c_str());
             return false;
         }

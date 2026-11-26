@@ -20,6 +20,7 @@
 #include "media_log.h"
 #include "cloud_media_file_utils.h"
 #include "cloud_media_sync_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool CloudMediaDownloadServiceProcessor::CheckPhotosPo(const PhotosPo &photosPo)

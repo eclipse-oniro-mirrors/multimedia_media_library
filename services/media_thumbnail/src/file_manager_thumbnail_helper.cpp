@@ -20,6 +20,7 @@
 #include "dfx_utils.h"
 #include "media_log.h"
 #include "media_func_timer.h"
+#include "media_path_utils.h"
 #include "ithumbnail_helper.h"
 #include "thumbnail_const.h"
 #include "thumbnail_utils.h"
@@ -105,7 +106,8 @@ bool FileManagerThumbnailHelper::CheckTemperatureBatteryRestoreCondition()
 void FileManagerThumbnailHelper::SaveThumbnailTaskToSP(const std::string &fileId)
 {
     int32_t errCode = 0;
-    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_THUMB_TASK_SP, errCode);
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(FILE_MANAGER_THUMB_TASK_SP, false), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Failed to get preferences for thumbnail task, errCode: %{public}d", errCode);
         return;
@@ -119,7 +121,8 @@ void FileManagerThumbnailHelper::SaveThumbnailTaskToSP(const std::string &fileId
 void FileManagerThumbnailHelper::RemoveThumbnailTaskFromSP(const std::string &fileId)
 {
     int32_t errCode = 0;
-    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_THUMB_TASK_SP, errCode);
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(FILE_MANAGER_THUMB_TASK_SP, false), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Failed to get preferences for thumbnail task, errCode: %{public}d", errCode);
         return;
@@ -242,7 +245,8 @@ void FileManagerThumbnailHelper::StartAsyncRestoreTasks(std::shared_ptr<MediaLib
     }
 
     int32_t errCode = 0;
-    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_THUMB_TASK_SP, errCode);
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(FILE_MANAGER_THUMB_TASK_SP, false), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "Failed to get preferences, errCode: %{public}d", errCode);
 
     auto prefsMap = prefs->GetAll();

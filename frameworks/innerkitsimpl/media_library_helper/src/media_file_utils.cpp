@@ -81,7 +81,6 @@ constexpr unsigned short MAX_RECURSION_DEPTH = 4;
 constexpr size_t DEFAULT_TIME_SIZE = 32;
 constexpr int32_t CROSS_POLICY_ERR = 18;
 const int32_t HMFS_MONITOR_FL = 2;
-const std::string LISTENING_BASE_PATH = "/storage/media/local/files/";
 const std::string PHOTO_DIR = "Photo";
 const std::string AUDIO_DIR = "Audio";
 const std::string THUMBS_DIR = ".thumbs";
@@ -179,34 +178,14 @@ int32_t MediaFileUtils::RemoveDirectory(const string &path)
     return nftw(path.c_str(), UnlinkCb, OPEN_FDS, FTW_DEPTH | FTW_PHYS);
 }
 
-std::string MediaFileUtils::DesensitizePath(const std::string &path)
-{
-    return MediaPathUtils::DesensitizePath(path);
-}
-
 std::string MediaFileUtils::DesensitizeName(const std::string &name)
 {
     return MediaPathUtils::DesensitizeName(name);
 }
 
-void MediaFileUtils::PrintStatInformation(const std::string& path)
-{
-    MediaPureFileUtils::PrintStatInformation(path);
-}
-
-bool MediaFileUtils::CreateDirectory(const string &dirPath, shared_ptr<int> errCodePtr)
-{
-    return MediaPureFileUtils::CreateDirectory(dirPath, errCodePtr);
-}
-
-bool MediaFileUtils::IsFileExists(const string &fileName)
-{
-    return MediaPureFileUtils::IsFileExists(fileName);
-}
-
 bool MediaFileUtils::IsFileExistsWithExtRetry(const string &fileName)
 {
-    if (IsFileExists(fileName)) {
+    if (MediaPureFileUtils::IsFileExists(fileName)) {
         return true;
     }
 
@@ -221,14 +200,14 @@ bool MediaFileUtils::IsFileExistsWithExtRetry(const string &fileName)
         "IsFileExistsWithExtRetry first attempt failed, fallbackPath is empty");
 
     MEDIA_INFO_LOG("IsFileExistsWithExtRetry first attempt failed, try fallback path %{public}s",
-        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
-    if (!fallbackPath.empty() && fallbackPath != fileName && IsFileExists(fallbackPath)) {
+        MediaPathUtils::DesensitizePath(fileName).c_str());
+    if (!fallbackPath.empty() && fallbackPath != fileName && MediaPureFileUtils::IsFileExists(fallbackPath)) {
         return true;
     }
     MEDIA_INFO_LOG("IsFileExistsWithExtRetry both original and fallback paths not found, "
         "original=%{public}s, fallback=%{public}s",
-        MediaFileUtils::DesensitizePath(fileName).c_str(),
-        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        MediaPathUtils::DesensitizePath(fileName).c_str(),
+        MediaPathUtils::DesensitizePath(fallbackPath).c_str());
     return false;
 }
 
@@ -322,11 +301,6 @@ int32_t MediaFileUtils::CreateAssetRealName(int32_t fileId, int32_t mediaType,
     return E_OK;
 }
 
-bool MediaFileUtils::IsDirectory(const string &dirName, shared_ptr<int> errCodePtr)
-{
-    return MediaPureFileUtils::IsDirectory(dirName, errCodePtr);
-}
-
 bool MediaFileUtils::CreateFile(const string &filePath)
 {
     bool state = false;
@@ -335,7 +309,7 @@ bool MediaFileUtils::CreateFile(const string &filePath)
         MEDIA_ERR_LOG("Invalid file path");
         return state;
     }
-    if (IsFileExists(filePath)) {
+    if (MediaPureFileUtils::IsFileExists(filePath)) {
         MEDIA_ERR_LOG("file already exists");
         return state;
     }
@@ -365,7 +339,7 @@ bool MediaFileUtils::DeleteFileWithRetry(const string &fileName)
     while (!isDeleted && retryCount < maxRetryCount) {
         retryCount++;
         isRemoved = DeleteFile(fileName);
-        isExists = IsFileExists(fileName);
+        isExists = MediaPureFileUtils::IsFileExists(fileName);
         isDeleted = isRemoved && !isExists;
         CHECK_AND_PRINT_LOG(isDeleted,
             "DeleteFileWithRetry fail, retryCount: %{public}d, "
@@ -382,7 +356,7 @@ bool MediaFileUtils::DeleteDir(const string &dirName)
 {
     bool errRet = false;
 
-    if (IsDirectory(dirName)) {
+    if (MediaPureFileUtils::IsDirectory(dirName)) {
         errRet = (RemoveDirectory(dirName) == E_SUCCESS);
     }
 
@@ -391,7 +365,7 @@ bool MediaFileUtils::DeleteDir(const string &dirName)
 
 bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile, bool skipCheckPermit)
 {
-    bool fileExist = IsFileExists(destFile);
+    bool fileExist = MediaPureFileUtils::IsFileExists(destFile);
     if (fileExist) {
         MEDIA_INFO_LOG("destFile:%{private}s already exists", destFile.c_str());
         CHECK_AND_RETURN_RET_LOG(CopyFileUtil(destFile, destFile + TMP_SUFFIX), false,
@@ -436,8 +410,8 @@ bool MediaFileUtils::CopyDirAndDelSrc(const std::string &srcPath, const std::str
     CHECK_AND_RETURN_RET_LOG(srcDir != nullptr, false,
         "open srcDir:%{private}s failed,errno:%{public}d", srcPath.c_str(), errno);
 
-    if (!IsFileExists(destPath)) {
-        if (!CreateDirectory(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath)) {
+        if (!MediaPureFileUtils::CreateDirectory(destPath)) {
             MEDIA_ERR_LOG("create destPath:%{private}s failed", srcPath.c_str());
             closedir(srcDir);
             return false;
@@ -469,19 +443,21 @@ bool MediaFileUtils::CopyDirAndDelSrc(const std::string &srcPath, const std::str
 
 void MediaFileUtils::BackupPhotoDir()
 {
-    string dirPath = ROOT_MEDIA_DIR + PHOTO_BUCKET;
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    std::string dirPath = cloudFilesDir + PHOTO_BUCKET;
     // check whether dir empty
     if (!IsDirEmpty(dirPath)) {
         MEDIA_INFO_LOG("backup for: %{private}s", dirPath.c_str());
-        string suffixName = dirPath.substr(ROOT_MEDIA_DIR.length());
-        CreateDirectory(ROOT_MEDIA_DIR + MEDIALIBRARY_TEMP_DIR);
-        CopyDirAndDelSrc(dirPath, ROOT_MEDIA_DIR + MEDIALIBRARY_TEMP_DIR + SLASH_STR + suffixName);
+        string suffixName = dirPath.substr(cloudFilesDir.length());
+        MediaPureFileUtils::CreateDirectory(cloudFilesDir + MEDIALIBRARY_TEMP_DIR);
+        CopyDirAndDelSrc(dirPath, cloudFilesDir + MEDIALIBRARY_TEMP_DIR + SLASH_STR + suffixName);
     }
 }
 
 void MediaFileUtils::RecoverMediaTempDir()
 {
-    string recoverPath = ROOT_MEDIA_DIR + MEDIALIBRARY_TEMP_DIR + SLASH_STR + PHOTO_BUCKET;
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    std::string recoverPath = cloudFilesDir + MEDIALIBRARY_TEMP_DIR + SLASH_STR + PHOTO_BUCKET;
     if (!IsDirEmpty(recoverPath)) {
         DIR *dir = opendir((recoverPath).c_str());
         if (dir == nullptr) {
@@ -502,9 +478,9 @@ void MediaFileUtils::RecoverMediaTempDir()
                 return;
             }
             string suffixName = fullPath.substr((recoverPath).length());
-            CopyDirAndDelSrc(fullPath, ROOT_MEDIA_DIR + PHOTO_BUCKET + suffixName);
+            CopyDirAndDelSrc(fullPath, cloudFilesDir + PHOTO_BUCKET + suffixName);
         }
-        DeleteDir(ROOT_MEDIA_DIR + MEDIALIBRARY_TEMP_DIR);
+        DeleteDir(cloudFilesDir + MEDIALIBRARY_TEMP_DIR);
         closedir(dir);
     }
 }
@@ -512,7 +488,7 @@ void MediaFileUtils::RecoverMediaTempDir()
 bool MediaFileUtils::MoveFile(const string &oldPath, const string &newPath, bool isSupportCrossPolicy)
 {
     bool errRet = false;
-    if (!IsFileExists(oldPath) || IsFileExists(newPath)) {
+    if (!MediaPureFileUtils::IsFileExists(oldPath) || MediaPureFileUtils::IsFileExists(newPath)) {
         return errRet;
     }
 
@@ -526,7 +502,7 @@ bool MediaFileUtils::MoveFile(const string &oldPath, const string &newPath, bool
 bool MediaFileUtils::MoveFileWithExtRetry(const string &srcPath, const string &destPath)
 {
     bool ret = MoveFile(srcPath, destPath, true);
-    if (!ret && errno == ENOENT && IsFileExists(srcPath)) {
+    if (!ret && errno == ENOENT && MediaPureFileUtils::IsFileExists(srcPath)) {
         string fallbackDestPath = destPath;
         if (destPath.find(JPG_EXT) != string::npos) {
             fallbackDestPath = MediaFileUtils::SwapExtensionInPath(destPath, JPG_EXT, HEIC_EXT);
@@ -534,10 +510,10 @@ bool MediaFileUtils::MoveFileWithExtRetry(const string &srcPath, const string &d
             fallbackDestPath = MediaFileUtils::SwapExtensionInPath(destPath, HEIC_EXT, JPG_EXT);
         }
         MEDIA_INFO_LOG("MoveFileWithExtRetry retry with fallback destPath: %{public}s",
-            MediaFileUtils::DesensitizePath(fallbackDestPath).c_str());
+            MediaPathUtils::DesensitizePath(fallbackDestPath).c_str());
         ret = MoveFile(srcPath, fallbackDestPath, true);
         CHECK_AND_PRINT_LOG(ret, "MoveFileWithExtRetry both attempts failed, destPath: %{public}s",
-            MediaFileUtils::DesensitizePath(fallbackDestPath).c_str());
+            MediaPathUtils::DesensitizePath(fallbackDestPath).c_str());
     }
     return ret;
 }
@@ -556,7 +532,7 @@ int32_t MediaFileUtils::OpenFileWithExtRetry(const std::string &filePath, std::s
     }
 
     MEDIA_INFO_LOG("OpenFileWithExtRetry first attempt failed, try fallback for %{public}s, errno: %{public}d",
-        MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
+        MediaPathUtils::DesensitizePath(filePath).c_str(), errno);
     string fallbackPath = filePath;
     if (filePath.find(JPG_EXT) != string::npos) {
         fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
@@ -564,9 +540,9 @@ int32_t MediaFileUtils::OpenFileWithExtRetry(const std::string &filePath, std::s
         fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
     }
 
-    if (!IsFileExists(fallbackPath)) {
+    if (!MediaPureFileUtils::IsFileExists(fallbackPath)) {
         MEDIA_ERR_LOG("OpenFileWithExtRetry fallback path not exists: %{public}s",
-            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+            MediaPathUtils::DesensitizePath(fallbackPath).c_str());
         return E_ERR;
     }
 
@@ -576,13 +552,13 @@ int32_t MediaFileUtils::OpenFileWithExtRetry(const std::string &filePath, std::s
         if (fd != E_ERR) {
             absFilePath = absFallbackPath;
             MEDIA_INFO_LOG("OpenFileWithExtRetry fallback succeeded, path: %{public}s",
-                MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+                MediaPathUtils::DesensitizePath(fallbackPath).c_str());
             return fd;
         }
     }
     MEDIA_ERR_LOG("OpenFileWithExtRetry both attempts failed, original: %{public}s, fallback: %{public}s",
-        MediaFileUtils::DesensitizePath(filePath).c_str(),
-        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        MediaPathUtils::DesensitizePath(filePath).c_str(),
+        MediaPathUtils::DesensitizePath(fallbackPath).c_str());
     return E_ERR;
 }
 
@@ -604,12 +580,12 @@ static int32_t CheckFilePathAndGetFd(const string &filePath)
     string absFilePath;
     if (!PathToRealPath(filePath, absFilePath)) {
         MEDIA_ERR_LOG("file is not real path, file path: %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return errCode;
     }
     if (absFilePath.empty()) {
         MEDIA_ERR_LOG("Failed to obtain the canonical path for source path:%{public}s %{public}d",
-            MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
+            MediaPathUtils::DesensitizePath(filePath).c_str(), errno);
         return errCode;
     }
     return open(absFilePath.c_str(), O_RDONLY);
@@ -620,7 +596,7 @@ static int32_t CheckDestPathAndGetFd(const string &destPath)
     auto normalizedPath = std::filesystem::absolute(destPath).lexically_normal();
     if (normalizedPath.empty()) {
         MEDIA_ERR_LOG("Failed to normalize dest path:%{public}s",
-            MediaFileUtils::DesensitizePath(destPath).c_str());
+            MediaPathUtils::DesensitizePath(destPath).c_str());
         return -1;
     }
     return open(normalizedPath.c_str(), O_WRONLY | O_CREAT, CHOWN_RO_USR_GRP);
@@ -815,8 +791,8 @@ static int32_t ConvertFormatDirEntry(const std::filesystem::directory_entry &ent
 {
     std::error_code entryEc;
     if (entry.is_directory(entryEc)) {
-        if (!MediaFileUtils::CreateDirectory(dstFilePath)) {
-            MEDIA_ERR_LOG("Create dir:%{public}s failed", MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+        if (!MediaPureFileUtils::CreateDirectory(dstFilePath)) {
+            MEDIA_ERR_LOG("Create dir:%{public}s failed", MediaPathUtils::DesensitizePath(dstFilePath).c_str());
             return E_FAIL;
         }
         return E_OK;
@@ -839,11 +815,11 @@ static int32_t ConvertFormatDirEntry(const std::filesystem::directory_entry &ent
         return E_OK;
     }
     if (entryEc) {
-        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
+        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaPathUtils::DesensitizePath(srcFilePath).c_str(),
             entryEc.message().c_str());
         return E_FAIL;
     }
-    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str());
+    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaPathUtils::DesensitizePath(srcFilePath).c_str());
     return E_FAIL;
 }
 
@@ -866,7 +842,7 @@ static int32_t ConvertFormatDirectoryByEntry(const std::string &srcDir, const st
         CHECK_AND_RETURN_RET(ret == E_OK, ret);
     }
     CHECK_AND_RETURN_RET_LOG(!iterEc, E_FAIL, "Iterate %{public}s failed: %{public}s",
-        MediaFileUtils::DesensitizePath(srcDir).c_str(), iterEc.message().c_str());
+        MediaPathUtils::DesensitizePath(srcDir).c_str(), iterEc.message().c_str());
     return E_OK;
 }
 
@@ -875,15 +851,15 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
 {
     bool cond = (srcDir.empty() || dstDir.empty());
     CHECK_AND_RETURN_RET_LOG(!cond, E_MODIFY_DATA_FAIL, "srcDir or dstDir is empty");
-    if (!IsFileExists(srcDir)) {
+    if (!MediaPureFileUtils::IsFileExists(srcDir)) {
         MEDIA_ERR_LOG("SrcDir: %{public}s is not exist", srcDir.c_str());
         return E_NO_SUCH_FILE;
     }
-    if (IsFileExists(dstDir)) {
+    if (MediaPureFileUtils::IsFileExists(dstDir)) {
         MEDIA_ERR_LOG("DstDir: %{public}s exists", dstDir.c_str());
         return E_FILE_EXIST;
     }
-    cond = (!IsDirectory(srcDir) || !CreateDirectory(dstDir));
+    cond = (!MediaPureFileUtils::IsDirectory(srcDir) || !MediaPureFileUtils::CreateDirectory(dstDir));
     CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL, "srcDir is not directory or Create dstDir failed");
     std::string sourceFilePath = srcDir + "/source." + GetExtensionFromPath(srcDir);
     // 返回值语义沿用原实现：bool 承载错误码，true 表示失败
@@ -928,9 +904,9 @@ bool MediaFileUtils::CopyFileSafeWithExtRetry(const string &filePath, const stri
         } else if (filePath.find(HEIC_EXT) != string::npos) {
             fallbackFilePath = SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
         }
-        if (!IsFileExists(fallbackFilePath)) {
+        if (!MediaPureFileUtils::IsFileExists(fallbackFilePath)) {
             MEDIA_ERR_LOG("CopyFileSafeWithExtRetry fallback source not exists: %{public}s",
-                DesensitizePath(fallbackFilePath).c_str());
+                MediaPathUtils::DesensitizePath(fallbackFilePath).c_str());
             return false;
         }
     } else {
@@ -939,15 +915,16 @@ bool MediaFileUtils::CopyFileSafeWithExtRetry(const string &filePath, const stri
         } else if (newPath.find(HEIC_EXT) != string::npos) {
             fallbackNewPath = SwapExtensionInPath(newPath, HEIC_EXT, JPG_EXT);
         }
-        if (!IsFileExists(filePath)) {
+        if (!MediaPureFileUtils::IsFileExists(filePath)) {
             MEDIA_ERR_LOG("CopyFileSafeWithExtRetry source not exists: %{public}s",
-                DesensitizePath(filePath).c_str());
+                MediaPathUtils::DesensitizePath(filePath).c_str());
             return false;
         }
     }
 
     MEDIA_INFO_LOG("CopyFileSafeWithExtRetry retry with fallback src=%{public}s, dst=%{public}s",
-        DesensitizePath(fallbackFilePath).c_str(), DesensitizePath(fallbackNewPath).c_str());
+        MediaPathUtils::DesensitizePath(fallbackFilePath).c_str(),
+        MediaPathUtils::DesensitizePath(fallbackNewPath).c_str());
 
     return CopyFileSafe(fallbackFilePath, fallbackNewPath);
 }
@@ -983,7 +960,7 @@ void MediaFileUtils::MediaFileDeletionRecord()
     DIR* fileDir;
     MEDIA_INFO_LOG("Set DeletionRecord for directory");
     for (auto &dir : SET_LISTEN_DIR) {
-        path = LISTENING_BASE_PATH + dir;
+        path = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES) + dir;
         fd = open(path.c_str(), O_RDONLY);
         if (fd < 0) {
             MEDIA_ERR_LOG("Failed to open the Dir, errno is %{public}d, %{public}s", errno, dir.c_str());
@@ -1026,27 +1003,27 @@ bool MediaFileUtils::WriteStrToFile(const string &filePath, const string &str)
         return false;
     }
 
-    if (!IsFileExists(filePath)) {
-        MEDIA_ERR_LOG("Can not get FilePath %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    if (!MediaPureFileUtils::IsFileExists(filePath)) {
+        MEDIA_ERR_LOG("Can not get FilePath %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
 
     string absFilePath;
     if (!PathToRealPath(filePath, absFilePath)) {
         MEDIA_ERR_LOG("file is not real path, file path: %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
     ofstream file(absFilePath);
     if (!file.is_open()) {
-        MEDIA_ERR_LOG("Can not open FilePath %{public}s", MediaFileUtils::DesensitizePath(absFilePath).c_str());
+        MEDIA_ERR_LOG("Can not open FilePath %{public}s", MediaPathUtils::DesensitizePath(absFilePath).c_str());
         return false;
     }
 
     file << str;
     file.close();
     if (!file.good()) {
-        MEDIA_ERR_LOG("Can not write FilePath %{public}s", MediaFileUtils::DesensitizePath(absFilePath).c_str());
+        MEDIA_ERR_LOG("Can not write FilePath %{public}s", MediaPathUtils::DesensitizePath(absFilePath).c_str());
         return false;
     }
     return true;
@@ -1058,21 +1035,21 @@ bool MediaFileUtils::ReadStrFromFile(const std::string &filePath, std::string &f
         MEDIA_ERR_LOG("FilePath is empty");
         return false;
     }
-    if (!IsFileExists(filePath)) {
-        MEDIA_ERR_LOG("Can not get FilePath %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    if (!MediaPureFileUtils::IsFileExists(filePath)) {
+        MEDIA_ERR_LOG("Can not get FilePath %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
 
     string absFilePath;
     if (!PathToRealPath(filePath, absFilePath)) {
         MEDIA_ERR_LOG("Failed to open a nullptr path %{public}s, errno=%{public}d",
-            MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
+            MediaPathUtils::DesensitizePath(filePath).c_str(), errno);
         return false;
     }
 
     ifstream file(absFilePath);
     if (!file.is_open()) {
-        MEDIA_ERR_LOG("Can not open FilePath %{public}s", MediaFileUtils::DesensitizePath(absFilePath).c_str());
+        MEDIA_ERR_LOG("Can not open FilePath %{public}s", MediaPathUtils::DesensitizePath(absFilePath).c_str());
         return false;
     }
     char ch;
@@ -1105,7 +1082,7 @@ bool MediaFileUtils::ReadStrFromFileWithExtRetry(const std::string &filePath, st
     }
 
     MEDIA_INFO_LOG("ReadStrFromFileWithExtRetry first attempt failed, try fallback path for %{public}s",
-        MediaFileUtils::DesensitizePath(filePath).c_str());
+        MediaPathUtils::DesensitizePath(filePath).c_str());
     std::string fallbackPath;
     if (filePath.find(JPG_EXT) != std::string::npos) {
         fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
@@ -1113,24 +1090,24 @@ bool MediaFileUtils::ReadStrFromFileWithExtRetry(const std::string &filePath, st
         fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
     } else {
         MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry no jpg/heic extension found in path %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
 
-    if (!IsFileExists(fallbackPath)) {
+    if (!MediaPureFileUtils::IsFileExists(fallbackPath)) {
         MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry fallback path not exists: %{public}s",
-            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+            MediaPathUtils::DesensitizePath(fallbackPath).c_str());
         return false;
     }
 
     if (ReadStrFromFile(fallbackPath, fileContent)) {
         MEDIA_INFO_LOG("ReadStrFromFileWithExtRetry fallback succeeded with path %{public}s",
-            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+            MediaPathUtils::DesensitizePath(fallbackPath).c_str());
         return true;
     }
     MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry both original and fallback paths failed, original=%{public}s, "
-        "fallback=%{public}s", MediaFileUtils::DesensitizePath(filePath).c_str(),
-        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        "fallback=%{public}s", MediaPathUtils::DesensitizePath(filePath).c_str(),
+        MediaPathUtils::DesensitizePath(fallbackPath).c_str());
     return false;
 }
 
@@ -1170,7 +1147,7 @@ bool MediaFileUtils::RenameDir(const string &oldPath, const string &newPath)
 {
     bool errRet = false;
 
-    if (IsDirectory(oldPath)) {
+    if (MediaPureFileUtils::IsDirectory(oldPath)) {
         errRet = (rename(oldPath.c_str(), newPath.c_str()) == E_SUCCESS);
         if (!errRet) {
             MEDIA_ERR_LOG("Failed RenameDir errno %{public}d", errno);
@@ -1376,10 +1353,11 @@ string MediaFileUtils::GetHighlightPath(const string &uri)
     }
 
     string path;
-    if (IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
-        path = "/storage/cloud/files/.thumbs" + pathSuffix;
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO, AppendSlash::NO);
+    if (MediaPureFileUtils::IsFileExists(cloudFilesDir + HIGHLIGHT_INFO_OLD)) {
+        path = MediaPathUtils::GetDir(MediaPathType::CLOUD_THUMB, AdaptAccount::NO) + pathSuffix;
     } else {
-        path = "/storage/cloud/files" + pathSuffix;
+        path = cloudFilesDir + pathSuffix;
     }
     
     return path;
@@ -1527,11 +1505,6 @@ int32_t MediaFileUtils::CheckDentryName(const string &dentryName)
         return -EINVAL;
     }
     return E_OK;
-}
-
-string MediaFileUtils::GetParentPath(const string &path)
-{
-    return MediaPathUtils::GetParentPath(path);
 }
 
 string MediaFileUtils::GetTitleFromDisplayName(const string &displayName)
@@ -1787,8 +1760,8 @@ int32_t MediaFileUtils::CreateAsset(const string &filePath)
         return E_VIOLATION_PARAMETERS;
     }
 
-    if (IsFileExists(filePath)) {
-        MEDIA_ERR_LOG("the file exists path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    if (MediaPureFileUtils::IsFileExists(filePath)) {
+        MEDIA_ERR_LOG("the file exists path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return E_FILE_EXIST;
     }
 
@@ -1824,11 +1797,11 @@ int32_t MediaFileUtils::ModifyAsset(const string &oldPath, const string &newPath
             oldPath.c_str(), newPath.c_str());
         return err;
     }
-    if (!IsFileExists(oldPath)) {
+    if (!MediaPureFileUtils::IsFileExists(oldPath)) {
         MEDIA_ERR_LOG("Failed to modify asset, oldPath: %{private}s does not exist!", oldPath.c_str());
         return E_NO_SUCH_FILE;
     }
-    if (IsFileExists(newPath)) {
+    if (MediaPureFileUtils::IsFileExists(newPath)) {
         MEDIA_ERR_LOG("Failed to modify asset, newPath: %{private}s is already exist!", newPath.c_str());
         return E_FILE_EXIST;
     }
@@ -1836,10 +1809,11 @@ int32_t MediaFileUtils::ModifyAsset(const string &oldPath, const string &newPath
     if (err < 0) {
         int errorno = errno;
         MEDIA_ERR_LOG("Failed rename, errno: %{public}d, old path: %{public}s exists: %{public}d, "
-            "new path: %{public}s exists: %{public}d", errorno, DesensitizePath(oldPath).c_str(),
-            IsFileExists(oldPath), DesensitizePath(newPath).c_str(), IsFileExists(newPath));
+            "new path: %{public}s exists: %{public}d", errorno, MediaPathUtils::DesensitizePath(oldPath).c_str(),
+            MediaPureFileUtils::IsFileExists(oldPath), MediaPathUtils::DesensitizePath(newPath).c_str(),
+            MediaPureFileUtils::IsFileExists(newPath));
         if (errorno == EACCES) {
-            PrintStatInformation(GetParentPath(oldPath));
+            MediaPathUtils::PrintStatInformation(MediaPathUtils::GetParentPath(oldPath));
         }
         return E_FILE_OPER_FAIL;
     }
@@ -2153,7 +2127,8 @@ bool MediaFileUtils::IsUriV10(const string &mediaType)
 
 bool MediaFileUtils::IsFileTablePath(const string &path)
 {
-    if (path.empty() || path.size() <= ROOT_MEDIA_DIR.size()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    if (path.empty() || path.size() <= cloudFilesDir.size()) {
         return false;
     }
 
@@ -2161,7 +2136,7 @@ bool MediaFileUtils::IsFileTablePath(const string &path)
         return false;
     }
 
-    string relativePath = path.substr(ROOT_MEDIA_DIR.size());
+    string relativePath = path.substr(cloudFilesDir.size());
     if ((relativePath.find(DOCS_PATH) == 0)) {
         return true;
     }
@@ -2170,7 +2145,8 @@ bool MediaFileUtils::IsFileTablePath(const string &path)
 
 bool MediaFileUtils::IsPhotoTablePath(const string &path)
 {
-    if (path.empty() || path.size() <= ROOT_MEDIA_DIR.size()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    if (path.find(cloudFilesDir) == string::npos) {
         return false;
     }
 
@@ -2397,12 +2373,12 @@ bool MediaFileUtils::GetFileSize(const std::string& filePath, size_t& size)
     struct stat statbuf;
     if (lstat(filePath.c_str(), &statbuf) == -1) {
         MEDIA_WARN_LOG("Failed to get file size, errno: %{public}d, path: %{private}s", errno,
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         size = 0;
         return false;
     }
     if (statbuf.st_size < 0) {
-        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         size = 0;
         return false;
     }
@@ -2415,12 +2391,12 @@ bool MediaFileUtils::GetFileSizeAndTime(const std::string &filePath, size_t &siz
     struct stat statbuf;
     if (lstat(filePath.c_str(), &statbuf) == -1) {
         MEDIA_WARN_LOG("Failed to get file size, errno: %{public}d, path: %{private}s", errno,
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         size = 0;
         return false;
     }
     if (statbuf.st_size < 0) {
-        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         size = 0;
         return false;
     }
@@ -2454,20 +2430,20 @@ void MediaFileUtils::CheckDirStatus(const std::unordered_set<std::string> &dirCh
     if (dirCheckSet.count(dir) == 0) {
         return;
     }
-    PrintStatInformation(dir);
+    MediaPathUtils::PrintStatInformation(dir);
 }
 
 int32_t MediaFileUtils::CreateDirectoryAndCopyFiles(const std::string &srcDir, const std::string &dstDir)
 {
-    if (!MediaFileUtils::IsFileExists(srcDir)) {
+    if (!MediaPureFileUtils::IsFileExists(srcDir)) {
         MEDIA_WARN_LOG("%{public}s doesn't exist, skip.", srcDir.c_str());
         return E_OK;
     }
-    if (!MediaFileUtils::IsDirectory(srcDir)) {
+    if (!MediaPureFileUtils::IsDirectory(srcDir)) {
         MEDIA_WARN_LOG("%{public}s is not an directory, skip.", srcDir.c_str());
         return E_OK;
     }
-    if (!MediaFileUtils::CreateDirectory(dstDir)) {
+    if (!MediaPureFileUtils::CreateDirectory(dstDir)) {
         MEDIA_ERR_LOG("Create dstDir %{public}s failed", dstDir.c_str());
         return E_FAIL;
     }
@@ -2516,8 +2492,8 @@ static int32_t MoveDirEntry(const std::filesystem::directory_entry &entry, const
 {
     std::error_code entryEc;
     if (entry.is_directory(entryEc)) {
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dstFilePath), E_FAIL,
-            "Create dir:%{public}s failed", MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dstFilePath), E_FAIL,
+            "Create dir:%{public}s failed", MediaPathUtils::DesensitizePath(dstFilePath).c_str());
         return E_OK;
     }
     if (!entryEc && entry.is_regular_file(entryEc)) {
@@ -2525,22 +2501,22 @@ static int32_t MoveDirEntry(const std::filesystem::directory_entry &entry, const
             srcFilePath.find("source_back") != std::string::npos) {
             CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(srcFilePath, dstFilePath), E_FAIL,
                 "Copy editdata_camera from %{public}s to %{public}s failed.",
-                MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
-                MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+                MediaPathUtils::DesensitizePath(srcFilePath).c_str(),
+                MediaPathUtils::DesensitizePath(dstFilePath).c_str());
             return E_OK;
         }
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(srcFilePath, dstFilePath), E_FAIL,
             "Copy file from %{public}s to %{public}s failed.",
-            MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
-            MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+            MediaPathUtils::DesensitizePath(srcFilePath).c_str(),
+            MediaPathUtils::DesensitizePath(dstFilePath).c_str());
         return E_OK;
     }
     if (entryEc) {
-        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str(),
+        MEDIA_ERR_LOG("Stat %{public}s failed: %{public}s", MediaPathUtils::DesensitizePath(srcFilePath).c_str(),
             entryEc.message().c_str());
         return E_FAIL;
     }
-    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaFileUtils::DesensitizePath(srcFilePath).c_str());
+    MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", MediaPathUtils::DesensitizePath(srcFilePath).c_str());
     return E_FAIL;
 }
 
@@ -2563,7 +2539,7 @@ static int32_t MoveDirectoryByEntry(const std::string &srcDir, const std::string
         CHECK_AND_RETURN_RET(ret == E_OK, ret);
     }
     CHECK_AND_RETURN_RET_LOG(!ec, E_FAIL, "Iterate %{public}s failed: %{public}s",
-        MediaFileUtils::DesensitizePath(srcDir).c_str(), ec.message().c_str());
+        MediaPathUtils::DesensitizePath(srcDir).c_str(), ec.message().c_str());
     return E_OK;
 }
 
@@ -2572,16 +2548,16 @@ int32_t MediaFileUtils::MoveDirectory(const std::string &srcDir, const std::stri
     CHECK_AND_RETURN_RET_LOG(!srcDir.empty() && !dstDir.empty(),
         E_MODIFY_DATA_FAIL,
         "Failed to copy directory, srcDir:%{public}s or newPath:%{public}s is empty!",
-        DesensitizePath(srcDir).c_str(),
-        DesensitizePath(dstDir).c_str());
-    CHECK_AND_RETURN_RET_LOG(
-        IsFileExists(srcDir), E_NO_SUCH_FILE, "SrcDir:%{public}s is not exist", DesensitizePath(srcDir).c_str());
-    CHECK_AND_RETURN_RET_LOG(
-        IsDirectory(srcDir), E_FAIL, "SrcDir:%{public}s is not directory", DesensitizePath(srcDir).c_str());
-    CHECK_AND_RETURN_RET_LOG(
-        !IsFileExists(dstDir), E_FILE_EXIST, "DstDir:%{public}s exists", DesensitizePath(dstDir).c_str());
-    CHECK_AND_RETURN_RET_LOG(
-        CreateDirectory(dstDir), E_FAIL, "Create dstDir:%{public}s failed", DesensitizePath(dstDir).c_str());
+        MediaPathUtils::DesensitizePath(srcDir).c_str(),
+        MediaPathUtils::DesensitizePath(dstDir).c_str());
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(srcDir),
+        E_NO_SUCH_FILE, "SrcDir:%{public}s is not exist", MediaPathUtils::DesensitizePath(srcDir).c_str());
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsDirectory(srcDir), E_FAIL, "SrcDir:%{public}s is not directory",
+        MediaPathUtils::DesensitizePath(srcDir).c_str());
+    CHECK_AND_RETURN_RET_LOG(!MediaPureFileUtils::IsFileExists(dstDir),
+        E_FILE_EXIST, "DstDir:%{public}s exists", MediaPathUtils::DesensitizePath(dstDir).c_str());
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dstDir), E_FAIL, "Create dstDir:%{public}s failed",
+        MediaPathUtils::DesensitizePath(dstDir).c_str());
 
     return MoveDirectoryByEntry(srcDir, dstDir);
 }
@@ -2615,17 +2591,6 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     key = KVSTORE_DATE_KEY_TEMPLATE.substr(dateKey.length()) + dateKey +
           KVSTORE_FILE_ID_TEMPLATE.substr(fileId.length()) + fileId;
     return true;
-}
-
-// 需要兼容1.000, -2147483648等场景， 目前实现为ConvertToInt不完全消费场景.
-bool MediaFileUtils::IsValidInteger(const std::string &value)
-{
-    int convetValue = 0;
-    if (value.empty()) {
-        return false;
-    }
-    auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), convetValue);
-    return ec == std::errc{};
 }
 
 bool MediaFileUtils::IsParamNullish(void *env, void *arg)
@@ -2765,7 +2730,7 @@ std::string MediaFileUtils::DesensitizeUri(const std::string &fileUri)
 
 bool MediaFileUtils::DeleteFileOrFolder(const std::string &path, bool isFile)
 {
-    CHECK_AND_RETURN_RET(MediaFileUtils::IsFileExists(path), true);
+    CHECK_AND_RETURN_RET(MediaPureFileUtils::MediaPureFileUtils::IsFileExists(path), true);
     return isFile ? MediaFileUtils::DeleteFile(path) : MediaFileUtils::DeleteDir(path);
 }
 
@@ -2818,9 +2783,9 @@ int32_t MediaFileUtils::UpdateModifyTimeInMsec(const std::string &localPath, int
 {
     CHECK_AND_RETURN_RET_LOG(localMtimeInMsec > 0, E_VIOLATION_PARAMETERS,
         "ModifyTime %{public}" PRId64 "<= 0, localPath: %{public}s",
-        localMtimeInMsec, DesensitizePath(localPath).c_str());
+        localMtimeInMsec, MediaPathUtils::DesensitizePath(localPath).c_str());
     CHECK_AND_RETURN_RET_LOG(access(localPath.c_str(), F_OK) == 0, E_NO_SUCH_FILE,
-        "File not exist, localPath: %{public}s", DesensitizePath(localPath).c_str());
+        "File not exist, localPath: %{public}s", MediaPathUtils::DesensitizePath(localPath).c_str());
 
     struct timeval times[2];
     // set atime
@@ -2830,7 +2795,7 @@ int32_t MediaFileUtils::UpdateModifyTimeInMsec(const std::string &localPath, int
     times[1] = times[0];
 
     CHECK_AND_RETURN_RET_LOG(utimes(localPath.c_str(), times) >= 0, errno,
-        "utimes failed %{public}d, localPath: %{public}s", errno, DesensitizePath(localPath).c_str());
+        "utimes failed %{public}d, localPath: %{public}s", errno, MediaPathUtils::DesensitizePath(localPath).c_str());
     return E_OK;
 }
 
@@ -2850,18 +2815,8 @@ double MediaFileUtils::CalculateAspectRatio(int32_t height, int32_t width)
     }
 }
 
-std::string MediaFileUtils::GetLocalPath(const std::string &path)
-{
-    std::string localPath = path;
-    size_t pos = localPath.find(PhotoColumn::FILES_CLOUD_DIR);
-    if (pos != std::string::npos) {
-        localPath.replace(pos, PhotoColumn::FILES_CLOUD_DIR.length(), PhotoColumn::FILES_LOCAL_DIR);
-    }
-    return localPath;
-}
-
-int32_t MediaFileUtils::FindNormalPhotoAttachments(const std::string &cloudPath,
-    std::vector<std::string> &cloudPathList)
+int32_t MediaFileUtils::FindNormalPhotoAttachments(const std::string& cloudPath,
+                                                   std::vector<std::string>& cloudPathList)
 {
     std::vector<std::string> attachmentPathList = {
         // Note. attachment does not include cloudPath.
@@ -2949,12 +2904,12 @@ bool MediaFileUtils::GetFileStat(const std::string &path, FileStatInfo &out)
     struct stat statbuf;
     if (lstat(path.c_str(), &statbuf) == -1) {
         MEDIA_WARN_LOG("Failed to get file stat, errno: %{public}d, path: %{private}s", errno,
-            MediaFileUtils::DesensitizePath(path).c_str());
+            MediaPathUtils::DesensitizePath(path).c_str());
         out = FileStatInfo{};
         return false;
     }
     if (statbuf.st_size < 0) {
-        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+        MEDIA_WARN_LOG("File size is negative, path: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
         out = FileStatInfo{};
         return false;
     }

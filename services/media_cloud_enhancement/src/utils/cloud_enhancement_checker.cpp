@@ -18,10 +18,11 @@
 #include "cloud_enhancement_checker.h"
 
 #include "media_column.h"
+#include "media_log.h"
+#include "media_path_utils.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "result_set_utils.h"
-#include "media_log.h"
 #include "medialibrary_rdbstore.h"
 #include "enhancement_database_operations.h"
 #include "medialibrary_unistore_manager.h"
@@ -53,8 +54,8 @@ void CloudEnhancementChecker::AddPermissionForCloudEnhancement()
 {
     MEDIA_INFO_LOG("start to add permission for cloud enhancement photo!");
     int32_t errCode = E_OK;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int32_t curFileId = prefs->GetInt(PERMISSION_ADDED_FILE_ID, 0);
     MEDIA_INFO_LOG("start file id: %{public}d", curFileId);
@@ -115,8 +116,8 @@ void CloudEnhancementChecker::RecognizeCloudEnhancementPhotosByDisplayName()
     int32_t errCode = E_OK;
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "get rdb store failed");
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     const string fileIdProgressKeyName = "recognize_ce_photos_file_id_progress";
     int32_t currentFileId = prefs->GetInt(fileIdProgressKeyName, 0);

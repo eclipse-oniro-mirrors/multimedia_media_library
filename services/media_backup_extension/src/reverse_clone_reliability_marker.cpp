@@ -16,6 +16,7 @@
 #include "reverse_clone_reliability_marker.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "preferences_helper.h"
 #include "preferences_errno.h"
 
@@ -32,7 +33,7 @@ bool ReverseCloneReliabilityMarker::Delete()
 {
     MEDIA_INFO_LOG("ReverseCloneReliabilityMarker: Delete marker");
 
-    if (!MediaFileUtils::IsFileExists(MARKER_XML)) {
+    if (!MediaPureFileUtils::IsFileExists(MARKER_XML)) {
         NativePreferences::PreferencesHelper::RemovePreferencesFromCache(MARKER_XML);
         return true;
     }
@@ -47,7 +48,7 @@ bool ReverseCloneReliabilityMarker::Delete()
 
 bool ReverseCloneReliabilityMarker::Exists()
 {
-    return MediaFileUtils::IsFileExists(MARKER_XML);
+    return MediaPureFileUtils::IsFileExists(MARKER_XML);
 }
 
 bool ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage stage)
@@ -79,7 +80,7 @@ bool ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage stage)
 
 bool ReverseCloneReliabilityMarker::GetStage(ReverseCloneRestoreStage &stage)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(MARKER_XML), false,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(MARKER_XML), false,
         "ReverseCloneReliabilityMarker: Marker does not exist");
     int errCode = 0;
     NativePreferences::PreferencesHelper::RemovePreferencesFromCache(MARKER_XML);
@@ -102,7 +103,7 @@ bool ReverseCloneReliabilityMarker::GetStage(ReverseCloneRestoreStage &stage)
 
 bool ReverseCloneReliabilityMarker::GetBackupRestorePath(std::string &path)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(MARKER_XML), false,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(MARKER_XML), false,
         "ReverseCloneReliabilityMarker: Marker does not exist");
     int errCode = 0;
     NativePreferences::PreferencesHelper::RemovePreferencesFromCache(MARKER_XML);

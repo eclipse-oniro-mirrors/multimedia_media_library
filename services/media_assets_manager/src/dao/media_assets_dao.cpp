@@ -20,10 +20,11 @@
 #include "media_log.h"
 #include "medialibrary_unistore_manager.h"
 #include "media_column.h"
+#include "media_path_utils.h"
+#include "media_time_utils.h"
 #include "result_set_reader.h"
 #include "photos_po_writer.h"
 #include "photo_album_po_writer.h"
-#include "media_file_utils.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_errno.h"
 #include "photo_file_utils.h"
@@ -175,14 +176,14 @@ std::string MediaAssetsDao::GetLpathFromSourcePath(const std::string &sourcePath
 {
     size_t pos = sourcePath.find(SOURCE_PATH_PERFIX);
     if (pos == std::string::npos) {
-        MEDIA_ERR_LOG("invalid path %{private}s", MediaFileUtils::DesensitizePath(sourcePath).c_str());
+        MEDIA_ERR_LOG("invalid path %{private}s", MediaPathUtils::DesensitizePath(sourcePath).c_str());
         return "";
     }
 
     size_t lpathStart = pos + SOURCE_PATH_PERFIX.length();
     size_t lpathEnd = sourcePath.rfind('/');
     if (lpathEnd == std::string::npos || lpathEnd <= lpathStart) {
-        MEDIA_ERR_LOG("invalid path %{private}s", MediaFileUtils::DesensitizePath(sourcePath).c_str());
+        MEDIA_ERR_LOG("invalid path %{private}s", MediaPathUtils::DesensitizePath(sourcePath).c_str());
         return "";
     }
     return sourcePath.substr(lpathStart, lpathEnd - lpathStart);
@@ -345,8 +346,8 @@ int32_t MediaAssetsDao::MoveOutTrash(
     predicates.GreaterThan(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
     NativeRdb::ValuesBucket values;
     values.PutInt(MediaColumn::MEDIA_DATE_TRASHED, 0);
-    values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
+    values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaTimeUtils::UTCTimeMilliSeconds());
+    values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaTimeUtils::UTCTimeMilliSeconds());
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
     MEDIA_INFO_LOG("MoveOutTrash Update Ret: %{public}d, ChangedRows: %{public}d", ret, changedRows);

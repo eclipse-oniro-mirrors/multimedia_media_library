@@ -14,6 +14,7 @@
  */
 #define MLOG_TAG "MediaLibraryRestoreTest"
 #include "medialibrary_restore_test.h"
+#include "media_pure_file_utils.h"
 
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -145,10 +146,10 @@ const NativeRdb::RdbStoreConfig GetConfig()
 void MediaLibraryRestoreTest::SetUp()
 {
     MEDIA_INFO_LOG("MediaLibraryRestoreTest::SetUp");
-    if (MediaFileUtils::IsDirectory(TEST_BACKUP_FOLDER)) {
+    if (MediaPureFileUtils::IsDirectory(TEST_BACKUP_FOLDER)) {
         MediaFileUtils::DeleteDir(TEST_BACKUP_FOLDER);
     }
-    MediaFileUtils::CreateDirectory(TEST_BACKUP_FOLDER);
+    MediaPureFileUtils::CreateDirectory(TEST_BACKUP_FOLDER);
 }
 
 void MediaLibraryRestoreTest::TearDown(void)

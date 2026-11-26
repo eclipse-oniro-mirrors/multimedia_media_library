@@ -110,7 +110,6 @@ struct FileStatInfo {
  */
 class MediaFileUtils {
 public:
-    EXPORT static bool IsFileExists(const std::string &fileName);
     EXPORT static bool IsFileExistsWithExtRetry(const std::string &fileName);
     EXPORT static bool IsFileValid(const std::string &fileName);
     EXPORT static bool IsDirEmpty(const std::string &path);
@@ -119,9 +118,7 @@ public:
     EXPORT static bool DeleteFileWithRetry(const std::string &fileName);
     EXPORT static bool DeleteDir(const std::string &dirName);
     EXPORT static std::string GetFileName(const std::string &filePath);
-    EXPORT static std::string GetParentPath(const std::string &path);
     EXPORT static std::string GetTitleFromDisplayName(const std::string &displayName);
-    EXPORT static bool IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr = nullptr);
     EXPORT static bool MoveFile(const std::string &oldPath, const std::string &newPath,
         bool isSupportCrossPolicy = false);
     EXPORT static bool MoveFileWithExtRetry(const std::string &srcPath, const std::string &destPath);
@@ -144,7 +141,7 @@ public:
     EXPORT static bool ReadStrFromFileWithExtRetry(const std::string &filePath, std::string &fileContent);
     EXPORT static bool CopyFile(int32_t rfd, int32_t wfd);
     EXPORT static bool RenameDir(const std::string &oldPath, const std::string &newPath);
-    EXPORT static bool CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr = nullptr);
+
     EXPORT static int32_t CheckAlbumNameCharacter(const std::string &albumName, const std::string &regexRule);
     EXPORT static int32_t CheckAlbumName(const std::string &albumName, bool useDotCompatibleRule = false);
     EXPORT static int32_t CheckHighlightSubtitle(const std::string &highlightSubtitle);
@@ -225,12 +222,10 @@ public:
     EXPORT static bool GetFileSizeAndTime(const std::string &filePath, size_t &size, uint64_t &addTime);
     EXPORT static bool SplitMovingPhotoUri(const std::string& uri, std::vector<std::string>& ret);
     EXPORT static bool IsMediaLibraryUri(const std::string& uri);
-    EXPORT static void PrintStatInformation(const std::string& path);
     EXPORT static void MediaFileDeletionRecord();
     EXPORT static void SetDeletionRecord(int fd, const std::string &fileName);
     EXPORT static void BackupPhotoDir();
     EXPORT static void RecoverMediaTempDir();
-    EXPORT static std::string DesensitizePath(const std::string &path);
     EXPORT static std::string DesensitizeName(const std::string &name);
     EXPORT static void CheckDirStatus(const std::unordered_set<std::string> &dirCheckSet, const std::string &dir);
     EXPORT static int32_t CreateDirectoryAndCopyFiles(const std::string &srcDir, const std::string &dstDir);
@@ -243,7 +238,6 @@ public:
     EXPORT static bool GenerateKvStoreKey(const std::string &fileId, const std::string &dateKey, std::string &key);
     EXPORT static bool IsCalledBySelf();
     EXPORT static std::vector<std::string> GetAllTypes(const int32_t extension);
-    EXPORT static bool IsValidInteger(const std::string &value);
     EXPORT static bool IsParamNullish(void *env, void *arg);
     EXPORT static int32_t CreateAssetRealName(
         int32_t fileId, int32_t mediaType, const std::string &extension, std::string &name);
@@ -269,7 +263,6 @@ public:
     EXPORT static bool CheckAppLinkState(int32_t appLinkState);
     EXPORT static int32_t UpdateModifyTimeInMsec(const std::string &localPath, int64_t localMtimeInMsec);
     EXPORT static double CalculateAspectRatio(int32_t height, int32_t width);
-    EXPORT static std::string GetLocalPath(const std::string &path);
     EXPORT static bool CheckLivePhoto4dStatus(int32_t livePhoto4dStatus);
     EXPORT static bool IsLivePhoto4dEffect(int32_t livePhoto4dStatus);
     EXPORT static bool IsValidUuid(const std::string& uuidStr);

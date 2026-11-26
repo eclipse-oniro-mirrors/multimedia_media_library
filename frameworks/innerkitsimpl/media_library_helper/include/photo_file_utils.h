@@ -50,8 +50,6 @@ public:
     EXPORT static int64_t NormalizeTimestamp(int64_t timestamp, int64_t fallbackValue);
     // Construct Photos column value of date_added_year, date_added_month, date_added_day from date_added
     EXPORT static DateParts ConstructDateAddedDateParts(int64_t dateAdded);
-    EXPORT static std::string GetLocalLcdPath(const std::string &photoPath);
-    EXPORT static std::string GetLocalLcdExPath(const std::string &photoPath);
     EXPORT static bool CheckFileManagerRealPath(const std::string &path);
     EXPORT static bool CheckFileManagerLPath(const std::string &lPath);
     EXPORT static std::string GetFileManagerLPathFromRealPath(const std::string &path);

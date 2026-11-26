@@ -25,6 +25,11 @@
 #include "photo_file_utils.h"
 #include "scanner_utils.h"
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_manager.h"
+#include "account_scope.h"
+#endif
+
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 #include "accesstoken_kit.h"
 #include "ipc_skeleton.h"
@@ -72,11 +77,26 @@ void PhotosTableStrategy::AddDefaultInsertPhotoValues(ValuesBucket& values)
     PutDefaultDateAddedYearMonthDay(values);
 }
 
+void PhotosTableStrategy::AddMultiAccountInsertPhotoValues(ValuesBucket& values)
+{
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = AccountScope::Get();
+    int32_t foregroundAccountId = 0;
+    if (AccountManager::GetInstance().GetForegroundAccountId(foregroundAccountId)) {
+        int32_t targetAccountId = (accountId != INVALID_ACCOUNT_ID) ? accountId : foregroundAccountId;
+        values.PutInt(PhotoColumn::PHOTO_ACCOUNT_ID, targetAccountId);
+    }
+#endif
+}
+
 int32_t PhotosTableStrategy::ExtendInsertValues(NativeRdb::ValuesBucket& values, RdbStore &store,
     const TableStrategyConfig &config)
 {
     if (config.enableDefault) {
         AddDefaultInsertPhotoValues(values);
+    }
+    if (config.enableAccountId) {
+        AddMultiAccountInsertPhotoValues(values);
     }
     return E_OK;
 }
@@ -87,6 +107,11 @@ int32_t PhotosTableStrategy::ExtendBatchInsertValues(std::vector<NativeRdb::Valu
     if (config.enableDefault) {
         for (auto& value : values) {
             AddDefaultInsertPhotoValues(value);
+        }
+    }
+    if (config.enableAccountId) {
+        for (auto& value : values) {
+            AddMultiAccountInsertPhotoValues(value);
         }
     }
     return E_OK;

@@ -15,6 +15,7 @@
 #define MLOG_TAG "PhotosDataHandler"
 
 #include "photos_data_handler.h"
+#include "media_pure_file_utils.h"
 
 #include <sstream>
 
@@ -23,6 +24,7 @@
 #include "ffrt.h"
 #include "ffrt_inner.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "upgrade_restore_task_report.h"
 #include "media_string_utils.h"
 #include "settings_data_manager.h"
@@ -192,12 +194,13 @@ void PhotosDataHandler::AddToSetVisibleFiles(const PhotosDao::PhotosRowData &dir
 
 bool PhotosDataHandler::IsLocalFileExist(const PhotosDao::PhotosRowData &dirtyFile)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(dirtyFile.data, RESTORE_FILES_CLOUD_DIR), false,
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(dirtyFile.data, cloudFilesDir), false,
         "Invalid prefix, path: %{public}s",
         BackupFileUtils::GarbleFilePath(dirtyFile.data, DEFAULT_RESTORE_ID).c_str());
     std::string localPath =
         BackupFileUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL, dirtyFile.data);
-    return MediaFileUtils::IsFileExists(localPath);
+    return MediaPureFileUtils::IsFileExists(localPath);
 }
 
 bool PhotosDataHandler::IsFileExist(const PhotosDao::PhotosRowData &dirtyFile)

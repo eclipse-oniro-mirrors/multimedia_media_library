@@ -19,6 +19,7 @@
 
 #include "abs_rdb_predicates.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
 #include "values_bucket.h"
@@ -34,7 +35,7 @@ int32_t CloudMediaFileManagerDao::UpdateStoragePath(const int32_t fileId, const 
                              NativeRdb::E_INVALID_ARGS,
                              "Invalid arguments, fileId: %{public}d, storagePath: %{public}s",
                              fileId,
-                             MediaFileUtils::DesensitizePath(storagePath).c_str());
+                             MediaPathUtils::DesensitizePath(storagePath).c_str());
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -58,7 +59,7 @@ int32_t CloudMediaFileManagerDao::UpdateStoragePath(const int32_t fileId, const 
                    ret,
                    changedRows,
                    fileId,
-                   MediaFileUtils::DesensitizePath(storagePath).c_str());
+                   MediaPathUtils::DesensitizePath(storagePath).c_str());
     return ret;
 }
 // LCOV_EXCL_STOP

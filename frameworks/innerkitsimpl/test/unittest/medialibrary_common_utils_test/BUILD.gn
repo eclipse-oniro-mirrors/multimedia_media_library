@@ -25,6 +25,9 @@ ohos_unittest("medialibrary_common_utils_test") {
   include_dirs = [
     "./include",
     "../get_self_permissions/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_helper/include",
+    "${MEDIALIB_UTILS_PATH}/include",
   ]
 
   sources = [
@@ -41,6 +44,7 @@ ohos_unittest("medialibrary_common_utils_test") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [

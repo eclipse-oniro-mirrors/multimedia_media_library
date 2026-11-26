@@ -16,6 +16,7 @@
 #define MLOG_TAG "CloudBackupRestoreTest"
 
 #include "cloud_backup_restore_test.h"
+#include "media_pure_file_utils.h"
 
 #include <string>
 
@@ -66,7 +67,7 @@ void CloudBackupRestoreTest::SetUpTestCase()
 {
     MEDIA_INFO_LOG("SetUpTestCase");
     MEDIA_INFO_LOG("Start create directory");
-    if (!MediaFileUtils::IsFileExists(TEST_BACKUP_PATH) && !MediaFileUtils::CreateDirectory(TEST_BACKUP_PATH)) {
+    if (!MediaPureFileUtils::IsFileExists(TEST_BACKUP_PATH) && !MediaPureFileUtils::CreateDirectory(TEST_BACKUP_PATH)) {
         MEDIA_ERR_LOG("%{public}s not exist, create failed", TEST_BACKUP_PATH.c_str());
         exit(1);
     }

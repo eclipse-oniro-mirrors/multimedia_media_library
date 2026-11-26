@@ -18,7 +18,9 @@
 
 #include "medialibrary_restore.h"
 #include "media_column.h"
+#include "media_path_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 
 #include "medialibrary_errno.h"
@@ -34,8 +36,9 @@ const int32_t SECONDS_TO_MS = 1000;
 const int32_t MS_OF_ONE_DAY = 24 * 60 * 60 * 1000;
 const static std::string DATA_CLONE_DESCRIPTION_JSON_FILE_NAME = "/dataclone_description.json";
 const static std::string CLONE_TIME_STAMP = "cloneTimestamp";
-const static std::string CLONE_FOLDER_PATH = PhotoColumn::FILES_LOCAL_DIR + ".backup/clone";
-const static std::string RESTORE_FOLDER_PATH = PhotoColumn::FILES_LOCAL_DIR + ".backup/restore";
+static std::string LOCAL_FILES_DIR = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+const static std::string CLONE_FOLDER_PATH = LOCAL_FILES_DIR + ".backup/clone";
+const static std::string RESTORE_FOLDER_PATH = LOCAL_FILES_DIR + ".backup/restore";
 
 void MedialibrarySubscriber::ClearContinueCloneData(AsyncTaskData *data)
 {
@@ -76,8 +79,8 @@ bool MedialibrarySubscriber::TryClearContinueCloneData()
         MediaFileUtils::IsDirExists(CLONE_FOLDER_PATH) || MediaFileUtils::IsDirExists(RESTORE_FOLDER_PATH);
     CHECK_AND_RETURN_RET_LOG(isDirExists, false, "clone foler not exist, return");
     std::string path = GetDataCloneDescriptionJsonPath();
-    MEDIA_INFO_LOG("GetDataCloneDescriptionJsonPath: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
-    if (!MediaFileUtils::IsFileExists(path)) {
+    MEDIA_INFO_LOG("GetDataCloneDescriptionJsonPath: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
+    if (!MediaPureFileUtils::IsFileExists(path)) {
         int32_t ret = DoClearContinueCloneData();
         CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, false, "DoUpdateDirtyForCloudClone failed");
         return true;
@@ -92,7 +95,7 @@ std::string MedialibrarySubscriber::GetDataCloneDescriptionJsonPath()
 {
     std::string restorePath = RESTORE_FOLDER_PATH + DATA_CLONE_DESCRIPTION_JSON_FILE_NAME;
     std::string clonePath = CLONE_FOLDER_PATH + DATA_CLONE_DESCRIPTION_JSON_FILE_NAME;
-    return MediaFileUtils::IsFileExists(restorePath) ? restorePath : clonePath;
+    return MediaPureFileUtils::IsFileExists(restorePath) ? restorePath : clonePath;
 }
 
 bool MedialibrarySubscriber::GetCloneTimestamp(const std::string &path, int64_t &cloneTimestamp)

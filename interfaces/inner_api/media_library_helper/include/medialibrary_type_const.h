@@ -354,7 +354,6 @@ const std::string DOWNLOAD_DIR_VALUES = "Download/";
 const std::string DOCUMENT_BUCKET = "Document";
 const std::string PHOTO_BUCKET = "Photo";
 const std::string AUDIO_BUCKET = "Audio";
-const std::string PRE_PATH_VALUES = "/storage/cloud/";
 const std::string DOCUMENT_URI_AUTHORITY = "docs";
 const std::string BACKUP_DATA_DIR_VALUE = "data/";
 const std::string BACKUP_SINGLE_DATA_DIR_VALUE = ".backup/";

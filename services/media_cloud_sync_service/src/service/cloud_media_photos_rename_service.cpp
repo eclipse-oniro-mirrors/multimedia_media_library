@@ -16,6 +16,7 @@
 #define MLOG_TAG "Media_Cloud_Service"
 
 #include "cloud_media_photos_rename_service.h"
+#include "media_path_utils.h"
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -68,8 +69,8 @@ int32_t CloudMediaPhotosRenameService::FindNextStoragePath(
         errno);
     nextStoragePath = newStoragePath;
     MEDIA_INFO_LOG("FindNextStoragePath, rename lake asset, storagePath:%{public}s, newStoragePath: %{public}s",
-        MediaFileUtils::DesensitizePath(storagePath).c_str(),
-        MediaFileUtils::DesensitizePath(newStoragePath).c_str());
+        MediaPathUtils::DesensitizePath(storagePath).c_str(),
+        MediaPathUtils::DesensitizePath(newStoragePath).c_str());
     return E_OK;
 }
 

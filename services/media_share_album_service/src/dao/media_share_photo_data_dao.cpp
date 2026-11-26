@@ -21,8 +21,8 @@
 
 #include "abs_rdb_predicates.h"
 #include "media_column.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "photos_po_writer.h"
 #include "result_set_reader.h"

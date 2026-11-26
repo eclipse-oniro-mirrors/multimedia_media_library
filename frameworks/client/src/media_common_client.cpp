@@ -77,9 +77,10 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaCommonClient::QueryWithoutIp
 int MediaCommonClient::OpenFileWithErrCode(Uri &uri, const std::string &mode, int32_t &realErr,
     const int32_t userId)
 {
-    auto helper = GetDataShareHelperByUser(userId);
+    int32_t uid = ResolveUserId(userId);
+    auto helper = GetDataShareHelperByUser(uid);
     if (helper == nullptr) {
-        NAPI_ERR_LOG("Open file with errCode fail, helper null, userId is %{public}d", userId);
+        NAPI_ERR_LOG("Open file with errCode fail, helper null, userId is %{public}d", uid);
         return E_FAIL;
     }
     uri = MediaUriUtils::GetMultiUri(uri, userId);
@@ -91,16 +92,14 @@ int MediaCommonClient::OpenFileWithErrCode(Uri &uri, const std::string &mode, in
 
 bool MediaCommonClient::ForceReconnect(const int32_t userId)
 {
-    return MediaDataShareHelper::ForceReconnect(userId);
+    int32_t uid = ResolveUserId(userId);
+    return MediaDataShareHelper::ForceReconnect(uid);
 }
 
-std::shared_ptr<DataShare::DataShareHelper> MediaCommonClient::GetOrCreateDataShareHelper(const int32_t userId)
+std::shared_ptr<DataShare::DataShareHelper> MediaCommonClient::GetDataShareHelper(const int32_t userId)
 {
-    auto helper = GetDataShareHelperByUser(userId);
-    if (helper == nullptr) {
-        InitFromSa(userId);
-        helper = GetDataShareHelperByUser(userId);
-    }
+    int32_t uid = ResolveUserId(userId);
+    auto helper = GetDataShareHelperByUser(uid);
     return helper;
 }
 // LCOV_EXCL_STOP

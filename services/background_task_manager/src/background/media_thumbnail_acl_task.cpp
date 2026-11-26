@@ -34,6 +34,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "media_string_utils.h"
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::FileManagement::CloudSync;
@@ -51,7 +52,6 @@ constexpr int32_t TASK_MAX_QUERY_NUM = 1000;
 
 const std::string_view THUMBNAIL_RECORD_EVENT = "/data/storage/el2/base/preferences/thumbnail_record_events.xml";
 const std::string_view EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL = "EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL";
-const std::string_view THUMBNAIL_LOCAL_PATH = "/storage/media/local/files/.thumbs/Photo";
 
 bool MediaThumbnailAclTask::Accept()
 {
@@ -79,8 +79,8 @@ static std::vector<std::string> SplitUriString(const std::string& str, char deli
 void MediaThumbnailAclTask::HandleThumbnailAcl()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(std::string(THUMBNAIL_RECORD_EVENT), errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(std::string(THUMBNAIL_RECORD_EVENT), true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "Get preferences error: %{public}d", errCode);
 
     std::string recordRemoveAclInformation = prefs->GetString(std::string(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL));
@@ -139,7 +139,7 @@ void MediaThumbnailAclTask::StartRemoveThumbnailDirAcl(const XattrResult &thumbn
         return;
     }
 
-    std::string localThumbnailDir(THUMBNAIL_LOCAL_PATH);
+    std::string localThumbnailDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB_PHOTO, AdaptAccount::YES);
     CHECK_AND_RETURN_LOG(removexattr(localThumbnailDir.c_str(), ACL_XATTR_DEFAULT) == 0,
         "Remove local thumbnail dir default acl failed, errno:%{public}d", errno);
     removexattr(localThumbnailDir.c_str(), ACL_XATTR_ACCESS);
@@ -150,7 +150,8 @@ void MediaThumbnailAclTask::StartRemoveThumbnailDirAcl(const XattrResult &thumbn
 bool MediaThumbnailAclTask::GetThumbnailDirDefaultAcl(XattrResult &xattrResult)
 {
     std::vector<std::string> filePaths;
-    filePaths.emplace_back(std::string(THUMBNAIL_LOCAL_PATH));
+    std::string localThumbnailDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB_PHOTO, AdaptAccount::YES);
+    filePaths.emplace_back(localThumbnailDir);
 
     vector<XattrResult> aclXattrResults;
     int32_t err = CloudSyncManager::GetInstance().GetAclXattrBatch(false, filePaths, aclXattrResults);
@@ -163,7 +164,8 @@ bool MediaThumbnailAclTask::GetThumbnailDirDefaultAcl(XattrResult &xattrResult)
 bool MediaThumbnailAclTask::GetNeedCheckAclPathList(std::vector<std::string> &needCheckAclDirList,
     std::vector<std::string> &needCheckAclFileList)
 {
-    needCheckAclDirList.emplace_back(std::string(THUMBNAIL_LOCAL_PATH));
+    std::string localThumbnailDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB_PHOTO, AdaptAccount::YES);
+    needCheckAclDirList.emplace_back(localThumbnailDir);
 
     std::vector<ThumbnailAclTaskPhotoInfo> infos;
     CHECK_AND_RETURN_RET_LOG(GetNeedCheckAclInfos(infos), false, "GetNeedCheckAclInfos failed");
@@ -192,7 +194,7 @@ bool MediaThumbnailAclTask::ParseNeedCheckThumbnailPathWithFilePath(const std::s
     CHECK_AND_RETURN_RET_LOG(!localThumbnailPath.empty(), false,
         "Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
 
-    std::string parentPath = MediaFileUtils::GetParentPath(localThumbnailPath);
+    std::string parentPath = MediaPathUtils::GetParentPath(localThumbnailPath);
     needCheckAclDirList.emplace_back(parentPath);
     needCheckAclDirList.emplace_back(localThumbnailPath);
     std::string lcdPath = localThumbnailPath + "/LCD.jpg";
@@ -316,8 +318,8 @@ void MediaThumbnailAclTask::ContinueThumbnailAclRemoveTask()
     CHECK_AND_RETURN_INFO_LOG(Accept(), "The conditions for task are not met, will return.");
 
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(std::string(THUMBNAIL_RECORD_EVENT), errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(std::string(THUMBNAIL_RECORD_EVENT), true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "Get preferences error: %{public}d", errCode);
 
     std::string recordRemoveAclInformation = prefs->GetString(std::string(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL));
@@ -359,7 +361,7 @@ void RemoveDefaultAndAccessAcl(const std::string &path)
 
 int32_t MediaThumbnailAclTask::RemoveThumbPhotoDirAndBucketdirAcl()
 {
-    std::string dirPath(THUMBNAIL_LOCAL_PATH);
+    std::string dirPath = MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB_PHOTO, AdaptAccount::YES);
     DIR* dir = opendir(dirPath.c_str());
     CHECK_AND_RETURN_RET_LOG(dir != nullptr, E_ERR, "Open thumbnail dir failed, errno:%{public}d", errno);
 
@@ -436,11 +438,12 @@ int32_t MediaThumbnailAclTask::RemoveThumbnailDirAndFileAcl(const std::string &p
 
 std::string MediaThumbnailAclTask::GetLocalThumbnailPath(const std::string &path)
 {
-    size_t cloudDirLength = PhotoColumn::FILES_CLOUD_DIR.size();
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    size_t cloudDirLength = cloudFilesDir.size();
     CHECK_AND_RETURN_RET_LOG(path.size() > cloudDirLength, "",
         "Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
 
-    bool isCloudDir = path.substr(0, cloudDirLength) == PhotoColumn::FILES_CLOUD_DIR;
+    bool isCloudDir = path.substr(0, cloudDirLength) == cloudFilesDir;
     CHECK_AND_RETURN_RET_LOG(isCloudDir, "", "Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
 
     return "/storage/media/local/files/.thumbs/" + path.substr(cloudDirLength);
@@ -491,7 +494,8 @@ int32_t MediaThumbnailAclTask::ReportDfxAndFlushRecordEvent(int32_t result, int3
 {
     int32_t errCode = 0;
     shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(std::string(THUMBNAIL_RECORD_EVENT), errCode);
+        NativePreferences::PreferencesHelper::GetPreferences(
+            MediaPathUtils::AdaptPreferencesPathForAllDevice(std::string(THUMBNAIL_RECORD_EVENT), true), errCode);
     CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, E_ERR,  "Prefs is nullptr, err:%{public}d", errCode);
 
     MEDIA_INFO_LOG("Start ReportDfxAndFlushRecordEvent, result:%{public}d, isConfigXattr:%{public}d, "
@@ -517,7 +521,8 @@ int32_t MediaThumbnailAclTask::FlushProgressEvent(const std::string &xattrInfo, 
 {
     int32_t errCode = 0;
     shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(std::string(THUMBNAIL_RECORD_EVENT), errCode);
+        NativePreferences::PreferencesHelper::GetPreferences(
+            MediaPathUtils::AdaptPreferencesPathForAllDevice(std::string(THUMBNAIL_RECORD_EVENT), true), errCode);
     CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, E_ERR,  "Prefs is nullptr, err:%{public}d", errCode);
 
     MEDIA_INFO_LOG("Progress fileId:%{public}d, xattrInfo:%{public}s", fileId, xattrInfo.c_str());

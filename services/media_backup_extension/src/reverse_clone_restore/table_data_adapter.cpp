@@ -14,6 +14,7 @@
  */
 
 #include "table_data_adapter.h"
+#include "media_pure_file_utils.h"
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"
 #include "backup_const.h"
@@ -697,13 +698,13 @@ bool TableDataAdapter::DeletePhotoRecord(std::shared_ptr<NativeRdb::Transaction>
 
 void TableDataAdapter::LogDeleteFileFailure(const InvalidPhotoInfo &photo)
 {
-    bool deleteFileRet = MediaFileUtils::IsFileExists(photo.cloudPath);
+    bool deleteFileRet = MediaPureFileUtils::IsFileExists(photo.cloudPath);
     std::string thumbsFolder = BackupFileUtils::GetReplacedPathByPrefixType(
         PrefixType::CLOUD, PrefixType::CLOUD_THUMB, photo.cloudPath);
-    bool deleteThumbsRet = MediaFileUtils::IsFileExists(thumbsFolder);
+    bool deleteThumbsRet = MediaPureFileUtils::IsFileExists(thumbsFolder);
     std::string editDataFolder = BackupFileUtils::GetReplacedPathByPrefixType(
         PrefixType::CLOUD, PrefixType::CLOUD_EDIT_DATA, photo.cloudPath);
-    bool deleteEditDataRet = MediaFileUtils::IsFileExists(editDataFolder);
+    bool deleteEditDataRet = MediaPureFileUtils::IsFileExists(editDataFolder);
 
     bool isMovingPhoto = (photo.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         photo.movingPhotoEffectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY));
@@ -711,7 +712,7 @@ void TableDataAdapter::LogDeleteFileFailure(const InvalidPhotoInfo &photo)
     if (isMovingPhoto) {
         std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(photo.cloudPath);
         if (!videoPath.empty()) {
-            deleteVideoRet = MediaFileUtils::IsFileExists(videoPath);
+            deleteVideoRet = MediaPureFileUtils::IsFileExists(videoPath);
         }
     }
 

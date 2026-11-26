@@ -17,9 +17,9 @@
 
 #include "reverse_clone_restore_marker.h"
 
-#include "media_file_utils.h"
 #include "media_log.h"
 #include "media_pure_file_utils.h"
+#include "media_time_utils.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 
@@ -87,7 +87,7 @@ bool ReverseCloneRestoreMarker::Recreate(ReverseCloneMarkerType type)
         "get reverse clone marker prefs failed, type=%{public}d, err=%{public}d",
         static_cast<int>(type), errCode);
 
-    int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t currentTime = MediaTimeUtils::UTCTimeMilliSeconds();
     int32_t ret = prefs->PutLong(REVERSE_CLONE_RESTORE_MARKER_TIME, currentTime);
     CHECK_AND_RETURN_RET_LOG(ret == NativePreferences::E_OK, false,
         "put reverse clone restore marker failed, type=%{public}d, ret=%{public}d",

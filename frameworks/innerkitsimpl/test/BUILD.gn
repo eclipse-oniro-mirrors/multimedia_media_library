@@ -226,4 +226,10 @@ group("test") {
       "unittest/media_library_related_system_state_test:unittest",
     ]
   }
+
+  if (media_library_multi_account_enable) {
+    deps += [
+      "unittest/account_deletion_handle_test:unittest",
+    ]
+  }
 }

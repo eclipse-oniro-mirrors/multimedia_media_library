@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 #include "command_line.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 #include <cstddef>
 #include <string>
@@ -103,10 +105,10 @@ static bool CheckRecvPath(ExecEnv &env)
         path = ExtractFilePath(env.recvParam.recvPath);
     }
 
-    if (!MediaFileUtils::IsDirectory(path)) {
+    if (!MediaPureFileUtils::IsDirectory(path)) {
         ForceCreateDirectory(path);
     }
-    if (!MediaFileUtils::IsDirectory(path)) {
+    if (!MediaPureFileUtils::IsDirectory(path)) {
         MEDIA_ERR_LOG("recv path issue. path: %{public}s", path.c_str());
         printf("%s path issue. path:%s\n", STR_FAIL.c_str(), path.c_str());
         return false;
@@ -200,9 +202,9 @@ static bool CheckSend(ExecEnv &env)
         printf("%s path issue. errno:%d, path:%s.\n", STR_FAIL.c_str(), errno, env.optArgs.path.c_str());
         return false;
     }
-    if (!MediaFileUtils::IsDirectory(env.sendParam.sendPath)) {
+    if (!MediaPureFileUtils::IsDirectory(env.sendParam.sendPath)) {
         env.sendParam.isFile = true;
-    } else if (MediaFileUtils::IsDirectory(env.sendParam.sendPath)) {
+    } else if (MediaPureFileUtils::IsDirectory(env.sendParam.sendPath)) {
         env.sendParam.sendPath = IncludeTrailingPathDelimiter(env.sendParam.sendPath);
         env.sendParam.isFile = false;
     } else {

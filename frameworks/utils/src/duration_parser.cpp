@@ -19,6 +19,9 @@
 #include "medialibrary_unistore_manager.h"
 #include "media_file_utils.h"
 #include "moving_photo_file_utils.h"
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_scope.h"
+#endif
 
 namespace OHOS {
 namespace Media {
@@ -37,10 +40,13 @@ size_t DurationParser::GetMaxTaskNum() const
     return DURATION_PARSER_MAX_TASK_NUM;
 }
 
-void DurationParser::ProcessTask(const pair<string, string> &task)
+void DurationParser::ProcessTask(const ParserTask &task)
 {
-    UpdateDuration(task.first);
-    SendUpdateNotify(task.second);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    AccountScope scope(task.accountId);
+#endif
+    UpdateDuration(task.path);
+    SendUpdateNotify(task.fileUri);
 }
 
 void DurationParser::UpdateDuration(const string &path)

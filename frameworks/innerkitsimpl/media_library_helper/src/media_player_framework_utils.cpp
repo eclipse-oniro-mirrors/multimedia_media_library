@@ -24,8 +24,8 @@
 
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 
 using namespace std;
 
@@ -57,7 +57,7 @@ std::shared_ptr<AVMetadataHelper> MediaPlayerFrameWorkUtils::GetAVMetadataHelper
     string absFilePath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(path, absFilePath), nullptr,
         "Failed to open a nullptr path, errno=%{public}d, path:%{public}s",
-        errno, MediaFileUtils::DesensitizePath(path).c_str());
+        errno, MediaPathUtils::DesensitizePath(path).c_str());
 
     UniqueFd uniqueFd(open(absFilePath.c_str(), O_RDONLY));
     CHECK_AND_RETURN_RET_LOG(uniqueFd.Get() >= 0, nullptr,

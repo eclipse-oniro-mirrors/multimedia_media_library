@@ -21,6 +21,7 @@
 #include "directory_ex.h"
 #include "file_uri.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "userfile_client.h"
 #include "userfile_manager_types.h"
@@ -159,7 +160,7 @@ static int32_t WriteToSandboxUri(int32_t srcFd, const string& sandboxUri)
     UniqueFd srcUniqueFd(srcFd);
     AppFileService::ModuleFileUri::FileUri fileUri(sandboxUri);
     string destPath = fileUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         LOGE("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }

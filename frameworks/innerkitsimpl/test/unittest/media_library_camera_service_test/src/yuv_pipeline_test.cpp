@@ -21,6 +21,7 @@
 #include "media_assets_service.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_time_utils.h"
 #include "media_upgrade.h"
 #include "media_uri_utils.h"
@@ -113,7 +114,7 @@ static void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         std::string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -160,13 +161,13 @@ void YuvPipelineTest::SetUp()
     ClearAndRestart();
 
     // 文件
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/16"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo/16"), true);
  
     // 水印
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/"), true);
 }
 
 void YuvPipelineTest::TearDown(void)
@@ -329,7 +330,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveEditDataCamera_test01, TestSize.Level1
     // 3.value符合预期
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, JPEG_PATH, editDataCameraPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataCameraPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataCameraPath), true);
     EXPECT_EQ(pipeline->GetAssetInfo().GetTakeEffectStatus(), TakeEffectStatus::NEED_TAKE_EFFECT);
 }
 
@@ -364,7 +365,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveEditDataCamera_test02, TestSize.Level1
     // 3.value符合预期
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, JPEG_PATH, editDataCameraPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataCameraPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataCameraPath), false);
     EXPECT_EQ(pipeline->GetAssetInfo().GetTakeEffectStatus(), TakeEffectStatus::NO_NEED_TAKE_EFFECT);
 }
 
@@ -392,7 +393,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test001, TestSize.Level1)
     InsertPictureToMap(fileId, false);
 
     // 1.4 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -405,8 +406,8 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test001, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -449,7 +450,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test002, TestSize.Level1)
     InsertPictureToMap(fileId, true);
 
     // 1.4 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -462,8 +463,8 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test002, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -506,12 +507,12 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test003, TestSize.Level1)
     InsertPictureToMap(fileId, false);
 
     // 1.4 预置水印文件
-    ASSERT_EQ(MediaFileUtils::CreateDirectory(JPEG_EDIT_DATA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::CreateDirectory(JPEG_EDIT_DATA_PATH), true);
     CameraPathUtils::SaveEditDataCameraByString(JPEG_PATH, EDIT_DATA_FOR_TEST, BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_EDIT_DATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_EDIT_DATA_CAMERA_PATH), true);
 
     // 1.5 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -524,10 +525,10 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test003, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_EDIT_DATA_SOURCE_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_EDIT_DATA_SOURCE_PATH), false);
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -570,12 +571,12 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test004, TestSize.Level1)
     InsertPictureToMap(fileId, true);
 
     // 1.4 预置水印文件
-    ASSERT_EQ(MediaFileUtils::CreateDirectory(JPEG_EDIT_DATA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::CreateDirectory(JPEG_EDIT_DATA_PATH), true);
     CameraPathUtils::SaveEditDataCameraByString(JPEG_PATH, EDIT_DATA_FOR_TEST, BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_EDIT_DATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_EDIT_DATA_CAMERA_PATH), true);
 
     // 1.5 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -588,10 +589,10 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test004, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_EDIT_DATA_SOURCE_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_EDIT_DATA_SOURCE_PATH), false);
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -634,7 +635,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test101, TestSize.Level1)
     InsertPictureToMap(fileId, false);
 
     // 1.4 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 1.5 构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -647,8 +648,8 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test101, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 3.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);   // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);    // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);   // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);    // heif 不存在
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -691,7 +692,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test102, TestSize.Level1)
     InsertPictureToMap(fileId, true);
 
     // 1.4 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -704,8 +705,8 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test102, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);   // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);    // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);   // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);    // heif 不存在
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -748,12 +749,12 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test103, TestSize.Level1)
     InsertPictureToMap(fileId, false);
 
     // 1.4 预置水印文件
-    ASSERT_EQ(MediaFileUtils::CreateDirectory(HEIF_EDIT_DATA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::CreateDirectory(HEIF_EDIT_DATA_PATH), true);
     CameraPathUtils::SaveEditDataCameraByString(HEIF_PATH, EDIT_DATA_FOR_TEST, BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_EDIT_DATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_EDIT_DATA_CAMERA_PATH), true);
 
     // 1.5 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -766,10 +767,10 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test103, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_EDIT_DATA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_EDIT_DATA_PATH), false);
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -812,12 +813,12 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test104, TestSize.Level1)
     InsertPictureToMap(fileId, true);
 
     // 1.4 预置水印文件
-    ASSERT_EQ(MediaFileUtils::CreateDirectory(HEIF_EDIT_DATA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::CreateDirectory(HEIF_EDIT_DATA_PATH), true);
     CameraPathUtils::SaveEditDataCameraByString(HEIF_PATH, EDIT_DATA_FOR_TEST, BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_EDIT_DATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_EDIT_DATA_CAMERA_PATH), true);
 
     // 1.5 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -830,10 +831,10 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test104, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_EDIT_DATA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_EDIT_DATA_SOURCE_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_EDIT_DATA_PATH), false);
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -876,7 +877,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test201, TestSize.Level1)
     InsertPictureToMap(fileId, false);
 
     // 1.4 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -889,8 +890,8 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test201, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
-    ASSERT_EQ(MediaFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);      // 保存为 jpg
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(HEIF_PATH), false);     // heif 不存在
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);
@@ -928,7 +929,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test202, TestSize.Level1)
     EXPECT_EQ(CreateYuvPipeline(fileId, JPEG_MIME_TYPE), true);
 
     // 1.3 预期校验
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -941,7 +942,7 @@ HWTEST_F(YuvPipelineTest, YuvPipeline_SaveCameraPhoto_test202, TestSize.Level1)
     ASSERT_EQ(ret > 0, true);
 
     // 4.value符合预期
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), false);      // 没有文件落盘
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), false);      // 没有文件落盘
 
     auto resultSet = QueryForTestResult(fileId);
     EXPECT_NE(resultSet, nullptr);

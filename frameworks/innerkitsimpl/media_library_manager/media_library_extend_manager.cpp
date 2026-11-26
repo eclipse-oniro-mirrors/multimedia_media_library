@@ -94,8 +94,8 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
             return;
         }
         client.ForceReconnect(activeUser);
-        std::atomic_store(&dataShareHelper_, client.GetOrCreateDataShareHelper(activeUser));
-        if (std::atomic_load(&dataShareHelper_) == nullptr) {
+        dataShareHelper_ = client.GetDataShareHelper(activeUser);
+        if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(
                 "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
         }

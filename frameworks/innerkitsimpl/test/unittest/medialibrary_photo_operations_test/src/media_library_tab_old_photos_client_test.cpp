@@ -52,15 +52,14 @@ void TabOldPhotosClientTest::TearDown(void) {}
  */
 HWTEST_F(TabOldPhotosClientTest, TabOldPhotosClient_test_001, TestSize.Level1)
 {
-    MediaLibraryManager mediaLibraryManager;
     std::vector<std::string> queryTabOldPhotosUris =
     {"file://media/storage/emulated/123"};
     std::vector<TabOldPhotosClient::RequestUriObj> result =
-    TabOldPhotosClient(mediaLibraryManager).Parse(queryTabOldPhotosUris);
+    TabOldPhotosClient().Parse(queryTabOldPhotosUris);
     EXPECT_EQ(result[0].type, TabOldPhotosClient::URI_TYPE_ID_LINK);
     EXPECT_EQ(result[0].oldFileId, 123);
 }
- 
+
 /**
  * @tc.name  : Parse_ShouldReturnPathType_WhenUriContainsGalleryPath
  * @tc.number: TabOldPhotosClientTest_002
@@ -68,15 +67,14 @@ HWTEST_F(TabOldPhotosClientTest, TabOldPhotosClient_test_001, TestSize.Level1)
  */
 HWTEST_F(TabOldPhotosClientTest, TabOldPhotosClient_test_002, TestSize.Level1)
 {
-    MediaLibraryManager mediaLibraryManager;
     std::vector<std::string> queryTabOldPhotosUris =
     {"/storage/emulated/0/DCIM/Camera/IMG_20240923_121826.jpg"};
     std::vector<TabOldPhotosClient::RequestUriObj> result =
-    TabOldPhotosClient(mediaLibraryManager).Parse(queryTabOldPhotosUris);
+    TabOldPhotosClient().Parse(queryTabOldPhotosUris);
     EXPECT_EQ(result[0].type, TabOldPhotosClient::URI_TYPE_PATH);
     EXPECT_EQ(result[0].oldData, "/storage/emulated/0/DCIM/Camera/IMG_20240923_121826.jpg");
 }
- 
+
 /**
  * @tc.name  : Parse_ShouldReturnIdType_WhenUriIsDigit
  * @tc.number: TabOldPhotosClientTest_003
@@ -84,10 +82,9 @@ HWTEST_F(TabOldPhotosClientTest, TabOldPhotosClient_test_002, TestSize.Level1)
  */
 HWTEST_F(TabOldPhotosClientTest, TabOldPhotosClient_test_003, TestSize.Level1)
 {
-    MediaLibraryManager mediaLibraryManager;
     std::vector<std::string> queryTabOldPhotosUris = {"123"};
     std::vector<TabOldPhotosClient::RequestUriObj> result =
-    TabOldPhotosClient(mediaLibraryManager).Parse(queryTabOldPhotosUris);
+    TabOldPhotosClient().Parse(queryTabOldPhotosUris);
     EXPECT_EQ(result[0].type, TabOldPhotosClient::URI_TYPE_ID);
     EXPECT_EQ(result[0].oldFileId, 123);
 }

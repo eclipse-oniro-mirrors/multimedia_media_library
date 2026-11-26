@@ -22,6 +22,7 @@
 #include "media_camera_character_service.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_time_utils.h"
 #include "media_upgrade.h"
 #include "media_uri_utils.h"
@@ -100,7 +101,7 @@ static void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.editData");
     for (const auto &dir : TEST_ROOT_DIRS) {
         std::string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -142,18 +143,18 @@ void ImagePipelineTest::SetUp()
     ClearAndRestart();
 
     // 文件
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/16"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo/16"), true);
 
     // 水印
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/"), true);
 
     // 临时文件
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.cache/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.cache/Photo/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.cache/Photo/16/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.cache/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.cache/Photo/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.cache/Photo/16/"), true);
 }
  
 void ImagePipelineTest::TearDown(void)
@@ -224,7 +225,7 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_CreateCameraFileFd_test001, TestSi
 
     std::string tempPath;
     CameraPathUtils::GetCameraPath(CameraPathType::TEMP_LOW_PATH, JPEG_PATH, tempPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(tempPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(tempPath), false);
 
     // 2.执行
     CreateCameraFileFdDto dto = {
@@ -239,7 +240,7 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_CreateCameraFileFd_test001, TestSi
     EXPECT_EQ(respBody.fd >= 0, true);
 
     // 3.value符合预期
-    EXPECT_EQ(MediaFileUtils::IsFileExists(tempPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(tempPath), true);
 
     close(respBody.fd);
 }
@@ -258,7 +259,7 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_CloseCameraFileFd_test001, TestSiz
 
     std::string tempPath;
     CameraPathUtils::GetCameraPath(CameraPathType::TEMP_LOW_PATH, JPEG_PATH, tempPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(tempPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(tempPath), false);
 
     // 1.2 执行 CreateCameraFileFd
     CreateCameraFileFdDto dto = {
@@ -272,7 +273,7 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_CloseCameraFileFd_test001, TestSiz
     int32_t ret = MediaCameraCharacterService::GetInstance().CreateCameraFileFd(dto, respBody);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(respBody.fd >= 0, true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(tempPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(tempPath), true);
 
     close(respBody.fd);
 
@@ -283,11 +284,11 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_CloseCameraFileFd_test001, TestSiz
     };
     ret = MediaCameraCharacterService::GetInstance().ScanCameraFile(closeDto);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(tempPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(tempPath), false);
 
     std::string realPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDITED_PATH, JPEG_PATH, realPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(realPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(realPath), true);
 }
 
 /**
@@ -307,16 +308,16 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_SaveCameraPhoto_test001, TestSize.
     EXPECT_EQ(CreateImagePipeline(fileId, CameraPipelineType::IMAGE), true);
 
     // 1.3 预置文件
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/Photo/16"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/Photo/16"), true);
     system("cp /data/local/tmp/test_jpeg.jpg /storage/cloud/files/Photo/16/IMG_1773407852_010.jpg");
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);
 
     std::string editDataSourcePath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, JPEG_PATH, editDataSourcePath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataSourcePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataSourcePath), false);
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, JPEG_PATH, editDataCameraPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataCameraPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataCameraPath), false);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -330,8 +331,8 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_SaveCameraPhoto_test001, TestSize.
     ASSERT_EQ(ret, 1);
 
     // 4.value符合预期
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataSourcePath), false);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataCameraPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataSourcePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataCameraPath), false);
 }
 
 /**
@@ -351,9 +352,9 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_SaveCameraPhoto_test002, TestSize.
     EXPECT_EQ(CreateImagePipeline(fileId, CameraPipelineType::IMAGE), true);
 
     // 1.3 预置文件
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/Photo/16"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/Photo/16"), true);
     system("cp /data/local/tmp/test_jpeg.jpg /storage/cloud/files/Photo/16/IMG_1773407852_010.jpg");
-    ASSERT_EQ(MediaFileUtils::IsFileExists(JPEG_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(JPEG_PATH), true);
 
     // 1.4 添加水印
     CameraPipelineType typeByFileId = CameraPipelineType::UNDEFINED;
@@ -370,10 +371,10 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_SaveCameraPhoto_test002, TestSize.
 
     std::string editDataSourcePath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, JPEG_PATH, editDataSourcePath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataSourcePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataSourcePath), false);
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, JPEG_PATH, editDataCameraPath);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataCameraPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataCameraPath), true);
 
     // 2.构造 SaveCameraPhotoDto 数据
     SaveCameraPhotoDto dto = {
@@ -387,8 +388,8 @@ HWTEST_F(ImagePipelineTest, ImagePipelineTest_SaveCameraPhoto_test002, TestSize.
     ASSERT_EQ(ret, 1);
 
     // 4.value符合预期
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataSourcePath), true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(editDataCameraPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataSourcePath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(editDataCameraPath), true);
 }
 } // namespace Media
 } // namespace OHOS

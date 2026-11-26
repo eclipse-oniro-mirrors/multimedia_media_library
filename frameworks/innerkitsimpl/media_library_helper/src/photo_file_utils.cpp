@@ -28,6 +28,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_type_const.h"
 #include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "media_time_utils.h"
 
@@ -92,7 +93,7 @@ string PhotoFileUtils::GetMetaDataRealPath(const string &photoPath, int32_t user
 
 string PhotoFileUtils::GetThumbDir(const string &photoPath, int32_t userId)
 {
-    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, photoPath)) {
         return "";
     }
     if (photoPath.find("..") != string::npos) {
@@ -142,7 +143,7 @@ bool PhotoFileUtils::IsThumbnailExists(const string &photoPath)
 
     string lcdPath = GetLCDPath(photoPath);
     string thmPath = GetTHMPath(photoPath);
-    return MediaFileUtils::IsFileExists(lcdPath) || MediaFileUtils::IsFileExists(thmPath);
+    return MediaPureFileUtils::IsFileExists(lcdPath) || MediaPureFileUtils::IsFileExists(thmPath);
 }
 
 bool PhotoFileUtils::IsThumbnailLatest(const string &photoPath)
@@ -293,30 +294,6 @@ bool PhotoFileUtils::ValidateDateAddedYearMonthDay(const string &dateAddedYear,
     return MediaTimeUtils::IsPlausibleDateTime(year, month, day, dateAdded);
 }
 
-std::string PhotoFileUtils::GetLocalLcdPath(const std::string &photoPath)
-{
-    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
-        return "";
-    }
-    if (photoPath.find("..") != string::npos) {
-        MEDIA_ERR_LOG("Invalid photoPath with path traversal: %{private}s", photoPath.c_str());
-        return "";
-    }
-    return "/storage/media/local/files/.thumbs/" + photoPath.substr(ROOT_MEDIA_DIR.length()) + "/LCD.jpg";
-}
-
-std::string PhotoFileUtils::GetLocalLcdExPath(const std::string &photoPath)
-{
-    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
-        return "";
-    }
-    if (photoPath.find("..") != string::npos) {
-        MEDIA_ERR_LOG("Invalid photoPath with path traversal: %{private}s", photoPath.c_str());
-        return "";
-    }
-    return "/storage/media/local/files/.thumbs/" + photoPath.substr(ROOT_MEDIA_DIR.length()) + "/THM_EX/LCD.jpg";
-}
-
 bool PhotoFileUtils::CheckSubDirForFileManager(const std::string &path, size_t startPos)
 {
     size_t pos = path.find('/', startPos);
@@ -330,15 +307,16 @@ bool PhotoFileUtils::CheckSubDirForFileManager(const std::string &path, size_t s
 
 bool PhotoFileUtils::CheckFileManagerRealPath(const std::string &path)
 {
-    MEDIA_DEBUG_LOG("CheckFileManagerRealPath path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_DEBUG_LOG("CheckFileManagerRealPath path: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
     CHECK_AND_RETURN_RET(MediaStringUtils::StartsWith(path, DOCS_DIR), false);
     size_t startPos = DOCS_DIR.length();
+
     return CheckSubDirForFileManager(path, startPos);
 }
 
 bool PhotoFileUtils::CheckFileManagerLPath(const std::string &lPath)
 {
-    MEDIA_DEBUG_LOG("CheckFileManagerLPath path: %{public}s", MediaFileUtils::DesensitizePath(lPath).c_str());
+    MEDIA_DEBUG_LOG("CheckFileManagerLPath path: %{public}s", MediaPathUtils::DesensitizePath(lPath).c_str());
     CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(lPath, DOCS_LPATH_PREFIX), false, "invalid prefix");
     size_t startPos = DOCS_LPATH_PREFIX.size();
     return CheckSubDirForFileManager(lPath, startPos);
@@ -350,14 +328,14 @@ std::string PhotoFileUtils::GetFileManagerLPathFromRealPath(const std::string &p
     std::string lPath = DOCS_LPATH_PREFIX + path.substr(DOCS_DIR.length());
     size_t lastSlashPos = lPath.find_last_of('/');
     CHECK_AND_RETURN_RET(lastSlashPos != std::string::npos, "");
-    if (MediaFileUtils::IsDirectory(path)) {
+    if (MediaPureFileUtils::IsDirectory(path)) {
         lPath = lastSlashPos == lPath.length() - 1 ? lPath.substr(0, lastSlashPos) : lPath;
     } else {
         lPath = lPath.substr(0, lastSlashPos);
     }
     CHECK_AND_EXECUTE(lPath.size() >= DOCS_LPATH_PREFIX.size(), lPath = DOCS_LPATH_PREFIX);
     MEDIA_DEBUG_LOG("GetFileManagerLPathFromRealPath lPath: %{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str());
+        MediaPathUtils::DesensitizePath(lPath).c_str());
     return lPath;
 }
 
@@ -366,7 +344,7 @@ std::string PhotoFileUtils::GetFileManagerDirFromLPath(const std::string &lPath)
     CHECK_AND_RETURN_RET(CheckFileManagerLPath(lPath), "");
     CHECK_AND_RETURN_RET(lPath != DOCS_LPATH_PREFIX, DOCS_DIR);
     std::string dir = DOCS_DIR + lPath.substr(DOCS_LPATH_PREFIX.size()) + SLASH_STR;
-    MEDIA_DEBUG_LOG("GetFileManagerDirFromLPath dir: %{public}s", MediaFileUtils::DesensitizePath(dir).c_str());
+    MEDIA_DEBUG_LOG("GetFileManagerDirFromLPath dir: %{public}s", MediaPathUtils::DesensitizePath(dir).c_str());
     return dir;
 }
 } // namespace OHOS::Media

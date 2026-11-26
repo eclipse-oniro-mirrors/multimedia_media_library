@@ -200,8 +200,6 @@ const std::string PhotoColumn::PHOTOS_TABLE = "Photos";
 const std::string PhotoColumn::TAB_OLD_PHOTOS_TABLE = "tab_old_photos";
 const std::string PhotoColumn::TAB_ASSET_AND_ALBUM_OPERATION_TABLE = "tab_asset_and_album_operation";
 
-const std::string PhotoColumn::FILES_CLOUD_DIR = "/storage/cloud/files/";
-const std::string PhotoColumn::FILES_LOCAL_DIR = "/storage/media/local/files/";
 
 const std::string PhotoColumn::HIGHLIGHT_TABLE = "tab_analysis_video_label";
 const std::string PhotoColumn::MEDIA_DATA_DB_HIGHLIGHT_TRIGGER = "trigger_generate_thumbnail";
@@ -243,6 +241,8 @@ const std::string PhotoColumn::COMPRESSION_QUALITY = "compression_quality";
 const std::string PhotoColumn::MUSIC_MASTER_MODE = "music_master_mode";
 
 const std::string PhotoColumn::C2PA_CONFIG_INFO = "c2pa_config_info";
+const std::string PhotoColumn::PHOTO_ACCOUNT_ID = "account_id";
+
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
 const std::string PhotoColumn::PHOTO_LCD_FILE_SIZE = "lcd_file_size";
 
@@ -293,7 +293,8 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_TRANSCODE_TIME, PhotoColumn::PHOTO_IS_SHARED, PhotoColumn::PHOTO_SHARE_OWNER_INFO,
     PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, PhotoColumn::PHOTO_VISIBILITY, PhotoColumn::PHOTO_SHARE_RISK_STATUS,
     PhotoColumn::PHOTO_SHARE_RISK_TYPE, PhotoColumn::PHOTO_SHARE_DATE_DAY, PhotoColumn::PHOTO_SHARE_GROUP,
-    PhotoColumn::C2PA_CONFIG_INFO, PhotoColumn::MUSIC_MASTER_MODE, PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
+    PhotoColumn::C2PA_CONFIG_INFO, PhotoColumn::PHOTO_ACCOUNT_ID, PhotoColumn::MUSIC_MASTER_MODE,
+    PhotoColumn::LOCAL_ENHANCEMENT_ABILITY,
     PhotoColumn::LOCAL_ENHANCEMENT_STATUS,
 };
 

@@ -75,12 +75,21 @@ declare_args() {
   media_library_lake_enable = true
   media_library_file_manager_enable = true
   media_library_reverse_clone_restore_enable = false
+  media_library_multi_account_enable = false
 }
 
 if (defined(global_parts_info) &&
     !defined(global_parts_info.telephony_cellular_data)) {
   media_library_cellular_data_enable = false
   media_library_feature_secure_album = false
+}
+
+if (media_library_multi_account_enable) {
+  media_library_feature_mtp = false
+  media_library_feature_cloud_enhancement = false
+  media_library_feature_cloud_download = false
+  media_library_lake_enable = false
+  media_library_reverse_clone_restore_enable = false
 }
 
 if (defined(global_parts_info) &&

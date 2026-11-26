@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "photo_album_dao.h"
+#include "media_path_utils.h"
 
 #include <regex>
 
@@ -98,7 +99,7 @@ std::string PhotoAlbumDao::FindUniqueAlbumName(const PhotoAlbumDao::PhotoAlbumRo
     MEDIA_INFO_LOG("Media_Restore: FindUniqueAlbumName, old name: %{public}s, new name: %{public}s, lPath: %{public}s",
         MediaFileUtils::DesensitizeName(photoAlbum.albumName).c_str(),
         MediaFileUtils::DesensitizeName(albumName).c_str(),
-        MediaFileUtils::DesensitizePath(photoAlbum.lPath).c_str());
+        MediaPathUtils::DesensitizePath(photoAlbum.lPath).c_str());
     return albumName;
 }
 
@@ -152,8 +153,8 @@ PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetPhotoAlbum(const std::string 
     CHECK_AND_RETURN_RET(!this->photoAlbumCache_.Find(StringUtils::ToLower(lPath), albumRowData), albumRowData);
     MEDIA_INFO_LOG("Media_Restore: can not find the PhotoAlbum info by lPath in cache."
                    " lPath=%{public}s, lPath in cache=%{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str(),
-        MediaFileUtils::DesensitizePath(StringUtils::ToLower(lPath)).c_str());
+        MediaPathUtils::DesensitizePath(lPath).c_str(),
+        MediaPathUtils::DesensitizePath(StringUtils::ToLower(lPath)).c_str());
     // query the PhotoAlbum info by lPath from PhotoAlbum table
     std::vector<NativeRdb::ValueObject> bindArgs = {lPath};
     std::string querySql = this->SQL_PHOTO_ALBUM_SELECT_BY_LPATH;
@@ -184,8 +185,8 @@ PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetPhotoAlbum(const std::string 
     this->photoAlbumCache_.Insert(StringUtils::ToLower(lPath), albumRowData);
     MEDIA_INFO_LOG("Media_Restore: add the PhotoAlbum info by lPath into cache."
                    " lPath=%{public}s, lPath in cache=%{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str(),
-        MediaFileUtils::DesensitizePath(StringUtils::ToLower(albumRowData.lPath)).c_str());
+        MediaPathUtils::DesensitizePath(lPath).c_str(),
+        MediaPathUtils::DesensitizePath(StringUtils::ToLower(albumRowData.lPath)).c_str());
     return albumRowData;
 }
 
@@ -479,7 +480,7 @@ int32_t PhotoAlbumDao::UpdateUploadStatus(const std::string &lPath, const int32_
     int32_t ret =
         BackupDatabaseUtils::ExecuteSQL(this->mediaLibraryRdb_, this->SQL_PHOTO_ALBUM_UPDATE_UPLOAD_STATUS, bindArgs);
     MEDIA_INFO_LOG("UpdateUploadStatus lPath: %{public}s, uploadStatus: %{public}d, ret: %{public}d",
-        MediaFileUtils::DesensitizePath(lPath).c_str(),
+        MediaPathUtils::DesensitizePath(lPath).c_str(),
         uploadStatus,
         ret);
     return ret;

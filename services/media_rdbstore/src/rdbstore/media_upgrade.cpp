@@ -154,7 +154,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS
     PhotoColumn::C2PA_CONFIG_INFO + " TEXT, " +
     PhotoColumn::LOCAL_ENHANCEMENT_ABILITY + " INT NOT NULL DEFAULT 0, " +
     PhotoColumn::LOCAL_ENHANCEMENT_STATUS + " INT NOT NULL DEFAULT 0, " +
-    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER + " INT NOT NULL DEFAULT -2" +
+    PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER + " INT NOT NULL DEFAULT -2, " +
+    PhotoColumn::PHOTO_ACCOUNT_ID + " INT NOT NULL DEFAULT 0" +
     ") ";
 
 const std::string PhotoUpgrade::CREATE_CLOUD_ID_INDEX = BaseColumn::CreateIndex() +

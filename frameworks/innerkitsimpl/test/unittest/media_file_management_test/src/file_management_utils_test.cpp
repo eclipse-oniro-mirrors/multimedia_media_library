@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 
 #include "file_management_utils.h"
+#include "media_path_utils.h"
 
 using namespace testing::ext;
 
@@ -159,7 +160,7 @@ HWTEST_F(MediaFileManagementUtilsTest, GetRelativeDir_ExactPrefix_007, TestSize.
 HWTEST_F(MediaFileManagementUtilsTest, GetLocalPath_CloudPath_001, TestSize.Level1)
 {
     std::string path = "/storage/cloud/files/images/test.jpg";
-    std::string result = FileManagementUtils::GetLocalPath(path);
+    std::string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     EXPECT_EQ(result, "/storage/media/local/files/images/test.jpg");
 }
 
@@ -174,7 +175,7 @@ HWTEST_F(MediaFileManagementUtilsTest, GetLocalPath_CloudPath_001, TestSize.Leve
 HWTEST_F(MediaFileManagementUtilsTest, GetLocalPath_NonCloudPath_002, TestSize.Level1)
 {
     std::string path = "/storage/media/local/files/videos/test.mp4";
-    std::string result = FileManagementUtils::GetLocalPath(path);
+    std::string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     EXPECT_EQ(result, "/storage/media/local/files/videos/test.mp4");
 }
 

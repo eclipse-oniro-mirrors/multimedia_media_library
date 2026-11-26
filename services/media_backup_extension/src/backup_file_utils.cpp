@@ -16,6 +16,8 @@
 #define MLOG_TAG "MediaLibraryBackupUtils"
 
 #include "backup_file_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 #include <utime.h>
 #include <sys/time.h>
@@ -82,14 +84,14 @@ bool FileAccessHelper::GetValidPath(string &filePath)
     while ((pos = resultPath.find("/", pos + 1)) != string::npos) {
         string curPath = resultPath.substr(0, pos);
         if (!ConvertCurrentPath(curPath, resultPath)) {
-            MEDIA_ERR_LOG("convert fail, path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+            MEDIA_ERR_LOG("convert fail, path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
             return false;
         }
     }
 
     string curPath = resultPath;
     if (!ConvertCurrentPath(curPath, resultPath)) {
-        MEDIA_ERR_LOG("convert fail, path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_ERR_LOG("convert fail, path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
 
@@ -112,7 +114,7 @@ bool FileAccessHelper::ConvertCurrentPath(string &curPath, string &resultPath)
             return true;
         }
     }
-    if (!MediaFileUtils::IsFileExists(parentDir)) {
+    if (!MediaPureFileUtils::IsFileExists(parentDir)) {
         MEDIA_WARN_LOG("%{public}s doesn't exist, skip.", parentDir.c_str());
         return false;
     }
@@ -289,11 +291,15 @@ int32_t BackupFileUtils::CreateAssetPathById(int32_t fileId, int32_t mediaType, 
         return errCode;
     }
 
-    string dirPath = (mediaType == MediaType::MEDIA_TYPE_AUDIO ? RESTORE_AUDIO_CLOUD_DIR : RESTORE_CLOUD_DIR) + "/" +
+    std::string cloudPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    std::string cloudAudioDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_AUDIO, AdaptAccount::NO, AppendSlash::NO);
+    string dirPath = (mediaType == MediaType::MEDIA_TYPE_AUDIO ? cloudAudioDir : cloudPhotoDir) + "/" +
         to_string(bucketNum);
     string localDirPath = GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL, dirPath);
-    if (!MediaFileUtils::IsFileExists(localDirPath)) {
-        bool ret = MediaFileUtils::CreateDirectory(localDirPath);
+    if (!MediaPureFileUtils::IsFileExists(localDirPath)) {
+        bool ret = MediaPureFileUtils::CreateDirectory(localDirPath);
         errCode = ret? E_OK: E_CHECK_DIR_FAIL;
     }
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Create Dir Failed! localDirPath=%{private}s",
@@ -367,7 +373,7 @@ int32_t BackupFileUtils::PreparePath(const std::string &path)
     bool cond = (index == std::string::npos || index == path.length() - 1);
     CHECK_AND_RETURN_RET_LOG(!cond, E_CHECK_DIR_FAIL, "Parse directory path failed: %{private}s", path.c_str());
     std::string dirPath = path.substr(0, index);
-    cond = (!MediaFileUtils::IsFileExists(dirPath) && !MediaFileUtils::CreateDirectory(dirPath));
+    cond = (!MediaPureFileUtils::IsFileExists(dirPath) && !MediaPureFileUtils::CreateDirectory(dirPath));
     CHECK_AND_RETURN_RET_LOG(!cond, E_CHECK_DIR_FAIL,
         "Directory path doesn't exist and was created failed: %{public}s", dirPath.c_str());
     return E_OK;
@@ -390,10 +396,10 @@ std::string BackupFileUtils::GetReplacedPathByPrefixType(PrefixType srcPrefixTyp
 
 int32_t BackupFileUtils::MoveFile(const string &oldPath, const string &newPath, int32_t sceneCode)
 {
-    if (!MediaFileUtils::IsFileExists(oldPath)) {
+    if (!MediaPureFileUtils::IsFileExists(oldPath)) {
         MEDIA_ERR_LOG("old path: %{public}s is not exists.", GarbleFilePath(oldPath, sceneCode).c_str());
         return E_NO_SUCH_FILE;
-    } else if (MediaFileUtils::IsFileExists(newPath)) {
+    } else if (MediaPureFileUtils::IsFileExists(newPath)) {
         MEDIA_ERR_LOG("new path: %{public}s is exists.", GarbleFilePath(newPath, sceneCode).c_str());
         return E_FILE_EXIST;
     }
@@ -484,7 +490,7 @@ std::string BackupFileUtils::GetDetailsPath(int32_t sceneCode, const std::string
     const std::unordered_map<std::string, FailedFileInfo> &failedFiles, size_t limit)
 {
     std::string detailsPath = RESTORE_FAILED_FILES_PATH + "_" + type + ".txt";
-    bool cond = (MediaFileUtils::IsFileExists(detailsPath) && !MediaFileUtils::DeleteFile(detailsPath));
+    bool cond = (MediaPureFileUtils::IsFileExists(detailsPath) && !MediaFileUtils::DeleteFile(detailsPath));
     CHECK_AND_RETURN_RET_LOG(!cond, "", "%{public}s exists and delete failed", detailsPath.c_str());
     cond = (failedFiles.empty() || limit == 0);
     CHECK_AND_RETURN_RET(!cond, "");
@@ -583,8 +589,8 @@ bool BackupFileUtils::GetPathPosByPrefixLevel(int32_t sceneCode, const std::stri
 
 bool BackupFileUtils::ShouldIncludeSd(const std::string &prefix)
 {
-    return MediaFileUtils::IsFileExists(prefix + "/" + PHOTO_SD_DB_NAME) ||
-        MediaFileUtils::IsFileExists(prefix + "/" + VIDEO_SD_DB_NAME);
+    return MediaPureFileUtils::IsFileExists(prefix + "/" + PHOTO_SD_DB_NAME) ||
+        MediaPureFileUtils::IsFileExists(prefix + "/" + VIDEO_SD_DB_NAME);
 }
 
 void BackupFileUtils::DeleteSdDatabase(const std::string &prefix)
@@ -592,7 +598,7 @@ void BackupFileUtils::DeleteSdDatabase(const std::string &prefix)
     std::vector<std::string> sdDbs = { PHOTO_SD_DB_NAME, VIDEO_SD_DB_NAME };
     for (const auto &sdDb : sdDbs) {
         std::string sdDbPath = prefix + "/" + sdDb;
-        if (!MediaFileUtils::IsFileExists(sdDbPath)) {
+        if (!MediaPureFileUtils::IsFileExists(sdDbPath)) {
             continue;
         }
         CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(sdDbPath),
@@ -614,14 +620,14 @@ static void addPathSuffix(const string &oldPath, const string &suffix, string &n
     }
 
     newPath = oldPath + suffix;
-    while (MediaFileUtils::IsFileExists(newPath)) {
+    while (MediaPureFileUtils::IsFileExists(newPath)) {
         newPath += ".dup" + suffix;
     }
 }
 
 bool BackupFileUtils::ConvertToMovingPhoto(FileInfo &fileInfo)
 {
-    if (!MediaFileUtils::IsFileExists(fileInfo.filePath)) {
+    if (!MediaPureFileUtils::IsFileExists(fileInfo.filePath)) {
         MEDIA_ERR_LOG("Live photo does not exist, path: %{private}s, errno: %{public}d",
             fileInfo.filePath.c_str(), errno);
         return false;
@@ -736,7 +742,7 @@ unique_ptr<ImageSource> BackupFileUtils::LoadImageSource(const std::string &file
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(file, opts, err);
     bool cond = (err != E_OK || !imageSource);
     CHECK_AND_RETURN_RET_LOG(!cond, imageSource,
-        "Failed to LoadImageSource, file exists: %{public}d", MediaFileUtils::IsFileExists(file));
+        "Failed to LoadImageSource, file exists: %{public}d", MediaPureFileUtils::IsFileExists(file));
     return imageSource;
 }
 
@@ -930,7 +936,7 @@ bool BackupFileUtils::IsValidFile(const std::string &path)
 {
     size_t fileSize = 0;
     MediaFileUtils::GetFileSize(path, fileSize);
-    return fileSize > 0 && MediaFileUtils::IsFileExists(path);
+    return fileSize > 0 && MediaPureFileUtils::IsFileExists(path);
 }
 
 bool BackupFileUtils::IsMovingPhotoExist(const std::string &path)
@@ -984,27 +990,27 @@ std::string BackupFileUtils::GetNumberedStoragePath(const std::string &path, int
 
 std::string BackupFileUtils::ResolveLakeTargetStoragePath(const std::string &storagePath)
 {
-    if (!MediaFileUtils::IsFileExists(storagePath)) {
+    if (!MediaPureFileUtils::IsFileExists(storagePath)) {
         return storagePath;
     }
     constexpr int32_t MAX_RENAME_NUMBER = 1000;
     for (int32_t number = 1; number <= MAX_RENAME_NUMBER; ++number) {
         std::string numberedPath = GetNumberedStoragePath(storagePath, number);
-        if (!MediaFileUtils::IsFileExists(numberedPath)) {
+        if (!MediaPureFileUtils::IsFileExists(numberedPath)) {
             MEDIA_INFO_LOG("file renamed, original: %{public}s, number: %{public}d",
-                MediaFileUtils::DesensitizePath(storagePath).c_str(), number);
+                MediaPathUtils::DesensitizePath(storagePath).c_str(), number);
             return numberedPath;
         }
     }
     MEDIA_ERR_LOG("ResolveLakeTargetStoragePath exhausted: %{public}s",
-        MediaFileUtils::DesensitizePath(storagePath).c_str());
+        MediaPathUtils::DesensitizePath(storagePath).c_str());
     return "";
 }
 
 void BackupFileUtils::DeleteCloneFileInfoDb()
 {
     const std::string dbPath = CLONE_RESTORE_BACKUP_DIR + CLONE_FILE_INFO_DB;
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(dbPath), "LakeClone: db not exists, skip delete!");
+    CHECK_AND_RETURN_LOG(MediaPureFileUtils::IsFileExists(dbPath), "LakeClone: db not exists, skip delete!");
 
     MEDIA_INFO_LOG("LakeClone: deleting CloneFileInfoDb, path: %{private}s", dbPath.c_str());
     int32_t deleteRet = NativeRdb::RdbHelper::DeleteRdbStore(dbPath);

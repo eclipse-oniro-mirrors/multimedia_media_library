@@ -27,7 +27,9 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "media_container_types.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
@@ -1014,7 +1016,7 @@ int32_t MetadataExtractor::BuildMetaData(
     std::string realFilePath;
     if (!PathToRealPath(filePath, realFilePath)) {
         MEDIA_ERR_LOG("file is not real path, file path: %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return E_AVMETADATA;
     }
     int32_t fd = open(realFilePath.c_str(), O_RDONLY);
@@ -1045,7 +1047,7 @@ int32_t MetadataExtractor::BuildMetaData(
             FillFrameIndex(avMetadataHelper, data);
         }
     } else {
-        MEDIA_ERR_LOG("resultMap is empty, file path: %{private}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_ERR_LOG("resultMap is empty, file path: %{private}s", MediaPathUtils::DesensitizePath(filePath).c_str());
     }
     int32_t extVideoMode = ExtractAVLogMetadata(meta);
     data->SetVideoMode(extVideoMode);
@@ -1076,7 +1078,7 @@ int32_t MetadataExtractor::CombineMovingPhotoMetadata(std::unique_ptr<Metadata> 
 {
     // if video of moving photo does not exist, just return
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(data->GetFilePath());
-    if (!MediaFileUtils::IsFileExists(videoPath)) {
+    if (!MediaPureFileUtils::IsFileExists(videoPath)) {
         MEDIA_INFO_LOG("Video of moving photo does not exist, path: %{private}s", videoPath.c_str());
         return E_OK;
     }

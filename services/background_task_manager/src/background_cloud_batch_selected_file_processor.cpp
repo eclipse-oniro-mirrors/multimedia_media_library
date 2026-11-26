@@ -25,6 +25,7 @@
 #include "download_resources_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_rdb_utils.h"
@@ -464,7 +465,7 @@ void BackgroundCloudBatchSelectedFileProcessor::ParseBatchSelectedToDoFiles(
         std::string uri = "";
         uri = MediaFileUri::GetPhotoUri(to_string(fileId), path, displayName);
         MEDIA_INFO_LOG("BatchSelectFileDownload ParseBatchSelectedDownloadFiles DesensitizePath uri: %{public}s",
-            MediaFileUtils::DesensitizePath(uri).c_str());
+            MediaPathUtils::DesensitizePath(uri).c_str());
         int32_t mediaType = GetInt32Val(MediaColumn::MEDIA_TYPE, resultSet);
         MEDIA_INFO_LOG("BatchSelectFileDownload ParseBatchSelectedDownloadFiles mediaType: %{public}d", mediaType);
         int32_t cnt = GetDownloadFileIdCnt(std::to_string(fileId));
@@ -762,7 +763,7 @@ void BackgroundCloudBatchSelectedFileProcessor::HandleBatchSelectedFailedCallbac
         progress.batchTotalNum, static_cast<int32_t>(progress.batchState)
         );
     MEDIA_ERR_LOG("download failed, error type: %{public}d, uri: %{public}s.", progress.downloadErrorType,
-        MediaFileUtils::DesensitizePath(progress.path).c_str());
+        MediaPathUtils::DesensitizePath(progress.path).c_str());
     if (GetDownloadFileIdCnt(fileId) > DOWNLOAD_FAIL_MAX_TIMES && progress.totalSize != 0) {
         int32_t percent = (100 * progress.downloadedSize) / progress.totalSize;
         MEDIA_INFO_LOG("BatchSelectFileDownload FailedCallback, percent: %{public}d", percent);
@@ -805,7 +806,7 @@ void BackgroundCloudBatchSelectedFileProcessor::HandleBatchSelectedStoppedCallba
         progress.batchDownloadSize, progress.batchTotalSize,
         progress.batchSuccNum, progress.batchFailNum,
         progress.batchTotalNum, static_cast<int32_t>(progress.batchState));
-    MEDIA_ERR_LOG("download stopped, uri: %{public}s.", MediaFileUtils::DesensitizePath(progress.path).c_str());
+    MEDIA_ERR_LOG("download stopped, uri: %{public}s.", MediaPathUtils::DesensitizePath(progress.path).c_str());
     // 更新任务表
     if (progress.totalSize != 0) {
         int32_t percent = (100 * progress.downloadedSize) / progress.totalSize;

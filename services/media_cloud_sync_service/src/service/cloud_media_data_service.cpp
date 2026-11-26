@@ -29,6 +29,7 @@
 #include "cloud_media_attachment_utils.h"
 #include "media_itypes_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "moving_photo_file_utils.h"
 #include "parameters.h"
@@ -212,7 +213,7 @@ int32_t CloudMediaDataService::UpdateLocalFileDirty(const std::vector<std::strin
             MEDIA_ERR_LOG("UpdateLocalFileDirty path empty: %{public}s", cloudId.c_str());
             continue;
         }
-        std::string filePath = CloudMediaSyncUtils::GetLocalPath(path);
+        std::string filePath = MediaPathUtils::ConvertCloudPathToLocalPath(path);
         if (access(filePath.c_str(), F_OK) != E_OK) {
             MEDIA_ERR_LOG("UpdateLocalFileDirty no original file, cloudId: %{public}s", cloudId.c_str());
             continue;

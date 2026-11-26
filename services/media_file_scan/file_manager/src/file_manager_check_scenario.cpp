@@ -31,6 +31,7 @@
 #include "media_file_utils.h"
 #include "media_file_monitor_rdb_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_log_utils.h"
 #include "media_string_utils.h"
 #include "media_time_utils.h"
@@ -200,7 +201,7 @@ FileManagerCheckScenario::PhotoCandidates FileManagerCheckScenario::SelectPhotoC
         context.progress.lastFileId = photoRecord.fileId;
         CHECK_AND_CONTINUE_ERR_LOG(!photoRecord.storagePath.empty(),
             "Get empty storage_path, %{public}s", photoRecord.ToString().c_str());
-        if (MediaFileUtils::IsFileExists(photoRecord.storagePath)) {
+        if (MediaPureFileUtils::IsFileExists(photoRecord.storagePath)) {
             HandleExistingPhoto(photoRecord, candidates);
         } else {
             HandleNonExistingPhoto(photoRecord, candidates);
@@ -437,7 +438,7 @@ FileManagerCheckScenario::AlbumCandidates FileManagerCheckScenario::SelectAlbumC
                 MediaLogUtils::GarbleFilePath(albumRecord.lpath).c_str());
             continue;
         }
-        if (MediaFileUtils::IsFileExists(realPath)) {
+        if (MediaPureFileUtils::IsFileExists(realPath)) {
             continue;
         }
         candidates.albumsToDelete.emplace_back(albumRecord);

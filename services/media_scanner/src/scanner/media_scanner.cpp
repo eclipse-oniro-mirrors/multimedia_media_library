@@ -23,7 +23,9 @@
 #include "rdb_predicates.h"
 #include "media_file_utils.h"
 #include "media_file_uri.h"
+#include "media_path_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_utils.h"
@@ -145,6 +147,9 @@ int32_t MediaScannerObj::ScanDir()
 
 void MediaScannerObj::Scan()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    AccountScope scope(accountId_);
+#endif
     switch (type_) {
         case FILE:
         case CAMERA_SHOT_MOVING_PHOTO:
@@ -391,7 +396,7 @@ int32_t MediaScannerObj::Commit()
             }
         }
     } else {
-        MEDIA_INFO_LOG("insert new file: %{public}s", MediaFileUtils::DesensitizePath(data_->GetFilePath()).c_str());
+        MEDIA_INFO_LOG("insert new file: %{public}s", MediaPathUtils::DesensitizePath(data_->GetFilePath()).c_str());
         uri_ = mediaScannerDb_->InsertMetadata(*data_, tableName, api_, assetRefresh);
         assetRefresh->RefreshAlbum(static_cast<NotifyAlbumType>(NotifyAlbumType::SYS_ALBUM |
             NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
@@ -524,7 +529,7 @@ void ParseLivePhoto(const std::string& path, const std::unique_ptr<Metadata>& da
         MEDIA_ERR_LOG("failed to get local extra data dir");
         return;
     }
-    if (!MediaFileUtils::IsFileExists(extraDataDir) && !MediaFileUtils::CreateDirectory(extraDataDir)) {
+    if (!MediaPureFileUtils::IsFileExists(extraDataDir) && !MediaPureFileUtils::CreateDirectory(extraDataDir)) {
         MEDIA_ERR_LOG("Failed to create file, path:%{private}s", extraDataDir.c_str());
         return;
     }
@@ -588,6 +593,9 @@ int32_t MediaScannerObj::BuildData(const struct stat &statInfo)
         MEDIA_ERR_LOG("failed to make unique ptr for metadata");
         return E_DATA;
     }
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    data_->SetAccountId(accountId_);
+#endif
 
     if (S_ISDIR(statInfo.st_mode)) {
         return E_INVALID_ARGUMENTS;
@@ -696,7 +704,7 @@ int32_t MediaScannerObj::ScanFileInternal()
         }
         return err;
     }
-    string parent = ScannerUtils::GetParentPath(path_);
+    string parent = MediaPathUtils::GetParentPath(path_);
     err = GetParentDirInfo(parent, UNKNOWN_ID);
     if (err != E_OK) {
         MEDIA_ERR_LOG("failed to get dir info");
@@ -846,7 +854,7 @@ int32_t MediaScannerObj::InsertOrUpdateAlbumInfo(const string &albumPath, int32_
     metadata.SetFileSize(statInfo.st_size);
     metadata.SetFileDateModified(MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim));
 
-    string relativePath = ScannerUtils::GetParentPath(albumPath) + SLASH_CHAR;
+    string relativePath = MediaPathUtils::GetParentPath(albumPath) + SLASH_CHAR;
     metadata.SetRelativePath(relativePath.erase(0, ROOT_MEDIA_DIR.length()));
     metadata.SetParentId(parentId);
     metadata.SetAlbumName(albumName);

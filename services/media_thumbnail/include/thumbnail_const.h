@@ -17,6 +17,7 @@
 #define FRAMEWORKS_SERVICES_THUMBNAIL_SERVICE_INCLUDE_THUMBNAIL_CONST_H_
 
 #include "medialibrary_db_const.h"
+#include "media_path_utils.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -213,8 +214,6 @@ const std::string THUMBNAIL_LCD_EX_SUFFIX = "THM_EX/LCD";
 const std::string THUMBNAIL_THUMB_EX_SUFFIX = "THM_EX/THM";
 
 const std::string FILE_URI_PREX = "file://";
-const std::string LOCAL_MEDIA_PREFIX = "/storage/media/local/files/";
-
 const std::string PHOTO_URI_PREFIX = "file://media/Photo/";
 
 const std::string THUMBNAIL_FORMAT = "image/jpeg";
@@ -234,25 +233,27 @@ std::string GetGenThumbSceneName(const GenThumbScene &scene);
 
 static inline std::string GetThumbnailPath(const std::string &path, const std::string &key)
 {
-    if (path.length() <= ROOT_MEDIA_DIR.length() ||
-        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR ||
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() <= cloudFilesDir.length() ||
+        path.substr(0, cloudFilesDir.length()) != cloudFilesDir ||
         ("/" + path + "/").find("/../") != std::string::npos) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";
-    return ROOT_MEDIA_DIR + ".thumbs/" + path.substr(ROOT_MEDIA_DIR.length()) + "/" + key + suffix;
+    return cloudFilesDir + ".thumbs/" + path.substr(cloudFilesDir.length()) + "/" + key + suffix;
 }
 
 static inline std::string GetThumbnailPathHighlight(const std::string &path, const std::string &key,
     const std::string &timeStamp)
 {
-    if (path.length() <= ROOT_MEDIA_DIR.length() ||
-        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR ||
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() <= cloudFilesDir.length() ||
+        path.substr(0, cloudFilesDir.length()) != cloudFilesDir ||
         ("/" + path + "/").find("/../") != std::string::npos) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";
-    return ROOT_MEDIA_DIR + ".thumbs/" + path.substr(ROOT_MEDIA_DIR.length()) +
+    return cloudFilesDir + ".thumbs/" + path.substr(cloudFilesDir.length()) +
         "/beginTimeStamp" + timeStamp + "/" + key + suffix;
 }
 
@@ -304,24 +305,26 @@ static inline ThumbnailType GetThumbType(const int32_t width, const int32_t heig
 
 static inline std::string GetSandboxPath(const std::string &path, ThumbnailType type)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() < cloudFilesDir.length()) {
         return "";
     }
     std::string suffix = (type == ThumbnailType::THUMB_ASTC) ? ".astc" : ".jpg";
-    std::string suffixStr = path.substr(ROOT_MEDIA_DIR.length()) + "/" + GetThumbSuffix(type) + suffix;
+    std::string suffixStr = path.substr(cloudFilesDir.length()) + "/" + GetThumbSuffix(type) + suffix;
     return ROOT_SANDBOX_DIR + ".thumbs/" + suffixStr;
 }
 
 static inline std::string GetKeyFrameSandboxPath(const std::string &path, const int32_t &beginStamp,
     const int32_t &type)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() < cloudFilesDir.length()) {
         return "";
     }
     std::string suffix = (type == KEY_FRAME_THM_ASTC) ? ".astc" : ".jpg";
-    std::string suffixStr = path.substr(ROOT_MEDIA_DIR.length()) + "/beginTimeStamp" + std::to_string(beginStamp) +
+    std::string suffixStr = path.substr(cloudFilesDir.length()) + "/beginTimeStamp" + std::to_string(beginStamp) +
         "/" + GetKeyFrameThumbSuffix(type) + suffix;
-    return ROOT_MEDIA_DIR + ".thumbs/" + suffixStr;
+    return cloudFilesDir + ".thumbs/" + suffixStr;
 }
 
 static inline bool IsThumbnail(const int32_t width, const int32_t height)

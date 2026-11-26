@@ -25,6 +25,7 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_image_framework_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_tracer.h"
 #include "post_proc.h"
 #include "thumbnail_image_framework_utils.h"
@@ -40,6 +41,7 @@
 #include "thumbnail_generate_helper.h"
 #include "media_file_access_utils.h"
 #include "cloud_dentry_helper.h"
+#include "media_path_utils.h"
 
 using namespace std;
 
@@ -127,32 +129,36 @@ const std::unordered_map<SourceState, SourceState> SourceLoader::CLOUD_THM_OR_LC
 
 std::string GetLocalThumbnailPath(const std::string &path, const std::string &key)
 {
-    if (path.length() <= ROOT_MEDIA_DIR.length() ||
-        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() <= cloudFilesDir.length() ||
+        path.substr(0, cloudFilesDir.length()) != cloudFilesDir) {
         MEDIA_ERR_LOG("Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
         return "";
     }
     std::string suffix = (key == "") ? "" : "/" + key + ".jpg";
-    return LOCAL_MEDIA_PATH + ((key == "") ? "" : ".thumbs/") + path.substr(ROOT_MEDIA_DIR.length()) + suffix;
+    return MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES) + ((key == "") ? "" : ".thumbs/")
+        + path.substr(ROOT_MEDIA_DIR.length()) + suffix;
 }
 
 std::string GetLocalKeyFrameThumbnailPath(const std::string &path, const std::string &key, const std::string &timeStamp)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() < cloudFilesDir.length()) {
         return "";
     }
     std::string suffix = (key == "") ? "" : "/" + key + ".jpg";
-    return LOCAL_MEDIA_PATH + ((key == "") ? "" : ".thumbs/") + path.substr(ROOT_MEDIA_DIR.length()) +
-        "/beginTimeStamp" + timeStamp + "/" + suffix;
+    return MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES) + ((key == "") ? "" : ".thumbs/")
+        + path.substr(ROOT_MEDIA_DIR.length()) + "/beginTimeStamp" + timeStamp + "/" + suffix;
 }
 
 std::string GetLcdExPath(const std::string &path)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.length() < cloudFilesDir.length()) {
         return "";
     }
     std::string suffix = "/THM_EX/" + THUMBNAIL_LCD_SUFFIX + ".jpg";
-    return ROOT_MEDIA_DIR + ".thumbs/" + path.substr(ROOT_MEDIA_DIR.length()) + suffix;
+    return cloudFilesDir + ".thumbs/" + path.substr(cloudFilesDir.length()) + suffix;
 }
 
 bool IsLocalSourceAvailable(const std::string& path)
@@ -314,7 +320,7 @@ unique_ptr<ImageSource> LoadImageSource(const std::string &path, uint32_t &err)
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);
     if (err != E_OK || !imageSource) {
         MEDIA_ERR_LOG("Failed to LoadImageSource, pixelmap path: %{public}s exists: %{public}d",
-            path.c_str(), MediaFileUtils::IsFileExists(path));
+            path.c_str(), MediaPureFileUtils::IsFileExists(path));
         DfxManager::GetInstance()->HandleThumbnailError(path, DfxType::IMAGE_SOURCE_CREATE, err);
         return imageSource;
     }
@@ -697,10 +703,11 @@ bool LocalLcdSource::IsSizeLargeEnough(ThumbnailData &data, int32_t &minSize)
 std::string LocalOriginSource::GetSourcePath(ThumbnailData &data, int32_t &error)
 {
     std::string tmpPath = data.path;
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
     tmpPath = MediaFileAccessUtils::GetAssetRealPath(data.path);
 #endif
-    if (tmpPath.find(ROOT_MEDIA_DIR) != std::string::npos) {
+    if (tmpPath.find(cloudFilesDir) != std::string::npos) {
         tmpPath = GetLocalThumbnailPath(tmpPath, "");
     }
     MEDIA_DEBUG_LOG("File path is %{private}s", tmpPath.c_str());

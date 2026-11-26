@@ -25,6 +25,8 @@
 #include "lcd_aging_worker.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_astc_stat.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -313,14 +315,14 @@ std::vector<std::string> LcdAgingManager::GetFileIdFromAgingFiles(const std::vec
 int32_t LcdAgingManager::DeleteLocalFile(const std::string &localPath)
 {
     CHECK_AND_RETURN_RET_LOG(!localPath.empty(), E_ERR, "path is empty");
-    if (!MediaFileUtils::IsFileExists(localPath)) {
-        MEDIA_WARN_LOG("localPath not exist, path: %{public}s", MediaFileUtils::DesensitizePath(localPath).c_str());
+    if (!MediaPureFileUtils::IsFileExists(localPath)) {
+        MEDIA_WARN_LOG("localPath not exist, path: %{public}s", MediaPathUtils::DesensitizePath(localPath).c_str());
         return E_ERR;
     }
     if (!MediaFileUtils::DeleteFile(localPath)) {
         // 删除文件失败，兜底重试一次
         CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(localPath),
-            "Failed to delete localPath, path: %{public}s", MediaFileUtils::DesensitizePath(localPath).c_str());
+            "Failed to delete localPath, path: %{public}s", MediaPathUtils::DesensitizePath(localPath).c_str());
         return E_ERR;
     }
     return E_OK;
@@ -329,8 +331,8 @@ int32_t LcdAgingManager::DeleteLocalFile(const std::string &localPath)
 void LcdAgingManager::UpdateLastLcdAgingEndTime(const int64_t lastLcdAgingEndTime)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LCD_AGING_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "Get preferences error: %{public}d", errCode);
     prefs->PutLong(LAST_LCD_AGING_END_TIME, lastLcdAgingEndTime);
     prefs->FlushSync();
@@ -604,8 +606,8 @@ int32_t LcdAgingManager::AnalysisRemoveCloudLcd(const std::vector<int64_t> &file
 bool LcdAgingManager::LoadIsActiveLcdAgingFromPrefs()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LCD_AGING_XML, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, false, "Get preferences error: %{public}d", errCode);
     return prefs->GetBool(IS_ACTIVE_LCD_AGING, false);
 }
@@ -613,8 +615,8 @@ bool LcdAgingManager::LoadIsActiveLcdAgingFromPrefs()
 void LcdAgingManager::SaveIsActiveLcdAgingToPrefs(bool isActive)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LCD_AGING_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "Get preferences error: %{public}d", errCode);
     prefs->PutBool(IS_ACTIVE_LCD_AGING, isActive);
     prefs->FlushSync();

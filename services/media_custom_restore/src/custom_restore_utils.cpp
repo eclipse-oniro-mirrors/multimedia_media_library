@@ -17,24 +17,29 @@
 #include "custom_restore_utils.h"
  
 #include <cerrno>
+#include <fcntl.h>
 #include <sys/stat.h>
  
 #include "custom_restore_types.h"
 #include "custom_restore_info.h"
+#include "directory_ex.h"
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "media_time_utils.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_type_const.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata.h"
 #include "metadata_extractor.h"
+#include "moving_photo_file_utils.h"
 #include "photo_album_column.h"
 #include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "scanner_utils.h"
+#include "unique_fd.h"
 #include "values_bucket.h"
- 
+
 namespace OHOS {
 namespace Media {
 using namespace std;
@@ -177,7 +182,32 @@ int32_t CustomRestoreUtils::FillMetadata(const unordered_map<string, TimeInfo> &
         MEDIA_ERR_LOG("failed to get file metadata");
         return err;
     }
-    return MetadataExtractor::Extract(data, isMovingPhoto, Scene::AV_META_SCENE_CLONE);
+    // parse moving photo cover position
+    uint64_t coverPosition = 0;
+    uint32_t version = 0;
+    uint32_t frameIndex = 0;
+    bool hasCinemagraphInfo = false;
+    string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(fileInfo.originFilePath);
+    string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(fileInfo.originFilePath);
+    string absExtraDataPath;
+    if (!PathToRealPath(extraDataPath, absExtraDataPath)) {
+        MEDIA_WARN_LOG("file is not real path: %{private}s, errno: %{public}d", extraDataPath.c_str(), errno);
+    } else {
+        UniqueFd extraDataFd(open(absExtraDataPath.c_str(), O_RDONLY));
+        (void)MovingPhotoFileUtils::GetVersionAndFrameNum(extraDataFd.Get(), version, frameIndex, hasCinemagraphInfo);
+        (void)MovingPhotoFileUtils::GetCoverPosition(videoPath, frameIndex, coverPosition);
+    }
+    data->SetCoverPosition(static_cast<int64_t>(coverPosition));
+    if (version == LIVE_PHOTO_4D_VERSION) {
+        data->SetLivePhoto4dStatus(static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+    }
+    if (data->GetFileMediaType() == MEDIA_TYPE_IMAGE) {
+        err = MetadataExtractor::ExtractImageMetadata(data);
+    } else {
+        err = MetadataExtractor::ExtractAVMetadata(data, Scene::AV_META_SCENE_CLONE);
+    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "failed to extension data");
+    return E_OK;
 }
  
 int32_t CustomRestoreUtils::GetFileMetadata(std::unique_ptr<Metadata> &data)

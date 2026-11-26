@@ -164,6 +164,9 @@ ohos_shared_library("media_library_manager") {
 
   defines = []
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+  if (media_library_multi_account_enable) {
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
+  }
 
   if (memory_utils_purgeable_ashmem_enable && defined(global_parts_info) &&
       defined(global_parts_info.resourceschedule_memmgr_override)) {
@@ -270,6 +273,9 @@ ohos_shared_library("media_library_extend_manager") {
 
   defines = []
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+  if (media_library_multi_account_enable) {
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
+  }
 
   part_name = "media_library"
   subsystem_name = "multimedia"
@@ -291,6 +297,7 @@ ohos_shared_library("media_library_custom_restore") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
   ]
 
@@ -334,6 +341,7 @@ ohos_shared_library("media_library_custom_restore") {
 
   external_deps = [
     "ability_runtime:dataobs_manager",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
@@ -342,6 +350,7 @@ ohos_shared_library("media_library_custom_restore") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
+    "relational_store:native_rdb",
     "samgr:samgr_proxy",
   ]
 

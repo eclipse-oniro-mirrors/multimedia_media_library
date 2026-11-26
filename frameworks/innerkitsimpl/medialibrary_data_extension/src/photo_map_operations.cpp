@@ -22,6 +22,7 @@
 #include "media_column.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_album_operations.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
@@ -517,7 +518,7 @@ static bool SetPortraitCoverByUri(const shared_ptr<MediaLibraryRdbStore>& rdbSto
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "RdbStore is nullptr!");
     vector<int32_t> updateAlbumIds;
     for (const auto &albumId : targetAlbumIds) {
-        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(albumId));
+        CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(albumId));
             updateAlbumIds.push_back(std::stoi(albumId));
     }
     std::string updateCoverUri = "UPDATE " + ANALYSIS_ALBUM_TABLE + " SET " + COVER_URI + " = '" + coverUri +
@@ -556,13 +557,13 @@ static int32_t AccurateRefreshNotifyChangedAssets(const vector<string>& AddAsset
     vector<string> RemoveAssetIdStrings;
 
     for (const auto &id : AddAssetsArray) {
-        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(id));
+        CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(id));
         AddAssetIdIntegers.emplace_back(stoi(id));
         MEDIA_INFO_LOG("HandleAlbumMapMoveAsset add id = %{public}d", stoi(id));
     }
 
     for (const auto &id : RemoveAssetsArray) {
-        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(id));
+        CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(id));
         RemoveAssetIdIntegers.emplace_back(stoi(id));
         RemoveAssetIdStrings.emplace_back(id);
         MEDIA_INFO_LOG("HandleAlbumMapMoveAsset removed id = %{public}d", stoi(id));
@@ -629,13 +630,13 @@ int32_t NotifyChangedAssets(const vector<string> &AddAssetsArray, const vector<s
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
     for (size_t i = 0; i < AddAssetsArray.size(); i++) {
-        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(AddAssetsArray[i]));
+        CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(AddAssetsArray[i]));
         std::string UpdateUri = PhotoColumn::PHOTO_URI_PREFIX + AddAssetsArray[i];
         watch->Notify(MediaFileUtils::Encode(UpdateUri),
             NotifyType::NOTIFY_ALBUM_ADD_ASSET, std::stoi(sourceAlbumId));
     }
     for (size_t i = 0; i < RemoveAssetsArray.size(); i++) {
-        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(RemoveAssetsArray[i]));
+        CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(RemoveAssetsArray[i]));
         std::string UpdateUri = PhotoColumn::PHOTO_URI_PREFIX + RemoveAssetsArray[i];
         watch->Notify(MediaFileUtils::Encode(UpdateUri),
             NotifyType::NOTIFY_ALBUM_DISMISS_ASSET, std::stoi(targetAlbumId));
@@ -647,8 +648,8 @@ int32_t PhotoMapOperations::SmartMoveAssets(const string &albumId,
     const string &targetAlbumId, const vector<std::string> &assetsArray)
 {
     MEDIA_INFO_LOG("SmartMoveAssets start ");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(albumId), E_ERR, "albumId is invail");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(targetAlbumId), E_ERR, "targetAlbumId is invail");
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(albumId), E_ERR, "albumId is invail");
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(targetAlbumId), E_ERR, "targetAlbumId is invail");
     MergedAlbumInfo mergedAlbumInfo;
     GetPortraitAlbumIds(albumId, mergedAlbumInfo.sourceAlbumIds);
     GetPortraitAlbumIds(targetAlbumId, mergedAlbumInfo.targetAlbumIds);

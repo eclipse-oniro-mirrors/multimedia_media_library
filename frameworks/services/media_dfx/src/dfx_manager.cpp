@@ -51,6 +51,7 @@
 #include "net_conn_client.h"
 #include "cloud_media_operation_code.h"
 #include "media_map_const_utils.h"
+#include "media_path_utils.h"
 
 using namespace std;
 
@@ -678,8 +679,8 @@ void DfxManager::HandleHalfDayMissions()
         return;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -708,8 +709,8 @@ void DfxManager::HandleTwoDayMissions()
 {
     CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -748,7 +749,7 @@ void DfxManager::IsDirectoryExist(const string& dirName)
 
 void DfxManager::CheckStatus()
 {
-    const std::string CLOUD_FILE_PATH = "/storage/cloud/files";
+    const std::string CLOUD_FILE_PATH = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     IsDirectoryExist(CLOUD_FILE_PATH);
 }
 
@@ -1036,8 +1037,8 @@ void DfxManager::HandleOneWeekMissions()
     MEDIA_INFO_LOG("HandlePhotoInfo start");
     CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -1070,8 +1071,8 @@ void DfxManager::HandleSixHourMissions()
     MEDIA_INFO_LOG("HandlePhotoInfo start");
     CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -1093,8 +1094,8 @@ void DfxManager::HandleSixHourMissions()
 bool IsReported()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get dfx common preferences error: %{public}d", errCode);
         return false;
@@ -1105,8 +1106,8 @@ bool IsReported()
 void SetReported(bool isReported)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get dfx common preferences error: %{public}d", errCode);
         return;
@@ -1306,8 +1307,8 @@ void CloudSyncDfxManager::ShutDownTimer()
 void CloudSyncDfxManager::ResetStartTime()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get dfx common preferences error: %{public}d", errCode);
         return;
@@ -1319,8 +1320,8 @@ void CloudSyncDfxManager::ResetStartTime()
 void CloudSyncDfxManager::SetStartTime()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get dfx common preferences error: %{public}d", errCode);
         return;

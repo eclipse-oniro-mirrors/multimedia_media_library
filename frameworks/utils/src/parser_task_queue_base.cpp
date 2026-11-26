@@ -30,17 +30,17 @@ size_t ParserTaskQueueBase::GetMaxTaskNum() const
     return DEFAULT_MAX_TASK_NUM;
 }
 
-bool ParserTaskQueueBase::AddTask(const std::string &path, const std::string &fileUri)
+bool ParserTaskQueueBase::AddTask(const std::string &path, const std::string &fileUri, int32_t accountId)
 {
     std::lock_guard<std::mutex> lock(mtx_);
-    
+
     size_t maxTaskNum = GetMaxTaskNum();
     if (tasks_.size() >= maxTaskNum) {
         MEDIA_INFO_LOG("The max queue length has been reached, ignore current task: %{public}s",
             DfxUtils::GetSafePath(path).c_str());
         return false;
     }
-    tasks_.push(std::make_pair(path, fileUri));
+    tasks_.push(ParserTask{.path = path, .fileUri = fileUri, .accountId = accountId});
     if (tasks_.size() == 1 && !processing_) {
         MEDIA_DEBUG_LOG("queue has task, start process");
         processing_ = true;
@@ -68,8 +68,8 @@ void ParserTaskQueueBase::ProcessTasks()
 {
     bool hasTask = true;
     while (hasTask) {
-        std::pair<std::string, std::string> task = GetNextTask();
-        if (task.first.empty()) {
+        ParserTask task = GetNextTask();
+        if (task.path.empty()) {
             hasTask = false;
             continue;
         }
@@ -77,15 +77,15 @@ void ParserTaskQueueBase::ProcessTasks()
     }
 }
 
-std::pair<std::string, std::string> ParserTaskQueueBase::GetNextTask()
+ParserTask ParserTaskQueueBase::GetNextTask()
 {
     std::lock_guard<std::mutex> lock(mtx_);
     if (tasks_.empty()) {
         MEDIA_DEBUG_LOG("queue is empty, stop process");
         processing_ = false;
-        return std::make_pair("", "");
+        return ParserTask{};
     }
-    std::pair<std::string, std::string> task = tasks_.front();
+    ParserTask task = tasks_.front();
     tasks_.pop();
     return task;
 }

@@ -21,6 +21,7 @@
 #include "dfx_utils.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -57,7 +58,7 @@ static int32_t RenameFilesAndRollbackOnFailure(const int32_t newAlbumId, const s
     CHECK_AND_RETURN_RET_LOG(access(newAlbumPath.c_str(), F_OK) != E_OK, E_ERR,
         "the album name already exists in the file management, albumName:%{public}s, newAlbumPath:%{private}s",
         newAlbumName.c_str(), newAlbumPath.c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(newAlbumPath), E_ERR, "create new album path failed");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(newAlbumPath), E_ERR, "create new album path failed");
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore null.");

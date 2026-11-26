@@ -25,6 +25,8 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_rdb_utils.h"
@@ -111,8 +113,8 @@ const double HALF = 0.5;
 void BackgroundCloudFileProcessor::SetDownloadLatestFinished(bool downloadLatestFinished)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
 
     prefs->PutBool(DOWNLOAD_LATEST_FINISHED, downloadLatestFinished);
@@ -124,8 +126,8 @@ bool BackgroundCloudFileProcessor::GetDownloadLatestFinished()
 {
     int32_t errCode;
     bool downloadLatestFinished = false;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, false,
         "get preferences error: %{public}d", errCode);
     return prefs->GetBool(DOWNLOAD_LATEST_FINISHED, downloadLatestFinished);
@@ -134,8 +136,8 @@ bool BackgroundCloudFileProcessor::GetDownloadLatestFinished()
 void BackgroundCloudFileProcessor::SetLastDownloadMilliSecond(int64_t lastDownloadMilliSecond)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
 
     prefs->PutLong(LAST_DOWNLOAD_MILLISECOND, lastDownloadMilliSecond);
@@ -146,8 +148,8 @@ int64_t BackgroundCloudFileProcessor::GetLastDownloadMilliSecond()
 {
     int32_t errCode;
     int64_t lastDownloadMilliSecond = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, false,
         "get preferences error: %{public}d", errCode);
     return prefs->GetLong(LAST_DOWNLOAD_MILLISECOND, lastDownloadMilliSecond);
@@ -156,8 +158,8 @@ int64_t BackgroundCloudFileProcessor::GetLastDownloadMilliSecond()
 void BackgroundCloudFileProcessor::ClearDownloadCnt()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DOWNLOAD_CNT_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DOWNLOAD_CNT_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     prefs->Clear();
     prefs->FlushSync();
@@ -166,8 +168,8 @@ void BackgroundCloudFileProcessor::ClearDownloadCnt()
 void BackgroundCloudFileProcessor::UpdateDownloadCnt(std::string uri, int64_t cnt)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DOWNLOAD_CNT_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DOWNLOAD_CNT_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     prefs->PutLong(uri, cnt);
     prefs->FlushSync();
@@ -177,8 +179,8 @@ int64_t BackgroundCloudFileProcessor::GetDownloadCnt(std::string uri)
 {
     int32_t errCode;
     int64_t defaultCnt = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DOWNLOAD_CNT_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DOWNLOAD_CNT_CONFIG, false), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, defaultCnt, "get preferences error: %{public}d", errCode);
     return prefs->GetLong(uri, defaultCnt);
 }
@@ -279,8 +281,8 @@ void BackgroundCloudFileProcessor::HandleRepairMimeType(const int32_t &lastRecor
     CHECK_AND_RETURN_WARN_LOG(lock.try_lock(), "Repairing mimetype has started, skipping this operation");
     MEDIA_INFO_LOG("Start repair mimetype from %{public}d", lastRecord);
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     bool terminate = false;
     int32_t repairRecord = lastRecord;
@@ -328,8 +330,8 @@ void BackgroundCloudFileProcessor::RepairMimeType()
 {
     int32_t errCode = 0;
     int64_t defaultCnt = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int32_t localRepairRecord = prefs->GetInt(LAST_LOCAL_MIMETYPE_REPAIR, defaultCnt);
 
@@ -540,7 +542,7 @@ void BackgroundCloudFileProcessor::DownloadCloudFilesExecutor(AsyncTaskData *dat
     unique_lock<mutex> downloadLock(downloadResultMutex_);
     for (const auto &uri : downloadFiles.uris) {
         downloadResult_[uri] = DownloadStatus::INIT;
-        MEDIA_INFO_LOG("Start to download cloud file, uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
+        MEDIA_INFO_LOG("Start to download cloud file, uri: %{public}s", MediaPathUtils::DesensitizePath(uri).c_str());
     }
     downloadLock.unlock();
 
@@ -584,15 +586,14 @@ void BackgroundCloudFileProcessor::HandleSuccessCallback(const DownloadProgressO
 {
     lock_guard<mutex> downloadLock(downloadResultMutex_);
     bool cond = (progress.downloadId != downloadId_ || downloadResult_.find(progress.path) == downloadResult_.end());
-    CHECK_AND_RETURN_WARN_LOG(!cond,
-        "downloadId or uri is err, uri: %{public}s, downloadId: %{public}s, downloadId_: %{public}s.",
-        MediaFileUtils::DesensitizePath(progress.path).c_str(), to_string(progress.downloadId).c_str(),
-        to_string(downloadId_).c_str());
+    CHECK_AND_RETURN_WARN_LOG(!cond, "downloadId or uri is err, uri: %{public}s, downloadId: %{public}s,"
+        " downloadId_: %{public}s.", MediaPathUtils::DesensitizePath(progress.path).c_str(),
+        to_string(progress.downloadId).c_str(), to_string(downloadId_).c_str());
 
     downloadResult_[progress.path] = DownloadStatus::SUCCESS;
     // 已成功下载的图片，不可再次下载
     UpdateDownloadCnt(progress.path, DOWNLOAD_FAIL_MAX_TIMES);
-    MEDIA_INFO_LOG("download success, uri: %{public}s.", MediaFileUtils::DesensitizePath(progress.path).c_str());
+    MEDIA_INFO_LOG("download success, uri: %{public}s.", MediaPathUtils::DesensitizePath(progress.path).c_str());
 }
 
 void BackgroundCloudFileProcessor::HandleFailedCallback(const DownloadProgressObj& progress)
@@ -601,11 +602,11 @@ void BackgroundCloudFileProcessor::HandleFailedCallback(const DownloadProgressOb
     bool cond = (progress.downloadId != downloadId_ || downloadResult_.find(progress.path) == downloadResult_.end());
     CHECK_AND_RETURN_WARN_LOG(!cond,
         "downloadId or uri is err, uri: %{public}s, downloadId: %{public}s, downloadId_: %{public}s.",
-        MediaFileUtils::DesensitizePath(progress.path).c_str(), to_string(progress.downloadId).c_str(),
+        MediaPathUtils::DesensitizePath(progress.path).c_str(), to_string(progress.downloadId).c_str(),
         to_string(downloadId_).c_str());
 
     MEDIA_ERR_LOG("download failed, error type: %{public}d, uri: %{public}s.", progress.downloadErrorType,
-        MediaFileUtils::DesensitizePath(progress.path).c_str());
+        MediaPathUtils::DesensitizePath(progress.path).c_str());
     switch (progress.downloadErrorType) {
         case static_cast<int32_t>(DownloadProgressObj::DownloadErrorType::NETWORK_UNAVAILABLE): {
             downloadResult_[progress.path] = DownloadStatus::NETWORK_UNAVAILABLE;
@@ -627,14 +628,13 @@ void BackgroundCloudFileProcessor::HandleStoppedCallback(const DownloadProgressO
 {
     lock_guard<mutex> downloadLock(downloadResultMutex_);
     bool cond = (progress.downloadId != downloadId_ || downloadResult_.find(progress.path) == downloadResult_.end());
-    CHECK_AND_RETURN_WARN_LOG(!cond,
-        "downloadId or uri is err, uri: %{public}s, downloadId: %{public}s, downloadId_: %{public}s.",
-        MediaFileUtils::DesensitizePath(progress.path).c_str(), to_string(progress.downloadId).c_str(),
-        to_string(downloadId_).c_str());
+    CHECK_AND_RETURN_WARN_LOG(!cond, "downloadId or uri is err, uri: %{public}s, downloadId: %{public}s,"
+        " downloadId_: %{public}s.", MediaPathUtils::DesensitizePath(progress.path).c_str(),
+        to_string(progress.downloadId).c_str(), to_string(downloadId_).c_str());
 
     downloadResult_[progress.path] = DownloadStatus::STOPPED;
     UpdateDownloadCnt(progress.path, 0);
-    MEDIA_ERR_LOG("download stopped, uri: %{public}s.", MediaFileUtils::DesensitizePath(progress.path).c_str());
+    MEDIA_ERR_LOG("download stopped, uri: %{public}s.", MediaPathUtils::DesensitizePath(progress.path).c_str());
 }
 
 void BackgroundCloudFileProcessor::SetPredicates(NativeRdb::RdbPredicates &predicates, bool isCloud, bool isVideo)
@@ -832,7 +832,7 @@ void BackgroundCloudFileProcessor::UpdateCloudDataExecutor(AsyncTaskData *data)
         if (abnormalData.width == 0 || abnormalData.height == 0
             || (abnormalData.duration == 0 && abnormalData.mediaType == MEDIA_TYPE_VIDEO)) {
             int32_t ret = GetExtractMetadata(metadata);
-            if (ret != E_OK && MediaFileUtils::IsFileExists(abnormalData.path)) {
+            if (ret != E_OK && MediaPureFileUtils::IsFileExists(abnormalData.path)) {
                 UpdateCurrentOffset(abnormalData.isCloud, abnormalData.isVideo);
                 MEDIA_ERR_LOG("failed to get extract metadata! err: %{public}d.", ret);
                 continue;

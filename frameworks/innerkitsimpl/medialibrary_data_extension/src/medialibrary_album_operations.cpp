@@ -81,6 +81,7 @@
 #include "share_member_column.h"
 #include "userfile_manager_types.h"
 #include "cloud_sync_helper.h"
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -179,7 +180,7 @@ int32_t MediaLibraryAlbumOperations::ModifyAlbumOperation(MediaLibraryCommand &c
     if (dstDirName.empty() && !values.IsEmpty()) {
         ret = MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd);
     } else {
-        string dstDirPath = MediaFileUtils::GetParentPath(srcDirPath) + "/" + dstDirName;
+        string dstDirPath = MediaPathUtils::GetParentPath(srcDirPath) + "/" + dstDirName;
         ret = MediaLibraryObjectUtils::RenameDirObj(cmd, srcDirPath, dstDirPath);
     }
     return ret;
@@ -1080,7 +1081,7 @@ int32_t GetPortraitSubtype(const string &subtypeName, const string &whereClause,
         MEDIA_ERR_LOG("whereArgs is invalid");
         return E_INDEX;
     }
-    if (!MediaFileUtils::IsValidInteger(whereArgs[argsIndex])) {
+    if (!MediaStringUtils::IsValidInteger(whereArgs[argsIndex])) {
         MEDIA_ERR_LOG("whereArgs is not a valid integer");
         return E_INDEX;
     }
@@ -2099,7 +2100,7 @@ void MediaLibraryAlbumOperations::RecoverAlbum(const string& assetId, const stri
     CHECK_AND_EXECUTE(lPath.find(userAlbumMark) == string::npos, isUserAlbum = true);
 
     MEDIA_INFO_LOG("new album need to build, lpath is %{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str());
+        MediaPathUtils::DesensitizePath(lPath).c_str());
     string albumName;
     string bundleName = "";
     auto albumType = PhotoAlbumType::SOURCE;

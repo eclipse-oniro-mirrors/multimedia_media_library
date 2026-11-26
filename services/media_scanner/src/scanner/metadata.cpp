@@ -101,6 +101,10 @@ void Metadata::InitV2()
         &Metadata::SetVideoMode);
     memberFuncMap_[PhotoColumn::PHOTO_NEED_THUMBNAIL] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetNeedThumbnail);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    memberFuncMap_[PhotoColumn::PHOTO_ACCOUNT_ID] = make_pair(ResultSetDataType::TYPE_INT32,
+        &Metadata::SetAccountId);
+#endif
 }
 
 void Metadata::Init()
@@ -197,6 +201,10 @@ const std::unordered_map<std::string, std::pair<ResultSetDataType, Metadata::Met
          {ResultSetDataType::TYPE_INT32, Metadata::Getter<int32_t>{&Metadata::GetFileSourceType}}},
         {PhotoColumn::PHOTO_NEED_THUMBNAIL,
          {ResultSetDataType::TYPE_INT32, Metadata::Getter<int32_t>{&Metadata::GetNeedThumbnail}}},
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        {PhotoColumn::PHOTO_ACCOUNT_ID,
+         {ResultSetDataType::TYPE_INT32, Metadata::Getter<int32_t>{&Metadata::GetAccountId}}},
+#endif
         // string getters
         {MediaColumn::MEDIA_MIME_TYPE,
          {ResultSetDataType::TYPE_STRING, Metadata::Getter<const std::string&>{&Metadata::GetFileMimeType}}},
@@ -881,6 +889,18 @@ int32_t Metadata::GetFileSourceType() const
     return fileSourceType_;
 }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+void Metadata::SetAccountId(const VariantData &accountIdVal)
+{
+    accountId = std::get<int32_t>(accountIdVal);
+}
+
+int32_t Metadata::GetAccountId() const
+{
+    return accountId;
+}
+#endif
+
 void Metadata::SetMusicMasterMode(const VariantData &musicMasterMode)
 {
     musicMasterMode_ = std::get<int32_t>(musicMasterMode);
@@ -909,6 +929,16 @@ void Metadata::SetNeedThumbnail(const VariantData &needThumbnail)
 int32_t Metadata::GetNeedThumbnail() const
 {
     return needThumbnail_;
+}
+
+void Metadata::SetLivePhoto4dStatus(const VariantData &livePhoto4dStatus)
+{
+    livePhoto4dStatus_ = std::get<int32_t>(livePhoto4dStatus);
+}
+
+int32_t Metadata::GetLivePhoto4dStatus() const
+{
+    return livePhoto4dStatus_;
 }
 } // namespace Media
 } // namespace OHOS

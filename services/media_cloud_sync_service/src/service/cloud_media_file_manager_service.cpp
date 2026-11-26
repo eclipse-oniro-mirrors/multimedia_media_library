@@ -23,6 +23,8 @@
 #include "media_string_utils.h"
 #include "cloud_media_sync_const.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_tracer.h"
 
 namespace OHOS::Media::CloudSync {
@@ -140,7 +142,7 @@ bool CloudMediaFileManagerService::IsTargetMediaFileNotExists(const CloudMediaPu
 
     const std::string cloudFileStoragePath = CloudMediaSyncUtils::FindFileStoragePathWithPullData(pullData);
     const bool isMediaFile = CloudMediaSyncUtils::IsMediaFile(cloudFileStoragePath);
-    const bool isTargetMediaExists = isMediaFile && MediaFileUtils::IsFileExists(cloudFileStoragePath);
+    const bool isTargetMediaExists = isMediaFile && MediaPureFileUtils::IsFileExists(cloudFileStoragePath);
     MEDIA_DEBUG_LOG("IsTargetMediaFileNotExists checked, "
                     "cloudId: %{public}s, isMediaFile: %{public}d, isTargetMediaExists: %{public}d",
                     pullData.cloudId.c_str(),
@@ -160,7 +162,7 @@ bool CloudMediaFileManagerService::IsSrcFileExists(const CloudMediaPullDataDto &
     const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
 
     const std::string deviceFileStoragePath = CloudMediaSyncUtils::FindFileStoragePath(photoInfo);
-    const bool isSrcFileExists = MediaFileUtils::IsFileExists(deviceFileStoragePath);
+    const bool isSrcFileExists = MediaPureFileUtils::IsFileExists(deviceFileStoragePath);
     MEDIA_DEBUG_LOG("IsSrcFileExists checked, cloudId: %{public}s, isSrcFileExists: %{public}d",
                     pullData.cloudId.c_str(),
                     isSrcFileExists);
@@ -168,7 +170,7 @@ bool CloudMediaFileManagerService::IsSrcFileExists(const CloudMediaPullDataDto &
         isSrcFileExists,
         "Source file does not exist, cannot relocate file, cloudId: %{public}s, deviceFileStoragePath: %{public}s",
         pullData.cloudId.c_str(),
-        MediaFileUtils::DesensitizePath(deviceFileStoragePath).c_str());
+        MediaPathUtils::DesensitizePath(deviceFileStoragePath).c_str());
     return isSrcFileExists;
 }
 
@@ -181,7 +183,7 @@ int32_t CloudMediaFileManagerService::FindUniqueFilePathAndUpdateDB(
                              "FindUniqueFilePath failed, ret: %{public}d, fileId: %{public}d, destPath: %{public}s",
                              ret,
                              fileId,
-                             MediaFileUtils::DesensitizePath(destPath).c_str());
+                             MediaPathUtils::DesensitizePath(destPath).c_str());
     if (finalDestPath != destPath) {
         ret = this->fileManagerDao_.UpdateStoragePath(fileId, finalDestPath);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK,
@@ -190,8 +192,8 @@ int32_t CloudMediaFileManagerService::FindUniqueFilePathAndUpdateDB(
                                  "%{public}s, finalDestPath: %{public}s",
                                  ret,
                                  fileId,
-                                 MediaFileUtils::DesensitizePath(destPath).c_str(),
-                                 MediaFileUtils::DesensitizePath(finalDestPath).c_str());
+                                 MediaPathUtils::DesensitizePath(destPath).c_str(),
+                                 MediaPathUtils::DesensitizePath(finalDestPath).c_str());
     }
     return E_OK;
 }
@@ -237,9 +239,9 @@ int32_t CloudMediaFileManagerService::RelocateFileInner(const PhotosPo &photoInf
                    fileId,
                    isLivePhoto,
                    isMediaFile,
-                   MediaFileUtils::DesensitizePath(deviceFileStoragePath).c_str(),
-                   MediaFileUtils::DesensitizePath(destPath).c_str(),
-                   MediaFileUtils::DesensitizePath(finalDestPath).c_str());
+                   MediaPathUtils::DesensitizePath(deviceFileStoragePath).c_str(),
+                   MediaPathUtils::DesensitizePath(destPath).c_str(),
+                   MediaPathUtils::DesensitizePath(finalDestPath).c_str());
     return ret;
 }
 
@@ -255,7 +257,7 @@ int32_t CloudMediaFileManagerService::RelocateFileInner(const CloudMediaPullData
                    "ret: %{public}d, cloudId: %{public}s, cloudFileStoragePath: %{public}s",
                    ret,
                    pullData.cloudId.c_str(),
-                   MediaFileUtils::DesensitizePath(cloudFileStoragePath).c_str());
+                   MediaPathUtils::DesensitizePath(cloudFileStoragePath).c_str());
     return ret;
 }
 

@@ -15,6 +15,7 @@
 #define MLOG_TAG "UserFileClientEx"
 #include "userfile_client_ex.h"
 
+#include <cerrno>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -336,24 +337,18 @@ int UserFileClientEx::Open(const std::string &uri, const std::string &mode, bool
     return UserFileClient::OpenFile(openUri, mode);
 }
 
-int UserFileClientEx::Close(const std::string &uri, const int fileFd, const std::string &mode,
+static int32_t NotifyFileClosed(const std::string &uri, const std::string &mode,
     bool isCreateThumbSync, bool isRestart)
 {
-    if (isRestart && Init() != Media::E_OK) {
+    if (isRestart && UserFileClientEx::Init() != Media::E_OK) {
         MEDIA_ERR_LOG("Init failed");
         return Media::E_ERR;
     }
     if (!UserFileClient::IsValid()) {
-        MEDIA_ERR_LOG("close failed. helper:null. uri:%{public}s, fileFd:%{public}d, mode:%{public}s",
-            uri.c_str(), fileFd, mode.c_str());
+        MEDIA_ERR_LOG("close failed. helper:null.");
         return Media::E_FAIL;
     }
     if (mode == Media::MEDIA_FILEMODE_READONLY) {
-        if (close(fileFd) != E_SUCCESS) {
-            MEDIA_ERR_LOG("close failed. uri:%{public}s, fileFd:%{public}d, mode:%{public}s",
-                uri.c_str(), fileFd, mode.c_str());
-            return Media::E_FAIL;
-        }
         return Media::E_OK;
     }
     DataShare::DataShareValuesBucket valuesBucket;
@@ -361,7 +356,7 @@ int UserFileClientEx::Close(const std::string &uri, const int fileFd, const std:
     if (isCreateThumbSync) {
         valuesBucket.Put(CLOSE_CREATE_THUMB_STATUS, CREATE_THUMB_SYNC_STATUS);
     }
-    std::string closeUriStr = GetCloseUri(GetTableNameByUri(uri));
+    std::string closeUriStr = GetCloseUri(UserFileClientEx::GetTableNameByUri(uri));
     if (closeUriStr.empty()) {
         MEDIA_ERR_LOG("get close uri failed. uri:%{public}s", uri.c_str());
         return Media::E_FAIL;
@@ -373,9 +368,24 @@ int UserFileClientEx::Close(const std::string &uri, const int fileFd, const std:
         MEDIA_ERR_LOG("close the file failed. ret:%{public}d, closeUri:%{public}s, uri:%{public}s",
             ret, closeUri.ToString().c_str(), uri.c_str());
     }
-    if (close(fileFd) != E_SUCCESS) {
-        MEDIA_ERR_LOG("close failed. uri:%{public}s, fileFd:%{public}d, mode:%{public}s",
-            uri.c_str(), fileFd, mode.c_str());
+    return ret;
+}
+
+int UserFileClientEx::Close(const std::string &uri, const int fileFd, const std::string &mode,
+    bool isCreateThumbSync, bool isRestart)
+{
+    if (fileFd < 0) {
+        MEDIA_ERR_LOG("close failed. invalid file descriptor.");
+        return Media::E_FAIL;
+    }
+    // Preserve notification-before-close order; release the fd even if notification fails.
+    const auto ret = NotifyFileClosed(uri, mode, isCreateThumbSync, isRestart);
+    int fd = fileFd;
+    const int closeResult = close(fd);
+    fd = -1;
+    if (closeResult != E_SUCCESS) {
+        const int closeError = errno;
+        MEDIA_ERR_LOG("close local file failed. errno:%{public}d", closeError);
         return Media::E_FAIL;
     }
     return ret;

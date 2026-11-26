@@ -20,14 +20,18 @@
 
 namespace OHOS {
 namespace Media {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+constexpr size_t DURATION_PARSER_MAX_TASK_NUM = SIZE_MAX;
+#else
 constexpr size_t DURATION_PARSER_MAX_TASK_NUM = 100;
+#endif
 
 class DurationParser : public ParserTaskQueueBase {
 public:
     static DurationParser &GetInstance();
 
 private:
-    void ProcessTask(const std::pair<std::string, std::string> &task) override;
+    void ProcessTask(const ParserTask &task) override;
     void UpdateDuration(const std::string &path);
     size_t GetMaxTaskNum() const override;
 };

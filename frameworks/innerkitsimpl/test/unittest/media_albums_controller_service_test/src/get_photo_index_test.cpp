@@ -29,6 +29,7 @@
 #undef private
 #undef protected
 
+#include "media_pure_file_utils.h"
 #include "vision_db_sqls.h"
 #include "story_db_sqls.h"
 #include "user_define_ipc_client.h"
@@ -129,10 +130,10 @@ static int InsertPhotoAlbum()
 
 HWTEST_F(GetPhotoIndexTest, GetPhotoIndexTest_Test_001, TestSize.Level0)
 {
-    bool createDirRes = MediaFileUtils::CreateDirectory("/data/local/tmp");
+    bool createDirRes = MediaPureFileUtils::CreateDirectory("/data/local/tmp");
     EXPECT_EQ(createDirRes, true);
     std::string filePath = "/data/local/tmp/IMG_1501924305_001.jpg";
-    if (!MediaFileUtils::IsFileExists(filePath)) {
+    if (!MediaPureFileUtils::IsFileExists(filePath)) {
         bool createFileRes = MediaFileUtils::CreateFile(filePath);
         EXPECT_EQ(createFileRes, true);
     }

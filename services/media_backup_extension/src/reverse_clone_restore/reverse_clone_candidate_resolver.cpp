@@ -19,6 +19,7 @@
 
 #include "media_column.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
 
@@ -116,7 +117,7 @@ ReverseCloneCandidate ReverseCloneCandidateResolver::QueryByFileId(
     candidate.donor.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     candidate.donor.originalFileId = GetInt32Val("original_file_id", resultSet);
     candidate.donor.cloudPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-    candidate.donor.localRoot = RESTORE_FILES_LOCAL_DIR;
+    candidate.donor.localRoot = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
     candidate.donor.fingerprint.cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
     candidate.donor.fingerprint.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
     candidate.donor.fingerprint.fileSize = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);

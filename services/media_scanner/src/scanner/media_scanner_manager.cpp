@@ -24,9 +24,11 @@
 #include "media_scanner_db.h"
 #include "scan_config_builder.h"
 #include "scan_task_context.h"
+#include "media_path_utils.h"
 
 namespace OHOS {
 namespace Media {
+
 std::shared_ptr<MediaScannerManager> MediaScannerManager::instance_ = nullptr;
 std::mutex MediaScannerManager::instanceMutex_;
 
@@ -55,18 +57,18 @@ int32_t MediaScannerManager::ScanFile(const std::string &path, const std::shared
     MediaLibraryApi api, bool isCameraShotMovingPhoto)
 {
     MEDIA_DEBUG_LOG("scan file %{public}s, api%{public}d",
-        MediaFileUtils::DesensitizePath(path).c_str(), static_cast<int>(api));
+        MediaPathUtils::DesensitizePath(path).c_str(), static_cast<int>(api));
 
     string realPath;
     if (!PathToRealPath(path, realPath)) {
         MEDIA_ERR_LOG("failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            MediaPathUtils::DesensitizePath(path).c_str(), errno);
         return E_INVALID_PATH;
     }
 
     if (!ScannerUtils::IsRegularFile(realPath)) {
         MEDIA_ERR_LOG("the path %{public}s is not a regular file",
-            MediaFileUtils::DesensitizePath(realPath).c_str());
+            MediaPathUtils::DesensitizePath(realPath).c_str());
         return E_INVALID_PATH;
     }
 
@@ -74,6 +76,9 @@ int32_t MediaScannerManager::ScanFile(const std::string &path, const std::shared
         isCameraShotMovingPhoto ? MediaScannerObj::CAMERA_SHOT_MOVING_PHOTO : MediaScannerObj::FILE;
     std::unique_ptr<MediaScannerObj> scanner =
         std::make_unique<MediaScannerObj>(realPath, callback, scanType, api);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    scanner->SetAccountId(MediaPathUtils::ParseAccountIdFromPath(realPath));
+#endif
     if (isCameraShotMovingPhoto) {
         scanner->SetForceScan(true);
     }
@@ -86,22 +91,25 @@ int32_t MediaScannerManager::ScanFileSync(const std::string &path,
     const std::shared_ptr<IMediaScannerCallback> &callback, MediaLibraryApi api, bool isForceScan, int32_t fileId)
 {
     MEDIA_DEBUG_LOG("scan file %{public}s, api%{public}d",
-        MediaFileUtils::DesensitizePath(path).c_str(), static_cast<int>(api));
+        MediaPathUtils::DesensitizePath(path).c_str(), static_cast<int>(api));
 
     string realPath;
     if (!PathToRealPath(path, realPath)) {
         MEDIA_ERR_LOG("failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            MediaPathUtils::DesensitizePath(path).c_str(), errno);
         return E_INVALID_PATH;
     }
 
     if (!ScannerUtils::IsRegularFile(realPath)) {
         MEDIA_ERR_LOG("the path %{public}s is not a regular file",
-            MediaFileUtils::DesensitizePath(realPath).c_str());
+            MediaPathUtils::DesensitizePath(realPath).c_str());
         return E_INVALID_PATH;
     }
 
     MediaScannerObj scanner = MediaScannerObj(realPath, callback, MediaScannerObj::FILE, api);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    scanner.SetAccountId(MediaPathUtils::ParseAccountIdFromPath(realPath));
+#endif
     if (isForceScan) {
         scanner.SetForceScan(true);
     }
@@ -128,6 +136,9 @@ int32_t MediaScannerManager::ScanFileSyncWithoutAlbumUpdate(const std::string &p
     }
 
     MediaScannerObj scanner = MediaScannerObj(realPath, callback, MediaScannerObj::FILE, api);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    scanner.SetAccountId(MediaPathUtils::ParseAccountIdFromPath(realPath));
+#endif
     if (isForceScan) {
         scanner.SetForceScan(true);
     }
@@ -140,18 +151,18 @@ int32_t MediaScannerManager::ScanFileSyncWithoutAlbumUpdate(const std::string &p
 
 int32_t MediaScannerManager::ScanDir(const std::string &path, const std::shared_ptr<IMediaScannerCallback> &callback)
 {
-    MEDIA_DEBUG_LOG("scan dir %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_DEBUG_LOG("scan dir %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
 
     string realPath;
     if (!PathToRealPath(path, realPath)) {
         MEDIA_ERR_LOG("failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            MediaPathUtils::DesensitizePath(path).c_str(), errno);
         return E_INVALID_PATH;
     }
 
     if (!ScannerUtils::IsDirectory(realPath)) {
         MEDIA_ERR_LOG("the path %{public}s is not a directory",
-            MediaFileUtils::DesensitizePath(realPath).c_str());
+            MediaPathUtils::DesensitizePath(realPath).c_str());
         return E_INVALID_PATH;
     }
 
@@ -165,18 +176,18 @@ int32_t MediaScannerManager::ScanDir(const std::string &path, const std::shared_
 int32_t MediaScannerManager::ScanDirSync(const std::string &path,
     const std::shared_ptr<IMediaScannerCallback> &callback)
 {
-    MEDIA_DEBUG_LOG("scan dir %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_DEBUG_LOG("scan dir %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
 
     string realPath;
     if (!PathToRealPath(path, realPath)) {
         MEDIA_ERR_LOG("failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            MediaPathUtils::DesensitizePath(path).c_str(), errno);
         return E_INVALID_PATH;
     }
 
     if (!ScannerUtils::IsDirectory(realPath)) {
         MEDIA_ERR_LOG("the path %{public}s is not a directory",
-            MediaFileUtils::DesensitizePath(realPath).c_str());
+            MediaPathUtils::DesensitizePath(realPath).c_str());
         return E_INVALID_PATH;
     }
 
@@ -203,7 +214,8 @@ void MediaScannerManager::Stop()
         enhancedExecutor_->Stop();
     }
 
-    MediaScannerDb::GetDatabaseInstance()->DeleteError(ROOT_MEDIA_DIR);
+    MediaScannerDb::GetDatabaseInstance()->DeleteError(
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES));
 }
 
 void MediaScannerManager::ScanError()
@@ -226,7 +238,7 @@ int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
         return ExecuteCustomRestore(config, ScanExecutionMode::SYNC);
     }
     MEDIA_INFO_LOG("scan file sync, path %{public}s, fileId %{public}d",
-        MediaFileUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
+        MediaPathUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
         config.GetDefaultScanInfo().GetFileId());
 
     auto context = PrepareValidatedContext(config, ScanExecutionMode::SYNC);
@@ -260,7 +272,7 @@ int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
 int32_t MediaScannerManager::ScanAsync(const ScanConfig &config)
 {
     MEDIA_INFO_LOG("scan file async, path %{public}s, fileId %{public}d",
-        MediaFileUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
+        MediaPathUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
         config.GetDefaultScanInfo().GetFileId());
     
     auto context = PrepareValidatedContext(config, ScanExecutionMode::ASYNC);
@@ -302,9 +314,15 @@ std::shared_ptr<ScanTaskContext> MediaScannerManager::PrepareValidatedContext(co
 
     auto defaultScanInfo = config.GetDefaultScanInfo();
     defaultScanInfo.SetFilePath(realPath);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = MediaPathUtils::ParseAccountIdFromPath(realPath);
+#endif
     auto finalConfig = ScanConfigBuilder(config)
         .SetDefaultScanInfo(defaultScanInfo)
         .SetExecutionMode(executionMode)
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        .SetAccountId(accountId)
+#endif
         .Build();
 
     return std::make_shared<ScanTaskContext>(finalConfig);
@@ -327,6 +345,9 @@ int32_t MediaScannerManager::ExecuteCustomRestore(const ScanConfig &config, Scan
     }
     auto finalConfig = ScanConfigBuilder(config)
         .SetExecutionMode(executionMode)
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        .SetAccountId(config.GetAccountId())
+#endif
         .Build();
  
     auto context = std::make_shared<ScanTaskContext>(finalConfig);

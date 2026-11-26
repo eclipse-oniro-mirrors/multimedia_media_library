@@ -29,10 +29,12 @@
 #include "medialibrary_smartalbum_operations.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_smart_album_column.h"
 #include "media_smart_map_column.h"
 #include "rdb_utils.h"
 #include "result_set_utils.h"
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -136,7 +138,8 @@ static string GetAssetRecycle(const int32_t assetId, string &filePath, string &o
     auto dirQuerySetMap = MediaLibraryDataManager::GetDirQuerySetMap();
     for (pair<string, DirAsset> dirPair : dirQuerySetMap) {
         DirAsset dirAsset = dirPair.second;
-        string rootPath = ROOT_MEDIA_DIR + dirAsset.GetDirectory();
+        string rootPath =
+            MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES) + dirAsset.GetDirectory();
         if (filePath.find(rootPath) == 0) {
             string trashDirPath = rootPath + RECYCLE_DIR;
             return trashDirPath;
@@ -227,12 +230,13 @@ static int32_t RecycleChildAssetsInfoUtil(const int32_t parentId)
 
 static string GetNewPath(const string &path, const string &srcRelPath, const string &newRelPath)
 {
-    if ((path.find(srcRelPath) != 0) && (path.find(ROOT_MEDIA_DIR + srcRelPath) != 0)) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if ((path.find(srcRelPath) != 0) && (path.find(cloudFilesDir + srcRelPath) != 0)) {
         return "";
     }
     string newPath = newRelPath;
-    if (path.find(ROOT_MEDIA_DIR) != string::npos) {
-        newPath = ROOT_MEDIA_DIR + newPath;
+    if (path.find(cloudFilesDir) != string::npos) {
+        newPath = cloudFilesDir + newPath;
     }
     newPath += path.substr(path.find(srcRelPath) + srcRelPath.length());
     return newPath;
@@ -302,7 +306,8 @@ static int32_t RecycleDir(const shared_ptr<FileAsset> &fileAsset)
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "UniStore is nullptr");
 
     ValuesBucket values;
-    int32_t parentId = MediaLibraryObjectUtils::CreateDirWithPath(ROOT_MEDIA_DIR +
+    int32_t parentId = MediaLibraryObjectUtils::CreateDirWithPath(
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO) +
         MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
     if (parentId != fileAsset->GetParent()) {
         values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, parentId);
@@ -359,7 +364,7 @@ static int32_t UpdateRecycleInfoInDb(const int32_t assetId, const string &realPa
 
 static int32_t RecycleDirAssetsInfoUtil(const shared_ptr<FileAsset> &fileAsset)
 {
-    if (!MediaFileUtils::IsDirectory(fileAsset->GetPath())) {
+    if (!MediaPureFileUtils::IsDirectory(fileAsset->GetPath())) {
         MEDIA_ERR_LOG("recycle dir is not exists");
         return E_RECYCLE_FILE_IS_NULL;
     }
@@ -380,7 +385,8 @@ static int32_t RecycleFile(const shared_ptr<FileAsset> &fileAsset)
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "UniStore is nullptr");
 
     ValuesBucket values;
-    int32_t parentId = MediaLibraryObjectUtils::CreateDirWithPath(ROOT_MEDIA_DIR +
+    int32_t parentId = MediaLibraryObjectUtils::CreateDirWithPath(
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO) +
         MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
     if (parentId != fileAsset->GetParent()) {
         values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, parentId);
@@ -426,7 +432,7 @@ static int32_t RecycleFile(const shared_ptr<FileAsset> &fileAsset)
 static int32_t RecycleFileAssetsInfoUtil(const shared_ptr<FileAsset> &fileAsset)
 {
     string recyclePath = fileAsset->GetPath();
-    if (!MediaFileUtils::IsFileExists(recyclePath)) {
+    if (!MediaPureFileUtils::IsFileExists(recyclePath)) {
         MEDIA_ERR_LOG("RecycleFile is null, fileid = %{private}d", fileAsset->GetId());
         return E_RECYCLE_FILE_IS_NULL;
     }
@@ -532,8 +538,8 @@ static int32_t TrashDirAssetsInfoUtil(const int32_t assetId)
     string oldPath = MediaLibraryObjectUtils::GetPathByIdFromDb(to_string(assetId));
     string trashDirPath = GetAssetRecycle(assetId, oldPath, trashDirPath);
     CHECK_AND_RETURN_RET_LOG(!trashDirPath.empty(), E_CHECK_ROOT_DIR_FAIL, "Failed to get recycle dir");
-    if (!MediaFileUtils::IsDirectory(trashDirPath)) {
-        if (!MediaFileUtils::CreateDirectory(trashDirPath)) {
+    if (!MediaPureFileUtils::IsDirectory(trashDirPath)) {
+        if (!MediaPureFileUtils::CreateDirectory(trashDirPath)) {
             MEDIA_ERR_LOG("TrashDirPath create failed");
             return E_CREATE_TRASHDIR_FAIL;
         }
@@ -555,8 +561,8 @@ static int32_t TrashFileAssetsInfoUtil(const int32_t assetId)
     string oldPath = MediaLibraryObjectUtils::GetPathByIdFromDb(to_string(assetId));
     string trashDirPath = GetAssetRecycle(assetId, oldPath, trashDirPath);
     CHECK_AND_RETURN_RET_LOG(!trashDirPath.empty(), E_CHECK_ROOT_DIR_FAIL, "Failed to get recycle dir");
-    if (!MediaFileUtils::IsDirectory(trashDirPath)) {
-        if (!MediaFileUtils::CreateDirectory(trashDirPath)) {
+    if (!MediaPureFileUtils::IsDirectory(trashDirPath)) {
+        if (!MediaPureFileUtils::CreateDirectory(trashDirPath)) {
             MEDIA_ERR_LOG("TrashDirPath create failed");
             return E_CREATE_TRASHDIR_FAIL;
         }

@@ -15,6 +15,7 @@
  */
 
 #include "command/ls_command.h"
+#include "media_path_utils.h"
 
 #include <sstream>
 #include <string>

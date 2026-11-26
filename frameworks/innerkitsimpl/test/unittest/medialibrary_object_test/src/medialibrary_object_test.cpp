@@ -19,6 +19,7 @@
 #include "ability_context_impl.h"
 #include "file_asset.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_data_manager.h"
 #define private public
 #include "medialibrary_object_utils.h"
@@ -185,7 +186,7 @@ HWTEST_F(MediaLibraryObjectTest, medialib_OpenFile_test_002, TestSize.Level1)
     MediaLibraryUnitTestUtils::InitUnistore();
     string destDir = "/data/storage/el2/log/logpack";
     string path = destDir + "/media_library_21.db.zip";
-    MediaFileUtils::CreateDirectory(destDir);
+    MediaPureFileUtils::CreateDirectory(destDir);
     MediaFileUtils::CreateAsset(path);
 
     string mode = "r";

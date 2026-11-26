@@ -26,7 +26,9 @@
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "media_column.h"
+#include "media_pure_file_utils.h"
 #include "mimetype_utils.h"
 #include "media_file_utils.h"
 #include "medialibrary_errno.h"
@@ -585,8 +587,8 @@ bool DfxDatabaseUtils::CheckChargingAndScreenOff(bool isReported)
         return bFlag;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return bFlag;
@@ -636,7 +638,7 @@ int32_t DfxDatabaseUtils::QueryPhotoErrorCount()
                 MEDIA_DEBUG_LOG("Invalidate thumbnail, file path: %{private}s", filePath.c_str());
                 continue;
             }
-            if (!MediaFileUtils::IsFileExists(filePath)) {
+            if (!MediaPureFileUtils::IsFileExists(filePath)) {
                 MEDIA_DEBUG_LOG("File not exists, file path: %{private}s", filePath.c_str());
                 photoCount++;
             }

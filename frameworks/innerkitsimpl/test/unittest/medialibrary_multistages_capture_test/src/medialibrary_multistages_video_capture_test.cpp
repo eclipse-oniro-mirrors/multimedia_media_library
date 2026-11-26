@@ -16,6 +16,7 @@
 #define MLOG_TAG "MediaLibraryMultiStagesVideoCaptureTest"
 
 #include "medialibrary_multistages_capture_test.h"
+#include "media_pure_file_utils.h"
 
 #include <fcntl.h>
 
@@ -864,7 +865,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_002, Test
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, filePath, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO), true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), true);
     MEDIA_INFO_LOG("manager_remove_video_002 End");
 }
 
@@ -881,7 +882,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_003, Test
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, filePath, static_cast<int32_t>(PhotoSubType::DEFAULT), false);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), true);
     MEDIA_INFO_LOG("manager_remove_video_003 End");
 }
 
@@ -898,7 +899,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_004, Test
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, filePath, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO), false);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), true);
     MEDIA_INFO_LOG("manager_remove_video_004 End");
 }
 
@@ -918,9 +919,9 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     MediaFileUtils::DeleteDir(cameraCacheDir);
 
     // Verify directories don't exist
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(cameraCacheDir));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(tempDir));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(tempDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(enhancedDir));
 
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
@@ -933,8 +934,8 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     instance.AddVideoInternal(videoId, videoInfo, false);
 
     // Verify temp and enhanced directories are created
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(enhancedDir));
     MEDIA_INFO_LOG("manager_add_video_dir_not_exist_001 End");
 }
 
@@ -950,11 +951,11 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     // Create cameraCache directory only
     MediaFileUtils::DeleteDir(enhancedDir);
     MediaFileUtils::DeleteDir(tempDir);
-    MediaFileUtils::CreateDirectory(cameraCacheDir);
+    MediaPureFileUtils::CreateDirectory(cameraCacheDir);
 
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cameraCacheDir));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(tempDir));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(tempDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(enhancedDir));
 
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
@@ -967,8 +968,8 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     instance.AddVideoInternal(videoId, videoInfo, false);
 
     // Verify temp and enhanced directories are created
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(enhancedDir));
     MEDIA_INFO_LOG("manager_add_video_dir_not_exist_002 End");
 }
 
@@ -983,12 +984,12 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
 
     // Create cameraCache and temp directories only
     MediaFileUtils::DeleteDir(enhancedDir);
-    MediaFileUtils::CreateDirectory(cameraCacheDir);
-    MediaFileUtils::CreateDirectory(tempDir);
+    MediaPureFileUtils::CreateDirectory(cameraCacheDir);
+    MediaPureFileUtils::CreateDirectory(tempDir);
 
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cameraCacheDir));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(tempDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(enhancedDir));
 
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
@@ -1001,7 +1002,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     instance.AddVideoInternal(videoId, videoInfo, false);
 
     // Verify enhanced directory is created
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(enhancedDir));
     MEDIA_INFO_LOG("manager_add_video_dir_not_exist_003 End");
 }
 
@@ -1016,12 +1017,12 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
 
     // Create cameraCache and enhanced directories only
     MediaFileUtils::DeleteDir(tempDir);
-    MediaFileUtils::CreateDirectory(cameraCacheDir);
-    MediaFileUtils::CreateDirectory(enhancedDir);
+    MediaPureFileUtils::CreateDirectory(cameraCacheDir);
+    MediaPureFileUtils::CreateDirectory(enhancedDir);
 
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(cameraCacheDir));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(tempDir));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(enhancedDir));
 
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
@@ -1034,7 +1035,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exis
     instance.AddVideoInternal(videoId, videoInfo, false);
 
     // Verify temp directory is created
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(tempDir));
     MEDIA_INFO_LOG("manager_add_video_dir_not_exist_004 End");
 }
 

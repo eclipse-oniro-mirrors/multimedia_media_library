@@ -112,7 +112,7 @@ HWTEST_F(MediaLibraryCustomRestoreCallbackTest, Custom_Restore_Callback_Test_003
     MockCustomRestoreCallback customRestoreCallback;
     std::shared_ptr<MockCustomRestoreCallback> callback =
         std::make_shared<MockCustomRestoreCallback>(customRestoreCallback);
-    EXPECT_NE(customRestore.RegisterCustomRestoreCallback(callback), E_OK);
+    EXPECT_EQ(customRestore.RegisterCustomRestoreCallback(callback), E_OK);
     MEDIA_INFO_LOG("Custom_Restore_Callback_Test_003 End");
 }
 

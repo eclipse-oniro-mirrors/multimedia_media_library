@@ -50,6 +50,9 @@ std::unique_ptr<MediaScannerObj> ScannerContextConverter::Convert(const ScanTask
     scannerObj->SetForceScan(context.config.GetForceScan());
     scannerObj->SetIsSkipAlbumUpdate(context.config.GetSkipAlbumUpdate());
     scannerObj->SetCameraShotMovingPhoto(info.GetIsMovingPhoto());
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    scannerObj->SetAccountId(context.config.GetAccountId());
+#endif
 
     MEDIA_INFO_LOG("ScannerContextConverter::Convert: %{public}s", context.config.ToString().c_str());
 

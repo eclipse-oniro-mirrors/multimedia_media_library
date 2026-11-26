@@ -19,6 +19,7 @@
 
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -65,7 +66,7 @@ VideoCompositionCallbackImpl::VideoCompositionCallbackImpl() {}
 
 static void CleanTempFilters(const std::string &tempFilters)
 {
-    if (!MediaFileUtils::IsFileExists(tempFilters)) {
+    if (!MediaPureFileUtils::IsFileExists(tempFilters)) {
         return;
     }
     if (!MediaFileUtils::DeleteFile(tempFilters)) {
@@ -75,7 +76,7 @@ static void CleanTempFilters(const std::string &tempFilters)
 
 static int32_t SaveTempFiltersToVideo(const std::string &tempFilters, const std::string &videoPath)
 {
-    if (!MediaFileUtils::IsFileExists(tempFilters)) {
+    if (!MediaPureFileUtils::IsFileExists(tempFilters)) {
         MEDIA_ERR_LOG("SaveTempFiltersToVideo tempFilters not exists");
         return E_HAS_FS_ERROR;
     }
@@ -84,7 +85,7 @@ static int32_t SaveTempFiltersToVideo(const std::string &tempFilters, const std:
 
 static bool HandleAddFiltersError(const std::string &sourceVideoPath, const std::string &videoPath)
 {
-    if (MediaFileUtils::IsFileExists(videoPath)) {
+    if (MediaPureFileUtils::IsFileExists(videoPath)) {
         MEDIA_ERR_LOG("HandleAddFiltersError videoPath already exists");
         return true;
     }
@@ -126,7 +127,7 @@ static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& vid
         MediaFileUtils::DeleteFile(tempImagePath);
         MediaFileUtils::DeleteFile(videoPath);
     } else {
-        if (isNeedScan && MediaFileUtils::IsFileExists(assetPath)) {
+        if (isNeedScan && MediaPureFileUtils::IsFileExists(assetPath)) {
             DefaultScanInfo scanInfo;
             scanInfo.SetIsMovingPhoto(true);
             scanInfo.SetFilePath(assetPath);

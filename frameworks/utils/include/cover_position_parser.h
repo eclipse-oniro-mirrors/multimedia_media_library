@@ -27,7 +27,7 @@ public:
     static CoverPositionParser &GetInstance();
 
 private:
-    void ProcessTask(const std::pair<std::string, std::string> &task) override;
+    void ProcessTask(const ParserTask &task) override;
     void UpdateCoverPosition(const std::string &path);
     size_t GetMaxTaskNum() const override;
 };

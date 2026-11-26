@@ -24,6 +24,7 @@
 #include "ability_context_impl.h"
 #include "datashare_helper.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_upgrade.h"
 #include "thumbnail_file_utils.h"
 #include "thumbnail_generation_post_process.h"
@@ -158,7 +159,7 @@ static std::string FuzzThumbnailPath()
     Media::ThumbnailData thumbnailData;
     thumbnailData.path = path;
     std::string thumbnailDir = Media::ThumbnailFileUtils::GetThumbnailDir(thumbnailData);
-    Media::MediaFileUtils::CreateDirectory(thumbnailDir);
+    Media::MediaPureFileUtils::CreateDirectory(thumbnailDir);
 
     std::string lcdPath = thumbnailDir + "/LCD.jpg";
     Media::MediaFileUtils::CreateFile(lcdPath);
@@ -170,14 +171,14 @@ static std::string FuzzThumbnailPath()
     Media::MediaFileUtils::CreateFile(astcPath);
 
     std::string thumbExDir = thumbnailDir + "/THM_EX";
-    Media::MediaFileUtils::CreateDirectory(thumbExDir);
+    Media::MediaPureFileUtils::CreateDirectory(thumbExDir);
     std::string thumbExFile = thumbExDir + "/THM.jpg";
     Media::MediaFileUtils::CreateFile(thumbExFile);
     thumbExFile = thumbExDir + "/LCD.jpg";
     Media::MediaFileUtils::CreateFile(thumbExFile);
 
     std::string beginTimeStampDir = thumbnailDir + "/beginTimeStampDir0";
-    Media::MediaFileUtils::CreateDirectory(beginTimeStampDir);
+    Media::MediaPureFileUtils::CreateDirectory(beginTimeStampDir);
     std::string beginTimeStampFile = beginTimeStampDir + "/THM.jpg";
     Media::MediaFileUtils::CreateFile(beginTimeStampFile);
     beginTimeStampFile = beginTimeStampDir + "/LCD.jpg";

@@ -24,6 +24,7 @@
 #include "medialibrary_type_const.h"
 #include "medialibrary_tracer.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "request_policy.h"
 #include "result_set_utils.h"
 #include "media_file_utils.h"
@@ -414,7 +415,7 @@ void EnhancementManager::CancelTasksInternal(const vector<string> &fileIds, vect
 {
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
     for (const string& id : fileIds) {
-        if (!MediaFileUtils::IsValidInteger(id)) {
+        if (!MediaStringUtils::IsValidInteger(id)) {
             MEDIA_WARN_LOG("file_id is invalid: %{public}s", id.c_str());
             continue;
         }
@@ -914,12 +915,12 @@ int32_t EnhancementManager::DoChangeDisplayModeFile(int32_t fileId, const string
     string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(filePath);
     string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(filePath);
     string editDataSourceTempPath = MediaEditUtils::GetEditDataSourceTempPath(filePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(filePath), E_ERR, "Can not get photo file");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(editDataSourceBackPath), E_ERR,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(filePath), E_ERR, "Can not get photo file");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(editDataSourceBackPath), E_ERR,
         "Can not get source_back file");
     MEDIA_INFO_LOG("do change display mode file begin, filePath: %{public}s", filePath);
 
-    bool isSourceExists = MediaFileUtils::IsFileExists(editDataSourcePath);
+    bool isSourceExists = MediaPureFileUtils::IsFileExists(editDataSourcePath);
     string primarySourcePath = (isSourceExists ? editDataSourcePath : filePath);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(primarySourcePath, editDataSourceTempPath),
         E_ERR, "Fail to move source to source_temp, err: %{public}d", E_ERR);
@@ -929,7 +930,7 @@ int32_t EnhancementManager::DoChangeDisplayModeFile(int32_t fileId, const string
         E_ERR, "Fail to move source_temp to source_back, err: %{public}d", E_ERR);
     std::shared_ptr<Picture> picture = DecodePictureSourcePath(filePath);
     if (isSourceExists) {
-        if (MediaFileUtils::IsFileExists(editDataCameraPath)) {
+        if (MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
             // use editDataCamera
             string extension = MediaFileUtils::GetExtensionFromPath(filePath);
             string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension);
@@ -1432,7 +1433,7 @@ bool EnhancementManager::SyncDealWithCompositePhoto(const std::string &photoPath
     size_t editDataSourceSize = 0;
     size_t editDataSourceBackSize = 0;
 
-    if (MediaFileUtils::IsFileExists(editDataSourcePath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataSourcePath)) {
         isValid = MediaFileUtils::GetFileSize(editDataSourcePath, editDataSourceSize);
         CHECK_AND_RETURN_RET_LOG(
             isValid, false, "Failed to get file size:%{public}s, errno:%{public}d", editDataSourcePath.c_str(), errno);
@@ -1474,7 +1475,7 @@ pair<int32_t, int32_t> EnhancementManager::SyncDealWithCompositeDisplayStatus(in
     int32_t ceAvailable = static_cast<int32_t>(CloudEnhancementAvailableType::NOT_SUPPORT);
     int32_t featureValue = oldCompositeDisplayStatus + static_cast<int32_t>(exchange);
     string editDataPath = MediaEditUtils::GetEditDataPath(photoPath);
-    bool editDataPathExist = MediaFileUtils::IsFileExists(editDataPath);
+    bool editDataPathExist = MediaPureFileUtils::IsFileExists(editDataPath);
     MEDIA_INFO_LOG("oldCompositeDisplayStatus:%{public}d, exchange:%{public}d, editDataPathExist:%{public}d",
         oldCompositeDisplayStatus, static_cast<int32_t>(exchange), static_cast<int32_t>(editDataPathExist));
 
@@ -1505,10 +1506,10 @@ bool EnhancementManager::SyncCleanCompositePhoto(const std::string &photoPath)
     string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(photoPath);
 
     bool exchange = false;
-    if (MediaFileUtils::IsFileExists(editDataTempPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataTempPath)) {
         exchange = this->SyncDealWithCompositePhoto(photoPath);
     }
-    if (MediaFileUtils::IsFileExists(editDataTempPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataTempPath)) {
         if (!MediaFileUtils::DeleteFile(editDataTempPath)) {
             MEDIA_ERR_LOG("DeleteFile failed. errno:%{public}d, file:%{public}s", errno, editDataTempPath.c_str());
         }

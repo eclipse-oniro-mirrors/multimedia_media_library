@@ -22,6 +22,7 @@
 #include "directory_ex.h"
 #include "media_column.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_type_const.h"
 namespace OHOS {
 namespace Media {
@@ -118,20 +119,6 @@ bool ScannerUtils::IsFileHidden(const string &path)
     return false;
 }
 
-// Get the parent path
-string ScannerUtils::GetParentPath(const string &path)
-{
-    if (!path.empty()) {
-        size_t lastSlashPosition = path.rfind("/");
-        if (lastSlashPosition != string::npos && path.size() > lastSlashPosition) {
-            return path.substr(0, lastSlashPosition);
-        }
-    }
-
-    MEDIA_ERR_LOG("Failed to obtain the parent path");
-    return "";
-}
-
 void ScannerUtils::GetRootMediaDir(string &dir)
 {
     dir = ROOT_MEDIA_DIR;
@@ -182,7 +169,7 @@ bool ScannerUtils::IsDirHiddenRecursive(const string &path, bool skipPhoto)
             break;
         }
 
-        curPath = ScannerUtils::GetParentPath(curPath);
+        curPath = MediaPathUtils::GetParentPath(curPath);
         if (curPath.empty()) {
             break;
         }

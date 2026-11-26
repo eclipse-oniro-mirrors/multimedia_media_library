@@ -22,11 +22,14 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
+#include "media_time_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
 #include "photo_file_utils.h"
 #include "photo_owner_album_id_operation.h"
+#include "media_string_utils.h"
 #include "result_set_reader.h"
 #include "ithumbnail_helper.h"
 #include "thumbnail_generate_worker.h"
@@ -205,9 +208,9 @@ int32_t LcdAgingDao::QueryAgingLcdDataInternal(const int32_t size, const std::ve
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "%{public}s Failed to get rdbStore.", logPrefix);
 
-    int64_t lcdFilterTime = MediaFileUtils::UTCTimeMilliSeconds() - LCD_USING_THIRTY_DAY;
+    int64_t lcdFilterTime = MediaTimeUtils::UTCTimeMilliSeconds() - LCD_USING_THIRTY_DAY;
     std::vector<NativeRdb::ValueObject> bindArgs = { lcdFilterTime, lcdFilterTime, size };
-    std::string fileIdNotIn = PhotoOwnerAlbumIdOperation().ToStringWithCommaAndQuote(notAgingFileIds);
+    std::string fileIdNotIn = MediaStringUtils::ToStringWithCommaAndQuote(notAgingFileIds);
     std::string execSql = PhotoOwnerAlbumIdOperation().FillParams(sql, {fileIdNotIn});
     auto resultSet = rdbStore->QuerySql(execSql, bindArgs);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_DB_FAIL, "%{public}s Failed to query.", logPrefix);
@@ -243,7 +246,7 @@ int32_t LcdAgingDao::RegenerateAstcWithLocal(const LcdAgingFileInfo &agingFileIn
     CHECK_AND_RETURN_RET(isValid, E_ERR);
     std::string astcPath = GetThumbnailPath(agingFileInfo.path, THUMBNAIL_THUMB_ASTC_SUFFIX);
     CHECK_AND_RETURN_RET_LOG(!astcPath.empty(), E_ERR, "astcPath is empty, fileId: %{public}d", agingFileInfo.fileId);
-    isValid = !MediaFileUtils::IsFileExists(astcPath);
+    isValid = !MediaPureFileUtils::IsFileExists(astcPath);
     CHECK_AND_RETURN_RET(isValid, E_ERR);
     auto thumbnailService = ThumbnailService::GetInstance();
     CHECK_AND_RETURN_RET_LOG(thumbnailService != nullptr, E_ERR, "thumbnailService is null");
@@ -273,7 +276,7 @@ int32_t LcdAgingDao::SetLcdNotDownloadStatus(const std::vector<std::string> &fil
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "SetLcdNotDownloadStatus Failed to get rdbStore.");
     
-    std::vector<std::string> params = { PhotoOwnerAlbumIdOperation().ToStringWithComma(fileIds) };
+    std::vector<std::string> params = { MediaStringUtils::ToStringWithComma(fileIds) };
     std::string execSql = PhotoOwnerAlbumIdOperation().FillParams(SQL_UPDATE_THUMB_STATUS, params);
     std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(LCD_TO_DOWNLOAD_MASK)};
     int32_t ret = rdbStore->ExecuteSql(execSql, bindArgs);
@@ -289,7 +292,7 @@ int32_t LcdAgingDao::RevertToLcdDownloadStatus(const std::vector<std::string> &f
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "RevertToLcdDownloadStatus Failed to get rdbStore.");
 
-    std::vector<std::string> params = { PhotoOwnerAlbumIdOperation().ToStringWithComma(fileIds) };
+    std::vector<std::string> params = { MediaStringUtils::ToStringWithComma(fileIds) };
     std::string execSql = PhotoOwnerAlbumIdOperation().FillParams(SQL_REVERT_THUMB_STATUS, params);
     std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(~LCD_TO_DOWNLOAD_MASK)};
     int32_t ret = rdbStore->ExecuteSql(execSql, bindArgs);
@@ -333,7 +336,7 @@ int32_t LcdAgingDao::QueryAgingLcdDataByFileIds(const std::vector<int64_t> &file
     for (auto fileId : fileIds) {
         fileIdStrs.push_back(std::to_string(fileId));
     }
-    std::string fileIdStr = PhotoOwnerAlbumIdOperation().ToStringWithComma(fileIdStrs);
+    std::string fileIdStr = MediaStringUtils::ToStringWithComma(fileIdStrs);
     std::string querySql = SQL_QUERY_ANALYSIS_AGING_DATA + " SELECT " + SQL_QUERY_AGING_INFO_COLUMN +
         " FROM Photos P \
         WHERE P.file_id IN (" + fileIdStr + ") \
@@ -366,9 +369,10 @@ void LcdAgingDao::FillLcdAgingInfoListFromResultSet(const std::shared_ptr<Native
         ReadLcdAgingInfoFromResultSet(resultSet, lcdAgingInfo);
         lcdAgingInfo.needFixLcdFileSize = (lcdAgingInfo.lcdFileSize <= 0);
         lcdAgingInfo.hasExThumbnail = LcdAgingUtils::HasExThumbnail(lcdAgingInfo);
-        lcdAgingInfo.localLcdPath = PhotoFileUtils::GetLocalLcdPath(lcdAgingInfo.path);
+        lcdAgingInfo.localLcdPath =
+            MediaPathUtils::GetLocalThumbnailFilePath(lcdAgingInfo.path, ThumbnailFileType::LCD);
         lcdAgingInfo.localLcdExPath = lcdAgingInfo.hasExThumbnail ?
-            PhotoFileUtils::GetLocalLcdExPath(lcdAgingInfo.path) : "";
+            MediaPathUtils::GetLocalThumbnailFilePath(lcdAgingInfo.path, ThumbnailFileType::LCD_EX) : "";
         if (lcdAgingInfo.lcdFileSize <= 0 ||
             lcdAgingInfo.thumbnailReady == static_cast<int64_t>(ThumbnailReady::THUMB_NEED_REGENERATE_ASTC)) {
             this->CheckLocalLcd(lcdAgingInfo);
@@ -384,7 +388,7 @@ int64_t LcdAgingDao::GetAgingLcdCount()
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetAgingLcdCount Failed to get rdbStore.");
 
-    int64_t lcdFilterTime = MediaFileUtils::UTCTimeMilliSeconds() - LCD_USING_THIRTY_DAY;
+    int64_t lcdFilterTime = MediaTimeUtils::UTCTimeMilliSeconds() - LCD_USING_THIRTY_DAY;
     std::vector<NativeRdb::ValueObject> bindArgs = { lcdFilterTime, lcdFilterTime };
     std::string execSql = PhotoOwnerAlbumIdOperation().FillParams(SQL_COUNT_AGING_LCD_DATA, {"-1"});
     auto resultSet = rdbStore->QuerySql(execSql, bindArgs);

@@ -112,8 +112,6 @@ public:
     // update hdr mode
     EXPORT int32_t UpdatePhotoHdrMode();
 
-    EXPORT std::shared_ptr<MediaLibraryRdbStore> rdbStore_;
-
     void CloseRdbStore(bool async, int32_t timeOut);
     void OpenRdbStore(bool async);
     EXPORT int32_t InitMediaLibraryMgr(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context,
@@ -150,7 +148,15 @@ public:
                 const DataShare::DataSharePredicates &predicates);
     EXPORT int32_t InitReverseMediaLibraryRdbStore();
     EXPORT std::shared_ptr<MediaLibraryRdbStore> GetReverseMediaLibraryRdbStore();
-    EXPORT void InitDatabaseACLPermission();
+    EXPORT void InitDatabaseACLPermission(int32_t accountId = -1);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT void InitForAccount();
+    EXPORT void OnAccountLogin(int32_t accountId);
+    EXPORT void OnAccountLogout(int32_t accountId);
+#endif
+    EXPORT void SetThreadQos(int32_t tid, int32_t defaultPrio);
+    EXPORT void ReSetThreadQos(int32_t tid, int32_t defaultPrio);
+
     EXPORT void HandleSpecialOpen(Uri &uri);
 
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
@@ -171,7 +177,8 @@ private:
     int32_t UpdateDirtyForCloudCloneV2();
     void InitResourceInfo();
     void DeleteDirtyFileAndDir(const std::vector<std::string>& deleteFilePaths);
-    void HandleUpgradeRdbAsync(bool isInMediaLibraryOnStart);
+    void HandleUpgradeRdbAsync(bool isInMediaLibraryOnStart, bool isAccountLogin = false);
+    void UpgradeRdbInternal(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
     int32_t BatchInsertMediaAnalysisData(MediaLibraryCommand &cmd,
         const std::vector<DataShare::DataShareValuesBucket> &values);
     int32_t HandleThumbnailOperations(MediaLibraryCommand &cmd);
@@ -181,7 +188,7 @@ private:
     EXPORT int32_t InitialiseThumbnailService(const std::shared_ptr<OHOS::AbilityRuntime::Context> &extensionContext);
     std::shared_ptr<NativeRdb::ResultSet> QuerySet(MediaLibraryCommand &cmd, const std::vector<std::string> &columns,
         const DataShare::DataSharePredicates &predicates, int &errCode);
-    void InitACLPermission();
+    void InitACLPermission(int32_t accountId = -1);
     std::shared_ptr<NativeRdb::ResultSet> QueryInternal(MediaLibraryCommand &cmd,
         const std::vector<std::string> &columns, const DataShare::DataSharePredicates &predicates);
     EXPORT std::shared_ptr<ThumbnailService> thumbnailService_;

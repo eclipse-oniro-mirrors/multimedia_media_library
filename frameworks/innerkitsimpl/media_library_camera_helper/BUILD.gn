@@ -53,6 +53,11 @@ ohos_shared_library("media_library_camera_helper") {
     "${MEDIALIB_IPC_COMMON}/include/vo",
   ]
 
+  include_client_dirs = [
+    "${MEDIALIB_CLIENT_PATH}/include",
+  ]
+ 
+  include_dirs += include_client_dirs
   include_dirs += include_media_ipc_common
   include_dirs += inner_ipc_include_dirs
   include_dirs += notify_include_dirs

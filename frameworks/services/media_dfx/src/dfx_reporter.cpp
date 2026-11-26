@@ -24,6 +24,7 @@
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "hisysevent.h"
 #include "preferences.h"
 #include "preferences_helper.h"
@@ -105,8 +106,8 @@ int32_t DfxReporter::ReportHighMemoryVideoThumbnail(std::string &path, std::stri
 void DfxReporter::ReportThumbnailError()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_ERROR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(THUMBNAIL_ERROR_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -145,8 +146,8 @@ void DfxReporter::ReportThumbnailError()
 void DfxReporter::ReportCommonBehavior()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(COMMON_BEHAVIOR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(COMMON_BEHAVIOR_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -172,8 +173,8 @@ void DfxReporter::ReportCommonBehavior()
 void DfxReporter::ReportDeleteStatistic()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DELETE_BEHAVIOR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DELETE_BEHAVIOR_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -397,8 +398,8 @@ void DfxReporter::ReportAnalysisVersion(const std::string &analysisName, int32_t
 void DfxReporter::ReportAdaptationToMovingPhoto()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(ADAPTATION_TO_MOVING_PHOTO_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(ADAPTATION_TO_MOVING_PHOTO_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -430,8 +431,8 @@ void DfxReporter::ReportAdaptationToMovingPhoto()
 void DfxReporter::ReportCinematicVideo()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_CINEMATIC_VIDEO_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_CINEMATIC_VIDEO_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -503,8 +504,8 @@ int32_t DfxReporter::ReportCloudSyncThumbGenerationStatus(const int32_t& downloa
         return 0;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get dfx common preferences error: %{public}d", errCode);
         return 0;
@@ -841,8 +842,8 @@ static bool GetTransCodeXML(TranscodeType transcodeType, string &XML)
 void DfxReporter::ReportMediaLibCompatConfig()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(COMPATIBLE_CONFIG_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(COMPATIBLE_CONFIG_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     std::map<std::string, DfxCompatibleInfo> infoMap;
     int32_t retDb = DfxDatabaseUtils::QueryAllCompatibleInfo(infoMap);
@@ -891,8 +892,8 @@ static void ReportAlibDuplicate(TranscodeType transcodeType)
     int32_t errCode;
     string XML;
     CHECK_AND_RETURN(GetTransCodeXML(transcodeType, XML));
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -955,8 +956,8 @@ void DfxReporter::ReportAccurateRefreshResult(const AccurateRefreshDfxDataPoint&
 void DfxReporter::ReportMultishotInfo()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_MULTISHOT_INFO_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_MULTISHOT_INFO_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -1139,8 +1140,8 @@ void DfxReporter::ReportAgingLcdInfo()
 {
     MEDIA_INFO_LOG("ReportAgingLcdInfo start");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(SLOW_MOTION_ACCESS_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -1223,8 +1224,8 @@ void DfxReporter::ReportReadLcd(const int32_t southDeviceType)
 {
     MEDIA_INFO_LOG("ReportReadLcd start");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(READ_LCD_INFO, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -1252,8 +1253,8 @@ void DfxReporter::ReportVisitLcd(const int32_t southDeviceType)
 {
     MEDIA_INFO_LOG("ReportVisitLcd start");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(READ_LCD_INFO, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;

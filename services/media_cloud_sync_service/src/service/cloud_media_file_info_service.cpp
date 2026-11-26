@@ -23,6 +23,7 @@
 #include "media_string_utils.h"
 #include "cloud_media_sync_const.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 /**
@@ -77,7 +78,7 @@ void CloudMediaFileInfoService::FixFileInfoWithCloudOnly(CloudMediaPullDataDto &
     MEDIA_INFO_LOG("cloudId: %{public}s, fileSourceType: %{public}d, storagePath: %{public}s",
                    pullData.cloudId.c_str(),
                    pullData.attributesFileSourceType,
-                   MediaFileUtils::DesensitizePath(pullData.attributesStoragePath).c_str());
+                   MediaPathUtils::DesensitizePath(pullData.attributesStoragePath).c_str());
     return;
 }
 
@@ -197,7 +198,7 @@ void CloudMediaFileInfoService::AdjustFileInfoWithLocal(CloudMediaPullDataDto &p
     MEDIA_INFO_LOG("No need relocate file, cloudId: %{public}s, fileSourceType: %{public}d, storagePath: %{public}s",
                    pullData.cloudId.c_str(),
                    pullData.attributesFileSourceType,
-                   MediaFileUtils::DesensitizePath(pullData.attributesStoragePath).c_str());
+                   MediaPathUtils::DesensitizePath(pullData.attributesStoragePath).c_str());
     return;
 }
 
@@ -277,7 +278,7 @@ void CloudMediaFileInfoService::FixFileInfo(CloudMediaPullDataDto &pullData)
         pullData.cloudId.c_str(),
         fileSourceTypeBefore,
         fileSourceTypeAfter,
-        MediaFileUtils::DesensitizePath(storagePathBefore).c_str(),
-        MediaFileUtils::DesensitizePath(storagePathAfter).c_str());
+        MediaPathUtils::DesensitizePath(storagePathBefore).c_str(),
+        MediaPathUtils::DesensitizePath(storagePathAfter).c_str());
 }
 }  // namespace OHOS::Media::CloudSync

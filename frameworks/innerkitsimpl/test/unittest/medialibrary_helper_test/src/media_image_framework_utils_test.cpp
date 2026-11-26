@@ -14,6 +14,7 @@
  */
 
 #include "media_image_framework_utils_test.h"
+#include "media_pure_file_utils.h"
 
 #include "image_source.h"
 #include "media_file_utils.h"
@@ -37,7 +38,7 @@ static const string HDR_PICTURE_PATH = "/data/local/tmp/HDR_picture.jpg";
 static unique_ptr<ImageSource> CreateTestImageSource()
 {
     string path = HDR_PICTURE_PATH;
-    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaPureFileUtils::IsFileExists(path));
     uint32_t err;
     SourceOptions opts;
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);

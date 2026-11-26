@@ -28,11 +28,12 @@
 #include "system_ability_definition.h"
 #include "accesstoken_kit.h"
 #include "ipc_skeleton.h"
-#include "media_file_utils.h"
+#include "media_common_client.h"
 #include "medialibrary_db_const.h"
 #include "media_uri_utils.h"
 #include "album_change_info.h"
 #include "media_change_info.h"
+#include "media_pure_file_utils.h"
 #include "photo_album_column.h"
 #include "base_data_uri.h"
 #include "message_parcel.h"
@@ -88,7 +89,7 @@ static int32_t CheckRegisterPreconditions()
         return NOTIFY_ERR_PERMISSION;
     }
     if (!isSameProcess) {
-        if (!MediaFileUtils::IsDirectory(CONST_MEDIA_DB_DIR)) {
+        if (!MediaPureFileUtils::IsDirectory(CONST_MEDIA_DB_DIR)) {
             return NOTIFY_ERR_FS_EXCEPTION;
         }
     }

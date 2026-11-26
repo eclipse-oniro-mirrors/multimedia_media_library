@@ -14,9 +14,14 @@
  */
 
 #include "media_asset_rdbstore.h"
+#include <cerrno>
 
 #include "iservice_registry.h"
+#include <fstream>
+#include <charconv>
 
+#include "media_file_uri.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_tracer.h"
 #include "parameters.h"
@@ -25,9 +30,13 @@
 #include "vision_column.h"
 #include "rdb_sql_utils.h"
 #include "media_string_utils.h"
+#include "medialibrary_errno.h"
 #include "media_column.h"
 #include "ipc_skeleton.h"
 #include "permission_utils.h"
+
+#include <cerrno>
+#include <sys/stat.h>
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -41,29 +50,87 @@ namespace Media {
 const std::string MEDIA_LIBRARY_STARTUP_PARAM_PREFIX = "multimedia.medialibrary.startup.";
 constexpr uint32_t BASE_USER_RANGE = 200000;
 const int32_t ARG_COUNT = 2;
+const int32_t MAP_CODE_PARAM = 3;
 constexpr int STORAGE_MANAGER_MANAGER_ID = 5003;
+constexpr int32_t MILLIS_PER_SEC = 1000;
+constexpr int32_t MILLIS_FIVE_SECONDS = 5 * 1000;
 static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
 
 // Inline implementations to avoid dependency on media_library_helper symbols
 static const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 static const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+const std::string FOREGROUND_ACCOUNT_ID_XML = std::string(CONST_MEDIA_DB_DIR) +
+    "/rdb/medialibrary_foreground_account_id.xml";
+#endif
+
+static int32_t UriValidCheck(Uri &uri)
+{
+    std::string scheme = uri.GetScheme();
+    if (scheme != "file" && scheme != "datashare") {
+        MEDIA_ERR_LOG("scheme is invalid, uri is %{private}s", uri.ToString().c_str());
+        return E_INVALID_URI;
+    }
+
+    if (uri.GetAuthority() != "media" &&
+        uri.GetPath().find("/media") != 0) {
+        MEDIA_ERR_LOG("failed to find /media, uri is %{private}s", uri.ToString().c_str());
+        return E_INVALID_URI;
+    }
+    return E_OK;
+}
+
+static inline void HandleOldUriPath(std::string &path)
+{
+    // Handle datashare:///media and datashare:///media/file_operation case
+    if (MediaStringUtils::StartsWith(path, "/media")) {
+        path = path.substr(string("/media").size());
+        return;
+    }
+}
+
+static inline void RemovePrecedSlash(std::string &path)
+{
+    if (MediaStringUtils::StartsWith(path, SLASH_STR)) {
+        path = path.substr(SLASH_STR.size());
+    }
+}
+
+static void GetValidPath(Uri &uri, std::string &path)
+{
+    if (UriValidCheck(uri) < 0) {
+        path = "";
+        return;
+    }
+
+    path = uri.GetPath();
+    HandleOldUriPath(path);
+    RemovePrecedSlash(path);
+}
+
 static std::string GetPathFirstDentry(Uri &uri)
 {
-    std::string path = uri.GetPath();
-    size_t pos = path.find_first_not_of('/');
-    if (pos != std::string::npos) { path = path.substr(pos); }
+    std::string path;
+    GetValidPath(uri, path);
+    // Example: file:://media/photo_operation/query, return the "photo_operation" part
     return path.substr(0, path.find_first_of('/'));
 }
 
 static std::string GetPathSecondDentry(Uri &uri)
 {
-    std::string path = uri.GetPath();
-    size_t pos = path.find_first_not_of('/');
-    if (pos != std::string::npos) { path = path.substr(pos); }
-    size_t firstSlash = path.find_first_of('/');
-    if (firstSlash == std::string::npos) { return ""; }
-    return path.substr(firstSlash + 1);
+    std::string ret;
+    std::string firstDentry = GetPathFirstDentry(uri);
+    if (firstDentry.empty()) {
+        return ret;
+    }
+    std::string path;
+    GetValidPath(uri, path);
+    if (path.size() < firstDentry.size() + 1) {
+        return ret;
+    }
+    // Example: file:://media/photo_operation/query, return the "query" part
+    return path.substr(firstDentry.size() + 1);
 }
 
 static bool GenerateKvStoreKey(const std::string &fileId, const std::string &dateKey, std::string &key)
@@ -81,6 +148,7 @@ static bool GenerateKvStoreKey(const std::string &fileId, const std::string &dat
           KVSTORE_FILE_ID_TEMPLATE.substr(fileId.length()) + fileId;
     return true;
 }
+
 const std::unordered_set<OperationObject> OPERATION_OBJECT_SET = {
     OperationObject::UFM_PHOTO,
     OperationObject::UFM_AUDIO,
@@ -90,7 +158,42 @@ const std::unordered_set<OperationObject> OPERATION_OBJECT_SET = {
 const std::unordered_set<OperationType> OPERATION_TYPE_SET = {
     OperationType::QUERY,
 };
+const std::string REVERSE_CLONE_RESTORE_MARKER_XML = std::string(CONST_MEDIA_DB_DIR) +
+    "/rdb/media_library_reverse_restore_marker.xml";
+constexpr int64_t MARKER_MILLISECONDS_PER_SECOND = 1000;
+constexpr int64_t MARKER_NANOSECONDS_PER_MILLISECOND = 1000000;
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+const std::string FOREGROUND_ACCOUNT_ID_XML = std::string(CONST_MEDIA_DB_DIR) +
+    "/rdb/medialibrary_foreground_account_id.xml";
+#endif
+
 // LCOV_EXCL_START
+bool GetReverseRestoreMarkerTime(int64_t &recordTimeMilliseconds)
+{
+    MEDIA_INFO_LOG("query reverse clone restore marker xml, path=%{public}s",
+        REVERSE_CLONE_RESTORE_MARKER_XML.c_str());
+    struct stat statInfo {};
+    if (stat(REVERSE_CLONE_RESTORE_MARKER_XML.c_str(), &statInfo) != 0) {
+        int32_t err = errno;
+        if (err == ENOENT) {
+            MEDIA_DEBUG_LOG("reverse clone restore marker file does not exist, path=%{public}s",
+                REVERSE_CLONE_RESTORE_MARKER_XML.c_str());
+        } else {
+            MEDIA_WARN_LOG("stat reverse clone restore marker file failed, err=%{public}d, path=%{public}s",
+                err, REVERSE_CLONE_RESTORE_MARKER_XML.c_str());
+        }
+        return false;
+    }
+    recordTimeMilliseconds = static_cast<int64_t>(statInfo.st_mtim.tv_sec) * MARKER_MILLISECONDS_PER_SECOND +
+        static_cast<int64_t>(statInfo.st_mtim.tv_nsec) / MARKER_NANOSECONDS_PER_MILLISECOND;
+    MEDIA_INFO_LOG("reverse clone restore marker time queried, timeMs=%{public}lld",
+        static_cast<long long>(recordTimeMilliseconds));
+    CHECK_AND_RETURN_RET_LOG(recordTimeMilliseconds > 0, false,
+        "reverse clone marker time invalid, timeMs=%{public}lld", static_cast<long long>(recordTimeMilliseconds));
+    return true;
+}
+
 std::string GetTableNameFromOprnObject(const OperationObject& object)
 {
     CHECK_AND_RETURN_RET(object != OperationObject::PAH_MAP, PhotoColumn::PHOTOS_TABLE);
@@ -127,6 +230,64 @@ OperationObject GetOprnObjectFromUri(Uri& uri)
     return OperationObject::UNKNOWN_OBJECT;
 }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+static bool ReadForegroundAccountId(int32_t& accountId)
+{
+    std::ifstream ifs(FOREGROUND_ACCOUNT_ID_XML);
+    if (!ifs.is_open()) {
+        MEDIA_INFO_LOG("file not found, multi-account not supported");
+        return false;
+    }
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    // Preferences XML format: <int key="foregroundAccountId" value="100xxx"/>
+    const std::string keyAttr = "key=\"foregroundAccountId\"";
+    auto keyPos = content.find(keyAttr);
+    if (keyPos == std::string::npos) {
+        MEDIA_WARN_LOG("key attr not found, multi-account not supported");
+        return false;
+    }
+    const std::string valueTag = "value=\"";
+    auto valueStart = content.find(valueTag, keyPos + keyAttr.length());
+    if (valueStart == std::string::npos) {
+        MEDIA_WARN_LOG("value attr not found, multi-account not supported");
+        return false;
+    }
+    size_t valBegin = valueStart + valueTag.length();
+    auto valEnd = content.find("\"", valBegin);
+    if (valEnd == std::string::npos) {
+        MEDIA_WARN_LOG("value attr end not found, multi-account not supported");
+        return false;
+    }
+    std::string valueStr = content.substr(valBegin, valEnd - valBegin);
+    if (!MediaStringUtils::IsAccountId(valueStr)) {
+        MEDIA_WARN_LOG("invalid accountId=[%{public}s], multi-account not supported", valueStr.c_str());
+        return false;
+    }
+
+    int32_t val = 0;
+    auto [ptr, ec] = std::from_chars(valueStr.data(), valueStr.data() + valueStr.size(), val);
+    if (ec != std::errc() || ptr != valueStr.data() + valueStr.size()) {
+        MEDIA_WARN_LOG("invalid value=[%{public}s], multi-account not supported", valueStr.c_str());
+        return false;
+    }
+    accountId = val;
+    MEDIA_INFO_LOG("foregroundAccountId = %{public}d", accountId);
+    return true;
+}
+
+static bool ReadKvAccountId(int32_t &accountId)
+{
+    accountId = -1;
+    // Only a genuinely absent publication means the legacy client layout.
+    // Denied/corrupt publication must not redirect a client to the legacy DB.
+    if (access(FOREGROUND_ACCOUNT_ID_XML.c_str(), F_OK) != 0) {
+        return errno == ENOENT;
+    }
+    return ReadForegroundAccountId(accountId) && accountId > 0;
+}
+#endif
+
 MediaAssetRdbStore* MediaAssetRdbStore::GetInstance()
 {
     static MediaAssetRdbStore instance;
@@ -144,6 +305,11 @@ const std::string MediaAssetRdbStore::IsCallerSelfFunc(const std::vector<std::st
 }
 
 const std::string MediaAssetRdbStore::PhotoAlbumNotifyFunc(const std::vector<std::string> &args)
+{
+    return "";
+}
+
+const std::string MediaAssetRdbStore::PhotoMapCodeFunc(const std::vector<std::string> &args)
 {
     return "";
 }
@@ -175,6 +341,11 @@ bool ConnectMediaLibrary()
 int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
 {
     std::unique_lock<std::mutex> lock(mutex_);
+    return OpenRdbStore(isIgnoreSELinux);
+}
+
+int32_t MediaAssetRdbStore::OpenRdbStore(bool isIgnoreSELinux)
+{
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, NativeRdb::E_ERROR, "fail to acquire application Context");
     uid_t uid = getuid() / BASE_USER_RANGE;
@@ -190,33 +361,104 @@ int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
 
     string name = CONST_MEDIA_DATA_ABILITY_DB_NAME;
     string databaseDir = string(CONST_MEDIA_DB_DIR) + "/rdb";
+
+    int32_t currentAccountId = 0;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    CHECK_AND_RETURN_RET_LOG(ReadKvAccountId(currentAccountId), NativeRdb::E_ERROR,
+        "Cannot read published media account");
+    if (currentAccountId > 0) {
+        databaseDir = string(CONST_MEDIA_DB_DIR) + "/" + std::to_string(currentAccountId) + "/rdb";
+    }
+#endif
+    MEDIA_INFO_LOG("no ipc databaseDir=%{private}s, accountId=%{public}d", databaseDir.c_str(), currentAccountId);
+
     if (access(databaseDir.c_str(), E_OK) != 0) {
         MEDIA_WARN_LOG("can not get rdb through sandbox");
         return NativeRdb::E_ERROR;
     }
     string dbPath = databaseDir.append("/").append(name);
     int32_t errCode = 0;
-    NativeRdb::RdbStoreConfig config {""};
-    config.SetName(name);
-    config.SetVisitorDir(dbPath);
-    config.SetBundleName(context->GetBundleName());
-    config.SetArea(context->GetArea());
-    config.SetSecurityLevel(SecurityLevel::S3);
-    config.SetRoleType(RoleType::VISITOR);
-    config.SetReadOnly(true);
-    config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
-    config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
-    config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
-    config.SetCollatorLocales("zh_CN");
+    config_.SetName(name);
+    config_.SetVisitorDir(dbPath);
+    config_.SetBundleName(context->GetBundleName());
+    config_.SetArea(context->GetArea());
+    config_.SetSecurityLevel(SecurityLevel::S3);
+    config_.SetRoleType(RoleType::VISITOR);
+    config_.SetReadOnly(true);
+    config_.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
+    config_.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
+    config_.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
+    config_.SetScalarFunction("photo_map_code_func", MAP_CODE_PARAM, PhotoMapCodeFunc);
+    config_.SetCollatorLocales("zh_CN");
 
+    // Snapshot the marker before opening to detect changes during the open.
+    int64_t markerTime = 0;
+    const bool hasMarker = GetReverseRestoreMarkerTime(markerTime);
     MediaLibraryAssetCallBack rdbDataCallBack;
-    rdbStore_ = RdbHelper::GetRdbStore(config, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
+    rdbStore_ = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
     if (rdbStore_ == nullptr || errCode != NativeRdb::E_OK) {
         MEDIA_WARN_LOG("Failed to get visitor RdbStore, errCode: %{public}d", errCode);
         rdbStore_ = nullptr;
         return errCode;
     }
+    openedMarkerTimeMs_ = hasMarker ? markerTime : 0;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    openedAccountId_ = currentAccountId;
+#endif
+    MEDIA_INFO_LOG("visitor rdb opened, openedMarkerTimeMs=%{public}lld",
+        static_cast<long long>(openedMarkerTimeMs_));
     return NativeRdb::E_OK;
+}
+
+static void CloseRdbStore(std::shared_ptr<NativeRdb::RdbStore> &store, const NativeRdb::RdbStoreConfig& config,
+    int32_t timeOut = MILLIS_PER_SEC)
+{
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("store is nullptr");
+        return;
+    }
+    NativeRdb::RdbStore::ReleaseOption option;
+    option.waitTime = std::max(MILLIS_PER_SEC, timeOut);
+    option.clearMetadata = false;
+    int32_t ret = store->Release(option);
+    if (ret == NativeRdb::E_OK) {
+        MEDIA_INFO_LOG("CloseRdbStore: Release succeeded");
+    } else {
+        MEDIA_ERR_LOG("CloseRdbStore: Release failed, ret=%{public}d", ret);
+    }
+    std::atomic_store(&store, std::shared_ptr<NativeRdb::RdbStore>());
+    NativeRdb::RdbHelper::ClearStoreCache(config);
+}
+
+std::shared_ptr<NativeRdb::RdbStore> MediaAssetRdbStore::GetRdbStoreForQuery(bool isIgnoreSELinux, int32_t *accountId)
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t currentAccountId = -1;
+    CHECK_AND_RETURN_RET_LOG(ReadKvAccountId(currentAccountId), nullptr, "Cannot resolve visitor account");
+    if (rdbStore_ != nullptr && openedAccountId_ != currentAccountId) {
+        // Existing query snapshots may finish; never explicitly close their RDB underneath them.
+        rdbStore_.reset();
+        NativeRdb::RdbHelper::ClearStoreCache(config_);
+    }
+#endif
+    int64_t markerTime = 0;
+    if (rdbStore_ != nullptr && GetReverseRestoreMarkerTime(markerTime) &&
+        markerTime != openedMarkerTimeMs_) {
+        MEDIA_INFO_LOG("reverse restore marker changed, openedMarkerTimeMs=%{public}lld, markerTimeMs=%{public}lld",
+            static_cast<long long>(openedMarkerTimeMs_), static_cast<long long>(markerTime));
+        // 5s内链接未释放完毕，也要清理缓存
+        CloseRdbStore(rdbStore_, config_, MILLIS_FIVE_SECONDS);
+    }
+    CHECK_AND_RETURN_RET(rdbStore_ != nullptr || OpenRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, nullptr);
+    if (accountId != nullptr) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        *accountId = openedAccountId_;
+#else
+        *accountId = -1;
+#endif
+    }
+    return rdbStore_;
 }
 
 void AddVirtualColumnsOfDateType(vector<string>& columns)
@@ -348,14 +590,16 @@ int32_t GetInt32Val(const string& column, std::shared_ptr<NativeRdb::AbsSharedRe
     return value;
 }
 
-bool MediaAssetRdbStore::IsQueryGroupPhotoAlbumAssets(const string &albumId)
+bool MediaAssetRdbStore::IsQueryGroupPhotoAlbumAssets(const shared_ptr<NativeRdb::RdbStore> &rdbStore,
+    const string &albumId)
 {
     bool cond = (albumId.empty() || !IsNumber(albumId));
     CHECK_AND_RETURN_RET(!cond, false);
+    CHECK_AND_RETURN_RET(rdbStore != nullptr, false);
     RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
     vector<string> columns = {PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumColumns::ALBUM_SUBTYPE};
-    auto resultSet = rdbStore_->Query(predicates, columns);
+    auto resultSet = rdbStore->Query(predicates, columns);
     if (resultSet == nullptr) {
         return false;
     }
@@ -373,10 +617,8 @@ bool MediaAssetRdbStore::IsQueryAccessibleViaSandBox(Uri& uri, OperationObject& 
     const DataShare::DataSharePredicates& predicates, bool isIgnoreSELinux)
 {
     CHECK_AND_RETURN_RET(access(CONST_MEDIA_DB_DIR, E_OK) == 0, false);
-    if (rdbStore_ == nullptr) {
-        CHECK_AND_RETURN_RET_LOG(TryGetRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, false,
-            "fail to acquire rdb when query");
-    }
+    auto rdbStore = GetRdbStoreForQuery(isIgnoreSELinux);
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "fail to acquire rdb when query");
 
     object = GetOprnObjectFromUri(uri);
     CHECK_AND_RETURN_RET(OPERATION_OBJECT_SET.count(object) != 0, false);
@@ -389,7 +631,7 @@ bool MediaAssetRdbStore::IsQueryAccessibleViaSandBox(Uri& uri, OperationObject& 
     auto whereArgs = rdbPredicates.GetWhereArgs();
     if (!whereArgs.empty()) {
         string albumId = whereArgs[0];
-        CHECK_AND_RETURN_RET(!IsQueryGroupPhotoAlbumAssets(albumId), false);
+        CHECK_AND_RETURN_RET(!IsQueryGroupPhotoAlbumAssets(rdbStore, albumId), false);
     }
     return true;
 }
@@ -411,7 +653,8 @@ static void PrintPredicatesInfo(const NativeRdb::RdbPredicates& predicates, cons
 std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryRdb(
     const DataShare::DataSharePredicates& predicates, std::vector<std::string>& columns, OperationObject& object)
 {
-    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, nullptr, "fail to acquire rdb when query");
+    auto rdbStore = GetRdbStoreForQuery();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nullptr, "fail to acquire rdb when query");
     std::string tableName = GetTableNameFromOprnObject(object);
     NativeRdb::RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, tableName);
     AddVirtualColumnsOfDateType(const_cast<vector<string> &>(columns));
@@ -423,7 +666,7 @@ std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryRdb(
     PrintPredicatesInfo(rdbPredicates, columns);
     MediaLibraryTracer tracer;
     tracer.Start("MediaAssetRdbStore::QueryRdb QueryByStep");
-    auto resultSet = rdbStore_->QueryByStep(rdbPredicates, columns, false);
+    auto resultSet = rdbStore->QueryByStep(rdbPredicates, columns, false);
     tracer.Finish();
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "fail to acquire result from visitor query");
     return resultSet;
@@ -431,21 +674,15 @@ std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryRdb(
 
 std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryByStep(const std::string &sql)
 {
-    if (rdbStore_ == nullptr) {
-        if (TryGetRdbStore(false) != NativeRdb::E_OK) {
-            return nullptr;
-        }
-    }
-    return rdbStore_->QueryByStep(sql);
+    auto rdbStore = GetRdbStoreForQuery();
+    CHECK_AND_RETURN_RET(rdbStore != nullptr, nullptr);
+    return rdbStore->QueryByStep(sql);
 }
 
 bool MediaAssetRdbStore::IsSupportSharedAssetQuery(Uri& uri, OperationObject& object, bool isIgnoreSELinux)
 {
     CHECK_AND_RETURN_RET(access(CONST_MEDIA_DB_DIR, E_OK) == 0, false);
-    if (rdbStore_ == nullptr) {
-        CHECK_AND_RETURN_RET_LOG(TryGetRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, false,
-            "fail to acquire rdb when query");
-    }
+    CHECK_AND_RETURN_RET_LOG(GetRdbStoreForQuery(isIgnoreSELinux) != nullptr, false, "fail to acquire rdb when query");
 
     OperationType type = GetOprnTypeFromUri(uri);
     CHECK_AND_RETURN_RET(OPERATION_TYPE_SET.count(type) != 0, false);
@@ -453,11 +690,12 @@ bool MediaAssetRdbStore::IsSupportSharedAssetQuery(Uri& uri, OperationObject& ob
     return true;
 }
 
-int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::vector<std::string> &batchKeys)
+static int32_t QueryTimeIdBatchInStore(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
+    int32_t start, int32_t count, std::vector<std::string> &batchKeys)
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaAssetRdbStore::QueryTimeIdBatch");
-    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, NativeRdb::E_DB_NOT_EXIST, "rdbStore_ is nullptr when query");
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, NativeRdb::E_DB_NOT_EXIST, "rdbStore is nullptr when query");
     DataShare::DataSharePredicates predicates;
     predicates.And()->OrderByDesc(MediaColumn::MEDIA_DATE_TAKEN)
                     ->Limit(count, start)
@@ -471,7 +709,7 @@ int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::
     std::vector<std::string> columns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_DATE_TAKEN};
     NativeRdb::RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
     AddQueryFilter(rdbPredicates);
-    auto resultSet = rdbStore_->Query(rdbPredicates, columns);
+    auto resultSet = rdbStore->Query(rdbPredicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, NativeRdb::E_ERROR, "fail to acquire result from visitor query");
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -499,6 +737,32 @@ int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::
     resultSet->Close();
     return NativeRdb::E_OK;
 }
+
+int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::vector<std::string> &batchKeys)
+{
+    return QueryTimeIdBatchInStore(GetRdbStoreForQuery(), start, count, batchKeys);
+}
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+int32_t MediaAssetRdbStore::QueryTimeIdBatch(int32_t start, int32_t count, std::vector<std::string> &batchKeys,
+    int32_t &accountId)
+{
+    accountId = -1;
+    auto store = GetRdbStoreForQuery(false, &accountId);
+    return QueryTimeIdBatchInStore(store, start, count, batchKeys);
+}
+
+bool MediaAssetRdbStore::GetKvStoreAccountId(int32_t &accountId)
+{
+    accountId = -1;
+    CHECK_AND_RETURN_RET(ReadKvAccountId(accountId), false);
+    if (accountId == -1) {
+        // Disabled/legacy clients historically read the fixed KV store without opening RDB.
+        return true;
+    }
+    return GetRdbStoreForQuery(false, &accountId) != nullptr;
+}
+#endif
 
 int32_t MediaLibraryAssetCallBack::OnCreate(NativeRdb::RdbStore& rdbStore)
 {

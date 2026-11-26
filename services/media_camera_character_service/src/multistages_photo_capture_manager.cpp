@@ -33,7 +33,8 @@
 #include "medialibrary_type_const.h"
 #include "medialibrary_tracer.h"
 #include "media_file_uri.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_formmap_operations.h"
 #include "picture_manager_thread.h"
@@ -190,7 +191,7 @@ bool MultiStagesPhotoCaptureManager::IsHighQualityPhotoExist(const std::string &
 {
     string filePath = MediaFileUri::GetPathFromUri(uri, true);
     string filePathTemp = filePath + ".high";
-    return MediaFileUtils::IsFileExists(filePathTemp) || MediaFileUtils::IsFileExists(filePath);
+    return MediaPureFileUtils::IsFileExists(filePathTemp) || MediaPureFileUtils::IsFileExists(filePath);
 }
 
 void MultiStagesPhotoCaptureManager::SaveLowQualityPicture(const std::string &imageId)
@@ -269,7 +270,7 @@ static int32_t WriteGpsInfoAndUpdateDb(const std::string &path, const int32_t &f
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "write gps info fail");
 
     std::string originPath = MediaEditUtils::GetEditDataSourcePath(path);
-    if (MediaFileUtils::IsFileExists(originPath)) {
+    if (MediaPureFileUtils::IsFileExists(originPath)) {
         // write gps info if this photo was edited.
         tracer.Start("WriteGpsInfoAndUpdateDb, originPath");
         auto ret = ExifUtils::WriteGpsExifInfo(originPath, longitude, latitude);
@@ -301,7 +302,7 @@ void MultiStagesPhotoCaptureManager::UpdateLocation(const NativeRdb::ValuesBucke
     MediaLibraryTracer tracer;
     tracer.Start("UpdateLocation");
     MEDIA_INFO_LOG("UpdateLocation begin, isWriteGpsAdvanced: %{public}d, path: %{public}s, fileId: %{public}d",
-        isWriteGpsAdvanced, MediaFileUtils::DesensitizePath(path).c_str(), id);
+        isWriteGpsAdvanced, MediaPathUtils::DesensitizePath(path).c_str(), id);
     ValueObject valueObject;
     double longitude = 0;
     if (values.GetObject(PhotoColumn::PHOTO_LONGITUDE, valueObject)) {

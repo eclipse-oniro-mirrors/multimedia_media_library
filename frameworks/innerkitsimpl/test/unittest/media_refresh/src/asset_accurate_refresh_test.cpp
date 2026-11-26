@@ -35,6 +35,7 @@
 
 #include "accurate_refresh_test_util.h"
 #include "media_upgrade.h"
+#include "media_pure_file_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -717,7 +718,7 @@ void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();

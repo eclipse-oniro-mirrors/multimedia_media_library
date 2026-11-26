@@ -28,6 +28,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "media_time_utils.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
@@ -205,7 +206,7 @@ bool MediaXtStyleTemplateTask::ExtractNumberFromFile(XtStyleTemplateAssetInfo &a
 {
     std::string realPath = GetAssetRealPathForXtStyleTemplate(assetInfo);
     MEDIA_INFO_LOG("xt style template fileId: %{public}d, realPath: %{public}s", assetInfo.fileId,
-        MediaFileUtils::DesensitizePath(realPath).c_str());
+        MediaPathUtils::DesensitizePath(realPath).c_str());
     if (realPath.empty()) {
         MEDIA_ERR_LOG("get real path failed, fileId: %{public}d", assetInfo.fileId);
         assetInfo.number = static_cast<int32_t>(XtStyleTemplateNumber::INVALID);

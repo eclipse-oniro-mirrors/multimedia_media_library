@@ -49,7 +49,7 @@ HWTEST_F(CloudMediaDaoUtilsExtendedTest, ToStringWithComma_PathWithBraces, TestS
 {
     std::vector<std::string> fileIds;
     fileIds.emplace_back("/test{path}/file{name}");
-    std::string result = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string result = MediaStringUtils::ToStringWithComma(fileIds);
     EXPECT_EQ(result, "/test{path}/file{name}");
 }
 
@@ -64,7 +64,7 @@ HWTEST_F(CloudMediaDaoUtilsExtendedTest, ToStringWithCommaAndQuote_PathWithGreat
 {
     std::vector<std::string> values;
     values.emplace_back("/test>path/file>name");
-    std::string result = CloudMediaDaoUtils::ToStringWithCommaAndQuote(values);
+    std::string result = MediaStringUtils::ToStringWithCommaAndQuote(values);
     EXPECT_EQ(result, "'/test>path/file>name'");
 }
 
@@ -72,7 +72,7 @@ HWTEST_F(CloudMediaDaoUtilsExtendedTest, ToStringWithComma_PathWithGreaterThan, 
 {
     std::vector<std::string> fileIds;
     fileIds.emplace_back("/test>path/file>name");
-    std::string result = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string result = MediaStringUtils::ToStringWithComma(fileIds);
     EXPECT_EQ(result, "/test>path/file>name");
 }
 

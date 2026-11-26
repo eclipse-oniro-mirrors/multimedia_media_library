@@ -30,6 +30,7 @@
 #include "media_values_bucket_utils.h"
 #include "moving_photo_file_utils.h"
 #include "scanner_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -624,14 +625,15 @@ bool MediaScannerDb::DeleteMetadata(const vector<string> &idList, const string &
 
 static OperationObject GetOprnObjectFromPath(const string &path)
 {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     const map<string, OperationObject> oprnMap = {
-        { ROOT_MEDIA_DIR + PHOTO_BUCKET, OperationObject::FILESYSTEM_PHOTO },
-        { ROOT_MEDIA_DIR + AUDIO_BUCKET, OperationObject::FILESYSTEM_AUDIO },
+        { cloudFilesDir + PHOTO_BUCKET, OperationObject::FILESYSTEM_PHOTO },
+        { cloudFilesDir + AUDIO_BUCKET, OperationObject::FILESYSTEM_AUDIO },
 #ifdef MEDIALIBRARY_COMPATIBILITY
-        { ROOT_MEDIA_DIR + PIC_DIR_VALUES, OperationObject::FILESYSTEM_PHOTO },
-        { ROOT_MEDIA_DIR + AUDIO_DIR_VALUES, OperationObject::FILESYSTEM_AUDIO },
-        { ROOT_MEDIA_DIR + VIDEO_DIR_VALUES, OperationObject::FILESYSTEM_PHOTO },
-        { ROOT_MEDIA_DIR + CAMERA_DIR_VALUES, OperationObject::FILESYSTEM_PHOTO }
+        { cloudFilesDir + PIC_DIR_VALUES, OperationObject::FILESYSTEM_PHOTO },
+        { cloudFilesDir + AUDIO_DIR_VALUES, OperationObject::FILESYSTEM_AUDIO },
+        { cloudFilesDir + VIDEO_DIR_VALUES, OperationObject::FILESYSTEM_PHOTO },
+        { cloudFilesDir + CAMERA_DIR_VALUES, OperationObject::FILESYSTEM_PHOTO }
 #endif
     };
 
@@ -938,7 +940,7 @@ int32_t MediaScannerDb::GetIdFromPath(const string &path)
 
 int32_t MediaScannerDb::ReadAlbums(const string &path, unordered_map<string, Metadata> &albumMap)
 {
-    if ((path + "/").find(ROOT_MEDIA_DIR) != 0) {
+    if ((path + "/").find(MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES)) != 0) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_INVALID_ARGUMENTS},
             {KEY_OPT_TYPE, OptType::SCAN}};
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_OPT_ERR, map);

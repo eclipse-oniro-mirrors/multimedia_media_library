@@ -31,6 +31,7 @@
 
 #include "create_asset_vo.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
@@ -121,10 +122,10 @@ static void InsertAsset()
 
 HWTEST_F(SetLocationTest, SetLocationTest_Test_001, TestSize.Level0)
 {
-    bool createDirRes = MediaFileUtils::CreateDirectory("/data/local/tmp");
+    bool createDirRes = MediaPureFileUtils::CreateDirectory("/data/local/tmp");
     EXPECT_EQ(createDirRes, true);
     std::string filePath = "/data/local/tmp/IMG_1501924305_001.jpg";
-    if (!MediaFileUtils::IsFileExists(filePath)) {
+    if (!MediaPureFileUtils::IsFileExists(filePath)) {
         bool createFileRes = MediaFileUtils::CreateFile(filePath);
         EXPECT_EQ(createFileRes, true);
     }

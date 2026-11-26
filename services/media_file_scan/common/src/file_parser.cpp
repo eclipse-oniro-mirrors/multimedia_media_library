@@ -25,6 +25,7 @@
 #include "media_file_utils.h"
 #include "media_file_notify_info.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_unistore_manager.h"
@@ -597,8 +598,8 @@ void FileParser::SetAssetEditValues(NativeRdb::ValuesBucket &values)
     std::string editDataPath =
         FileScanUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL_EDIT_DATA, fileInfo_.cloudPath);
     CHECK_AND_RETURN(fileInfo_.editTime > 0);
-    bool isEditDataPathExist = MediaFileUtils::IsFileExists(editDataPath);
-    bool isEditDataPathDir = MediaFileUtils::IsDirectory(editDataPath);
+    bool isEditDataPathExist = MediaPureFileUtils::IsFileExists(editDataPath);
+    bool isEditDataPathDir = MediaPureFileUtils::IsDirectory(editDataPath);
     bool isEditDataPathNotEmpty = !MediaFileUtils::IsDirEmpty(editDataPath);
     if (!(isEditDataPathExist && isEditDataPathDir && isEditDataPathNotEmpty)) {
         MEDIA_ERR_LOG("Reset edit_time = 0, editTime: %{public}" PRId64", isEditDataPathExist: %{public}d, "

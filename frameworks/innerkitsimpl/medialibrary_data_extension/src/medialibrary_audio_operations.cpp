@@ -16,6 +16,7 @@
 #include "medialibrary_audio_operations.h"
 
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_object_utils.h"
 #include "thumbnail_const.h"
@@ -30,8 +31,6 @@ using namespace OHOS::RdbDataShareAdapter;
 namespace OHOS {
 namespace Media {
 const string MUSIC_DIR = "/storage/media/local/files/Docs/Music/";
-const string CLOUD_AUDIO_DIR = "/storage/cloud/files/Audio/";
-const string LOCAL_AUDIO_DIR = "/storage/media/local/files/Audio/";
 
 int32_t MediaLibraryAudioOperations::Create(MediaLibraryCommand &cmd)
 {
@@ -395,14 +394,17 @@ void MediaLibraryAudioOperations::MoveToMusic()
         MEDIA_ERR_LOG("result is nullptr or count is zero");
         return;
     }
-    if (!MediaFileUtils::IsFileExists(MUSIC_DIR)) {
+    if (!MediaPureFileUtils::IsFileExists(MUSIC_DIR)) {
         MEDIA_INFO_LOG("music dir is not exists!!!");
-        MediaFileUtils::CreateDirectory(MUSIC_DIR);
+        MediaPureFileUtils::CreateDirectory(MUSIC_DIR);
     }
+
+    std::string cloudAudioDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_AUDIO, AdaptAccount::YES);
+    std::string localAudioDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_AUDIO, AdaptAccount::YES);
     int32_t num = 0;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         string path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
-        string localPath = path.replace(0, CLOUD_AUDIO_DIR.length(), LOCAL_AUDIO_DIR);
+        string localPath = path.replace(0, cloudAudioDir.length(), localAudioDir);
         string displayName = GetStringVal(AudioColumn::MEDIA_NAME, resultSet);
         if (!MediaFileUtils::ModifyAsset(localPath, MUSIC_DIR + displayName)) {
             num++;

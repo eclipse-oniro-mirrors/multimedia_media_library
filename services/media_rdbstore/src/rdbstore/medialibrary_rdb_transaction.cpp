@@ -34,7 +34,8 @@ using namespace OHOS::NativeRdb;
 constexpr int32_t RETRY_TRANS_MAX_TIMES = 2;
 constexpr int32_t RETRY_TRANS_MAX_TIMES_FOR_BACKUP = 10;
 
-TransactionOperations::TransactionOperations(std::string funcName) : funcName_(funcName), reporter_(funcName)
+TransactionOperations::TransactionOperations(std::string funcName)
+    : funcName_(funcName), reporter_(funcName)
 {}
 
 TransactionOperations::~TransactionOperations()
@@ -324,6 +325,7 @@ int32_t TransactionOperations::BatchInsert(int64_t &changeRows, const std::strin
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
     int32_t strategyRet =
         RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *rdbStore_.get(), config);
@@ -361,6 +363,7 @@ int32_t TransactionOperations::BatchInsertInternal(int64_t &outRowId, const std:
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
     int32_t strategyRet =
         RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *rdbStore_.get(), config);
@@ -397,6 +400,7 @@ int32_t TransactionOperations::InsertInternal(int64_t &outRowId, const std::stri
     NativeRdb::ValuesBucket tmpValues = row;
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
     int32_t strategyRet =
         RdbTableStrategyManager::GetInstance().ExtendInsertValues(table, tmpValues, *rdbStore_.get(), config);
@@ -468,6 +472,7 @@ pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsertWithReturn(
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
     int32_t strategyRet =
         RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *rdbStore_.get(), config);

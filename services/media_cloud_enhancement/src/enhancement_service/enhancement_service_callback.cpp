@@ -16,6 +16,7 @@
 #define MLOG_TAG "EnhancementServiceCallback"
 
 #include "enhancement_service_callback.h"
+#include "media_pure_file_utils.h"
 
 #include <fcntl.h>
 #include <malloc.h>
@@ -37,6 +38,7 @@
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_notify.h"
 #include "media_edit_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_photo_operations.h"
 #include "mimetype_utils.h"
 #include "securec.h"
@@ -158,12 +160,13 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
     CHECK_AND_RETURN_RET_LOG(MediaEditUtils::CheckAndCreateEditDataDir(info->filePath), E_ERR, "create dir failed");
 
     int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-    string primarySourcePath = MediaFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : info->filePath;
+    string primarySourcePath =
+        MediaPureFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : info->filePath;
     string effectPhotoPath = info->filePath;
     if (sourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
         sourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
         std::string storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
-        primarySourcePath = MediaFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : storagePath;
+        primarySourcePath = MediaPureFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : storagePath;
         effectPhotoPath = storagePath;
     }
 
@@ -184,7 +187,7 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
     ret = imageSource->ModifyImageProperty(0, PHOTO_DATA_CLOUD_ENHANCE_MODE, to_string(1), primarySourcePath);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "modify image property longitude fail %{public}d", ret);
 
-    if (MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         string extension = MediaFileUtils::GetExtensionFromPath(info->filePath);
         string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension);
         ret = MediaLibraryPhotoOperations::AddFiltersForCloudEnhancementPhoto(info->fileId,
@@ -293,7 +296,8 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(shared_
     CHECK_AND_RETURN_RET_LOG(MediaEditUtils::CheckAndCreateEditDataDir(info->filePath), E_ERR,
         "create edit data failed");
 
-    string primarySourcePath = MediaFileUtils::IsFileExists(editDataCameraPath) ? editVideoDataSourcePath : videoPath;
+    string primarySourcePath =
+        MediaPureFileUtils::IsFileExists(editDataCameraPath) ? editVideoDataSourcePath : videoPath;
     MEDIA_INFO_LOG("Save cloud enhancement video, path: %{private}s", primarySourcePath.c_str());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(primarySourcePath, editVideoDataSourceBackPath), E_ERR,
         "Fail to move %{public}s to %{public}s", primarySourcePath.c_str(), editVideoDataSourceBackPath.c_str());
@@ -306,7 +310,7 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(shared_
     }
     ret = MediaFileUtils::DeleteFile(editVideoDataSourceBackPath);
 
-    if (MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         ret = MediaLibraryPhotoOperations::AddFiltersToVideoExecute(info->filePath, false, false);
         MEDIA_INFO_LOG("MediaLibraryPhotoOperations AddFiltersToVideoExecute ret: %{public}d", ret);
         CHECK_AND_EXECUTE(ret == E_OK, CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafe(editVideoDataSourcePath,
@@ -479,7 +483,8 @@ int32_t EnhancementServiceCallback::PreparePathsAndConvert(
     paths.editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(paths.filePath);
 
     MEDIA_INFO_LOG("save file manager or lake live photo, filePath:%{private}s", paths.filePath.c_str());
-    if (!MediaFileUtils::IsFileExists(paths.extraPathDir) && !MediaFileUtils::CreateDirectory(paths.extraPathDir)) {
+    if (!MediaPureFileUtils::IsFileExists(paths.extraPathDir) &&
+        !MediaPureFileUtils::CreateDirectory(paths.extraPathDir)) {
         MEDIA_WARN_LOG("Failed to create local extra data dir");
         return E_ERR;
     }
@@ -502,7 +507,7 @@ int32_t EnhancementServiceCallback::ProcessImageEnhancement(
 {
     MediaLibraryTracer tracer;
     tracer.Start("EnhancementServiceCallback::ProcessImageEnhancement");
-    std::string primaryPath = MediaFileUtils::IsFileExists(paths.editDataSourcePath) ?
+    std::string primaryPath = MediaPureFileUtils::IsFileExists(paths.editDataSourcePath) ?
         paths.editDataSourcePath : paths.tempImagePath;
     MEDIA_INFO_LOG("Save file manager live photo enhancement, path: %{private}s", primaryPath.c_str());
 
@@ -515,13 +520,13 @@ int32_t EnhancementServiceCallback::ProcessImageEnhancement(
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
         "save cloud enhancement photo to primaryPath failed. ret=%{public}d, errno=%{public}d", ret, errno);
 
-    if (MediaFileUtils::IsFileExists(paths.editDataSourcePath)) {
+    if (MediaPureFileUtils::IsFileExists(paths.editDataSourcePath)) {
         ret = FileUtils::SaveImage(paths.tempImagePath, photoBuffer.get(), static_cast<size_t>(task.bytes));
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
             "save cloud enhancement temp photo failed. ret=%{public}d, errno=%{public}d", ret, errno);
     }
 
-    if (MediaFileUtils::IsFileExists(paths.editDataCameraPath)) {
+    if (MediaPureFileUtils::IsFileExists(paths.editDataCameraPath)) {
         std::shared_ptr<Picture> picture =
             EnhancementCompositePhotoManager::GetInstance().DecodePictureFromSourcePath(paths.filePath);
         ret = EnhancementCompositePhotoManager::GetInstance().AddFilters(
@@ -539,7 +544,7 @@ int32_t EnhancementServiceCallback::AssembleAndSaveFinalLivePhoto(
     MediaLibraryTracer tracer;
     tracer.Start("EnhancementServiceCallback::AssembleAndSaveFinalLivePhoto");
     string livePhotoTempDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(paths.filePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(livePhotoTempDir),
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(livePhotoTempDir),
         E_ERR, "Cannot create dir %{private}s, errno %{public}d", livePhotoTempDir.c_str(), errno);
 
     string fileName = MediaFileUtils::GetFileName(paths.filePath);
@@ -588,7 +593,7 @@ int32_t EnhancementServiceCallback::SaveFileManagerOrHoLakeLivePhotoEnhancement(
         std::unique_ptr<uint8_t[]> videoBuffer(task.videoAddr);
         task.videoAddr = nullptr;
         string editVideoDataSourcePath = MediaFileUtils::GetMovingPhotoVideoPath(paths.editDataSourcePath);
-        string primarySourcePath = MediaFileUtils::IsFileExists(paths.editDataCameraPath) ?
+        string primarySourcePath = MediaPureFileUtils::IsFileExists(paths.editDataCameraPath) ?
             editVideoDataSourcePath : paths.tempVideoPath;
         ret = SaveVideo(primarySourcePath, videoBuffer.get(), static_cast<size_t>(task.videoBytes));
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,

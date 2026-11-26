@@ -26,6 +26,8 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_db_const.h"
 #include "moving_photo_file_utils.h"
@@ -234,7 +236,7 @@ bool HasLocalOriginPosition(const ReverseCloneAssetResource &resource)
 bool CanUseLakeStorageAsSource(const ReverseCloneAssetResource &resource)
 {
     return HasLocalOriginPosition(resource) && IsLakeStorageAsset(resource) &&
-        MediaFileUtils::IsFileExists(resource.storagePath);
+        MediaPureFileUtils::IsFileExists(resource.storagePath);
 }
 
 bool ShouldUseLakeStorageAsTarget(const ReverseCloneAssetResource &resource)
@@ -259,13 +261,13 @@ int32_t PrepareLakeStorageTarget(ReverseCloneResourcePlan &plan)
     std::string resolvedPath = BackupFileUtils::ResolveLakeTargetStoragePath(plan.absorbed.storagePath);
     CHECK_AND_RETURN_RET_LOG(!resolvedPath.empty(), E_FAIL,
         "RevRes resolve lake target storage path failed, targetFileId=%{public}d, path=%{public}s",
-        plan.absorbed.fileId, MediaFileUtils::DesensitizePath(plan.absorbed.storagePath).c_str());
+        plan.absorbed.fileId, MediaPathUtils::DesensitizePath(plan.absorbed.storagePath).c_str());
     if (resolvedPath == plan.absorbed.storagePath) {
         return E_OK;
     }
     MEDIA_INFO_LOG("RevRes lake target storage path renamed, fileId=%{public}d, old=%{public}s, new=%{public}s",
-        plan.absorbed.fileId, MediaFileUtils::DesensitizePath(plan.absorbed.storagePath).c_str(),
-        MediaFileUtils::DesensitizePath(resolvedPath).c_str());
+        plan.absorbed.fileId, MediaPathUtils::DesensitizePath(plan.absorbed.storagePath).c_str(),
+        MediaPathUtils::DesensitizePath(resolvedPath).c_str());
     plan.absorbed.storagePath = resolvedPath;
     plan.lakeTargetRenamed = true;
     return E_OK;
@@ -274,7 +276,7 @@ int32_t PrepareLakeStorageTarget(ReverseCloneResourcePlan &plan)
 std::string NormalizeRoot(const std::string &root)
 {
     if (root.empty()) {
-        return RESTORE_FILES_LOCAL_DIR;
+        return MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
     }
     if (root.back() == '/') {
         return root.substr(0, root.length() - 1);
@@ -284,10 +286,11 @@ std::string NormalizeRoot(const std::string &root)
 
 std::string GetResourcePathByCloudPath(const std::string &cloudPath, const std::string &root)
 {
-    if (!IsPathUnderDirectory(cloudPath, RESTORE_FILES_CLOUD_DIR)) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    if (!IsPathUnderDirectory(cloudPath, cloudFilesDir)) {
         return "";
     }
-    return NormalizeRoot(root) + "/" + cloudPath.substr(RESTORE_FILES_CLOUD_DIR.length());
+    return NormalizeRoot(root) + "/" + cloudPath.substr(cloudFilesDir.length());
 }
 
 std::string GetDentryPathByCloudPath(const std::string &cloudPath)
@@ -302,7 +305,8 @@ std::string GetThumbnailDentryDirByCloudPath(const std::string &cloudPath)
 
 std::string JoinLocalHiddenDir(const std::string &dirName)
 {
-    return NormalizeRoot(RESTORE_FILES_LOCAL_DIR) + "/" + dirName;
+    std::string localFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+    return NormalizeRoot(localFilesDir) + "/" + dirName;
 }
 
 class ReverseCloneResourceLocator {
@@ -339,7 +343,8 @@ public:
         if (IsLakeStorageTarget(plan_.absorbed)) {
             return plan_.absorbed.storagePath;
         }
-        return GetResourcePathByCloudPath(plan_.absorbed.cloudPath, RESTORE_FILES_LOCAL_DIR);
+        std::string localFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+        return GetResourcePathByCloudPath(plan_.absorbed.cloudPath, localFilesDir);
     }
 
     bool HasRealLakeSource(const ReverseCloneAssetResource &resource) const
@@ -405,7 +410,7 @@ public:
         }
         MEDIA_WARN_LOG("RevRes Reverse clone rename failed, fallback copy, src:%{public}s, dst:%{public}s, "
             "errno:%{public}d",
-            MediaFileUtils::DesensitizePath(srcPath).c_str(), MediaFileUtils::DesensitizePath(dstPath).c_str(), errno);
+            MediaPathUtils::DesensitizePath(srcPath).c_str(), MediaPathUtils::DesensitizePath(dstPath).c_str(), errno);
         result.errCode = CopyFile(srcPath, dstPath);
         if (result.errCode == E_OK) {
             result.copied = true;
@@ -416,7 +421,7 @@ public:
 
     void DeferSourceCleanup(const std::string &srcPath, const std::string &dstPath)
     {
-        if (srcPath.empty() || srcPath == dstPath || !MediaFileUtils::IsFileExists(srcPath)) {
+        if (srcPath.empty() || srcPath == dstPath || !MediaPureFileUtils::IsFileExists(srcPath)) {
             return;
         }
         if (std::find(result_.deferredDeletePaths.begin(), result_.deferredDeletePaths.end(), srcPath) !=
@@ -425,7 +430,7 @@ public:
         }
         result_.deferredDeletePaths.emplace_back(srcPath);
         MEDIA_INFO_LOG("RevRes deferred source cleanup, src:%{public}s, dst:%{public}s",
-            MediaFileUtils::DesensitizePath(srcPath).c_str(), MediaFileUtils::DesensitizePath(dstPath).c_str());
+            MediaPathUtils::DesensitizePath(srcPath).c_str(), MediaPathUtils::DesensitizePath(dstPath).c_str());
     }
 
     FileTransferResult TransferDirectory(const std::string &srcPath, const std::string &dstPath)
@@ -437,8 +442,8 @@ public:
         }
         MEDIA_WARN_LOG("RevRes Reverse clone rename dir failed, fallback copy, src:%{public}s, dst:%{public}s, "
             "errno:%{public}d",
-            MediaFileUtils::DesensitizePath(srcPath).c_str(),
-            MediaFileUtils::DesensitizePath(dstPath).c_str(), errno);
+            MediaPathUtils::DesensitizePath(srcPath).c_str(),
+            MediaPathUtils::DesensitizePath(dstPath).c_str(), errno);
         result.errCode = MediaFileUtils::CopyDirectory(srcPath, dstPath);
         if (result.errCode == E_OK) {
             result.copied = true;
@@ -470,7 +475,7 @@ private:
     {
         if (!MediaFileUtils::CopyFileUtil(srcPath, dstPath)) {
             MEDIA_ERR_LOG("RevRes Reverse clone copy file failed, src:%{public}s, dst:%{public}s, errno:%{public}d",
-                MediaFileUtils::DesensitizePath(srcPath).c_str(), MediaFileUtils::DesensitizePath(dstPath).c_str(),
+                MediaPathUtils::DesensitizePath(srcPath).c_str(), MediaPathUtils::DesensitizePath(dstPath).c_str(),
                 errno);
             return E_FAIL;
         }
@@ -479,11 +484,11 @@ private:
 
     static void CleanTransferredSourcePath(const std::string &path, TransferCleanupResult &result)
     {
-        if (path.empty() || !MediaFileUtils::IsFileExists(path)) {
+        if (path.empty() || !MediaPureFileUtils::IsFileExists(path)) {
             result.skippedCount++;
             return;
         }
-        bool deleted = MediaFileUtils::IsDirectory(path) ? MediaFileUtils::DeleteDir(path) :
+        bool deleted = MediaPureFileUtils::IsDirectory(path) ? MediaFileUtils::DeleteDir(path) :
             MediaFileUtils::DeleteFile(path);
         if (deleted) {
             result.deletedCount++;
@@ -491,7 +496,7 @@ private:
         }
         result.failedCount++;
         MEDIA_WARN_LOG("RevRes clean transferred source failed, path=%{public}s",
-            MediaFileUtils::DesensitizePath(path).c_str());
+            MediaPathUtils::DesensitizePath(path).c_str());
     }
 
     ResourceExecuteResult result_;
@@ -538,7 +543,7 @@ bool IsExistingLakeOriginCandidate(const ReverseCloneResourcePlan &plan, const R
     MEDIA_INFO_LOG("RevRes lake origin storage path is residual, fallback to normal origin candidates, "
         "sourceFileId=%{public}d, targetFileId=%{public}d, position=%{public}d, src=%{public}s",
         lakeSource.fileId, plan.absorbed.fileId, lakeSource.position,
-        MediaFileUtils::DesensitizePath(lakeSource.storagePath).c_str());
+        MediaPathUtils::DesensitizePath(lakeSource.storagePath).c_str());
     return false;
 }
 
@@ -565,11 +570,11 @@ std::string FindExistingOriginSourcePath(const ReverseCloneResourceLocator &path
 {
     std::vector<std::string> sourcePaths = paths.GetSourceOriginPaths(candidate);
     for (size_t index = 0; index < sourcePaths.size(); ++index) {
-        bool srcExists = !sourcePaths[index].empty() && MediaFileUtils::IsFileExists(sourcePaths[index]);
+        bool srcExists = !sourcePaths[index].empty() && MediaPureFileUtils::IsFileExists(sourcePaths[index]);
         MEDIA_INFO_LOG("RevRes Reverse clone origin candidate, fileId=%{public}d, src=%{public}s, "
             "dst=%{public}s, srcExists=%{public}d, sourceIndex=%{public}zu, sourceCount=%{public}zu",
-            candidate.fileId, MediaFileUtils::DesensitizePath(sourcePaths[index]).c_str(),
-            MediaFileUtils::DesensitizePath(dstPath).c_str(), srcExists, index, sourcePaths.size());
+            candidate.fileId, MediaPathUtils::DesensitizePath(sourcePaths[index]).c_str(),
+            MediaPathUtils::DesensitizePath(dstPath).c_str(), srcExists, index, sourcePaths.size());
         if (srcExists) {
             return sourcePaths[index];
         }
@@ -599,15 +604,15 @@ int32_t TransferLakeOriginToMedia(const ReverseCloneResourcePlan &plan, const Re
     CHECK_AND_RETURN_RET_LOG(!srcPath.empty() && !dstPath.empty(), E_FAIL,
         "RevRes lake origin path invalid, sourceFileId=%{public}d, targetFileId=%{public}d, "
         "src=%{public}s, dst=%{public}s",
-        lakeSource->fileId, plan.absorbed.fileId, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-        MediaFileUtils::DesensitizePath(dstPath).c_str());
+        lakeSource->fileId, plan.absorbed.fileId, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+        MediaPathUtils::DesensitizePath(dstPath).c_str());
 
-    bool srcExists = MediaFileUtils::IsFileExists(srcPath);
-    bool dstExists = MediaFileUtils::IsFileExists(dstPath);
+    bool srcExists = MediaPureFileUtils::IsFileExists(srcPath);
+    bool dstExists = MediaPureFileUtils::IsFileExists(dstPath);
     MEDIA_INFO_LOG("RevRes lake origin migrate, sourceFileId=%{public}d, targetFileId=%{public}d, "
         "src=%{public}s, dst=%{public}s, srcExists=%{public}d, dstExists=%{public}d",
-        lakeSource->fileId, plan.absorbed.fileId, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-        MediaFileUtils::DesensitizePath(dstPath).c_str(), srcExists, dstExists);
+        lakeSource->fileId, plan.absorbed.fileId, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+        MediaPathUtils::DesensitizePath(dstPath).c_str(), srcExists, dstExists);
 
     if (dstExists) {
         if (srcExists) {
@@ -625,8 +630,8 @@ int32_t TransferLakeOriginToMedia(const ReverseCloneResourcePlan &plan, const Re
     CHECK_AND_RETURN_RET_LOG(srcExists, E_FAIL,
         "RevRes lake origin source missing, sourceFileId=%{public}d, targetFileId=%{public}d, "
         "src=%{public}s, dst=%{public}s",
-        lakeSource->fileId, plan.absorbed.fileId, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-        MediaFileUtils::DesensitizePath(dstPath).c_str());
+        lakeSource->fileId, plan.absorbed.fileId, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+        MediaPathUtils::DesensitizePath(dstPath).c_str());
     CHECK_AND_RETURN_RET(BackupFileUtils::PreparePath(dstPath) == E_OK, E_FAIL);
     FileTransferResult transferResult = session.TransferFile(srcPath, dstPath);
     CHECK_AND_RETURN_RET(transferResult.errCode == E_OK, E_FAIL);
@@ -650,10 +655,10 @@ int32_t TransferOrigin(const ReverseCloneResourcePlan &plan, const ReverseCloneR
     CHECK_AND_RETURN_RET_LOG(!dstPath.empty(), E_FAIL, "RevRes Reverse clone origin path is invalid");
     std::vector<const ReverseCloneAssetResource *> candidates =
         GetResourceCandidates(plan, !plan.blockOriginInheritance);
-    if (MediaFileUtils::IsFileExists(dstPath)) {
+    if (MediaPureFileUtils::IsFileExists(dstPath)) {
         result.origin.MarkExisting();
         MEDIA_INFO_LOG("RevRes Reverse clone origin target already exists, skip copy: %{public}s",
-            MediaFileUtils::DesensitizePath(dstPath).c_str());
+            MediaPathUtils::DesensitizePath(dstPath).c_str());
         for (const auto *candidate : candidates) {
             CHECK_AND_CONTINUE(candidate != nullptr);
             const auto &candidateResource = *candidate;
@@ -694,10 +699,10 @@ int32_t TransferMovingPhotoVideo(const ReverseCloneResourceLocator &paths,
 {
     std::string srcVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(paths.GetSourceOriginPath(originSource));
     std::string dstVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(paths.GetTargetOriginPath());
-    if (!MediaFileUtils::IsFileExists(srcVideoPath)) {
+    if (!MediaPureFileUtils::IsFileExists(srcVideoPath)) {
         return E_OK;
     }
-    if (MediaFileUtils::IsFileExists(dstVideoPath)) {
+    if (MediaPureFileUtils::IsFileExists(dstVideoPath)) {
         session.DeferSourceCleanup(srcVideoPath, dstVideoPath);
         return E_OK;
     }
@@ -714,11 +719,11 @@ int32_t TransferEditData(const ReverseCloneResourceLocator &paths, const Reverse
     ResourceExecuteResult &result = session.Result();
     std::string srcEditDataPath = paths.GetSourceEditDataPath(originSource);
     std::string dstEditDataPath = paths.GetTargetEditDataPath();
-    if (!MediaFileUtils::IsFileExists(srcEditDataPath)) {
+    if (!MediaPureFileUtils::IsFileExists(srcEditDataPath)) {
         return E_OK;
     }
     // A real editData directory is resource evidence even when edit_time is missing in historical DB rows.
-    if (MediaFileUtils::IsFileExists(dstEditDataPath)) {
+    if (MediaPureFileUtils::IsFileExists(dstEditDataPath)) {
         session.DeferSourceCleanup(srcEditDataPath, dstEditDataPath);
         return E_OK;
     }
@@ -730,8 +735,8 @@ int32_t TransferEditData(const ReverseCloneResourceLocator &paths, const Reverse
     MEDIA_INFO_LOG("RevRes edit data transferred, fileId=%{public}d, editTime=%{public}lld, "
         "withoutEditTime=%{public}d, src=%{public}s, dst=%{public}s, moved=%{public}d, copied=%{public}d",
         originSource.fileId, static_cast<long long>(originSource.editTime), editDataWithoutEditTime,
-        MediaFileUtils::DesensitizePath(srcEditDataPath).c_str(),
-        MediaFileUtils::DesensitizePath(dstEditDataPath).c_str(), transferResult.moved, transferResult.copied);
+        MediaPathUtils::DesensitizePath(srcEditDataPath).c_str(),
+        MediaPathUtils::DesensitizePath(dstEditDataPath).c_str(), transferResult.moved, transferResult.copied);
     return E_OK;
 }
 
@@ -753,41 +758,41 @@ ThumbnailFileTransferResult TransferThumbnailFile(const std::string &srcThumbDir
     ResourceExecuteResult &result = session.Result();
     std::string srcPath = srcThumbDir + "/" + spec.relativePath;
     std::string dstPath = dstThumbDir + "/" + spec.relativePath;
-    if (MediaFileUtils::IsFileExists(dstPath)) {
+    if (MediaPureFileUtils::IsFileExists(dstPath)) {
         result.thumbnail.stats.existingCount++;
         session.DeferSourceCleanup(srcPath, dstPath);
         MEDIA_INFO_LOG("RevRes thumbnail target already exists, name=%{public}s, dst=%{public}s",
-            spec.relativePath, MediaFileUtils::DesensitizePath(dstPath).c_str());
+            spec.relativePath, MediaPathUtils::DesensitizePath(dstPath).c_str());
         return {E_OK, ThumbnailFileTransferState::TARGET_EXISTING};
     }
-    if (!MediaFileUtils::IsFileExists(srcPath)) {
+    if (!MediaPureFileUtils::IsFileExists(srcPath)) {
         result.thumbnail.stats.missingCount++;
         MEDIA_WARN_LOG("RevRes thumbnail source missing, name=%{public}s, src=%{public}s, dst=%{public}s",
-            spec.relativePath, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-            MediaFileUtils::DesensitizePath(dstPath).c_str());
+            spec.relativePath, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+            MediaPathUtils::DesensitizePath(dstPath).c_str());
         return {E_OK, ThumbnailFileTransferState::MISSING};
     }
     if (BackupFileUtils::PreparePath(dstPath) != E_OK) {
         result.thumbnail.stats.failedCount++;
         MEDIA_ERR_LOG("RevRes thumbnail prepare target failed, name=%{public}s, src=%{public}s, dst=%{public}s",
-            spec.relativePath, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-            MediaFileUtils::DesensitizePath(dstPath).c_str());
+            spec.relativePath, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+            MediaPathUtils::DesensitizePath(dstPath).c_str());
         return {E_FAIL, ThumbnailFileTransferState::MISSING};
     }
     FileTransferResult transferResult = session.TransferFile(srcPath, dstPath);
     if (transferResult.errCode != E_OK) {
         result.thumbnail.stats.failedCount++;
         MEDIA_ERR_LOG("RevRes thumbnail transfer failed, name=%{public}s, src=%{public}s, dst=%{public}s",
-            spec.relativePath, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-            MediaFileUtils::DesensitizePath(dstPath).c_str());
+            spec.relativePath, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+            MediaPathUtils::DesensitizePath(dstPath).c_str());
         return {E_FAIL, ThumbnailFileTransferState::MISSING};
     }
     result.thumbnail.stats.copiedCount += transferResult.copied ? 1 : 0;
     result.thumbnail.stats.movedCount += transferResult.moved ? 1 : 0;
     MEDIA_INFO_LOG("RevRes thumbnail transferred, name=%{public}s, src=%{public}s, dst=%{public}s, "
         "moved=%{public}d, copied=%{public}d",
-        spec.relativePath, MediaFileUtils::DesensitizePath(srcPath).c_str(),
-        MediaFileUtils::DesensitizePath(dstPath).c_str(), transferResult.moved, transferResult.copied);
+        spec.relativePath, MediaPathUtils::DesensitizePath(srcPath).c_str(),
+        MediaPathUtils::DesensitizePath(dstPath).c_str(), transferResult.moved, transferResult.copied);
     return {E_OK, ThumbnailFileTransferState::TRANSFERRED};
 }
 
@@ -800,7 +805,7 @@ int32_t TransferThumbnailFiles(const ReverseCloneResourcePlan &plan, const Rever
     std::vector<const ReverseCloneAssetResource *> candidates = GetResourceCandidates(plan);
     MEDIA_INFO_LOG("RevRes Reverse clone thumbnail transfer start, targetFileId=%{public}d, dstThumbDir=%{public}s, "
         "candidateCount=%{public}zu, inheritLcd=%{public}d, inheritThumb=%{public}d",
-        plan.absorbed.fileId, MediaFileUtils::DesensitizePath(dstThumbDir).c_str(), candidates.size(),
+        plan.absorbed.fileId, MediaPathUtils::DesensitizePath(dstThumbDir).c_str(), candidates.size(),
         plan.inheritLcdThumbnail, plan.inheritThumbnail);
     for (const auto &spec : THUMBNAIL_SPECS) {
         CHECK_AND_CONTINUE(NeedCopyThumbnail(plan, spec.kind));
@@ -851,7 +856,7 @@ PhotoPositionType ResolveAbsorbedPosition(const ReverseCloneResourcePlan &plan)
 
 int64_t GetDirectorySize(const std::string &dirPath)
 {
-    if (dirPath.empty() || !MediaFileUtils::IsDirectory(dirPath)) {
+    if (dirPath.empty() || !MediaPureFileUtils::IsDirectory(dirPath)) {
         return 0;
     }
     size_t totalSize = 0;
@@ -873,7 +878,7 @@ struct ThumbnailExistence {
 bool HasAnyFile(const std::string &dirPath, const std::vector<std::string> &relativePaths)
 {
     for (const auto &relativePath : relativePaths) {
-        if (MediaFileUtils::IsFileExists(dirPath + "/" + relativePath)) {
+        if (MediaPureFileUtils::IsFileExists(dirPath + "/" + relativePath)) {
             return true;
         }
     }
@@ -883,7 +888,7 @@ bool HasAnyFile(const std::string &dirPath, const std::vector<std::string> &rela
 ThumbnailExistence ResolveThumbnailExistence(const std::string &thumbDir)
 {
     ThumbnailExistence existence;
-    if (thumbDir.empty() || !MediaFileUtils::IsFileExists(thumbDir)) {
+    if (thumbDir.empty() || !MediaPureFileUtils::IsFileExists(thumbDir)) {
         return existence;
     }
     existence.hasLcd = HasAnyFile(thumbDir, {"LCD.jpg", "THM_EX/LCD.jpg"});
@@ -931,7 +936,7 @@ struct DentryCleanupResult {
 
 void DeleteDentryFileIfExists(const std::string &path, DentryCleanupResult &result)
 {
-    if (path.empty() || !MediaFileUtils::IsFileExists(path)) {
+    if (path.empty() || !MediaPureFileUtils::IsFileExists(path)) {
         result.missingCount++;
         return;
     }
@@ -941,13 +946,13 @@ void DeleteDentryFileIfExists(const std::string &path, DentryCleanupResult &resu
     }
     result.failedCount++;
     MEDIA_WARN_LOG("RevRes delete cloud dentry failed, path=%{public}s",
-        MediaFileUtils::DesensitizePath(path).c_str());
+        MediaPathUtils::DesensitizePath(path).c_str());
 }
 
 void DeleteThumbnailDentryIfTargetExists(const std::string &targetThumbDir, const std::string &thumbDentryDir,
     const std::string &relativePath, DentryCleanupResult &result)
 {
-    if (!MediaFileUtils::IsFileExists(targetThumbDir + "/" + relativePath)) {
+    if (!MediaPureFileUtils::IsFileExists(targetThumbDir + "/" + relativePath)) {
         return;
     }
     DeleteDentryFileIfExists(thumbDentryDir + "/" + relativePath, result);
@@ -991,7 +996,7 @@ std::string BuildRenamedSourcePath(const ReverseCloneAssetResource &target, cons
     if (target.sourcePath.empty()) {
         return "";
     }
-    std::string parentPath = MediaFileUtils::GetParentPath(target.sourcePath);
+    std::string parentPath = MediaPathUtils::GetParentPath(target.sourcePath);
     return parentPath.empty() ? "" : parentPath + "/" + displayName;
 }
 
@@ -1079,7 +1084,7 @@ void AppendLakeOriginFields(const ReverseCloneResourcePlan &plan, std::vector<st
     }
     MEDIA_INFO_LOG("RevRes Reverse clone target uses lake origin, fileId=%{public}d, storagePath=%{public}s, "
         "inode=%{public}s",
-        plan.absorbed.fileId, MediaFileUtils::DesensitizePath(plan.absorbed.storagePath).c_str(), inode.c_str());
+        plan.absorbed.fileId, MediaPathUtils::DesensitizePath(plan.absorbed.storagePath).c_str(), inode.c_str());
 }
 
 void AppendOriginLocationFields(const ReverseCloneResourcePlan &plan, std::vector<std::string> &setClauses,

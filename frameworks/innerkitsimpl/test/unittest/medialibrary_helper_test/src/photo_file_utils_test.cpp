@@ -16,6 +16,7 @@
 #include "medialibrary_helper_test.h"
 
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "photo_file_utils.h"
@@ -48,7 +49,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_IsThumbnailExists_001, TestS
     string photoPath = "/storage/cloud/files/Photo/1/IMG_123456123_001.jpg";
     EXPECT_EQ(PhotoFileUtils::IsThumbnailExists(photoPath), false);
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.thumbs/Photo/1/IMG_123456123_001.jpg"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.thumbs/Photo/1/IMG_123456123_001.jpg"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/.thumbs/Photo/1/IMG_123456123_001.jpg/LCD.jpg"), true);
     EXPECT_EQ(PhotoFileUtils::IsThumbnailExists(photoPath), true);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/.thumbs/Photo/1/IMG_123456123_001.jpg/THM.jpg"), true);
@@ -57,14 +58,14 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_IsThumbnailExists_001, TestS
 
 HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_IsThumbnailLatest_001, TestSize.Level1)
 {
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/1/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo/1/"), true);
     string photoPath = "/storage/cloud/files/Photo/1/IMG_123456789_123.jpg";
     EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
 
     EXPECT_EQ(MediaFileUtils::CreateFile(photoPath), true);
     EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg/THM.jpg"), true);
     EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg/LCD.jpg"), true);

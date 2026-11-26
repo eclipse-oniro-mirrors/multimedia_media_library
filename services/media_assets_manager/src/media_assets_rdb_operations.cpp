@@ -707,7 +707,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsRdbOperations::QueryAs
         MEDIA_ERR_LOG("queryResultSet is nullptr! ");
         return nullptr;
     }
-    MEDIA_INFO_LOG("QueryAssetByStoragePath, path: %{private}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_INFO_LOG("QueryAssetByStoragePath, path: %{private}s", MediaPathUtils::DesensitizePath(path).c_str());
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     shared_ptr<DataShareResultSet> dataShareResultSet = make_shared<DataShareResultSet>(resultSetBridge);
     return dataShareResultSet;

@@ -25,7 +25,13 @@
 #include "tlv_util.h"
 #include "media_custom_restore_dao.h"
 #include "custom_restore_types.h"
-// LCOV_EXCL_START
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_manager.h"
+#include "account_enable_checker.h"
+#include "account_scope.h"
+#include "duration_parser.h"
+#endif
+
 namespace OHOS::Media {
 struct RestoreTaskInfo {
     std::string dbPath;
@@ -50,6 +56,7 @@ struct RestoreTaskInfo {
     int64_t endTime;
     int32_t imageAlbumId;
     int32_t videoAlbumId;
+    int32_t accountId{-1};
 };
 
 class ShareRestoreRdbCallback : public NativeRdb::RdbOpenCallback {
@@ -90,7 +97,26 @@ public:
     PhotoCustomRestoreOperation &AddTask(RestoreTaskInfo restoreTaskInfo);
     PhotoCustomRestoreOperation &Start();
     void CancelTask(RestoreTaskInfo restoreTaskInfo);
+    void CancelAllTask();
     void CleanTimeoutCustomRestoreTaskDir();
+    ~PhotoCustomRestoreOperation();
+
+private:
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    class AccountLogoutObserver : public AccountObserver {
+    public:
+        explicit AccountLogoutObserver(PhotoCustomRestoreOperation &owner) : owner_(owner) {}
+        void OnAccountLogout(int32_t accountId) override;
+
+    private:
+        PhotoCustomRestoreOperation &owner_;
+    };
+    void RegisterAccountObserver();
+    void UnregisterAccountObserver();
+    std::shared_ptr<AccountLogoutObserver> accountObserver_;
+    std::vector<RestoreFileInfo> movingPhotoForDuration_;
+    std::mutex movingPhotoMutex_;
+#endif
 
 private:
     void DoCustomRestore(RestoreTaskInfo &restoreTaskInfo);
@@ -102,13 +128,16 @@ private:
         const vector<string> &files, int32_t index, int32_t &firstRestoreIndex);
     void HandleBatchCustomRestore(const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo,
         int32_t notifyType, const vector<string> &subFiles);
+    void SubmitBatchRestore(int32_t index, int32_t firstRestoreIndex, int32_t lastIndex, const vector<string> &files,
+        const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo);
     int32_t HandleTlvRestore(const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo,
         const vector<string> &filePathVector, bool isFirst, UniqueNumber &uniqueNumber);
     void RestoreTlvRollback(const std::string &assetPath);
     vector<RestoreFileInfo> GetFileInfos(const vector<string> &filePathVector, UniqueNumber &uniqueNumber);
     int32_t UpdateUniqueNumber(UniqueNumber &uniqueNumber);
     int32_t CreateAssetUniqueNumber(int32_t type, UniqueNumber &uniqueNumber);
-    vector<RestoreFileInfo> SetDestinationPath(vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber);
+    vector<RestoreFileInfo> SetDestinationPath(vector<RestoreFileInfo> &restoreFiles,
+        UniqueNumber &uniqueNumber, int32_t accountId = -1);
     void GetAssetRootDir(int32_t mediaType, string &rootDirPath);
     int32_t RenameFiles(const vector<RestoreFileInfo> &restoreFiles);
     int32_t BatchUpdateTimePending(const vector<RestoreFileInfo> &restoreFiles,
@@ -159,6 +188,10 @@ private:
     int32_t ProcessExtractTlvFile(const std::string &tlvFilePath, std::string &destDir,
         std::unordered_map<TlvTag, std::string> &extractedFiles);
     int32_t HandleExtraDataVersion(const std::string &filePath, const uint32_t version);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    void CollectMovingPhotoForDuration(const std::vector<RestoreFileInfo> &restoreFiles);
+    void SubmitDurationRefresh(int32_t accountId);
+#endif
 
 private:
     std::atomic<bool> isRunning_{false};

@@ -28,6 +28,7 @@
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_vision_operations.h"
 #endif
+#include "media_pure_file_utils.h"
 #include "media_visit_count_manager.h"
 #include "result_set_utils.h"
 #include "dfx_manager.h"
@@ -2639,7 +2640,7 @@ int32_t MediaAssetsService::ApplyEditEffectToFile(int32_t curBucketNum, const st
 int32_t MediaAssetsService::ScanExistFileRecord(int32_t fileId, const std::string &path)
 {
     MEDIA_INFO_LOG("ScanExistFileRecord FileId:%{public}d, Path: %{public}s",
-        fileId, MediaFileUtils::DesensitizePath(path).c_str());
+        fileId, MediaPathUtils::DesensitizePath(path).c_str());
 
     int32_t ret = MediaLibraryPhotoOperations::ScanExistFileRecord(fileId, path);
     CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "MediaLibraryPhotoOperations::ScanExistFileRecord Failed");
@@ -2776,7 +2777,7 @@ int32_t MediaAssetsService::ConvertToAsset(const std::string &path, ConvertToAss
     MEDIA_INFO_LOG("MediaAssetsService::ConvertToAsset start path: %{public}s", path.c_str());
     int32_t ret = 0;
     //todo 判断过滤文件
-    if (!MediaFileUtils::IsFileExists(path)) {
+    if (!MediaPureFileUtils::IsFileExists(path)) {
         MEDIA_ERR_LOG("The file does not exist, path: %{public}s", path.c_str());
         return E_SCENE_PARAM_INVALID;
     }
@@ -2922,7 +2923,7 @@ int32_t DoMoveFilesToDir(const std::vector<FileAssetsInfo> &infos, std::shared_p
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "asset is invaild.");
         CHECK_AND_RETURN_RET_LOG(info.fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA), E_INVALID_PARAM,
             "file source type is invaild.");
-        std::string localSrcPath = FileManagementUtils::GetLocalPath(info.data);
+        std::string localSrcPath = MediaPathUtils::ConvertCloudPathToLocalPath(info.data);
         AssetOperationInfo srcpath = AssetOperationInfo::CreateFromFileId(std::to_string(info.fileId));
         srcpath.SetSubType(static_cast<PhotoSubType>(info.photoSubtype));
         srcpath.SetAssetRefresh(assetRefresh);
@@ -3155,7 +3156,7 @@ vector<FileAssetsInfo> SortAssetsByOriginalPathOrder(const std::map<int32_t, Fil
         if (pathInfos.find(path) != pathInfos.end()) {
             fileAssets.push_back(pathInfos.at(path));
         } else {
-            MEDIA_ERR_LOG("storagePath: %{public}s not found", MediaFileUtils::DesensitizePath(path).c_str());
+            MEDIA_ERR_LOG("storagePath: %{public}s not found", MediaPathUtils::DesensitizePath(path).c_str());
             return fileAssets;
         }
     }

@@ -24,6 +24,8 @@
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log_utils.h"
 #include "media_string_utils.h"
 #include "mimetype_utils.h"
@@ -50,7 +52,6 @@ static const int UUID_STR_LENGTH = 37;
 const int32_t OH_DEFAULT_USER_ID = 100;
 const int DISPLAY_NAME_PREFIX_LENGTH = 20;
 constexpr int ASSET_MAX_COMPLEMENT_ID = 999;
-const std::string RESTORE_CLOUD_DIR = "/storage/cloud/files/Photo";
 const std::string TITLE_KEY_WORDS_OF_BURST = "_BURST";
 const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {
     { PrefixType::CLOUD, "/storage/cloud/files" },
@@ -174,10 +175,11 @@ int32_t FileScanUtils::CreateAssetPathById(int32_t fileId, int32_t mediaType, co
         return errCode;
     }
 
-    string dirPath = RESTORE_CLOUD_DIR + "/" + to_string(bucketNum);
+    std::string cloudPhotoDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO);
+    string dirPath = cloudPhotoDir + to_string(bucketNum);
     string localDirPath = GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL, dirPath);
-    if (!MediaFileUtils::IsFileExists(localDirPath)) {
-        bool ret = MediaFileUtils::CreateDirectory(localDirPath);
+    if (!MediaPureFileUtils::IsFileExists(localDirPath)) {
+        bool ret = MediaPureFileUtils::CreateDirectory(localDirPath);
         errCode = ret? E_OK: E_CHECK_DIR_FAIL;
     }
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Create Dir Failed! localDirPath=%{private}s",
@@ -323,7 +325,7 @@ int32_t FileScanUtils::OpenFile(const string &filePath, int flags)
 int32_t FileScanUtils::CopyFile(const std::string &srcPath, std::string &targetPath)
 {
     string tmpPath = GetAssetRealPath(srcPath);
-    if (srcPath.empty() || !MediaFileUtils::IsFileExists((tmpPath)) || !MediaFileUtils::IsFileValid(tmpPath)) {
+    if (srcPath.empty() || !MediaPureFileUtils::IsFileExists((tmpPath)) || !MediaFileUtils::IsFileValid(tmpPath)) {
         MEDIA_ERR_LOG("FileScanUtils: source file invalid! srcPath: %{public}s",
             DfxUtils::GetSafePath(tmpPath).c_str());
         return E_INVALID_PATH;
@@ -350,16 +352,16 @@ bool FileScanUtils::CoverLakeFile(const string &filePath, const string &newPath)
         MEDIA_ERR_LOG("File path too long %{public}d", static_cast<int>(filePath.size()));
         return errCode;
     }
-    MEDIA_INFO_LOG("File path is %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    MEDIA_INFO_LOG("File path is %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
     string absFilePath;
     if (!PathToRealPath(filePath, absFilePath)) {
         MEDIA_ERR_LOG("file is not real path, file path: %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return errCode;
     }
     if (absFilePath.empty()) {
         MEDIA_ERR_LOG("Failed to obtain the canonical path for source path:%{public}s %{public}d",
-            MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
+            MediaPathUtils::DesensitizePath(filePath).c_str(), errno);
         return errCode;
     }
 
@@ -402,12 +404,12 @@ int32_t FileScanUtils::MoveFileInEditScene(const string &oldPath, const string &
     string destPath = GetAssetRealPath(newPath);
     MEDIA_INFO_LOG("MoveFile src: %{private}s, dest: %{private}s", srcPath.c_str(), destPath.c_str());
 
-    if (!MediaFileUtils::IsFileExists(srcPath)) {
+    if (!MediaPureFileUtils::IsFileExists(srcPath)) {
         MEDIA_ERR_LOG("Source file does not exist: %{private}s", srcPath.c_str());
         return E_ERR;
     }
 
-    bool destExists = MediaFileUtils::IsFileExists(destPath);
+    bool destExists = MediaPureFileUtils::IsFileExists(destPath);
     bool isSuccess = false;
 
     if (rename(srcPath.c_str(), destPath.c_str()) == 0) {
@@ -438,7 +440,7 @@ int32_t FileScanUtils::RenameFileCrossPolicy(const string &oldPath, const string
     CHECK_AND_RETURN_RET_LOG(!newPath.empty(), E_ERR, "Empty destPath");
     MEDIA_INFO_LOG("MoveFile src: %{private}s, dest: %{private}s", oldPath.c_str(), newPath.c_str());
 
-    if (!MediaFileUtils::IsFileExists(oldPath)) {
+    if (!MediaPureFileUtils::IsFileExists(oldPath)) {
         MEDIA_ERR_LOG("Source file does not exist: %{private}s", oldPath.c_str());
         return E_ERR;
     }

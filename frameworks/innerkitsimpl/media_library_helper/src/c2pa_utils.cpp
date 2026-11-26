@@ -33,6 +33,7 @@
 #include "media_exif.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_tracer.h"
 #include "mimetype_utils.h"
 #include "nlohmann/json.hpp"
@@ -449,7 +450,7 @@ static std::string GetRealPath(const std::string& filePath)
 {
     std::string absFilePath("");
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(filePath, absFilePath), "",
-        "[c2pa] to real path failed [%{public}s]", MediaFileUtils::DesensitizePath(filePath).c_str());
+        "[c2pa] to real path failed [%{public}s]", MediaPathUtils::DesensitizePath(filePath).c_str());
     return absFilePath;
 }
 
@@ -525,7 +526,7 @@ int32_t C2paUtils::GetExifInfo(const std::string& filePath, ExifInfo& info)
 bool C2paUtils::HasImageSignature(const std::string& filePath)
 {
 #ifdef C2PA_SUPPORT
-    MEDIA_INFO_LOG("[c2pa] HasImageSignature start [%{public}s]", MediaFileUtils::DesensitizePath(filePath).c_str());
+    MEDIA_INFO_LOG("[c2pa] HasImageSignature start [%{public}s]", MediaPathUtils::DesensitizePath(filePath).c_str());
     CHECK_AND_RETURN_RET_LOG(!filePath.empty(), false, "[c2pa] filePath is empty");
 
     MediaLibraryTracer tracer;

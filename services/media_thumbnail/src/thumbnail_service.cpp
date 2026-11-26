@@ -72,7 +72,6 @@ std::mutex ThumbnailService::instanceLock_;
 ThumbnailService::~ThumbnailService() = default;
 ThumbnailService::ThumbnailService(void)
 {
-    rdbStorePtr_ = nullptr;
     rdbPredicatePtr_ = nullptr;
 }
 
@@ -120,10 +119,8 @@ bool ThumbnailService::CheckSizeValid()
     return true;
 }
 
-void ThumbnailService::Init(const shared_ptr<MediaLibraryRdbStore> rdbStore,
-    const shared_ptr<Context> &context)
+void ThumbnailService::Init(const shared_ptr<Context> &context)
 {
-    rdbStorePtr_ = rdbStore;
     context_ = context;
 
     if (!GetDefaultWindowSize(screenSize_)) {
@@ -134,7 +131,8 @@ void ThumbnailService::Init(const shared_ptr<MediaLibraryRdbStore> rdbStore,
 
     ThumbnailDoubleUpgradeConfigManager::GetInstance().Init();
     bgGenerateManager_ = std::make_unique<BackgroundGenerateManager>();
-    bgGenerateManager_->Init(rdbStorePtr_);
+    auto rdbstore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    bgGenerateManager_->Init(rdbstore);
 }
 
 void ThumbnailService::ReleaseService()
@@ -143,7 +141,6 @@ void ThumbnailService::ReleaseService()
         bgGenerateManager_->Stop();
         bgGenerateManager_.reset();
     }
-    rdbStorePtr_ = nullptr;
     context_ = nullptr;
     StopAllWorker();
     thumbnailServiceInstance_ = nullptr;
@@ -218,7 +215,7 @@ int ThumbnailService::GetThumbFd(const string &path, const string &table, const 
     const Size &size, bool isAstc)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .path = path,
         .table = table,
         .row = id,
@@ -247,7 +244,7 @@ int ThumbnailService::GetKeyFrameThumbFd(const string &path, const string &table
     int32_t &beginStamp, int32_t &type)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .path = path,
         .table = table,
         .row = id,
@@ -277,7 +274,8 @@ int ThumbnailService::GetThumbnailFd(const string &uri, bool isAstc)
     }
 #ifdef MEDIALIBRARY_COMPATIBILITY
     if (path.empty()) {
-        int32_t errCode = GetPathFromDb(rdbStorePtr_, id, table, path);
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        int32_t errCode = GetPathFromDb(rdbStore, id, table, path);
         if (errCode != E_OK) {
             VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, errCode},
                 {KEY_OPT_TYPE, OptType::THUMB}};
@@ -307,7 +305,8 @@ int ThumbnailService::GetKeyFrameThumbnailFd(const string &uri, bool isAstc)
     string table = PhotoColumn::HIGHLIGHT_TABLE;
 #ifdef MEDIALIBRARY_COMPATIBILITY
     if (path.empty()) {
-        int32_t errCode = GetPathFromDb(rdbStorePtr_, id, table, path);
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        int32_t errCode = GetPathFromDb(rdbStore, id, table, path);
         if (errCode != E_OK) {
             MEDIA_ERR_LOG("GetPathFromDb failed, errCode = %{public}d", errCode);
             return errCode;
@@ -339,7 +338,7 @@ int32_t ThumbnailService::ParseThumbnailParam(const std::string &uri, string &fi
 int32_t ThumbnailService::CreateThumbnailPastDirtyDataFix(const std::string &fileId)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .row = fileId
     };
@@ -360,7 +359,7 @@ int32_t ThumbnailService::CreateThumbnailPastDirtyDataFix(const std::string &fil
 int32_t ThumbnailService::CreateLcdPastDirtyDataFix(const std::string &fileId)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .row = fileId
     };
@@ -397,7 +396,7 @@ int32_t ThumbnailService::CreateThumbnailFileScaned(const std::string &uri, cons
     std::string dateModified = ThumbnailUriUtils::GetDateModifiedFromUri(uri);
     std::string fileUri = ThumbnailUriUtils::GetFileUriFromUri(uri);
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .path = path,
         .table = tableName,
         .row = fileId,
@@ -433,7 +432,7 @@ int32_t ThumbnailService::CreateThumbnailFileScanedWithPicture(const std::string
     std::string dateModified = ThumbnailUriUtils::GetDateModifiedFromUri(uri);
     std::string fileUri = ThumbnailUriUtils::GetFileUriFromUri(uri);
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .path = path,
         .table = tableName,
         .row = fileId,
@@ -484,7 +483,7 @@ int32_t ThumbnailService::GenerateThumbnailBackground()
 int32_t ThumbnailService::UpgradeThumbnailBackground(bool isWifiConnected)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::UpgradeThumbnailBackground(opts, isWifiConnected);
@@ -497,7 +496,7 @@ int32_t ThumbnailService::UpgradeThumbnailBackground(bool isWifiConnected)
 int32_t ThumbnailService::GenerateHighlightThumbnailBackground()
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::HIGHLIGHT_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::GenerateHighlightThumbnailBackground(opts);
@@ -511,7 +510,7 @@ int32_t ThumbnailService::TriggerHighlightThumbnail(std::string &id, std::string
     std::string &genType)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::HIGHLIGHT_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::TriggerHighlightThumbnail(opts, id, tracks, trigger, genType);
@@ -522,7 +521,7 @@ int32_t ThumbnailService::TriggerHighlightThumbnail(std::string &id, std::string
 int32_t ThumbnailService::RestoreThumbnailDualFrame(const int32_t &restoreAstcCount)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE
     };
 
@@ -544,7 +543,7 @@ int32_t ThumbnailService::LcdAging()
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
-            .store = rdbStorePtr_,
+            .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
             .table = tableName,
         };
         err = ThumbnailAgingHelper::AgingLcdBatch(opts);
@@ -560,7 +559,7 @@ bool ThumbnailService::HasInvalidateThumbnail(const std::string &id,
     const std::string &tableName, const std::string &path, const std::string &dateTaken)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = tableName,
         .row = id,
     };
@@ -579,7 +578,7 @@ bool ThumbnailService::DeleteThumbnailDirAndAstc(const std::string &id,
     const std::string &tableName, const std::string &path, const std::string &dateTaken)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = tableName,
         .row = id,
     };
@@ -597,7 +596,7 @@ bool ThumbnailService::BatchDeleteThumbnailDirAndAstc(const std::string &tableNa
     const std::vector<std::string> &dateTakens)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = tableName,
     };
     ThumbnailDataBatch dataBatch;
@@ -619,7 +618,7 @@ int32_t ThumbnailService::GetAgingDataSize(const int64_t &time, int &count)
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
-            .store = rdbStorePtr_,
+            .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
             .table = tableName,
         };
         int tempCount = 0;
@@ -644,7 +643,7 @@ int32_t ThumbnailService::QueryNewThumbnailCount(const int64_t &time, int32_t &c
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
-            .store = rdbStorePtr_,
+            .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
             .table = tableName
         };
         int32_t tempCount = 0;
@@ -664,7 +663,7 @@ int32_t ThumbnailService::CreateAstcCloudDownload(const string &id, bool isCloud
         return E_CLOUD_NOT_SUITABLE_FOR_TASK;
     }
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .fileId = id,
     };
@@ -677,7 +676,7 @@ int32_t ThumbnailService::CreateAstcCloudDownload(const string &id, bool isCloud
 bool ThumbnailService::CreateAstcMthAndYear(const std::string &id)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .fileId = id,
     };
@@ -689,7 +688,7 @@ bool ThumbnailService::CreateAstcMthAndYear(const std::string &id)
 bool ThumbnailService::RegenerateThumbnailFromCloud(const string &id)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .fileId = id,
     };
@@ -725,7 +724,7 @@ void ThumbnailService::UpdateAstcWithNewDateTaken(const std::string &fileId, con
     ThumbnailData data;
     data.dateTaken = newDateTaken;
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .row = fileId,
         .dateTaken = formerDateTaken
@@ -737,7 +736,8 @@ void ThumbnailService::UpdateAstcWithNewDateTaken(const std::string &fileId, con
 
 int32_t ThumbnailService::CheckCloudThumbnailDownloadFinish()
 {
-    if (!ThumbnailUtils::CheckCloudThumbnailDownloadFinish(rdbStorePtr_)) {
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (!ThumbnailUtils::CheckCloudThumbnailDownloadFinish(rdbStore)) {
         return E_CLOUD_THUMBNAIL_NOT_DOWNLOAD_FINISH;
     }
     return E_OK;
@@ -789,9 +789,10 @@ static bool IsAstcChangeOldKeyToNewKeySuccess(std::shared_ptr<MediaLibraryKvStor
 
 void ThumbnailService::AstcChangeKeyFromDateAddedToDateTaken()
 {
-    CHECK_AND_RETURN_LOG(rdbStorePtr_ != nullptr, "RdbStorePtr is null");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStorePtr is null");
     vector<ThumbnailData> infos;
-    if (!ThumbnailUtils::QueryOldKeyAstcInfos(rdbStorePtr_, PhotoColumn::PHOTOS_TABLE, infos)) {
+    if (!ThumbnailUtils::QueryOldKeyAstcInfos(rdbStore, PhotoColumn::PHOTOS_TABLE, infos)) {
         return;
     }
     MEDIA_INFO_LOG("Old key astc data size: %{public}d", static_cast<int>(infos.size()));
@@ -799,7 +800,7 @@ void ThumbnailService::AstcChangeKeyFromDateAddedToDateTaken()
         return;
     }
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = rdbStore,
         .table = PhotoColumn::PHOTOS_TABLE,
     };
 
@@ -848,7 +849,7 @@ int32_t ThumbnailService::GetCurrentTemperatureLevel()
 void ThumbnailService::CheckLcdSizeAndUpdateStatus()
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
@@ -858,7 +859,7 @@ void ThumbnailService::CheckLcdSizeAndUpdateStatus()
 int32_t ThumbnailService::RepairExifRotateBackground()
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::RepairExifRotateBackground(opts);
@@ -870,7 +871,7 @@ int32_t ThumbnailService::FixThumbnailExifRotateAfterDownloadAsset(const std::st
     bool needDeleteFromVisionTables)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .fileId = fileId,
     };
@@ -885,7 +886,7 @@ int32_t ThumbnailService::CreateAstcOnlyDownloadThm(const string &id, bool isClo
         return E_CLOUD_NOT_SUITABLE_FOR_TASK;
     }
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .fileId = id,
     };
@@ -898,7 +899,7 @@ int32_t ThumbnailService::CreateAstcOnlyDownloadThm(const string &id, bool isClo
 int32_t ThumbnailService::RegenerateAstcBackground()
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::RegenerateAstcBackground(opts);
@@ -909,7 +910,7 @@ int32_t ThumbnailService::RegenerateAstcBackground()
 int32_t ThumbnailService::SyncRegenerateAstcWithLocal(const std::string &id)
 {
     ThumbRdbOpt opts = {
-        .store = rdbStorePtr_,
+        .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
         .table = PhotoColumn::PHOTOS_TABLE,
         .fileId = id,
     };
@@ -1119,16 +1120,18 @@ namespace {
 // FileManager新增图片触发生成缩略图接口
 int32_t ThumbnailService::CreateThumbnailForFileManager(const ThumbnailInfo &fileInfo)
 {
-    CHECK_AND_RETURN_RET_LOG(rdbStorePtr_ != nullptr, E_HAS_DB_ERROR,
-        "rdbStorePtr_ is nullptr, fileId: %{public}d", fileInfo.fileId);
-    return FileManagerThumbnailHelper::CreateThumbnailForFileManager(fileInfo, rdbStorePtr_);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR,
+        "rdbStore is nullptr, fileId: %{public}d", fileInfo.fileId);
+    return FileManagerThumbnailHelper::CreateThumbnailForFileManager(fileInfo, rdbStore);
 }
 
 // 温度电量恢复后从SP读取任务继续执行
 void ThumbnailService::RestoreFileManagerThumbnailTasks()
 {
-    CHECK_AND_RETURN_LOG(rdbStorePtr_ != nullptr, "rdbStorePtr_ is nullptr");
-    FileManagerThumbnailHelper::StartAsyncRestoreTasks(rdbStorePtr_);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+    FileManagerThumbnailHelper::StartAsyncRestoreTasks(rdbStore);
 }
 #endif
 // LCOV_EXCL_STOP

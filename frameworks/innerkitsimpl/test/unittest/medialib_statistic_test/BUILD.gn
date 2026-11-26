@@ -38,6 +38,7 @@ ohos_unittest("medialibrary_statistic_unittest") {
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
   ]
 
   sources = [
@@ -46,6 +47,7 @@ ohos_unittest("medialibrary_statistic_unittest") {
   ]
 
   deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library_packages",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",

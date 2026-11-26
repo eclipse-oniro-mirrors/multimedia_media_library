@@ -26,6 +26,7 @@
 #include "rdb_predicates.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
+#include "media_path_utils.h"
 #define private public
 #include "media_scanner_db.h"
 #undef private
@@ -147,7 +148,7 @@ HWTEST_F(MediaLibraryScannerDbTest, medialib_InsertMetadata_test_001, TestSize.L
     metadata.SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_ALBUM));
     metadata.SetFileSize(statInfo.st_size);
     metadata.SetFileDateModified(statInfo.st_mtime);
-    string relativePath = ScannerUtils::GetParentPath(albumPath) + SLASH_CHAR;
+    string relativePath = MediaPathUtils::GetParentPath(albumPath) + SLASH_CHAR;
     metadata.SetRelativePath(relativePath.erase(0, ROOT_MEDIA_DIR.length()));
     metadata.SetParentId(parentId);
     metadata.SetAlbumName(albumName);
@@ -173,7 +174,7 @@ HWTEST_F(MediaLibraryScannerDbTest, medialib_UpdateAlbum_test_001, TestSize.Leve
     metadata.SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_ALBUM));
     metadata.SetFileSize(statInfo.st_size);
     metadata.SetFileDateModified(statInfo.st_mtime);
-    string relativePath = ScannerUtils::GetParentPath(albumPath) + SLASH_CHAR;
+    string relativePath = MediaPathUtils::GetParentPath(albumPath) + SLASH_CHAR;
     metadata.SetRelativePath(relativePath.erase(0, ROOT_MEDIA_DIR.length()));
     metadata.SetParentId(parentId);
     metadata.SetAlbumName(albumName);
@@ -222,7 +223,7 @@ HWTEST_F(MediaLibraryScannerDbTest, medialib_InsertMetadata_test_002, TestSize.L
     metadata.SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_ALBUM));
     metadata.SetFileSize(statInfo.st_size);
     metadata.SetFileDateModified(statInfo.st_mtime);
-    string relativePath = ScannerUtils::GetParentPath(albumPath) + SLASH_CHAR;
+    string relativePath = MediaPathUtils::GetParentPath(albumPath) + SLASH_CHAR;
     metadata.SetRelativePath(relativePath.erase(0, ROOT_MEDIA_DIR.length()));
     metadata.SetParentId(parentId);
     metadata.SetAlbumName(albumName);
@@ -302,7 +303,7 @@ HWTEST_F(MediaLibraryScannerDbTest, medialib_InsertAlbum_test_001, TestSize.Leve
     metadata.SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_ALBUM));
     metadata.SetFileSize(statInfo.st_size);
     metadata.SetFileDateModified(statInfo.st_mtime);
-    string relativePath = ScannerUtils::GetParentPath(albumPath) + SLASH_CHAR;
+    string relativePath = MediaPathUtils::GetParentPath(albumPath) + SLASH_CHAR;
     metadata.SetRelativePath(relativePath.erase(0, ROOT_MEDIA_DIR.length()));
     metadata.SetParentId(parentId);
     metadata.SetAlbumName(albumName);
@@ -329,7 +330,7 @@ HWTEST_F(MediaLibraryScannerDbTest, medialib_UpdateMetadata_test_001, TestSize.L
     metadata.SetFileMediaType(static_cast<MediaType>(MEDIA_TYPE_ALBUM));
     metadata.SetFileSize(statInfo.st_size);
     metadata.SetFileDateModified(statInfo.st_mtime);
-    string relativePath = ScannerUtils::GetParentPath(albumPath) + SLASH_CHAR;
+    string relativePath = MediaPathUtils::GetParentPath(albumPath) + SLASH_CHAR;
     metadata.SetRelativePath(relativePath.erase(0, ROOT_MEDIA_DIR.length()));
     metadata.SetParentId(parentId);
     metadata.SetAlbumName(albumName);

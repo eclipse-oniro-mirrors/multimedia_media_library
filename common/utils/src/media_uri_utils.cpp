@@ -30,8 +30,6 @@ const int ASSET_DIR_START_NUM = 16;
 const int ASSET_MAX_NUM = 10000000;
 const int DEFAULT_USER_ID_INNER = -1;
 
-const std::string PHOTO_BUCKET_INNER = "Photo";
-const std::string ROOT_MEDIA_DIR = "/storage/cloud/files";
 const std::string URI_PREFIX_INNER = "file://media/";
 const std::string PHOTO_URI_PREFIX_INNER = "file://media/Photo/";
 const std::string MULTI_USER_URI_FLAG = "user";
@@ -129,8 +127,8 @@ std::string MediaUriUtils::GetPathFromUri(const std::string &uri)
         return "";
     }
 
-    std::string path = ROOT_MEDIA_DIR + "/" + PHOTO_BUCKET_INNER + "/" + std::to_string(bucketNum) + "/" + realTitle +
-        "." + ext;
+    std::string path = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES) +
+        std::to_string(bucketNum) + "/" + realTitle + "." + ext;
     if (!MediaPureFileUtils::IsFileExists(path)) {
         MEDIA_ERR_LOG("file not exist, path=%{private}s", path.c_str());
         return "";

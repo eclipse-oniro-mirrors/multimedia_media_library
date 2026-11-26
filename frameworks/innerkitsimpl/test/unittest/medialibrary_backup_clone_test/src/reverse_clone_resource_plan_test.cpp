@@ -17,6 +17,8 @@
 
 #include "album_asset_absorb.h"
 #include "reverse_clone_candidate_resolver.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "reverse_clone_resource_executor.h"
 #include "reverse_clone_resource_inherit_helper.h"
 #include "reverse_clone_resource_inherit_service.h"
@@ -79,7 +81,7 @@ ReverseCloneAssetResource MakeDonor(const std::string &cloudPath = CLOUD_PATH)
     ReverseCloneAssetResource donor;
     donor.fileId = DONOR_FILE_ID;
     donor.cloudPath = cloudPath;
-    donor.localRoot = RESTORE_FILES_LOCAL_DIR;
+    donor.localRoot = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
     donor.fingerprint.cloudId = "cloud-id-001";
     donor.fingerprint.displayName = "IMG_001.jpg";
     donor.fingerprint.fileSize = 4096;
@@ -199,7 +201,7 @@ std::string GetParentDir(const std::string &path)
 
 void WriteTestFile(const std::string &path, const std::string &content)
 {
-    ASSERT_TRUE(MediaFileUtils::CreateDirectory(GetParentDir(path)));
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(GetParentDir(path)));
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     ASSERT_TRUE(out.is_open());
     out << content;
@@ -593,7 +595,7 @@ HWTEST_F(ReverseCloneResourcePlanTest, Execute_TargetOriginAlreadyExistsSameSour
     ReverseCloneResourceExecutor executor;
 
     EXPECT_EQ(executor.Execute(plan, rdb), E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(TARGET_ORIGIN_PATH));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(TARGET_ORIGIN_PATH));
     EXPECT_EQ(ReadTestFile(TARGET_ORIGIN_PATH), "target-origin");
 }
 
@@ -604,7 +606,7 @@ HWTEST_F(ReverseCloneResourcePlanTest, Execute_ResidualLakeStoragePathMissing_Fa
     ASSERT_NE(rdb, nullptr);
     InsertExecutorTargetRow(rdb);
     WriteTestFile(SOURCE_ORIGIN_PATH, "source-origin");
-    ASSERT_FALSE(MediaFileUtils::IsFileExists(LAKE_STORAGE_PATH));
+    ASSERT_FALSE(MediaPureFileUtils::IsFileExists(LAKE_STORAGE_PATH));
 
     ReverseCloneResourcePlan plan = MakeExecutorPlan();
     plan.inheritOrigin = true;
@@ -613,7 +615,7 @@ HWTEST_F(ReverseCloneResourcePlanTest, Execute_ResidualLakeStoragePathMissing_Fa
     ReverseCloneResourceExecutor executor;
 
     EXPECT_EQ(executor.Execute(plan, rdb), E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(TARGET_ORIGIN_PATH));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(TARGET_ORIGIN_PATH));
     EXPECT_EQ(ReadTestFile(TARGET_ORIGIN_PATH), "source-origin");
 }
 
@@ -625,7 +627,7 @@ HWTEST_F(ReverseCloneResourcePlanTest, Execute_AbsorbedStoragePathExists_MovesOr
     InsertExecutorTargetRow(rdb, ABSORBED_FILE_ID, static_cast<int32_t>(PhotoPositionType::CLOUD),
         LAKE_STORAGE_PATH);
     WriteTestFile(SOURCE_ORIGIN_PATH, "source-origin");
-    ASSERT_FALSE(MediaFileUtils::IsFileExists(LAKE_STORAGE_PATH));
+    ASSERT_FALSE(MediaPureFileUtils::IsFileExists(LAKE_STORAGE_PATH));
 
     ReverseCloneResourcePlan plan = MakeExecutorPlan();
     plan.inheritOrigin = true;
@@ -635,8 +637,8 @@ HWTEST_F(ReverseCloneResourcePlanTest, Execute_AbsorbedStoragePathExists_MovesOr
     ReverseCloneResourceExecutor executor;
 
     EXPECT_EQ(executor.Execute(plan, rdb), E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(LAKE_STORAGE_PATH));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(TARGET_ORIGIN_PATH));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(LAKE_STORAGE_PATH));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(TARGET_ORIGIN_PATH));
     EXPECT_EQ(ReadTestFile(LAKE_STORAGE_PATH), "source-origin");
     EXPECT_EQ(QueryPhotoPosition(rdb, ABSORBED_FILE_ID), static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     EXPECT_EQ(QueryPhotoFileSourceType(rdb, ABSORBED_FILE_ID),
@@ -658,8 +660,8 @@ HWTEST_F(ReverseCloneResourcePlanTest, Execute_ThumbnailTargetExists_CleansSourc
     ReverseCloneResourceExecutor executor;
 
     EXPECT_EQ(executor.Execute(plan, rdb), E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(TARGET_THUMB_DIR + "/" + THUMB_NAME));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(SOURCE_THUMB_DIR + "/" + THUMB_NAME));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(TARGET_THUMB_DIR + "/" + THUMB_NAME));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(SOURCE_THUMB_DIR + "/" + THUMB_NAME));
     EXPECT_EQ(ReadTestFile(TARGET_THUMB_DIR + "/" + THUMB_NAME), "target-thumb");
 }
 

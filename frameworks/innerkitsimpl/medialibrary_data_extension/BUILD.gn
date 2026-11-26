@@ -271,6 +271,9 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
   include_dirs += include_common_utils
+  if (media_library_multi_account_enable) {
+    include_dirs += [ "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/include" ]
+  }
   include_dirs += include_fuse
   include_dirs += include_scanner
   include_dirs += include_dfx
@@ -434,6 +437,10 @@ ohos_shared_library("medialibrary_data_extension") {
 
   if (media_library_file_manager_enable) {
     defines += [ "MEDIALIBRARY_FILE_MGR_SUPPORT" ]
+  }
+
+  if (media_library_multi_account_enable) {
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
   }
 
   media_video_mode_source = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp" ]
@@ -1017,6 +1024,7 @@ ohos_shared_library("medialibrary_data_extension") {
   ]
 
   sources = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/acl.cpp",
     "${MEDIALIB_FACARD_PATH}/src/tab_facard_photos_table_event_handler.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_rdbstore.cpp",
@@ -1031,6 +1039,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_UTILS_PATH}/src/datashare_predicates_verify.cpp",
     "${MEDIALIB_UTILS_PATH}/src/verify_strategy.cpp",
     "${MEDIALIB_UTILS_PATH}/src/parameter_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/account_db_deferred_closer.cpp",
     "${MEDIALIB_UTILS_PATH}/src/parser_task_queue_base.cpp",
     "${MEDIALIB_UTILS_PATH}/src/settings_data_manager.cpp",
     "src/asset_compress_version_manager.cpp",
@@ -1263,7 +1272,11 @@ ohos_shared_library("medialibrary_data_extension") {
   sources += media_cloud_sync_source
   sources += media_cloud_sync_server_source_dto
   sources += media_cloud_sync_server_source
-  sources += media_share_album_server_source
+  if (media_library_cloud_sync_enable) {
+    sources += media_share_album_server_source
+  } else {
+    media_share_album_server_source = []
+  }
   sources += media_rdb_utils_source
   sources += media_dfx_source
   sources += media_cloud_sync_notify_handle_source
@@ -1394,6 +1407,18 @@ ohos_shared_library("medialibrary_data_extension") {
       "${MEDIALIB_BUSINESS_PATH}/media_file_management/src/file_move_handle.cpp",
     ]
     sources += media_file_management_source
+  }
+
+  if (media_library_multi_account_enable) {
+    sources += [
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/src/account_context.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/src/account_deletion_handle.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/src/account_enable_checker.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/src/account_manager.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/src/account_rdb_upgrade_manager.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/src/screen_detector.cpp",
+    ]
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
   }
 
   if (media_library_facard_enable) {
@@ -1622,6 +1647,10 @@ ohos_shared_library("medialibrary_data_extension") {
   if (media_library_feature_hicollie_enable) {
     external_deps += [ "hicollie:libhicollie" ]
     defines += [ "MEDIALIBRARY_FEATURE_HICOLLIE_ENABLE" ]
+  }
+
+  if (media_library_multi_account_enable) {
+    external_deps += [ "os_account:libaccountkits" ]
   }
 
   if (!media_library_link_opt) {

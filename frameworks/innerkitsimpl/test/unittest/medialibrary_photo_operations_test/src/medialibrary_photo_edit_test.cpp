@@ -16,6 +16,7 @@
 #define MLOG_TAG "PhotoEditTest"
 
 #include "medialibrary_photo_edit_test.h"
+#include "media_pure_file_utils.h"
 
 #include <chrono>
 #include <cstdint>
@@ -126,7 +127,7 @@ string GetFileName()
 
 bool IsWaterMarkExists()
 {
-    return MediaFileUtils::IsFileExists(WATER_MARK_DIR);
+    return MediaPureFileUtils::IsFileExists(WATER_MARK_DIR);
 }
 
 int32_t WriteFile(int destfd)
@@ -272,25 +273,25 @@ DataShareValuesBucket GetValuesBucket(int32_t fileId, std::string cacheFileName,
 
 bool ValidSourceFile(std::string &path)
 {
-    string sourcePath = MediaEditUtils::GetEditDataDir(path) + "/source.jpg";
-    return MediaFileUtils::IsFileExists(sourcePath);
+    string sourcePath = MediaEditUtils::GetEditDataDirForCloud(path) + "/source.jpg";
+    return MediaPureFileUtils::IsFileExists(sourcePath);
 }
 
 bool ValidEditdata(std::string &path)
 {
-    string editdataPath = MediaEditUtils::GetEditDataDir(path) + "/editdata";
-    return MediaFileUtils::IsFileExists(editdataPath);
+    string editdataPath = MediaEditUtils::GetEditDataDirForCloud(path) + "/editdata";
+    return MediaPureFileUtils::IsFileExists(editdataPath);
 }
 
 bool ValidEditdataCamera(std::string &path)
 {
-    string editdataCameraPath = MediaEditUtils::GetEditDataDir(path) + "/editdata_camera";
-    return MediaFileUtils::IsFileExists(editdataCameraPath);
+    string editdataCameraPath = MediaEditUtils::GetEditDataDirForCloud(path) + "/editdata_camera";
+    return MediaPureFileUtils::IsFileExists(editdataCameraPath);
 }
 
 bool ValidPhoto(std::string &path)
 {
-    return MediaFileUtils::IsFileExists(path);
+    return MediaPureFileUtils::IsFileExists(path);
 }
 
 TakePhotoResult TakePhotoMock(bool isAddWater)
@@ -376,7 +377,7 @@ void ClearFiles()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTables();

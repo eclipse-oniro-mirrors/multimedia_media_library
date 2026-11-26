@@ -35,6 +35,9 @@ public:
     EXPORT bool IsRealBackuping() const;
     EXPORT void CheckBackup();
     EXPORT void InterruptBackup();
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT void BackupForCurrentAccount();
+#endif
     EXPORT void CheckResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     std::atomic<bool> isBackuping_{false};
     std::mutex mutex_;

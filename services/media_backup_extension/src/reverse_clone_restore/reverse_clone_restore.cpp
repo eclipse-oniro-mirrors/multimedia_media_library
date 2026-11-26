@@ -15,6 +15,8 @@
 #define MLOG_TAG "Media_Reverse_Restore"
 
 #include "reverse_clone_restore.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 #include "backup_database_utils.h"
 #include "backup_const_column.h"
@@ -440,7 +442,7 @@ bool HasLakeStoragePath(const FileInfo &fileInfo)
 
 bool HasExistingLakeStoragePath(const FileInfo &fileInfo)
 {
-    return HasLakeStoragePath(fileInfo) && MediaFileUtils::IsFileExists(fileInfo.storagePath);
+    return HasLakeStoragePath(fileInfo) && MediaPureFileUtils::IsFileExists(fileInfo.storagePath);
 }
 
 bool ShouldKeepMissingReverseSourceForLake(const FileInfo &fileInfo, int32_t errCode)
@@ -461,10 +463,12 @@ std::string GetLocalEditDataPathByCloudPath(const std::string &cloudPath)
 
 std::string GetLocalThumbPathByCloudPath(const std::string &cloudPath)
 {
-    if (!IsPathUnderDirectory(cloudPath, RESTORE_FILES_CLOUD_DIR)) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    std::string localFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+    if (!IsPathUnderDirectory(cloudPath, cloudFilesDir)) {
         return "";
     }
-    return RESTORE_FILES_LOCAL_DIR + ".thumbs/" + cloudPath.substr(RESTORE_FILES_CLOUD_DIR.length());
+    return localFilesDir + ".thumbs/" + cloudPath.substr(cloudFilesDir.length());
 }
 
 bool PrepareAbsorbSourceFileInfo(FileInfo &fileInfo)
@@ -501,7 +505,7 @@ DestDataConflictInfo QueryDestDataConflict(const std::shared_ptr<NativeRdb::RdbS
     if (resultSet == nullptr) {
         info.queryFailed = true;
         MEDIA_ERR_LOG("QueryDestDataConflict: query failed, data=%{public}s",
-            MediaFileUtils::DesensitizePath(cloudPath).c_str());
+            MediaPathUtils::DesensitizePath(cloudPath).c_str());
         return info;
     }
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
@@ -547,7 +551,7 @@ std::string GetMovingPhotoVideoPathByCloudPath(const std::string &cloudPath)
 
 void MarkExistingResource(const std::string &path, bool &resourceFlag)
 {
-    resourceFlag = !path.empty() && MediaFileUtils::IsFileExists(path);
+    resourceFlag = !path.empty() && MediaPureFileUtils::IsFileExists(path);
 }
 
 ReverseStaleTargetResource BuildTargetResourceState(int32_t fileId, const std::string &cloudPath,
@@ -572,13 +576,13 @@ bool HasMarkedResource(const ReverseStaleTargetResource &resource)
 
 bool DeletePathIfExists(const std::string &path)
 {
-    if (path.empty() || !MediaFileUtils::IsFileExists(path)) {
+    if (path.empty() || !MediaPureFileUtils::IsFileExists(path)) {
         return true;
     }
-    bool isFile = !MediaFileUtils::IsDirectory(path);
+    bool isFile = !MediaPureFileUtils::IsDirectory(path);
     bool deleted = MediaFileUtils::DeleteFileOrFolder(path, isFile);
     CHECK_AND_PRINT_LOG(deleted, "Reverse data conflict delete path failed, path=%{public}s",
-        MediaFileUtils::DesensitizePath(path).c_str());
+        MediaPathUtils::DesensitizePath(path).c_str());
     return deleted;
 }
 
@@ -602,26 +606,26 @@ bool CleanMarkedTargetResources(const ReverseStaleTargetResource &resource)
 
 bool MoveExistingResource(const std::string &src, const std::string &dst, bool isDirectory)
 {
-    CHECK_AND_RETURN_RET_LOG(!src.empty() && MediaFileUtils::IsFileExists(src), false,
+    CHECK_AND_RETURN_RET_LOG(!src.empty() && MediaPureFileUtils::IsFileExists(src), false,
         "Reverse data conflict source missing, src=%{public}s, dst=%{public}s",
-        MediaFileUtils::DesensitizePath(src).c_str(), MediaFileUtils::DesensitizePath(dst).c_str());
-    CHECK_AND_RETURN_RET_LOG(!dst.empty() && !MediaFileUtils::IsFileExists(dst), false,
+        MediaPathUtils::DesensitizePath(src).c_str(), MediaPathUtils::DesensitizePath(dst).c_str());
+    CHECK_AND_RETURN_RET_LOG(!dst.empty() && !MediaPureFileUtils::IsFileExists(dst), false,
         "Reverse data conflict target invalid, src=%{public}s, dst=%{public}s",
-        MediaFileUtils::DesensitizePath(src).c_str(), MediaFileUtils::DesensitizePath(dst).c_str());
+        MediaPathUtils::DesensitizePath(src).c_str(), MediaPathUtils::DesensitizePath(dst).c_str());
     int32_t errCode = BackupFileUtils::PreparePath(dst);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
         "Reverse data conflict prepare target failed, dst=%{public}s, errCode=%{public}d",
-        MediaFileUtils::DesensitizePath(dst).c_str(), errCode);
+        MediaPathUtils::DesensitizePath(dst).c_str(), errCode);
     bool moved = isDirectory ? MediaFileUtils::RenameDir(src, dst) : MediaFileUtils::MoveFile(src, dst, true);
     CHECK_AND_RETURN_RET_LOG(moved, false,
         "Reverse data conflict move failed, src=%{public}s, dst=%{public}s",
-        MediaFileUtils::DesensitizePath(src).c_str(), MediaFileUtils::DesensitizePath(dst).c_str());
+        MediaPathUtils::DesensitizePath(src).c_str(), MediaPathUtils::DesensitizePath(dst).c_str());
     return true;
 }
 
 bool MoveOptionalResource(const std::string &src, const std::string &dst, bool isDirectory)
 {
-    if (src.empty() || !MediaFileUtils::IsFileExists(src)) {
+    if (src.empty() || !MediaPureFileUtils::IsFileExists(src)) {
         return true;
     }
     return MoveExistingResource(src, dst, isDirectory);
@@ -663,7 +667,7 @@ void CleanMovedConflictResources(const DestDataConflictInfo &conflict, const std
     }
     CHECK_AND_PRINT_LOG(CleanMarkedTargetResources(movedResource),
         "Reverse data conflict clean moved resources failed, fileId=%{public}d, newData=%{public}s",
-        conflict.fileId, MediaFileUtils::DesensitizePath(newCloudPath).c_str());
+        conflict.fileId, MediaPathUtils::DesensitizePath(newCloudPath).c_str());
 }
 
 bool DeleteConflictResources(const DestDataConflictInfo &conflict, const std::string &cloudPath,
@@ -740,14 +744,14 @@ ReverseDataConflictResult DeleteConflictAssetForAbsorb(const std::shared_ptr<Nat
         MEDIA_ERR_LOG("Reverse data conflict delete old asset failed, fileId=%{public}d, errCode=%{public}d, "
             "stillFound=%{public}d, data=%{public}s",
             conflict.fileId, errCode, conflictAfterDelete.found,
-            MediaFileUtils::DesensitizePath(conflict.data).c_str());
+            MediaPathUtils::DesensitizePath(conflict.data).c_str());
         return MakeDataConflictResult(ReverseDataConflictStatus::FAILED, conflict.fileId, conflict.data);
     }
 
     bool filesDeleted = DeleteConflictResources(conflict, conflict.data, staleResource);
     MEDIA_INFO_LOG("Reverse data conflict deleted old asset, fileId=%{public}d, errCode=%{public}d, "
         "filesDeleted=%{public}d, data=%{public}s",
-        conflict.fileId, errCode, filesDeleted, MediaFileUtils::DesensitizePath(conflict.data).c_str());
+        conflict.fileId, errCode, filesDeleted, MediaPathUtils::DesensitizePath(conflict.data).c_str());
     return MakeDataConflictResult(filesDeleted ? ReverseDataConflictStatus::DELETED_OLD_ASSET :
         ReverseDataConflictStatus::STALE_RESOURCE_LEFT, conflict.fileId, conflict.data);
 }
@@ -798,15 +802,15 @@ ReverseDataConflictResult TryMoveConflictAssetToNewData(const std::shared_ptr<Na
         if (!IsCandidateDataFree(destRdb, newCloudPath, conflict)) {
             MEDIA_WARN_LOG("Reverse data conflict candidate occupied, fileId=%{public}d, retry=%{public}d, "
                 "candidate=%{public}s",
-                conflict.fileId, static_cast<int32_t>(retry), MediaFileUtils::DesensitizePath(newCloudPath).c_str());
+                conflict.fileId, static_cast<int32_t>(retry), MediaPathUtils::DesensitizePath(newCloudPath).c_str());
             continue;
         }
         if (MoveConflictResources(conflict, conflict.data, newCloudPath) &&
             UpdateConflictData(destRdb, conflict, newCloudPath)) {
             MEDIA_INFO_LOG("Reverse data conflict moved old asset, fileId=%{public}d, oldData=%{public}s, "
                 "newData=%{public}s, lake=%{public}d",
-                conflict.fileId, MediaFileUtils::DesensitizePath(conflict.data).c_str(),
-                MediaFileUtils::DesensitizePath(newCloudPath).c_str(), IsLakeConflictAsset(conflict));
+                conflict.fileId, MediaPathUtils::DesensitizePath(conflict.data).c_str(),
+                MediaPathUtils::DesensitizePath(newCloudPath).c_str(), IsLakeConflictAsset(conflict));
             return MakeDataConflictResult(ReverseDataConflictStatus::MOVED_OLD_ASSET, conflict.fileId,
                 conflict.data);
         }
@@ -814,7 +818,7 @@ ReverseDataConflictResult TryMoveConflictAssetToNewData(const std::shared_ptr<Na
         CleanMovedConflictResources(conflict, newCloudPath);
         MEDIA_ERR_LOG("Reverse data conflict move old asset failed, fileId=%{public}d, retry=%{public}d, "
             "newData=%{public}s",
-            conflict.fileId, static_cast<int32_t>(retry), MediaFileUtils::DesensitizePath(newCloudPath).c_str());
+            conflict.fileId, static_cast<int32_t>(retry), MediaPathUtils::DesensitizePath(newCloudPath).c_str());
         break;
     }
     return MakeDataConflictResult(ReverseDataConflictStatus::FAILED, conflict.fileId, conflict.data);
@@ -934,7 +938,7 @@ struct FailedOriginEnsureStats {
 std::string NormalizeResourceRoot(const std::string &root)
 {
     if (root.empty()) {
-        return RESTORE_FILES_LOCAL_DIR;
+        return MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
     }
     if (root.back() == '/') {
         return root.substr(0, root.length() - 1);
@@ -944,10 +948,11 @@ std::string NormalizeResourceRoot(const std::string &root)
 
 std::string GetResourcePathByCloudPathForRoot(const std::string &cloudPath, const std::string &root)
 {
-    if (!IsPathUnderDirectory(cloudPath, RESTORE_FILES_CLOUD_DIR)) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    if (!IsPathUnderDirectory(cloudPath, cloudFilesDir)) {
         return "";
     }
-    return NormalizeResourceRoot(root) + "/" + cloudPath.substr(RESTORE_FILES_CLOUD_DIR.length());
+    return NormalizeResourceRoot(root) + "/" + cloudPath.substr(cloudFilesDir.length());
 }
 
 void AddUniqueSourcePath(std::vector<std::string> &sourcePaths, const std::string &sourcePath)
@@ -984,7 +989,7 @@ bool FindExistingSourceOrigin(const ReverseCloneAssetResource &source, std::stri
     AddUniqueSourcePath(sourcePaths, source.originPath);
     AddUniqueSourcePath(sourcePaths, GetResourcePathByCloudPathForRoot(source.cloudPath, source.localRoot));
     for (const auto &path : sourcePaths) {
-        if (MediaFileUtils::IsFileExists(path)) {
+        if (MediaPureFileUtils::IsFileExists(path)) {
             sourceOrigin = path;
             return true;
         }
@@ -1032,26 +1037,26 @@ ReverseClonePhotoBatchContext BuildFailedResourceBatch(const ReverseClonePhotoBa
                 fileId);
             continue;
         }
-        if (MediaFileUtils::IsFileExists(dstOrigin)) {
+        if (MediaPureFileUtils::IsFileExists(dstOrigin)) {
             stats.dstSizeMismatchCount++;
             if (!MediaFileUtils::DeleteFile(dstOrigin)) {
                 stats.dstDeleteFailedCount++;
                 MEDIA_WARN_LOG("Reverse absorb committed failed asset delete mismatched target origin failed, "
                     "fileId=%{public}d, src=%{public}s, dst=%{public}s", fileId,
-                    MediaFileUtils::DesensitizePath(sourceOrigin).c_str(),
-                    MediaFileUtils::DesensitizePath(dstOrigin).c_str());
+                    MediaPathUtils::DesensitizePath(sourceOrigin).c_str(),
+                    MediaPathUtils::DesensitizePath(dstOrigin).c_str());
                 continue;
             }
             MEDIA_WARN_LOG("Reverse absorb committed failed asset deleted mismatched target origin, "
                 "fileId=%{public}d, src=%{public}s, dst=%{public}s", fileId,
-                MediaFileUtils::DesensitizePath(sourceOrigin).c_str(),
-                MediaFileUtils::DesensitizePath(dstOrigin).c_str());
+                MediaPathUtils::DesensitizePath(sourceOrigin).c_str(),
+                MediaPathUtils::DesensitizePath(dstOrigin).c_str());
         }
 
         stats.needEnsureCount++;
         MEDIA_INFO_LOG("Reverse absorb committed failed asset needs origin ensure, fileId=%{public}d, "
-            "src=%{public}s, dst=%{public}s", fileId, MediaFileUtils::DesensitizePath(sourceOrigin).c_str(),
-            MediaFileUtils::DesensitizePath(dstOrigin).c_str());
+            "src=%{public}s, dst=%{public}s", fileId, MediaPathUtils::DesensitizePath(sourceOrigin).c_str(),
+            MediaPathUtils::DesensitizePath(dstOrigin).c_str());
         failedBatch.resourcePlans.emplace(plan->first, plan->second);
     }
 
@@ -1099,7 +1104,7 @@ bool ReverseCloneRestore::ShouldUseReverseCloneRestore()
 {
     // 旧机不存在数据库升级记录xml，则不支持反向克隆
     string xmlPath = backupRestoreDir_ + CLONE_RESTORE_PREFERENCE_PATH + MEDIA_DB_UPGRADE_EVENTS_XML;
-    if (!MediaFileUtils::IsFileExists(xmlPath)) {
+    if (!MediaPureFileUtils::IsFileExists(xmlPath)) {
         MEDIA_INFO_LOG("xml file NOT EXIST: %{public}s", xmlPath.c_str());
         reverseRestoreReportInfo_.reverseChangeErrorInfo = "The XML file of the old service is not transferred.";
         return false;
@@ -4072,8 +4077,8 @@ vector<NativeRdb::ValuesBucket> ReverseCloneRestore::GetInsertValuesForAbsorb(ve
             MEDIA_INFO_LOG("Reverse absorb keep missing media source for lake, fileId=%{public}d, "
                 "errCode=%{public}d, fileSourceType=%{public}d, storagePath=%{public}s, sourceFilePath=%{public}s",
                 fileInfos[i].fileIdOld, errCode, fileInfos[i].fileSourceType,
-                MediaFileUtils::DesensitizePath(fileInfos[i].storagePath).c_str(),
-                MediaFileUtils::DesensitizePath(sourceFilePath).c_str());
+                MediaPathUtils::DesensitizePath(fileInfos[i].storagePath).c_str(),
+                MediaPathUtils::DesensitizePath(sourceFilePath).c_str());
         } else {
             fileInfos[i].filePath = sourceFilePath;
         }
@@ -4774,7 +4779,7 @@ std::string ReverseCloneRestore::EnsureAlbumLPath(const std::string& lPath, cons
     }
 
     MEDIA_INFO_LOG("EnsureAlbumLPath: lPath empty, parsed from sourcePath: %{public}s",
-                   MediaFileUtils::DesensitizePath(result).c_str());
+                   MediaPathUtils::DesensitizePath(result).c_str());
     return result;
 }
 

@@ -15,6 +15,7 @@
 #define MLOG_TAG "LakeFileOperations"
 
 #include "lake_file_operations.h"
+#include "media_path_utils.h"
 
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -26,6 +27,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_type_const.h"
@@ -56,11 +58,7 @@ static void UpdateModifyTime(const string &path, int64_t localMtime)
     // set mtime
     times[1] = times[0];
 
-    string pathToModifyTime = path;
-    if (MediaStringUtils::StartsWith(path, PhotoColumn::FILES_CLOUD_DIR)) {
-        pathToModifyTime.replace(0, PhotoColumn::FILES_CLOUD_DIR.length(), PhotoColumn::FILES_LOCAL_DIR);
-    }
-
+    string pathToModifyTime = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     if (utimes(pathToModifyTime.c_str(), times) < 0) {
         MEDIA_ERR_LOG("utimes failed %{public}d, path: %{public}s", errno,
             DfxUtils::GetSafePath(pathToModifyTime).c_str());
@@ -76,7 +74,7 @@ int32_t LakeFileOperations::MoveLakeFile(const std::string &srcPath, const std::
     size_t destPos = destPath.find_last_of('/');
     CHECK_AND_RETURN_RET_LOG(destPos != std::string::npos, 0, "destPath not contain '/'");
     std::string parentDir = destPath.substr(0, destPos);
-    if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+    if (!MediaPureFileUtils::IsFileExists(parentDir) && !MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(destPath).c_str());
     }
@@ -150,7 +148,7 @@ static int32_t HandleSameNameRename(const int32_t fileId, const std::string targ
         leftParentheses = fileName.rfind('(');
     }
     uint32_t retryCount = 1;
-    while ((MediaFileUtils::IsFileExists(dirPath + tmpName + fileExtension) ||
+    while ((MediaPureFileUtils::IsFileExists(dirPath + tmpName + fileExtension) ||
         IsAlbumHasSameNameAsset(fileId, tmpName + fileExtension)) &&
         retryCount <= RENAME_MAX_RETRY_COUNT) {
         // 存在同名文件，重命名
@@ -192,9 +190,9 @@ static int32_t CreateParentDir(int32_t &targetAlbumId, std::string &parentDir)
         innerLakeLpath = innerLakeLpath + prefix;
     }
     parentDir = pathPreFix + innerLakeLpath;
-    if (!MediaFileUtils::IsDirectory(parentDir)) {
+    if (!MediaPureFileUtils::IsDirectory(parentDir)) {
         MEDIA_INFO_LOG("CreateDirectory START");
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(parentDir), E_HAS_FS_ERROR,
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(parentDir), E_HAS_FS_ERROR,
             "create dir %{private}s error", parentDir.c_str());
     }
     return E_OK;
@@ -304,7 +302,7 @@ static bool CheckSubDirForFileManager(const std::string &path, size_t startPos)
 
 static bool CheckFileManagerRealPath(const std::string &path)
 {
-    MEDIA_DEBUG_LOG("CheckFileManagerRealPath path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_DEBUG_LOG("CheckFileManagerRealPath path: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
     CHECK_AND_RETURN_RET(MediaStringUtils::StartsWith(path, DOCS_DIR), false);
     size_t startPos = DOCS_DIR.length();
     return CheckSubDirForFileManager(path, startPos);
@@ -381,7 +379,7 @@ static int32_t MoveAssetToLake(AccurateRefreshBase &refresh,
     std::string tmpTitle = title;
     std::string tmpDisplayName = displayName;
     // 湖外同路径存在同名文件
-    if (MediaFileUtils::IsFileExists(tmpInnerLakePath)) {
+    if (MediaPureFileUtils::IsFileExists(tmpInnerLakePath)) {
         if (HandleSameNameRename(mediaId, tmpInnerLakePath, tmpInnerLakePath, tmpTitle, tmpDisplayName) != E_OK) {
             MEDIA_ERR_LOG("can not move file to %{public}s", DfxUtils::GetSafePath(tmpInnerLakePath).c_str());
             return E_ERR;
@@ -453,7 +451,7 @@ std::vector<MoveAssetsToLakeUpdateData> LakeFileOperations::GetInnerLakeAssets(
         innerLakeAsset.storagePath = storagePath;
         MEDIA_INFO_LOG("dbinfo %{public}s, %{public}s",
             MediaFileUtils::DesensitizeName(displayName).c_str(),
-            MediaFileUtils::DesensitizePath(storagePath).c_str());
+            MediaPathUtils::DesensitizePath(storagePath).c_str());
         innerLakeAssets.emplace_back(innerLakeAsset);
     }
     resultSet->Close();
@@ -488,7 +486,7 @@ int32_t LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(
         std::string tmpTitle = innerLakeAsset.title;
         std::string tmpDisplayName = innerLakeAsset.displayName;
         // 如果目标lpath存在同名文件，重命名
-        if (MediaFileUtils::IsFileExists(innerLakePath)) {
+        if (MediaPureFileUtils::IsFileExists(innerLakePath)) {
             if (HandleSameNameRename(
                 innerLakeAsset.mediaId, innerLakePath, tmpInnerLakePath, tmpTitle, tmpDisplayName) != E_OK) {
                 break;
@@ -732,7 +730,7 @@ static int32_t GetEditPathAndEditTime(const std::string& fileUri, std::string& e
 
     editTime = editTimeLocal;
     editPath = MediaEditUtils::GetEditDataPath(cloudPath);
-    if (!MediaFileUtils::IsFileExists(editPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editPath)) {
         MEDIA_ERR_LOG("Path does not exist, editPath:%{public}s", DfxUtils::GetSafePath(editPath).c_str());
         return -1;
     }
@@ -813,7 +811,7 @@ int32_t LakeFileOperations::RenamePhoto(AccurateRefreshBase &refresh, const int3
     std::string newPath = dir + displayName;
     std::string newDisplayName = displayName;
     std::string newTitle = displayName.substr(0, lastDot);
-    if (MediaFileUtils::IsFileExists(newPath) || IsAlbumHasSameNameAsset(fileId, displayName)) {
+    if (MediaPureFileUtils::IsFileExists(newPath) || IsAlbumHasSameNameAsset(fileId, displayName)) {
         // 存在同名文件，重命名
         if (HandleSameNameRename(fileId, newPath, newPath, newTitle, newDisplayName) != E_OK) {
             MEDIA_ERR_LOG("can not rename file to %{public}s", DfxUtils::GetSafePath(newPath).c_str());

@@ -174,9 +174,10 @@ int32_t MediaLibraryFileOperations::ModifyFileOperation(MediaLibraryCommand &cmd
         return E_INVALID_PATH;
     }
 
-    string dstFilePath = ROOT_MEDIA_DIR + dstReFilePath + dstFileName;
+    string dstFilePath = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES)
+        + dstReFilePath + dstFileName;
     auto normalizedDst = std::filesystem::path(dstFilePath).lexically_normal();
-    if (!MediaPathUtils::CheckPhotoPath(normalizedDst.string())) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, normalizedDst.string())) {
         MEDIA_ERR_LOG("ModifyFileOperation: dstFilePath escapes ROOT_MEDIA_DIR");
         return E_INVALID_PATH;
     }

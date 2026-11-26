@@ -24,6 +24,7 @@
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_notify.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "post_event_utils.h"
 #include "post_proc.h"
 #include "result_set_utils.h"
@@ -37,6 +38,7 @@
 #include "medialibrary_object_utils.h"
 #include "media_audio_column.h"
 #include "dfx_manager.h"
+#include "media_path_utils.h"
 using namespace std;
 using namespace OHOS::DistributedKv;
 using namespace OHOS::NativeRdb;
@@ -794,8 +796,8 @@ bool IThumbnailHelper::IsCreateLcdSuccess(ThumbRdbOpt &opts, ThumbnailData &data
 bool IThumbnailHelper::IsCreateLcdExSuccess(ThumbRdbOpt &opts, ThumbnailData &data)
 {
     string fileName = GetThumbnailPath(data.path, THUMBNAIL_LCD_EX_SUFFIX);
-    string dirName = MediaFileUtils::GetParentPath(fileName);
-    if (!MediaFileUtils::CreateDirectory(dirName)) {
+    string dirName = MediaPathUtils::GetParentPath(fileName);
+    if (!MediaPureFileUtils::CreateDirectory(dirName)) {
         MEDIA_ERR_LOG("Fail to create directory, fileName: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
         return false;
     }
@@ -850,8 +852,8 @@ bool IThumbnailHelper::GenThumbnail(ThumbRdbOpt &opts, ThumbnailData &data, cons
 bool IThumbnailHelper::GenThumbnailEx(ThumbRdbOpt &opts, ThumbnailData &data)
 {
     string fileName = GetThumbnailPath(data.path, THUMBNAIL_THUMB_EX_SUFFIX);
-    string dirName = MediaFileUtils::GetParentPath(fileName);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dirName), false,
+    string dirName = MediaPathUtils::GetParentPath(fileName);
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dirName), false,
         "Fail to create directory, fileName: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
 
     auto pixelMapEx = data.source.GetPixelMapEx();
@@ -905,14 +907,6 @@ bool IThumbnailHelper::CacheThumbnailState(const ThumbRdbOpt &opts, ThumbnailDat
     return isSuccess ? CacheSuccessState(opts, data) : CacheFailState(opts, data);
 }
 
-std::string GetLocalOriginFilePath(const std::string &path)
-{
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
-        return "";
-    }
-    return LOCAL_MEDIA_PREFIX + path.substr(ROOT_MEDIA_DIR.length());
-}
-
 bool IThumbnailHelper::CacheSuccessState(const ThumbRdbOpt &opts, ThumbnailData &data)
 {
     int32_t err = CacheThumbDbState(opts, data);
@@ -964,7 +958,7 @@ int32_t IThumbnailHelper::CacheDirtyState(const ThumbRdbOpt &opts, ThumbnailData
         "Not %{public}s table, table: %{public}s", PhotoColumn::PHOTOS_TABLE.c_str(), opts.table.c_str());
     CHECK_AND_RETURN_RET(data.isRegenerateStage, E_OK);
 
-    string filePath = GetLocalOriginFilePath(data.path);
+    string filePath = MediaPathUtils::ConvertCloudPathToLocalPath(data.path);
     bool shouldUpdateFDirty = access(filePath.c_str(), F_OK) == 0;
     data.rdbUpdateCache.PutInt(PhotoColumn::PHOTO_DIRTY, shouldUpdateFDirty ?
         static_cast<int32_t>(DirtyType::TYPE_FDIRTY) :

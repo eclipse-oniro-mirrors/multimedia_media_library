@@ -276,7 +276,7 @@ void ClearAnalysisAlbumTotalData()
 
 void ClearAnalysisAlbum()
 {
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
     predicates.NotEqualTo(ALBUM_SUBTYPE, PhotoAlbumSubType::SHOOTING_MODE);
     int32_t deletedRows = -1;
@@ -286,7 +286,7 @@ void ClearAnalysisAlbum()
 
 void ClearPhotos()
 {
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     int32_t deletedRows = -1;
     auto ret = rdbStore->Delete(deletedRows, predicates);
@@ -308,7 +308,7 @@ void MediaLibraryVisionTest::SetUpTestCase(void)
 {
     MEDIA_INFO_LOG("Vision_Test::Start");
     MediaLibraryUnitTestUtils::Init();
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     MediaLibraryUnitTestUtils::CreateTestTables(rdbStore, createTableSqlLists);
     rdbStore->ExecuteSql(PhotoUpgrade::INDEX_SCTHP_ADDTIME);
     rdbStore->ExecuteSql(PhotoUpgrade::CREATE_SCHPT_DAY_INDEX);

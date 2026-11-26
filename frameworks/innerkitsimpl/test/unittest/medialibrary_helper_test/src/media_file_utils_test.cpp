@@ -14,6 +14,8 @@
  */
 
 #include "medialibrary_helper_test.h"
+#include "media_pure_file_utils.h"
+#include "media_string_utils.h"
 
 #include <fcntl.h>
 #include <fstream>
@@ -23,6 +25,7 @@
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_errno.h"
@@ -42,7 +45,7 @@ const double ASPECT_RATIO_MAX_TEST = 10000;
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExists_Test_001, TestSize.Level1)
 {
     string filePath = "/data/test/isfileexists_001";
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsDirEmpty_Test_001, TestSize.Level1)
@@ -55,14 +58,14 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsDirEmpty_Test_002, TestSiz
 {
     string dirPath = "/data/test/isdirempty_002";
     string subPath = dirPath + "/isdirempty_002";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(subPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(subPath), true);
     EXPECT_EQ(MediaFileUtils::IsDirEmpty(dirPath), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsDirEmpty_Test_003, TestSize.Level1)
 {
     string dirPath = "/data/test/isdirempty_003";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::IsDirEmpty(dirPath), true);
 }
 
@@ -100,7 +103,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteFile_Test_001, TestSiz
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteDir_Test_001, TestSize.Level1)
 {
     string dirPath = "/data/test/deletedir_001";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::DeleteDir(dirPath), true);
 }
 
@@ -147,7 +150,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafe_Test_001, TestS
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateDirectory_Test_001, TestSize.Level1)
 {
     string dirPath = "/data/test/createdir_001";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
 }
 
 static bool CheckFileString(const string &filePath, const string &text)
@@ -201,7 +204,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_RenameDir_Test_001, TestSize
 {
     string oldPath = "/data/test/renamedir_001";
     string newPath = "/data/test/renamedir_001_renamed";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(oldPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(oldPath), true);
     EXPECT_EQ(MediaFileUtils::RenameDir(oldPath, newPath), true);
 }
 
@@ -209,7 +212,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_RenameDir_Test_002, TestSize
 {
     string oldPath = "/data/test/renamedir_002";
     string newPath = "";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(oldPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(oldPath), true);
     EXPECT_EQ(MediaFileUtils::RenameDir(oldPath, newPath), false);
 }
 
@@ -366,7 +369,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckAlbumName_Test_003, Tes
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetAlbumDateModified_Test_001, TestSize.Level1)
 {
     string dirPath = "/data/test/getalbumdatemodified_001";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::GetAlbumDateModified(dirPath) > 0, true);
 }
 
@@ -851,7 +854,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckD
 {
     string dirPath = "/data/test/mp4_check_duration_dir";
     string filePath = dirPath + "/VID_test.mp4";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath, false), true);
     MediaFileUtils::DeleteDir(dirPath);
@@ -862,7 +865,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckD
 {
     string dirPath = "/data/test/mp4_check_duration_dir";
     string filePath = dirPath + "/VID_test.mp4";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath), false);
     MediaFileUtils::DeleteDir(dirPath);
@@ -873,7 +876,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckD
 {
     string dirPath = "/data/test/mp4_check_duration_dir";
     string filePath = dirPath + "/VID_test.avi";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath, false), false);
     MediaFileUtils::DeleteDir(dirPath);
@@ -1096,7 +1099,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyDirectory_Test_002, Test
     string testPath = "/data/test/copydirectory_002";
     string oldDir = testPath + "/copydirectory_002_srcdir";
     string newDir = testPath + "/copydirectory_002_dstdir";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(oldDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(oldDir), true);
     int32_t ret = MediaFileUtils::CopyDirectory(oldDir, newDir);
     EXPECT_EQ(ret, E_OK);
 }
@@ -1106,8 +1109,8 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyDirectory_Test_003, Test
     string testPath = "/data/test/copydirectory_003";
     string oldDir = testPath + "/copydirectory_003_srcdir";
     string newDir = testPath + "/copydirectory_003_dstdir";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(oldDir), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(newDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(oldDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(newDir), true);
     int32_t ret = MediaFileUtils::CopyDirectory(oldDir, newDir);
     EXPECT_EQ(ret, E_FILE_EXIST);
 }
@@ -1119,8 +1122,8 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyDirectory_Test_004, Test
     string newDir = testPath + "/copydirectory_004_dstdir";
     string subdirectory = oldDir + "/copydirectory_subdirectory";
     string subfile = oldDir + "/copydirectory_subfile";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(oldDir), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(subdirectory), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(oldDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(subdirectory), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(subfile), true);
     int32_t ret = MediaFileUtils::CopyDirectory(oldDir, newDir);
     EXPECT_EQ(ret, E_OK);
@@ -1260,7 +1263,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_003
 {
     MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_003 begin");
     string localDir = "/storage/media/local/files/custom_restore/test003/";
-    MediaFileUtils::CreateDirectory(localDir);
+    MediaPureFileUtils::CreateDirectory(localDir);
     string cloudDir = "/storage/cloud/files/custom_restore/test003/";
     string fileName = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1269,9 +1272,9 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_003
     string cloudPath = cloudDir + fileName;
     int result = MediaFileUtils::CreateAsset(localPath);
     EXPECT_EQ(result, E_OK);
-    bool localExists = MediaFileUtils::IsFileExists(localPath);
+    bool localExists = MediaPureFileUtils::IsFileExists(localPath);
     EXPECT_EQ(localExists, true);
-    bool cloudExists = MediaFileUtils::IsFileExists(cloudPath);
+    bool cloudExists = MediaPureFileUtils::IsFileExists(cloudPath);
     EXPECT_EQ(cloudExists, false);
     MediaFileUtils::RemoveDirectory(localDir);
     MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_003 finish");
@@ -1281,7 +1284,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_004
 {
     MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_004 begin");
     string localDir = "/storage/media/local/files/custom_restore/test004/";
-    MediaFileUtils::CreateDirectory(localDir);
+    MediaPureFileUtils::CreateDirectory(localDir);
     string cloudDir = "/storage/cloud/files/custom_restore/test004/";
     string fileName = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1290,9 +1293,9 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_004
     string cloudPath = cloudDir + fileName;
     int result = MediaFileUtils::CreateAsset(localPath);
     EXPECT_EQ(result, E_OK);
-    bool localExists = MediaFileUtils::IsFileExists(localPath);
-    EXPECT_EQ(localExists, true);
-    bool cloudExists = MediaFileUtils::IsFileExists(cloudPath);
+    bool localExists = MediaPureFileUtils::IsFileExists(localPath);
+    bool cloudExists = MediaPureFileUtils::IsFileExists(cloudPath);
+    bool cloudExists = MediaPureFileUtils::IsFileExists(cloudPath);
     EXPECT_EQ(cloudExists, true);
     MediaFileUtils::RemoveDirectory(localDir);
     MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_004 finish");
@@ -1488,7 +1491,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileAndDelSrc_Test_001, 
 {
     MEDIA_INFO_LOG("MediaFileUtils_CopyFileAndDelSrc_Test_001 Start");
     string dirPath = "/data/test/CopyFileAndDelSrc";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     string srcFile = dirPath + "/test1.jpg";
     string destFile = dirPath + "/test2.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
@@ -1504,7 +1507,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileAndDelSrc_Test_002, 
 {
     MEDIA_INFO_LOG("MediaFileUtils_CopyFileAndDelSrc_Test_002 Start");
     string dirPath = "/data/test/CopyFileAndDelSrc";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     string srcFile = dirPath + "/test1.jpg";
     string destFile = dirPath + "/test1.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
@@ -1519,7 +1522,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ConvertFormatCopy_Test_001, 
 {
     MEDIA_INFO_LOG("MediaFileUtils_ConvertFormatCopy_Test_001 Start");
     string dirPath = "/data/test/CopyFileAndDelSrc";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     string srcFile = dirPath + "/test3.jpg";
     string destFile = dirPath + "/test4.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
@@ -1583,7 +1586,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileValid_Test_002, TestSi
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileValid_Test_003, TestSize.Level1)
 {
     string dirPath = "/data/test/isfilevalid_003";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::IsFileValid(dirPath), false);
     EXPECT_EQ(MediaFileUtils::DeleteDir(dirPath), true);
 }
@@ -1593,7 +1596,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteFileWithRetry_Test_001
     string filePath = "/data/test/deletefilewithretry_001";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     EXPECT_EQ(MediaFileUtils::DeleteFileWithRetry(filePath), true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteFileWithRetry_Test_002, TestSize.Level1)
@@ -1605,29 +1608,29 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteFileWithRetry_Test_002
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetParentPath_Test_001, TestSize.Level1)
 {
     string path = "/data/test/file.txt";
-    string parentPath = MediaFileUtils::GetParentPath(path);
+    string parentPath = MediaPathUtils::GetParentPath(path);
     EXPECT_EQ(parentPath, "/data/test");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetParentPath_Test_002, TestSize.Level1)
 {
     string path = "file.txt";
-    string parentPath = MediaFileUtils::GetParentPath(path);
+    string parentPath = MediaPathUtils::GetParentPath(path);
     EXPECT_EQ(parentPath, "");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetParentPath_Test_003, TestSize.Level1)
 {
     string path = "";
-    string parentPath = MediaFileUtils::GetParentPath(path);
+    string parentPath = MediaPathUtils::GetParentPath(path);
     EXPECT_EQ(parentPath, "");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsDirectory_Test_001, TestSize.Level1)
 {
     string dirPath = "/data/test/isdirectory_001";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
-    EXPECT_EQ(MediaFileUtils::IsDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsDirectory(dirPath), true);
     EXPECT_EQ(MediaFileUtils::DeleteDir(dirPath), true);
 }
 
@@ -1635,7 +1638,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsDirectory_Test_002, TestSi
 {
     string filePath = "/data/test/isdirectory_002";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
-    EXPECT_EQ(MediaFileUtils::IsDirectory(filePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsDirectory(filePath), false);
     EXPECT_EQ(MediaFileUtils::DeleteFile(filePath), true);
 }
 
@@ -1648,7 +1651,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileUtil_Test_001, TestS
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testString), true);
     EXPECT_EQ(MediaFileUtils::CopyFileUtil(srcFile, dstFile), true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(dstFile), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(dstFile), true);
     
     EXPECT_EQ(MediaFileUtils::DeleteFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::DeleteFile(dstFile), true);
@@ -1979,14 +1982,14 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsMovingPhotoMimeType_Test_0
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DesensitizePath_Test_001, TestSize.Level1)
 {
     string path = "/storage/cloud/files/Photo/test.jpg";
-    string result = MediaFileUtils::DesensitizePath(path);
+    string result = MediaPathUtils::DesensitizePath(path);
     EXPECT_NE(result.find("*"), string::npos);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DesensitizePath_Test_002, TestSize.Level1)
 {
     string path = "/data/test/test.jpg";
-    string result = MediaFileUtils::DesensitizePath(path);
+    string result = MediaPathUtils::DesensitizePath(path);
     EXPECT_EQ(result, path);
 }
 
@@ -1995,7 +1998,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateDirectoryAndCopyFiles_
     string srcDir = "/data/test/createdirectoryandcopyfiles_src";
     string dstDir = "/data/test/createdirectoryandcopyfiles_dst";
     
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     string srcFile = srcDir + "/test.txt";
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     
@@ -2018,7 +2021,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveDirectory_Test_001, Test
     string srcDir = "/data/test/movedirectory_src";
     string dstDir = "/data/test/movedirectory_dst";
     
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     int32_t ret = MediaFileUtils::MoveDirectory(srcDir, dstDir);
     EXPECT_EQ(ret, E_OK);
     
@@ -2030,7 +2033,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ConvertFormatExtraDataDirect
     string srcDir = "/data/test/convertformatextradatadirectory_src";
     string dstDir = "/data/test/convertformatextradatadirectory_dst";
     
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     bool ret = MediaFileUtils::ConvertFormatExtraDataDirectory(srcDir, dstDir, "jpg");
     EXPECT_EQ(ret, false);
     
@@ -2050,14 +2053,14 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetReplacedPathByPrefix_Test
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetLocalPath_Test_001, TestSize.Level1)
 {
     string path = "/storage/cloud/files/Photo/test.jpg";
-    string result = MediaFileUtils::GetLocalPath(path);
+    string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     EXPECT_EQ(result, "/storage/media/local/files/Photo/test.jpg");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetLocalPath_Test_002, TestSize.Level1)
 {
     string path = "/data/test/test.jpg";
-    string result = MediaFileUtils::GetLocalPath(path);
+    string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     EXPECT_EQ(result, path);
 }
 
@@ -2086,15 +2089,15 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteFileOrFolder_Test_001,
     string path = "/data/test/deletefileorfolder_001";
     EXPECT_EQ(MediaFileUtils::CreateFile(path), true);
     EXPECT_EQ(MediaFileUtils::DeleteFileOrFolder(path, true), true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(path), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(path), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DeleteFileOrFolder_Test_002, TestSize.Level1)
 {
     string path = "/data/test/deletefileorfolder_002";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(path), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(path), true);
     EXPECT_EQ(MediaFileUtils::DeleteFileOrFolder(path, false), true);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(path), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(path), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyDirAndDelSrc_Test_001, TestSize.Level1)
@@ -2102,7 +2105,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyDirAndDelSrc_Test_001, T
     string srcPath = "/data/test/copydiranddelsrc_src";
     string destPath = "/data/test/copydiranddelsrc_dst";
     
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcPath), true);
     string srcFile = srcPath + "/test.txt";
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     
@@ -2164,7 +2167,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StrCreateTimeByMilliseconds_
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_001, TestSize.Level1)
 {
     string rootPath = "/data/test/statdirsize_001";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(rootPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(rootPath), true);
     
     string file1 = rootPath + "/test1.txt";
     string file2 = rootPath + "/test2.txt";
@@ -2184,7 +2187,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_001, TestSi
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_002, TestSize.Level1)
 {
     string rootPath = "/data/test/statdirsize_002";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(rootPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(rootPath), true);
 
     string fileEditData = rootPath + "/editdata";
     string fileSourceJpg = rootPath + "/source.jpg";
@@ -2222,7 +2225,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_002, TestSi
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_003, TestSize.Level1)
 {
     string rootPath = "/data/test/statdirsize_003";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(rootPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(rootPath), true);
 
     string file1 = rootPath + "/a.txt";
     string file2 = rootPath + "/b.txt";
@@ -2331,7 +2334,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_
     string heicPath = heicDir + "/editdata_camera";
     string testContent = "test_edit_data_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(jpgPath), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgPath, testContent), true);
 
@@ -2359,7 +2362,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_
     string jpgPath = jpgDir + "/editdata_camera";
     string testContent = "test_edit_data_heic_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(heicPath), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicPath, testContent), true);
 
@@ -2399,7 +2402,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_ReadStrFromFileWithExtRetry_
     string jpgPath = jpgDir + "/editdata_camera";
     string testContent = "normal_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(jpgPath), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgPath, testContent), true);
 
@@ -2443,10 +2446,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Tes
     string jpgDstDir = jpgDir + "/source.mp4";
     string testContent = "safecopy_content_data";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
 
     string heicDstDir = "/data/test/IMG_0004.heic/source.mp4";
     EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(srcFile, heicDstDir, false), true);
@@ -2475,10 +2478,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Tes
     string dstFile = dstDir + "/source.mp4";
     string testContent = "safecopy_heic_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(heicFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dstDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dstDir), true);
 
     string jpgFile = "/data/test/IMG_0005.jpg/video.mp4";
     EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(jpgFile, dstFile, true), true);
@@ -2504,10 +2507,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Tes
     string dstFile = "/data/test/extretry_copysafe_normal_dst/source.mp4";
     string testContent = "safecopy_normal_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/extretry_copysafe_normal_src"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/data/test/extretry_copysafe_normal_src"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/extretry_copysafe_normal_dst"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/data/test/extretry_copysafe_normal_dst"), true);
 
     EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(srcFile, dstFile, false), true);
 
@@ -2533,7 +2536,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Tes
     string heicDstDir = "/data/test/copysafe_noretry_dst.heic";
     string heicDstFile = heicDstDir + "/source.mp4";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDstDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDstDir), true);
 
     EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(nonExistSrc, heicDstFile, false), false);
 
@@ -2555,7 +2558,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CopyFileSafeWithExtRetry_Tes
     string dstDir = "/data/test/copysafe_noretry_dst3";
     string dstFile = dstDir + "/source.mp4";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dstDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dstDir), true);
 
     EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(nonExistJpgSrc, dstFile, true), false);
 
@@ -2578,10 +2581,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_00
     string jpgDestFile = jpgDir + "/source.mp4";
     string testContent = "move_test_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
 
     string heicDestFile = "/data/test/IMG_0006.heic/source.mp4";
     EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(srcFile, heicDestFile), true);
@@ -2611,10 +2614,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_00
     string heicDestFile = heicDir + "/source.mp4";
     string testContent = "move_heic_test_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDir), true);
 
     string jpgDestFile = "/data/test/IMG_0007.jpg/source.mp4";
     EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(srcFile, jpgDestFile), true);
@@ -2643,10 +2646,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_00
     string dstFile = dstDir + "/source.mp4";
     string testContent = "move_normal_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dstDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dstDir), true);
 
     EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(srcFile, dstFile), true);
 
@@ -2672,7 +2675,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_MoveFileWithExtRetry_Test_00
     string heicDstFile = heicDstDir + "/source.mp4";
     string nonExistSrcFile = "/data/test/move_noretry_nonexist_src/video.mp4";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDstDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDstDir), true);
 
     EXPECT_EQ(MediaFileUtils::MoveFileWithExtRetry(nonExistSrcFile, heicDstFile), false);
 
@@ -2693,7 +2696,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_00
     string jpgFile = jpgDir + "/source.mp4";
     string testContent = "open_test_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(jpgFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgFile, testContent), true);
 
@@ -2722,7 +2725,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_00
     string heicFile = heicDir + "/source.mp4";
     string testContent = "open_heic_test_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(heicFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicFile, testContent), true);
 
@@ -2765,7 +2768,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_OpenFileWithExtRetry_Test_00
     string srcFile = srcDir + "/source.mp4";
     string testContent = "open_normal_content";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(srcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(srcDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(srcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(srcFile, testContent), true);
 
@@ -2809,7 +2812,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Tes
     string jpgFile = jpgDir + "/editdata_camera";
     string testContent = "isfileexists_normal";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(jpgFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgFile, testContent), true);
 
@@ -2833,7 +2836,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Tes
     string heicFile = heicDir + "/editdata_camera";
     string testContent = "isfileexists_fallback";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(jpgFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgFile, testContent), true);
 
@@ -2874,73 +2877,73 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Tes
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_001, TestSize.Level1)
 {
     // 正常正整数
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("123"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("123"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_002, TestSize.Level1)
 {
     // 正常负整数
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("-123"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("-123"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_003, TestSize.Level1)
 {
     // 零
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("0"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("0"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_004, TestSize.Level1)
 {
     // 边界值 - 最大正整数
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("2147483647"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("2147483647"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_005, TestSize.Level1)
 {
     // 边界值 - 最小负整数
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483648"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("-2147483648"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_006, TestSize.Level1)
 {
     // 空字符串
-    EXPECT_EQ(MediaFileUtils::IsValidInteger(""), false);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger(""), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_007, TestSize.Level1)
 {
     // 只有负号
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("-"), false);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("-"), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_008, TestSize.Level1)
 {
     // 非数字字符 截断
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("12a3"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("12a3"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_009, TestSize.Level1)
 {
     // 超出范围 - 大于最大正整数
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("2147483648"), false);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("2147483648"), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_010, TestSize.Level1)
 {
     // 超出范围 - 小于最小负整数
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483649"), false);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("-2147483649"), false);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_011, TestSize.Level1)
 {
     // 小数 - 截断
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("1.00000"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("1.00000"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_012, TestSize.Level1)
 {
     // 负小数 - 截断
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("-1.00000"), true);
+    EXPECT_EQ(MediaStringUtils::IsValidInteger("-1.00000"), true);
 }
 
 /**

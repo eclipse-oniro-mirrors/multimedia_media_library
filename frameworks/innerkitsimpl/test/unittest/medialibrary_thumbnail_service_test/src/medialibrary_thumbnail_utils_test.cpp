@@ -97,7 +97,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, QueryLcdCount_test_001, TestSize.Level0
     opts.store = nullptr;
     auto res = ThumbnailUtils::QueryLcdCount(opts, outLcdCount, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::QueryLcdCount(opts, outLcdCount, err);
     EXPECT_EQ(res, false);
 }
@@ -113,7 +113,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, QueryLcdCountByTime_test_001, TestSize.
     opts.store = nullptr;
     auto res = ThumbnailUtils::QueryLcdCountByTime(time, before, opts, outLcdCount, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::QueryLcdCountByTime(time, before, opts, outLcdCount, err);
     EXPECT_EQ(res, false);
 }
@@ -126,7 +126,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, QueryLocalNoLcdInfos_test_001, TestSize
     opts.store = nullptr;
     auto res = ThumbnailUtils::QueryLocalNoLcdInfos(opts, infos, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::QueryLocalNoLcdInfos(opts, infos, err);
     EXPECT_EQ(res, false);
 }
@@ -140,7 +140,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, QueryNoHighlightPath_test_001, TestSize
     opts.store = nullptr;
     auto res = ThumbnailUtils::QueryNoHighlightPath(opts, data, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::QueryNoHighlightPath(opts, data, err);
     EXPECT_EQ(res, false);
 }
@@ -154,7 +154,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, QueryNoHighlightInfos_test_001, TestSiz
     opts.store = nullptr;
     auto res = ThumbnailUtils::QueryNoHighlightInfos(opts, infos, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::QueryNoHighlightInfos(opts, infos, err);
     EXPECT_EQ(res, false);
 }
@@ -169,7 +169,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, GetHighlightTracks_test_001, TestSize.L
     opts.store = nullptr;
     auto res = ThumbnailUtils::GetHighlightTracks(opts, trackInfos, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::GetHighlightTracks(opts, trackInfos, err);
     EXPECT_EQ(res, false);
 }
@@ -185,7 +185,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, UpdateHighlightInfo_test_001, TestSize.
     opts.store = nullptr;
     auto res = ThumbnailUtils::UpdateHighlightInfo(opts, data, err);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::UpdateHighlightInfo(opts, data, err);
     EXPECT_EQ(res, false);
 }
@@ -200,7 +200,7 @@ HWTEST_F(MediaLibraryThumbnailUtilsTest, CheckDateTaken_test_001, TestSize.Level
     opts.store = nullptr;
     auto res = ThumbnailUtils::CheckDateTaken(opts, data);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailUtils::CheckDateTaken(opts, data);
     EXPECT_EQ(res, false);
 }

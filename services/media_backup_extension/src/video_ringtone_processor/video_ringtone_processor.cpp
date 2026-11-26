@@ -21,6 +21,7 @@
 
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "media_old_photos_column.h"
 #include "fetch_result.h"
@@ -43,7 +44,6 @@ static const string SETTINGS_DATA_FIELD_VAL = "VALUE";
 static const string RINGTONE_PATH_KEY_SIM1 = "ringtone_path";
 static const string RINGTONE_PATH_KEY_SIM2 = "ringtone2_path";
 const std::string SOURCE_PATH_PREFIX = "/storage/emulated/0";
-const std::string PHOTO_CLOUD_PATH_URI = "/storage/cloud/files/";
 static const std::string VIDEO_EXTENSION_MP4 = "mp4";
 static const std::string RINGTONE_LIBRARY_BUNDLE_NAME = "com.ohos.ringtonelibrary.ringtonelibrarydata";
 static const int TYPE_PHOTOS = 1;
@@ -119,11 +119,13 @@ bool VideoRingtoneProcessor::IsMp4VideoFile(const string& path)
 
 int32_t VideoRingtoneProcessor::ConvertOldUriToNewUri(const string& oldUri, string& newUri)
 {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+
     int32_t mediaID = -1;
     newUri = GetUrisByOldUrisInner(oldUri, mediaID);
     MEDIA_INFO_LOG("oldUri: %{public}s, newUri: %{public}s, mediaID=%{public}d",
         BackupFileUtils::GarbleFilePath(oldUri, CLONE_RESTORE_ID, SOURCE_PATH_PREFIX).c_str(),
-        BackupFileUtils::GarbleFilePath(newUri, CLONE_RESTORE_ID, PHOTO_CLOUD_PATH_URI).c_str(), mediaID);
+        BackupFileUtils::GarbleFilePath(newUri, CLONE_RESTORE_ID, cloudFilesDir).c_str(), mediaID);
     
     if (newUri.empty() || mediaID <= 0) {
         MEDIA_ERR_LOG("Invalid mediaID or newUri, mediaID=%{public}d", mediaID);

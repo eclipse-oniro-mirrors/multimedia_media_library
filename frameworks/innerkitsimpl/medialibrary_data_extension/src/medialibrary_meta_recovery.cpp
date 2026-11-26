@@ -38,6 +38,8 @@
 #endif
 #include "parameters.h"
 #include "media_string_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -52,7 +54,7 @@ namespace {
     constexpr int32_t QUERY_BATCH_SIZE = 500;
     constexpr int32_t META_RETRY_MAX_COUNTS = 10;
     constexpr int32_t META_RETRY_INTERVAL = 100;
-    const std::string RDB_CONFIG = "/data/storage/el2/base/preferences/recovery_config.xml";
+    const std::string RECOVERY_CONFIG = "/data/storage/el2/base/preferences/recovery_config.xml";
     const std::string BACKUP_PHOTO_COUNT = "BACKUP_PHOTO_COUNT";
     const std::string BACKUP_COST_TIME = "BACKUP_COST_TIME";
     const std::string REBUILT_COUNT = "REBUILT_COUNT";
@@ -293,7 +295,7 @@ void MediaLibraryMetaRecovery::LoadAlbumMaps(const string &path)
     for (auto it : vecPhotoAlbum) {
         oldAlbumIdToLpath[it->GetAlbumId()] = it->GetLPath();
         MEDIA_INFO_LOG("oldAlbumIdToLpath, json id %{public}d, path=%{public}s", it->GetAlbumId(),
-            MediaFileUtils::DesensitizePath(it->GetLPath()).c_str());
+            MediaPathUtils::DesensitizePath(it->GetLPath()).c_str());
     }
     // 2. db PhotoAlbum to lpathToNewAlbumId
     NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
@@ -307,23 +309,24 @@ void MediaLibraryMetaRecovery::LoadAlbumMaps(const string &path)
         string lPath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
         lpathToNewAlbumId[lPath] = albumId;
         MEDIA_INFO_LOG("lpathToNewAlbumId, path=%{public}s db id %{public}d, ",
-            MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
+            MediaPathUtils::DesensitizePath(lPath).c_str(), albumId);
     }
     return;
 }
 
 void MediaLibraryMetaRecovery::DoDataBaseRecovery()
 {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     SetStartupParam();
     StopCloudSync();
     RefreshThumbnail();
     MEDIA_INFO_LOG("Album recovery start");
-    if (AlbumRecovery(ROOT_MEDIA_DIR + ".meta/album.json") != E_OK) {
+    if (AlbumRecovery(cloudFilesDir + ".meta/album.json") != E_OK) {
         MEDIA_ERR_LOG("Recovery Album failed");
     }
     MEDIA_INFO_LOG("Album recovery end");
 
-    LoadAlbumMaps(ROOT_MEDIA_DIR+".meta/album.json");
+    LoadAlbumMaps(cloudFilesDir + ".meta/album.json");
 
     MEDIA_INFO_LOG("Photo recovery start");
     if (PhotoRecovery(META_RECOVERY_META_PATH) != E_OK) {
@@ -454,8 +457,8 @@ int32_t MediaLibraryMetaRecovery::WriteSingleMetaData(const FileAsset &asset)
     }
 
     // Create direcotry
-    const string metaParentPath = MediaFileUtils::GetParentPath(metaFilePath);
-    if (!MediaFileUtils::CreateDirectory(metaParentPath)) {
+    const string metaParentPath = MediaPathUtils::GetParentPath(metaFilePath);
+    if (!MediaPureFileUtils::CreateDirectory(metaParentPath)) {
         MEDIA_ERR_LOG("photo: CreateDirectory failed, filePath = %{public}s",
             DfxUtils::GetSafePath(metaParentPath).c_str());
         return E_HAS_FS_ERROR;
@@ -662,15 +665,15 @@ int32_t MediaLibraryMetaRecovery::ScanMetaDir(const string &path, int32_t bucket
 
 bool MediaLibraryMetaRecovery::WriteJsonFile(const std::string &filePath, const nlohmann::json &j)
 {
-    const string parentDir = MediaFileUtils::GetParentPath(filePath);
-    if (!MediaFileUtils::CreateDirectory(parentDir)) {
+    const string parentDir = MediaPathUtils::GetParentPath(filePath);
+    if (!MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("CreateDirectory failed, dir = %{public}s", DfxUtils::GetSafePath(parentDir).c_str());
         return false;
     }
 
     std::ofstream outFile(filePath, std::ofstream::out | std::ofstream::trunc);
     if (!outFile.is_open()) {
-        MEDIA_ERR_LOG("open filePath: %{public}s failed", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_ERR_LOG("open filePath: %{public}s failed", MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
     std::string jsonString = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
@@ -683,7 +686,7 @@ bool MediaLibraryMetaRecovery::ReadJsonFile(const std::string &filePath, nlohman
 {
     std::ifstream inFile(filePath);
     if (!inFile.is_open()) {
-        MEDIA_ERR_LOG("open filePath: %{public}s failed", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_ERR_LOG("open filePath: %{public}s failed", MediaPathUtils::DesensitizePath(filePath).c_str());
         return false;
     }
     std::string buffer = std::string((istreambuf_iterator<char>(inFile)), istreambuf_iterator<char>());
@@ -898,8 +901,8 @@ int32_t MediaLibraryMetaRecovery::WritePhotoAlbumToFile(const string &filePath,
 {
     MEDIA_DEBUG_LOG("WritePhotoAlbumToFile start\n");
 
-    const string parentDir = MediaFileUtils::GetParentPath(filePath);
-    if (!MediaFileUtils::CreateDirectory(parentDir)) {
+    const string parentDir = MediaPathUtils::GetParentPath(filePath);
+    if (!MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("CreateDirectory failed, dir = %{public}s", DfxUtils::GetSafePath(parentDir).c_str());
         return false;
     }
@@ -1234,8 +1237,8 @@ int32_t MediaLibraryMetaRecovery::StartAsyncRecovery()
         ReadMetaStatusFromFile(metaStatus);
     } else {
         // Create status.json if not exist
-        const string parentDir = MediaFileUtils::GetParentPath(META_STATUS_PATH);
-        if (MediaFileUtils::CreateDirectory(parentDir)) {
+        const string parentDir = MediaPathUtils::GetParentPath(META_STATUS_PATH);
+        if (MediaPureFileUtils::CreateDirectory(parentDir)) {
             MediaFileUtils::CreateFile(META_STATUS_PATH);
         } else {
             MEDIA_ERR_LOG("CreateDirectory failed, dir = %{public}s", DfxUtils::GetSafePath(parentDir).c_str());
@@ -1408,8 +1411,8 @@ static int32_t QueryAllPhoto(bool backup)
 void MediaLibraryMetaRecovery::StatisticSave()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(RDB_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(RECOVERY_CONFIG, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -1427,7 +1430,8 @@ void MediaLibraryMetaRecovery::StatisticRestore()
 {
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(RDB_CONFIG, errCode);
+        NativePreferences::PreferencesHelper::GetPreferences(
+            MediaPathUtils::AdaptPreferencesPathForAllDevice(RECOVERY_CONFIG, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;

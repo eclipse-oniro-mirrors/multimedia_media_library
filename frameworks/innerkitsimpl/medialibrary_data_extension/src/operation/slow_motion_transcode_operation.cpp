@@ -16,7 +16,7 @@
 #include "slow_motion_transcode_operation.h"
 
 #include <filesystem>
-#include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
@@ -93,7 +93,8 @@ int32_t SlowMotionTranscodeOperation::ProcessSlowMotionTranscode(int32_t fileId,
     CHECK_AND_RETURN_RET_WARN_LOG(editTime == 0, err, "Transcode file is exists");
     int32_t startTime = static_cast<int32_t>(duration * PERSENT_START);
     int32_t endTime = static_cast<int32_t>(duration * PERSENT_END);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(path), E_PARAM_CONVERT_FORMAT, "Origin file is not exist.");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(path), E_PARAM_CONVERT_FORMAT,
+        "Origin file is not exist.");
     return err;
 }
 }  // namespace Media

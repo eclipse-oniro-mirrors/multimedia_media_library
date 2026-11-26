@@ -19,6 +19,7 @@
 
 #include "low_quality_memory_num_notify_info.h"
 #include "media_file_uri.h"
+#include "media_path_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -93,7 +94,7 @@ int32_t MultistagesCaptureNotify::NotifyOnProcess(
 
     NotificationDistribution::DistributeUserDefineNotifyInfo({ notifyInfo });
     MEDIA_INFO_LOG("NotifyOnProcess notifyType: %{public}d, notifyUri: %{public}s.",
-        static_cast<int32_t>(notifyType), MediaFileUtils::DesensitizePath(notifyUri).c_str());
+        static_cast<int32_t>(notifyType), MediaPathUtils::DesensitizePath(notifyUri).c_str());
     return E_OK;
 }
 

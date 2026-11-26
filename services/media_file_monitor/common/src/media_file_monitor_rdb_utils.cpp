@@ -21,6 +21,7 @@
 #include "file_const.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
 #include "photo_album_column.h"
@@ -396,9 +397,9 @@ std::string MediaFileMonitorRdbUtils::RemovePrefix(const std::string &uri, const
 
 inline int32_t DeleteEditdata(const std::string &path)
 {
-    std::string editDataDirPath = MediaEditUtils::GetEditDataDir(path);
+    std::string editDataDirPath = MediaEditUtils::GetEditDataDirForCloud(path);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_ERR, "Cannot get editPath, path: %{private}s", path.c_str());
-    if (MediaFileUtils::IsFileExists(editDataDirPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataDirPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteDir(editDataDirPath), E_ERR,
             "Failed to delete edit data, path: %{private}s", editDataDirPath.c_str());
     }

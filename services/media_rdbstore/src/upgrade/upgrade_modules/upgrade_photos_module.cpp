@@ -255,5 +255,14 @@ static vector<pair<int32_t, int32_t>> AddPhotoXtStyleTemplateNumberColumn(Native
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_XT_STYLE_TEMPLATE_NUMBER_COLUMN, PHOTOS_MODULE_NAME,
     AddPhotoXtStyleTemplateNumberColumn);
+
+static vector<pair<int32_t, int32_t>> AddPhotoAccountIdColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_ACCOUNT_ID, "INT NOT NULL DEFAULT 0")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_ACCOUNT_ID_COLUMN, PHOTOS_MODULE_NAME, AddPhotoAccountIdColumn);
 } // namespace Media
 } // namespace OHOS

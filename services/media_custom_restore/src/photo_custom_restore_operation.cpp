@@ -31,12 +31,14 @@
 #include "media_file_utils.h"
 #include "media_file_uri.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_unique_number_column.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_json_operation.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_rdb_utils.h"
+#include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_db_const.h"
@@ -57,6 +59,7 @@
 #include "scan_config.h"
 #include "scan_config_builder.h"
 #include "media_scanner_manager.h"
+#include "media_path_utils.h"
 // LCOV_EXCL_START
 using namespace std;
 namespace OHOS::Media {
@@ -79,6 +82,9 @@ PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::Start()
         MEDIA_WARN_LOG("custom restore operation is running. skip start");
         return *this;
     }
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    RegisterAccountObserver();
+#endif
     CleanTimeoutCustomRestoreTaskDir();
     while (!this->taskQueue_.empty()) {
         RestoreTaskInfo restoreTaskInfo = this->taskQueue_.front();
@@ -103,6 +109,52 @@ void PhotoCustomRestoreOperation::CancelTask(RestoreTaskInfo restoreTaskInfo)
     MEDIA_INFO_LOG("cancel custom restore task. keyPath: %{public}s", restoreTaskInfo.keyPath.c_str());
     std::unique_lock<std::shared_mutex> lockGuard(cancelOprationLock_);
     cancelKeySet_.insert(restoreTaskInfo.keyPath);
+}
+
+void PhotoCustomRestoreOperation::CancelAllTask()
+{
+    MEDIA_INFO_LOG("cancel all custom restore tasks");
+    std::unique_lock<std::shared_mutex> lockGuard(cancelOprationLock_);
+    std::queue<RestoreTaskInfo> tmpQueue = taskQueue_;
+    while (!tmpQueue.empty()) {
+        cancelKeySet_.insert(tmpQueue.front().keyPath);
+        tmpQueue.pop();
+    }
+}
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+void PhotoCustomRestoreOperation::AccountLogoutObserver::OnAccountLogout(int32_t accountId)
+{
+    MEDIA_INFO_LOG("account logout, cancel all custom restore tasks, accountId=%{public}d", accountId);
+    owner_.CancelAllTask();
+}
+
+void PhotoCustomRestoreOperation::RegisterAccountObserver()
+{
+    if (accountObserver_ != nullptr) {
+        return;
+    }
+    accountObserver_ = std::make_shared<AccountLogoutObserver>(*this);
+    AccountManager::GetInstance().RegisterObserver(accountObserver_);
+    MEDIA_INFO_LOG("account observer registered");
+}
+
+void PhotoCustomRestoreOperation::UnregisterAccountObserver()
+{
+    if (accountObserver_ == nullptr) {
+        return;
+    }
+    AccountManager::GetInstance().UnregisterObserver(accountObserver_);
+    accountObserver_.reset();
+    MEDIA_INFO_LOG("account observer unregistered");
+}
+#endif
+
+PhotoCustomRestoreOperation::~PhotoCustomRestoreOperation()
+{
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    UnregisterAccountObserver();
+#endif
 }
 
 bool PhotoCustomRestoreOperation::IsCancelTask(RestoreTaskInfo &restoreTaskInfo)
@@ -216,6 +268,16 @@ unordered_map<string, TimeInfo> PhotoCustomRestoreOperation::GetTimeInfoMap(Rest
 
 void PhotoCustomRestoreOperation::DoCustomRestore(RestoreTaskInfo &restoreTaskInfo)
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        bool ret = AccountManager::GetInstance().GetForegroundAccountId(restoreTaskInfo.accountId);
+        CHECK_AND_PRINT_LOG(ret, "GetForegroundAccountId failed");
+    }
+    AccountScope scope(restoreTaskInfo.accountId);
+#endif
+    MediaLibraryTracer tracer;
+    tracer.Start("DoCustomRestore");
+    MEDIA_INFO_LOG("DoCustomRestore accountId: %{public}d", restoreTaskInfo.accountId);
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_RESTORE_THREAD_NUM);
     vector<string> files;
     GetDirFiles(restoreTaskInfo.sourceDir, files);
@@ -240,29 +302,16 @@ void PhotoCustomRestoreOperation::DoCustomRestore(RestoreTaskInfo &restoreTaskIn
             }
             continue;
         }
-        // Remainder and multiple of MAX_RESTORE_FILE_NUM
-        int32_t remainder = (index + 1) % MAX_RESTORE_FILE_NUM;
-        int32_t multiples = (index + 1) / MAX_RESTORE_FILE_NUM;
-        if (remainder == 0 || index == lastIndex) {
-            int32_t fileNum = remainder == 0 && multiples > 0 ? MAX_RESTORE_FILE_NUM : remainder;
-            int32_t beginOffset = index - fileNum + 1;
-            if (beginOffset <= firstRestoreIndex) {
-                // not contain first restore file
-                beginOffset = firstRestoreIndex + 1;
-                fileNum = index - beginOffset + 1;
-            }
-            int32_t notifyType = index == lastIndex ? NOTIFY_LAST : NOTIFY_PROGRESS;
-            vector<string> subFiles(files.begin() + beginOffset, files.begin() + index + 1);
-            ffrt::submit(
-                [this, &timeInfoMap, &restoreTaskInfo, notifyType, subFiles = std::move(subFiles)]() {
-                    HandleBatchCustomRestore(timeInfoMap, restoreTaskInfo, notifyType, std::move(subFiles));
-                },
-                {},
-                {},
-                ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
-        }
+        SubmitBatchRestore(index, firstRestoreIndex, lastIndex, files, timeInfoMap, restoreTaskInfo);
     }
-    ffrt::wait();
+    MEDIA_INFO_LOG("DoCustomRestore before ffrt wait");
+    if (total > 1) {
+        ffrt::wait();
+    }
+    MEDIA_INFO_LOG("DoCustomRestore after ffrt wait");
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    SubmitDurationRefresh(restoreTaskInfo.accountId);
+#endif
     MediaShareDirtyDataCleaner::UpdateShareTime(false);
     MediaShareDirtyDataCleaner::SetSharingState(false);
     ReleaseCustomRestoreTask(restoreTaskInfo);
@@ -272,11 +321,17 @@ void PhotoCustomRestoreOperation::PhotoCustomRestoreOperation::ReleaseCustomRest
     RestoreTaskInfo &restoreTaskInfo)
 {
     photoCache_.clear();
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    {
+        std::lock_guard<std::mutex> lock(movingPhotoMutex_);
+        movingPhotoForDuration_.clear();
+    }
+#endif
     CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteDir(restoreTaskInfo.sourceDir), "delete dir failed.");
 
     if (!restoreTaskInfo.dbPath.empty()) {
         std::string dbPath = CUSTOM_RESTORE_DIR + "/" + restoreTaskInfo.dbPath;
-        std::string dbDir = MediaFileUtils::GetParentPath(dbPath);
+        std::string dbDir = MediaPathUtils::GetParentPath(dbPath);
         CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteDir(dbDir), "delete db dir failed.");
     }
     ReportCustomRestoreTask(restoreTaskInfo);
@@ -350,12 +405,50 @@ void PhotoCustomRestoreOperation::HandleBatchCustomRestore(const unordered_map<s
     SendNotifyMessage(restoreTaskInfo, notifyType, errCode, fileNum, uniqueNumber);
 }
 
+void PhotoCustomRestoreOperation::SubmitBatchRestore(int32_t index, int32_t firstRestoreIndex, int32_t lastIndex,
+    const vector<string> &files, const unordered_map<string, TimeInfo> &timeInfoMap,
+    RestoreTaskInfo &restoreTaskInfo)
+{
+    // Remainder and multiple of MAX_RESTORE_FILE_NUM
+    int32_t remainder = (index + 1) % MAX_RESTORE_FILE_NUM;
+    int32_t multiples = (index + 1) / MAX_RESTORE_FILE_NUM;
+    if (remainder == 0 || index == lastIndex) {
+        int32_t fileNum = remainder == 0 && multiples > 0 ? MAX_RESTORE_FILE_NUM : remainder;
+        int32_t beginOffset = index - fileNum + 1;
+        if (beginOffset <= firstRestoreIndex) {
+            // not contain first restore file
+            beginOffset = firstRestoreIndex + 1;
+            fileNum = index - beginOffset + 1;
+        }
+        int32_t notifyType = index == lastIndex ? NOTIFY_LAST : NOTIFY_PROGRESS;
+        vector<string> subFiles(files.begin() + beginOffset, files.begin() + index + 1);
+        int32_t accountId = restoreTaskInfo.accountId;
+        ffrt::submit(
+            [this, &timeInfoMap, &restoreTaskInfo, notifyType, accountId,
+             subFiles = std::move(subFiles)]() {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+                AccountScope scope(accountId);
+#endif
+                HandleBatchCustomRestore(timeInfoMap, restoreTaskInfo, notifyType, std::move(subFiles));
+            },
+            {},
+            {},
+            ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
+    }
+}
+
 void PhotoCustomRestoreOperation::InitRestoreTask(RestoreTaskInfo &restoreTaskInfo, int32_t fileNum)
 {
     successNum_.store(0);
     failNum_.store(0);
     sameNum_.store(0);
     photoCache_.clear();
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    {
+        std::lock_guard<std::mutex> lock();
+        movingPhotoForDuration_.clear();
+    }
+#endif
     restoreTaskInfo.uriType = RESTORE_URI_TYPE_PHOTO;
     restoreTaskInfo.totalNum = fileNum;
     restoreTaskInfo.beginTime = MediaTimeUtils::UTCTimeSeconds();
@@ -423,7 +516,11 @@ vector<RestoreFileInfo> PhotoCustomRestoreOperation::scanfile(const unordered_ma
     info.SetAppId(restoreTaskInfo.appId);
     info.SetIsFirstBatch(isFirst);
 
-    auto scanConfig = ScanConfigBuilder().UseCustomRestorePreset(info).Build();
+    auto scanConfig = ScanConfigBuilder().UseCustomRestorePreset(info)
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+                                         .SetAccountId(restoreTaskInfo.accountId)
+#endif
+                                         .Build();
     int32_t errCode = MediaScannerManager::GetInstance()->ScanSync(scanConfig);
     sameFileNum = scanConfig.GetCustomRestoreInfo().GetOutSameFileNum();
     return scanConfig.GetCustomRestoreInfo().GetOutFileInfos();
@@ -439,7 +536,8 @@ int32_t PhotoCustomRestoreOperation::HandleCustomRestore(const unordered_map<str
     int32_t errCode = UpdateUniqueNumber(uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "UpdateUniqueNumber failed. errCode: %{public}d", errCode);
 
-    vector<RestoreFileInfo> destRestoreFiles = SetDestinationPath(restoreFiles, uniqueNumber);
+    vector<RestoreFileInfo> destRestoreFiles =
+        SetDestinationPath(restoreFiles, uniqueNumber, restoreTaskInfo.accountId);
     if (destRestoreFiles.size() == 0) {
         MEDIA_ERR_LOG("restore file number is zero.");
         return E_ERR;
@@ -466,6 +564,9 @@ int32_t PhotoCustomRestoreOperation::HandleCustomRestore(const unordered_map<str
     int32_t totalFileNum = static_cast<int32_t>(filePathVector.size());
     successNum_.fetch_add(successFileNum);
     failNum_.fetch_add(totalFileNum - successFileNum - sameFileNum);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    CollectMovingPhotoForDuration(insertRestoreFiles);
+#endif
     MEDIA_DEBUG_LOG("HandleCustomRestore success.");
     return E_OK;
 }
@@ -475,7 +576,7 @@ int32_t PhotoCustomRestoreOperation::ProcessExtractTlvFile(const std::string &tl
 {
     extractedFiles.clear();
     destDir = "";
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(tlvFilePath), E_ERR, "tlvFilePath is empty");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(tlvFilePath), E_ERR, "tlvFilePath is empty");
     MEDIA_DEBUG_LOG("tlv file path: %{public}s", DfxUtils::GetSafePath(tlvFilePath).c_str());
     destDir = PhotoCustomRestoreOperation::GetUniqueTempDir(tlvFilePath);
     CHECK_AND_RETURN_RET_LOG(!destDir.empty(), E_ERR, "destDir is empty");
@@ -518,7 +619,7 @@ int32_t PhotoCustomRestoreOperation::HandleTlvRestore(const unordered_map<string
     vector<string> fallbackFiles;
     UniqueNumber tempUniqueNumber;
     for (const auto &tlvPath : filePathVector) {
-        CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::IsFileExists(tlvPath), "tlvPath is not exist: %{public}s",
+        CHECK_AND_CONTINUE_ERR_LOG(MediaPureFileUtils::IsFileExists(tlvPath), "tlvPath is not exist: %{public}s",
             DfxUtils::GetSafePath(tlvPath).c_str());
         if (TlvUtil::ValidateTlvFile(tlvPath) != E_OK) {
             MEDIA_WARN_LOG("not tlv file, path: %{public}s", DfxUtils::GetSafePath(tlvPath).c_str());
@@ -559,7 +660,7 @@ int32_t PhotoCustomRestoreOperation::HandleTlvRestore(const unordered_map<string
 std::string PhotoCustomRestoreOperation::GetUniqueTempDir(const std::string &tlvPath)
 {
     std::string fileName = MediaFileUtils::GetFileName(tlvPath);
-    std::string baseTempDir = MediaFileUtils::GetParentPath(tlvPath) + "/temp_" + ScannerUtils::GetFileTitle(fileName);
+    std::string baseTempDir = MediaPathUtils::GetParentPath(tlvPath) + "/temp_" + ScannerUtils::GetFileTitle(fileName);
     std::string uniqueTempDir = baseTempDir;
     int32_t attempt = 0;
     const int32_t maxAttempts = 100;
@@ -568,7 +669,7 @@ std::string PhotoCustomRestoreOperation::GetUniqueTempDir(const std::string &tlv
         attempt++;
     }
     CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsDirExists(uniqueTempDir) &&
-        MediaFileUtils::CreateDirectory(uniqueTempDir), "", "Create unique temp dir failed: %{private}s",
+        MediaPureFileUtils::CreateDirectory(uniqueTempDir), "", "Create unique temp dir failed: %{private}s",
         uniqueTempDir.c_str());
     return uniqueTempDir;
 }
@@ -591,7 +692,7 @@ int32_t PhotoCustomRestoreOperation::UpdateTlvEditDataSize(const std::string &as
     }
     int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     resultSet->Close();
-    std::string editDir = MediaEditUtils::GetEditDataDir(assetPath);
+    std::string editDir = MediaEditUtils::GetEditDataDirForCloud(assetPath);
     CHECK_AND_RETURN_RET_LOG(!editDir.empty(), E_ERR, "Edit data dir is empty for assetPath: %{public}s",
         DfxUtils::GetSafePath(assetPath).c_str());
     int32_t ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, to_string(fileId), editDir);
@@ -612,7 +713,8 @@ int32_t PhotoCustomRestoreOperation::HandleTlvSingleRestore(const std::unordered
     int32_t ret = UpdateUniqueNumber(uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdateUniqueNumber failed. ret: %{public}d", ret);
 
-    vector<RestoreFileInfo> destRestoreFiles = SetDestinationPath(restoreFiles, uniqueNumber);
+    vector<RestoreFileInfo> destRestoreFiles =
+        SetDestinationPath(restoreFiles, uniqueNumber, restoreTaskInfo.accountId);
     CHECK_AND_RETURN_RET_LOG(!destRestoreFiles.empty(), E_ERR, "restore file number is zero.");
 
     int32_t sameFileNum = 0;
@@ -625,7 +727,7 @@ int32_t PhotoCustomRestoreOperation::HandleTlvSingleRestore(const std::unordered
     CHECK_AND_RETURN_RET_LOG(successFileNum > 0, E_ERR, "RenameFiles failed.");
 
     std::string assetPath = insertRestoreFiles[0].filePath;
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(assetPath), E_ERR, "Restored asset file not exists");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(assetPath), E_ERR, "Restored asset file not exists");
     ret = HandleAllEditData(editFileMap, assetPath);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("HandleAllEditData failed, rollback tlv restore. ret: %{public}d", ret);
@@ -646,6 +748,9 @@ int32_t PhotoCustomRestoreOperation::HandleTlvSingleRestore(const std::unordered
         ret = UpdatePhotoAlbum(restoreTaskInfo, insertRestoreFiles[0]);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePhotoAlbum failed.");
     }
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    CollectMovingPhotoForDuration(insertRestoreFiles);
+#endif
     return E_OK;
 }
 
@@ -654,26 +759,26 @@ void PhotoCustomRestoreOperation::RestoreTlvRollback(const std::string &assetPat
     MEDIA_INFO_LOG("RestoreTlvRollback begin");
 
     string sourcePhotoPath = MediaEditUtils::GetEditDataSourcePath(assetPath);
-    CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(sourcePhotoPath), MediaFileUtils::DeleteFile(sourcePhotoPath));
+    CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(sourcePhotoPath), MediaFileUtils::DeleteFile(sourcePhotoPath));
 
     string sourceBackPhotoPath = MediaEditUtils::GetEditDataSourceBackPath(assetPath);
-    CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(sourceBackPhotoPath),
+    CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(sourceBackPhotoPath),
         MediaFileUtils::DeleteFile(sourceBackPhotoPath));
  
     string editDataPath = MediaEditUtils::GetEditDataPath(assetPath);
-    CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(editDataPath),
+    CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(editDataPath),
         MediaFileUtils::DeleteFile(editDataPath));
 
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
-    CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(editDataCameraPath),
+    CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(editDataCameraPath),
         MediaFileUtils::DeleteFile(editDataCameraPath));
 
     string movingPhotoVideoSourcePath = MovingPhotoFileUtils::GetSourceMovingPhotoVideoPath(assetPath);
-    CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(movingPhotoVideoSourcePath),
+    CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(movingPhotoVideoSourcePath),
         MediaFileUtils::DeleteFile(movingPhotoVideoSourcePath));
 
     string movingPhotoVideoSourceBackPath = MovingPhotoFileUtils::GetSourceBackMovingPhotoVideoPath(assetPath);
-    CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(movingPhotoVideoSourceBackPath),
+    CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(movingPhotoVideoSourceBackPath),
         MediaFileUtils::DeleteFile(movingPhotoVideoSourceBackPath));
 }
 
@@ -723,9 +828,9 @@ int32_t PhotoCustomRestoreOperation::HandleMovingPhotoVideoSourceBackRestore(con
 int32_t PhotoCustomRestoreOperation::MoveFile(const std::string &srcPath, const std::string &destPath)
 {
     CHECK_AND_RETURN_RET_LOG(!destPath.empty(), E_INVALID_PATH, "MoveFile destPath is empty");
-    std::string dir = MediaFileUtils::GetParentPath(destPath);
+    std::string dir = MediaPathUtils::GetParentPath(destPath);
     if (!MediaFileUtils::IsDirExists(dir)) {
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dir), E_HAS_FS_ERROR,
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dir), E_HAS_FS_ERROR,
             "Create dir failed: %{public}s", DfxUtils::GetSafePath(dir).c_str());
     }
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(srcPath, destPath, true), E_HAS_FS_ERROR,
@@ -803,7 +908,7 @@ int32_t PhotoCustomRestoreOperation::HandleDbFieldsFromJsonRestore(const std::st
     const std::string &assetPath)
 {
     MEDIA_INFO_LOG("HandleDbFieldsFromJsonRestore start");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(jsonPath), E_INVALID_VALUES, "json file not exists");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(jsonPath), E_INVALID_VALUES, "json file not exists");
     int32_t version = AssetCompressVersionManager::GetAssetCompressVersion();
     AssetCompressSpec assetCompressSpec = AssetCompressVersionManager::GetAssetCompressSpec(version);
     NativeRdb::ValuesBucket values = MediaJsonOperation::ReadJsonToValuesBucket(jsonPath,
@@ -836,7 +941,7 @@ int32_t PhotoCustomRestoreOperation::HandleAllEditData(const std::unordered_map<
     int32_t ret = E_OK;
     for (const auto& [tag, path] : decodeTlvPathMap) {
         CHECK_AND_CONTINUE(tag != TlvTag::TLV_TAG_ORIGIN && tag != TlvTag::TLV_TAG_JSON);
-        CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::IsFileExists(path), "File not exist for tag %{public}d: ",
+        CHECK_AND_CONTINUE_ERR_LOG(MediaPureFileUtils::IsFileExists(path), "File not exist for tag %{public}d: ",
             static_cast<int32_t>(tag));
         switch (tag) {
             case TlvTag::TLV_TAG_MOVING_PHOTO_VIDEO:
@@ -1026,7 +1131,7 @@ void PhotoCustomRestoreOperation::SendNotifyMessage(
 }
 
 vector<RestoreFileInfo> PhotoCustomRestoreOperation::SetDestinationPath(
-    vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber)
+    vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber, int32_t accountId)
 {
     vector<RestoreFileInfo> newRestoreFiles;
     for (auto &fileInfo : restoreFiles) {
@@ -1050,9 +1155,15 @@ vector<RestoreFileInfo> PhotoCustomRestoreOperation::SetDestinationPath(
         retCode = MediaFileUtils::CreateAssetRealName(fileId, fileInfo.mediaType, fileInfo.extension, realName);
         CHECK_AND_CONTINUE_ERR_LOG(retCode == E_OK, "CreateAssetRealName failed. retCode: %{public}d", retCode);
 
-        string dirPath = ROOT_MEDIA_DIR + mediaDirPath + to_string(bucketNum);
-        if (!MediaFileUtils::IsFileExists(dirPath)) {
-            CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::CreateDirectory(dirPath),
+        string dirPath = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO)
+            + mediaDirPath + to_string(bucketNum);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        if (accountId != -1) {
+            dirpath = MediaPathUtils::AppendAccountId(dirpath, accountId);
+        }
+#endif
+        if (!MediaPureFileUtils::IsFileExists(dirPath)) {
+            CHECK_AND_CONTINUE_ERR_LOG(MediaPureFileUtils::CreateDirectory(dirPath),
                 "CreateDirectory failed. retCode: %{public}s", dirPath.c_str());
         }
         fileInfo.filePath = dirPath + "/" + realName;
@@ -1287,7 +1398,7 @@ int32_t PhotoCustomRestoreOperation::MoveLivePhoto(const string &originFilePath,
     string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(filePath);
     string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
     string extraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(filePath);
-    if (!MediaFileUtils::IsFileExists(extraPathDir) && !MediaFileUtils::CreateDirectory(extraPathDir)) {
+    if (!MediaPureFileUtils::IsFileExists(extraPathDir) && !MediaPureFileUtils::CreateDirectory(extraPathDir)) {
         MEDIA_WARN_LOG("Failed to create local extra data dir");
         return E_HAS_FS_ERROR;
     }
@@ -1374,5 +1485,32 @@ int32_t PhotoCustomRestoreOperation::HandleExtraDataVersion(const std::string &f
     int32_t livePhoto4dStatus = static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
     return this->customRestoreDao_.UpdatePhotos(filePath, livePhoto4dStatus);
 }
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+void PhotoCustomRestoreOperation::CollectMovingPhotoForDuration(const vector<RestoreFileInfo> &restoreFiles)
+{
+    std::lock_guard<std::mutex> lock(movingPhotoMutex_);
+    for (const auto &fileInfo : restoreFiles) {
+        if (!fileInfo.isLivePhoto) {
+            continue;
+        }
+        movingPhotoForDuration_.push_back(fileInfo);
+    }
+}
+
+void PhotoCustomRestoreOperation::SubmitDurationRefresh(int32_t accountId)
+{
+    vector<RestoreFileInfo> collected;
+    {
+        std::lock_guard<std::mutex> lock(movingPhotoMutex_);
+        collected.swap(movingPhotoForDuration_);
+    }
+    for (const auto &fileInfo : collected) {
+        DurationParser::GetInstance().AddTask(fileInfo.filePath, "", accountId);
+                                         .SetAccountId(restoreTaskInfo.accountId)
+    }
+    MEDIA_INFO_LOG("SubmitDurationRefresh done, count: %{public}d", static_cast<int32_t>(collected.size()));
+}
+#endif
 }  // namespace OHOS::Media
 // LCOV_EXCL_STOP

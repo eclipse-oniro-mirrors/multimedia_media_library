@@ -41,7 +41,7 @@ HWTEST_F(MediaPureFileUtilsUnitTest, medialib_is_file_exist_test_001, TestSize.L
     string filePath2 = "";
     EXPECT_EQ(MediaPureFileUtils::IsDirectory(filePath2), false);
     string filePath3 = "";
-    EXPECT_EQ(MediaPureFileUtils::DeleteDir(filePath3), false);
+    EXPECT_EQ(MediaPureFileUtils::DeleteFile(filePath3), false);
     string filePath = "/data/test/deletefile_001";
     EXPECT_EQ(MediaPureFileUtils::DeleteFile(filePath), false);
 }

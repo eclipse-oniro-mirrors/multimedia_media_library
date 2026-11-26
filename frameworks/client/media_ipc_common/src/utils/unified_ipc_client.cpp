@@ -85,7 +85,9 @@ int32_t UnifiedIPCClient::InitClient(const int32_t &userId)
         return E_OK;
     }
     // Global mode: get or create helper from MediaDataShareHelper (cached in SafeMap).
-    dataShareHelper_ = MediaCommonClient::GetInstance().GetOrCreateDataShareHelper(userId);
+    auto &client = MediaCommonClient::GetInstance();
+    client.InitFromSa(userId);
+    dataShareHelper_ = client.GetDataShareHelper(userId);
     CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "Failed to get/create DataShareHelper");
     return E_OK;
 }

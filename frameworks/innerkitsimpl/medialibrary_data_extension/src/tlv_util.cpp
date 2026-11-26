@@ -28,6 +28,8 @@
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "unique_fd.h"
 
 namespace OHOS {
@@ -123,9 +125,9 @@ TlvFile TlvUtil::CreateTlvFile(const std::string& tlvPath)
     MEDIA_INFO_LOG("Create tlv file start");
     metaSize_ = 0;
     CHECK_AND_RETURN_RET_LOG(!tlvPath.empty(), E_ERR, "tlvPath is empty");
-    std::string parentPath = MediaFileUtils::GetParentPath(tlvPath);
+    std::string parentPath = MediaPathUtils::GetParentPath(tlvPath);
     if (!MediaFileUtils::IsDirExists(parentPath)) {
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(parentPath), E_ERR,
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(parentPath), E_ERR,
             "Failed to create directory");
     }
     TlvFile tlvFile = open(tlvPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, CHOWN_RW_USER_GRP);
@@ -555,7 +557,7 @@ int32_t TlvUtil::ExtractTlv(const std::string &tlvFilePath, const std::string &d
     MEDIA_INFO_LOG("Extract tlv file start");
     extractedFiles.clear();
     CHECK_AND_RETURN_RET_LOG(!destDir.empty(), E_ERR, "destDir is empty");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(tlvFilePath), E_ERR, "tlvFilePath is not exist");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(tlvFilePath), E_ERR, "tlvFilePath is not exist");
     MEDIA_INFO_LOG("ExtractTlv tlv file path: %{public}s", DfxUtils::GetSafePath(tlvFilePath).c_str());
     CHECK_AND_RETURN_RET_LOG(ValidateTlvFile(tlvFilePath) == E_OK, E_ERR, "TLV file validation failed");
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();

@@ -28,6 +28,7 @@
 #include "media_app_uri_permission_column.h"
 #include "media_cloud_permission_check.h"
 #include "media_datashare_stub_impl.h"
+#include "media_pure_file_utils.h"
 #include "media_scanner_manager.h"
 #include "medialibrary_appstate_observer.h"
 #include "medialibrary_data_manager.h"
@@ -70,10 +71,9 @@
 #include "product_info.h"
 #include "photo_album_upload_status_operation.h"
 #include "media_audio_column.h"
-#include "qos.h"
-#include "concurrent_task_client.h"
 #include "media_string_utils.h"
 #include "media_share_assets_service.h"
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -270,8 +270,9 @@ static bool CheckUnlockScene(int64_t startTime)
         DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->KillApplicationSelf();
         return false;
     }
-
-    bool isMediaPathExists = MediaFileUtils::IsDirectory(ROOT_MEDIA_DIR);
+    // todo: 这里优先不适配多账号
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    bool isMediaPathExists = MediaPureFileUtils::IsDirectory(cloudFilesDir);
     if (!isMediaPathExists) {
         DfxReporter::ReportStartResult(DfxType::CHECK_MEDIA_PATH_UNLOCK_FAIL, 0, startTime);
         MEDIA_INFO_LOG("%{public}s Killing self caused by media path unmounted", __func__);
@@ -293,27 +294,6 @@ static void RestartCloudMediaAssetDownload()
         }
         CloudMediaAssetManager::GetInstance().StartDownloadCloudAsset(CloudMediaDownloadType::DOWNLOAD_GENTLE);
     }).detach();
-}
-
-static void SetThreadQos()
-{
-    std::unordered_map<std::string, std::string> payload;
-    payload["pid"] = std::to_string(getpid());
-    OHOS::ConcurrentTask::ConcurrentTaskClient::GetInstance().RequestAuth(payload);
-    int32_t err = OHOS::QOS::SetThreadQos(QOS::QosLevel::QOS_USER_INTERACTIVE);
-    MEDIA_INFO_LOG("set qos level result: %{public}d", err);
-    OHOS::QOS::QosLevel qosLevel = OHOS::QOS::QosLevel::QOS_BACKGROUND;
-    GetThreadQos(qosLevel);
-    MEDIA_INFO_LOG("set qos level: %{public}d", static_cast<int>(qosLevel));
-}
-
-static void ResetThreadQos()
-{
-    int err = OHOS::QOS::ResetThreadQos();
-    MEDIA_INFO_LOG("set qos level result: %{public}d", err);
-    OHOS::QOS::QosLevel qosLevel = OHOS::QOS::QosLevel::QOS_BACKGROUND;
-    GetThreadQos(qosLevel);
-    MEDIA_INFO_LOG("set qos level reset: %{public}d", static_cast<int>(qosLevel));
 }
 
 void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)

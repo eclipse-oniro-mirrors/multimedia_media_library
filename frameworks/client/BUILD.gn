@@ -38,27 +38,42 @@ ohos_shared_library("media_library_client") {
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_UTILS_PATH}/include",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_IPC_COMMON}/include/config",
     "${MEDIALIB_IPC_COMMON}/include/utils",
     "${MEDIALIB_IPC_COMMON}/include/vo",
     "${MEDIALIB_IPC_COMMON}/include/callback",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_permission_helper/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_facard/include",
   ]
 
   sources = [
     "${MEDIALIB_CLIENT_PATH}/src/media_datashare_helper.cpp",
+    "${MEDIALIB_CLIENT_PATH}/src/media_client_utils.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_datashare_client.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_common_client.cpp",
-    "${MEDIALIB_CLIENT_PATH}/src/media_client_utils.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_asset_rdbstore.cpp",
     "${MEDIALIB_IPC_COMMON}/src/utils/unified_ipc_client.cpp",
     "${MEDIALIB_IPC_COMMON}/src/utils/media_itypes_utils.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_account_utils.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/medialibrary_operation.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/base_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/photo_album_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/photo_map_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_audio_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_permission_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/form_map.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_old_photos_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_operation_log_column.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/cover_record_columns.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/custom_records_column.cpp",
+    "${MEDIALIB_FACARD_PATH}/src/media_facard_photos_column.cpp",
   ]
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
@@ -78,9 +93,9 @@ ohos_shared_library("media_library_client") {
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
-    "icu:shared_icuuc",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "init:libbegetutil",
     "ipc:ipc_single",
     "napi:ace_napi",
@@ -118,6 +133,9 @@ ohos_shared_library("media_library_client") {
 
   defines = []
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+  if (media_library_multi_account_enable) {
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
+  }
 
 
   part_name = "media_library"

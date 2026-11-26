@@ -31,6 +31,7 @@
 #include "media_file_utils.h"
 #include "media_uri_utils.h"
 #include "media_library_ani.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_ani_utils_ext.h"
 #include "medialibrary_business_code.h"
@@ -864,7 +865,7 @@ int32_t MediaAssetManagerAni::GetFdFromSandBoxUri(const std::string &sandBoxUri)
 {
     AppFileService::ModuleFileUri::FileUri destUri(sandBoxUri);
     string destPath = destUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         ANI_DEBUG_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_ERR;
     }
@@ -2083,7 +2084,7 @@ ani_object MediaAssetManagerAni::LoadSingleFileMovingPhoto(ani_env *env, [[maybe
             "Failed to resolve the real path of the singleFileMovingPhotoUri");
         return nullptr;
     }
-    if (!MediaFileUtils::IsFileExists(realPath)) {
+    if (!MediaPureFileUtils::IsFileExists(realPath)) {
         AniError::ThrowError(env, JS_E_PARAM_INVALID,
             "Failed to open the single-file moving photo");
         return nullptr;

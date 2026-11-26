@@ -62,8 +62,6 @@ public:  // getter & setter
 public:
     int32_t FixPhotoRelation();
     int32_t BuildAlbumBySourcePath(const std::string &sourcePath, bool isHidden = false);
-    EXPORT std::string ToStringWithComma(const std::vector<std::string> &fileIds) const;
-    EXPORT std::string ToStringWithCommaAndQuote(const std::vector<std::string> &fileIds) const;
     EXPORT std::string FillParams(const std::string &sql, const std::vector<std::string> &bindArgs);
     EXPORT std::string ParseSourcePathToLPath(const std::string &sourcePath);
     EXPORT void GetAlbumTypeAndSubType(const std::string &lPath, int32_t &albumType, int32_t &albumSubType);

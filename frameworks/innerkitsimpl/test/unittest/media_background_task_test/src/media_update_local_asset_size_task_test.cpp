@@ -21,6 +21,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "media_upgrade.h"
 #include "media_column.h"
@@ -281,7 +282,7 @@ HWTEST_F(MediaUpdateLocalAssetSizeTaskTest, HandleUpdateLocalAssetSizeTask_test0
     MEDIA_INFO_LOG("HandleUpdateLocalAssetSizeTask_test07 start");
 
     std::string dirPath = "/data/test/GetLocalAssetSize";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     std::string filePath = dirPath + "/" + "photo.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     std::ofstream outFile(filePath, std::ios::binary | std::ios::trunc);

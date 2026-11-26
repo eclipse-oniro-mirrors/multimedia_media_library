@@ -27,6 +27,10 @@
 #include "utils/db_const.h"
 #include "media_audio_column.h"
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "media_path_utils.h"
+#endif
+
 namespace OHOS {
 namespace Media {
 namespace MediaTool {
@@ -183,6 +187,11 @@ int DatabaseUtils::FieldToStr(const DumpOpt &opt, const ColumnInfo &columnInfo,
             status, columnInfo.type, columnInfo.name.c_str());
         return status;
     }
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (columnInfo.name == MediaColumn::MEDIA_FILE_PATH && columnInfo.type == ResultSetDataType::TYPE_STRING) {
+        strValue = MediaPathUtils::RemoveAccountId(strValue);
+    }
+#endif
     value = (columnInfo.type == ResultSetDataType::TYPE_STRING) ? opt.delimiter + strValue + opt.delimiter : strValue;
     return DataShare::E_OK;
 }

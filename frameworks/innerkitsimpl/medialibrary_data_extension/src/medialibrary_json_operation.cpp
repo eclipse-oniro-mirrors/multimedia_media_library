@@ -21,9 +21,11 @@
 
 #include "dfx_utils.h"
 #include "file_asset.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_errno.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media {
 constexpr int JSON_INDENT_WIDTH = 4;
@@ -48,10 +50,10 @@ int32_t MediaJsonOperation::MapToJsonFile(
             std::visit([&](auto&& value) { jsonData[column] = value; }, it->second);
         }
     }
-    if (!MediaFileUtils::IsFileExists(outputPath)) {
-        std::string parentPath = MediaFileUtils::GetParentPath(outputPath);
+    if (!MediaPureFileUtils::IsFileExists(outputPath)) {
+        std::string parentPath = MediaPathUtils::GetParentPath(outputPath);
         if (!MediaFileUtils::IsDirExists(parentPath)) {
-            CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(parentPath), E_ERR,
+            CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(parentPath), E_ERR,
                 "Failed to create directory %{private}s", parentPath.c_str());
         }
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(outputPath), E_ERR,

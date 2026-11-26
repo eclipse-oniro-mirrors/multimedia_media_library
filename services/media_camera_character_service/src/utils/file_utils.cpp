@@ -23,6 +23,8 @@
 #include "media_change_effect.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "mimetype_utils.h"
 #include "moving_photo_file_utils.h"
 #include "database_adapter.h"
@@ -198,7 +200,7 @@ int32_t FileUtils::DealPicture(const std::string &mime_type, const std::string &
     MediaLibraryTracer tracer;
     tracer.Start("FileUtils::DealPicture");
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} DealPicture, path: %{public}s, mime_type: %{public}s",
-        MLOG_TAG, __FUNCTION__, __LINE__, MediaFileUtils::DesensitizePath(path).c_str(), mime_type.c_str());
+        MLOG_TAG, __FUNCTION__, __LINE__, MediaPathUtils::DesensitizePath(path).c_str(), mime_type.c_str());
     if (picture == nullptr) {
         MEDIA_ERR_LOG("picture is nullptr.");
         return -1;
@@ -227,7 +229,7 @@ int32_t FileUtils::DealPicture(const std::string &mime_type, const std::string &
     }
     ret = rename(tempOutputPath.c_str(), path.c_str());
     CHECK_AND_PRINT_LOG(ret == E_SUCCESS, "Failed rename ret: %{public}d, errno: %{public}d", ret, errno);
-    if (MediaFileUtils::IsFileExists(tempOutputPath)) {
+    if (MediaPureFileUtils::IsFileExists(tempOutputPath)) {
         HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} file: %{public}s exists and needs to be deleted",
             MLOG_TAG, __FUNCTION__, __LINE__, tempOutputPath.c_str());
         if (!MediaFileUtils::DeleteFile(tempOutputPath)) {
@@ -320,12 +322,12 @@ int32_t FileUtils::SaveMovingPhotoVideoShareCamera(const std::string &filePath, 
 
 static bool HandleAddFiltersError(const std::string& targetPath, const std::string& sourcePath)
 {
-    if (MediaFileUtils::IsFileExists(targetPath)) {
+    if (MediaPureFileUtils::IsFileExists(targetPath)) {
         MEDIA_WARN_LOG("HandleAddFiltersError targetPath already exists");
         return true;
     }
 
-    if (!MediaFileUtils::IsFileExists(sourcePath)) {
+    if (!MediaPureFileUtils::IsFileExists(sourcePath)) {
         MEDIA_ERR_LOG("HandleAddFiltersError sourcePath not exists");
         return false;
     }
@@ -366,7 +368,7 @@ void FileUtils::SavePhotoWithFilters(const std::string &inputPath, const std::st
     MediaLibraryTracer tracer;
     tracer.Start("FileUtils::SavePhotoWithFilters");
     MEDIA_INFO_LOG("inputPath: %{public}s, outputPath: %{public}s",
-        MediaFileUtils::DesensitizePath(inputPath).c_str(), MediaFileUtils::DesensitizePath(outputPath).c_str());
+        MediaPathUtils::DesensitizePath(inputPath).c_str(), MediaPathUtils::DesensitizePath(outputPath).c_str());
 
     // 1.校验入参
     std::string info = editdata;

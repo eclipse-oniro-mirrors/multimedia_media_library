@@ -109,6 +109,14 @@ ScanConfigBuilder& ScanConfigBuilder::SetQuality(ScanQuality quality)
     return *this;
 }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+ScanConfigBuilder& ScanConfigBuilder::SetAccountId(int32_t accountId)
+{
+    config_.SetAccountId(accountId);
+    return *this;
+}
+#endif
+
 // Info 设置
 
 ScanConfigBuilder& ScanConfigBuilder::SetDefaultScanInfo(const DefaultScanInfo& info)

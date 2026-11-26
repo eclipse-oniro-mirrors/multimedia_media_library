@@ -18,18 +18,6 @@
 #include <sstream>
 
 namespace OHOS::Media {
-std::string CloudMediaCommon::ToStringWithComma(const std::vector<std::string> &fileIds)
-{
-    std::stringstream os;
-    for (size_t i = 0; i < fileIds.size(); ++i) {
-        os << fileIds[i];
-        if (i != fileIds.size() - 1) {
-            os << ",";
-        }
-    }
-    return os.str();
-}
-
 std::string CloudMediaCommon::FillParams(const std::string &sql, const std::vector<std::string> &bindArgs)
 {
     std::stringstream os;

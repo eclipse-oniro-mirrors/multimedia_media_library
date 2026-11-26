@@ -22,6 +22,7 @@
 #include "preferences_helper.h"
 #include "dfx_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "photo_video_mode_operation.h"
@@ -128,7 +129,7 @@ void MediaVideoModeTask::HandleMediaFileManagerVideoMode()
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
     int32_t maxFileId = PhotoVideoModeOperation::GetMaxFileId(rdbStore);
-    CHECK_AND_EXECUTE(MediaFileUtils::IsFileExists(FILE_MANAGER_VIDEO_MODE_EVENT),
+    CHECK_AND_EXECUTE(MediaPureFileUtils::IsFileExists(FILE_MANAGER_VIDEO_MODE_EVENT),
         SetBatchStatus(defaultValueZero));
     int32_t currStartFileId = GetBatchStatus();
     CHECK_AND_RETURN_LOG(currStartFileId != prefsNullErrCode, "prefs is nullptr");

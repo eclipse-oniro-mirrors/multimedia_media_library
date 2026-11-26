@@ -24,6 +24,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_upgrade.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_type_const.h"
@@ -81,7 +82,7 @@ void MediaShareAssetsTestUtils::InitEnvironment()
     MediaLibraryUnitTestUtils::CreateTestTables(rdbStore, createTableSqlList);
     // 照片物理文件目录: 保证 InsertPhoto 写入的 file_path 真实可用, 从而真正走到删文件分支
     if (access(TEST_PHOTO_DIR.c_str(), F_OK) != 0) {
-        MediaFileUtils::CreateDirectory(TEST_PHOTO_DIR + "/");
+        MediaPureFileUtils::CreateDirectory(TEST_PHOTO_DIR + "/");
     }
 }
 
@@ -123,7 +124,7 @@ void MediaShareAssetsTestUtils::PrepareShareRetainPreferences()
     if (access(TEST_SHARE_RETAIN_PREF_DIR.c_str(), F_OK) == 0) {
         return;
     }
-    MediaFileUtils::CreateDirectory(TEST_SHARE_RETAIN_PREF_DIR + "/");
+    MediaPureFileUtils::CreateDirectory(TEST_SHARE_RETAIN_PREF_DIR + "/");
 }
 
 std::string MediaShareAssetsTestUtils::BuildPhotoPath(const std::string &displayName)
@@ -133,7 +134,7 @@ std::string MediaShareAssetsTestUtils::BuildPhotoPath(const std::string &display
 
 bool MediaShareAssetsTestUtils::IsPhotoFileExists(const std::string &displayName)
 {
-    return MediaFileUtils::IsFileExists(BuildPhotoPath(displayName));
+    return MediaPureFileUtils::IsFileExists(BuildPhotoPath(displayName));
 }
 
 int32_t MediaShareAssetsTestUtils::InsertPhoto(int32_t fileId, const std::string &displayName, int32_t ownerAlbumId,
@@ -146,7 +147,7 @@ int32_t MediaShareAssetsTestUtils::InsertPhoto(int32_t fileId, const std::string
     }
     std::string filePath = BuildPhotoPath(displayName);
     // 造出真实文件, 使 DeletePhoto 真正走删除物理文件的分支
-    if (!MediaFileUtils::IsFileExists(filePath) && !MediaLibraryUnitTestUtils::CreateFileFS(filePath)) {
+    if (!MediaPureFileUtils::IsFileExists(filePath) && !MediaLibraryUnitTestUtils::CreateFileFS(filePath)) {
         MEDIA_ERR_LOG("InsertPhoto failed to create photo file: %{public}s", filePath.c_str());
         return E_ERR;
     }

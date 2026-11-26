@@ -26,6 +26,7 @@
 #include "cloud_sync_notify_handler.h"
 #include "cloud_sync_helper.h"
 #include "media_analysis_helper.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_album_fusion_utils.h"
 #include "medialibrary_asset_operations.h"
 #ifdef META_RECOVERY_SUPPORT
@@ -378,7 +379,7 @@ int32_t CloudMediaAssetManager::ReadyDataForDelete(std::vector<std::string> &fil
             MEDIA_WARN_LOG("Failed to get path!");
             continue;
         }
-        MEDIA_DEBUG_LOG("get path: %{public}s.", MediaFileUtils::DesensitizePath(path).c_str());
+        MEDIA_DEBUG_LOG("get path: %{public}s.", MediaPathUtils::DesensitizePath(path).c_str());
         fileIds.emplace_back(GetStringVal(MediaColumn::MEDIA_ID, resultSet));
         paths.emplace_back(path);
         dateTakens.emplace_back(GetStringVal(MediaColumn::MEDIA_DATE_TAKEN, resultSet));
@@ -391,9 +392,9 @@ int32_t CloudMediaAssetManager::ReadyDataForDelete(std::vector<std::string> &fil
 
 int32_t CloudMediaAssetManager::DeleteEditdata(const std::string &path)
 {
-    string editDataDirPath = MediaEditUtils::GetEditDataDir(path);
+    string editDataDirPath = MediaEditUtils::GetEditDataDirForCloud(path);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_ERR, "Cannot get editPath, path: %{private}s", path.c_str());
-    if (MediaFileUtils::IsFileExists(editDataDirPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataDirPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteDir(editDataDirPath), E_ERR,
             "Failed to delete edit data, path: %{private}s", editDataDirPath.c_str());
     }
@@ -1334,6 +1335,10 @@ bool CloudMediaAssetManager::SetBgDownloadPermission(const bool &flag)
 
 void CloudMediaAssetManager::RestartForceRetainCloudAssets()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MEDIA_INFO_LOG("multi acount not support cloud");
+    return;
+#endif
     std::thread([&] {
         MEDIA_INFO_LOG("enter RestartForceRetainCloudAssets.");
         auto mode = GetSmartDataProcessingMode();

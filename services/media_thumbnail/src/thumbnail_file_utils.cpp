@@ -34,6 +34,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "media_path_utils.h"
 
 using namespace std;
 
@@ -78,14 +79,14 @@ std::string ThumbnailFileUtils::GetThumbnailDir(const ThumbnailData &data)
 {
     CHECK_AND_RETURN_RET_LOG(!data.path.empty(), "", "Path is empty");
     string fileName = GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
-    return MediaFileUtils::GetParentPath(fileName);
+    return MediaPathUtils::GetParentPath(fileName);
 }
 
 std::string ThumbnailFileUtils::GetThumbExDir(const ThumbnailData &data)
 {
     CHECK_AND_RETURN_RET_LOG(!data.path.empty(), "", "Path is empty");
     string fileName = GetThumbnailPath(data.path, THUMBNAIL_THUMB_EX_SUFFIX);
-    return MediaFileUtils::GetParentPath(fileName);
+    return MediaPathUtils::GetParentPath(fileName);
 }
 
 bool IsExThumbType(ThumbnailType type)
@@ -217,8 +218,24 @@ bool ThumbnailFileUtils::CheckRemainSpaceMeetCondition(int32_t freeSizePercentLi
     return true;
 }
 
-std::shared_ptr<MediaLibraryKvStore> GetKvStore(const ThumbnailType &type)
+std::shared_ptr<MediaLibraryKvStore> GetKvStore(const ThumbnailType &type, const std::vector<std::string> &paths)
 {
+#ifndef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    (void)paths;
+#endif
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MediaLibraryKvStoreRoute route;
+    CHECK_AND_RETURN_RET(MediaLibraryKvStoreManager::ResolveRoute(route), nullptr);
+    if (route.multiAccountEnabled) {
+        CHECK_AND_RETURN_RET(!paths.empty(), nullptr);
+        for (const auto &path : paths) {
+            CHECK_AND_RETURN_RET(MediaPathUtils::CheckAccountId(path, route.accountId), nullptr);
+        }
+        CHECK_AND_RETURN_RET(type == ThumbnailType::MTH_ASTC || type == ThumbnailType::YEAR_ASTC, nullptr);
+        auto valueType = type == ThumbnailType::MTH_ASTC ? KvStoreValueType::MONTH_ASTC : KvStoreValueType::YEAR_ASTC;
+        return MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::OWNER, valueType, route);
+    }
+#endif
     if (type == ThumbnailType::MTH_ASTC) {
         return MediaLibraryKvStoreManager::GetInstance()
             .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::MONTH_ASTC);
@@ -239,7 +256,7 @@ bool ThumbnailFileUtils::DeleteAstcDataFromKvStore(const ThumbnailData &data, co
         return false;
     }
 
-    std::shared_ptr<MediaLibraryKvStore> kvStore = GetKvStore(type);
+    std::shared_ptr<MediaLibraryKvStore> kvStore = GetKvStore(type, {data.path});
     CHECK_AND_RETURN_RET_LOG(kvStore != nullptr, false, "KvStore is nullptr");
     int status = kvStore->Delete(key);
     return status == E_OK;
@@ -263,7 +280,12 @@ bool ThumbnailFileUtils::BatchDeleteAstcData(const ThumbnailDataBatch &dataBatch
         keys.push_back(key);
     }
 
-    std::shared_ptr<MediaLibraryKvStore> kvStore = GetKvStore(type);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MediaLibraryKvStoreRoute route;
+    CHECK_AND_RETURN_RET(MediaLibraryKvStoreManager::ResolveRoute(route), false);
+    CHECK_AND_RETURN_RET(!route.multiAccountEnabled || dataBatch.paths.size() == dataBatchSize, false);
+#endif
+    std::shared_ptr<MediaLibraryKvStore> kvStore = GetKvStore(type, dataBatch.paths);
     CHECK_AND_RETURN_RET_LOG(kvStore != nullptr, false, "KvStore is nullptr");
     constexpr int32_t ONE_BATCH_SIZE = 100;
     bool batchDeleteSuccess = true;
@@ -325,8 +347,10 @@ std::string ThumbnailFileUtils::GetThumbnailFilePathSuffix(const ThumbnailType t
 
 std::string ThumbnailFileUtils::GetLocalThumbnailFilePath(const string &path, const ThumbnailType type)
 {
-    if (path.length() <= ROOT_MEDIA_DIR.length() ||
-        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    std::string localFileDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES);
+    if (path.length() <= cloudFilesDir.length() ||
+        path.substr(0, cloudFilesDir.length()) != cloudFilesDir) {
         MEDIA_ERR_LOG("Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
         return "";
     }
@@ -334,7 +358,7 @@ std::string ThumbnailFileUtils::GetLocalThumbnailFilePath(const string &path, co
     std::string suffix = GetThumbnailFilePathSuffix(type);
     CHECK_AND_RETURN_RET_LOG(!suffix.empty(), "", "Suffix is empty, thumbnail type:%{public}d", type);
 
-    return PhotoColumn::FILES_LOCAL_DIR + ".thumbs/" + path.substr(ROOT_MEDIA_DIR.length()) + "/" + suffix;
+    return localFileDir + ".thumbs/" + path.substr(cloudFilesDir.length()) + "/" + suffix;
 }
 // LCOV_EXCL_STOP
 } // namespace Media

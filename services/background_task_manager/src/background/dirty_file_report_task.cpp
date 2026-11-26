@@ -24,6 +24,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
@@ -34,16 +35,13 @@
 #include "result_set_utils.h"
 #include "rdb_predicates.h"
 #include "userfile_manager_types.h"
+#include "media_path_utils.h"
 
 using namespace OHOS::NativeRdb;
 
 namespace OHOS::Media::Background {
 // LCOV_EXCL_START
 
-static const std::string ROOT_MEDIA_ORG_DIR = "/storage/cloud/files/Photo/";
-static const std::string ROOT_MEDIA_LOCAL_ORG_DIR = "/storage/media/local/files/Photo/";
-static const std::string ROOT_MEDIA_LOCAL_THUMBS_DIR = "/storage/media/local/files/.thumbs/Photo/";
-static const std::string ROOT_MEDIA_LOCAL_EDIT_DIR = "/storage/media/local/files/.editData/Photo/";
 static const std::string DIRTY_FILE_REPORT_EVENT =
     "/data/storage/el2/base/preferences/dirty_file_report_event.xml";
 
@@ -87,7 +85,8 @@ bool DirtyFileReportTask::Accept()
 static std::shared_ptr<NativePreferences::Preferences> GetDirtyFilePrefs()
 {
     int32_t errCode = 0;
-    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(DIRTY_FILE_REPORT_EVENT, errCode);
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DIRTY_FILE_REPORT_EVENT, true), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("GetDirtyFilePrefs: failed to get preferences");
     }
@@ -136,9 +135,9 @@ std::set<int32_t> DirtyFileReportTask::EnumerateBucketIds()
 {
     std::set<int32_t> bucketIds;
     std::vector<std::string> dirs = {
-        ROOT_MEDIA_LOCAL_ORG_DIR,
-        ROOT_MEDIA_LOCAL_THUMBS_DIR,
-        ROOT_MEDIA_LOCAL_EDIT_DIR
+        MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::YES),
+        MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB_PHOTO, AdaptAccount::YES),
+        MediaPathUtils::GetDir(MediaPathType::LOCAL_EDIT_DATA_PHOTO, AdaptAccount::YES),
     };
 
     for (const auto& dir : dirs) {
@@ -177,7 +176,8 @@ bool DirtyFileReportTask::QueryBucketPaths(int32_t bucketId,
         return false;
     }
 
-    std::string cloudPrefix = ROOT_MEDIA_ORG_DIR + std::to_string(bucketId) + "/";
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
+    std::string cloudPrefix = cloudFilesDir + std::to_string(bucketId) + "/";
     std::string sql = "SELECT " + MediaColumn::MEDIA_FILE_PATH +
         ", " + PhotoColumn::PHOTO_SUBTYPE +
         ", " + PhotoColumn::MOVING_PHOTO_EFFECT_MODE +
@@ -271,7 +271,7 @@ void DirtyFileReportTask::QueryPendingAggregate(int64_t& count, int64_t& totalSi
 /* 累加目录下所有文件的物理大小。 */
 static int64_t SumDirFileSize(const std::string& dirPath, const std::string& logTag)
 {
-    CHECK_AND_RETURN_RET(MediaFileUtils::IsFileExists(dirPath), 0);
+    CHECK_AND_RETURN_RET(MediaPureFileUtils::IsFileExists(dirPath), 0);
     std::vector<std::string> files;
     MediaFileUtils::GetAllFileNameListUnderPath(dirPath, files);
     int64_t total = 0;
@@ -280,7 +280,7 @@ static int64_t SumDirFileSize(const std::string& dirPath, const std::string& log
         if (MediaFileUtils::GetFileSize(dirPath + "/" + f, fs)) {
             total += static_cast<int64_t>(fs);
             MEDIA_WARN_LOG("Dirty pending %{public}s: %{public}s/%{public}s",
-                logTag.c_str(), MediaFileUtils::DesensitizePath(dirPath).c_str(), f.c_str());
+                logTag.c_str(), MediaPathUtils::DesensitizePath(dirPath).c_str(), f.c_str());
         }
     }
     return total;
@@ -288,15 +288,16 @@ static int64_t SumDirFileSize(const std::string& dirPath, const std::string& log
 
 /*
  * 从 cloud 路径中提取 bucketId（字符串形式）。
- * cloudPath = ROOT_MEDIA_ORG_DIR + "{bucketId}" + "/" + "{fileName}"
- * 去掉 ROOT_MEDIA_ORG_DIR 前缀后，取第一个 / 之前的段作为 bucketId。
+ * cloudPath = "/storage/cloud/files/Photo/" + "{bucketId}" + "/" + "{fileName}"
+ * 去掉 "/storage/cloud/files/Photo/" 前缀后，取第一个 / 之前的段作为 bucketId。
  */
 static std::string GetBucketIdFromCloudPath(const std::string& cloudPath)
 {
-    if (cloudPath.find(ROOT_MEDIA_ORG_DIR) != 0) {
+    std::string cloudPrefix = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
+    if (cloudPath.find(cloudPrefix) != 0) {
         return "";
     }
-    std::string tail = cloudPath.substr(ROOT_MEDIA_ORG_DIR.length());
+    std::string tail = cloudPath.substr(cloudPrefix.length());
     auto slashPos = tail.find('/');
     if (slashPos == std::string::npos) {
         return "";
@@ -328,20 +329,20 @@ int64_t DirtyFileReportTask::QueryPendingPhysicalSize()
         if (cloudPath.empty()) continue;
 
         size_t fileSize = 0;
-        std::string localPath = MediaFileUtils::GetLocalPath(cloudPath);
+        std::string localPath = MediaPathUtils::ConvertCloudPathToLocalPath(cloudPath);
         if (MediaFileUtils::GetFileSize(localPath, fileSize)) {
             physicalSize += static_cast<int64_t>(fileSize);
             MEDIA_WARN_LOG("Dirty pending origin: %{public}s",
-                MediaFileUtils::DesensitizePath(localPath).c_str());
+                MediaPathUtils::DesensitizePath(localPath).c_str());
         }
 
         std::string bucketId = GetBucketIdFromCloudPath(cloudPath);
         std::string fileName = MediaFileUtils::GetFileName(cloudPath);
-        physicalSize += SumDirFileSize(
-            ROOT_MEDIA_LOCAL_THUMBS_DIR + bucketId + "/" + fileName,
+        physicalSize += SumDirFileSize(MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB_PHOTO, AdaptAccount::YES) +
+            bucketId + "/" + fileName,
             DIRTY_FOLDER_NAME_THUMBS);
-        physicalSize += SumDirFileSize(
-            ROOT_MEDIA_LOCAL_EDIT_DIR + bucketId + "/" + fileName,
+        physicalSize += SumDirFileSize(MediaPathUtils::GetDir(MediaPathType::LOCAL_EDIT_DATA_PHOTO, AdaptAccount::YES) +
+            bucketId + "/" + fileName,
             DIRTY_FOLDER_NAME_EDIT);
 
         int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
@@ -349,11 +350,12 @@ int64_t DirtyFileReportTask::QueryPendingPhysicalSize()
         int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
         if (MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubtype) &&
             !MovingPhotoFileUtils::IsGraffiti(subType, originalSubtype)) {
-            std::string videoPath = MediaFileUtils::GetLocalPath(MediaFileUtils::GetMovingPhotoVideoPath(cloudPath));
+            std::string videoPath = MediaPathUtils::ConvertCloudPathToLocalPath(
+                MediaFileUtils::GetMovingPhotoVideoPath(cloudPath));
             if (MediaFileUtils::GetFileSize(videoPath, fileSize)) {
                 physicalSize += static_cast<int64_t>(fileSize);
                 MEDIA_WARN_LOG("Dirty pending moving photo video: %{public}s",
-                    MediaFileUtils::DesensitizePath(videoPath).c_str());
+                    MediaPathUtils::DesensitizePath(videoPath).c_str());
             }
         }
     }
@@ -373,16 +375,18 @@ void DirtyFileReportTask::ProcessOriginDir(int32_t bucketId,
     const std::unordered_set<std::string>& dbPathSet,
     DirtyFileStatCollector& collector)
 {
-    std::string localDir = ROOT_MEDIA_LOCAL_ORG_DIR + std::to_string(bucketId);
-    if (!MediaFileUtils::IsFileExists(localDir)) {
+    std::string localDir =
+        MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::YES) + std::to_string(bucketId);
+    if (!MediaPureFileUtils::IsFileExists(localDir)) {
         return;
     }
 
     std::vector<std::string> fileNames;
     MediaFileUtils::GetAllFileNameListUnderPath(localDir, fileNames);
 
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
     for (const auto& fileName : fileNames) {
-        std::string cloudPath = ROOT_MEDIA_ORG_DIR + std::to_string(bucketId) + "/" + fileName;
+        std::string cloudPath = cloudFilesDir + std::to_string(bucketId) + "/" + fileName;
         if (dbPathSet.find(cloudPath) != dbPathSet.end()) {
             continue;
         }
@@ -390,7 +394,7 @@ void DirtyFileReportTask::ProcessOriginDir(int32_t bucketId,
         size_t fileSize = 0;
         MediaFileUtils::GetFileSize(localDir + "/" + fileName, fileSize);
         collector.AddFile(DIRTY_FOLDER_ORIGIN, static_cast<int64_t>(fileSize));
-        MEDIA_WARN_LOG("Dirty origin: %{public}s", MediaFileUtils::DesensitizePath(cloudPath).c_str());
+        MEDIA_WARN_LOG("Dirty origin: %{public}s", MediaPathUtils::DesensitizePath(cloudPath).c_str());
     }
 }
 
@@ -408,15 +412,15 @@ void DirtyFileReportTask::ProcessSubDir(int32_t bucketId,
     DirtyFolderType folderType)
 {
     std::string localDir = localRootDir + std::to_string(bucketId);
-    if (!MediaFileUtils::IsFileExists(localDir)) {
+    if (!MediaPureFileUtils::IsFileExists(localDir)) {
         return;
     }
 
     std::vector<std::string> subfolders;
     MediaFileUtils::GetFolderListUnderPath(localDir, subfolders);
-
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
     for (const auto& folderName : subfolders) {
-        std::string cloudOriginPath = ROOT_MEDIA_ORG_DIR + std::to_string(bucketId) + "/" + folderName;
+        std::string cloudOriginPath = cloudFilesDir + std::to_string(bucketId) + "/" + folderName;
         if (dbPathSet.find(cloudOriginPath) != dbPathSet.end()) {
             continue;
         }
@@ -432,7 +436,7 @@ void DirtyFileReportTask::ProcessSubDir(int32_t bucketId,
 
             MEDIA_WARN_LOG("Dirty %{public}s: %{public}s/%{public}s",
                 folderType == DIRTY_FOLDER_THUMBS ? DIRTY_FOLDER_NAME_THUMBS : DIRTY_FOLDER_NAME_EDIT,
-                MediaFileUtils::DesensitizePath(subFolder).c_str(), file.c_str());
+                MediaPathUtils::DesensitizePath(subFolder).c_str(), file.c_str());
         }
     }
 }
@@ -448,8 +452,8 @@ void DirtyFileReportTask::ProcessThumbsDir(int32_t bucketId,
     const std::unordered_set<std::string>& dbPathSet,
     DirtyFileStatCollector& collector)
 {
-    ProcessSubDir(bucketId, dbPathSet, collector,
-                  ROOT_MEDIA_LOCAL_THUMBS_DIR, DIRTY_FOLDER_THUMBS);
+    std::string rootLocalThumbsDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_THUMB_PHOTO, AdaptAccount::YES);
+    ProcessSubDir(bucketId, dbPathSet, collector, rootLocalThumbsDir, DIRTY_FOLDER_THUMBS);
 }
 
 /*
@@ -463,8 +467,8 @@ void DirtyFileReportTask::ProcessEditDir(int32_t bucketId,
     const std::unordered_set<std::string>& dbPathSet,
     DirtyFileStatCollector& collector)
 {
-    ProcessSubDir(bucketId, dbPathSet, collector,
-                  ROOT_MEDIA_LOCAL_EDIT_DIR, DIRTY_FOLDER_EDIT);
+    std::string rootLocalEditdataDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_EDIT_DATA_PHOTO, AdaptAccount::YES);
+    ProcessSubDir(bucketId, dbPathSet, collector, rootLocalEditdataDir, DIRTY_FOLDER_EDIT);
 }
 
 /*

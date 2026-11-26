@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #ifndef FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_ASSET_RDBSTORE_H
 #define FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_ASSET_RDBSTORE_H
- 
+
 #include "application_context.h"
 #include "datashare_helper.h"
 #include "datashare_predicates.h"
@@ -29,13 +29,14 @@
 #include "rdb_store_config.h"
 #include "rdb_types.h"
 #include "rdb_utils.h"
+#include <cstdint>
 #include <mutex>
- 
+
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 #define COMPILE_HIDDEN __attribute__ ((visibility ("hidden")))
- 
+
 class MediaAssetRdbStore {
 public:
     ~MediaAssetRdbStore() = default;
@@ -48,26 +49,41 @@ public:
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryRdb(const DataShare::DataSharePredicates& predicates,
         std::vector<std::string>& columns, OperationObject& object);
     EXPORT int32_t QueryTimeIdBatch(int32_t start, int32_t count, std::vector<std::string> &batchKeys);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT int32_t QueryTimeIdBatch(int32_t start, int32_t count, std::vector<std::string> &batchKeys,
+        int32_t &accountId);
+    EXPORT bool GetKvStoreAccountId(int32_t &accountId);
+#endif
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const std::string &sql);
- 
+
 private:
-    EXPORT MediaAssetRdbStore();
-    EXPORT int32_t TryGetRdbStore(bool isIngnoreSELinux = false);
+    MediaAssetRdbStore();
+    int32_t TryGetRdbStore(bool isIngnoreSELinux = false);
+    int32_t OpenRdbStore(bool isIngnoreSELinux = false);
+    std::shared_ptr<NativeRdb::RdbStore> GetRdbStoreForQuery(bool isIgnoreSELinux = false,
+        int32_t *accountId = nullptr);
     EXPORT static const std::string CloudSyncTriggerFunc(const std::vector<std::string>& args);
     EXPORT static const std::string IsCallerSelfFunc(const std::vector<std::string>& args);
     EXPORT static const std::string PhotoAlbumNotifyFunc(const std::vector<std::string>& args);
-    bool IsQueryGroupPhotoAlbumAssets(const std::string& albumId);
+    EXPORT static const std::string PhotoMapCodeFunc(const std::vector<std::string>& args);
+    bool IsQueryGroupPhotoAlbumAssets(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
+        const std::string& albumId);
     std::shared_ptr<NativeRdb::RdbStore> rdbStore_ {nullptr};
+    int64_t openedMarkerTimeMs_ {0};
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t openedAccountId_ {-1};
+#endif
     std::mutex mutex_;
+    NativeRdb::RdbStoreConfig config_ {""};
 };
- 
+
 class COMPILE_HIDDEN MediaLibraryAssetCallBack : public NativeRdb::RdbOpenCallback {
 public:
     int32_t OnCreate(NativeRdb::RdbStore& rdbStore) override;
     int32_t OnUpgrade(NativeRdb::RdbStore& rdbStore, int32_t oldVersion, int32_t newVersion) override;
 };
- 
+
 } // Media
 } // OHOS
- 
+
 #endif // FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_ASSET_RDBSTORE_H

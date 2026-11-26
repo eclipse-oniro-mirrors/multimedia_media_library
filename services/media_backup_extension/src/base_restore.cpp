@@ -27,6 +27,8 @@
 #include "directory_ex.h"
 #include "media_analysis_helper.h"
 #include "media_image_framework_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_scanner_manager.h"
 #include "medialibrary_business_code.h"
 #include "medialibrary_data_manager.h"
@@ -428,7 +430,7 @@ vector<NativeRdb::ValuesBucket> BaseRestore::GetInsertValues(const int32_t scene
         int64_t startPrepare = MediaFileUtils::UTCTimeMilliSeconds();
         if (fileInfos[i].filePath.length() >= MAX_FILE_PATH_LENGTH) {
             MEDIA_WARN_LOG("abnormal filePath: %{public}s",
-                MediaFileUtils::DesensitizePath(fileInfos[i].filePath).c_str());
+                MediaPathUtils::DesensitizePath(fileInfos[i].filePath).c_str());
         }
         NativeRdb::ValuesBucket value;
         CHECK_AND_CONTINUE(PrepareInsertValue(sceneCode, fileInfos[i], sourceType, value));
@@ -696,7 +698,7 @@ void BaseRestore::SetMovingPhotoDuration(const FileInfo &fileInfo, NativeRdb::Va
     if (isHandleLivePhoto) {
         videoPath = fileInfo.movingPhotoVideoPath;
     }
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(videoPath),
+    CHECK_AND_RETURN_LOG(MediaPureFileUtils::IsFileExists(videoPath),
         "videoPath does not exist, path: %{public}s",
         BackupFileUtils::GarbleFilePath(videoPath, sceneCode_).c_str());
     int32_t duration = MovingPhotoFileUtils::GetMovingPhotoVideoDuration(videoPath);
@@ -820,8 +822,8 @@ void BaseRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::ValuesBuck
 
 void BaseRestore::CreateDir(std::string &dir)
 {
-    if (!MediaFileUtils::IsFileExists(dir)) {
-        MediaFileUtils::CreateDirectory(dir);
+    if (!MediaPureFileUtils::IsFileExists(dir)) {
+        MediaPureFileUtils::CreateDirectory(dir);
     }
 }
 
@@ -845,7 +847,7 @@ void BaseRestore::InsertAudio(int32_t sceneCode, std::vector<FileInfo> &fileInfo
     int64_t startMove = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t fileMoveCount = 0;
     for (size_t i = 0; i < fileInfos.size(); i++) {
-        if (!MediaFileUtils::IsFileExists(fileInfos[i].filePath)) {
+        if (!MediaPureFileUtils::IsFileExists(fileInfos[i].filePath)) {
             MEDIA_ERR_LOG("File is not exist: filePath: %{public}s, size: %{public}lld",
                 BackupFileUtils::GarbleFilePath(fileInfos[i].filePath, sceneCode).c_str(),
                 (long long)fileInfos[i].fileSize);
@@ -864,7 +866,7 @@ void BaseRestore::InsertAudio(int32_t sceneCode, std::vector<FileInfo> &fileInfo
             continue;
         }
         RecursiveCreateDir(relativePath0, relativePath1);
-        if (MediaFileUtils::IsFileExists(dstPath)) {
+        if (MediaPureFileUtils::IsFileExists(dstPath)) {
             MEDIA_INFO_LOG("dstPath %{public}s already exists.",
                 BackupFileUtils::GarbleFilePath(fileInfos[i].filePath, sceneCode).c_str());
             UpdateDuplicateNumber(fileInfos[i].fileType);
@@ -893,7 +895,8 @@ static bool MoveExtraData(const FileInfo &fileInfo, int32_t sceneCode)
         MEDIA_WARN_LOG("Failed to get local extra data dir");
         return false;
     }
-    if (!MediaFileUtils::IsFileExists(localExtraDataDir) && !MediaFileUtils::CreateDirectory(localExtraDataDir)) {
+    if (!MediaPureFileUtils::IsFileExists(localExtraDataDir) &&
+        !MediaPureFileUtils::CreateDirectory(localExtraDataDir)) {
         MEDIA_WARN_LOG("Failed to create local extra data dir, errno:%{public}d", errno);
         return false;
     }
@@ -922,7 +925,8 @@ static bool SaveIosExtraData(const FileInfo &fileInfo, std::string movingPhotoVi
         MEDIA_WARN_LOG("Failed to get local extra data dir");
         return false;
     }
-    if (!MediaFileUtils::IsFileExists(localExtraDataDir) && !MediaFileUtils::CreateDirectory(localExtraDataDir)) {
+    if (!MediaPureFileUtils::IsFileExists(localExtraDataDir) &&
+        !MediaPureFileUtils::CreateDirectory(localExtraDataDir)) {
         MEDIA_WARN_LOG("Failed to create local extra data dir, errno:%{public}d", errno);
         return false;
     }
@@ -998,7 +1002,7 @@ static bool HandleOtherDynamicMovingPhoto(const FileInfo &fileInfo, const std::s
 {
     string mp4SrcPath;
     CHECK_AND_RETURN_RET_LOG(ReplaceExtension(fileInfo.filePath, ".mp4", mp4SrcPath), false, "");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(mp4SrcPath), false,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(mp4SrcPath), false,
         "Dynamic video does not exist, src:%{public}s",
         BackupFileUtils::GarbleFilePath(mp4SrcPath, sceneCode).c_str());
 
@@ -1020,8 +1024,12 @@ static bool HandleOtherDynamicMovingPhoto(const FileInfo &fileInfo, const std::s
 
 static bool HandleLivePhoto(const FileInfo &fileInfo, const std::string &localPath, int32_t sceneCode)
 {
+    std::string cloudPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    std::string localPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::NO, AppendSlash::NO);
     string tmpVideoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(fileInfo.cloudPath);
-    string localVideoPath = tmpVideoPath.replace(0, RESTORE_CLOUD_DIR.length(), RESTORE_LOCAL_DIR);
+    string localVideoPath = tmpVideoPath.replace(0, cloudPhotoDir.length(), localPhotoDir);
     int32_t errCode = BackupFileUtils::MoveFile(fileInfo.movingPhotoVideoPath, localVideoPath, sceneCode);
     if (errCode != E_OK) {
         MEDIA_ERR_LOG(
@@ -1040,9 +1048,11 @@ static std::string ToLocalDataPath(const std::string &cloudPath)
     // Photos.data of a cloud asset is the cloud path; the local file lives at the local prefix.
     // If data is already a local path, keep it untouched.
     std::string localPath = cloudPath;
-    if (localPath.length() > RESTORE_CLOUD_DIR.length() &&
-        localPath.compare(0, RESTORE_CLOUD_DIR.length(), RESTORE_CLOUD_DIR) == 0) {
-        localPath.replace(0, RESTORE_CLOUD_DIR.length(), RESTORE_LOCAL_DIR);
+    std::string cloudPhotoDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO);
+    std::string localPhotoDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::NO);
+    if (localPath.length() > cloudPhotoDir.length() &&
+        localPath.compare(0, cloudPhotoDir.length(), cloudPhotoDir) == 0) {
+        localPath.replace(0, cloudPhotoDir.length(), localPhotoDir);
     }
     return localPath;
 }
@@ -1064,7 +1074,7 @@ static bool HandleLakeFileMove(FileInfo &fileInfo, int32_t sceneCode)
     } else {
         // Lake-hidden/trashed: store the inherited original at the data path.
         destPath = ToLocalDataPath(fileInfo.cloudPath);
-        if (MediaFileUtils::IsFileExists(destPath)) {
+        if (MediaPureFileUtils::IsFileExists(destPath)) {
             return true;
         }
     }
@@ -1087,7 +1097,11 @@ static bool MoveAndModifyFile(FileInfo &fileInfo, int32_t sceneCode)
     }
 
     string tmpPath = fileInfo.cloudPath;
-    string localPath = tmpPath.replace(0, RESTORE_CLOUD_DIR.length(), RESTORE_LOCAL_DIR);
+    std::string cloudPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    std::string localPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    string localPath = tmpPath.replace(0, cloudPhotoDir.length(), localPhotoDir);
     CHECK_AND_RETURN_RET_LOG(MoveFileAndUpdateTime(fileInfo.filePath, localPath,
         fileInfo.dateModified, sceneCode), false, "");
 
@@ -1109,13 +1123,14 @@ static bool MoveAndModifyFile(FileInfo &fileInfo, int32_t sceneCode)
 
 static std::string GetThumbnailLocalPath(const string &path)
 {
-    size_t cloudDirLength = RESTORE_FILES_CLOUD_DIR.length();
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    size_t cloudDirLength = cloudFilesDir.length();
     bool cond = (path.length() <= cloudDirLength ||
-        path.substr(0, cloudDirLength).compare(RESTORE_FILES_CLOUD_DIR) != 0);
+        path.substr(0, cloudDirLength).compare(cloudFilesDir) != 0);
     CHECK_AND_RETURN_RET(!cond, "");
 
     std::string suffixStr = path.substr(cloudDirLength);
-    return RESTORE_FILES_LOCAL_DIR + ".thumbs/" + suffixStr;
+    return MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB, AdaptAccount::NO) + suffixStr;
 }
 
 int32_t BaseRestore::BatchCreateDentryFile(std::vector<FileInfo> &fileInfos, std::vector<std::string> &failCloudIds,
@@ -1171,10 +1186,10 @@ bool BaseRestore::IsDualCloneThumbnailExist(const FileInfo &fileInfo, int32_t ty
     std::string saveNoRotatePath = HasExThumbnail(fileInfo) ? THM_SAVE_WITHOUT_ROTATE_PATH : "";
     std::string tmpTargetFileName = (type == MIGRATE_CLOUD_LCD_TYPE) ? "/LCD" : "/THM";
     std::string dstFilePath = thumbnailDir + saveNoRotatePath + tmpTargetFileName + ".jpg";
-    bool isExist = MediaFileUtils::IsFileExists(dstFilePath);
+    bool isExist = MediaPureFileUtils::IsFileExists(dstFilePath);
     if (isExist) {
         MEDIA_INFO_LOG("DualClone thumbnail already exists, skip inherit: %{public}s",
-            MediaFileUtils::DesensitizePath(dstFilePath).c_str());
+            MediaPathUtils::DesensitizePath(dstFilePath).c_str());
     }
     return isExist;
 }
@@ -1188,11 +1203,12 @@ bool BaseRestore::RestoreLcdAndThumbFromCloud(const FileInfo &fileInfo, int32_t 
     CHECK_AND_RETURN_RET(srcPath != "", false);
     std::string saveNoRotatePath = !HasExThumbnail(fileInfo) ? "" : THM_SAVE_WITHOUT_ROTATE_PATH;
     std::string dstDirPath = GetThumbnailLocalPath(fileInfo.cloudPath) + saveNoRotatePath;
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dstDirPath), false, "Prepare thumbnail dir path failed");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dstDirPath), false,
+        "Prepare thumbnail dir path failed");
 
     std::string tmpTargetFileName = type == MIGRATE_CLOUD_LCD_TYPE ? "/LCD" : "/THM";
     std::string dstFilePath = dstDirPath + tmpTargetFileName + ".jpg";
-    bool cond = (MediaFileUtils::IsFileExists(dstFilePath) && !MediaFileUtils::DeleteFile(dstFilePath));
+    bool cond = (MediaPureFileUtils::IsFileExists(dstFilePath) && !MediaFileUtils::DeleteFile(dstFilePath));
     CHECK_AND_RETURN_RET_LOG(!cond, false, "Delete thumbnail new dir failed, errno: %{public}d", errno);
 
     int32_t errCode = MediaFileUtils::ModifyAsset(srcPath, dstFilePath);
@@ -1205,7 +1221,7 @@ bool BaseRestore::RestoreLcdAndThumbFromCloud(const FileInfo &fileInfo, int32_t 
         std::string rotateDirPath = dstDirPath.replace(dstDirPath.find(THM_SAVE_WITHOUT_ROTATE_PATH),
             THM_SAVE_WITHOUT_ROTATE_PATH.length(), "");
         if (type == MIGRATE_CLOUD_THM_TYPE &&
-            MediaFileUtils::IsFileExists(rotateDirPath + tmpTargetFileName + ".jpg")) {
+            MediaPureFileUtils::IsFileExists(rotateDirPath + tmpTargetFileName + ".jpg")) {
             rotateThmMigrateFileNumber_++;
             break;
         }
@@ -1233,7 +1249,7 @@ std::string BaseRestore::GetThumbFile(const FileInfo &fileInfo, int32_t type, in
     if (thumbPath != "") {
         std::string prefixStr = sceneCode == DUAL_FRAME_CLONE_RESTORE_ID ? backupRestoreDir_ : upgradeRestoreDir_;
         std::string srcPath = prefixStr + thumbPath;
-        CHECK_AND_RETURN_RET(!MediaFileUtils::IsFileExists(srcPath), srcPath);
+        CHECK_AND_RETURN_RET(!MediaPureFileUtils::IsFileExists(srcPath), srcPath);
     }
 
     CHECK_AND_RETURN_RET(!fileInfo.albumId.empty(), "");
@@ -1243,7 +1259,7 @@ std::string BaseRestore::GetThumbFile(const FileInfo &fileInfo, int32_t type, in
     std::string tmpStr = type == MIGRATE_CLOUD_LCD_TYPE ? "lcd/" : "thumb/";
     std::string newSrcPath = newPrefixStr + "/.photoShare/thumb/" + tmpStr + fileInfo.albumId +
         "/" + fileInfo.cloudUniqueId + ".jpg";
-    CHECK_AND_RETURN_RET(!MediaFileUtils::IsFileExists(newSrcPath), newSrcPath);
+    CHECK_AND_RETURN_RET(!MediaPureFileUtils::IsFileExists(newSrcPath), newSrcPath);
     MEDIA_DEBUG_LOG("GetThumbFile fail: %{public}s, %{public}s, %{public}s, %{public}d",
         BackupFileUtils::GarbleFilePath(fileInfo.localBigThumbPath, sceneCode).c_str(),
         BackupFileUtils::GarbleFilePath(fileInfo.localThumbPath, sceneCode).c_str(),
@@ -1394,12 +1410,12 @@ void BaseRestore::RemoveInheritedDentryFiles(const FileInfo &fileInfo)
     if (fileInfo.needUpdatePositionToLocalAndCloud && fileInfo.needMove) {
         CHECK_AND_EXECUTE(DeleteOriginDentryByCloudPath(fileInfo.cloudPath) == E_OK,
             MEDIA_WARN_LOG("DualCloneRestore remove origin dentry failed, fileId=%{public}d, path=%{public}s",
-                fileInfo.fileIdNew, MediaFileUtils::DesensitizePath(fileInfo.cloudPath).c_str()));
+                fileInfo.fileIdNew, MediaPathUtils::DesensitizePath(fileInfo.cloudPath).c_str()));
     }
     // Only removes dentries backed by existing local thumbnails (guarded inside).
     CHECK_AND_EXECUTE(DeleteThumbDentryByCloudPath(fileInfo) == E_OK,
         MEDIA_WARN_LOG("DualCloneRestore remove thumb dentry failed, fileId=%{public}d, path=%{public}s",
-            fileInfo.fileIdNew, MediaFileUtils::DesensitizePath(fileInfo.cloudPath).c_str()));
+            fileInfo.fileIdNew, MediaPathUtils::DesensitizePath(fileInfo.cloudPath).c_str()));
 }
 
 static int64_t StatLocalFileSize(const std::string &filePath)
@@ -1436,7 +1452,7 @@ static void FillInheritedLakeValues(const FileInfo &fileInfo, NativeRdb::ValuesB
         values.PutString(MediaColumn::MEDIA_NAME, newDisplayName);
         if (!fileInfo.sourcePath.empty()) {
             values.PutString(PhotoColumn::PHOTO_SOURCE_PATH,
-                MediaFileUtils::GetParentPath(fileInfo.sourcePath) + "/" + newDisplayName);
+                MediaPathUtils::GetParentPath(fileInfo.sourcePath) + "/" + newDisplayName);
         }
     }
 }
@@ -1714,9 +1730,9 @@ static bool IsTranscodeFile(const std::string &filePath)
 
 int32_t BaseRestore::MoveDirectory(const std::string &srcDir, const std::string &dstDir, bool deleteOriginalFile) const
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dstDir), E_FAIL,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dstDir), E_FAIL,
         "Create dstDir %{public}s failed", BackupFileUtils::GarbleFilePath(dstDir, DEFAULT_RESTORE_ID).c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(srcDir), E_OK,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(srcDir), E_OK,
         "%{public}s doesn't exist, skip.", srcDir.c_str());
     for (const auto &dirEntry : std::filesystem::directory_iterator{ srcDir }) {
         std::string srcFilePath = dirEntry.path();
@@ -2564,7 +2580,7 @@ void BaseRestore::UpdatePhotosByFileInfoMap(std::shared_ptr<NativeRdb::RdbStore>
         if (fileInfo.fileIdNew <= 0 || fileInfo.isNew || !fileInfo.needUpdate) {
             continue;
         }
-        if (MediaFileUtils::IsFileExists(fileInfo.cloudPath)) {
+        if (MediaPureFileUtils::IsFileExists(fileInfo.cloudPath)) {
             int32_t ret = RemoveDentryFileWithConflict(fileInfo);
             if (ret != E_OK) {
                 fileInfo.needUpdate = false;
@@ -2579,34 +2595,38 @@ void BaseRestore::UpdatePhotosByFileInfoMap(std::shared_ptr<NativeRdb::RdbStore>
 
 int32_t BaseRestore::DeleteOriginDentryByCloudPath(const std::string &cloudPath)
 {
-    if (cloudPath.length() <= RESTORE_CLOUD_DIR.length() ||
-        cloudPath.compare(0, RESTORE_CLOUD_DIR.length(), RESTORE_CLOUD_DIR) != 0) {
+    std::string cloudPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    if (cloudPath.length() <= cloudPhotoDir.length() ||
+        cloudPath.compare(0, cloudPhotoDir.length(), cloudPhotoDir) != 0) {
         MEDIA_ERR_LOG("Invalid cloudPath for origin dentry cleanup: %{public}s",
-            MediaFileUtils::DesensitizePath(cloudPath).c_str());
+            MediaPathUtils::DesensitizePath(cloudPath).c_str());
         return E_FAIL;
     }
     std::string dentryPath = cloudPath;
-    dentryPath.replace(0, RESTORE_CLOUD_DIR.length(), RESTORE_DENTRY_DIR);
-    if (MediaFileUtils::IsFileExists(dentryPath)) {
+    dentryPath.replace(0, cloudPhotoDir.length(), RESTORE_DENTRY_DIR);
+    if (MediaPureFileUtils::IsFileExists(dentryPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteFile(dentryPath), E_FAIL,
-            "Delete origin dentry failed: %{public}s", MediaFileUtils::DesensitizePath(dentryPath).c_str());
+            "Delete origin dentry failed: %{public}s", MediaPathUtils::DesensitizePath(dentryPath).c_str());
     }
     return E_OK;
 }
 
 int32_t BaseRestore::DeleteThumbDentryByCloudPath(const FileInfo &fileInfo)
 {
+    std::string cloudPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO, AppendSlash::NO);
     const std::string &cloudPath = fileInfo.cloudPath;
-    if (cloudPath.length() <= RESTORE_CLOUD_DIR.length() ||
-        cloudPath.compare(0, RESTORE_CLOUD_DIR.length(), RESTORE_CLOUD_DIR) != 0) {
+    if (cloudPath.length() <= cloudPhotoDir.length() ||
+        cloudPath.compare(0, cloudPhotoDir.length(), cloudPhotoDir) != 0) {
         MEDIA_ERR_LOG("Invalid cloudPath for thumb dentry cleanup: %{public}s",
-            MediaFileUtils::DesensitizePath(cloudPath).c_str());
+            MediaPathUtils::DesensitizePath(cloudPath).c_str());
         return E_FAIL;
     }
 
     std::string dentryDir = cloudPath;
-    dentryDir.replace(0, RESTORE_CLOUD_DIR.length(), RESTORE_THUMB_DENTRY_DIR);
-    if (!MediaFileUtils::IsFileExists(dentryDir)) {
+    dentryDir.replace(0, cloudPhotoDir.length(), RESTORE_THUMB_DENTRY_DIR);
+    if (!MediaPureFileUtils::IsFileExists(dentryDir)) {
         return E_OK;
     }
 
@@ -2616,15 +2636,15 @@ int32_t BaseRestore::DeleteThumbDentryByCloudPath(const FileInfo &fileInfo)
     const std::string thmRelPath = hasExThumbnail ? "THM_EX/THM.jpg" : "THM.jpg";
     for (const std::string &tile : {lcdRelPath, thmRelPath}) {
         std::string dentryTile = dentryDir + "/" + tile;
-        if (!MediaFileUtils::IsFileExists(dentryTile)) {
+        if (!MediaPureFileUtils::IsFileExists(dentryTile)) {
             continue;
         }
-        if (localThumbDir.empty() || !MediaFileUtils::IsFileExists(localThumbDir + "/" + tile)) {
+        if (localThumbDir.empty() || !MediaPureFileUtils::IsFileExists(localThumbDir + "/" + tile)) {
             continue;
         }
         if (!MediaFileUtils::DeleteFile(dentryTile)) {
             MEDIA_WARN_LOG("Delete thumb dentry tile failed: %{public}s",
-                MediaFileUtils::DesensitizePath(dentryTile).c_str());
+                MediaPathUtils::DesensitizePath(dentryTile).c_str());
         }
     }
     return E_OK;
@@ -2640,7 +2660,7 @@ int32_t BaseRestore::RemoveDentryFileWithConflict(const FileInfo &fileInfo)
         dummyPath.c_str(), moveToRet);
 
     bool dentryDeleted = false;
-    if (MediaFileUtils::IsFileExists(fileInfo.cloudPath)) {
+    if (MediaPureFileUtils::IsFileExists(fileInfo.cloudPath)) {
         (void)MediaFileUtils::DeleteFile(fileInfo.cloudPath);
         dentryDeleted = true;
     }
@@ -2652,8 +2672,13 @@ int32_t BaseRestore::RemoveDentryFileWithConflict(const FileInfo &fileInfo)
 
     // Delete thumb dentry file
     string tmpPathThumb = fileInfo.cloudPath;
-    string thumbPath = tmpPathThumb.replace(0, RESTORE_CLOUD_DIR.length(), RESTORE_THUMB_CLOUD_DIR);
-    bool cond = (MediaFileUtils::IsFileExists(thumbPath) && dentryDeleted);
+
+    std::string cloudPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    std::string cloudThumbPhotoDir =
+        MediaPathUtils::GetDir(MediaPathType::CLOUD_THUMB_PHOTO, AdaptAccount::NO, AppendSlash::NO);
+    string thumbPath = tmpPathThumb.replace(0, cloudPhotoDir.length(), cloudThumbPhotoDir);
+    bool cond = (MediaPureFileUtils::IsFileExists(thumbPath) && dentryDeleted);
     CHECK_AND_EXECUTE(!cond, (void)MediaFileUtils::DeleteDir(thumbPath));
     return E_OK;
 }
@@ -2862,11 +2887,11 @@ void BaseRestore::CheckThumbnailFileExistence(const FileInfo &fileInfo, bool &is
     std::string thumbnailDir = GetThumbnailLocalPath(fileInfo.cloudPath);
     bool hasExThumbnail = HasExThumbnail(fileInfo);
     isLcdExist = hasExThumbnail
-        ? MediaFileUtils::IsFileExists(thumbnailDir + THM_SAVE_WITHOUT_ROTATE_PATH + "/LCD.jpg")
-        : MediaFileUtils::IsFileExists(thumbnailDir + "/LCD.jpg");
+        ? MediaPureFileUtils::IsFileExists(thumbnailDir + THM_SAVE_WITHOUT_ROTATE_PATH + "/LCD.jpg")
+        : MediaPureFileUtils::IsFileExists(thumbnailDir + "/LCD.jpg");
     isThmExist = hasExThumbnail
-        ? MediaFileUtils::IsFileExists(thumbnailDir + THM_SAVE_WITHOUT_ROTATE_PATH + "/THM.jpg")
-        : MediaFileUtils::IsFileExists(thumbnailDir + "/THM.jpg");
+        ? MediaPureFileUtils::IsFileExists(thumbnailDir + THM_SAVE_WITHOUT_ROTATE_PATH + "/THM.jpg")
+        : MediaPureFileUtils::IsFileExists(thumbnailDir + "/THM.jpg");
 }
 
 void BaseRestore::BatchUpdateThumbStatusByFileExistence(std::vector<FileInfo> &fileInfos)

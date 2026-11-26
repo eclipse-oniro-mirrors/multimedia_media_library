@@ -24,6 +24,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata_extractor.h"
@@ -92,8 +93,8 @@ void ShootingModeAlbumOperation::UpdateShootingModeAlbum()
     isContinue_.store(true);
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t errCode = E_OK;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int32_t curFileId = prefs->GetInt(ORIGIN_SHOOTING_MODE_ASSETS_NUMBER, 0);
     int maxFileId = QueryMaxFileId();

@@ -20,6 +20,8 @@
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include <regex>
 #include <algorithm>
 #include <sstream>
@@ -1036,7 +1038,7 @@ bool FileIdMigrator::MigrateHighlightPlayInfo(std::shared_ptr<RdbStore> db,
     const std::string &backupDir)
 {
     MEDIA_DEBUG_LOG("FileIdMigrator::MigrateHighlightPlayInfo begin, backupDir=%{public}s",
-        MediaFileUtils::DesensitizePath(backupDir).c_str());
+        MediaPathUtils::DesensitizePath(backupDir).c_str());
     if (!db) {
         MEDIA_ERR_LOG("FileIdMigrator: invalid db handle for highlight play_info migration");
         return false;
@@ -1156,24 +1158,24 @@ bool FileIdMigrator::UpdatePlayInfoField(std::shared_ptr<RdbStore> db,
 
 bool FileIdMigrator::MoveSingleFile(const std::string &srcPath, const std::string &dstPath)
 {
-    if (!MediaFileUtils::IsFileExists(srcPath)) {
+    if (!MediaPureFileUtils::IsFileExists(srcPath)) {
         MEDIA_WARN_LOG("FileIdMigrator: src not exist, skip, src=%{public}s",
-            MediaFileUtils::DesensitizePath(srcPath).c_str());
+            MediaPathUtils::DesensitizePath(srcPath).c_str());
         return true;
     }
-    if (MediaFileUtils::IsFileExists(dstPath)) {
+    if (MediaPureFileUtils::IsFileExists(dstPath)) {
         MEDIA_WARN_LOG("FileIdMigrator: dst file already exists, skip, dst=%{public}s",
-            MediaFileUtils::DesensitizePath(dstPath).c_str());
+            MediaPathUtils::DesensitizePath(dstPath).c_str());
         return true;
     }
     int32_t errCode = BackupFileUtils::PreparePath(dstPath);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
         "FileIdMigrator: PreparePath failed, err=%{public}d, dst=%{public}s",
-        errCode, MediaFileUtils::DesensitizePath(dstPath).c_str());
+        errCode, MediaPathUtils::DesensitizePath(dstPath).c_str());
     errCode = BackupFileUtils::MoveFile(srcPath, dstPath, 0);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
         "FileIdMigrator: MoveFile failed, err=%{public}d, src=%{public}s",
-        errCode, MediaFileUtils::DesensitizePath(srcPath).c_str());
+        errCode, MediaPathUtils::DesensitizePath(srcPath).c_str());
     return true;
 }
 
@@ -1185,7 +1187,7 @@ int32_t FileIdMigrator::MoveFilesInDir(const std::string &oldDir, int32_t newId,
     for (const auto &entry : std::filesystem::directory_iterator(oldDir, ec)) {
         if (ec) {
             MEDIA_ERR_LOG("FileIdMigrator: directory_iterator failed, dir=%{public}s",
-                MediaFileUtils::DesensitizePath(oldDir).c_str());
+                MediaPathUtils::DesensitizePath(oldDir).c_str());
             return -1;
         }
         if (!entry.is_regular_file()) {
@@ -1197,8 +1199,8 @@ int32_t FileIdMigrator::MoveFilesInDir(const std::string &oldDir, int32_t newId,
         std::string dstPath = videoDir + std::to_string(newId) + "/" + newFilename;
 
         MEDIA_DEBUG_LOG("FileIdMigrator: move file oldFilename=%{public}s -> newFilename=%{public}s",
-            MediaFileUtils::DesensitizePath(srcPath).c_str(),
-            MediaFileUtils::DesensitizePath(dstPath).c_str());
+            MediaPathUtils::DesensitizePath(srcPath).c_str(),
+            MediaPathUtils::DesensitizePath(dstPath).c_str());
 
         if (!MoveSingleFile(srcPath, dstPath)) {
             return -1;
@@ -1217,9 +1219,9 @@ bool FileIdMigrator::MoveHighlightVideoDirs(const std::string &backupDir,
     }
     videoDir += "video/";
     MEDIA_INFO_LOG("FileIdMigrator: MoveHighlightVideoDirs videoDir=%{public}s",
-        MediaFileUtils::DesensitizePath(videoDir).c_str());
+        MediaPathUtils::DesensitizePath(videoDir).c_str());
 
-    if (!MediaFileUtils::IsDirectory(videoDir)) {
+    if (!MediaPureFileUtils::IsDirectory(videoDir)) {
         MEDIA_INFO_LOG("FileIdMigrator: highlight video dir not exist, skip move");
         return true;
     }
@@ -1241,7 +1243,7 @@ bool FileIdMigrator::MoveHighlightVideoDirs(const std::string &backupDir,
         movedFiles += dirFileCount;
         MEDIA_INFO_LOG("FileIdMigrator: dir oldId=%{public}d moved %{public}d files", oldId, dirFileCount);
 
-        if (MediaFileUtils::IsDirectory(oldDir) && MediaFileUtils::IsDirEmpty(oldDir)) {
+        if (MediaPureFileUtils::IsDirectory(oldDir) && MediaFileUtils::IsDirEmpty(oldDir)) {
             MediaFileUtils::DeleteDir(oldDir);
             MEDIA_INFO_LOG("FileIdMigrator: removed empty dir oldId=%{public}d", oldId);
         }

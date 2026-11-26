@@ -17,9 +17,9 @@
 
 #include "media_share_photo_data_service.h"
 
-#include "media_file_utils.h"
 #include "media_log.h"
 #include "media_share_album_lite_errno.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 
 #include <string>

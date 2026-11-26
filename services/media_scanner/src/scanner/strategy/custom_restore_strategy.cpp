@@ -61,7 +61,11 @@ int32_t CustomRestoreStrategy::Scan(const std::shared_ptr<ScanTaskContext> &cont
 std::unique_ptr<CustomRestoreScannerObj> CustomRestoreStrategy::CreateScannerObj(
     const std::shared_ptr<ScanTaskContext> &context)
 {
-    return std::make_unique<CustomRestoreScannerObj>(context->config.GetCustomRestoreInfo());
+    auto scannerObj = std::make_unique<CustomRestoreScannerObj>(context->config.GetCustomRestoreInfo());
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    scannerObj->SetAccountId(context->config.GetAccountId());
+#endif
+    return scannerObj;
 }
 
 } // namespace OHOS::Media

@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 
 #include "heif_bundle_info_cache.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
@@ -379,7 +379,7 @@ std::vector<int> SplitVersion(const std::string& version)
     std::stringstream ss(version);
     std::string item;
     while (std::getline(ss, item, '.')) {
-        if (MediaFileUtils::IsValidInteger(item)) {
+        if (MediaStringUtils::IsValidInteger(item)) {
             parts.push_back(std::stoi(item));
         }
     }

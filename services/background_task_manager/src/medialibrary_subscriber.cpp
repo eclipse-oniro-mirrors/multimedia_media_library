@@ -97,7 +97,9 @@
 #include "power_mode_info.h"
 #include "lcd_aging_manager.h"
 #include "lcd_aging_worker.h"
+#ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "lcd_download_task.h"
+#endif
 #include "consistency_check_manager.h"
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 #include "watch_system_handler.h"
@@ -105,6 +107,11 @@
 #endif
 #include "medialibrary_rdb_operations.h"
 #include "media_cloud_dentry_batch_task.h"
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_manager.h"
+#endif
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::NetManagerStandard;
@@ -177,6 +184,7 @@ const std::vector<std::string> MedialibrarySubscriber::events_ = {
     EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_CONN_STATE,
     EventFwk::CommonEventSupport::COMMON_EVENT_CONNECTIVITY_CHANGE,
     EventFwk::CommonEventSupport::COMMON_EVENT_TIME_TICK,
+    EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGIN,
     EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGOUT,
     EventFwk::CommonEventSupport::COMMON_EVENT_DATA_SHARE_READY,
     EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_START,
@@ -408,7 +416,7 @@ static void UploadDBFile()
             static_cast<long>(totalFileSize));
         return ;
     }
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateDirectory(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaPureFileUtils::CreateDirectory(destPath)) {
         MEDIA_ERR_LOG("Create dir failed, dir=%{private}s", destPath.c_str());
         return ;
     }
@@ -656,6 +664,7 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
 #endif
     const AAFwk::Want &want = eventData.GetWant();
     std::string action = want.GetAction();
+    MEDIA_INFO_LOG("OnReceiveEvent: action=%{public}s", action.c_str());
 #ifdef MEDIALIBRARY_FACARD_SUPPORT
     InitFaCardAfterDataShareReady(action);
 #endif
@@ -681,7 +690,14 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     } else if (BACKGROUND_OPERATION_STATUS_MAP.count(action) != 0) {
         UpdateBackgroundOperationStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
         UpdateCloudMediaAssetDownloadStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
+    } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGIN) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        AccountManager::GetInstance().Login();
+#endif
     } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGOUT) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        AccountManager::GetInstance().Logout();
+#endif
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudFileProcessor::SetDownloadLatestFinished(false);
 #endif
@@ -847,8 +863,8 @@ static void QueryUpdateSize(AsyncTaskData *data)
 static int32_t UpdateAllEditDataSize()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences error: %{public}d", errCode);
         return E_ERR;
@@ -1003,8 +1019,8 @@ static void ClearDirtyHdcData(const shared_ptr<NativePreferences::Preferences>& 
 void MedialibrarySubscriber::ClearDirtyData()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "Get preferences error: %{public}d", errCode);
     UpdateDirtyForBeta(prefs);
     ClearDirtyHdcData(prefs);
@@ -1189,7 +1205,9 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
     Background::MediaCloudDentryBatchTask::CheckDentryCreation();
     PeriodicAnalyzePhotosData();
+#ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     Background::LcdDownloadTask::HandleLcdDownload();
+#endif
 #ifdef META_RECOVERY_SUPPORT
     // check metadata recovery state
     MediaLibraryMetaRecovery::GetInstance().CheckRecoveryState();
@@ -1221,7 +1239,7 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     CloudEnhancementChecker::AddPermissionForCloudEnhancement();
 #endif
     // migration highlight info to new path
-    if (MediaFileUtils::IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
+    if (MediaPureFileUtils::IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
         MEDIA_INFO_LOG("Migration highlight info to new path");
         bool retMigration = MediaFileUtils::CopyDirAndDelSrc(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD,
             ROOT_MEDIA_DIR + HIGHLIGHT_INFO_NEW);

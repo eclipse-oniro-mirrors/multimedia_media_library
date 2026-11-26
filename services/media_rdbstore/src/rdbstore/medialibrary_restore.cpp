@@ -20,6 +20,7 @@
 #include "medialibrary_data_manager.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_tracer.h"
+#include "medialibrary_unistore_manager.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "parameter.h"
@@ -73,7 +74,7 @@ void MediaLibraryRestore::CheckRestore(const int32_t &errCode)
     isRestoring_ = true;
     std::thread([] {
         MEDIA_INFO_LOG("MediaLibraryRestore::Restore [start]");
-        auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
+        auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         if (rdb == nullptr) {
             MediaLibraryRestore::GetInstance().isRestoring_ = false;
             MEDIA_ERR_LOG("Restore rdbStore is nullptr");
@@ -117,7 +118,7 @@ void MediaLibraryRestore::CheckBackup()
     MEDIA_INFO_LOG("CheckBackup is called");
     CHECK_AND_RETURN_LOG((!isRestoring_), "CheckBackup: is restoring, return");
 
-    auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG((rdb != nullptr), "CheckBackup: rdbStore is nullptr");
     if (!rdb->IsSlaveDiffFromMaster()) {
         MEDIA_INFO_LOG("CheckBackup: isSlaveDiffFromMaster [false], return");
@@ -126,6 +127,30 @@ void MediaLibraryRestore::CheckBackup()
     MEDIA_INFO_LOG("CheckBackup: isSlaveDiffFromMaster [true]");
     DoRdbBackup();
 }
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+void MediaLibraryRestore::BackupForCurrentAccount()
+{
+    MEDIA_INFO_LOG("BackupForCurrentAccount is called");
+    auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdb != nullptr, "BackupForCurrentAccount: rdbStore is nullptr");
+    if (!rdb->IsSlaveDiffFromMaster()) {
+        MEDIA_INFO_LOG("BackupForCurrentAccount: slave in sync, skip");
+        return;
+    }
+    if (!MediaLibraryRdbUtils::ExecuteDatabaseQuickCheck(rdb)) {
+        MEDIA_ERR_LOG("BackupForCurrentAccount: QuickCheck fail");
+        return;
+    }
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaLibraryRestore::BackupForCurrentAccount");
+    int errCode = rdb->Backup("", false);
+    MEDIA_INFO_LOG("BackupForCurrentAccount: Backup done, errCode=%{public}d", errCode);
+    if (errCode == NativeRdb::E_OK) {
+        Acl::AclSetSlaveDatabase();
+    }
+}
+#endif
 
 void MediaLibraryRestore::ResetHAModeSwitchStatus()
 {
@@ -160,7 +185,7 @@ void MediaLibraryRestore::DoRdbBackup()
 #ifdef CLOUD_SYNC_MANAGER
         MediaLibraryRestore::GetInstance().StopCloudSync();
 #endif
-        auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
+        auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         if (rdb == nullptr || !MediaLibraryRestore::GetInstance().IsBackuping()) {
             MediaLibraryRestore::GetInstance().ResetHAModeSwitchStatus();
             MediaLibraryRestore::GetInstance().isBackuping_ = false;
@@ -198,7 +223,7 @@ void MediaLibraryRestore::InterruptBackup()
         MEDIA_INFO_LOG("rdb is not backuping, no need to interrupt");
         return;
     }
-    auto rdb = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdb = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG((rdb != nullptr), "[InterruptBackup] rdbStore is nullptr");
     int errCode = rdb->InterruptBackup();
     isBackuping_ = false;

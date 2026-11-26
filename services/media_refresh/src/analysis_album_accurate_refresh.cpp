@@ -19,6 +19,7 @@
 #include <cstdint>
 
 #include "analysis_strategy_registry.h"
+#include "media_string_utils.h"
 #include "analysis_album_pipeline.h"
 #include "analysis_analyzer_context.h"
 #include "accurate_debug_log.h"
@@ -138,7 +139,7 @@ void AnalysisAlbumAccurateRefresh::BuildRefreshItems(int32_t deltaCount, const v
         AnalysisAlbumRefreshInfo refresh;
         refresh.deltaCount_ = deltaCount;
         for (auto &idStr : deletedAssetIds) {
-            CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(idStr));
+            CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(idStr));
             refresh.removeFileIds_.emplace(std::stoi(idStr));
         }
 

@@ -16,30 +16,38 @@
 #ifndef OHOS_MEDIALIBRARY_PARSER_TASK_QUEUE_BASE_H
 #define OHOS_MEDIALIBRARY_PARSER_TASK_QUEUE_BASE_H
 
+#include <climits>
 #include <queue>
 #include <mutex>
 #include <string>
-
 
 namespace OHOS {
 namespace Media {
 constexpr size_t DEFAULT_MAX_TASK_NUM = 100;
 
+static constexpr int32_t PARSER_INVALID_ACCOUNT_ID = -1;
+
+struct ParserTask {
+    std::string path;
+    std::string fileUri;
+    int32_t accountId{PARSER_INVALID_ACCOUNT_ID};
+};
+
 class ParserTaskQueueBase {
 public:
     virtual ~ParserTaskQueueBase() = default;
-    bool AddTask(const std::string &path, const std::string &fileUri);
+    bool AddTask(const std::string &path, const std::string &fileUri, int32_t accountId = PARSER_INVALID_ACCOUNT_ID);
 
 protected:
-    virtual void ProcessTask(const std::pair<std::string, std::string> &task) = 0;
+    virtual void ProcessTask(const ParserTask &task) = 0;
     virtual size_t GetMaxTaskNum() const;
     void SendUpdateNotify(const std::string &fileUri);
 
 private:
     void StartTask();
     void ProcessTasks();
-    std::pair<std::string, std::string> GetNextTask();
-    std::queue<std::pair<std::string, std::string>> tasks_;
+    ParserTask GetNextTask();
+    std::queue<ParserTask> tasks_;
     std::mutex mtx_;
     bool processing_ = false;
 };

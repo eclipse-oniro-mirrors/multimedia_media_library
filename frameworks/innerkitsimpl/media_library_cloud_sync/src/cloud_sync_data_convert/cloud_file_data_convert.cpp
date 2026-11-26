@@ -25,6 +25,7 @@
 #include "exif_rotate_utils.h"
 #include "file_ex.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "cloud_media_client_utils.h"
 #include "cloud_media_sync_const.h"
 #include "mdk_record_photos_data.h"
@@ -91,7 +92,7 @@ int32_t CloudFileDataConvert::GetFileSize(const std::string &path, const std::st
     /* try get file size on xxxjpg/THM_EX/THM.jpg */
     std::string thumbnailPath = GetThumbPath(path, thumbExSuffix);
     struct stat fileStat;
-    MEDIA_DEBUG_LOG("GetFileSize stat %{public}s", MediaFileUtils::DesensitizePath(thumbnailPath).c_str());
+    MEDIA_DEBUG_LOG("GetFileSize stat %{public}s", MediaPathUtils::DesensitizePath(thumbnailPath).c_str());
     int32_t err = stat(thumbnailPath.c_str(), &fileStat);
     int32_t ret = E_OK;
     if (err < 0) {
@@ -102,7 +103,7 @@ int32_t CloudFileDataConvert::GetFileSize(const std::string &path, const std::st
             "get thumb size failed errno : " + std::to_string(errno) + ", path " +
                 ReportUtils::GetAnonyString(thumbnailPath)});
         MEDIA_DEBUG_LOG("get thumb size failed errno :%{public}d, %{public}s", errno,
-            MediaFileUtils::DesensitizePath(thumbnailPath).c_str());
+            MediaPathUtils::DesensitizePath(thumbnailPath).c_str());
     } else {
         fileSize = fileStat.st_size;
         ret = this->CheckFileSize(thumbSuffix, fileSize);
@@ -121,14 +122,14 @@ int32_t CloudFileDataConvert::GetFileSize(const std::string &path, const std::st
             "get thumb size failed errno : " + std::to_string(errno) + ", path " +
                 ReportUtils::GetAnonyString(thumbnailPath)});
         MEDIA_ERR_LOG("get thumb size failed errno :%{public}d, %{public}s", errno,
-            MediaFileUtils::DesensitizePath(thumbnailPath).c_str());
+            MediaPathUtils::DesensitizePath(thumbnailPath).c_str());
         return ((thumbSuffix == THUMB_SUFFIX) ? E_THM_SOURCE_BASIC : E_LCD_SOURCE_BASIC) + errNum;
     }
     fileSize = fileStat.st_size;
     ret = this->CheckFileSize(thumbSuffix, fileSize);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CheckFileSize err, %{public}d", ret);
     MEDIA_DEBUG_LOG("GetFileSize stat end thumbnailPath: %{public}s, err: %{public}d, size: %{public}" PRId64,
-        MediaFileUtils::DesensitizePath(thumbnailPath).c_str(),
+        MediaPathUtils::DesensitizePath(thumbnailPath).c_str(),
         err,
         fileSize);
     return E_OK;
@@ -473,7 +474,7 @@ int32_t CloudFileDataConvert::CheckContentLivePhoto(const CloudMdkRecordPhotosVo
             upLoadRecord.fileSourceType, upLoadRecord.data, upLoadRecord.storagePath, userId_);
     }
     MEDIA_DEBUG_LOG("CheckContentLivePhoto completed, lowerPath: %{public}s, content-info: %{public}s",
-                    MediaFileUtils::DesensitizePath(lowerPath).c_str(),
+                    MediaPathUtils::DesensitizePath(lowerPath).c_str(),
                     this->GetContentRelatedLog(upLoadRecord).c_str());
     return E_OK;
 }
@@ -493,20 +494,20 @@ int32_t CloudFileDataConvert::CheckContentFile(const CloudMdkRecordPhotosVo &upL
                       "errno: %{public}d, err: %{public}d, lowerPath: %{public}s, content-info: %{public}s",
                       errNum,
                       err,
-                      MediaFileUtils::DesensitizePath(lowerPath).c_str(),
+                      MediaPathUtils::DesensitizePath(lowerPath).c_str(),
                       this->GetContentRelatedLog(upLoadRecord).c_str());
         return E_CONTENT_SOURCE_BASIC + errNum;
     }
     if (fileStat.st_size <= 0) {
         MEDIA_ERR_LOG("CheckContentFile size err, size: %{public}s, lowerPath: %{public}s, content-info: %{public}s",
                       std::to_string(fileStat.st_size).c_str(),
-                      MediaFileUtils::DesensitizePath(lowerPath).c_str(),
+                      MediaPathUtils::DesensitizePath(lowerPath).c_str(),
                       this->GetContentRelatedLog(upLoadRecord).c_str());
         return E_CONTENT_SIZE_IS_ZERO;
     }
     MEDIA_DEBUG_LOG("CheckContentFile completed, size: %{public}s, lowerPath: %{public}s, content-info: %{public}s",
                     std::to_string(fileStat.st_size).c_str(),
-                    MediaFileUtils::DesensitizePath(lowerPath).c_str(),
+                    MediaPathUtils::DesensitizePath(lowerPath).c_str(),
                     this->GetContentRelatedLog(upLoadRecord).c_str());
     return E_OK;
 }
@@ -550,7 +551,7 @@ int32_t CloudFileDataConvert::HandleThumbnail(
                 F_OK,
                 "thumbnailPath " + ReportUtils::GetAnonyString(thumbnailPath) + " doesn't exist"});
             MEDIA_ERR_LOG("ReportFailure: thumnail doesn't exist %{public}s",
-                MediaFileUtils::DesensitizePath(thumbnailPath).c_str());
+                MediaPathUtils::DesensitizePath(thumbnailPath).c_str());
             return E_THM_SOURCE_BASIC + ENOENT;
         }
         thumbnailUploadPath = thumbnailPath;
@@ -575,22 +576,12 @@ int32_t CloudFileDataConvert::HandleThumbnail(
     return E_OK;
 }
 
-std::string CloudFileDataConvert::GetParentPath(const std::string &path)
-{
-    std::string name;
-    size_t slashIndex = path.rfind("/");
-    if (slashIndex != std::string::npos) {
-        name = path.substr(0, slashIndex);
-    }
-    return name;
-}
-
 int32_t CloudFileDataConvert::HandleLcd(
     std::map<std::string, MDKRecordField> &recordData, std::string &path, bool needUseExDir)
 {
     std::string lcdUploadPath;
     std::string lcdExPath = GetThumbPath(path, LCD_EX_SUFFIX);
-    std::string lcdExDir = GetParentPath(lcdExPath);
+    std::string lcdExDir = MediaPathUtils::GetParentPath(lcdExPath);
     if (!needUseExDir) {
         std::string lcdPath = GetThumbPath(path, LCD_SUFFIX);
         if (access(lcdPath.c_str(), F_OK)) {
@@ -1161,7 +1152,7 @@ std::string CloudFileDataConvert::GetContentRelatedLog(const CloudMdkRecordPhoto
     log << "isMediaLivePhoto: " << isMediaLivePhoto << ", ";
     log << "isMovingPhoto: " << isMovingPhoto << ", ";
     log << "isGraffiti: " << isGraffiti << ", ";
-    log << "data: " << MediaFileUtils::DesensitizePath(upLoadRecord.data.c_str());
+    log << "data: " << MediaPathUtils::DesensitizePath(upLoadRecord.data.c_str());
     return log.str();
 }
 

@@ -31,6 +31,7 @@
  
 #include "user_define_ipc_client.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_unistore_manager.h"
@@ -105,10 +106,10 @@ static void InsertAssetIntoPhotosTable(const std::string &filePath, const std::s
  
 HWTEST_F(RequestImageTest, QueryPhotoStatus_Test_001, TestSize.Level0)
 {
-    bool createDirRes = MediaFileUtils::CreateDirectory("/data/local/tmp");
+    bool createDirRes = MediaPureFileUtils::CreateDirectory("/data/local/tmp");
     EXPECT_EQ(createDirRes, true);
     std::string filePath = "/data/local/tmp/IMG_1501924305_001.jpg";
-    if (!MediaFileUtils::IsFileExists(filePath)) {
+    if (!MediaPureFileUtils::IsFileExists(filePath)) {
         bool createFileRes = MediaFileUtils::CreateFile(filePath);
         EXPECT_EQ(createFileRes, true);
     }

@@ -69,8 +69,7 @@ public:
         const std::string &path, const std::string &dateTaken);
     EXPORT bool BatchDeleteThumbnailDirAndAstc(const std::string &tableName, const std::vector<std::string> &ids,
         const std::vector<std::string> &paths, const std::vector<std::string> &dateTakens);
-    EXPORT void Init(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-    const std::shared_ptr<OHOS::AbilityRuntime::Context> &context);
+    EXPORT void Init(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context);
     EXPORT int32_t GetAgingDataSize(const int64_t &time, int &count);
     int32_t QueryNewThumbnailCount(const int64_t &time, int &count);
     void DeleteAstcWithFileIdAndDateTaken(const std::string &fileId, const std::string &dateTaken);
@@ -111,7 +110,6 @@ private:
         const std::string &uri, int32_t &beginStamp, int32_t &type);
     static std::shared_ptr<ThumbnailService> thumbnailServiceInstance_;
     static std::mutex instanceLock_;
-    std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr_;
     std::shared_ptr<OHOS::AbilityRuntime::Context> context_;
     std::unique_ptr<BackgroundGenerateManager> bgGenerateManager_;
     std::shared_ptr<NativeRdb::RdbPredicates> rdbPredicatePtr_;

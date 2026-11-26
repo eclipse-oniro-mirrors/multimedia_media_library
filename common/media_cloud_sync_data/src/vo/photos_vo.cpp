@@ -20,7 +20,7 @@
 #include <sstream>
 
 #include "media_log.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool PhotosVo::Unmarshalling(MessageParcel &parcel)
@@ -127,7 +127,7 @@ std::string PhotosVo::ToString() const
        << "\"modifiedTime\": " << this->modifiedTime << ", "
        << "\"type\": " << this->type << ", "
        << "\"fileSourceType\": " << this->fileSourceType << ", "
-       << "\"storagePath\": \"" << MediaFileUtils::DesensitizePath(this->storagePath) << "\", "
+       << "\"storagePath\": \"" << MediaPathUtils::DesensitizePath(this->storagePath) << "\", "
        << "\"uniqueId\": " << this->uniqueId << ", "
        << "\"packageName\": " << this->packageName << ", "
        << "\"photoRiskStatus\": " << this->photoRiskStatus << ", "

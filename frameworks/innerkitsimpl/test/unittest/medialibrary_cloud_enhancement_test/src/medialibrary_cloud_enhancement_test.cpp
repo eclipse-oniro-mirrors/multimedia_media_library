@@ -16,6 +16,7 @@
 #define MLOG_TAG "CloudEnhancementUnitTest"
 
 #include "medialibrary_cloud_enhancement_test.h"
+#include "media_pure_file_utils.h"
 
 #include <chrono>
 #include <thread>
@@ -166,7 +167,7 @@ void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.editData");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -1787,8 +1788,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_Test_001, Tes
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), false);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");
@@ -1809,8 +1810,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_002, TestSize
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");
@@ -1834,8 +1835,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_Test_003, Tes
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");
@@ -1858,8 +1859,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_Test_004, Tes
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");

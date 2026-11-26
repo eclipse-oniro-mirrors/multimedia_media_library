@@ -22,6 +22,7 @@
 #include "photos_po.h"
 #include "photos_dto.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 void CloudMediaDataServiceProcessor::GetPhotosDto(

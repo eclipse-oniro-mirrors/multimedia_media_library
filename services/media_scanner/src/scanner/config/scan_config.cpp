@@ -20,8 +20,8 @@
 #include <sstream>
 
 #include "directory_ex.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "scanner_utils.h"
 // LCOV_EXCL_START
@@ -40,13 +40,13 @@ bool ScanConfig::Validate(std::string& realPath) const
 
     if (!PathToRealPath(info.GetFilePath(), realPath)) {
         MEDIA_ERR_LOG("ScanConfig::Validate: failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(info.GetFilePath()).c_str(), errno);
+            MediaPathUtils::DesensitizePath(info.GetFilePath()).c_str(), errno);
         return false;
     }
 
     if (!ScannerUtils::IsRegularFile(realPath)) {
         MEDIA_ERR_LOG("ScanConfig::Validate: path %{public}s is not a regular file",
-            MediaFileUtils::DesensitizePath(realPath).c_str());
+            MediaPathUtils::DesensitizePath(realPath).c_str());
         return false;
     }
 

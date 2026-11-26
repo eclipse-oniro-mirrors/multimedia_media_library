@@ -14,6 +14,7 @@
 */
 
 #include "medialibrary_thumbnail_source_loading_test.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "thumbnail_source_loading.h"
 #include "dfx_manager.h"
@@ -51,7 +52,7 @@ static constexpr int32_t TEST_PIXELMAP_WIDTH_AND_HEIGHT = 100;
 static unique_ptr<ImageSource> CreateTestImageSource()
 {
     string path = HDR_PICTURE_PATH;
-    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaPureFileUtils::IsFileExists(path));
     uint32_t err;
     SourceOptions opts;
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);

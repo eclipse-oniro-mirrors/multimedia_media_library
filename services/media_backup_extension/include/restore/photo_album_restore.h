@@ -21,6 +21,7 @@
 #include "rdb_store.h"
 #include "photo_album_dao.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
 
 namespace OHOS::Media {
@@ -66,7 +67,7 @@ public:
                 info.relativeBucketId.c_str(),
                 MediaFileUtils::DesensitizeName(info.albumName).c_str(),
                 MediaFileUtils::DesensitizeName(info.bundleName).c_str(),
-                MediaFileUtils::DesensitizePath(info.lPath).c_str(),
+                MediaPathUtils::DesensitizePath(info.lPath).c_str(),
                 info.priority,
                 info.uploadStatus,
                 info.isLocal);
@@ -90,7 +91,7 @@ public:
                 MediaFileUtils::DesensitizeName(info.albumName).c_str(),
                 info.albumType,
                 info.albumSubType,
-                MediaFileUtils::DesensitizePath(info.lPath).c_str(),
+                MediaPathUtils::DesensitizePath(info.lPath).c_str(),
                 MediaFileUtils::DesensitizeName(info.bundleName).c_str(),
                 info.priority,
                 info.uploadStatus,

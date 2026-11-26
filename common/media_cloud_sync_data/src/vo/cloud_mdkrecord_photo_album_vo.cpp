@@ -22,6 +22,7 @@
 #include "media_log.h"
 #include "itypes_util.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool CloudMdkRecordPhotoAlbumVo::Marshalling(MessageParcel &parcel) const
@@ -83,7 +84,7 @@ std::string CloudMdkRecordPhotoAlbumVo::ToString() const
        << "\"albumId\": \"" << albumId << "\","
        << "\"albumType\": \"" << albumType << "\","
        << "\"albumName\": \"" << MediaFileUtils::DesensitizeName(albumName) << "\","
-       << "\"lpath\": \"" << MediaFileUtils::DesensitizePath(lpath) << "\","
+       << "\"lpath\": \"" << MediaPathUtils::DesensitizePath(lpath) << "\","
        << "\"cloudId\": \"" << cloudId << "\","
        << "\"albumSubtype\": \"" << albumSubtype << "\","
        << "\"dateAdded\": \"" << dateAdded << "\","

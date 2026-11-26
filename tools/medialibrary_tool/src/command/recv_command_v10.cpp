@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "command/recv_command_v10.h"
+#include "media_pure_file_utils.h"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -34,6 +35,7 @@
 #include "userfile_client.h"
 #include "userfile_client_ex.h"
 #include "media_audio_column.h"
+#include "media_path_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -46,7 +48,7 @@ constexpr mode_t OPEN_MODE = 0644;
 static bool GetWriteFilePath(const ExecEnv& env, const string& displayName, std::string& wFilePath)
 {
     wFilePath = env.recvParam.recvPath;
-    if (!MediaFileUtils::IsDirectory(wFilePath)) {
+    if (!MediaPureFileUtils::IsDirectory(wFilePath)) {
         if (env.recvParam.isRecvAll) {
             MEDIA_ERR_LOG("RecvFilePath:%{public}s is not a directory.", wFilePath.c_str());
             printf("RecvFilePath:%s is not a directory.\n", wFilePath.c_str());
@@ -75,7 +77,7 @@ static int32_t RecvFile(const ExecEnv &env, const FileAsset &fileAsset, bool isR
     if (!GetWriteFilePath(env, displayName, wFilePath)) {
         return Media::E_ERR;
     }
-    auto wfd = open(wFilePath.c_str(), O_CREAT | O_WRONLY | O_CLOEXEC, OPEN_MODE);
+    auto wfd = open(wFilePath.c_str(), O_CREAT | O_EXCL | O_NOFOLLOW | O_WRONLY | O_CLOEXEC, OPEN_MODE);
     if (wfd <= 0) {
         MEDIA_ERR_LOG("Open write path failed. errno:%{public}d, path name:%{public}s", errno, wFilePath.c_str());
         printf("%s open write path failed. errno:%d, path name:%s\n", STR_FAIL.c_str(), errno, wFilePath.c_str());
@@ -88,7 +90,7 @@ static int32_t RecvFile(const ExecEnv &env, const FileAsset &fileAsset, bool isR
             CONST_OPEN_MOVING_PHOTO_VIDEO);
     }
     auto rfd = UserFileClientEx::Open(openUri, Media::MEDIA_FILEMODE_READONLY);
-    if (rfd <= 0) {
+    if (rfd < 0) {
         MEDIA_ERR_LOG("Open source media file failed. uri:%{public}s", openUri.c_str());
         printf("%s open source media file failed.\n", STR_FAIL.c_str());
         close(wfd);
@@ -114,19 +116,15 @@ static bool IsRoot()
 
 static string ConvertToCloudPath(const string& inputPath)
 {
-    std::string tmpPath = inputPath;
-    const std::string localPrefix = "/storage/media/local/files/Photo";
-    const std::string cloudPrefix = "/storage/cloud/files/Photo";
-
-    // Checks if input path starts with /storage/media/local/files/Photo
-    if (tmpPath.rfind(localPrefix, 0) == 0) {
-        tmpPath.replace(0, localPrefix.length(), cloudPrefix);
-    } else {
+    // The client only converts compatible paths. The server selects the account.
+    const auto localPrefix = MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::NO);
+    const auto cloudPrefix = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO);
+    if (localPrefix.empty() || cloudPrefix.empty() || inputPath.size() <= localPrefix.size() ||
+        inputPath.compare(0, localPrefix.size(), localPrefix) != 0) {
         MEDIA_ERR_LOG("Convert to cloud path failed, input path format incorrect");
-        return tmpPath;
+        return "";
     }
-
-    return tmpPath;
+    return cloudPrefix + inputPath.substr(localPrefix.size());
 }
 
 int32_t RecvCommandV10::QueryAssets(std::shared_ptr<DataShare::DataShareResultSet>& resultSet,
@@ -142,7 +140,6 @@ int32_t RecvCommandV10::QueryAssets(std::shared_ptr<DataShare::DataShareResultSe
         MEDIA_ERR_LOG("query failed. queryUriStr:empty, tableName:%{public}s", tableName.c_str());
         return Media::E_ERR;
     }
-
     OHOS::DataShare::DataSharePredicates predicates;
     if (!isRecvAll_) {
         if (!uri_.empty()) {
@@ -150,7 +147,11 @@ int32_t RecvCommandV10::QueryAssets(std::shared_ptr<DataShare::DataShareResultSe
             std::string id = fileUri.GetFileId();
             predicates.EqualTo(MediaColumn::MEDIA_ID, id);
         } else if (!srcPath_.empty()) {
-            predicates.EqualTo(MediaColumn::MEDIA_FILE_PATH, ConvertToCloudPath(srcPath_));
+            const auto cloudPath = ConvertToCloudPath(srcPath_);
+            if (cloudPath.empty()) {
+                return Media::E_ERR;
+            }
+            predicates.EqualTo(MediaColumn::MEDIA_FILE_PATH, cloudPath);
         }
     }
 
@@ -167,7 +168,7 @@ int32_t RecvCommandV10::QueryAssets(std::shared_ptr<DataShare::DataShareResultSe
     resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("query failed. resultSet:null, errCode:%{public}d.", errCode);
-        return ((errCode == Media::E_OK) ? Media::E_OK : Media::E_ERR);
+        return Media::E_ERR;
     }
     if (errCode != Media::E_OK) {
         MEDIA_ERR_LOG("query failed. errCode:%{public}d.", errCode);
@@ -186,6 +187,9 @@ bool RecvCommandV10::QueryMovingPhotoAsset(const string& filePath, unique_ptr<Fi
     }
 
     string queryPath = ConvertToCloudPath(filePath);
+    if (queryPath.empty()) {
+        return false;
+    }
     string::size_type lastDotPos = queryPath.find_last_of('.');
     if (lastDotPos == string::npos) {
         MEDIA_ERR_LOG("filePath does not have an extension: %{public}s", filePath.c_str());
@@ -217,10 +221,11 @@ bool RecvCommandV10::QueryMovingPhotoAsset(const string& filePath, unique_ptr<Fi
     fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     auto count = fetchResult->GetCount();
     if (count <= 0) {
+        fetchResult->Close();
         return false;
     }
     movingPhotoAsset = fetchResult->GetFirstObject();
-
+    fetchResult->Close();
     return true;
 }
 
@@ -252,6 +257,26 @@ static bool PathExists(const string& path)
     return !outString.empty();
 }
 
+static int32_t RecvResultFiles(const ExecEnv &env, const std::shared_ptr<FetchResult<FileAsset>> &fetchResult,
+    int32_t count)
+{
+    bool hasError = false;
+    for (int32_t index = 0; index < count; index++) {
+        auto fileAsset = fetchResult->GetObjectAtPosition(index);
+        if (fileAsset == nullptr) {
+            MEDIA_ERR_LOG("Get media asset failed. index:%{public}d", index);
+            printf("%s get media asset failed. index:%d\n", STR_FAIL.c_str(), index);
+            hasError = true;
+            continue;
+        }
+        if (RecvFile(env, *fileAsset) != Media::E_OK) {
+            hasError = true;
+        }
+    }
+    fetchResult->Close();
+    return hasError ? Media::E_ERR : Media::E_OK;
+}
+
 int32_t RecvCommandV10::RecvAssets(const ExecEnv& env, const std::string& tableName)
 {
     printf("Table Name: %s\n", tableName.c_str());
@@ -264,22 +289,27 @@ int32_t RecvCommandV10::RecvAssets(const ExecEnv& env, const std::string& tableN
     }
     std::shared_ptr<DataShare::DataShareResultSet> resultSet;
     auto res = QueryAssets(resultSet, tableName);
-    std::shared_ptr<FetchResult<FileAsset>> fetchResult = std::make_shared<FetchResult<FileAsset>>(resultSet);
-    fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
-    if (res != Media::E_OK) {
+    if (res != Media::E_OK || resultSet == nullptr) {
         MEDIA_ERR_LOG("query issue. tableName:%{public}s", tableName.c_str());
         printf("%s query issue. tableName:%s\n", STR_FAIL.c_str(), tableName.c_str());
         return Media::E_ERR;
     }
+    auto fetchResult = std::make_shared<FetchResult<FileAsset>>(resultSet);
     if (fetchResult == nullptr) {
         return Media::E_ERR;
     }
+    fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     auto count = fetchResult->GetCount();
+    if (count < 0) {
+        MEDIA_ERR_LOG("Get media asset count failed. count: %{public}d.", count);
+        printf("%s Get media asset count failed. count:%d\n", STR_FAIL.c_str(), count);
+        return Media::E_ERR;
+    }
     if (count == 0 && !isRecvAll_) {
+        fetchResult->Close();
         unique_ptr<FileAsset> movingPhotoAsset;
         if (IsMovingPhotoVideoPath(movingPhotoAsset)) {
-            RecvFile(env, *movingPhotoAsset, true);
-            return E_OK;
+            return RecvFile(env, *movingPhotoAsset, true);
         }
         MEDIA_ERR_LOG("No valid media asset found. uri: %{public}s, path: %{public}s",
             uri_.c_str(), srcPath_.c_str());
@@ -287,12 +317,7 @@ int32_t RecvCommandV10::RecvAssets(const ExecEnv& env, const std::string& tableN
             STR_FAIL.c_str(), srcPath_.empty() ? "uri" : "path");
         return Media::E_ERR;
     }
-    for (int32_t index = 0; index < count; index++) {
-        auto fileAsset = fetchResult->GetObjectAtPosition(index);
-        RecvFile(env, *fileAsset);
-    }
-    fetchResult->Close();
-    return Media::E_OK;
+    return RecvResultFiles(env, fetchResult, count);
 }
 
 bool RecvCommandV10::CheckArgs(const ExecEnv& env)
@@ -347,7 +372,6 @@ int32_t RecvCommandV10::Start(const ExecEnv &env)
         return RecvAssets(env, tableName_);
     }
 }
-
 } // namespace MediaTool
 } // namespace Media
 } // namespace OHOS

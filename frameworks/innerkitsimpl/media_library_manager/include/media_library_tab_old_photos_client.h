@@ -24,7 +24,6 @@
 #include "datashare_result_set.h"
 #include "file_uri.h"
 #include "datashare_predicates.h"
-#include "media_library_manager.h"
 
 namespace OHOS::Media {
 class TabOldPhotosClient {
@@ -45,7 +44,7 @@ private:
     };
 
 public:
-    TabOldPhotosClient(MediaLibraryManager &mediaLibraryManager) : mediaLibraryManager_(mediaLibraryManager) {};
+    TabOldPhotosClient() = default;
     std::unordered_map<std::string, std::string> GetUrisByOldUris(std::vector<std::string>& uris);
     int32_t GetClonedAssetUrisInner(const std::vector<std::string> &uris,
         std::map<std::string, std::string> &clonedUris);
@@ -80,7 +79,6 @@ private:
     const std::string COLUMN_OLD_DATA = "old_data";
     const std::string COLUMN_DISPLAY_NAME = "display_name";
     enum { URI_TYPE_DEFAULT, URI_TYPE_ID_LINK, URI_TYPE_PATH, URI_TYPE_ID };
-    MediaLibraryManager &mediaLibraryManager_;
 };
 } // namespace OHOS::Media
 

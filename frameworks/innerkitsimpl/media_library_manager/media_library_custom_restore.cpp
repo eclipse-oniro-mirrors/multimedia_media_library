@@ -19,6 +19,7 @@
 
 #include "datashare_helper.h"
 #include "iservice_registry.h"
+#include "media_common_client.h"
 #include "media_log.h"
 #include "medialibrary_custom_restore_observer_manager.h"
 #include "medialibrary_errno.h"
@@ -56,33 +57,13 @@ void CustomRestore::Init(string bundleName, string appName, string appId, int32_
     appName_ = appName;
     appId_ = appId;
     tokenId_ = tokenId;
-    InitDataShareHelper();
-}
-
-void CustomRestore::InitDataShareHelper()
-{
-    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
-    if (saManager == nullptr) {
-        MEDIA_ERR_LOG("get system ability mgr failed.");
-        return;
-    }
-    auto remoteObj = saManager->GetSystemAbility(STORAGE_MANAGER_MANAGER_ID);
-    if (remoteObj == nullptr) {
-        MEDIA_ERR_LOG("GetSystemAbility Service failed.");
-        return;
-    }
-    if (sDataShareHelper_ == nullptr && remoteObj != nullptr) {
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(remoteObj, MEDIALIBRARY_DATA_URI);
-    }
+    IPC::MediaCommonClient::GetInstance().InitFromSa();
 }
 
 int32_t CustomRestore::Restore(std::string dbPath)
 {
     MEDIA_DEBUG_LOG("CustomRestore Restore");
-    if (sDataShareHelper_ == nullptr) {
-        MEDIA_ERR_LOG("sDataShareHelper_ is null.");
-        return E_DATASHARE_IS_NULL;
-    }
+
     CHECK_AND_RETURN_RET_LOG(!albumLpath_.empty(), E_INVALID_VALUES, "albumLpath is empty.");
     CHECK_AND_RETURN_RET_LOG(!keyPath_.empty(), E_INVALID_VALUES, "keyPath is empty.");
     CHECK_AND_RETURN_RET_LOG(!bundleName_.empty(), E_INVALID_VALUES, "bundleName is empty.");
@@ -97,7 +78,6 @@ int32_t CustomRestore::Restore(std::string dbPath)
     reqBody.appId = appId_;
     reqBody.isDeduplication = isDeduplication_;
     int32_t result = IPC::UserInnerIPCClient()
-                         .SetDataShareHelper(sDataShareHelper_)
                          .Call(static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE), reqBody);
     MEDIA_DEBUG_LOG("CustomRestore Restore end. %{public}d", result);
     return result;
@@ -106,12 +86,10 @@ int32_t CustomRestore::Restore(std::string dbPath)
 int32_t CustomRestore::StopRestore()
 {
     MEDIA_DEBUG_LOG("CustomRestore StopRestore");
-    CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, E_DATASHARE_IS_NULL, "sDataShareHelper_ is null.");
 
     StopRestoreReqBody reqBody;
     reqBody.keyPath = keyPath_;
     int32_t result = IPC::UserInnerIPCClient()
-                         .SetDataShareHelper(sDataShareHelper_)
                          .Call(static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL), reqBody);
     MEDIA_DEBUG_LOG("CustomRestore StopRestore end. %{public}d", result);
     return result;
@@ -124,17 +102,15 @@ int32_t CustomRestore::RegisterCustomRestoreCallback(std::shared_ptr<CustomResto
         MEDIA_ERR_LOG("CustomRestore RegisterCallback callback is null.");
         return E_CALLBACK_IS_NULL;
     }
-    if (sDataShareHelper_ == nullptr) {
-        MEDIA_ERR_LOG("CustomRestore RegisterCallback sDataShareHelper_ is null.");
-        return E_DATASHARE_IS_NULL;
-    }
+
     std::shared_ptr<CustomRestoreNotifyObserver> notifyObserver =
             std::make_shared<CustomRestoreNotifyObserver>(callback);
     CHECK_AND_RETURN_RET_LOG(notifyObserver != nullptr, E_OBSERVER_IS_NULL,
         "CustomRestore RegisterCallback notifyObserver is null.");
 
     Uri customRestoreUri(NOTIFY_URI_PREFIX + keyPath_);
-    sDataShareHelper_->RegisterObserverExt(customRestoreUri, notifyObserver, true);
+    auto &client = IPC::MediaCommonClient::GetInstance();
+    client.RegisterObserverExt(customRestoreUri, notifyObserver, true);
     CustomRestoreObserverManager::GetInstance().AttachObserver(callback, notifyObserver);
     return E_OK;
 }
@@ -147,15 +123,14 @@ int32_t CustomRestore::UnregisterCustomRestoreCallback(std::shared_ptr<CustomRes
         return E_CALLBACK_IS_NULL;
     }
 
-    CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, E_DATASHARE_IS_NULL,
-        "CustomRestore UnregisterCallback sDataShareHelper_ is null.");
     std::shared_ptr<CustomRestoreNotifyObserver> notifyObserver =
         CustomRestoreObserverManager::GetInstance().QueryObserver(callback);
     CHECK_AND_RETURN_RET_LOG(notifyObserver != nullptr, E_OBSERVER_IS_NULL,
         "CustomRestore UnRegisterCallback notifyObserver is null.");
 
     Uri customRestoreUri(NOTIFY_URI_PREFIX + keyPath_);
-    sDataShareHelper_->UnregisterObserverExt(customRestoreUri, notifyObserver);
+    auto &client = IPC::MediaCommonClient::GetInstance();
+    client.UnregisterObserverExt(customRestoreUri, notifyObserver);
     CustomRestoreObserverManager::GetInstance().DetachObserver(callback);
     return E_OK;
 }

@@ -16,6 +16,7 @@
 #define MLOG_TAG "ImagePipeline"
 
 #include "image_pipeline.h"
+#include "media_path_utils.h"
 
 #include "camera_mapper.h"
 #include "camera_path_utils.h"
@@ -23,6 +24,7 @@
 #include "high_quality_scan_file_callback.h"
 #include "media_change_effect.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "media_values_bucket_utils.h"
 #include "medialibrary_asset_operations.h"
@@ -95,7 +97,7 @@ int32_t ImagePipeline::AddFiltersToPhoto(const std::string& sourcePath, const st
     MediaLibraryTracer tracer;
     tracer.Start("ImagePipeline::AddFiltersToPhoto");
     MEDIA_INFO_LOG("AddFiltersToPhoto sourcePath: %{private}s, tempFilterPath: %{private}s",
-        MediaFileUtils::DesensitizePath(sourcePath).c_str(), MediaFileUtils::DesensitizePath(tempFilterPath).c_str());
+        MediaPathUtils::DesensitizePath(sourcePath).c_str(), MediaPathUtils::DesensitizePath(tempFilterPath).c_str());
 
     auto assetInfo = GetAssetInfo();
     std::string info = editData;
@@ -168,7 +170,7 @@ void ImagePipeline::SaveImageForStageInternal(const SaveCameraPhotoDto& dto)
     std::string assetPath = assetInfo.GetPath();
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, assetPath, editDataCameraPath);
-    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         MEDIA_INFO_LOG("No need SaveImageForStageInternal, editDataCameraPath not exist.");
         return;
     }
@@ -313,7 +315,7 @@ int32_t ImagePipeline::ProcessMultistagesPhotoInternal(const std::shared_ptr<Fil
     // 图片没编辑过
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, path, editDataCameraPath);
-    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         // 没有editdata_camera，只落盘在Photo目录
         return SaveOneImageForOnProcess(sourceImage, path);
     } else {

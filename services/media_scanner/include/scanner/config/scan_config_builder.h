@@ -49,6 +49,11 @@ public:
     ScanConfigBuilder& SetConflictPolicy(ConflictPolicy policy);
     ScanConfigBuilder& SetQuality(ScanQuality quality);
 
+    // 多账号支持
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    ScanConfigBuilder& SetAccountId(int32_t accountId);
+#endif
+
     // Info 设置（整体传入，不再逐字段配置）
     ScanConfigBuilder& SetDefaultScanInfo(const DefaultScanInfo& info);
     ScanConfigBuilder& SetCustomRestoreInfo(const CustomRestoreInfo& info);

@@ -19,6 +19,7 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -33,23 +34,23 @@ void MediaEditUtilsUnitTest::TearDown(void) {}
 HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_GetEditDataDir_001, TestSize.Level1)
 {
     string photoPath = "/storage/cloud/files/Photo/1/IMG_123435213_124.jpg";
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath),
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath),
         "/storage/cloud/files/.editData/Photo/1/IMG_123435213_124.jpg");
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath, -1),
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath, -1),
         "/storage/cloud/files/.editData/Photo/1/IMG_123435213_124.jpg");
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath, 100),
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath, 100),
         "/storage/cloud/100/files/.editData/Photo/1/IMG_123435213_124.jpg");
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath, 101),
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath, 101),
         "/storage/cloud/101/files/.editData/Photo/1/IMG_123435213_124.jpg");
 }
 
 HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_GetEditDataDir_002, TestSize.Level1)
 {
     string photoPath = "/storage/data/test_invalid.jpg";
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath), "");
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath, -1), "");
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath, 100), "");
-    EXPECT_EQ(MediaEditUtils::GetEditDataDir(photoPath, 101), "");
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath), "");
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath, -1), "");
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath, 100), "");
+    EXPECT_EQ(MediaEditUtils::GetEditDataDirForCloud(photoPath, 101), "");
 }
 
 HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_GetEditDataPath_001, TestSize.Level1)
@@ -238,7 +239,8 @@ HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_GetEditDataTempPath_003, TestSiz
 
 HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_IsEditDataSourceBackExists_001, TestSize.Level1)
 {
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
+    EXPECT_EQ(
+        MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
     EXPECT_EQ(
         MediaFileUtils::CreateFile("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source_back.jpg"),
         true);
@@ -254,7 +256,7 @@ HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_IsEditDataSourceBackExists_001, 
 
 HWTEST_F(MediaEditUtilsUnitTest, MediaEditUtils_IsEditDataSourceBackExists_002, TestSize.Level1)
 {
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
     string photoPath = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
 
     bool ret = MediaEditUtils::IsEditDataSourceBackExists(photoPath);

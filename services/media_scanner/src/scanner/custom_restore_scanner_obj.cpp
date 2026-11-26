@@ -17,6 +17,7 @@
 
 #include "custom_restore_scanner_obj.h"
 
+#include "account_scope.h"
 #include "custom_restore_utils.h"
 #include "media_column.h"
 #include "media_file_uri.h"
@@ -64,6 +65,9 @@ CustomRestoreScannerObj::CustomRestoreScannerObj(CustomRestoreInfo& info)
 
 int32_t CustomRestoreScannerObj::Execute()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    AccountScope scope(accountId_);
+#endif
     MEDIA_INFO_LOG("CustomRestoreScannerObj::Execute begin, file count: %{public}d",
         static_cast<int32_t>(customRestoreInfo_.GetFileInfos().size()));
 
@@ -108,6 +112,7 @@ int32_t CustomRestoreScannerObj::ResolveMetadata()
                 fileInfo.fileName.c_str());
         } else {
             resolveCount++;
+            item.metadataResolved = true;
         }
         items_.push_back(std::move(item));
     }
@@ -125,7 +130,7 @@ int32_t CustomRestoreScannerObj::Deduplicate()
     std::vector<RestoreFileInfo> fileInfos;
     fileInfos.reserve(items_.size());
     for (auto &item : items_) {
-        if (item.metadata != nullptr) {
+        if (item.metadata != nullptr && item.metadataResolved) {
             item.fileInfo.size = item.metadata->GetFileSize();
             item.fileInfo.orientation = item.metadata->GetOrientation();
         }
@@ -194,6 +199,13 @@ int32_t CustomRestoreScannerObj::ConvertToValues()
         if (item.metadata->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS)) {
             subtype = static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS);
         }
+        if (item.fileInfo.isLivePhoto) {
+            item.values.Put(PhotoColumn::PHOTO_COVER_POSITION, item.metadata->GetCoverPosition());
+        }
+
+        if (item.metadata->GetLivePhoto4dStatus() != 0) {
+            item.values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, item.metadata->GetLivePhoto4dStatus());
+        }
 
         // Fields from fileInfo
         item.values.Put(MediaColumn::MEDIA_FILE_PATH, item.fileInfo.filePath);
@@ -220,6 +232,7 @@ int32_t CustomRestoreScannerObj::ConvertToValues()
         }
         item.values.Put(PhotoColumn::MUSIC_MASTER_MODE, item.metadata->GetMusicMasterMode());
         item.values.Put(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NUMBER, item.metadata->GetXtStyleTemplateNumber());
+        item.values.Put(PhotoColumn::PHOTO_ACCOUNT_ID, accountId_);
     }
     MEDIA_INFO_LOG("ConvertToValues done");
     return E_OK;

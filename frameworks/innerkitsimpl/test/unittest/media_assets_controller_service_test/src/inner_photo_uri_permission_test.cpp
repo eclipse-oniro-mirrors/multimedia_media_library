@@ -453,7 +453,7 @@ HWTEST_F(InnerPhotoUriPermissionTest, GetUrisByOldUris_001, TestSize.Level0)
     std::vector<std::string> uris;
     // test case 1 empty uris will return emty map
 
-    TabOldPhotosClient tabOldPhotosClient = TabOldPhotosClient(manager);
+    TabOldPhotosClient tabOldPhotosClient = TabOldPhotosClient();
     auto ret = GetUrisByOldUrisInner(uris, tabOldPhotosClient);
     EXPECT_EQ(ret.empty(), true);
 

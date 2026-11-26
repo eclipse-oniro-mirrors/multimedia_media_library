@@ -35,8 +35,6 @@ public:
     CloudMediaSyncUtils();
     ~CloudMediaSyncUtils();
 
-    static std::string GetLocalPath(const std::string &filePath);
-    static std::string RestoreCloudPath(const std::string &filepath);
     static bool IsLocalDirty(int32_t dirty, bool isDelete);
     static bool FileIsLocal(const int32_t position);
     static std::string GetThumbParentPath(const std::string &path, const std::string &prefixCloud);

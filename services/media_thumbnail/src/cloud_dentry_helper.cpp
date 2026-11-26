@@ -27,6 +27,7 @@
 #include "thumbnail_file_utils.h"
 #include "thumbnail_utils.h"
 #include "result_set_utils.h"
+#include "media_path_utils.h"
 
 const std::string DENTRY_INFO_ORIGIN = "CONTENT";
 const std::string DENTRY_INFO_LCD = "LCD";
@@ -39,8 +40,6 @@ namespace OHOS::Media {
 using namespace OHOS::FileManagement::CloudSync;
 
 const int64_t THUMB_DENTRY_SIZE = 2 * 1024 * 1024;
-const std::string CLOUD_FILES_PREFIX = "/storage/cloud/files/";
-const std::string CLOUD_MEDIA_PREFIX = "/storage/media/cloud/files/";
 bool CloudDentryHelper::NeedCreateDentry(const std::string &filePath)
 {
     if (filePath.empty()) {
@@ -78,9 +77,10 @@ int32_t CloudDentryHelper::CreateDentryForThumbnail(const std::string &fileId, c
     }
     std::string thumbSuffix = GetThumbSuffix(thumbType);
     std::string thumbDentryPath;
-    if (originalPath.find(CLOUD_FILES_PREFIX) == 0) {
-        thumbDentryPath = CLOUD_MEDIA_PREFIX + ".thumbs/" + originalPath.substr(CLOUD_FILES_PREFIX.length()) + "/" +
-                          thumbSuffix + ".jpg";
+    std::string cloudFilesPrefix = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (originalPath.find(cloudFilesPrefix) == 0) {
+        thumbDentryPath = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES) + ".thumbs/" +
+            originalPath.substr(cloudFilesPrefix.length()) + "/" + thumbSuffix + ".jpg";
     } else {
         MEDIA_ERR_LOG("Invalid original path format: %{public}s", originalPath.c_str());
         return E_ERR;
@@ -123,8 +123,10 @@ int32_t CloudDentryHelper::CreateDentryForOrigin(const std::string &fileId,
     const std::string &filePath)
 {
     std::string dentryPath;
-    if (filePath.find(CLOUD_FILES_PREFIX) == 0) {
-        dentryPath = CLOUD_MEDIA_PREFIX + filePath.substr(CLOUD_FILES_PREFIX.length());
+    std::string cloudFilesPrefix = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (filePath.find(cloudFilesPrefix) == 0) {
+        dentryPath = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES) +
+            filePath.substr(cloudFilesPrefix.length());
     } else {
         MEDIA_ERR_LOG("Invalid filePath format: %{public}s", filePath.c_str());
         return E_ERR;

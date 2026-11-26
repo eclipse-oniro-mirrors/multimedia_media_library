@@ -24,6 +24,8 @@
 #include "parameters.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
+#include "media_path_utils.h"
 #include "moving_photo_file_utils.h"
 #include "cloud_media_file_utils.h"
 #include "cloud_media_attachment_utils.h"
@@ -330,7 +332,7 @@ int32_t CloudMediaDownloadService::GetOnDownloadAssetData(const PhotosPo &photos
     assetData.needParseCover = isMovingPhoto && isInvalidCover;
     assetData.needSliceRaw = isMovingPhoto;
     assetData.path = photosPo.data.value_or("");
-    assetData.localPath = CloudMediaSyncUtils::GetLocalPath(assetData.path);
+    assetData.localPath = MediaPathUtils::ConvertCloudPathToLocalPath(assetData.path);
     assetData.dateModified = photosPo.dateModified.value_or(0);
     std::string extraUri = MediaFileUtils::GetExtraUri(photosPo.displayName.value_or(""), photosPo.data.value_or(""));
     assetData.fileUri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
@@ -351,10 +353,10 @@ void CloudMediaDownloadService::UnlinkAsset(OnDownloadAssetData &assetData)
 {
     int32_t ret = unlink(assetData.localPath.c_str());
     CHECK_AND_RETURN_LOG(
-        ret != E_OK, "unlink %{public}s succeeded", MediaFileUtils::DesensitizePath(assetData.localPath).c_str());
+        ret != E_OK, "unlink %{public}s succeeded", MediaPathUtils::DesensitizePath(assetData.localPath).c_str());
     assetData.err = errno;  // err always -1, use errno.
     assetData.errorMsg = "unlink failed";
-    MEDIA_WARN_LOG("unlink %{public}s failed", MediaFileUtils::DesensitizePath(assetData.localPath).c_str());
+    MEDIA_WARN_LOG("unlink %{public}s failed", MediaPathUtils::DesensitizePath(assetData.localPath).c_str());
 }
 
 static bool IsLakeFile(const OnDownloadAssetData &assetData)
@@ -498,7 +500,7 @@ void CloudMediaDownloadService::UpdateVideoMode(std::vector<PhotosPo> &photosPoV
         string absVideoPath;
         if (!PathToRealPath(realPath, absVideoPath)) {
             MEDIA_ERR_LOG(
-                "file is not real path, file path: %{public}s", MediaFileUtils::DesensitizePath(realPath).c_str());
+                "file is not real path, file path: %{public}s", MediaPathUtils::DesensitizePath(realPath).c_str());
             continue;
         }
         videoModeData->SetFilePath(realPath);
@@ -523,7 +525,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
     int32_t ret = SliceAsset(assetData, photo);
     if (ret != E_OK) {
         MEDIA_INFO_LOG(
-            "HandlePhoto Failed to Slice %{public}s", MediaFileUtils::DesensitizePath(assetData.localPath).c_str());
+            "HandlePhoto Failed to Slice %{public}s", MediaPathUtils::DesensitizePath(assetData.localPath).c_str());
         assetData.errorMsg = "Slice Moving File Failed";
         assetData.err = ret;
         return;
@@ -539,7 +541,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
 
     if (ret != E_OK) {
         MEDIA_INFO_LOG(
-            "Failed to Handle HandlePhoto %{public}s", MediaFileUtils::DesensitizePath(assetData.localPath).c_str());
+            "Failed to Handle HandlePhoto %{public}s", MediaPathUtils::DesensitizePath(assetData.localPath).c_str());
         assetData.errorMsg = "UpdateDownloadAsset failed";
         assetData.err = ret;
         this->UnlinkAsset(assetData);
@@ -549,7 +551,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
     ret = FixDownloadAssetExifRotate(photo, scanResult);
     if (ret != E_OK) {
         MEDIA_INFO_LOG("HandlePhoto Failed to fix exif rotate %{public}s",
-            MediaFileUtils::DesensitizePath(assetData.localPath).c_str());
+            MediaPathUtils::DesensitizePath(assetData.localPath).c_str());
         assetData.errorMsg = "Fix Exif Rotate Failed";
         assetData.err = ret;
         return;
@@ -730,8 +732,8 @@ int32_t CloudMediaDownloadService::CleanAttachments(
     for (auto &attachmentDto : attachmentList) {
         int64_t allfileSize = 0;
         for (const auto &cloudPath : attachmentDto.attachments) {
-            std::string localPath = CloudMediaSyncUtils::GetLocalPath(cloudPath);
-            CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(localPath));
+            std::string localPath = MediaPathUtils::ConvertCloudPathToLocalPath(cloudPath);
+            CHECK_AND_CONTINUE(MediaPureFileUtils::IsFileExists(localPath));
             size_t fileSize = 0;
             MediaFileUtils::GetFileSize(localPath, fileSize);
             CHECK_AND_CONTINUE(MediaFileUtils::DeleteFile(localPath));

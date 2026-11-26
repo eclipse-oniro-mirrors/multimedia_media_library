@@ -203,6 +203,7 @@ public:
     static const std::string PHOTO_LCD_FILE_SIZE;
     static const std::string COMPRESSION_QUALITY;
     static const std::string C2PA_CONFIG_INFO;
+    static const std::string PHOTO_ACCOUNT_ID;
     static const std::string LOCAL_ENHANCEMENT_ABILITY;
     static const std::string LOCAL_ENHANCEMENT_STATUS;
 
@@ -273,10 +274,6 @@ public:
 
     static const std::string TAB_OLD_PHOTOS_TABLE;
     static const std::string TAB_ASSET_AND_ALBUM_OPERATION_TABLE;
-
-    // path
-    static const std::string FILES_CLOUD_DIR;
-    static const std::string FILES_LOCAL_DIR;
     
     static const std::string MEDIA_DATA_DB_HIGHLIGHT_TRIGGER;
     // photo uri

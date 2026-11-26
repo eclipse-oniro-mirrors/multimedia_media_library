@@ -132,8 +132,8 @@ int32_t MediaFileInterworkUtil::InsertOrUpdateAlbum(const std::string &albumPath
 int32_t MediaFileInterworkUtil::GetScannerTaskStatus()
 {
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     
     if (errCode != E_OK || prefs == nullptr) {
         MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
@@ -148,8 +148,8 @@ int32_t MediaFileInterworkUtil::GetScannerTaskStatus()
 int32_t MediaFileInterworkUtil::SetScannerTaskStatus(int32_t status)
 {
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     
     if (errCode != E_OK || prefs == nullptr) {
         MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
@@ -261,8 +261,8 @@ bool MediaFileInterworkUtil::IsDownloadTrashDir(const std::string &dirPath)
 int32_t MediaFileInterworkUtil::GetRepairProgress(int32_t &lastFileId)
 {
     int32_t errCode = E_OK;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     if (errCode != E_OK || prefs == nullptr) {
         MEDIA_ERR_LOG("Failed to get preferences for repair progress, errCode = %{public}d", errCode);
         lastFileId = 0;
@@ -276,8 +276,8 @@ int32_t MediaFileInterworkUtil::GetRepairProgress(int32_t &lastFileId)
 int32_t MediaFileInterworkUtil::SaveRepairProgress(int32_t lastFileId)
 {
     int32_t errCode = E_OK;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     if (errCode != E_OK || prefs == nullptr) {
         MEDIA_ERR_LOG("Failed to get preferences for save repair progress, errCode = %{public}d", errCode);
         return errCode;

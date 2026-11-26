@@ -8312,12 +8312,12 @@ void ThumbnailBatchGenerateObserver::OnChange(const ChangeInfo &changeInfo)
         std::string requestIdStr = params.substr(0, commaPos);
         std::string pidStr = params.substr(commaPos + 1);
 
-        if (!MediaFileUtils::IsValidInteger(requestIdStr)) {
+        if (!MediaStringUtils::IsValidInteger(requestIdStr)) {
             continue;
         }
         requestIdCallback_ = std::stoi(requestIdStr.c_str());
 
-        if (!MediaFileUtils::IsValidInteger(pidStr)) {
+        if (!MediaStringUtils::IsValidInteger(pidStr)) {
             continue;
         }
         pid_t pid = std::atoi(pidStr.c_str());
@@ -17408,7 +17408,7 @@ napi_value MediaLibraryNapi::JSConvertToAsset(napi_env env, napi_callback_info i
 
 bool CheckFileManagerRealPath(const std::string &path)
 {
-    MEDIA_INFO_LOG("CheckFileManagerRealPath path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_INFO_LOG("CheckFileManagerRealPath path: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
     const std::string specialChar = "//";
     CHECK_AND_RETURN_RET(MediaStringUtils::StartsWith(path, DOCS_DIR) || path.find(specialChar) != std::string::npos, false);
     size_t pos = path.find("/", DOCS_DIR.length());

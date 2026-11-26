@@ -29,6 +29,8 @@
 #include "single_file_moving_photo_utils.h"
 #include "media_library_error_code.h"
 #include "media_library_napi.h"
+#include "media_pure_file_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_client_errno.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -340,7 +342,7 @@ static int32_t WriteToSandboxUri(int32_t srcFd, const string& sandboxUri,
 
     AppFileService::ModuleFileUri::FileUri fileUri(sandboxUri);
     string destPath = fileUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         NAPI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }
@@ -461,7 +463,7 @@ int32_t MovingPhotoNapi::GetFdFromUri(const std::string &uri)
 {
     AppFileService::ModuleFileUri::FileUri destUri(uri);
     string destPath = destUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         NAPI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_ERR;
     }
@@ -601,7 +603,7 @@ static int32_t QueryPhotoPosition(const string &movingPhotoUri, bool hasReadPerm
         userIdStr = str.substr(pos, end - pos);
         NAPI_INFO_LOG("QueryPhotoPosition for other user is %{public}s", userIdStr.c_str());
     }
-    int32_t userId = userIdStr != "" && MediaFileUtils::IsValidInteger(userIdStr) ? atoi(userIdStr.c_str()) : -1;
+    int32_t userId = userIdStr != "" && MediaStringUtils::IsValidInteger(userIdStr) ? atoi(userIdStr.c_str()) : -1;
 
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, MediaFileUtils::GetIdFromUri(movingPhotoUri));
@@ -731,7 +733,7 @@ static int32_t WriteSingleFileToSandbox(int32_t srcFd, MovingPhotoAsyncContext* 
         AppFileService::ModuleFileUri::FileUri destUri(context->destLivePhotoUri);
         std::string destPath = destUri.GetRealPath();
         CHECK_COND_RET(!destPath.empty(), E_HAS_FS_ERROR, "Invalid dest live photo uri");
-        if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+        if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
             NAPI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
             return E_HAS_FS_ERROR;
         }
@@ -1018,7 +1020,7 @@ int32_t MovingPhotoNapi::DoMovingPhotoTranscode(napi_env env, int32_t &videoFd, 
     }
     AppFileService::ModuleFileUri::FileUri fileUri(context->destVideoUri);
     string destPath = fileUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         NAPI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }
