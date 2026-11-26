@@ -230,7 +230,8 @@ HWTEST_F(BackgroundCloudFileProcessorTest, background_cloud_file_processor_test_
     PreparePhotos(10, MEDIA_TYPE_IMAGE, static_cast<int32_t>(PhotoPositionType::CLOUD)); // 10 count
     PrepareAbnormalPhotos(MediaColumn::MEDIA_SIZE);
     auto resultSet = BackgroundCloudFileProcessor::QueryUpdateData(true, false);
-    int32_t rowCount;
+    ASSERT_NE(resultSet, nullptr);
+    int32_t rowCount = 0;
     int32_t ret = resultSet->GetRowCount(rowCount);
     EXPECT_EQ(ret, 0);
     EXPECT_GT(rowCount, 1);
@@ -244,7 +245,8 @@ HWTEST_F(BackgroundCloudFileProcessorTest, background_cloud_file_processor_test_
     PreparePhotos(10, MEDIA_TYPE_VIDEO, static_cast<int32_t>(PhotoPositionType::CLOUD)); // 10 count
     PrepareAbnormalPhotos(MediaColumn::MEDIA_SIZE);
     auto resultSet = BackgroundCloudFileProcessor::QueryUpdateData(true, true);
-    int32_t rowCount;
+    ASSERT_NE(resultSet, nullptr);
+    int32_t rowCount = 0;
     int32_t ret = resultSet->GetRowCount(rowCount);
     EXPECT_EQ(ret, 0);
     EXPECT_GT(rowCount, 1);
@@ -257,7 +259,8 @@ HWTEST_F(BackgroundCloudFileProcessorTest, background_cloud_file_processor_test_
     PreparePhotos(10, MEDIA_TYPE_IMAGE, static_cast<int32_t>(PhotoPositionType::LOCAL)); // 10 count
     PrepareAbnormalPhotos(MediaColumn::MEDIA_SIZE);
     auto resultSet = BackgroundCloudFileProcessor::QueryUpdateData(false, false);
-    int32_t rowCount;
+    ASSERT_NE(resultSet, nullptr);
+    int32_t rowCount = 0;
     int32_t ret = resultSet->GetRowCount(rowCount);
     EXPECT_EQ(ret, 0);
     EXPECT_GT(rowCount, 1);
@@ -270,7 +273,8 @@ HWTEST_F(BackgroundCloudFileProcessorTest, background_cloud_file_processor_test_
     PreparePhotos(10, MEDIA_TYPE_VIDEO, static_cast<int32_t>(PhotoPositionType::LOCAL)); // 10 count
     PrepareAbnormalPhotos(MediaColumn::MEDIA_SIZE);
     auto resultSet = BackgroundCloudFileProcessor::QueryUpdateData(false, true);
-    int32_t rowCount;
+    ASSERT_NE(resultSet, nullptr);
+    int32_t rowCount = 0;
     int32_t ret = resultSet->GetRowCount(rowCount);
     EXPECT_EQ(ret, 0);
     EXPECT_GT(rowCount, 1);
@@ -336,12 +340,13 @@ HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_QueryCloudFiles_Test_001, TestS
 {
     MEDIA_INFO_LOG("Bcfpt_GetStorageFreeRatio_Test_001 Start");
     double freeRatio = 0.5;
-    auto resultSet = BackgroundCloudFileProcessor::QueryCloudFiles(freeRatio);
-    EXPECT_NE(resultSet, nullptr);
     PreparePhotos(10, MEDIA_TYPE_IMAGE, static_cast<int32_t>(PhotoPositionType::CLOUD)); // 10 count
     EXPECT_EQ(QueryPhotosCount(), 10);
-    resultSet = BackgroundCloudFileProcessor::QueryCloudFiles(freeRatio);
-    EXPECT_NE(resultSet, nullptr);
+    auto resultSet = BackgroundCloudFileProcessor::QueryCloudFiles(freeRatio);
+    ASSERT_NE(resultSet, nullptr);
+    int rowCount = 0;
+    EXPECT_EQ(resultSet->GetRowCount(rowCount), E_OK);
+    EXPECT_EQ(rowCount, 10);
     MEDIA_INFO_LOG("Bcfpt_GetStorageFreeRatio_Test_001 End");
 }
 
@@ -350,10 +355,9 @@ HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_CheckAndUpdateDownloadCnt_Test_
     MEDIA_INFO_LOG("Bcfpt_CheckAndUpdateDownloadCnt_Test_001 Start");
     std::string uri = "testuri";
     int64_t cnt = 100;
-    double freeRatio = 0.5;
     BackgroundCloudFileProcessor::CheckAndUpdateDownloadCnt(uri, cnt);
-    auto resultSet = BackgroundCloudFileProcessor::QueryCloudFiles(freeRatio);
-    EXPECT_NE(resultSet, nullptr);
+    int64_t actualCnt = BackgroundCloudFileProcessor::GetDownloadCnt(uri);
+    EXPECT_EQ(actualCnt, cnt + 1);
     MEDIA_INFO_LOG("Bcfpt_CheckAndUpdateDownloadCnt_Test_001 End");
 }
 
@@ -400,11 +404,16 @@ HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_DownloadCloudFilesExecutor_Test
 HWTEST_F(BackgroundCloudFileProcessorTest, Bcfpt_QueryUpdateData_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Bcfpt_QueryUpdateData_Test_001 Start");
-    BackgroundCloudFileProcessor::downloadId_ = 30;
-    BackgroundCloudFileProcessor::StopDownloadFiles();
     bool isCloud = false;
     bool isVideo = false;
-    EXPECT_NE(BackgroundCloudFileProcessor::QueryUpdateData(isCloud, isVideo), nullptr);
+    PreparePhotos(10, MEDIA_TYPE_IMAGE, static_cast<int32_t>(PhotoPositionType::LOCAL));
+    PreparePhotos(10, MEDIA_TYPE_IMAGE, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    PrepareAbnormalPhotos(MediaColumn::MEDIA_SIZE);
+    auto resultSet = BackgroundCloudFileProcessor::QueryUpdateData(isCloud, isVideo);
+    ASSERT_NE(resultSet, nullptr);
+    int32_t rowCount = 0;
+    EXPECT_EQ(resultSet->GetRowCount(rowCount), E_OK);
+    EXPECT_EQ(rowCount, 10);
     MEDIA_INFO_LOG("Bcfpt_QueryUpdateData_Test_001 End");
 }
 

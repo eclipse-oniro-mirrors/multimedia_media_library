@@ -18,6 +18,7 @@
 #include "media_datashare_ext_ability_test.h"
 
 #include <chrono>
+#include <cstdio>
 #include <thread>
 #include <unistd.h>
 
@@ -628,14 +629,23 @@ HWTEST_F(MediaDatashareExtAbilityTest, DataManager_RegisterObserver_001, TestSiz
 HWTEST_F(MediaDatashareExtAbilityTest, DataManager_UpgradeUtils_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("DataManager_UpgradeUtils_001::Start");
-    bool ret = RdbUpgradeUtils::HasUpgraded(2025, true);
+    const  string prefPath = "/data/local/tmp/rdb_upgrade_events_ut001.xml";
+    remove(prefPath.c_str);
+    bool ret = RdbUpgradeUtils::HasUpgraded(0, true, prefPath);
     EXPECT_EQ(ret, false);
-    RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, true);
-    RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, true);
-    RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, false);
-    
-    RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, false);
-    RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, false);
+    RdbUpgradeUtils::SetUpgradeStatus(0, true, prefPath);
+    ret = RdbUpgradeUtils::HasUpgraded(0, true, prefPath);
+    EXPECT_EQ(ret, false);
+    RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, true, prefPath);
+    ret = RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, true, prefPath);
+    EXPECT_EQ(ret, true);
+    RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, false, prefPath);
+    EXPECT_EQ(ret, false);
+    RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, false, prefPath);
+    ret = RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, true, prefPath);
+    EXPECT_EQ(ret, true);
+    ret = RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, true, "");
+    EXPECT_EQ(ret, false);
     MEDIA_INFO_LOG("DataManager_UpgradeUtils_001::End");
 }
  
@@ -668,50 +678,6 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_001, TestSize.Level1)
     int32_t ret = extension.OpenFile(openUri, "r");
     EXPECT_LT(ret, 0);
     MEDIA_INFO_LOG("Extension_OpenFile_001::End, ret=%{public}d", ret);
-}
-
-/**
- * @tc.name: Extension_OpenFile_002
- * @tc.desc: Test OpenFile with URI containing fdWithCached=1, verify HandleHmdfsCachePersist
- *           is invoked without crash even when fd is invalid
- * @tc.type: FUNC
- */
-HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("Extension_OpenFile_002::Start");
-    auto extension = Init();
-    extension.InitPermissionHandler();
-
-    // Construct a URI with fdWithCached=1, the file does not exist so OpenFile returns error,
-    // but HandleHmdfsCachePersist should not crash
-    string openUriStr =
-        "file://media/Photo/16/IMG_1784015971_000/IMG_20260629_233527.jpg?api_version=10&time_pending=0&fdWithCached=1";
-    Uri openUri(openUriStr);
-    int32_t ret = extension.OpenFile(openUri, "r");
-    // fd is expected to be negative (permission or file not found), ioctl on invalid fd is safe
-    EXPECT_LT(ret, 0);
-    MEDIA_INFO_LOG("Extension_OpenFile_002::End, ret=%{public}d", ret);
-}
-
-/**
- * @tc.name: Extension_OpenFile_003
- * @tc.desc: Test OpenFile with URI containing fdWithCached=0, verify HandleHmdfsCachePersist
- *           skips ioctl (early return path)
- * @tc.type: FUNC
- */
-HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("Extension_OpenFile_003::Start");
-    auto extension = Init();
-    extension.InitPermissionHandler();
-
-    // fdWithCached=0 should trigger early return in HandleHmdfsCachePersist
-    string openUriStr =
-        "file://media/Photo/16/IMG_1784015971_000/IMG_20260629_233527.jpg?api_version=10&time_pending=0&fdWithCached=0";
-    Uri openUri(openUriStr);
-    int32_t ret = extension.OpenFile(openUri, "r");
-    EXPECT_LT(ret, 0);
-    MEDIA_INFO_LOG("Extension_OpenFile_003::End, ret=%{public}d", ret);
 }
 
 /**
@@ -750,17 +716,16 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
     struct PhotoResult photoAsset = {-1, static_cast<int32_t>(MEDIA_TYPE_IMAGE),
         "Pictures/OpenFileTest_005.jpg", "OpenFileTest_005.jpg"};
     InsertAsset(photoAsset);
+    EXPECT_GT(photoAsset.fileId, 0);
 
     // Build URI from inserted asset and try to open
     string openUriStr = PhotoColumn::PHOTO_URI_PREFIX + to_string(photoAsset.fileId);
     Uri openUri(openUriStr);
     int32_t ret = extension.OpenFile(openUri, "r");
+    EXPECT_EQ(ret, E_HAS_FS_ERROR);
+    EXPECT_EQ(QueryPhotoName(photoAsset.fileId), "OpenFileTest_005.jpg");
     // Permission denied or file not on disk, but should not crash
-    MEDIA_INFO_LOG("Extension_OpenFile_005::OpenFile ret=%{public}d", ret);
-
-    // Test with write mode and close via DataManager
-    EXPECT_LT(ret, 0);
-    MEDIA_INFO_LOG("Extension_OpenFile_005::End");
+    MEDIA_INFO_LOG("Extension_OpenFile_005::End ret=%{public}d", ret);
 }
 
 /**

@@ -17,6 +17,7 @@
 
 #include "query_edit_asset_status_test.h"
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -102,10 +103,11 @@ HWTEST_F(QueryEditAssetStatusTest, IsEditedTest_001, TestSize.Level0) {
     MessageParcel reply;
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->IsEdited(data, reply);
+    int32_t ret = service->IsEdited(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
     ASSERT_LT(respVo.GetErrCode(), 0);
+    ASSERT_EQ(ret, respVo.GetErrCode());
 }
 
 
@@ -123,12 +125,13 @@ HWTEST_F(QueryEditAssetStatusTest, IsEditedTest_002, TestSize.Level0) {
     EXPECT_EQ(ret, true);
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->IsEdited(data, reply);
+    int32_t serviceRet = service->IsEdited(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ret = respVo.Unmarshalling(reply);
 
     EXPECT_EQ(ret, true);
     EXPECT_EQ(respVo.GetErrCode(), 0);
+    EXPECT_EQ((serviceRet, respVo.GetErrCode()););
 }
 
 /**
@@ -141,10 +144,11 @@ HWTEST_F(QueryEditAssetStatusTest, RequestEditDataTest_001, TestSize.Level0) {
     MessageParcel reply;
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->RequestEditData(data, reply);
+    int32_t ret = service->RequestEditData(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
     ASSERT_LT(respVo.GetErrCode(), 0);
+    ASSERT_EQ(ret, respVo.GetErrCode());
 }
 
 /**
@@ -162,12 +166,14 @@ HWTEST_F(QueryEditAssetStatusTest, RequestEditDataTest_002, TestSize.Level0) {
     EXPECT_EQ(ret, true);
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->RequestEditData(data, reply);
+    int32_t serviceRet = service->RequestEditData(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ret = respVo.Unmarshalling(reply);
 
     EXPECT_EQ(ret, true);
     EXPECT_EQ(respVo.GetErrCode(), 0);
+    EXPECT_EQ((serviceRet, respVo.GetErrCode()););
+}
 }
 
 /**
@@ -180,10 +186,11 @@ HWTEST_F(QueryEditAssetStatusTest, GetEditDataTest_001, TestSize.Level0) {
     MessageParcel reply;
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->GetEditData(data, reply);
+    int32_t ret = service->GetEditData(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
     ASSERT_LT(respVo.GetErrCode(), 0);
+    ASSERT_EQ(ret, respVo.GetErrCode());
 }
 
 /**
@@ -202,12 +209,13 @@ HWTEST_F(QueryEditAssetStatusTest, GetEditDataTest_002, TestSize.Level0) {
     EXPECT_EQ(ret, true);
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->GetEditData(data, reply);
+    int32_t serviceRet = service->GetEditData(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ret = respVo.Unmarshalling(reply);
 
     EXPECT_EQ(ret, true);
     EXPECT_EQ(respVo.GetErrCode(), 0);
+    EXPECT_EQ(serviceRet, respVo.GetErrCode());
 }
 
 /**
@@ -220,10 +228,11 @@ HWTEST_F(QueryEditAssetStatusTest, GetCloudMediaAssetStatusTest_001, TestSize.Le
     MessageParcel reply;
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->GetCloudMediaAssetStatus(data, reply);
+    int32_t ret = service->GetCloudMediaAssetStatus(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
     ASSERT_LT(respVo.GetErrCode(), 0);
+    ASSERT_EQ(ret, respVo.GetErrCode());
 }
 
 /**
@@ -240,12 +249,13 @@ HWTEST_F(QueryEditAssetStatusTest, GetCloudMediaAssetStatusTest_002, TestSize.Le
     EXPECT_EQ(ret, true);
 
     auto service = make_shared<MediaAssetsControllerService>();
-    service->GetCloudMediaAssetStatus(data, reply);
+    int32_t serviceRet = service->GetCloudMediaAssetStatus(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ret = respVo.Unmarshalling(reply);
 
     EXPECT_EQ(ret, true);
     EXPECT_EQ(respVo.GetErrCode(), 0);
+    EXPECT_EQ(serviceRet, respVo.GetErrCode());
 }
 
 /**
@@ -258,10 +268,11 @@ HWTEST_F(QueryEditAssetStatusTest, StartAssetAnalysisTest_001, TestSize.Level0) 
     MessageParcel reply;
 
     auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
-    service->StartAssetAnalysis(data, reply);
+    int32_t ret = service->StartAssetAnalysis(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
     ASSERT_LT(respVo.GetErrCode(), 0);
+    ASSERT_EQ(ret, respVo.GetErrCode());
 }
 
 /**
