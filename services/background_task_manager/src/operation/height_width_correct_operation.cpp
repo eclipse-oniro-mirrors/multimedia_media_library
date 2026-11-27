@@ -26,6 +26,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata_extractor.h"
@@ -114,8 +115,8 @@ void HeightWidthCorrectOperation::UpdateHeightAndWidth()
     isContinue_.store(true);
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t errCode = E_OK;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(HEIGHT_WIDTH_CORRECT_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(HEIGHT_WIDTH_CORRECT_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
     int32_t curFileId = prefs->GetInt(CURRENT_CHECK_ID, 0);
     std::string checkFailIds = prefs->GetString(CHECK_FAIL_IDS, "");

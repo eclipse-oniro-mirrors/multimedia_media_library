@@ -26,6 +26,7 @@ ohos_shared_library("media_cloud_sync_data") {
   include_dirs = [
     "./include",
     "./include/vo",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
   ]
 
   sources = [

@@ -22,6 +22,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "media_mtp_utils.h"
+#include "media_pure_file_utils.h"
 #include "mtp_data_utils.h"
 #include "mtp_constants.h"
 #include "mtp_manager.h"
@@ -502,7 +503,7 @@ variant<int32_t, int64_t, std::string> MtpDataUtils::ReturnError(const std::stri
 void MtpDataUtils::GetFormatByPath(const std::string &path, uint16_t &outFormat)
 {
     CHECK_AND_RETURN_LOG(!path.empty(), "path is nullptr");
-    if (MediaFileUtils::IsDirectory(path)) {
+    if (MediaPureFileUtils::IsDirectory(path)) {
         MEDIA_ERR_LOG("path is dir");
         outFormat = MTP_FORMAT_ASSOCIATION_CODE;
         return;

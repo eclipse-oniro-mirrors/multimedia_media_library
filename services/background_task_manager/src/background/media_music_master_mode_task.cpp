@@ -23,6 +23,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_type_const.h"
@@ -103,7 +104,7 @@ static int32_t ExtractMusicMasterModeFromPath(const std::string &path, int32_t m
     int32_t ret = MetadataExtractor::ExtractAVMetadata(data);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Extract music master metadata failed, path=%{private}s, ret=%{public}d",
-            MediaFileUtils::DesensitizePath(path).c_str(), ret);
+            MediaPathUtils::DesensitizePath(path).c_str(), ret);
         return -1;
     }
     return data->GetMusicMasterMode();
@@ -213,8 +214,8 @@ int32_t MediaMusicMasterModeTask::GetBatchStatus()
 {
     MEDIA_INFO_LOG("MediaMusicMasterModeTask::GetBatchStatus start");
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, PREFS_NULL_ERR_CODE, "get preferences error: %{public}d", errCode);
     int32_t defaultVal = 0;
     int32_t currStartFileId = prefs->GetInt(MUSIC_MASTER_MODE_PROGRESS, defaultVal);
@@ -226,8 +227,8 @@ void MediaMusicMasterModeTask::SetBatchStatus(int32_t startFileId)
 {
     MEDIA_INFO_LOG("MediaMusicMasterModeTask::SetBatchStatus start");
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "prefs is nullptr");
     prefs->PutInt(MUSIC_MASTER_MODE_PROGRESS, startFileId);
     prefs->FlushSync();

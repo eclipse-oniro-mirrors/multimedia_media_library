@@ -107,8 +107,9 @@ int32_t MediaPermissionHelper::InitMediaPermissionHelper()
             return E_ERR;
         }
         auto &client = IPC::MediaCommonClient::GetInstance();
-        client.ForceReconnect(activeUser);
-        dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
+        client.SetUserId(activeUser);
+        client.Init(token, activeUser);
+        dataShareHelper_ = client.GetDataShareHelper(activeUser);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(
                 "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);

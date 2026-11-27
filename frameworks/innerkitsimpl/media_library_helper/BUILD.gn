@@ -25,6 +25,7 @@ config("media_library_config") {
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_permission_helper/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/include/data",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 }
 
@@ -59,10 +60,12 @@ ohos_shared_library("media_library") {
 
   include_dirs += include_media_ipc_common
   include_dirs += user_ipc_client_include_dirs
+  if (media_library_multi_account_enable) {
+    include_dirs += [ "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/include" ]
+  }
 
   sources = [
     "${MEDIALIB_FACARD_PATH}/src/media_facard_photos_column.cpp",
-    "src/acl.cpp",
     "src/album_asset.cpp",
     "src/album_order.cpp",
     "src/album_scan_info_column.cpp",
@@ -139,6 +142,7 @@ ohos_shared_library("media_library") {
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -179,6 +183,10 @@ ohos_shared_library("media_library") {
 
   defines = []
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+
+  if (media_library_multi_account_enable) {
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
+  }
 
   if (defined(global_parts_info) &&
       defined(global_parts_info.multimedia_image_effect) &&

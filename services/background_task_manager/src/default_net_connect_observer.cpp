@@ -15,8 +15,11 @@
 
 #define MLOG_TAG "DefaultNetConnectObserver"
 
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 #include "background_cloud_batch_selected_file_processor.h"
+#endif
 #include "default_net_connect_observer.h"
+#include "medialibrary_related_system_state_manager.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
@@ -45,7 +48,9 @@ int32_t DefaultNetConnectObserver::NetCapabilitiesChange(sptr<NetHandle> &netHan
         MEDIA_INFO_LOG("DefaultNetConnectObserver wifi connected");
         SetNetConnStatus(DefaultNetConnStatus::WIFI_CONNECTED);
         MedialibraryRelatedSystemStateManager::GetInstance()->SetWifiConnected(true);
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadResourceCheck();
+#endif
     } else if (netAllCap->bearerTypes_.count(BEARER_CELLULAR)) {
         MEDIA_INFO_LOG("DefaultNetConnectObserver cellular connected");
         MedialibraryRelatedSystemStateManager::GetInstance()->SetCellularNetConnected(true);

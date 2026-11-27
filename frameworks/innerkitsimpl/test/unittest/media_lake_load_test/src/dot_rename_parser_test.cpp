@@ -22,6 +22,7 @@
 #include "media_column.h"
 #include "media_file_notify_info.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_rdbstore.h"
@@ -43,7 +44,7 @@ static const std::string TEST_DOT_PATH = TEST_DIR_PATH + "/.hi.jpg";
 
 void DotRenameParserTest::SetUpTestCase()
 {
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 void DotRenameParserTest::TearDownTestCase()

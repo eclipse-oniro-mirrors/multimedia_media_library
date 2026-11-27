@@ -16,9 +16,11 @@
 #define MLOG_TAG "PhotoOperationsTest"
 
 #include "medialibrary_photo_operations_test.h"
+#include "media_pure_file_utils.h"
 
 #include <chrono>
 #include <fcntl.h>
+#include <cstdint>
 #include <fstream>
 #include <future>
 #include <thread>
@@ -193,7 +195,7 @@ void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -420,7 +422,7 @@ int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
         MEDIA_ERR_LOG("GetMovingPhotoExtraDataDir returned empty for path: %{private}s", path.c_str());
         return E_INVALID_PATH;
     }
-    if (!MediaFileUtils::CreateDirectory(extraDataDir)) {
+    if (!MediaPureFileUtils::CreateDirectory(extraDataDir)) {
         MEDIA_ERR_LOG("Failed to create extraData directory: %{private}s", extraDataDir.c_str());
         return E_HAS_FS_ERROR;
     }
@@ -459,7 +461,7 @@ int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
         MEDIA_ERR_LOG("GetMovingPhotoExtraDataDir returned empty for path: %{private}s", path.c_str());
         return E_INVALID_PATH;
     }
-    if (!MediaFileUtils::CreateDirectory(extraDataDir)) {
+    if (!MediaPureFileUtils::CreateDirectory(extraDataDir)) {
         MEDIA_ERR_LOG("Failed to create extraData directory: %{private}s", extraDataDir.c_str());
         return E_HAS_FS_ERROR;
     }
@@ -1405,7 +1407,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_delete_api10_test_001, Test
     EXPECT_GE(fileId, E_OK);
     string filePath = GetFilePath(fileId);
     EXPECT_FALSE(filePath.empty());
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), true);
     int32_t count = GetPhotoAssetCountIndb(PhotoColumn::MEDIA_NAME, "photo.jpg");
     EXPECT_EQ(count, 1);
 
@@ -1419,7 +1421,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_delete_api10_test_001, Test
         [] (int32_t result) { EXPECT_GT(result, 0); });
 
     // test delete result
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), false);
     count = GetPhotoAssetCountIndb(PhotoColumn::MEDIA_NAME, "photo.jpg");
     EXPECT_EQ(count, 0);
 
@@ -3389,7 +3391,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_store_thumbnail_size_test_0
 
     // Create temporary thumbnail file
 
-    bool ret = MediaFileUtils::CreateDirectory("/storage/media/local/files/.thumbs/Photo/1/IMG_test.jpg/");
+    bool ret = MediaPureFileUtils::CreateDirectory("/storage/media/local/files/.thumbs/Photo/1/IMG_test.jpg/");
     EXPECT_EQ(ret, true);
 
     const size_t numBytes = 10;

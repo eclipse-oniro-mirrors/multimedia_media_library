@@ -21,6 +21,7 @@
 #include "dfx_reporter.h"
 #include "dfx_manager.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 using namespace std;
 
@@ -136,6 +137,7 @@ static unordered_map<int32_t, string> UPGRADE_VALUE_MAP = {
     { VERSION_ADD_FAVRATE_IS_SHARED_TO_INDEXS, "VERSION_ADD_FAVRATE_IS_SHARED_TO_INDEXS" },
     { VERSION_UPDATE_SHARE_DATE_ADDED_INDEX, "VERSION_UPDATE_SHARE_DATE_ADDED_INDEX" },
     { VERSION_ADD_XT_STYLE_TEMPLATE_NUMBER_COLUMN, "VERSION_ADD_XT_STYLE_TEMPLATE_NUMBER_COLUMN" },
+    { VERSION_ADD_PHOTO_ACCOUNT_ID_COLUMN, "VERSION_ADD_PHOTO_ACCOUNT_ID_COLUMN" },
 };
 static vector<string> UPGRADE_DFX_MESSAGES;
 
@@ -145,8 +147,8 @@ bool RdbUpgradeUtils::HasUpgraded(int32_t version, bool isSync, const string& pa
         return false;
     }
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(path, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(path, true), errCode);
     MEDIA_INFO_LOG("rdb_upgrade_events prefs errCode: %{public}d", errCode);
     CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, false, "prefs is nullptr");
 
@@ -169,8 +171,8 @@ void RdbUpgradeUtils::SetUpgradeStatus(int32_t version, bool isSync, const strin
         return;
     }
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(path, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(path, true), errCode);
     MEDIA_INFO_LOG("rdb_upgrade_events prefs errCode: %{public}d", errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "prefs is nullptr");
 
@@ -205,8 +207,8 @@ void RdbUpgradeUtils::SetUpgradeStatus(int32_t version, bool isSync, const strin
 void RdbUpgradeUtils::AddMapValueToPreference()
 {
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(RDB_UPGRADE_EVENT, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_UPGRADE_EVENT, true), errCode);
     MEDIA_INFO_LOG("rdb_upgrade_events prefs errCode: %{public}d", errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "prefs is nullptr");
     for (auto& pair : UPGRADE_VALUE_MAP) {
@@ -253,8 +255,8 @@ void RdbUpgradeUtils::ReportUpgradeDfxMessages(int64_t startTime, int32_t srcVer
 void RdbUpgradeUtils::SetOldVersion(int32_t oldVersion)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(RDB_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_CONFIG, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     prefs->PutInt(RDB_OLD_VERSION, oldVersion);
     prefs->FlushSync();
@@ -263,8 +265,8 @@ void RdbUpgradeUtils::SetOldVersion(int32_t oldVersion)
 int32_t RdbUpgradeUtils::GetOldVersion()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(RDB_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_CONFIG, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, oldVersion_, "get preferences error: %{public}d", errCode);
     return prefs->GetInt(RDB_OLD_VERSION, oldVersion_);
 }

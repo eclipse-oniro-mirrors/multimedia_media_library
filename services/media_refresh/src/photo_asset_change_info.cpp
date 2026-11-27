@@ -24,6 +24,7 @@
 #include "media_file_utils.h"
 #include "photo_album_column.h"
 #include "accurate_debug_log.h"
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -235,7 +236,7 @@ string PhotoAssetChangeInfo::ToString(bool isDetail) const
         ss << ", burstCoverLevel_: " << burstCoverLevel_;
         ss << ", hiddenTime_: " << hiddenTime_ << ", thumbnailReady_: " << thumbnailReady_;
         ss << ", displayName_: " << MediaFileUtils::DesensitizeName(displayName_);
-        ss << ", path_: " << MediaFileUtils::DesensitizePath(path_) << ", dirty_: " << dirty_;
+        ss << ", path_: " << MediaPathUtils::DesensitizePath(path_) << ", dirty_: " << dirty_;
         ss << ", position_: " << position_ << ", size_: " << size_;
         ss << ", mimeType_: " << mimeType_ << ", shootingMode_: " << shootingMode_;
         ss << ", frontCamera_: " << frontCamera_ << ", movingPhotoEffectMode_: " << movingPhotoEffectMode_;
@@ -543,8 +544,8 @@ string PhotoAssetChangeInfo::GetAssetDiff(const PhotoAssetChangeInfo &asset, con
         ss << MediaFileUtils::DesensitizeName(compare.displayName_) << ", ";
     }
     if (asset.path_ != compare.path_) {
-        ss << "path_: " << MediaFileUtils::DesensitizePath(asset.path_) << " -> ";
-        ss << MediaFileUtils::DesensitizePath(compare.path_);
+        ss << "path_: " << MediaPathUtils::DesensitizePath(asset.path_) << " -> ";
+        ss << MediaPathUtils::DesensitizePath(compare.path_);
     }
     if (asset.albumChangeInfos_ != compare.albumChangeInfos_) {
         AlbumChangeInfosToString(ss, asset.albumChangeInfos_);

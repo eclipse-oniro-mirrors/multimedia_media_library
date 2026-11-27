@@ -22,7 +22,7 @@
 #include "media_itypes_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 
@@ -78,7 +78,7 @@ std::string OnCopyRecord::ToString() const
        << "\"fileType\": " << fileType << ","
        << "\"size\": " << size << ","
        << "\"createTime\": " << createTime << ","
-       << "\"path\": \"" << MediaFileUtils::DesensitizePath(path) << "\","
+       << "\"path\": \"" << MediaPathUtils::DesensitizePath(path) << "\","
        << "\"version\": " << version << ","
        << "\"serverErrorCode\": " << serverErrorCode << ","
        << "\"isSuccess\": " << std::to_string(isSuccess) << ","

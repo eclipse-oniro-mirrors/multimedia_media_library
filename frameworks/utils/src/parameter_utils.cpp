@@ -277,7 +277,7 @@ bool ParameterUtils::IsPhotoUri(const string& uri)
         return false;
     }
     string fileId = MediaFileUri::GetPhotoId(uri);
-    return MediaFileUtils::IsValidInteger(fileId);
+    return MediaStringUtils::IsValidInteger(fileId);
 }
 
 int32_t ParameterUtils::CheckSetAssetTitle(const ModifyAssetsReqBody &reqBody)

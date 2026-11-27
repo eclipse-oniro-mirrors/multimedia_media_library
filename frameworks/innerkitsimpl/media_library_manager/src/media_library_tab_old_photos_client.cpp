@@ -33,6 +33,7 @@
 #include "get_uris_by_old_uris_inner_vo.h"
 
 using namespace std;
+using namespace OHOS::DataShare;
 
 namespace OHOS::Media {
     
@@ -93,16 +94,10 @@ int32_t TabOldPhotosClient::QueryClonedDataMapping(const std::vector<std::string
     std::vector<TabOldPhotosClient::TabOldPhotosClientObj> &dataMapping)
 {
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_CLONED_ASSET_URIS);
-
-    sptr<IRemoteObject> token = this->mediaLibraryManager_.InitToken();
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_HAS_DB_ERROR, "dataShareHelper is nullptr");
     GetUrisByOldUrisInnerReqBody reqBody;
     GetUrisByOldUrisInnerRespBody respBody;
     reqBody.uris = uris;
-    int32_t result =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+    int32_t result = IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     CHECK_AND_RETURN_RET_LOG(result == E_OK, result, "QueryClonedDataMapping IPC Call Failed");
 
     auto fileIds_size = respBody.fileIds.size();
@@ -133,18 +128,13 @@ std::unordered_map<std::string, std::string> TabOldPhotosClient::GetResultSetFro
     std::vector<std::string>& uris, std::vector<std::string> &columns)
 {
     std::unordered_map<std::string, std::string> resultMap;
-    sptr<IRemoteObject> token = this->mediaLibraryManager_.InitToken();
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, resultMap, "dataShareHelper is nullptr");
     GetUrisByOldUrisInnerReqBody reqBody;
     GetUrisByOldUrisInnerRespBody respBody;
     reqBody.uris = uris;
     reqBody.columns = columns;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_URIS_BY_OLD_URIS);
     MEDIA_INFO_LOG("before IPC::UserDefineIPCClient().Call, INNER_GET_URIS_BY_OLD_URIS");
-    int32_t result =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+    int32_t result = IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     CHECK_AND_RETURN_RET_LOG(result == E_OK, resultMap, "GetResultSetFromTabOldPhotos IPC Call Failed");
     auto fileIds_size = respBody.fileIds.size();
     auto datas_size = respBody.datas.size();

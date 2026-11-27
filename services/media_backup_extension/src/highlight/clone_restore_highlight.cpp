@@ -16,6 +16,7 @@
 #define MLOG_TAG "MediaLibraryCloneRestoreHighlight"
 
 #include "clone_restore_highlight.h"
+#include "media_pure_file_utils.h"
 
 #include "backup_file_utils.h"
 #include "medialibrary_data_manager_utils.h"
@@ -165,7 +166,7 @@ void CloneRestoreHighlight::Init(const InitInfo &info)
     mediaRdb_ = info.mediaRdb;
 
     std::string highlightSourcePath = info.backupRestoreDir + "/storage/media/local/files/highlight/";
-    isHighlightDirExist_ = MediaFileUtils::IsDirectory(highlightSourcePath);
+    isHighlightDirExist_ = MediaPureFileUtils::IsDirectory(highlightSourcePath);
     MEDIA_INFO_LOG("/highlight/ source dir %{public}s.", isHighlightDirExist_ ? "exist" : "don't exist");
     coverPath_ = highlightSourcePath + "cover/";
     musicDir_ = highlightSourcePath + "music";
@@ -183,7 +184,7 @@ void CloneRestoreHighlight::ReverseInit(const InitInfo &info)
     mediaRdb_ = info.mediaRdb;
 
     std::string highlightSourcePath = info.backupRestoreDir;
-    isHighlightDirExist_ = MediaFileUtils::IsDirectory(highlightSourcePath);
+    isHighlightDirExist_ = MediaPureFileUtils::IsDirectory(highlightSourcePath);
     MEDIA_INFO_LOG("/highlight/ source dir %{public}s.", isHighlightDirExist_ ? "exist" : "don't exist");
     coverPath_ = highlightSourcePath + "cover/";
     musicDir_ = highlightSourcePath + "music";
@@ -935,13 +936,13 @@ void CloneRestoreHighlight::MoveHighlightWordart(const AnalysisAlbumInfo &info, 
 {
     for (const auto &ratio : HIGHLIGHT_RATIO_WORD_ART) {
         std::string srcPath = srcDir + ratio + "/wordart.png";
-        CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(srcPath));
+        CHECK_AND_CONTINUE(MediaPureFileUtils::IsFileExists(srcPath));
         std::string dstDir = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/" + ratio;
 
-        const bool cleared = !MediaFileUtils::IsDirectory(dstDir) || MediaFileUtils::DeleteDir(dstDir);
+        const bool cleared = !MediaPureFileUtils::IsDirectory(dstDir) || MediaFileUtils::DeleteDir(dstDir);
         CHECK_AND_CONTINUE_ERR_LOG(cleared, "remove %{public}s failed", dstDir.c_str());
-        const bool directoryReady = MediaFileUtils::CreateDirectory(dstDir);
+        const bool directoryReady = MediaPureFileUtils::CreateDirectory(dstDir);
         CHECK_AND_CONTINUE_ERR_LOG(directoryReady, "create %{public}s failed",
             BackupFileUtils::GarbleFilePath(dstDir, sceneCode_, GARBLE_DST_PATH).c_str());
 
@@ -960,12 +961,12 @@ void CloneRestoreHighlight::MoveHighlightGround(const AnalysisAlbumInfo &info, c
         std::string groundPath = srcDir + "/full/" + fileName + ".png";
         std::string groundDstDir = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/full";
-        CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(groundPath));
+        CHECK_AND_CONTINUE(MediaPureFileUtils::IsFileExists(groundPath));
 
-        const bool cleared = !MediaFileUtils::IsDirectory(groundDstDir) ||
+        const bool cleared = !MediaPureFileUtils::IsDirectory(groundDstDir) ||
             MediaFileUtils::DeleteDir(groundDstDir);
         CHECK_AND_CONTINUE_ERR_LOG(cleared, "remove %{public}s failed", groundDstDir.c_str());
-        const bool directoryReady = MediaFileUtils::CreateDirectory(groundDstDir);
+        const bool directoryReady = MediaPureFileUtils::CreateDirectory(groundDstDir);
         CHECK_AND_CONTINUE_ERR_LOG(directoryReady, "create %{public}s failed",
             BackupFileUtils::GarbleFilePath(groundDstDir, sceneCode_, GARBLE_DST_PATH).c_str());
 
@@ -980,13 +981,13 @@ void CloneRestoreHighlight::MoveHighlightGround(const AnalysisAlbumInfo &info, c
 
 int32_t CloneRestoreHighlight::MoveHighlightMusic(const std::string &srcDir, const std::string &dstDir)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(dstDir), E_FAIL, "create dstDir %{public}s failed",
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(dstDir), E_FAIL, "create dstDir %{public}s failed",
         BackupFileUtils::GarbleFilePath(dstDir, sceneCode_, GARBLE_DST_PATH).c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(srcDir), E_OK, "%{public}s doesn't exist, skip.",
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(srcDir), E_OK, "%{public}s doesn't exist, skip.",
         BackupFileUtils::GarbleFilePath(srcDir, sceneCode_, garblePath_).c_str());
     for (const auto &dirEntry : std::filesystem::directory_iterator{ srcDir }) {
         std::string srcFilePath = dirEntry.path();
-        if (MediaFileUtils::IsDirectory(srcFilePath)) {
+        if (MediaPureFileUtils::IsDirectory(srcFilePath)) {
             size_t index = srcFilePath.rfind("/");
             CHECK_AND_CONTINUE(index != std::string::npos);
             std::string subDir = srcFilePath.substr(index);
@@ -994,7 +995,7 @@ int32_t CloneRestoreHighlight::MoveHighlightMusic(const std::string &srcDir, con
         } else {
             std::string tmpFilePath = srcFilePath;
             std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-            CHECK_AND_CONTINUE_ERR_LOG(!MediaFileUtils::IsFileExists(dstFilePath) ||
+            CHECK_AND_CONTINUE_ERR_LOG(!MediaPureFileUtils::IsFileExists(dstFilePath) ||
                 MediaFileUtils::DeleteFile(dstFilePath), "remove %{public}s failed", dstFilePath.c_str());
             int32_t errCode = BackupFileUtils::MoveFile(srcFilePath.c_str(), dstFilePath.c_str(), sceneCode_);
             CHECK_AND_PRINT_LOG(errCode == E_OK,
@@ -1077,7 +1078,7 @@ void CloneRestoreHighlight::GetCoverGroundSourceInfo(HighlightCoverInfo &info,
     std::string wordartPath = "/storage/media/local/files/highlight/cover/" +
         std::to_string(info.highlightIdNew.value()) + "/" + info.ratio.value() + "/wordart.png";
     auto wordart = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, "wordart");
-    bool isWordartNeedUpdate = MediaFileUtils::IsFileExists(wordartPath) &&
+    bool isWordartNeedUpdate = MediaPureFileUtils::IsFileExists(wordartPath) &&
         wordart.has_value() && !wordart.value().empty();
     CHECK_AND_EXECUTE(!isWordartNeedUpdate,
         info.wordart = "file://media/highlight/cover/" + std::to_string(info.highlightIdNew.value()) +
@@ -1087,7 +1088,7 @@ void CloneRestoreHighlight::GetCoverGroundSourceInfo(HighlightCoverInfo &info,
         std::string groundPath = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/full/" + fileName + ".png";
         if (BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, fileName).has_value()
-            && MediaFileUtils::IsFileExists(groundPath)) {
+            && MediaPureFileUtils::IsFileExists(groundPath)) {
             if (fileName == HIGHLIGHT_COVER_NAME[0]) {
                 info.foreground = "file://media/highlight/cover/" +
                     std::to_string(info.highlightIdNew.value()) + "/full/" + fileName + ".png?oper=highlight";

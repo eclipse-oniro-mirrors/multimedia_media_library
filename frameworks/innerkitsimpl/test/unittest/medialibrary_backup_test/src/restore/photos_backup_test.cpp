@@ -29,6 +29,7 @@
 #include "userfile_manager_types.h"
 #include "media_string_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 
 using namespace testing::ext;
 
@@ -54,7 +55,7 @@ void PhotosBackupTest::SetUpTestCase(void)
     MediaLibraryUnitTestUtils::Init();
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(g_rdbStore, nullptr);
-    MediaFileUtils::CreateDirectory(CLONE_RESTORE_BACKUP_DIR);
+    MediaPureFileUtils::CreateDirectory(CLONE_RESTORE_BACKUP_DIR);
 }
 
 void PhotosBackupTest::TearDownTestCase(void)

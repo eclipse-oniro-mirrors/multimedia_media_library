@@ -24,6 +24,7 @@
 
 #include "media_column.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_type_const.h"
@@ -69,8 +70,8 @@ void MediaLcdSizeTask::Execute()
 void MediaLcdSizeTask::SetCursorStatus(int32_t cursor)
 {
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LCD_AGING_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "prefs is nullptr, errCode: %{public}d", errCode);
     prefs->PutInt(std::string(LCD_SIZE_CURSOR_KEY), cursor);
     prefs->FlushSync();
@@ -80,8 +81,8 @@ void MediaLcdSizeTask::SetCursorStatus(int32_t cursor)
 int32_t MediaLcdSizeTask::GetCursorStatus()
 {
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LCD_AGING_XML, true), errCode);
     MEDIA_INFO_LOG("lcd_size_events prefs errCode: %{public}d", errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, CURSOR_COMPLETED, "prefs is nullptr, errCode: %{public}d", errCode);
     int32_t defaultVal = CURSOR_INITIAL;

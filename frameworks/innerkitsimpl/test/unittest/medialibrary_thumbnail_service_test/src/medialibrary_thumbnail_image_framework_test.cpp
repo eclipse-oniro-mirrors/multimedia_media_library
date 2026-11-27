@@ -14,6 +14,7 @@
  */
 
 #include "medialibrary_thumbnail_image_framework_test.h"
+#include "media_pure_file_utils.h"
 
 #include "image_source.h"
 
@@ -80,7 +81,7 @@ static const string HDR_PICTURE_PATH = "/storage/media/local/files/Photo/1/HDR_p
 static unique_ptr<ImageSource> CreateTestImageSource()
 {
     std::string path = HDR_PICTURE_PATH;
-    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaPureFileUtils::IsFileExists(path));
     uint32_t err;
     SourceOptions opts;
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);
@@ -90,7 +91,7 @@ static unique_ptr<ImageSource> CreateTestImageSource()
 
 static unique_ptr<ImageSource> CreateTestImageSource(const std::string &path)
 {
-    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaPureFileUtils::IsFileExists(path));
     uint32_t err;
     SourceOptions opts;
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);

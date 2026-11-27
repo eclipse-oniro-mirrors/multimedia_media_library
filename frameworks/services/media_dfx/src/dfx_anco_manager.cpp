@@ -20,6 +20,7 @@
 #include "dfx_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdbstore.h"
 #include "dfx_database_utils.h"
@@ -62,8 +63,8 @@ void AncoDfxManager::ReportFirstLoadInfo(uint64_t loadStartTime, uint64_t loadEn
 {
     MEDIA_INFO_LOG("anco ReportFirstLoadInfo");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -134,8 +135,8 @@ void AncoDfxManager::InnerReportAncoCountFormatInfo(uint64_t loadStartTime, uint
     }
     // 刷新打点时间
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -148,8 +149,8 @@ void AncoDfxManager::ReportFileManagerFirstLoad()
 {
     MEDIA_INFO_LOG("enter ReportFileManagerFirstLoad");
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int32_t loadTypeValue = prefs->GetInt(SCAN_FILEMANAGER_LOAD_TYPE,
     static_cast<int32_t>(LoadType::FILEMANAGER_FIRST_LOAD));
@@ -195,8 +196,8 @@ void AncoDfxManager::InnerReportAndResetOptChangeInfo()
     }
     // 刷新打点时间
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -227,8 +228,8 @@ void AncoDfxManager::RegisterFormatCountTimer()
 void AncoDfxManager::StartFormatCountTimer()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -276,8 +277,8 @@ void AncoDfxManager::RegisterOptChangeInfoTimer()
 void AncoDfxManager::StartOptChangeInfoTimer()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -342,8 +343,8 @@ void AncoDfxManager::ShutDownTimer()
 void AncoDfxManager::ResetStartTime()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -355,8 +356,8 @@ void AncoDfxManager::ResetStartTime()
 void AncoDfxManager::SetStartTime()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;

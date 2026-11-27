@@ -20,6 +20,7 @@
 #include "cloud_sync_manager.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
@@ -54,9 +55,6 @@ const std::string BACKGROUND_CLOUD_FILE_CONFIG = "/data/storage/el2/base/prefere
 const std::string LAST_PROCESSED_FILE_ID = "last_processed_file_id";
 const std::string NEED_CREATE_DENTRY_AFTER_CLONE = "need_create_dentry_after_clone";
 
-const std::string CLOUD_FILES_PREFIX = "/storage/cloud/files/";
-const std::string CLOUD_DENTRY_PREFIX = "/storage/media/cloud/files/";
-
 std::mutex MediaCloudDentryBatchTask::batchDentryMutex_;
 
 std::vector<FileManagement::CloudSync::DentryFileInfo> MediaCloudDentryBatchTask::dentryOrigin_;
@@ -75,16 +73,18 @@ bool NeedCreateDentry(const std::string &filePath)
 
 std::string GetDentryPath(const std::string &cloudPath, const std::string &suffix)
 {
-    if (cloudPath.find(CLOUD_FILES_PREFIX) != 0) {
+    std::string cloudFilesPrefix = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+    if (cloudPath.find(cloudFilesPrefix) != 0) {
         MEDIA_ERR_LOG("Invalid cloud path format: %{public}s", cloudPath.c_str());
         return "";
     }
 
     if (suffix.empty()) {
-        return CLOUD_DENTRY_PREFIX + cloudPath.substr(CLOUD_FILES_PREFIX.length());
+        return MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO) +
+            cloudPath.substr(cloudFilesPrefix.length());
     }
-    return CLOUD_DENTRY_PREFIX + ".thumbs/" + cloudPath.substr(CLOUD_FILES_PREFIX.length()) +
-           "/" + suffix + ".jpg";
+    return MediaPathUtils::GetDir(MediaPathType::LOCAL_THUMB, AdaptAccount::NO) +
+        cloudPath.substr(cloudFilesPrefix.length()) + "/" + suffix + ".jpg";
 }
 
 void CheckAndAddDentry(const PhotosPo &photosPo, const std::string &suffix, const std::string &fileType,
@@ -201,8 +201,8 @@ void MediaCloudDentryBatchTask::HandleBatchDentryCreation(const int32_t lastFile
     MEDIA_INFO_LOG("Start batch dentry creation from %{public}d", lastFileId);
 
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preference error: %{public}d", errCode);
 
     bool terminate = false;
@@ -223,7 +223,8 @@ void MediaCloudDentryBatchTask::HandleBatchDentryCreation(const int32_t lastFile
         GetDentryCreateData(currentLastFileId, photosPoVec);
         if (photosPoVec.empty()) {
             MEDIA_INFO_LOG("No more data to process, reset need_insert_dentry_after_clone to 0");
-            NativePreferences::PreferencesHelper::DeletePreferences(CLOUD_DENTRY_PREFS);
+            NativePreferences::PreferencesHelper::DeletePreferences(
+                MediaPathUtils::AdaptPreferencesPathForAllDevice(CLOUD_DENTRY_PREFS, false));
             break;
         }
     } while (photosPoVec.size() > 0 && !terminate && MedialibrarySubscriber::IsCurrentStatusOn());
@@ -236,8 +237,8 @@ void MediaCloudDentryBatchTask::CheckDentryCreation()
 {
     int32_t errCode = 0;
     int32_t defaultCnt = -1;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(CLOUD_DENTRY_PREFS, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(CLOUD_DENTRY_PREFS, false), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
 
     int32_t needInsertDentry = prefs->GetInt(NEED_CREATE_DENTRY_AFTER_CLONE, defaultCnt);
@@ -245,7 +246,8 @@ void MediaCloudDentryBatchTask::CheckDentryCreation()
         MEDIA_INFO_LOG("need_insert_dentry_after_clone is %{public}d, skip dentry creation", needInsertDentry);
         return;
     }
-    prefs = NativePreferences::PreferencesHelper::GetPreferences(BACKGROUND_CLOUD_FILE_CONFIG, errCode);
+    prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(BACKGROUND_CLOUD_FILE_CONFIG, false), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "get preferences error: %{public}d", errCode);
 
     int32_t lastFileId = prefs->GetInt(LAST_PROCESSED_FILE_ID, 0);

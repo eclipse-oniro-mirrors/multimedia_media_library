@@ -30,6 +30,7 @@
 #include "log_cinematic_access_vo.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_uri_utils.h"
 #include "medialibrary_business_code.h"
 #include "medialibrary_client_errno.h"
@@ -2772,7 +2773,7 @@ napi_value MediaAssetManagerNapi::JSLoadSingleFileMovingPhoto(napi_env env, napi
     CHECK_PARAMETER_WITH_MESSAGE(env, !realPath.empty(),
         "Failed to resolve the real path of the singleFileMovingPhotoUri");
     // 文件不存在或不可访问属于「can not open」，与 d.ts 声明一致归入 23800151
-    CHECK_PARAMETER_WITH_MESSAGE(env, MediaFileUtils::IsFileExists(realPath),
+    CHECK_PARAMETER_WITH_MESSAGE(env, MediaPureFileUtils::IsFileExists(realPath),
         "Failed to open the single-file moving photo");
     CHECK_WITH_INT_ERR_MESSAGE(env, MovingPhotoFileUtils::IsLivePhotoAsset(realPath), JS_E_FILE_FORMAT_ERROR,
         "The file specified by singleFileMovingPhotoUri is not a valid single-file moving photo");
@@ -2787,7 +2788,7 @@ int32_t MediaAssetManagerNapi::GetFdFromSandBoxUri(const std::string &sandBoxUri
 {
     AppFileService::ModuleFileUri::FileUri destUri(sandBoxUri);
     string destPath = destUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         NAPI_DEBUG_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_ERR;
     }

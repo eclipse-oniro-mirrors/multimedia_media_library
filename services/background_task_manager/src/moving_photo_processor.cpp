@@ -26,6 +26,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_utils.h"
@@ -335,9 +336,10 @@ int32_t MovingPhotoProcessor::GetUpdatedMovingPhotoData(const MovingPhotoData& c
     }
 
     string extraDataDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(imagePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(extraDataDir), E_HAS_FS_ERROR,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(extraDataDir), E_HAS_FS_ERROR,
         "Cannot create dir %{private}s, errno:%{public}d", extraDataDir.c_str(), errno);
-    bool cond = (!MediaFileUtils::IsFileExists(extraDataPath) && MediaFileUtils::CreateAsset(extraDataPath) != E_OK);
+    bool cond = (!MediaPureFileUtils::IsFileExists(extraDataPath) &&
+                 MediaFileUtils::CreateAsset(extraDataPath) != E_OK);
     CHECK_AND_RETURN_RET_LOG(!cond, E_HAS_FS_ERROR,
         "Failed to create extraData:%{private}s, errno:%{public}d", extraDataPath.c_str(), errno);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::WriteStrToFile(extraDataPath, GetDefaultExtraData()),
@@ -478,7 +480,7 @@ static void addCompatPathSuffix(const string &oldPath, const string &suffix, str
     bool cond = (oldPath.empty() || suffix.empty());
     CHECK_AND_RETURN_LOG(!cond, "oldPath or suffix is empty");
     newPath = oldPath + ".compat" + suffix;
-    while (MediaFileUtils::IsFileExists(newPath)) {
+    while (MediaPureFileUtils::IsFileExists(newPath)) {
         newPath += ".dup" + suffix;
     }
 }
@@ -491,10 +493,11 @@ static int32_t MoveMovingPhoto(const string &path,
     CHECK_AND_RETURN_RET_LOG(!movingPhotoVideoPath.empty(), E_INVALID_VALUES, "Failed to get video path");
     CHECK_AND_RETURN_RET_LOG(!movingPhotoExtraDataPath.empty(), E_INVALID_VALUES, "Failed to get extraData path");
     CHECK_AND_RETURN_RET_LOG(
-        !MediaFileUtils::IsFileExists(movingPhotoVideoPath), E_INVALID_VALUES, "Video path exists!");
+        !MediaPureFileUtils::IsFileExists(movingPhotoVideoPath), E_INVALID_VALUES, "Video path exists!");
     CHECK_AND_RETURN_RET_LOG(
-        !MediaFileUtils::IsFileExists(movingPhotoExtraDataPath), E_INVALID_VALUES, "extraData path exists");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(path)),
+        !MediaPureFileUtils::IsFileExists(movingPhotoExtraDataPath), E_INVALID_VALUES, "extraData path exists");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(
+        MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(path)),
         E_HAS_FS_ERROR, "Failed to create extraData dir of %{private}s", path.c_str());
 
     int32_t ret = rename(compatExtraDataPath.c_str(), movingPhotoExtraDataPath.c_str());

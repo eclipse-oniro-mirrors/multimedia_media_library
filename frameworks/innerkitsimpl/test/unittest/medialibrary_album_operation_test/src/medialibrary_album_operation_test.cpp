@@ -20,6 +20,7 @@
 #include "get_self_permissions.h"
 #include "location_column.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_album_operations.h"
 #include "medialibrary_data_manager.h"
@@ -142,7 +143,7 @@ void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.editData");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -151,7 +152,8 @@ void ClearAndRestart()
 
 void ClearAnalysisAlbum()
 {
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
     NativeRdb::AbsRdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
     predicates.NotEqualTo(ALBUM_SUBTYPE, PhotoAlbumSubType::SHOOTING_MODE);
     int32_t deletedRows = -1;

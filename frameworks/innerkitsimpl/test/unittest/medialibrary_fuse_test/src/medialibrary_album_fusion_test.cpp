@@ -33,6 +33,7 @@
 #include "medialibrary_appstate_observer.h"
 #include "medialibrary_rdb_transaction.h"
 #include "media_file_uri.h"
+#include "media_pure_file_utils.h"
 #include "rdb_utils.h"
 #include "datashare_predicates.h"
 #include "abs_rdb_predicates.h"
@@ -191,7 +192,7 @@ void ClearAndRestartFusion()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTablesFusion();

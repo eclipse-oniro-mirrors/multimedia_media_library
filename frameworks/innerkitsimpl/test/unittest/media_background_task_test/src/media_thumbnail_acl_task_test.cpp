@@ -19,6 +19,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "media_upgrade.h"
 
@@ -76,7 +77,7 @@ void MediaLibraryThumbnailAclTaskTest::SetUpTestCase(void)
 
     system("rm -rf /storage/media/local/files/.thumbs/Photo/*");
     std::string localThumbnailPath = "/storage/media/local/files/.thumbs/Photo/";
-    bool ret = MediaFileUtils::CreateDirectory(localThumbnailPath);
+    bool ret = MediaPureFileUtils::CreateDirectory(localThumbnailPath);
     CHECK_AND_PRINT_LOG(ret, "Make %{public}s dir failed, ret=%{public}d", localThumbnailPath.c_str(), ret);
     MEDIA_INFO_LOG("MediaLibraryThumbnailAclTaskTest SetUpTestCase");
 }

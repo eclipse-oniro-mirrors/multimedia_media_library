@@ -21,6 +21,7 @@
 #include "active_analysis_manager.h"
 #include "analysis_tool_manager.h"
 #include "media_log.h"
+#include "media_string_utils.h"
 #include "medialibrary_errno.h"
 #include "rdb_utils.h"
 #include "medialibrary_vision_operations.h"
@@ -596,7 +597,7 @@ int32_t MediaAnalysisDataService::DeleteHighlightAlbums(const vector<string>& al
         vector<int32_t> albumIdIntegers;
         albumIdIntegers.reserve(albumIds.size());
         for (auto &idStr : albumIds) {
-            CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(idStr));
+            CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(idStr));
             albumIdIntegers.emplace_back(std::stoi(idStr));
         }
         AccurateRefresh::AnalysisAlbumAccurateRefresh albumRefresh;

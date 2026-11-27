@@ -24,6 +24,7 @@
 #include "media_log.h"
 #include "medialibrary_rdb_utils.h"
 #include "media_column.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
 #include "media_file_utils.h"
@@ -288,7 +289,7 @@ void FileScanner::DeleteRelatedResource(InnerFileInfo &fileInfo)
     CHECK_AND_RETURN_LOG(data.length() >= ROOT_MEDIA_DIR.length(), "path: %{private}s", data.c_str());
     string editDataDirPath = MEDIA_EDIT_DATA_DIR + data.substr(ROOT_MEDIA_DIR.length());
     CHECK_AND_RETURN_LOG(!editDataDirPath.empty(), "Cannot get editPath, path: %{private}s", data.c_str());
-    if (MediaFileUtils::IsFileExists(editDataDirPath)) {
+    if (MediaPureFileUtils::IsFileExists(editDataDirPath)) {
         CHECK_AND_RETURN_LOG(MediaFileUtils::DeleteDir(editDataDirPath),
             "Failed to delete edit data, data: %{private}s", editDataDirPath.c_str());
     }

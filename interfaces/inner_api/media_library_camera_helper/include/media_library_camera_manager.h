@@ -38,24 +38,24 @@ struct DeferredPictureInfo {
 class MediaLibraryCameraManager {
 public:
     EXPORT static MediaLibraryCameraManager *GetMediaLibraryCameraManager();
-    EXPORT void InitMediaLibraryCameraManager(const sptr<IRemoteObject> &token);
+    EXPORT void InitMediaLibraryCameraManager(const sptr<IRemoteObject> &token, int32_t userId = -1);
 
     EXPORT std::shared_ptr<PhotoAssetProxy> CreatePhotoAssetProxy(
         const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType, int32_t videoCount = 1);
     EXPORT std::shared_ptr<PhotoAssetProxy> CreatePhotoAssetProxy(
         const PhotoAssetProxyCallerInfo &callerInfo, const CameraPresetPara &presetPara);
-    EXPORT int32_t OpenAsset(std::string &uri, const std::string &openMode);
-    EXPORT DeferredPictureInfo GetDeferredPictureInfo(const std::string& photoId);
+    EXPORT int32_t OpenAsset(std::string &uri, const std::string &openMode, int32_t userId = -1);
+    EXPORT DeferredPictureInfo GetDeferredPictureInfo(const std::string& photoId, int32_t userId = -1);
 //LCOV_EXCL_START
-    EXPORT int32_t RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func);
-    EXPORT int32_t UnregisterPhotoStateCallback();
+    EXPORT int32_t RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func, int32_t userId = -1);
+    EXPORT int32_t UnregisterPhotoStateCallback(int32_t userId = -1);
 //LCOV_EXCL_STOP
 private:
     EXPORT MediaLibraryCameraManager() = default;
     EXPORT virtual ~MediaLibraryCameraManager() = default;
+    std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelper(int32_t userId);
 
     std::mutex mutex_;
-    std::shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
     sptr<IRemoteObject> token_;
 
     // 三方拍照需要控速，防止峰值内存超基线

@@ -16,6 +16,7 @@
 #define MLOG_TAG "MediaLakeCheck"
 
 #include "media_lake_check.h"
+#include "media_path_utils.h"
 
 #include <sys/stat.h>
 #include <unordered_set>
@@ -351,7 +352,7 @@ bool CheckAndIfNeedDeletePhotoAlbum(int32_t& deletePhotoNum, std::function<bool(
             MediaFileMonitorRdbUtils::DeleteLakeDirByLakePath(lakeRealPath, rdbStore, &perDelNum);
             deletePhotoNum += perDelNum;
         } else {
-            MEDIA_DEBUG_LOG("photo album in lake, lPath: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+            MEDIA_DEBUG_LOG("photo album in lake, lPath: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
         }
     }
     MEDIA_INFO_LOG("CheckAndIfNeedDeletePhotoAlbum exit");

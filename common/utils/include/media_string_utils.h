@@ -30,12 +30,33 @@ public:
     EXPORT MediaStringUtils();
     EXPORT ~MediaStringUtils();
     EXPORT static bool ConvertToInt(const std::string &number, int &value);
+    EXPORT static bool IsValidInteger(const std::string &number);
     EXPORT static bool StartsWith(const std::string &str, const std::string &prefix);
     EXPORT static bool EndsWith(const std::string &str, const std::string &suffix);
     EXPORT static std::string ToLower(const std::string &str);
     EXPORT static bool StartsWithIgnoreCase(const std::string &str, const std::string &prefix);
     EXPORT static bool EqualToIgnoreCase(const std::string &strA, const std::string &strB);
     EXPORT static std::string FillParams(const std::string &content, const std::vector<std::string> &bindArgs);
+
+    /**
+     * @brief Join string values with single quotes and commas for SQL IN clauses.
+     * @param values The string values to join.
+     * @return e.g. {"a","b"} -> "'a','b'"
+     */
+    EXPORT static std::string ToStringWithCommaAndQuote(const std::vector<std::string> &values);
+
+    /**
+     * @brief Join string values with commas.
+     * @param values The string values to join.
+     * @return e.g. {"a","b"} -> "a,b"
+     */
+    EXPORT static std::string ToStringWithComma(const std::vector<std::string> &values);
+
+    /**
+     * @brief Check if the string is a valid account id (6-digit numeric)
+     * @return True if the string is exactly 6 digits, false otherwise
+     */
+    EXPORT static bool IsAccountId(const std::string &str);
 };
 } // namespace OHOS::Media
 

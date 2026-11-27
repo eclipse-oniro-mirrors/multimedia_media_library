@@ -22,6 +22,7 @@
 
 #include "ffrt.h"
 #include "ffrt_inner.h"
+#include "media_path_utils.h"
 #include "rdb_store.h"
 #include "photo_album_restore.h"
 #include "photos_dao.h"
@@ -126,10 +127,10 @@ private:
         ss << "FileInfo[ fileId: " << fileInfo.fileIdOld << ", displayName: "
            << MediaFileUtils::DesensitizeName(fileInfo.displayName) << ", bundleName: "
            << MediaFileUtils::DesensitizeName(fileInfo.bundleName) << ", lPath: "
-           << MediaFileUtils::DesensitizePath(fileInfo.lPath) << ", size: " << fileInfo.fileSize
+           << MediaPathUtils::DesensitizePath(fileInfo.lPath) << ", size: " << fileInfo.fileSize
            << ", fileType: " << fileInfo.fileType << ", oldPath: "
-           << MediaFileUtils::DesensitizePath(fileInfo.oldPath) << ", sourcePath: "
-           << MediaFileUtils::DesensitizePath(fileInfo.sourcePath) << " ]";
+           << MediaPathUtils::DesensitizePath(fileInfo.oldPath) << ", sourcePath: "
+           << MediaPathUtils::DesensitizePath(fileInfo.sourcePath) << " ]";
         return ss.str();
     }
     std::string GetSuffix(const std::string &displayName);

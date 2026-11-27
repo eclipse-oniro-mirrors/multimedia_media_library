@@ -30,7 +30,9 @@
 #include "media_file_access_utils.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
@@ -97,10 +99,10 @@ void MediaLibraryMediaFileAccessUtilsTest::CleanAssetResource()
     }
     constexpr int32_t MAX_DELETE_ATTEMPTS = 2;
     for (const auto &path : cleanupPathSet) {
-        CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(path));
+        CHECK_AND_CONTINUE(MediaPureFileUtils::IsFileExists(path));
         bool deleteSuccess = false;
         for (int32_t attempt = 1; attempt <= MAX_DELETE_ATTEMPTS; ++attempt) {
-            if (MediaFileUtils::DeleteFile(path) || !MediaFileUtils::IsFileExists(path)) {
+            if (MediaFileUtils::DeleteFile(path) || !MediaPureFileUtils::IsFileExists(path)) {
                 deleteSuccess = true;
                 break;
             }
@@ -210,9 +212,9 @@ int32_t MediaLibraryMediaFileAccessUtilsTest::CreatePhotoApi10(int mediaType, co
 
 bool CheckAndCreateDir(const std::string &assetPath)
 {
-    std::string assetParentPath = MediaFileUtils::GetParentPath(assetPath);
+    std::string assetParentPath = MediaPathUtils::GetParentPath(assetPath);
     if (!MediaFileUtils::IsDirExists(assetParentPath)) {
-        MediaFileUtils::CreateDirectory(assetParentPath);
+        MediaPureFileUtils::CreateDirectory(assetParentPath);
     }
     bool isParentDirExist = MediaFileUtils::IsDirExists(assetParentPath);
     return isParentDirExist;
@@ -368,7 +370,7 @@ void MediaLibraryMediaFileAccessUtilsTest::InitAsset(std::string &dataFileUri, F
     EXPECT_TRUE(isParentDirExist);
     
     MediaFileUtils::CopyFileSafe(TEST_FILE_PATH, assetPath);
-    bool isfileExist = MediaFileUtils::IsFileExists(assetPath);
+    bool isfileExist = MediaPureFileUtils::IsFileExists(assetPath);
     EXPECT_TRUE(isfileExist);
 }
 
@@ -381,16 +383,16 @@ void MediaLibraryMediaFileAccessUtilsTest::CopyToDestPath(int32_t srcFd, const s
 {
     MEDIA_INFO_LOG("CopyToDestPath start, destPath: %{public}s", destPath.c_str());
     int32_t ret = E_OK;
-    std::string destDir = MediaFileUtils::GetParentPath(destPath);
+    std::string destDir = MediaPathUtils::GetParentPath(destPath);
     if (!MediaFileUtils::IsDirExists(destDir)) {
         MEDIA_INFO_LOG("CopyToDestPath destDir is not exist, create dir: %{public}s", destDir.c_str());
-        ret = MediaFileUtils::CreateDirectory(destDir);
+        ret = MediaPureFileUtils::CreateDirectory(destDir);
         if (ret != E_OK) {
             std::filesystem::create_directories(destDir);
             MEDIA_INFO_LOG("destDir is exist? : %{public}d", MediaFileUtils::IsDirExists(destDir));
         }
     }
-    if (MediaFileUtils::IsFileExists(destPath)) {
+    if (MediaPureFileUtils::IsFileExists(destPath)) {
         ret = MediaFileUtils::DeleteFile(destPath);
     }
 
@@ -559,16 +561,16 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_file_001, 
         EXPECT_EQ(realPath, storagePath);
         std::string tempPath = TEST_FILE_ROOT + "test_for_move.jpg";
         if (!MediaFileUtils::IsDirExists(TEST_FILE_ROOT)) {
-            MediaFileUtils::CreateDirectory(TEST_FILE_ROOT);
+            MediaPureFileUtils::CreateDirectory(TEST_FILE_ROOT);
         }
         int32_t ret = MediaFileAccessUtils::MoveFileInEditScene(realPath, tempPath);
         EXPECT_EQ(ret, E_OK);
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(realPath));
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(tempPath));
+        EXPECT_TRUE(MediaPureFileUtils::IsFileExists(realPath));
+        EXPECT_TRUE(MediaPureFileUtils::IsFileExists(tempPath));
         ret = MediaFileAccessUtils::MoveFileInEditScene(tempPath, realPath);
         EXPECT_EQ(ret, E_OK);
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(realPath));
-        EXPECT_FALSE(MediaFileUtils::IsFileExists(tempPath));
+        EXPECT_TRUE(MediaPureFileUtils::IsFileExists(realPath));
+        EXPECT_FALSE(MediaPureFileUtils::IsFileExists(tempPath));
         MediaFileUtils::DeleteFile(tempPath);
     }
 }
@@ -583,8 +585,8 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_file_002, 
     ASSERT_TRUE(CreateFileWithData(srcPath, "move_test"));
     int32_t ret = MediaFileAccessUtils::MoveFileInEditScene(srcPath, destPath);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(srcPath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(destPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(srcPath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(destPath));
 
     MediaFileUtils::DeleteFile(destPath);
 }
@@ -641,7 +643,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_copy_nonexisten
     MediaFileUtils::DeleteFile(destPath);
 
     EXPECT_FALSE(MediaFileUtils::CopyFileUtil(srcPath, destPath));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(destPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(destPath));
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_copy_dest_is_directory_001, TestSize.Level0)
@@ -652,7 +654,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_copy_dest_is_di
     MediaFileUtils::DeleteDir(destDir);
 
     ASSERT_TRUE(CreateFileWithData(srcPath, "abc"));
-    ASSERT_TRUE(MediaFileUtils::CreateDirectory(destDir));
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(destDir));
 
     EXPECT_FALSE(MediaFileUtils::CopyFileUtil(srcPath, destDir));
 
@@ -698,20 +700,20 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_manager_is_directory_empty_0
     
     MediaFileUtils::DeleteDir(testRoot);
     
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(emptyDir));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(emptyDir));
     EXPECT_TRUE(MediaFileAccessUtils::IsDirectoryEmpty(emptyDir));
     
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(dirWithFile));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(dirWithFile));
     EXPECT_TRUE(CreateFileWithData(testFile, "test_data"));
     EXPECT_FALSE(MediaFileAccessUtils::IsDirectoryEmpty(dirWithFile));
     
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(dirWithSubdir));
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(subdir));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(dirWithSubdir));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(subdir));
     EXPECT_FALSE(MediaFileAccessUtils::IsDirectoryEmpty(dirWithSubdir));
     
     EXPECT_TRUE(MediaFileAccessUtils::IsDirectoryEmpty(nonExistentDir));
 
-    if (MediaFileUtils::IsDirectory(testRoot)) {
+    if (MediaPureFileUtils::IsDirectory(testRoot)) {
         bool deleteResult = MediaFileUtils::DeleteDir(testRoot);
         if (!deleteResult) {
             MEDIA_ERR_LOG("Failed to delete test directory: %{public}s, errno: %{public}d",
@@ -728,7 +730,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_manager_update_modify_time_0
     std::string testFile = testRoot + "test_file.txt";
     
     MediaFileUtils::DeleteDir(testRoot);
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(testRoot));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(testRoot));
     EXPECT_TRUE(CreateFileWithData(testFile, "test_data"));
 
     int64_t origMtime = 0;
@@ -740,7 +742,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_manager_update_modify_time_0
     EXPECT_NE(updatedMtime, origMtime);
     EXPECT_EQ(updatedMtime, newMtime);
     
-    if (MediaFileUtils::IsDirectory(testRoot)) {
+    if (MediaPureFileUtils::IsDirectory(testRoot)) {
         bool deleteResult = MediaFileUtils::DeleteDir(testRoot);
         if (!deleteResult) {
             MEDIA_ERR_LOG("Failed to delete test directory: %{public}s, errno: %{public}d",
@@ -815,9 +817,9 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_asset_001,
     EXPECT_EQ(result.errCode, E_OK);
     EXPECT_TRUE(result.isExecuteRename);
     EXPECT_EQ(result.newPath, finalPath);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(destPath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(finalPath));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(srcPath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(destPath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(finalPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(srcPath));
 
     MediaFileUtils::DeleteFile(destPath);
     MediaFileUtils::DeleteFile(finalPath);
@@ -842,8 +844,8 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_asset_002,
         srcObj.SetSubType(PhotoSubType::BURST);
         MoveResult result = MediaFileAccessUtils::MoveAsset(srcObj, destPath, FileSourceType::FILE_MANAGER, true);
         EXPECT_EQ(result.errCode, E_OK);
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(destPath));
-        EXPECT_FALSE(MediaFileUtils::IsFileExists(srcPath));
+        EXPECT_TRUE(MediaPureFileUtils::IsFileExists(destPath));
+        EXPECT_FALSE(MediaPureFileUtils::IsFileExists(srcPath));
         srcObj.SetBurstCoverLevel(BurstCoverLevelType::MEMBER);
         srcObj.SetAssetPath(destPath);
         result = MediaFileAccessUtils::MoveAsset(srcObj, srcPath, FileSourceType::FILE_MANAGER, true);
@@ -994,8 +996,8 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_asset_crea
     AssetOperationInfo srcObj = AssetOperationInfo::CreateFromPath(srcPath, AssetPathType::NORMAL_PATH);
     MoveResult result = MediaFileAccessUtils::MoveAsset(srcObj, destPath, FileSourceType::FILE_MANAGER, true);
     EXPECT_EQ(result.errCode, E_ERR);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(srcPath));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(destPath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(srcPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(destPath));
 
     MediaFileUtils::DeleteFile(srcPath);
     MediaFileUtils::DeleteFile(blockerFile);
@@ -1011,7 +1013,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_copy_file_001, 
 
     int32_t ret = MediaFileAccessUtils::CopyFile(srcPath, destPath);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(destPath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(destPath));
 
     MediaFileUtils::DeleteFile(srcPath);
     MediaFileUtils::DeleteFile(destPath);
@@ -1026,7 +1028,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_delete_asset_00
     AssetOperationInfo srcObj = AssetOperationInfo::CreateFromPath(testPath, AssetPathType::NORMAL_PATH);
     bool ret = MediaFileAccessUtils::DeleteAsset(srcObj);
     EXPECT_TRUE(ret);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(testPath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(testPath));
 }
 
 void MediaLibraryMediaFileAccessUtilsTest::RunSameNameRenameCase(const std::string &sameNamePath,
@@ -1194,7 +1196,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_get_file_manage
     std::string realDirPath = "/storage/media/local/files/Docs/Download/com.xxx.example";
     std::string realDirPathWithSlash = realDirPath + "/";
 
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(realDirPath) == E_OK || MediaFileUtils::IsDirExists(realDirPath));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(realDirPath) == E_OK || MediaFileUtils::IsDirExists(realDirPath));
 
     EXPECT_EQ(PhotoFileUtils::GetFileManagerLPathFromRealPath(realDirPath),
         "/FromDocs/Download/com.xxx.example");
@@ -1210,7 +1212,7 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_get_file_manage
     std::string topLevelDirPath = "/storage/media/local/files/Docs/GetLPathTopLevelCase";
     std::string topLevelDirPathWithSlash = topLevelDirPath + "/";
 
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(topLevelDirPath) == E_OK ||
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(topLevelDirPath) == E_OK ||
         MediaFileUtils::IsDirExists(topLevelDirPath));
 
     EXPECT_EQ(PhotoFileUtils::GetFileManagerLPathFromRealPath(topLevelDirPath),
@@ -1302,8 +1304,8 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_burst_member_re
 
         std::string assetPath = info.GetAssetPath();
         std::string storagePath = info.GetStoragePath();
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(storagePath));
-        EXPECT_FALSE(MediaFileUtils::IsFileExists(assetPath));
+        EXPECT_TRUE(MediaPureFileUtils::IsFileExists(storagePath));
+        EXPECT_FALSE(MediaPureFileUtils::IsFileExists(assetPath));
         info.SetAssetPath(storagePath);
         info.SetStoragePath(assetPath);
         info.SetSubType(PhotoSubType::BURST);

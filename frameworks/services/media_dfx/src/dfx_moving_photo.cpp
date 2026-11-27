@@ -21,6 +21,8 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_subscriber.h"
 #include "media_edit_utils.h"
@@ -115,15 +117,15 @@ void DfxMovingPhoto::StatisticsMovingPhotos(
         }
 
         const std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(photoInfo.path);
-        CHECK_AND_CONTINUE(!MediaFileUtils::IsFileExists(videoPath));
+        CHECK_AND_CONTINUE(!MediaPureFileUtils::IsFileExists(videoPath));
 
         statistics.dirtyMovingPhotoTotalCount++;
 
         const uint8_t isCloud = position == PhotoPositionType::LOCAL_AND_CLOUD ? 1 : 0;
         const uint8_t hasEditData =
-            MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataPath(photoInfo.path)) ? 1 : 0;
+            MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataPath(photoInfo.path)) ? 1 : 0;
         const uint8_t hasEditDataCamera =
-            MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataCameraPath(photoInfo.path)) ? 1 : 0;
+            MediaPureFileUtils::IsFileExists(MediaEditUtils::GetEditDataCameraPath(photoInfo.path)) ? 1 : 0;
 
         const uint8_t stateFlags = (hasEditDataCamera << 2) | (hasEditData << 1) | isCloud;
         switch (stateFlags) {
@@ -198,8 +200,8 @@ int32_t DfxMovingPhoto::AbnormalMovingPhotoStatistics()
     CHECK_AND_RETURN_RET_INFO_LOG(!statisticsFinished_, E_OK, "Abnormal moving photo statistics is finished");
 
     int32_t errCode = E_OK;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_MOVING_PHOTO_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_MOVING_PHOTO_XML, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, E_ERR, "get preferences error: %{public}d", errCode);
 
     bool statisticsFinished = prefs->GetBool(STATISTICS_FINISHED, false);

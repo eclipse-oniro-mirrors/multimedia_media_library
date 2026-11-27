@@ -27,6 +27,8 @@
 #include "folder_scanner_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "media_time_utils.h"
 #include "medialibrary_errno.h"
@@ -100,7 +102,8 @@ bool DocsMediaScanManager::IsBetaVersion()
 std::shared_ptr<NativePreferences::Preferences> DocsMediaScanManager::GetPrefs()
 {
     int32_t errCode = E_OK;
-    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, prefs, "Get preferences error: %{public}d", errCode);
     return prefs;
 }
@@ -267,7 +270,7 @@ DocsMediaScanManager::DirScanResult DocsMediaScanManager::ReadDirectoryEntries(c
         std::string fullPath = path + "/" + entry->d_name;
         struct stat statInfo;
         if (lstat(fullPath.c_str(), &statInfo) != 0) {
-            MEDIA_ERR_LOG("Failed to lstat: %{public}s", MediaFileUtils::DesensitizePath(fullPath).c_str());
+            MEDIA_ERR_LOG("Failed to lstat: %{public}s", MediaPathUtils::DesensitizePath(fullPath).c_str());
             continue;
         }
         if (S_ISDIR(statInfo.st_mode) && ShouldScanDirectory(fullPath)) {
@@ -332,7 +335,7 @@ bool DocsMediaScanManager::CollectFolderStats(const std::string &fullPath,
 bool DocsMediaScanManager::TraverseAndCollect()
 {
     MEDIA_INFO_LOG("Start TraverseAndCollect");
-    if (!MediaFileUtils::IsFileExists(std::string(FILE_MANAGER_ROOT_PATH))) {
+    if (!MediaPureFileUtils::IsFileExists(std::string(FILE_MANAGER_ROOT_PATH))) {
         MEDIA_INFO_LOG("Docs root dir not exist, marking task as completed");
         MarkTaskCompleted();
         return true;
@@ -355,7 +358,7 @@ bool DocsMediaScanManager::TraverseAndCollect()
 
         DocsMediaScanManager::DirScanResult result = ReadDirectoryEntries(current.first, current.second);
         CHECK_AND_PRINT_LOG(CollectFolderStats(current.first, current.second, result.mediaFiles, result.mediaStats),
-            "CollectFolderStats failed, path: %{public}s", MediaFileUtils::DesensitizePath(current.first).c_str());
+            "CollectFolderStats failed, path: %{public}s", MediaPathUtils::DesensitizePath(current.first).c_str());
 
         for (const auto &subDir : result.subDirs) {
             dirStack.push_back(subDir);

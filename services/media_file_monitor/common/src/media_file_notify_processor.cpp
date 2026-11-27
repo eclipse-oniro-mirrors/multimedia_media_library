@@ -20,7 +20,7 @@
 #include "file_const.h"
 #include "i_processor.h"
 #include "media_composite_processor.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_processor_registry.h"
 #include "media_scan_dir_processor.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
@@ -166,8 +166,8 @@ int32_t MediaFileNotifyProcessor::ProcessNotification(const MediaNotifyInfo &not
 {
     MEDIA_INFO_LOG("NOTIFY, objType: %{public}d, operType: %{public}d, path: %{public}s, oldPath: %{public}s",
         static_cast<int32_t>(notifyInfo.objType), static_cast<int32_t>(notifyInfo.optType),
-        MediaFileUtils::DesensitizePath(notifyInfo.afterPath).c_str(),
-        MediaFileUtils::DesensitizePath(notifyInfo.beforePath).c_str());
+        MediaPathUtils::DesensitizePath(notifyInfo.afterPath).c_str(),
+        MediaPathUtils::DesensitizePath(notifyInfo.beforePath).c_str());
 
     // 填充 pathType
     MediaNotifyInfo info = notifyInfo;

@@ -18,11 +18,12 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-
 #include "dfx_const.h"
 #include "media_file_utils.h"
 #include "media_string_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "medialibrary_type_const.h"
 using namespace std;
 namespace OHOS {
 namespace Media {
@@ -57,13 +58,15 @@ vector<string> DfxUtils::Split(string &input, const string &pattern)
 string DfxUtils::GetSafePath(const string &path)
 {
     string safePath = path;
+    std::string mediaEditDataDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_EDIT_DATA, AdaptAccount::YES);
+    std::string cloudPhotoPath = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
     if (path == "") {
         return safePath;
     }
-    if (MediaStringUtils::StartsWith(path, CLOUD_PHOTO_PATH)) {
-        return safePath.replace(0, CLOUD_PHOTO_PATH.length(), GARBLE);
+    if (MediaStringUtils::StartsWith(path, cloudPhotoPath)) {
+        return safePath.replace(0, cloudPhotoPath.length(), GARBLE);
     }
-    safePath = safePath.replace(0, CLOUD_FILE_PATH.length(), GARBLE);
+    safePath = safePath.replace(0, mediaEditDataDir.length(), GARBLE);
     size_t splitIndex = safePath.find_last_of(SPLIT_PATH);
     string displayName;
     if (splitIndex == string::npos) {

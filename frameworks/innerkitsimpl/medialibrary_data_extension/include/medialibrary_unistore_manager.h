@@ -39,7 +39,16 @@ public:
 
     EXPORT int32_t Init(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context)
     {
+        MEDIA_INFO_LOG("UnistoreManager::Init: start");
         if (std::atomic_load(&rdbStorePtr_) != nullptr) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+            if (!rdbStorePtr_->CheckRdbStore()) {
+                int32_t ret = rdbStorePtr_->Init();
+                if (ret != E_OK) {
+                    return ret;
+                }
+            }
+#endif
             return E_OK;
         }
         auto store = std::make_shared<MediaLibraryRdbStore>(context);
@@ -58,7 +67,16 @@ public:
     EXPORT int32_t Init(const std::shared_ptr<OHOS::AbilityRuntime::Context> &context,
         const NativeRdb::RdbStoreConfig &config, int version, NativeRdb::RdbOpenCallback &openCallback)
     {
+        MEDIA_INFO_LOG("UnistoreManager::Init(config): start, version=%{public}d", version);
         if (std::atomic_load(&rdbStorePtr_) != nullptr) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+            if (!rdbStorePtr_->CheckRdbStore()) {
+                int32_t ret = rdbStorePtr_->Init(config, version, openCallback);
+                if (ret != E_OK) {
+                    return ret;
+                }
+            }
+#endif
             return E_OK;
         }
         auto store = std::make_shared<MediaLibraryRdbStore>(context);

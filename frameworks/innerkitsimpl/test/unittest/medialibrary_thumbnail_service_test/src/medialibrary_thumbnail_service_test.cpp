@@ -25,6 +25,7 @@
 #include "background_generate_manager.h"
 #undef private
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const_sqls.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
@@ -138,7 +139,7 @@ void MediaLibraryThumbnailServiceTest::SetUp()
     }
     serverTest = ThumbnailService::GetInstance();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
 }
 
 void MediaLibraryThumbnailServiceTest::TearDown(void)
@@ -158,7 +159,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_GetThumbnail_test_001, TestS
     fd = serverTest->GetThumbnailFd(uri);
     EXPECT_LT(fd, 0);
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
     fd = serverTest->GetThumbnailFd(uri);
     EXPECT_LT(fd, 0);
     serverTest->ReleaseService();
@@ -185,10 +186,10 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_GenerateThumbnailBackground_
     int32_t ret = serverTest->GenerateThumbnailBackground();
     EXPECT_EQ(ret <= 0, true);
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(nullptr, context);
+    serverTest->Init(context);
     ret = serverTest->GenerateThumbnailBackground();
     EXPECT_NE(ret, 0);
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
     ret = serverTest->GenerateThumbnailBackground();
     EXPECT_NE(ret, 0);
     serverTest->ReleaseService();
@@ -201,7 +202,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_InterruptBgworker_test_001, 
     EXPECT_NE(serverTest, nullptr);
     serverTest->InterruptBgworker();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
     serverTest->InterruptBgworker();
     serverTest->ReleaseService();
 }
@@ -213,7 +214,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_StopAllWorker_test_001, Test
     EXPECT_NE(serverTest, nullptr);
     serverTest->StopAllWorker();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
     serverTest->StopAllWorker();
     serverTest->ReleaseService();
 }
@@ -233,7 +234,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_CreateAstcBatchOnDemand_test
     ASSERT_NE(storePtr, nullptr);
     shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
 
     NativeRdb::RdbPredicates predicate { PhotoColumn::PHOTOS_TABLE };
     int32_t requestId = 1;
@@ -248,7 +249,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_CancelAstcBatchTask_test_001
     shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
     EXPECT_NE(serverTest, nullptr);
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
 
     NativeRdb::RdbPredicates predicate { PhotoColumn::PHOTOS_TABLE };
     int32_t requestId = 1;
@@ -719,7 +720,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, GenerateHighlightThumbnailBackground_
 HWTEST_F(MediaLibraryThumbnailServiceTest, GenerateHighlightThumbnailBackground_test_002, TestSize.Level1)
 {
     ThumbRdbOpt opts;
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     opts.table = "tab_analysis_video_label";
     auto res = ThumbnailGenerateHelper::GenerateHighlightThumbnailBackground(opts);
     EXPECT_EQ(res < 0, true);
@@ -768,7 +769,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumnail_utils_cancelAfterPa
 {
     std::string tempOutputPath = "path";
     ThumbnailUtils::CancelAfterPacking(tempOutputPath);
-    auto res = MediaFileUtils::IsFileExists(tempOutputPath);
+    auto res = MediaPureFileUtils::IsFileExists(tempOutputPath);
     EXPECT_EQ(res, false);
 }
 
@@ -868,7 +869,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_007, T
 HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_008, TestSize.Level1)
 {
     ThumbRdbOpt opts;
-    opts.store = storePtr;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     opts.table = "test";
     auto res = ThumbnailGenerateHelper::UpgradeThumbnailBackground(opts, false);
     EXPECT_NE(res, E_OK);
@@ -1020,7 +1021,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, GetKeyFrameThumbFd_test_001, TestSize
     int32_t type = 1;
     shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
     int32_t res = serverTest->GetKeyFrameThumbFd(path, table, id, uri, beginStamp, type);
     EXPECT_NE(res, E_OK);
 }
@@ -1119,7 +1120,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_015, T
     ThumbRdbOpt opts;
     auto res = ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
     EXPECT_NE(res, E_OK);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
     EXPECT_NE(res, E_OK);
 }
@@ -1293,7 +1294,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_CacheLcdInfo
 {
     ThumbRdbOpt opts;
     opts.row = "a";
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     opts.table = "tab_analysis_video_label";
     ThumbnailData data;
     auto res = ThumbnailUtils::CacheLcdInfo(opts, data);
@@ -1840,7 +1841,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, MultipleInterrupt_service_001, TestSi
 
     shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
 
     for (int round = 0; round < 3; round++) {
         serverTest->GenerateThumbnailBackground();
@@ -1860,7 +1861,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, BatchQueryInterrupt_no_deadlock_001, 
 
     shared_ptr<ThumbnailService> serverTest = ThumbnailService::GetInstance();
     shared_ptr<OHOS::AbilityRuntime::Context> context;
-    serverTest->Init(storePtr, context);
+    serverTest->Init(context);
 
     serverTest->GenerateThumbnailBackground();
     serverTest->InterruptBgworker();

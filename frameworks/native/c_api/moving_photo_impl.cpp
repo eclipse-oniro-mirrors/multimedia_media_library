@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <securec.h>
+#include "media_pure_file_utils.h"
 #include <filesystem>
 
 #include "moving_photo_impl.h"
@@ -152,7 +153,7 @@ static int32_t WriteToSandboxUri(int32_t srcFd, std::string& sandboxUri,
     OHOS::AppFileService::ModuleFileUri::FileUri fileUri(sandboxUri);
     std::string destPath = fileUri.GetRealPath();
     MEDIA_INFO_LOG("Dest real path = %{public}s", destPath.c_str());
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         MEDIA_ERR_LOG("Create empty dest file in sandbox failed, path:%{public}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }

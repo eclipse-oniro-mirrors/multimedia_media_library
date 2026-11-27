@@ -22,6 +22,7 @@
 #include "media_log.h"
 #include "cloud_lake_utils.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "media_string_utils.h"
 
@@ -33,21 +34,9 @@ static std::string GetHmdfsPathPrefix(int32_t userId)
     return "/mnt/hmdfs/" + std::to_string(userId);
 }
 
-const std::string PHOTO_CLOUD_PATH_URI = "/storage/cloud/files/";
-const std::string PHOTO_MEDIA_PATH_URI = "/storage/media/local/files/";
-std::string CloudMediaClientUtils::GetLocalPath(const std::string &path)
-{
-    std::string localPath = path;
-    size_t pos = localPath.find(PHOTO_CLOUD_PATH_URI);
-    if (pos != std::string::npos) {
-        localPath.replace(pos, PHOTO_CLOUD_PATH_URI.length(), PHOTO_MEDIA_PATH_URI);
-    }
-    return localPath;
-}
-
 std::string CloudMediaClientUtils::FindLocalPathFromCloudPath(const std::string &path, int32_t userId)
 {
-    std::string localPath = GetLocalPath(path);
+    std::string localPath = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     return AppendUserId(localPath, userId);
 }
 
@@ -85,7 +74,7 @@ std::string CloudMediaClientUtils::GetVideoCachePath(const std::string &filePath
     size_t pos = filePath.find(sandboxPrefix);
     if (pos != 0 || pos == std::string::npos) {
         MEDIA_ERR_LOG(
-            "GetVideoCachePath Invalid filePath, path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+            "GetVideoCachePath Invalid filePath, path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return result;
     }
     std::string cachePath = GetHmdfsPathPrefix(userId) + cachePathPrefix + PHOTOS_PATH +
@@ -95,13 +84,13 @@ std::string CloudMediaClientUtils::GetVideoCachePath(const std::string &filePath
     if (resolvedPath == nullptr) {
         if (errno != ENOENT) {
             MEDIA_ERR_LOG("GetVideoCachePath realpath failed, path: %{public}s",
-                MediaFileUtils::DesensitizePath(filePath).c_str());
+                MediaPathUtils::DesensitizePath(filePath).c_str());
         }
         return result;
     }
     if (strncmp(resolvedPath, cachePath.c_str(), cachePath.size()) != 0) {
         MEDIA_ERR_LOG("GetVideoCachePath Invalid videoCachePath, path: %{public}s",
-            MediaFileUtils::DesensitizePath(cachePath).c_str());
+            MediaPathUtils::DesensitizePath(cachePath).c_str());
         free(resolvedPath);
         return result;
     }
@@ -111,7 +100,7 @@ std::string CloudMediaClientUtils::GetVideoCachePath(const std::string &filePath
 
 void CloudMediaClientUtils::InvalidVideoCache(const std::string &localPath, int32_t userId)
 {
-    MEDIA_INFO_LOG("InvalidVideoCache loca path: %{public}s", MediaFileUtils::DesensitizePath(localPath).c_str());
+    MEDIA_INFO_LOG("InvalidVideoCache loca path: %{public}s", MediaPathUtils::DesensitizePath(localPath).c_str());
     const std::string sandboxPrefix = "/storage/cloud";
     CHECK_AND_RETURN_LOG(userId >= 0, "InvalidVideoCache Invalid userId: %{public}d", userId);
     size_t pos = localPath.find(sandboxPrefix);
@@ -122,9 +111,9 @@ void CloudMediaClientUtils::InvalidVideoCache(const std::string &localPath, int3
     CHECK_AND_RETURN_LOG(!videoCachePath.empty(), "InvalidVideoCache Invalid videoCachePath");
     CHECK_AND_RETURN_LOG(unlink(videoCachePath.c_str()) >= 0,
         "InvalidVideoCache Failed to unlink video cache: %{public}s, errno: %{public}d",
-        MediaFileUtils::DesensitizePath(videoCachePath).c_str(),
+        MediaPathUtils::DesensitizePath(videoCachePath).c_str(),
         errno);
     MEDIA_INFO_LOG(
-        "InvalidVideoCache VideoCachePath: %{public}s", MediaFileUtils::DesensitizePath(videoCachePath).c_str());
+        "InvalidVideoCache VideoCachePath: %{public}s", MediaPathUtils::DesensitizePath(videoCachePath).c_str());
 }
 }  // namespace OHOS::Media::CloudSync

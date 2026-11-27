@@ -410,7 +410,7 @@ static int32_t WriteFile(const ExecEnv &env, FileInfo &fileInfo, bool isRestart)
         return Media::E_ERR;
     }
     int32_t wfd = UserFileClientEx::Open(fileInfo.uri, Media::MEDIA_FILEMODE_WRITETRUNCATE, isRestart);
-    if (wfd <= 0) {
+    if (wfd < 0) {
         printf("%s open failed. wfd:%d, uri:%s\n", STR_FAIL.c_str(), wfd, fileInfo.uri.c_str());
         close(rfd);
         return Media::E_ERR;

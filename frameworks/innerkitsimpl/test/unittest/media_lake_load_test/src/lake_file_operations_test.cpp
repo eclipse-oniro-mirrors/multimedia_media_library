@@ -31,6 +31,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "photo_album_column.h"
 #include "media_column.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "media_edit_utils.h"
 
@@ -47,7 +48,7 @@ static const std::string TEST_CLOUD_DIR = "/storage/cloud/files";
 
 void LakeFileOperationsTest::SetUpTestCase()
 {
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 void LakeFileOperationsTest::TearDownTestCase()
@@ -76,8 +77,8 @@ HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_001, TestSize.Level1)
     
     int32_t ret = LakeFileOperations::MoveLakeFile(srcPath, destPath);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(srcPath), false);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(destPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(srcPath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(destPath), true);
     
     MediaFileUtils::DeleteFile(destPath);
 }
@@ -102,10 +103,10 @@ HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_003, TestSize.Level1)
     
     int32_t ret = LakeFileOperations::MoveLakeFile(srcPath, destPath);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(destPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(destPath), true);
     
     MediaFileUtils::DeleteDir(TEST_DIR_PATH);
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_004, TestSize.Level1)
@@ -519,10 +520,10 @@ HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_005, TestSize.Level1)
     
     int32_t ret = LakeFileOperations::MoveLakeFile(srcPath, destPath);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(destPath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(destPath), true);
     
     MediaFileUtils::DeleteDir(TEST_DIR_PATH);
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_006, TestSize.Level1)
@@ -538,7 +539,7 @@ HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_006, TestSize.Level1)
     EXPECT_EQ(ret, E_OK);
     
     MediaFileUtils::DeleteDir(TEST_DIR_PATH);
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_007, TestSize.Level1)
@@ -554,7 +555,7 @@ HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_007, TestSize.Level1)
     EXPECT_EQ(ret, E_OK);
     
     MediaFileUtils::DeleteDir(TEST_DIR_PATH);
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_008, TestSize.Level1)
@@ -570,7 +571,7 @@ HWTEST_F(LakeFileOperationsTest, MoveLakeFile_Test_008, TestSize.Level1)
     EXPECT_EQ(ret, E_OK);
     
     MediaFileUtils::DeleteDir(TEST_DIR_PATH);
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 HWTEST_F(LakeFileOperationsTest, GetInnerLakeAssets_Test_006, TestSize.Level1)

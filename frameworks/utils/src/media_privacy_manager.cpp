@@ -29,6 +29,7 @@
 #include "media_container_types.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_type_const.h"
@@ -499,7 +500,7 @@ string tempImagePath;
     }
     MEDIA_DEBUG_LOG("after replace path with db data path, toopen=%{private}s", path_.c_str());
 #endif
-    if (!MediaFileUtils::IsFileExists(path_) && !fileId_.empty()) {
+    if (!MediaPureFileUtils::IsFileExists(path_) && !fileId_.empty()) {
         OHOS::Media::CloudDentryHelper::CreateDentryForOrigin(fileId_, path_);
     }
     int err = GetPrivacyRanges();

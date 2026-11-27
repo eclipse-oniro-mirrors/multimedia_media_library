@@ -56,6 +56,10 @@ ohos_unittest("medialibrary_fuse_test") {
   ]
 
   defines = []
+  if (media_library_multi_account_enable) {
+    include_dirs += [ "${MEDIALIB_NEW_SERVICES_PATH}/media_multi_account/include" ]
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
+  }
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
@@ -86,6 +90,7 @@ ohos_unittest("medialibrary_fuse_test") {
     "kv_store:distributeddata_inner",
     "libfuse:libfuse",
     "os_account:os_account_innerkits",
+    "preferences:native_preferences",
     "relational_store:native_appdatafwk",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

@@ -16,6 +16,8 @@
 #define MLOG_TAG "MediaLibraryCloneRestoreCVAnalysis"
 
 #include "clone_restore_cv_analysis.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"
@@ -43,7 +45,7 @@ void CloneRestoreCVAnalysis::Init(int32_t sceneCode, const std::string &taskId,
     mediaRdb_ = mediaRdb;
 
     assetPath_ = videoPath;
-    isHighlightVideoDirExist_ = MediaFileUtils::IsDirectory(assetPath_);
+    isHighlightVideoDirExist_ = MediaPureFileUtils::IsDirectory(assetPath_);
     MEDIA_INFO_LOG("/highlight/video/ source dir %{public}s.", isHighlightVideoDirExist_ ? "exist" : "don't exist");
     garblePath_ = GARBLE_DST_PATH;
 }
@@ -308,10 +310,10 @@ void CloneRestoreCVAnalysis::MoveAnalysisAssets(const std::string &srcPath, cons
 {
     std::string srcGarble = srcPath;
     srcGarble.replace(0, assetPath_.length(), "*/");
-    std::string dstGarble = MediaFileUtils::DesensitizePath(dstPath);
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(srcPath), "src file doesn't exist, srcPath:%{public}s."
+    std::string dstGarble = MediaPathUtils::DesensitizePath(dstPath);
+    CHECK_AND_RETURN_LOG(MediaPureFileUtils::IsFileExists(srcPath), "src file doesn't exist, srcPath:%{public}s."
         "dstPath:%{public}s", srcGarble.c_str(), dstGarble.c_str());
-    CHECK_AND_RETURN_INFO_LOG(!MediaFileUtils::IsFileExists(dstPath),
+    CHECK_AND_RETURN_INFO_LOG(!MediaPureFileUtils::IsFileExists(dstPath),
         "dst file already exists, srcPath:%{public}s, dstPath:%{public}s.", srcGarble.c_str(), dstGarble.c_str());
     int32_t errCode = BackupFileUtils::PreparePath(dstPath);
     CHECK_AND_RETURN_LOG(errCode == E_OK, "PreparePath failed, can't move file, srcPath:%{public}s, "

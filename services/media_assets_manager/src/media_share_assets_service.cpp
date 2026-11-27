@@ -272,6 +272,10 @@ int32_t MediaShareAssetsService::RemoveShareAlbumAndAsset(bool needAvoidRepeated
 
 void MediaShareAssetsService::RestartRemoveShareAlbumAndAsset()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MEDIA_INFO_LOG("multi acount not support cloud");
+    return;
+#endif
     // 防重入：已有重启删除流程在运行时直接返回，避免重复清理
     std::unique_lock<std::mutex> lock(restartMutex_, std::defer_lock);
     CHECK_AND_RETURN_WARN_LOG(lock.try_lock(), "share assets is cleaning, skipping this restart operation");

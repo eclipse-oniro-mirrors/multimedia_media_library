@@ -16,6 +16,8 @@
 #define MLOG_TAG "AncoReverseCloneAdapter"
 
 #include "anco_reverse_clone_adapter.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -80,7 +82,7 @@ bool IsFileExistingPath(const std::string &path)
     if (path.empty() || ContainsTraversal(path)) {
         return false;
     }
-    return MediaFileUtils::IsFileExists(path);
+    return MediaPureFileUtils::IsFileExists(path);
 }
 
 bool GetFileStat(const std::string &path, struct stat &statInfo)
@@ -96,19 +98,19 @@ void LogLakePathCheck(int32_t fileId, const std::string &stage, const std::strin
     bool fileExists = IsFileExistingPath(path);
     MEDIA_INFO_LOG("Anco path check, stage=%{public}s, fileId=%{public}d, fileExists=%{public}d, "
         "path=%{public}s", stage.c_str(), fileId, static_cast<int32_t>(fileExists),
-        MediaFileUtils::DesensitizePath(path).c_str());
+        MediaPathUtils::DesensitizePath(path).c_str());
 }
 
 std::string ResolveDeduplicationDbPath(const AncoReverseCloneContext &context)
 {
     if (!context.deduplicationDbPath.empty()) {
         MEDIA_INFO_LOG("Use custom anco deduplication db path: %{public}s",
-            MediaFileUtils::DesensitizePath(context.deduplicationDbPath).c_str());
+            MediaPathUtils::DesensitizePath(context.deduplicationDbPath).c_str());
         return context.deduplicationDbPath;
     }
     std::string defaultPath = AncoReverseCloneAdapter::GetDefaultDeduplicationDbPath();
     MEDIA_INFO_LOG("Use default anco deduplication db path: %{public}s",
-        MediaFileUtils::DesensitizePath(defaultPath).c_str());
+        MediaPathUtils::DesensitizePath(defaultPath).c_str());
     return defaultPath;
 }
 
@@ -165,7 +167,7 @@ void AddAncoRowByPath(AncoRowsByPath &rowsByPath, const AncoPhotoRow &row, AncoR
         stats.phaseTwoDuplicateOldPathRows++;
         MEDIA_WARN_LOG("Duplicate anco row matched by storage path, keepFileId=%{public}d, "
             "skipFileId=%{public}d, path=%{public}s", result.first->second.fileId, row.fileId,
-            MediaFileUtils::DesensitizePath(row.storagePath).c_str());
+            MediaPathUtils::DesensitizePath(row.storagePath).c_str());
     }
 }
 
@@ -227,10 +229,10 @@ public:
         deduplicationInfos_.clear();
         failedPaths_.clear();
         MEDIA_INFO_LOG("Load anco restore info start, dbPath=%{public}s",
-            MediaFileUtils::DesensitizePath(dbPath).c_str());
-        if (!MediaFileUtils::IsFileExists(dbPath)) {
+            MediaPathUtils::DesensitizePath(dbPath).c_str());
+        if (!MediaPureFileUtils::IsFileExists(dbPath)) {
             MEDIA_WARN_LOG("Anco restore info db does not exist: %{public}s",
-                MediaFileUtils::DesensitizePath(dbPath).c_str());
+                MediaPathUtils::DesensitizePath(dbPath).c_str());
             return false;
         }
 
@@ -348,20 +350,20 @@ bool CheckNewPathReady(const AncoPhotoRow &row, const AncoDeduplicationInfo &inf
         stats.invalidNewPathRows++;
         LogLakePathCheck(row.fileId, "invalid_new_path", info.newPath);
         MEDIA_WARN_LOG("PhaseTwo skip update for invalid new path, fileId=%{public}d, newPath=%{public}s",
-            row.fileId, MediaFileUtils::DesensitizePath(info.newPath).c_str());
+            row.fileId, MediaPathUtils::DesensitizePath(info.newPath).c_str());
         return false;
     }
     if (row.size > 0 && static_cast<int64_t>(statInfo.st_size) != row.size) {
         stats.invalidNewPathRows++;
         MEDIA_WARN_LOG("PhaseTwo skip update for size mismatch, fileId=%{public}d, expected=%{public}" PRId64
             ", actual=%{public}" PRId64 ", newPath=%{public}s", row.fileId, row.size,
-            static_cast<int64_t>(statInfo.st_size), MediaFileUtils::DesensitizePath(info.newPath).c_str());
+            static_cast<int64_t>(statInfo.st_size), MediaPathUtils::DesensitizePath(info.newPath).c_str());
         return false;
     }
     inode = std::to_string(statInfo.st_ino);
     MEDIA_INFO_LOG("PhaseTwo new path validated, fileId=%{public}d, inode=%{public}s, "
         "size=%{public}" PRId64 ", newPath=%{public}s", row.fileId, inode.c_str(),
-        static_cast<int64_t>(statInfo.st_size), MediaFileUtils::DesensitizePath(info.newPath).c_str());
+        static_cast<int64_t>(statInfo.st_size), MediaPathUtils::DesensitizePath(info.newPath).c_str());
     return true;
 }
 
@@ -375,7 +377,7 @@ AncoRepairUpdate BuildUpdate(const AncoPhotoRow &row, const AncoDeduplicationInf
     update.inode = inode;
     MEDIA_INFO_LOG("Build anco update, fileId=%{public}d, displayName=%{public}s, title=%{public}s, "
         "inode=%{public}s, newPath=%{public}s", update.fileId, update.displayName.c_str(),
-        update.title.c_str(), update.inode.c_str(), MediaFileUtils::DesensitizePath(update.storagePath).c_str());
+        update.title.c_str(), update.inode.c_str(), MediaPathUtils::DesensitizePath(update.storagePath).c_str());
     return update;
 }
 
@@ -402,11 +404,11 @@ bool ExecuteUpdates(const std::shared_ptr<NativeRdb::RdbStore> &finalDb,
                 stats.updateFailedRows++;
                 MEDIA_ERR_LOG("Update anco row failed, fileId=%{public}d, ret=%{public}d, "
                     "path=%{public}s", update.fileId, ret,
-                    MediaFileUtils::DesensitizePath(update.storagePath).c_str());
+                    MediaPathUtils::DesensitizePath(update.storagePath).c_str());
                 return ret;
             }
             MEDIA_INFO_LOG("Update anco row success, fileId=%{public}d, path=%{public}s",
-                update.fileId, MediaFileUtils::DesensitizePath(update.storagePath).c_str());
+                update.fileId, MediaPathUtils::DesensitizePath(update.storagePath).c_str());
         }
         return NativeRdb::E_OK;
     };
@@ -551,12 +553,12 @@ void AddDeleteIfMissing(const AncoPhotoRow &row, AncoRepairBatch &batch)
         batch.GetStats().phaseOneRowsKept++;
         LogLakePathCheck(row.fileId, "keep_existing_origin", row.storagePath);
         MEDIA_INFO_LOG("Keep anco row because origin exists, fileId=%{public}d, path=%{public}s",
-            row.fileId, MediaFileUtils::DesensitizePath(row.storagePath).c_str());
+            row.fileId, MediaPathUtils::DesensitizePath(row.storagePath).c_str());
         return;
     }
     LogLakePathCheck(row.fileId, "delete_missing_origin", row.storagePath);
     MEDIA_WARN_LOG("Mark anco row deleted because origin missing, fileId=%{public}d, path=%{public}s",
-        row.fileId, MediaFileUtils::DesensitizePath(row.storagePath).c_str());
+        row.fileId, MediaPathUtils::DesensitizePath(row.storagePath).c_str());
     batch.AddDelete(row.fileId);
 }
 
@@ -598,13 +600,13 @@ bool ProcessPhaseTwoFailedRows(const AncoRestoreInfoRepository &repo, AncoRepair
         if (it == rowsByPath.end()) {
             stats.phaseTwoFailedRowsNotMatched++;
             MEDIA_INFO_LOG("Fail info not matched final Photos, path=%{public}s",
-                MediaFileUtils::DesensitizePath(path).c_str());
+                MediaPathUtils::DesensitizePath(path).c_str());
             continue;
         }
         const auto &row = it->second;
         stats.phaseTwoFailedRowsMatched++;
         MEDIA_WARN_LOG("Mark anco row deleted because File Manager transfer failed, fileId=%{public}d, "
-            "path=%{public}s", row.fileId, MediaFileUtils::DesensitizePath(row.storagePath).c_str());
+            "path=%{public}s", row.fileId, MediaPathUtils::DesensitizePath(row.storagePath).c_str());
         batch.AddDelete(row.fileId);
     }
     MEDIA_INFO_LOG("ProcessPhaseTwoFailedRows finish, matched=%{public}d, notMatched=%{public}d",
@@ -623,15 +625,15 @@ bool ProcessPhaseTwoDeduplicationRows(const AncoRestoreInfoRepository &repo, Anc
         if (it == rowsByPath.end()) {
             stats.phaseTwoRowsNotMatched++;
             MEDIA_INFO_LOG("Deduplication info not matched final Photos, oldPath=%{public}s, "
-                "newPath=%{public}s", MediaFileUtils::DesensitizePath(info.path).c_str(),
-                MediaFileUtils::DesensitizePath(info.newPath).c_str());
+                "newPath=%{public}s", MediaPathUtils::DesensitizePath(info.path).c_str(),
+                MediaPathUtils::DesensitizePath(info.newPath).c_str());
             continue;
         }
         const auto &row = it->second;
         stats.phaseTwoRowsMatched++;
         MEDIA_INFO_LOG("Deduplication info matched by path, fileId=%{public}d, oldPath=%{public}s, "
-            "newPath=%{public}s", row.fileId, MediaFileUtils::DesensitizePath(row.storagePath).c_str(),
-            MediaFileUtils::DesensitizePath(info.newPath).c_str());
+            "newPath=%{public}s", row.fileId, MediaPathUtils::DesensitizePath(row.storagePath).c_str(),
+            MediaPathUtils::DesensitizePath(info.newPath).c_str());
         if (batch.IsMarkedForDelete(row.fileId)) {
             MEDIA_WARN_LOG("Skip anco dedup update because row already marked deleted, fileId=%{public}d",
                 row.fileId);
@@ -641,8 +643,8 @@ bool ProcessPhaseTwoDeduplicationRows(const AncoRestoreInfoRepository &repo, Anc
         if (!CheckNewPathReady(row, info, inode, stats)) {
             MEDIA_WARN_LOG("PhaseTwo delete anco row because matched new path is invalid, "
                 "fileId=%{public}d, oldPath=%{public}s, newPath=%{public}s", row.fileId,
-                MediaFileUtils::DesensitizePath(row.storagePath).c_str(),
-                MediaFileUtils::DesensitizePath(info.newPath).c_str());
+                MediaPathUtils::DesensitizePath(row.storagePath).c_str(),
+                MediaPathUtils::DesensitizePath(info.newPath).c_str());
             batch.AddDelete(row.fileId);
             continue;
         }

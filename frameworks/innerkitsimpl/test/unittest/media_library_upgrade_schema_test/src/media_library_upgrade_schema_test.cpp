@@ -24,6 +24,7 @@
 #include <iostream>
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_rdbstore.h"
 #include "media_library_upgrade_manager.h"
@@ -250,7 +251,7 @@ static std::string BeginGenerateHighlightThumbnail(const std::vector<std::string
 
 void UpgradeSchemaTest::RemoveTestDb(const std::string &dbPath)
 {
-    if (MediaFileUtils::IsFileExists(dbPath)) {
+    if (MediaPureFileUtils::IsFileExists(dbPath)) {
         MediaFileUtils::DeleteFile(dbPath);
         MEDIA_INFO_LOG("Removed database: %{public}s", dbPath.c_str());
     }
@@ -261,16 +262,16 @@ void UpgradeSchemaTest::RemoveTestDb(const std::string &dbPath)
     std::string dwrPath = dbPath + "-dwr";
     std::string comparePath = dbPath + "-compare";
 
-    if (MediaFileUtils::IsFileExists(walPath)) {
+    if (MediaPureFileUtils::IsFileExists(walPath)) {
         MediaFileUtils::DeleteFile(walPath);
     }
-    if (MediaFileUtils::IsFileExists(shmPath)) {
+    if (MediaPureFileUtils::IsFileExists(shmPath)) {
         MediaFileUtils::DeleteFile(shmPath);
     }
-    if (MediaFileUtils::IsFileExists(dwrPath)) {
+    if (MediaPureFileUtils::IsFileExists(dwrPath)) {
         MediaFileUtils::DeleteFile(dwrPath);
     }
-    if (MediaFileUtils::IsFileExists(comparePath)) {
+    if (MediaPureFileUtils::IsFileExists(comparePath)) {
         MediaFileUtils::DeleteFile(comparePath);
     }
 }

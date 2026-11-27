@@ -22,7 +22,9 @@
 #include "map_operation_flag.h"
 #include "media_app_uri_permission_column.h"
 #include "media_exif.h"
+#include "media_pure_file_utils.h"
 #include "media_scanner_manager.h"
+#include "media_string_utils.h"
 #include "media_unique_number_column.h"
 #include "medialibrary_audio_operations.h"
 #include "medialibrary_bundle_manager.h"
@@ -83,6 +85,12 @@
 #include "file_const.h"
 #include "media_values_bucket_utils.h"
 #include "medialibrary_rdb_helper.h"
+#include "media_path_utils.h"
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_enable_checker.h"
+#include "account_manager.h"
+#include "media_app_uri_sensitive_column.h"
+#endif
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -423,95 +431,173 @@ int32_t MediaLibraryAssetOperations::CloseOperation(MediaLibraryCommand &cmd)
     }
 }
 
+static int32_t CollectDropTableSqls(const shared_ptr<MediaLibraryRdbStore> &rdbstore,
+    vector<string> &sqls)
+{
+    const string querySql = "SELECT 'DROP ' || type || ' IF EXISTS ' || name || ';'"
+        " FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%';";
+    auto resultSet = rdbstore->QueryByStep(querySql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Query drop SQL failed");
+    int32_t count = 0;
+    if (resultSet->GetRowCount(count) != NativeRdb::E_OK || count < 0) {
+        resultSet->Close();
+        return E_HAS_DB_ERROR;
+    }
+    for (int32_t i = 0; i < count; ++i) {
+        string sql;
+        if (resultSet->GoToNextRow() != NativeRdb::E_OK ||
+            resultSet->GetString(0, sql) != NativeRdb::E_OK || sql.empty()) {
+            resultSet->Close();
+            return E_HAS_DB_ERROR;
+        }
+        sqls.push_back(sql);
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 static int32_t DropAllTables(const shared_ptr<MediaLibraryRdbStore> rdbStore)
 {
-    string dropSqlRowName = "drop_table_and_view_sql";
-    string queryDropSql =
-        "SELECT 'DROP ' || type || ' IF EXISTS ' || name || ';' as " + dropSqlRowName +
-        " FROM sqlite_master" +
-        " WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%';";
-    auto dropSqlsResultSet = rdbStore->QuerySql(queryDropSql);
-    CHECK_AND_RETURN_RET_LOG(dropSqlsResultSet != nullptr, E_HAS_DB_ERROR, "query Drop Sql failed");
-
-    vector<string> dropSqlsVec;
-    while (dropSqlsResultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t columnIndex = 0;
-        CHECK_AND_RETURN_RET_LOG(dropSqlsResultSet->GetColumnIndex(dropSqlRowName, columnIndex) == NativeRdb::E_OK,
-            E_HAS_DB_ERROR, "Get drop_table_and_view_sql column failed");
-
-        string sql;
-        CHECK_AND_RETURN_RET_LOG(dropSqlsResultSet->GetString(columnIndex, sql) == NativeRdb::E_OK,
-            E_HAS_DB_ERROR, "Get drop_table_and_view_sql sql failed");
-        if (!sql.empty()) {
-            dropSqlsVec.push_back(sql);
-        }
-    }
-
-    for (const auto &dropSql : dropSqlsVec) {
-        rdbStore->ExecuteSql(dropSql);
+    vector<string> sqls;
+    int32_t ret = CollectDropTableSqls(rdbStore, sqls);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Collect drop SQL failed");
+    for (const auto &sql : sqls) {
+        ret = rdbStore->ExecuteSql(sql);
+        CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "Drop table failed, ret =%{public}d", ret);
     }
     return E_OK;
 }
 
-static void DeleteFileManagerTempFileAgingXml()
+static int32_t DeleteFileManagerTempFileAgingXml(const string &xmlPath)
 {
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(Background::FILE_MANAGER_TEMP_FILE_AGING_EVENT),
-        "File manager temp file aging xml not exist");
-    int32_t errCode = NativePreferences::PreferencesHelper::DeletePreferences(
-        Background::FILE_MANAGER_TEMP_FILE_AGING_EVENT);
-    CHECK_AND_RETURN_LOG(errCode == E_OK,
-        "Failed to delete file manager temp file aging xml, errCode: %{public}d", errCode);
+    if (MediaPureFileUtils::IsFileExists(xmlPath)) {
+        return E_OK;
+    }
+    const int32_t ret = NativePreferences::PreferencesHelper::DeletePreferences(xmlPath);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Delete aging preferences failed, ret=%{public}d", ret);
+    return E_OK;
 }
 
-static void ResetFileIdProgressData()
+static int32_t ResetFileIdProgressData(const string &xmlPath)
 {
-    const string taskProgressXml = "/data/storage/el2/base/preferences/task_progress.xml";
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(taskProgressXml, errCode);
-    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
-    prefs->PutInt("recognize_ce_photos_file_id_progress", 0);
-    prefs->FlushSync();
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(xmlPath, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs != nullptr && errCode == E_OK, E_ERR,
+        "Get progress preferences failed, ret=%{public}d", errCode);
+    int32_t ret = prefs->PutInt("recognize_ce_photos_file_id_progress", 0);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Reset file id progress failed, ret=%{public}d", ret);
+    ret = prefs->FlushSync();
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Flush file id progress failed, ret=%{public}d", ret);
+    return E_OK;
 }
 
-int32_t MediaLibraryAssetOperations::DeleteToolOperation(MediaLibraryCommand &cmd)
+static int32_t ClearDeleteToolSensitiveData(const shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
-    auto valuesBucket = cmd.GetValueBucket();
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Can not get rdb store");
-    int32_t errCode = DropAllTables(rdbStore);
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Drop table failed, errCode=%{public}d", errCode);
-    errCode = rdbStore->DataCallBackOnCreate();
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        const vector<string> sqls = {
+            AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE,
+            AppUriSensitiveColumn::CREATE_URI_URITYPE_APPID_INDEX,
+            AppUriSensitiveColumn::DELETE_APP_URI_SENSITIVE_TABLE
+        };
+        for (const auto &sql : sqls) {
+            const int32_t ret = rdbStore->ExecuteSql(sql);
+            CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret,
+                "Reset sensitive data failed, ret=%{public}d", ret);
+        }
+        return E_OK;
+    }
+#else
+    (void)rdbStore;
+#endif
     UriSensitiveOperations::DeleteAllSensitiveAsync();
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "DataCallBackOnCreate failed, errCode=%{public}d", errCode);
-
-    const static vector<string> DELETE_DIR_LIST = {
-        ROOT_MEDIA_DIR + PHOTO_BUCKET,
-        ROOT_MEDIA_DIR + AUDIO_BUCKET,
-        ROOT_MEDIA_DIR + CAMERA_DIR_VALUES,
-        ROOT_MEDIA_DIR + VIDEO_DIR_VALUES,
-        ROOT_MEDIA_DIR + PIC_DIR_VALUES,
-        ROOT_MEDIA_DIR + AUDIO_DIR_VALUES,
-        ROOT_MEDIA_DIR + ".thumbs",
-        ROOT_MEDIA_DIR + ".editData"
+    return E_OK;
+}
+ 
+static bool BuildDeleteToolDirectories(vector<string> &directories, string &photoThumbsPath)
+{
+    const string root = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    CHECK_AND_RETURN_RET_LOG(root.size() > 1 && root.front() == '/' && root.back() == '/', false,
+        "Invalid cloud files directory");
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (AccountEnableChecker::IsMultiAccountEnabled()) {
+        int32_t accountId = -1;
+        CHECK_AND_RETURN_RET_LOG(AccountManager::GetInstance().GetForegroundAccountId(accountId) && accountId > 0 &&
+            MediaPathUtils::CheckAccountId(root, accountId), false, "Invalid account directory for delete");
+    }
+#endif
+    const vector<FileBucketType> buckets = {
+        FileBucketType::PHOTO, FileBucketType::AUDIO, FileBucketType::CAMERA, FileBucketType::VIDEOS,
+        FileBucketType::PICTURES, FileBucketType::AUDIOS, FileBucketType::THUMB, FileBucketType::EDIT_DATA
     };
-
-    for (const string &dir : DELETE_DIR_LIST) {
-        if (!MediaFileUtils::DeleteDir(dir)) {
-            MEDIA_ERR_LOG("Delete dir %{public}s failed", dir.c_str());
+    for (const auto bucket : buckets) {
+        string suffix = MediaPathUtils::GetBucketFix(bucket);
+        if (!suffix.empty() && suffix.back() == '/') {
+            suffix.pop_back();
+        }
+        CHECK_AND_RETURN_RET_LOG(!suffix.empty() && suffix.front() != '/' &&
+            suffix != "." && suffix != ".." && suffix.find('/') == string::npos, false,
+            "Invalid delete directory suffix");
+        directories.push_back(root + suffix);
+    }
+    photoThumbsPath = root + ".thumbs/Photo";
+    return true;
+}
+ 
+static int32_t ResetDeleteToolDirectories(const vector<string> &directories, const string &photoThumbsPath)
+{
+    bool hasError = false;
+    for (const auto &dir : directories) {
+        if (MediaPureFileUtils::IsFileExists(dir) && !MediaFileUtils::DeleteDir(dir)) {
+            MEDIA_ERR_LOG("Delete media directory failed, errno=%{public}d", errno);
+            hasError = true;
             continue;
         }
-        if (!MediaFileUtils::CreateDirectory(dir)) {
-            MEDIA_ERR_LOG("Create dir %{public}s failed", dir.c_str());
-        };
+        if (!MediaPureFileUtils::CreateDirectory(dir)) {
+            MEDIA_ERR_LOG("Recreate media directory failed, errno=%{public}d", errno);
+            hasError = true;
+        }
     }
-
-    string photoThumbsPath = ROOT_MEDIA_DIR + ".thumbs/Photo";
-    CHECK_AND_PRINT_LOG(MediaFileUtils::CreateDirectory(photoThumbsPath),
-        "Create dir %{public}s failed", photoThumbsPath.c_str());
-    DeleteFileManagerTempFileAgingXml();
-    ResetFileIdProgressData();
-    return E_OK;
+    if (!MediaPureFileUtils::CreateDirectory(photoThumbsPath)) {
+        MEDIA_ERR_LOG("Recreate photo thumbnail directory failed, errno=%{public}d", errno);
+        hasError = true;
+    }
+    return hasError ? E_ERR : E_OK;
+}
+ 
+int32_t MediaLibraryAssetOperations::DeleteToolOperation(MediaLibraryCommand &cmd)
+{
+    auto values = cmd.GetValueBucket();
+    NativeRdb::ValueObject value;
+    bool onlyDb = false;
+    CHECK_AND_RETURN_RET_LOG(values.GetObject("only_db", value) && value.GetBool(onlyDb) == NativeRdb::E_OK,
+        E_INVALID_VALUES, "Missing or invalid only_db");
+    vector<string> directories;
+    string photoThumbsPath;
+    CHECK_AND_RETURN_RET_LOG(onlyDb || BuildDeleteToolDirectories(directories, photoThumbsPath),
+        E_INVALID_PATH, "Prepare delete directories failed");
+    const string agingXml = MediaPathUtils::AdaptPreferencesPathForAllDevice(
+        Background::FILE_MANAGER_TEMP_FILE_AGING_EVENT, false);
+    const string progressXml = MediaPathUtils::AdaptPreferencesPathForAllDevice(
+        "/data/storage/el2/base/preferences/task_progress.xml", true);
+    CHECK_AND_RETURN_RET_LOG(!agingXml.empty() && !progressXml.empty(), E_INVALID_PATH,
+        "Prepare delete preferences paths failed");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Can not get rdb store");
+    int32_t ret = DropAllTables(rdbStore);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Drop tables failed, ret=%{public}d", ret);
+    ret = rdbStore->DataCallBackOnCreate();
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Recreate database failed, ret=%{public}d", ret);
+    ret = ClearDeleteToolSensitiveData(rdbStore);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Reset sensitive data failed, ret=%{public}d", ret);
+    if (onlyDb) {
+        // Reset DB-related progress, but preserve media files and aging records.
+        return ResetFileIdProgressData(progressXml);
+    }
+    const int32_t dirRet = ResetDeleteToolDirectories(directories, photoThumbsPath);
+    const int32_t agingRet = DeleteFileManagerTempFileAgingXml(agingXml);
+    const int32_t progressRet = ResetFileIdProgressData(progressXml);
+    return dirRet == E_OK && agingRet == E_OK && progressRet == E_OK ? E_OK : E_ERR;
 }
 
 static bool CheckOprnObject(OperationObject object)
@@ -916,7 +1002,7 @@ shared_ptr<FileAsset> MediaLibraryAssetOperations::GetFileAssetByUri(const strin
             CHECK_AND_RETURN_RET(fileAsset != nullptr, nullptr);
             handleFilePath(fileAsset, path);
             fileAsset->SetMediaType(MediaFileUtils::GetMediaType(path));
-            if (MediaFileUtils::IsValidInteger(pendingStatus)) {
+            if (MediaStringUtils::IsValidInteger(pendingStatus)) {
                 int32_t timePending = stoi(pendingStatus);
                 fileAsset->SetTimePending((timePending > 0) ? MediaFileUtils::UTCTimeSeconds() : timePending);
             }
@@ -927,7 +1013,7 @@ shared_ptr<FileAsset> MediaLibraryAssetOperations::GetFileAssetByUri(const strin
     if (!isPhoto) {
         fileAsset->SetMediaType(MediaType::MEDIA_TYPE_AUDIO);
     }
-    if (MediaFileUtils::IsValidInteger(id)) {
+    if (MediaStringUtils::IsValidInteger(id)) {
         fileAsset->SetId(stoi(id));
     }
     fileAsset->SetUri(uri);
@@ -1270,7 +1356,7 @@ int32_t MediaLibraryAssetOperations::InsertAssetInDb(std::shared_ptr<Transaction
         return E_HAS_DB_ERROR;
     }
 
-    if (!fileAsset.GetPath().empty() && MediaFileUtils::IsFileExists(fileAsset.GetPath())) {
+    if (!fileAsset.GetPath().empty() && MediaPureFileUtils::IsFileExists(fileAsset.GetPath())) {
         MEDIA_ERR_LOG("file %{private}s exists now", fileAsset.GetPath().c_str());
         return E_FILE_EXIST;
     }
@@ -1588,7 +1674,7 @@ int32_t MediaLibraryAssetOperations::SetUserComment(MediaLibraryCommand &cmd,
     string filePath = fileAsset->GetFilePath();
     vector<string> filePaths = {filePath};
     string sourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(filePath);
-    if (MediaFileUtils::IsFileExists(sourceBackPath)) {
+    if (MediaPureFileUtils::IsFileExists(sourceBackPath)) {
         filePaths.emplace_back(sourceBackPath);
     }
 
@@ -1727,7 +1813,7 @@ static int32_t CreateFileAndSetPending(const shared_ptr<FileAsset> &fileAsset,
 #endif
     int32_t errCode = MediaFileUtils::CreateAsset(path);
     if (errCode != E_OK) {
-        MEDIA_ERR_LOG("Create asset failed, path=%{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+        MEDIA_ERR_LOG("Create asset failed, path=%{public}s", MediaPathUtils::DesensitizePath(path).c_str());
         return errCode;
     }
     if (isMovingPhotoVideo) {
@@ -1768,8 +1854,8 @@ static int32_t SolvePendingStatus(const shared_ptr<FileAsset> &fileAsset, bool i
 
 static int32_t CreateDirectoryAndAsset(const string path)
 {
-    string dir = MediaFileUtils::GetParentPath(path);
-    if (!MediaFileUtils::CreateDirectory(dir)) {
+    string dir = MediaPathUtils::GetParentPath(path);
+    if (!MediaPureFileUtils::CreateDirectory(dir)) {
         MEDIA_ERR_LOG("Create dir failed, dir=%{private}s", dir.c_str());
         return E_INVALID_VALUES;
     }
@@ -1787,7 +1873,7 @@ static int32_t SolveMovingPhotoVideoCreation(const string &imagePath, const stri
         return E_OK;
     }
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(imagePath);
-    if (MediaFileUtils::IsFileExists(videoPath)) {
+    if (MediaPureFileUtils::IsFileExists(videoPath)) {
         return E_OK;
     }
     int32_t errCode = MediaFileUtils::CreateAsset(videoPath);
@@ -1799,7 +1885,7 @@ static int32_t SolveMovingPhotoVideoCreation(const string &imagePath, const stri
 static int32_t SolveMoviePhotoVideoCreation(const string &videoPath, const string &mode)
 {
     CHECK_AND_RETURN_RET(mode != MEDIA_FILEMODE_READONLY, E_OK);
-    CHECK_AND_RETURN_RET_INFO_LOG(!MediaFileUtils::IsFileExists(videoPath), E_OK,
+    CHECK_AND_RETURN_RET_INFO_LOG(!MediaPureFileUtils::IsFileExists(videoPath), E_OK,
         "videoPath is Exists, videoPath %{private}s", videoPath.c_str());
 
     int32_t errCode = MediaFileUtils::CreateAsset(videoPath);
@@ -1869,10 +1955,10 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
         // If below API10, TIME_PENDING is 0 after asset created, so if file is not exist, create an empty one
         string assetPath = MediaFileAccessUtils::GetAssetRealPath(fileAsset);
         assetPath = assetPath.empty() ? fileAsset->GetPath() : assetPath;
-        if (!MediaFileUtils::IsFileExists(assetPath)) {
+        if (!MediaPureFileUtils::IsFileExists(assetPath)) {
             MEDIA_INFO_LOG("create empty file for %{public}s, path: %{private}s",
                 MediaFileUtils::DesensitizeUri(fileAsset->GetUri()).c_str(),
-                MediaFileUtils::DesensitizePath(assetPath).c_str());
+                MediaPathUtils::DesensitizePath(assetPath).c_str());
             int32_t errCode = CreateDirectoryAndAsset(assetPath);
             CHECK_AND_RETURN_RET(errCode == E_OK, errCode);
             AddPhotoErrorDfx(fileAsset, assetPath);
@@ -2384,18 +2470,6 @@ int32_t MediaLibraryAssetOperations::SetPendingStatus(MediaLibraryCommand &cmd)
     }
 }
 
-static string ConvertMediaPathFromCloudPath(const string &path)
-{
-    // if input path is /storage/cloud/xxx, return /storage/media/local/xxx
-    string mediaPath = "/storage/media/local/";
-    string cloudPath = "/storage/cloud/";
-    string newPath = path;
-    if (newPath.find(cloudPath) != string::npos) {
-        newPath.replace(newPath.find(cloudPath), cloudPath.length(), mediaPath);
-    }
-    return newPath;
-}
-
 int32_t MediaLibraryAssetOperations::GrantUriPermission(const string &uri, const string &bundleName,
     const string &path, bool isMovingPhoto)
 {
@@ -2427,7 +2501,7 @@ std::string MediaLibraryAssetOperations::CreateExtUriForV10Asset(FileAsset &file
     auto mediaType = fileAsset.GetMediaType();
     if (filePath.empty() || displayName.empty() || mediaType < 0) {
         MEDIA_ERR_LOG("param invalid, filePath %{public}s or displayName %{public}s invalid failed.",
-            MediaFileUtils::DesensitizePath(filePath).c_str(),
+            MediaPathUtils::DesensitizePath(filePath).c_str(),
             MediaFileUtils::DesensitizeName(displayName).c_str());
         return "";
     }
@@ -2579,8 +2653,8 @@ int32_t MediaLibraryAssetOperations::CreateAssetRealName(int32_t fileId, int32_t
 static inline int32_t PrepareAssetDir(const string &dirPath)
 {
     CHECK_AND_RETURN_RET(!dirPath.empty(), E_INVALID_PATH);
-    if (!MediaFileUtils::IsFileExists(dirPath)) {
-        bool ret = MediaFileUtils::CreateDirectory(dirPath);
+    if (!MediaPureFileUtils::IsFileExists(dirPath)) {
+        bool ret = MediaPureFileUtils::CreateDirectory(dirPath);
         CHECK_AND_RETURN_RET_LOG(ret, E_CHECK_DIR_FAIL, "Create Dir Failed! dirPath=%{private}s",
             dirPath.c_str());
     }
@@ -2608,7 +2682,8 @@ int32_t MediaLibraryAssetOperations::CreateAssetPathById(int32_t fileId, int32_t
         return errCode;
     }
 
-    string dirPath = ROOT_MEDIA_DIR + mediaDirPath + to_string(bucketNum);
+    string dirPath = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES)
+        + mediaDirPath + to_string(bucketNum);
     errCode = PrepareAssetDir(dirPath);
     if (errCode != E_OK) {
         return errCode;
@@ -2838,8 +2913,8 @@ void MediaLibraryAssetOperations::SaveDeletedFile(const std::vector<std::string>
     std::vector<int32_t> &subTypes)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DELETED_FILE_EVENT, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DELETED_FILE_EVENT, true), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences error: %{public}d", errCode);
         return;
@@ -2856,8 +2931,8 @@ void MediaLibraryAssetOperations::SaveDeletedFile(const std::vector<std::string>
 void MediaLibraryAssetOperations::ClearDeletedFile(const std::vector<std::string> &ids, const std::string &table)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DELETED_FILE_EVENT, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DELETED_FILE_EVENT, true), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences error: %{public}d", errCode);
         return;
@@ -2880,9 +2955,9 @@ bool MediaLibraryAssetOperations::CleanupMediaAssets(const std::vector<std::stri
         string path = paths[i];
         int32_t subtype = subtypes[i];
         int32_t effectMode = effectModes[i];
-        CHECK_AND_PRINT_LOG(!MediaFileUtils::IsFileExists(path) || MediaFileUtils::DeleteFile(path),
+        CHECK_AND_PRINT_LOG(!MediaPureFileUtils::IsFileExists(path) || MediaFileUtils::DeleteFile(path),
             "Failed to delete file, errno: %{public}d, path: %{public}s",
-            errno, MediaFileUtils::DesensitizePath(path).c_str());
+            errno, MediaPathUtils::DesensitizePath(path).c_str());
 #ifdef META_RECOVERY_SUPPORT
         MediaLibraryMetaRecovery::DeleteMetaDataByPath(path);
 #endif
@@ -2890,14 +2965,14 @@ bool MediaLibraryAssetOperations::CleanupMediaAssets(const std::vector<std::stri
         if (subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
             effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
             std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(path);
-            CHECK_AND_PRINT_LOG(!MediaFileUtils::IsFileExists(videoPath) || MediaFileUtils::DeleteFile(videoPath),
+            CHECK_AND_PRINT_LOG(!MediaPureFileUtils::IsFileExists(videoPath) || MediaFileUtils::DeleteFile(videoPath),
                 "Failed to delete file, errno: %{public}d, path: %{public}s",
-                errno, MediaFileUtils::DesensitizePath(videoPath).c_str());
+                errno, MediaPathUtils::DesensitizePath(videoPath).c_str());
             std::string livePhotoCachePath = MovingPhotoFileUtils::GetLivePhotoCachePath(path);
             CHECK_AND_PRINT_LOG(
-                !MediaFileUtils::IsFileExists(livePhotoCachePath) || MediaFileUtils::DeleteFile(livePhotoCachePath),
+                !MediaPureFileUtils::IsFileExists(livePhotoCachePath) || MediaFileUtils::DeleteFile(livePhotoCachePath),
                 "Failed to delete file, errno: %{public}d, path: %{public}s",
-                errno, MediaFileUtils::DesensitizePath(livePhotoCachePath).c_str());
+                errno, MediaPathUtils::DesensitizePath(livePhotoCachePath).c_str());
         }
     }
     ThumbnailService::GetInstance()->BatchDeleteThumbnailDirAndAstc(PhotoColumn::PHOTOS_TABLE, ids, paths, dateTakens);
@@ -2913,7 +2988,7 @@ void MediaLibraryAssetOperations::TaskDataFileProcess(const std::vector<std::str
         string filePath = paths[i];
         string fileId = i < ids.size() ? ids[i] : "";
         MEDIA_INFO_LOG("Delete file id: %{public}s, path: %{public}s", fileId.c_str(),
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         bool deleteMainFileRet = false;
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
         deleteMainFileRet = MediaFileAccessUtils::DeleteAsset(AssetOperationInfo::CreateFromPath(filePath));
@@ -2922,7 +2997,7 @@ void MediaLibraryAssetOperations::TaskDataFileProcess(const std::vector<std::str
 #endif
         if (!deleteMainFileRet && (errno != ENOENT)) {
             MEDIA_WARN_LOG("Failed to delete file, errno: %{public}d, path: %{public}s", errno,
-                MediaFileUtils::DesensitizePath(filePath).c_str());
+                MediaPathUtils::DesensitizePath(filePath).c_str());
         }
 
 #ifdef META_RECOVERY_SUPPORT
@@ -2941,7 +3016,8 @@ void MediaLibraryAssetOperations::TaskDataFileProcess(const std::vector<std::str
                     videoPath.c_str());
             }
             string livePhotoPath = MovingPhotoFileUtils::GetLivePhotoCachePath(filePath);
-            bool conds = (MediaFileUtils::IsFileExists(livePhotoPath) && !MediaFileUtils::DeleteFile(livePhotoPath));
+            bool conds = (MediaPureFileUtils::IsFileExists(livePhotoPath) &&
+                !MediaFileUtils::DeleteFile(livePhotoPath));
             CHECK_AND_WARN_LOG(!conds, "Failed to delete cache live photo, errno: %{public}d, path: %{private}s",
                 errno, livePhotoPath.c_str());
         }
@@ -3536,7 +3612,7 @@ int32_t MediaLibraryAssetOperations::DeleteNormalPhotoPermanently(shared_ptr<Fil
     string filePath = fileAsset->GetPath();
     string displayName = fileAsset->GetDisplayName();
     MEDIA_INFO_LOG("Delete Photo displayName is %{public}s", MediaFileUtils::DesensitizeName(displayName).c_str());
-    MEDIA_DEBUG_LOG("Delete Photo path is %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    MEDIA_DEBUG_LOG("Delete Photo path is %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
     CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_INVALID_PATH, "get file path failed");
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
     bool res = MediaFileAccessUtils::DeleteAsset(AssetOperationInfo::CreateFromPath(filePath));
@@ -3688,7 +3764,7 @@ static int32_t DeleteTransCodePhotoPermanently(shared_ptr<FileAsset> &fileAsset)
     string path = fileAsset->GetPath();
     string transCodePath = MediaEditUtils::GetTransCodePath(path);
     MEDIA_DEBUG_LOG("transCodePath path is %{public}s", transCodePath.c_str());
-    if (!MediaFileUtils::IsFileExists(transCodePath)) {
+    if (!MediaPureFileUtils::IsFileExists(transCodePath)) {
         return E_OK;
     }
     if (!MediaFileUtils::DeleteFile(transCodePath)) {
@@ -3752,7 +3828,7 @@ int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::
         " = 1 AND p1." + PhotoColumn::PHOTO_SUBTYPE + " = " + to_string(static_cast<int32_t>(PhotoSubType::BURST)) +
         " AND p1." + PhotoColumn::PHOTO_BURST_KEY + " IS NOT NULL AND p1." + PhotoColumn::MEDIA_ID +
         " != p2." + PhotoColumn::MEDIA_ID;
-    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    std::string inClause = MediaStringUtils::ToStringWithComma(fileIds);
     std::string sql = CloudMediaCommon::FillParams(sqlBefore, {inClause});
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "Failed to query batch selected files!");
@@ -3901,7 +3977,7 @@ int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &
     MediaLibraryPhotoOperations::FilterSharedAssets(fileIds, true);
     MEDIA_INFO_LOG("Start delete permanently %{public}zu photos", fileIds.size());
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), 0, "fileIds is empty.");
-    string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    string inClause = MediaStringUtils::ToStringWithComma(fileIds);
     string sql = GenSqlForDeletePermanently(inClause);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, 0, "get rdb store fail");

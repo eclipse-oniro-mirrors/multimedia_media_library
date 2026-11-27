@@ -21,6 +21,7 @@
 #include "preferences_helper.h"
 #include "dfx_utils.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "result_set_utils.h"
@@ -127,8 +128,8 @@ void MediaDeletedFileTask::HandleDeletedFile()
     static const std::string DELETED_FILE_EVENT = "/data/storage/el2/base/preferences/deleted_file_events.xml";
     static const int32_t batchSize = 100;
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DELETED_FILE_EVENT, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DELETED_FILE_EVENT, true), errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences error: %{public}d", errCode);
         return;

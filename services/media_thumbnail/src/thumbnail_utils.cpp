@@ -27,6 +27,7 @@
 #include "exif_rotate_utils.h"
 #include "iservice_registry.h"
 #include "media_exif.h"
+#include "media_pure_file_utils.h"
 #include "media_remote_thumbnail_column.h"
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_photo_operations.h"
@@ -51,6 +52,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::DistributedKv;
@@ -387,7 +389,7 @@ bool ThumbnailUtils::SaveAfterPacking(ThumbnailData &data, const bool isSourceEx
     CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, false,
         "SaveAfterPacking failed, failed to rename temp filters file: %{public}s",
         DfxUtils::GetSafePath(tempOutputPath).c_str());
-    if (MediaFileUtils::IsFileExists(tempOutputPath)) {
+    if (MediaPureFileUtils::IsFileExists(tempOutputPath)) {
         MEDIA_INFO_LOG("file: %{public}s exists, needs to be deleted", DfxUtils::GetSafePath(tempOutputPath).c_str());
         CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(tempOutputPath),
             "SaveAfterPacking delete failed: %{public}s", DfxUtils::GetSafePath(tempOutputPath).c_str());
@@ -397,7 +399,7 @@ bool ThumbnailUtils::SaveAfterPacking(ThumbnailData &data, const bool isSourceEx
 
 void ThumbnailUtils::CancelAfterPacking(const string &tempOutputPath)
 {
-    if (MediaFileUtils::IsFileExists(tempOutputPath)) {
+    if (MediaPureFileUtils::IsFileExists(tempOutputPath)) {
         MEDIA_INFO_LOG("CancelAfterPacking: %{public}s exists, needs deleted",
             DfxUtils::GetSafePath(tempOutputPath).c_str());
         CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(tempOutputPath),
@@ -1155,12 +1157,13 @@ static int SaveFile(const string &fileName, uint8_t *output, int writeSize)
         }
         if (fd.Get() < 0) {
             int err = errno;
-            std::string fileParentPath = MediaFileUtils::GetParentPath(tempFileName);
+            std::string fileParentPath = MediaPathUtils::GetParentPath(tempFileName);
             MEDIA_ERR_LOG("save failed! status %{public}d, filePath: %{public}s exists: %{public}d, parent path "
-                "exists: %{public}d", err, DfxUtils::GetSafePath(tempFileName).c_str(), MediaFileUtils::IsFileExists(
-                    tempFileName), MediaFileUtils::IsFileExists(fileParentPath));
+                "exists: %{public}d", err, DfxUtils::GetSafePath(tempFileName).c_str(),
+                MediaPureFileUtils::IsFileExists(tempFileName),
+                MediaPureFileUtils::IsFileExists(fileParentPath));
             if (err == EACCES) {
-                MediaFileUtils::PrintStatInformation(fileParentPath);
+                MediaPathUtils::PrintStatInformation(fileParentPath);
             }
             return -err;
         }
@@ -1171,7 +1174,7 @@ static int SaveFile(const string &fileName, uint8_t *output, int writeSize)
     CHECK_AND_RETURN_RET_LOG(errCode >= 0, -errno, "fsync failed errno %{public}d", errno);
     close(fd.Release());
 
-    if (MediaFileUtils::IsFileExists(fileName)) {
+    if (MediaPureFileUtils::IsFileExists(fileName)) {
         MEDIA_INFO_LOG("file: %{public}s exist, delete", DfxUtils::GetSafePath(fileName).c_str());
         if (!MediaFileUtils::DeleteFile(fileName)) {
             MEDIA_ERR_LOG("delete file: %{public}s failed", DfxUtils::GetSafePath(fileName).c_str());
@@ -1197,8 +1200,8 @@ int ThumbnailUtils::SaveFileCreateDir(const string &path, const string &suffix, 
 {
     fileName = GetThumbnailPath(path, suffix);
     CHECK_AND_RETURN_RET_LOG(!fileName.empty(), E_ERR, "Get thumbnail path failed");
-    string dir = MediaFileUtils::GetParentPath(fileName);
-    if (!MediaFileUtils::CreateDirectory(dir)) {
+    string dir = MediaPathUtils::GetParentPath(fileName);
+    if (!MediaPureFileUtils::CreateDirectory(dir)) {
         MEDIA_ERR_LOG("Fail to create directory, fileName: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
         return -errno;
     }
@@ -1209,8 +1212,8 @@ int ThumbnailUtils::SaveFileCreateDirHighlight(const string &path, const string 
     string &fileName, const string &timeStamp)
 {
     fileName = GetThumbnailPathHighlight(path, suffix, timeStamp);
-    string dir = MediaFileUtils::GetParentPath(fileName);
-    if (!MediaFileUtils::CreateDirectory(dir)) {
+    string dir = MediaPathUtils::GetParentPath(fileName);
+    if (!MediaPureFileUtils::CreateDirectory(dir)) {
         MEDIA_ERR_LOG("Fail to create highlight directory, fileName: %{public}s",
             DfxUtils::GetSafePath(fileName).c_str());
         return -errno;
@@ -1327,7 +1330,7 @@ int32_t ThumbnailUtils::SetSource(shared_ptr<AVMetadataHelper> avMetadataHelper,
 #endif
     if (fd < 0) {
         MEDIA_ERR_LOG("Open file failed, err %{public}d, file: %{public}s exists: %{public}d",
-            errno, DfxUtils::GetSafePath(path).c_str(), MediaFileUtils::IsFileExists(path));
+            errno, DfxUtils::GetSafePath(path).c_str(), MediaPureFileUtils::IsFileExists(path));
         return E_ERR;
     }
     struct stat64 st;
@@ -1398,9 +1401,8 @@ bool ThumbnailUtils::DeleteAllThumbFilesAndAstc(ThumbRdbOpt &opts, ThumbnailData
     }
 
     DropThumbnailSize(opts, data);
-    if (data.dateTaken.empty()) {
-        return isDeleteAllThumbFiles;
-    }
+    CHECK_AND_RETURN_RET_LOG(CheckDateTaken(opts, data) && !data.dateTaken.empty(), false,
+        "Failed to resolve date taken before deleting ASTC, id:%{public}s", data.id.c_str());
     bool isDeleteAstc = ThumbnailFileUtils::DeleteMonthAndYearAstc(data);
     return isDeleteAllThumbFiles && isDeleteAstc;
 }
@@ -1568,11 +1570,19 @@ int ThumbnailUtils::SaveAstcDataToKvStore(ThumbnailData &data, const ThumbnailTy
 
     std::shared_ptr<MediaLibraryKvStore> kvStore;
     if (type == ThumbnailType::MTH_ASTC) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStoreForPath(KvStoreValueType::MONTH_ASTC, data.path);
+#else
         kvStore = MediaLibraryKvStoreManager::GetInstance()
             .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::MONTH_ASTC);
+#endif
     } else if (type == ThumbnailType::YEAR_ASTC) {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+        kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStoreForPath(KvStoreValueType::YEAR_ASTC, data.path);
+#else
         kvStore = MediaLibraryKvStoreManager::GetInstance()
             .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::YEAR_ASTC);
+#endif
     } else {
         MEDIA_ERR_LOG("invalid thumbnailType");
         return E_ERR;
@@ -1684,10 +1694,15 @@ bool ThumbnailUtils::UpdateAstcDateTakenFromKvStore(ThumbRdbOpt &opts, const Thu
 
     std::shared_ptr<MediaLibraryKvStore> monthKvStore;
     std::shared_ptr<MediaLibraryKvStore> yearKvStore;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    monthKvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStoreForPath(KvStoreValueType::MONTH_ASTC, data.path);
+    yearKvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStoreForPath(KvStoreValueType::YEAR_ASTC, data.path);
+#else
     monthKvStore = MediaLibraryKvStoreManager::GetInstance()
         .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::MONTH_ASTC);
     yearKvStore = MediaLibraryKvStoreManager::GetInstance()
         .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::YEAR_ASTC);
+#endif
     if (monthKvStore == nullptr || yearKvStore == nullptr) {
         MEDIA_ERR_LOG("kvStore is nullptr");
         return false;
@@ -1931,29 +1946,32 @@ bool ThumbnailUtils::QueryOldKeyAstcInfos(const std::shared_ptr<MediaLibraryRdbS
 
 void ThumbnailUtils::StoreThumbnailSize(const ThumbRdbOpt& opts, const ThumbnailData& data)
 {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     std::string photoId = opts.row.empty() ? data.id : opts.row;
     std::string tmpPath = opts.path.empty() ? data.path : opts.path;
-    if (tmpPath.find(ROOT_MEDIA_DIR + PHOTO_BUCKET) != string::npos) {
+    if (tmpPath.find(cloudFilesDir + PHOTO_BUCKET) != string::npos) {
         MediaLibraryPhotoOperations::StoreThumbnailSize(photoId, tmpPath);
     }
 }
 
 void ThumbnailUtils::DropThumbnailSize(const ThumbRdbOpt& opts, const ThumbnailData& data)
 {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     std::string photoId = opts.row.empty() ? data.id : opts.row;
     std::string tmpPath = opts.path.empty() ? data.path : opts.path;
-    if (tmpPath.find(ROOT_MEDIA_DIR + PHOTO_BUCKET) != string::npos) {
+    if (tmpPath.find(cloudFilesDir + PHOTO_BUCKET) != string::npos) {
         MediaLibraryPhotoOperations::HasDroppedThumbnailSize(photoId);
     }
 }
 
 void ThumbnailUtils::BatchDropThumbnailSize(const ThumbnailDataBatch& dataBatch)
 {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     size_t dataBatchSize = dataBatch.ids.size();
     CHECK_AND_RETURN_LOG(dataBatchSize == dataBatch.paths.size(), "Failed to check dataBatch");
     vector<string> photoIds;
     for (size_t i = 0; i < dataBatchSize; i++) {
-        if (dataBatch.paths[i].find(ROOT_MEDIA_DIR + PHOTO_BUCKET) != string::npos) {
+        if (dataBatch.paths[i].find(cloudFilesDir + PHOTO_BUCKET) != string::npos) {
             photoIds.push_back(dataBatch.ids[i]);
         }
     }

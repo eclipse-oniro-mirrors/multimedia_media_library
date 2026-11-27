@@ -14,6 +14,7 @@
  */
 
 #include "media_player_framework_utils_test.h"
+#include "media_pure_file_utils.h"
 
 #include "media_file_utils.h"
 #include "media_player_framework_utils.h"
@@ -36,7 +37,7 @@ static const string VIDEO_PATH = "/data/local/tmp/test_not_exist.mp4";
 HWTEST_F(MediaPlayerFrameWorkUtilsTest, GetAVMetadataHelper_Test_001, TestSize.Level1)
 {
     string path = VIDEO_PATH;
-    MEDIA_INFO_LOG("file %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    MEDIA_INFO_LOG("file %{public}s exist: %{public}d", path.c_str(), MediaPureFileUtils::IsFileExists(path));
     auto ret = MediaPlayerFrameWorkUtils::GetAVMetadataHelper(path, AV_META_USAGE_META_ONLY);
     EXPECT_EQ(ret, nullptr);
 }
@@ -45,7 +46,7 @@ HWTEST_F(MediaPlayerFrameWorkUtilsTest, GetExifRotate_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("GetExifRotate_Test_001");
     string path = VIDEO_PATH;
-    MEDIA_INFO_LOG("file %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    MEDIA_INFO_LOG("file %{public}s exist: %{public}d", path.c_str(), MediaPureFileUtils::IsFileExists(path));
     int32_t exifRotate;
     auto ret = MediaPlayerFrameWorkUtils::GetExifRotate(path, exifRotate);
     EXPECT_EQ(ret, E_ERR);

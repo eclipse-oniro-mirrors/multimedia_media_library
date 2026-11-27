@@ -22,6 +22,8 @@
 #include "file_manager_scanner.h"
 #include "file_scan_utils.h"
 #include "folder_scanner_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_tracer.h"
 
@@ -39,8 +41,8 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
 {
     FileManagerParser fileManagerParser(fileInfo, scanMode_);
     auto updateType = fileManagerParser.GetFileUpdateType();
-    CHECK_AND_EXECUTE(MediaFileUtils::IsFileExists(fileInfo.afterPath),
-        DirScanAnomalyHelper::AddAnomalyDir(MediaFileUtils::GetParentPath(fileInfo.afterPath)));
+    CHECK_AND_EXECUTE(MediaPureFileUtils::IsFileExists(fileInfo.afterPath),
+        DirScanAnomalyHelper::AddAnomalyDir(MediaPathUtils::GetParentPath(fileInfo.afterPath)));
     // 点号重命名释放本地场景：释放后文件名变为隐藏文件，不再满足 IsFileValidAsset，需在有效性检查前处理；
     // 恢复场景仍需经过有效性检查，避免把已失效的文件恢复成本地可用
     if (updateType == FileUpdateType::DOT_RENAME_RELEASE) {

@@ -42,6 +42,14 @@ enum class KvStoreValueType : int32_t {
     YEAR_ASTC_OLD_VERSION,
 };
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+// Account-scoped route
+struct MediaLibraryKvStoreRoute {
+    bool multiAccountEnabled = false;
+    int32_t accountId = -1;
+};
+#endif
+
 class MediaLibraryKvStore {
 public:
     EXPORT MediaLibraryKvStore() = default;
@@ -62,6 +70,13 @@ public:
         const std::string &storeId, const std::string &baseDir);
     EXPORT int32_t PutAllValueToNewKvStore(std::shared_ptr<MediaLibraryKvStore> &newKvstore);
     EXPORT int32_t DeleteKvStoreByStoreId(const std::string &storeId, const std::string &baseDir);
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT static std::string GetStoreId(const KvStoreValueType &valueType,
+        const MediaLibraryKvStoreRoute &route);
+    EXPORT int32_t RebuildKvStore(const KvStoreValueType &valueType, const std::string &baseDir,
+        const MediaLibraryKvStoreRoute &route);
+#endif
 
 private:
     bool GetKvStoreOption(DistributedKv::Options &options, const KvStoreRoleType &roleType, const std::string &baseDir);

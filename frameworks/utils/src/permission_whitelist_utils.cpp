@@ -24,8 +24,9 @@
 #include <sys/stat.h>
 
 #include "directory_ex.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "bundle_mgr_proxy.h"
@@ -78,7 +79,7 @@ static std::vector<int> SplitApiVersion(const std::string &version)
     std::stringstream ss(version);
     std::string item;
     while (std::getline(ss, item, '.')) {
-        if (MediaFileUtils::IsValidInteger(item)) {
+        if (MediaStringUtils::IsValidInteger(item)) {
             parts.push_back(std::stoi(item));
         }
     }
@@ -113,9 +114,9 @@ static nlohmann::json LoadJsonFile(const std::string &jsonPath, bool &isLoad)
 
     std::string absJsonPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(jsonPath, absJsonPath), {},
-        "failed to get real path: %{public}s", MediaFileUtils::DesensitizePath(jsonPath).c_str());
+        "failed to get real path: %{public}s", MediaPathUtils::DesensitizePath(jsonPath).c_str());
     CHECK_AND_RETURN_RET_LOG(!absJsonPath.empty(), {}, "real path is empty: %{public}s",
-        MediaFileUtils::DesensitizePath(jsonPath).c_str());
+        MediaPathUtils::DesensitizePath(jsonPath).c_str());
 
     std::ifstream jFile(absJsonPath);
     CHECK_AND_RETURN_RET_LOG(jFile.is_open(), {}, "Failed to open file, Error: %{public}s", std::strerror(errno));

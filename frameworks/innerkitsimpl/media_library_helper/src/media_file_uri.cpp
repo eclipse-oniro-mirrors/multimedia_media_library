@@ -529,7 +529,7 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
             timeIdBatch.emplace_back(uri.substr(indexStart + string(CONST_ML_URI_TIME_ID).length(), timeIdLen));
         }
         if (indexEnd + string(CONST_ML_URI_OFFSET).length() <= uri.size()) {
-            if (!MediaFileUtils::IsValidInteger(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length()))) {
+            if (!MediaStringUtils::IsValidInteger(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length()))) {
                 return;
             }
             offset.emplace_back(stoi(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length())));
@@ -608,13 +608,15 @@ string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
         return "";
     }
 
-    string path = ROOT_MEDIA_DIR;
+    string path;
     if (isPhoto) {
-        path += PHOTO_BUCKET + "/" + to_string(bucketNum) + "/" + realTitle + "." + ext;
+        path = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES)
+               + to_string(bucketNum) + "/" + realTitle + "." + ext;
     } else {
-        path += AUDIO_BUCKET + "/" + to_string(bucketNum) + "/" + realTitle + "." + ext;
+        path = MediaPathUtils::GetDir(MediaPathType::CLOUD_AUDIO, AdaptAccount::YES)
+               + to_string(bucketNum) + "/" + realTitle + "." + ext;
     }
-    if (!MediaFileUtils::IsFileExists(path)) {
+    if (!MediaPureFileUtils::IsFileExists(path)) {
         MEDIA_ERR_LOG("file not exist, path=%{private}s", path.c_str());
         return "";
     }

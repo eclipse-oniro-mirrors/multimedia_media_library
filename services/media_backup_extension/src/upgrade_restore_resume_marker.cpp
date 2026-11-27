@@ -16,6 +16,7 @@
 #include "upgrade_restore_resume_marker.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "preferences_helper.h"
 #include "preferences_errno.h"
 
@@ -36,7 +37,7 @@ std::mutex UpgradeRestoreResumeMarker::markerMutex_;
 
 bool UpgradeRestoreResumeMarker::Exists()
 {
-    return MediaFileUtils::IsFileExists(XML_PATH);
+    return MediaPureFileUtils::IsFileExists(XML_PATH);
 }
 
 bool UpgradeRestoreResumeMarker::Create(int32_t sceneCode)
@@ -90,7 +91,7 @@ bool UpgradeRestoreResumeMarker::Delete()
     std::lock_guard<std::mutex> lock(markerMutex_);
     MEDIA_INFO_LOG("UpgradeRestoreResumeMarker: Delete marker");
 
-    if (!MediaFileUtils::IsFileExists(XML_PATH)) {
+    if (!MediaPureFileUtils::IsFileExists(XML_PATH)) {
         NativePreferences::PreferencesHelper::RemovePreferencesFromCache(XML_PATH);
         return true;
     }
@@ -105,7 +106,7 @@ bool UpgradeRestoreResumeMarker::Delete()
 
 int32_t UpgradeRestoreResumeMarker::GetInt(const std::string &key, int32_t defaultValue)
 {
-    if (!MediaFileUtils::IsFileExists(XML_PATH)) {
+    if (!MediaPureFileUtils::IsFileExists(XML_PATH)) {
         return defaultValue;
     }
     int errCode = 0;

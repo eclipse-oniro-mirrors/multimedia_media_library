@@ -23,6 +23,7 @@
 #include "iservice_registry.h"
 #include "media_file_utils.h"
 #include "media_file_uri.h"
+#include "media_path_utils.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
@@ -221,7 +222,7 @@ CloudMediaAssetDownloadOperation::DownloadFileData CloudMediaAssetDownloadOperat
         std::string fileUri = MediaFileUri::GetPhotoUri(fileId, path, displayName);
         if (fileUri.empty()) {
             MEDIA_ERR_LOG("Failed to get fileUri, fileId: %{public}s, filePath: %{public}s, displayName: %{public}s.",
-                fileId.c_str(), MediaFileUtils::DesensitizePath(path).c_str(),
+                fileId.c_str(), MediaPathUtils::DesensitizePath(path).c_str(),
                 MediaFileUtils::DesensitizeName(displayName).c_str());
             continue;
         }

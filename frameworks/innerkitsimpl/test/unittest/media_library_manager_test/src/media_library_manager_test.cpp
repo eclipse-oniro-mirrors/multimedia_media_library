@@ -33,9 +33,11 @@
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_library_extend_manager.h"
 #include "media_library_manager.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_volume.h"
 #include "result_set_utils.h"
 #include "scanner_utils.h"
@@ -319,12 +321,12 @@ static bool QueryAssetPathFromDb(const RdbStorePtr &rdbStore, const std::string 
 
 static bool EnsureAssetFileExists(const std::string &assetPath)
 {
-    if (MediaFileUtils::IsFileExists(assetPath)) {
+    if (MediaPureFileUtils::IsFileExists(assetPath)) {
         return true;
     }
-    std::string assetParentDir = MediaFileUtils::GetParentPath(assetPath);
+    std::string assetParentDir = MediaPathUtils::GetParentPath(assetPath);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(assetParentDir) ||
-        MediaFileUtils::CreateDirectory(assetParentDir), false,
+        MediaPureFileUtils::CreateDirectory(assetParentDir), false,
         "create asset parent dir failed: %{public}s", assetParentDir.c_str());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(assetPath), false,
         "create asset file failed, path=%{public}s", assetPath.c_str());
@@ -341,12 +343,12 @@ static bool MoveAssetToFileManagerPath(const std::string &assetPath, std::string
         storagePath += "/";
     }
     storagePath += fileName;
-    std::string parentDir = MediaFileUtils::GetParentPath(storagePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(parentDir) || MediaFileUtils::CreateDirectory(parentDir),
+    std::string parentDir = MediaPathUtils::GetParentPath(storagePath);
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsDirExists(parentDir) || MediaPureFileUtils::CreateDirectory(parentDir),
         false, "create parentDir failed: %{public}s", parentDir.c_str());
     CHECK_AND_RETURN_RET_LOG(PhotoFileUtils::CheckFileManagerRealPath(storagePath), false,
         "invalid file manager real path: %{public}s", storagePath.c_str());
-    if (MediaFileUtils::IsFileExists(storagePath)) {
+    if (MediaPureFileUtils::IsFileExists(storagePath)) {
         MediaFileUtils::DeleteFile(storagePath);
     }
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileAndDelSrc(assetPath, storagePath), false,

@@ -25,7 +25,6 @@
 namespace OHOS::Media::CloudSync {
 class CloudMediaClientUtils {
 public:
-    static std::string GetLocalPath(const std::string &path);
     static std::string FindLocalPathFromCloudPath(const std::string &path, int32_t userId);
     static std::string GetVideoCachePath(const std::string &filePath, int32_t userId);
     static void InvalidVideoCache(const std::string &localPath, int32_t userId);

@@ -17,6 +17,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "media_edit_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -25,6 +27,7 @@
 #include "rdb_sql_utils.h"
 #include "result_set_utils.h"
 #include "medialibrary_photo_operations.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media {
 namespace {
@@ -75,7 +78,7 @@ void SlowMotionTranscodeCallback::onResult(VEFResult result, VEFError errorCode)
         progressMap_[requestId_].result_ = static_cast<int32_t>(result);
         --curWorkerNum_;
         mutex_.unlock();
-        CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(outPath_), MediaFileUtils::DeleteFile(outPath_));
+        CHECK_AND_EXECUTE(!MediaPureFileUtils::IsFileExists(outPath_), MediaFileUtils::DeleteFile(outPath_));
         return;
     }
     mutex_.unlock();
@@ -109,10 +112,9 @@ void SlowMotionTranscodeCallback::onProgress(uint32_t progress)
 
 int32_t SlowMotionTranscodeCallback::GetOutputFilePath(const std::string &path, std::string &outPath)
 {
-    CHECK_AND_RETURN_RET_LOG(path.length() >= ROOT_MEDIA_DIR.length(), E_INNER_FAIL, "path length error");
-    std::string editPath = MEDIA_EDIT_DATA_DIR + path.substr(ROOT_MEDIA_DIR.length());
+    std::string editPath = MediaEditUtils::GetEditDataDirForCloud(path);
     CHECK_AND_RETURN_RET_LOG(!editPath.empty(), E_INNER_FAIL, "GetEditDataDirPath failed");
-    CHECK_AND_EXECUTE(MediaFileUtils::IsDirExists(editPath), MediaFileUtils::CreateDirectory(editPath));
+    CHECK_AND_EXECUTE(MediaFileUtils::IsDirExists(editPath), MediaPureFileUtils::CreateDirectory(editPath));
     outPath = editPath + DUPLICATION_FILE;
     return E_OK;
 }

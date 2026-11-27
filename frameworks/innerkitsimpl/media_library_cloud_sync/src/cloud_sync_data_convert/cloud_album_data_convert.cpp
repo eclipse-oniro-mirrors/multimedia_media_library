@@ -28,6 +28,7 @@
 #include "medialibrary_errno.h"
 #include "cloud_media_sync_const.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "moving_photo_file_utils.h"
 #include "photo_file_utils.h"
 #include "media_string_utils.h"
@@ -210,7 +211,7 @@ int32_t CloudAlbumDataConvert::ConvertToDoubleScreenshot(
     }
 
     MEDIA_INFO_LOG("ConvertToDoubleScreenshot lpath:%{public}s, recordId:%{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str(), recordId.c_str());
+        MediaPathUtils::DesensitizePath(lPath).c_str(), recordId.c_str());
     if (lPath == DEFAULT_SCREENSHOT_LPATH_EN) {
         data["albumName"] = MDKRecordField(SCREEN_SHOT_AND_RECORDER_EN);
     }
@@ -350,7 +351,7 @@ int32_t CloudAlbumDataConvert::ValidateLocalPath(
     const bool isValid = MediaStringUtils::StartsWith(lPath, "/");
     CHECK_AND_RETURN_RET_LOG(isValid, E_MEDIA_CLOUD_ARGS_INVAILD,
         "ValidateLocalPath lpath is invalid, lpath: %{public}s, recordId: %{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str(), recordId.c_str());
+        MediaPathUtils::DesensitizePath(lPath).c_str(), recordId.c_str());
     return E_OK;
 }
 

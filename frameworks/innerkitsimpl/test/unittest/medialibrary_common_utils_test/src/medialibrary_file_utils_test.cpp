@@ -17,6 +17,7 @@
 #include "medialibrary_errno.h"
 #include "thumbnail_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include <fstream>
 #include <sstream>
 #include "medialibrary_common_utils.h"
@@ -71,7 +72,7 @@ HWTEST_F(MediaFileUtilsTest, MediaFileUtils_SegmentedCopyFileUtile_Test_001, Tes
     auto cb = [](uint64_t) {};
     int32_t ret = MediaFileUtils::SegmentedCopyFileUtile(src, dst, cb, "req_seg_001");
     EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(dst), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(dst), true);
     EXPECT_EQ(CheckFileString(dst, content), true);
 
     EXPECT_EQ(MediaFileUtils::DeleteFile(src), true);
@@ -85,7 +86,7 @@ HWTEST_F(MediaFileUtilsTest, MediaFileUtils_SegmentedCopyFileUtile_Test_003, Tes
     auto cb = [](uint64_t) {};
     int32_t ret = MediaFileUtils::SegmentedCopyFileUtile(src, dst, cb, "req_seg_003");
     EXPECT_EQ(ret, E_INNER_FAIL);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(dst), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(dst), false);
 }
 
 HWTEST_F(MediaFileUtilsTest, MediaFileUtils_CloneToAlbumCancel_Test_001, TestSize.Level1)
@@ -112,7 +113,7 @@ HWTEST_F(MediaFileUtilsTest, MediaFileUtils_SegmentedCopyFileUtile_Cancel_Test_0
     auto cb = [](uint64_t) {};
     int32_t ret = MediaFileUtils::SegmentedCopyFileUtile(src, dst, cb, "req_cancel_002");
     EXPECT_EQ(ret, E_SCENE_HAS_CANCEL);
-    EXPECT_EQ(MediaFileUtils::IsFileExists(dst), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(dst), false);
 
     EXPECT_EQ(MediaFileUtils::DeleteFile(src), true);
 }

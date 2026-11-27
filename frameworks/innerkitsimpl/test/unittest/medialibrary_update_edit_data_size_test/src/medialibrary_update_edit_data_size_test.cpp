@@ -21,6 +21,7 @@
 
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "media_upgrade.h"
 #include "medialibrary_errno.h"
@@ -219,7 +220,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, UpdateEditDataSize_test_001, TestSi
     MEDIA_INFO_LOG("UpdateEditDataSize_test_001 start");
 
     std::string editDataDir = "/data/test/UpdateEditDataSize_test_001";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(editDataDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(editDataDir), true);
 
     EXPECT_EQ(CreateFileWithSize(editDataDir + "/editdata", 10), true);
     EXPECT_EQ(CreateFileWithSize(editDataDir + "/editdata_camera", 20), true);
@@ -249,7 +250,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, UpdateEditDataSize_test_002, TestSi
     MEDIA_INFO_LOG("UpdateEditDataSize_test_002 start");
 
     std::string editDataDir = "/data/test/UpdateEditDataSize_test_002";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(editDataDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(editDataDir), true);
 
     int64_t fileId = InsertPhoto(InsertPhotoParams { SIZE_VALUE, SIZE_DEFAULT,
         static_cast<int32_t>(PhotoPositionType::LOCAL), false,
@@ -271,7 +272,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_FileAssetSetterGette
     MEDIA_INFO_LOG("AttachmentSize_FileAssetSetterGetter_test_003 start");
 
     std::string editDataDir = "/data/test/AttachmentSize_FileAssetSetterGetter_test_003";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(editDataDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(editDataDir), true);
     EXPECT_EQ(CreateFileWithSize(editDataDir + "/editdata", 64), true);
 
     int64_t fileId = InsertPhoto(InsertPhotoParams { SIZE_VALUE, SIZE_DEFAULT,
@@ -299,7 +300,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_FileAssetSetterGette
 HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_ResultSetUtilsRead_test_004, TestSize.Level1)
 {
     std::string editDataDir = "/data/test/AttachmentSize_ResultSetUtilsRead_test_004";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(editDataDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(editDataDir), true);
     EXPECT_EQ(CreateFileWithSize(editDataDir + "/editdata", 100), true);
 
     int64_t fileId = InsertPhoto(InsertPhotoParams { SIZE_VALUE, SIZE_DEFAULT,
@@ -321,7 +322,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_ResultSetUtilsRead_t
 HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_FetchResultMapToFileAsset_test_005, TestSize.Level1)
 {
     std::string editDataDir = "/data/test/AttachmentSize_FetchResultMapToFileAsset_test_005";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(editDataDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(editDataDir), true);
     EXPECT_EQ(CreateFileWithSize(editDataDir + "/editdata_camera", 88), true);
 
     int64_t fileId = InsertPhoto(InsertPhotoParams { SIZE_VALUE, SIZE_DEFAULT,
@@ -397,7 +398,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, HandleAttachmentSizeAssets_test10, 
 {
     MEDIA_INFO_LOG("HandleAttachmentSizeAssets_test10 start");
     std::string editDataDir = "/data/test/HandleAttachmentSizeAssets_test10";
-    EXPECT_TRUE(MediaFileUtils::CreateDirectory(editDataDir));
+    EXPECT_TRUE(MediaPureFileUtils::CreateDirectory(editDataDir));
     EXPECT_TRUE(CreateFileWithSize(editDataDir + "/editdata", 64));
 
     int64_t fileId = InsertPhoto(InsertPhotoParams { SIZE_VALUE, SIZE_DEFAULT,

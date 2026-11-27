@@ -18,6 +18,8 @@
 #include <variant>
 
 #include "media_column.h"
+#include "media_path_utils.h"
+
 namespace OHOS::Media {
 namespace {
 bool GetInt64FromValMap(const FileInfo &fileInfo, const std::string &columnName, int64_t &value)
@@ -126,7 +128,7 @@ ReverseCloneAssetResource ReverseCloneResourcePlanBuilder::ToResource(const File
     ReverseCloneAssetResource resource;
     resource.fileId = absorbedFileId;
     resource.cloudPath = fileInfo.cloudPath;
-    resource.localRoot = RESTORE_FILES_LOCAL_DIR;
+    resource.localRoot = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
     resource.storagePath = fileInfo.storagePath;
     resource.inode = fileInfo.inode;
     resource.sourcePath = fileInfo.sourcePath;

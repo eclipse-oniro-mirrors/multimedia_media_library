@@ -27,6 +27,7 @@
 #include "result_set_utils.h"
 #include "parameters.h"
 #include "acl.h"
+#include "media_path_utils.h"
 
 using namespace OHOS::FileManagement::CloudSync;
 
@@ -103,8 +104,10 @@ int64_t PhotoStorageOperation::GetCustomSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetCustomSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_CUSTOM_RESTORE_DIR, totalSize);
+    std::string customRestoreDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_CUSTOM_RESTORE, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(customRestoreDir, totalSize);
     MEDIA_INFO_LOG("Media_Storage: CustomSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
 }
@@ -113,8 +116,10 @@ int64_t PhotoStorageOperation::GetMediaVideoSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetMediaVideoSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_VIDEO_DIR, totalSize);
+    std::string videosDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_VIDEOS, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(videosDir, totalSize);
     MEDIA_INFO_LOG("Media_Storage: VideoSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
 }
@@ -123,8 +128,10 @@ int64_t PhotoStorageOperation::GetPictureSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetPictureSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_PICTURES_DIR, totalSize);
+    std::string picturesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PICTURES, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(picturesDir, totalSize);
     MEDIA_INFO_LOG("Media_Storage: PictureSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
 }
@@ -133,8 +140,10 @@ int64_t PhotoStorageOperation::GetCameraSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetCameraSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_CAMERA_DIR, totalSize);
+    std::string cameraDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_CAMERA, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(cameraDir, totalSize);
     MEDIA_INFO_LOG("Media_Storage: CameraSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
 }
@@ -143,10 +152,15 @@ int64_t PhotoStorageOperation::GetAudioSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetAudioSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_AUDIO_DIR, totalSize);
+    std::string audioDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_AUDIO, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(audioDir, totalSize);
+
     size_t totalAudiosSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_AUDIOS_DIR, totalAudiosSize);
+    std::string audiosDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_AUDIOS, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(audiosDir, totalAudiosSize);
+
     totalSize += totalAudiosSize;
     MEDIA_INFO_LOG("Media_Storage: AudioSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
@@ -166,8 +180,11 @@ int64_t PhotoStorageOperation::GetBackUpSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetBackUpSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_BACKUP_DIR, totalSize);
+    std::string backupDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_BACK_UP, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(backupDir, totalSize);
+
     MEDIA_INFO_LOG("Media_Storage: BackupSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
 }
@@ -176,8 +193,11 @@ int64_t PhotoStorageOperation::GetCacheSize()
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetCacheSize");
+
     size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_CACHE_DIR, totalSize);
+    std::string cacheDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_CACHE, AdaptAccount::YES);
+    MediaFileUtils::StatDirSize(cacheDir, totalSize);
+
     MEDIA_INFO_LOG("Media_Storage: CacheSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
 }
@@ -208,8 +228,8 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::QueryHighlightDirec
 int64_t PhotoStorageOperation::GetHighlightSizeFromPreferences()
 {
     int32_t errCode;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(HIGHLIGHT_CONFIG, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(HIGHLIGHT_CONFIG, false), errCode);
     CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr && errCode == NativePreferences::E_OK, 0,
         "get highlight preferences error: %{public}d", errCode);
     return prefs->GetLong(HIGHLIGHT_DIRECTORY_SIZE, 0);
@@ -218,8 +238,8 @@ int64_t PhotoStorageOperation::GetHighlightSizeFromPreferences()
 void PhotoStorageOperation::SaveHighlightSizeToPreferences(int64_t size)
 {
     int32_t errCode;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(HIGHLIGHT_CONFIG, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(HIGHLIGHT_CONFIG, false), errCode);
     CHECK_AND_RETURN_WARN_LOG(prefs != nullptr && errCode == NativePreferences::E_OK,
         "get highlight preferences error: %{public}d", errCode);
     int32_t output = prefs->PutLong(HIGHLIGHT_DIRECTORY_SIZE, size);

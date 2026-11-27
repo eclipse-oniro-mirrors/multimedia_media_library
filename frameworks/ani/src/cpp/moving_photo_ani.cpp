@@ -34,6 +34,8 @@
 #include "media_asset_rdbstore.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
+#include "media_string_utils.h"
 #include "moving_photo_call_transcoder.h"
 #include "moving_photo_file_utils.h"
 #include "single_file_moving_photo_utils.h"
@@ -324,7 +326,7 @@ int32_t MovingPhotoAni::GetFdFromUri(const std::string &uri)
 {
     AppFileService::ModuleFileUri::FileUri destUri(uri);
     string destPath = destUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         ANI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_ERR;
     }
@@ -465,7 +467,7 @@ static int32_t WriteToSandboxUri(int32_t srcFd, const string& sandboxUri,
 
     OHOS::AppFileService::ModuleFileUri::FileUri fileUri(sandboxUri);
     string destPath = fileUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         ANI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }
@@ -539,7 +541,7 @@ int32_t MovingPhotoAni::DoMovingPhotoTranscode(int32_t &videoFd, MovingPhotoAsyn
     }
     AppFileService::ModuleFileUri::FileUri fileUri(context->destVideoUri);
     string destPath = fileUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         ANI_ERR_LOG("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }
@@ -760,7 +762,7 @@ static int32_t QueryPhotoPosition(const string &movingPhotoUri, bool hasReadPerm
         userIdStr = str.substr(pos, end - pos);
         ANI_INFO_LOG("QueryPhotoPosition for other user is %{public}s", userIdStr.c_str());
     }
-    int32_t userId = userIdStr != "" && MediaFileUtils::IsValidInteger(userIdStr) ? atoi(userIdStr.c_str()) : -1;
+    int32_t userId = userIdStr != "" && MediaStringUtils::IsValidInteger(userIdStr) ? atoi(userIdStr.c_str()) : -1;
 
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, MediaFileUtils::GetIdFromUri(movingPhotoUri));

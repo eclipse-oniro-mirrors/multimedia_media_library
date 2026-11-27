@@ -20,6 +20,7 @@
 #include "media_file_utils.h"
 #include "media_container_types.h"
 #include "media_directory_type_column.h"
+#include "media_pure_file_utils.h"
 #include "media_scanner_manager.h"
 #include "media_smart_album_column.h"
 #include "media_smart_map_column.h"
@@ -49,7 +50,7 @@
 #endif
 #include "dfx_manager.h"
 #include "media_manage_share_permission_check.h"
-
+#include "media_path_utils.h"
 using namespace std;
 using namespace OHOS::NativeRdb;
 
@@ -118,7 +119,7 @@ int32_t MediaLibraryObjectUtils::DeleteInvalidRowInDb(const string &path)
         return E_SUCCESS;
     }
 
-    if (MediaFileUtils::IsFileExists(path)) {
+    if (MediaPureFileUtils::IsFileExists(path)) {
         // File aready exist, not need to create again
         return E_SUCCESS;
     }
@@ -203,6 +204,7 @@ int32_t MediaLibraryObjectUtils::BuildFileAsset(MediaLibraryCommand &cmd, FileAs
 
     ValueObject valueObject;
     ValuesBucket &values = cmd.GetValueBucket();
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     if (!values.GetObject(CONST_MEDIA_DATA_DB_NAME, valueObject)) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
             {KEY_OPT_TYPE, OptType::CREATE}};
@@ -222,7 +224,7 @@ int32_t MediaLibraryObjectUtils::BuildFileAsset(MediaLibraryCommand &cmd, FileAs
     GetRelativePathFromValues(values, relativePath, mediaType);
     if (!relativePath.empty()) {
         values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
-        path = ROOT_MEDIA_DIR + relativePath + displayName;
+        path = cloudFilesDir + relativePath + displayName;
         fileAsset.SetRelativePath(relativePath);
         fileAsset.SetPath(path);
     }
@@ -235,7 +237,7 @@ int32_t MediaLibraryObjectUtils::BuildFileAsset(MediaLibraryCommand &cmd, FileAs
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::FILE_OPT_ERR, map);
     }
     CHECK_AND_RETURN_RET_LOG(errCode == E_SUCCESS, errCode, "CreateFileAsset: check file asset failed");
-    dirAsset = GetDirAsset(ROOT_MEDIA_DIR + relativePath);
+    dirAsset = GetDirAsset(cloudFilesDir + relativePath);
     if (dirAsset.GetAlbumId() < 0) {
         return dirAsset.GetAlbumId();
     }
@@ -278,7 +280,7 @@ int32_t MediaLibraryObjectUtils::CreateFileObj(MediaLibraryCommand &cmd)
     }
 
     if (mediaType == MEDIA_TYPE_NOFILE) {
-        errCode = UpdateDateModified(MediaFileUtils::GetParentPath(MediaFileUtils::GetParentPath(fileAsset.GetPath())));
+        errCode = UpdateDateModified(MediaPathUtils::GetParentPath(MediaPathUtils::GetParentPath(fileAsset.GetPath())));
         if (errCode == E_HAS_DB_ERROR) {
             VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, errCode},
                 {KEY_OPT_TYPE, OptType::CREATE}};
@@ -288,7 +290,7 @@ int32_t MediaLibraryObjectUtils::CreateFileObj(MediaLibraryCommand &cmd)
     }
     auto ret = InsertFileInDb(cmd, fileAsset, dirAsset);
     if (ret > 0) {
-        UpdateDateModified(MediaFileUtils::GetParentPath(fileAsset.GetPath()));
+        UpdateDateModified(MediaPathUtils::GetParentPath(fileAsset.GetPath()));
     } else if (ret < 0) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, ret},
             {KEY_OPT_TYPE, OptType::CREATE}};
@@ -306,9 +308,10 @@ NativeAlbumAsset MediaLibraryObjectUtils::GetLastDirExistInDb(const string &dirP
     }
     int32_t dirId = 0;
     int32_t lastPathId = -1;
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
     do {
         size_t slashIndex = lastPath.rfind(SLASH_CHAR);
-        if (slashIndex == string::npos || lastPath.length() <= ROOT_MEDIA_DIR.length()) {
+        if (slashIndex == string::npos || lastPath.length() <= cloudFilesDir.length()) {
             break;
         }
         lastPath = lastPath.substr(0, slashIndex);
@@ -343,9 +346,10 @@ int32_t SetDirValuesByPath(ValuesBucket &values, const string &path, int32_t par
     }
 
     string relativePath;
-    string parentPath = MediaFileUtils::GetParentPath(path);
-    if (parentPath.length() > ROOT_MEDIA_DIR.length()) {
-        relativePath = parentPath.substr(ROOT_MEDIA_DIR.length()) + "/";
+    string parentPath = MediaPathUtils::GetParentPath(path);
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (parentPath.length() > cloudFilesDir.length()) {
+        relativePath = parentPath.substr(cloudFilesDir.length()) + "/";
     }
 
     values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, path);
@@ -375,7 +379,8 @@ int32_t MediaLibraryObjectUtils::InsertDirToDbRecursively(const string &dirPath,
     NativeAlbumAsset dirAsset = GetLastDirExistInDb(dirPath);
     string parentPath = dirAsset.GetAlbumPath();
     int32_t parentId = dirAsset.GetAlbumId();
-    if ((parentId == 0) && ((parentPath + "/") != ROOT_MEDIA_DIR)) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if ((parentId == 0) && ((parentPath + "/") != cloudFilesDir)) {
         return E_INVALID_PATH;
     }
     vector<int64_t> outIds;
@@ -427,8 +432,8 @@ int32_t MediaLibraryObjectUtils::CreateDirObj(MediaLibraryCommand &cmd, int64_t 
 
     rowId = GetIdByPathFromDb(dirPath);
     MEDIA_DEBUG_LOG("dirPath %{private}s id in database is %{private}d", dirPath.c_str(), static_cast<int>(rowId));
-    if ((rowId < 0) || (!MediaFileUtils::IsDirectory(dirPath))) {
-        if ((!MediaFileUtils::CreateDirectory(dirPath)) && (errno != EEXIST)) {
+    if ((rowId < 0) || (!MediaPureFileUtils::IsDirectory(dirPath))) {
+        if ((!MediaPureFileUtils::CreateDirectory(dirPath)) && (errno != EEXIST)) {
             VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, -errno},
                 {KEY_OPT_FILE, dirPath}, {KEY_OPT_TYPE, OptType::CREATE}};
             PostEventUtils::GetInstance().PostErrorProcess(ErrType::FILE_OPT_ERR, map);
@@ -496,7 +501,7 @@ int32_t MediaLibraryObjectUtils::DeleteEmptyDirsRecursively(int32_t dirId)
             return state;
         }
         // Do not delete user created dir
-        if (MediaFileUtils::IsFileExists(dirVal + "/" + ".nofile")) {
+        if (MediaPureFileUtils::IsFileExists(dirVal + "/" + ".nofile")) {
             return E_SUCCESS;
         }
         if (!MediaFileUtils::IsDirEmpty(dirVal)) {
@@ -531,7 +536,7 @@ void MediaLibraryObjectUtils::InvalidateThumbnail(const string &id, const string
 int32_t MediaLibraryObjectUtils::DeleteMisc(const int32_t fileId, const string &filePath, const int32_t parentId)
 {
     // 1) update parent's modify time
-    string parentPath = MediaFileUtils::GetParentPath(filePath);
+    string parentPath = MediaPathUtils::GetParentPath(filePath);
     auto updatedRows = UpdateDateModified(parentPath);
     if (updatedRows <= 0) {
         MEDIA_ERR_LOG("Update album date_modified failed, path: %{private}s", parentPath.c_str());
@@ -653,7 +658,7 @@ int32_t MediaLibraryObjectUtils::RenameFileObj(MediaLibraryCommand &cmd,
         return errCode;
     }
 
-    string dstAlbumPath = MediaFileUtils::GetParentPath(dstFilePath);
+    string dstAlbumPath = MediaPathUtils::GetParentPath(dstFilePath);
     NativeAlbumAsset dirAsset = GetDirAsset(dstAlbumPath);
     if (dirAsset.GetAlbumId() <= 0) {
         MEDIA_ERR_LOG("Failed to get or create directory");
@@ -680,7 +685,7 @@ int32_t MediaLibraryObjectUtils::RenameFileObj(MediaLibraryCommand &cmd,
     auto ret = UpdateFileInfoInDb(cmd, dstFilePath, dirAsset.GetAlbumId(), dirAsset.GetAlbumName());
     if (ret > 0) {
         UpdateDateModified(dstAlbumPath);
-        string srcAlbumPath = MediaFileUtils::GetParentPath(srcFilePath);
+        string srcAlbumPath = MediaPathUtils::GetParentPath(srcFilePath);
         UpdateDateModified(srcAlbumPath);
     }
     return ret;
@@ -713,7 +718,7 @@ int32_t MediaLibraryObjectUtils::RenameDirObj(MediaLibraryCommand &cmd,
     }
 
     ValuesBucket &values = cmd.GetValueBucket();
-    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, MediaFileUtils::GetParentPath(dstDirPath));
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, MediaPathUtils::GetParentPath(dstDirPath));
     values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, dstDirPath);
     values.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::GetAlbumDateModified(dstDirPath));
     int32_t retVal = ModifyInfoByIdInDb(cmd);
@@ -744,10 +749,10 @@ static int32_t OpenAsset(const string &filePath, const string &mode, const strin
 
     string absFilePath;
     if (!PathToRealPath(filePath, absFilePath)) {
-        MEDIA_ERR_LOG("Failed to get real path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        MEDIA_ERR_LOG("Failed to get real path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
         return E_ERR;
     }
-    MEDIA_DEBUG_LOG("File absFilePath is %{public}s", MediaFileUtils::DesensitizePath(absFilePath).c_str());
+    MEDIA_DEBUG_LOG("File absFilePath is %{public}s", MediaPathUtils::DesensitizePath(absFilePath).c_str());
     MEDIA_DEBUG_LOG("object util type:%{public}d", type);
 
     return MediaPrivacyManager(absFilePath, mode, fileId, type).Open();
@@ -771,7 +776,7 @@ static int32_t OpenDocument(const string &uri, const string &mode)
     if (ret != E_OK || !AppFileService::SandboxHelper::CheckValidPath(realPath)) {
         MEDIA_ERR_LOG("file not exist, uri=%{public}s, realPath=%{public}s",
             MediaFileUtils::DesensitizeUri(uri).c_str(),
-            MediaFileUtils::DesensitizePath(realPath).c_str());
+            MediaPathUtils::DesensitizePath(realPath).c_str());
         return E_INVALID_URI;
     }
     return MediaFileUtils::OpenFile(realPath, mode);
@@ -1040,7 +1045,7 @@ int32_t MediaLibraryObjectUtils::CloseFile(MediaLibraryCommand &cmd)
     string srcPath = fileAsset->GetPath();
     string fileName = MediaFileUtils::GetFileName(srcPath);
     if ((fileName.length() != 0) && (fileName.at(0) != '.')) {
-        string dirPath = MediaFileUtils::GetParentPath(srcPath);
+        string dirPath = MediaPathUtils::GetParentPath(srcPath);
         UpdateDateModified(dirPath);
     }
 
@@ -1230,14 +1235,15 @@ void MediaLibraryObjectUtils::GetDefaultRelativePath(const int32_t mediaType, st
 string GetRelativePathFromFilePath(const string &path)
 {
     string relativePath;
-    if (path.length() > ROOT_MEDIA_DIR.length()) {
-        relativePath = path.substr(ROOT_MEDIA_DIR.length());
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    if (path.find(cloudFilesDir) == 0) {
+        relativePath = path.substr(cloudFilesDir.length());
     }
-    size_t pos = relativePath.rfind('/');
-    if (pos != string::npos) {
-        relativePath = relativePath.substr(0, pos + 1);
+    auto pos = relativePath.rfind('/');
+    if (pos == string::npos) {
+        return "";
     }
-    return relativePath;
+    return relativePath.substr(0, pos + 1);
 }
 
 int32_t MediaLibraryObjectUtils::UpdateFileInfoInDb(MediaLibraryCommand &cmd, const string &dstPath,
@@ -1760,22 +1766,9 @@ int32_t MediaLibraryObjectUtils::CopyDir(const shared_ptr<FileAsset> &srcDirAsse
     return srcAsset->GetParent();
 }
 
-static string GetRelativePathFromPath(const string &path)
-{
-    string relativePath;
-    if (path.find(ROOT_MEDIA_DIR) == 0) {
-        relativePath = path.substr(ROOT_MEDIA_DIR.length());
-    }
-    auto pos = relativePath.rfind('/');
-    if (pos == string::npos) {
-        return "";
-    }
-    return relativePath.substr(0, pos + 1);
-}
-
 int32_t MediaLibraryObjectUtils::CheckDirExtension(const string &destFilePath)
 {
-    string relativePath = GetRelativePathFromPath(destFilePath);
+    string relativePath = GetRelativePathFromFilePath(destFilePath);
     string displayName = MediaLibraryDataManagerUtils::GetDisPlayNameFromPath(destFilePath);
     return CheckDirExtension(relativePath, displayName);
 }

@@ -20,6 +20,7 @@
 #include "media_file_utils.h"
 #include "media_fileinterwork_scanner.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 
 namespace OHOS {
@@ -59,7 +60,7 @@ HWTEST_F(MediaFileInterworkScannerTest, GetFileInfos_OnlyExistingPathsInResult_0
     EXPECT_EQ(uniqueNumber.videoTotalNumber, EXPECTED_VIDEO_COUNT);
     for (const auto &info : result) {
         EXPECT_FALSE(info.originFilePath.empty());
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(info.originFilePath));
+        EXPECT_TRUE(MediaPureFileUtils::IsFileExists(info.originFilePath));
     }
     MEDIA_INFO_LOG("End GetFileInfos_OnlyExistingPathsInResult_001");
 }

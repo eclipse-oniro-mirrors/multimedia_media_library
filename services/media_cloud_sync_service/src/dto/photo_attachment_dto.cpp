@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 std::string PhotoAttachmentDto::ToString() const
@@ -28,7 +29,7 @@ std::string PhotoAttachmentDto::ToString() const
     ss << "{"
        << "\"fileId\": " << this->fileId << ", "
        << "\"attachmentSize\": " << this->attachmentSize << ", "
-       << "\"cloudPath\": " << MediaFileUtils::DesensitizePath(this->cloudPath) << ", ";
+       << "\"cloudPath\": " << MediaPathUtils::DesensitizePath(this->cloudPath) << ", ";
     ss << "\"attachments\": [";
     for (const auto &node : this->attachments) {
         ss << "\"" << node << "\", ";

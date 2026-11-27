@@ -19,6 +19,7 @@
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "media_path_utils.h"
 #include "string_ex.h"
 #include "media_file_utils.h"
 
@@ -28,13 +29,13 @@ int32_t CloudMediaUriUtils::GetFileIdFromUri(const std::string &uri, int32_t &fi
     static std::string mediaDirPath = "file://media/Photo/";
     size_t index = uri.find(mediaDirPath);
     if (index != 0) {
-        MEDIA_INFO_LOG("Failed to get media dir from uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
+        MEDIA_INFO_LOG("Failed to get media dir from uri: %{public}s", MediaPathUtils::DesensitizePath(uri).c_str());
         return E_INVALID_VALUES;
     }
     std::string uriTails = uri.substr(index + mediaDirPath.length());
     index = uriTails.find('/');
     if (index == std::string::npos) {
-        MEDIA_INFO_LOG("Failed to get fileId from uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
+        MEDIA_INFO_LOG("Failed to get fileId from uri: %{public}s", MediaPathUtils::DesensitizePath(uri).c_str());
         return E_INVALID_VALUES;
     }
     std::string fileId = uriTails.substr(0, index);
@@ -43,7 +44,7 @@ int32_t CloudMediaUriUtils::GetFileIdFromUri(const std::string &uri, int32_t &fi
         return E_INVALID_VALUES;
     }
     if (!StrToInt(fileId, fileUniqueId)) {
-        MEDIA_INFO_LOG("Invalid meida uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
+        MEDIA_INFO_LOG("Invalid meida uri: %{public}s", MediaPathUtils::DesensitizePath(uri).c_str());
         return E_INVALID_VALUES;
     }
     return E_OK;

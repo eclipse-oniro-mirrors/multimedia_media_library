@@ -96,6 +96,10 @@ bool PhotoAlbumUploadStatusOperation::IsSupportUploadStatus()
 
 int32_t PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MEDIA_INFO_LOG("multi acount not support cloud, JudgeUploadAlbumEnable");
+    return E_OK;
+#endif
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
         NativePreferences::PreferencesHelper::GetPreferences(ABILITY_ENABLE_XML, errCode);

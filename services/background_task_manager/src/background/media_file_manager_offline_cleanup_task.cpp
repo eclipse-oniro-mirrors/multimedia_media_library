@@ -32,6 +32,7 @@
 #include "media_log.h"
 #include "media_map_const_utils.h"
 #include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "photo_owner_album_id_operation.h"
 #include "preferences.h"
@@ -64,7 +65,8 @@ const std::string DENTRY_INFO_ORIGIN = "CONTENT";
 std::shared_ptr<NativePreferences::Preferences> GetCleanupPrefs()
 {
     int32_t errCode = E_OK;
-    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(OFFLINE_CLEANUP_PREFERENCES, errCode);
+    auto prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(OFFLINE_CLEANUP_PREFERENCES, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, nullptr, "Get preferences failed, errCode: %{public}d", errCode);
     return prefs;
 }
@@ -499,12 +501,12 @@ void MediaFileManagerOfflineCleanupTask::LogBatchResult(const char *stage, int32
 bool MediaFileManagerOfflineCleanupTask::MediaLibraryCopyExists(const std::string &data)
 {
     size_t size = 0;
-    return MediaFileUtils::IsFileExists(data) && MediaFileUtils::GetFileSize(data, size) && size > 0;
+    return MediaPureFileUtils::IsFileExists(data) && MediaFileUtils::GetFileSize(data, size) && size > 0;
 }
 
 bool MediaFileManagerOfflineCleanupTask::CorrectSandboxAnomaly(const OfflineCleanupPhotoRecord &photo)
 {
-    if (MediaFileUtils::IsFileExists(photo.storagePath) || !MediaLibraryCopyExists(photo.data)) {
+    if (MediaPureFileUtils::IsFileExists(photo.storagePath) || !MediaLibraryCopyExists(photo.data)) {
         return true;
     }
     CHECK_AND_RETURN_RET_LOG(MediaFileAccessUtils::MoveFileCrossPolicy(photo.data, photo.storagePath, false) == E_OK,
@@ -513,7 +515,8 @@ bool MediaFileManagerOfflineCleanupTask::CorrectSandboxAnomaly(const OfflineClea
     MEDIA_INFO_LOG("Moved data from %{public}s to %{public}s", MediaLogUtils::GarbleFilePath(photo.data).c_str(),
         MediaLogUtils::GarbleFilePath(photo.storagePath).c_str());
     // Note: delete only when the src file exists after move (copy)
-    CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(photo.data) || MediaFileUtils::DeleteFile(photo.data), false,
+    CHECK_AND_RETURN_RET_LOG(
+        !MediaPureFileUtils::IsFileExists(photo.data) || MediaFileUtils::DeleteFile(photo.data), false,
         "Delete src failed, %{public}s", MediaLogUtils::GarbleFilePath(photo.data).c_str());
     return true;
 }
@@ -522,7 +525,7 @@ bool MediaFileManagerOfflineCleanupTask::ShouldMarkForDeletion(const OfflineClea
 {
     CHECK_AND_RETURN_RET_LOG(!photo.storagePath.empty(), false,
         "File storagePath empty, %{public}s", photo.ToString().c_str());
-    CHECK_AND_RETURN_RET_INFO_LOG(MediaFileUtils::IsFileExists(photo.storagePath) ||
+    CHECK_AND_RETURN_RET_INFO_LOG(MediaPureFileUtils::IsFileExists(photo.storagePath) ||
         !MediaLibraryCopyExists(photo.data), false,
         "Skip to preserve the sandbox file, path: %{public}s", photo.ToString().c_str());
     CHECK_AND_RETURN_RET_INFO_LOG(!cleanupDao_.ExistMediaBurstMember(photo), false,
@@ -534,7 +537,7 @@ bool MediaFileManagerOfflineCleanupTask::ShouldConvertToMediaBurstCover(const Of
 {
     CHECK_AND_RETURN_RET_LOG(!photo.storagePath.empty(), false,
         "File storagePath empty, %{public}s", photo.ToString().c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(photo.storagePath), false,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(photo.storagePath), false,
         "File not exist, path: %{public}s", photo.ToString().c_str());
     CHECK_AND_RETURN_RET(cleanupDao_.ExistMediaBurstMember(photo), false);
     return true;
@@ -544,13 +547,13 @@ bool MediaFileManagerOfflineCleanupTask::ConvertBurstCoverPhoto(const OfflineCle
 {
     std::string targetPath = MediaPathUtils::ConvertCloudPathToLocalPath(photo.data);
     CHECK_AND_RETURN_RET_LOG(!targetPath.empty(), false, "Get targetPath empty, %{public}s", photo.ToString().c_str());
-    std::string targetParentPath = MediaFileUtils::GetParentPath(targetPath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(targetParentPath), false,
+    std::string targetParentPath = MediaPathUtils::GetParentPath(targetPath);
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(targetParentPath), false,
         "Create dir %{public}s failed, %{public}s",
-        MediaFileUtils::DesensitizePath(targetParentPath).c_str(), photo.ToString().c_str());
+        MediaPathUtils::DesensitizePath(targetParentPath).c_str(), photo.ToString().c_str());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(photo.storagePath, targetPath), false,
-        "Copy failed from %{public}s to %{public}s", MediaFileUtils::DesensitizePath(photo.storagePath).c_str(),
-        MediaFileUtils::DesensitizePath(targetPath).c_str());
+        "Copy failed from %{public}s to %{public}s", MediaPathUtils::DesensitizePath(photo.storagePath).c_str(),
+        MediaPathUtils::DesensitizePath(targetPath).c_str());
     MediaFileUtils::UpdateModifyTimeInMsec(targetPath, photo.dateModified);
     CHECK_AND_RETURN_RET_LOG(cleanupDao_.UpdateBurstCoverPhoto(photo, assetRefresh_), false,
         "Update burst cover photo failed, %{public}s", photo.ToString().c_str());

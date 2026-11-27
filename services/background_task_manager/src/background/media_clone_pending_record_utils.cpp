@@ -27,7 +27,8 @@
 #include <vector>
 
 #include "media_column.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
+#include "media_time_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -152,7 +153,7 @@ bool PersistTouchLocked(const std::shared_ptr<NativePreferences::Preferences> &p
         return true;
     }
 
-    int64_t now = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t now = MediaTimeUtils::UTCTimeMilliSeconds();
     int64_t lastPersistTs = entryIt->second;
     auto cacheIt = g_lastTouchPersistMs.find(fileId);
     if (cacheIt != g_lastTouchPersistMs.end()) {
@@ -187,7 +188,7 @@ bool ClonePendingRecordUtils::AddPendingFileId(int32_t fileId)
 
     int32_t bucketIndex = GetBucketIndexInternal(fileId);
     BucketPendingEntries bucketEntries = LoadBucketPendingEntries(prefs, bucketIndex);
-    int64_t now = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t now = MediaTimeUtils::UTCTimeMilliSeconds();
     auto [_, inserted] = bucketEntries.insert({ fileId, now });
     if (!inserted) {
         bucketEntries[fileId] = now;
@@ -214,7 +215,7 @@ bool ClonePendingRecordUtils::UpdatePendingFileTouch(int32_t fileId, bool forceP
     if (!forcePersist) {
         auto it = g_lastTouchPersistMs.find(fileId);
         if (it != g_lastTouchPersistMs.end()) {
-            int64_t now = MediaFileUtils::UTCTimeMilliSeconds();
+            int64_t now = MediaTimeUtils::UTCTimeMilliSeconds();
             if ((now - it->second) < CLONE_PENDING_TOUCH_FLUSH_INTERVAL_MS) {
                 MEDIA_DEBUG_LOG("Skip touch update by memory throttle, fileId=%{public}d, elapsed=%{public}" PRId64,
                     fileId, now - it->second);
@@ -243,7 +244,7 @@ bool ClonePendingRecordUtils::IsPendingFileTouchExpired(int32_t fileId, int64_t 
         MEDIA_INFO_LOG("Touch timestamp missing, treat as expired, fileId=%{public}d", fileId);
         return true;
     }
-    int64_t now = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t now = MediaTimeUtils::UTCTimeMilliSeconds();
     bool expired = (now - touchTs) >= timeoutMs;
     MEDIA_DEBUG_LOG("Touch expire check, fileId=%{public}d, touchTs=%{public}" PRId64
         ", now=%{public}" PRId64 ", timeout=%{public}" PRId64 ", expired=%{public}d",
@@ -357,7 +358,7 @@ bool ClonePendingRecordUtils::CleanupPendingAssetByFileId(const std::shared_ptr<
     }
 
     MEDIA_INFO_LOG("Clone pending cleanup begin, fileId=%{public}d, path=%{public}s",
-        fileId, MediaFileUtils::DesensitizePath(assetInfo.filePath).c_str());
+        fileId, MediaPathUtils::DesensitizePath(assetInfo.filePath).c_str());
     return CleanupPendingAsset(rdbStore, assetInfo);
 }
 

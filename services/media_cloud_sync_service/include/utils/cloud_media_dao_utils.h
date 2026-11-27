@@ -34,8 +34,6 @@ struct PathInfo {
 };
 
 public:
-    static std::string ToStringWithCommaAndQuote(const std::vector<std::string> &values);
-    static std::string ToStringWithComma(const std::vector<std::string> &fileIds);
     static std::vector<std::string> GetNumbers(const std::vector<std::string> &albumIds);
     static std::vector<std::string> GetStringVector(const std::vector<int32_t> &intVals);
     static int32_t ToInt32(const std::string &str);

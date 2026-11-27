@@ -25,6 +25,8 @@
 #include "dfx_utils.h"
 #include "media_fileinterwork_column.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_unistore_manager.h"
 #include "power_efficiency_manager.h"
@@ -452,8 +454,8 @@ vector<RestoreFileInfo> MediaFileInterworkScanner::SetDestinationPath(
             continue;
         }
         string dirPath = ROOT_MEDIA_DIR + mediaDirPath + to_string(bucketNum);
-        if (!MediaFileUtils::IsFileExists(dirPath)) {
-            if (!MediaFileUtils::CreateDirectory(dirPath)) {
+        if (!MediaPureFileUtils::IsFileExists(dirPath)) {
+            if (!MediaPureFileUtils::CreateDirectory(dirPath)) {
                 MEDIA_ERR_LOG("CreateDirectory failed. retCode: %{public}s", dirPath.c_str());
                 continue;
             }
@@ -469,9 +471,9 @@ vector<RestoreFileInfo> MediaFileInterworkScanner::GetFileInfos(
 {
     vector<RestoreFileInfo> restoreFiles;
     for (const auto &filePath : filePathVector) {
-        if (!MediaFileUtils::IsFileExists(filePath)) {
+        if (!MediaPureFileUtils::IsFileExists(filePath)) {
             MEDIA_ERR_LOG("File [%{public}s] not exist, skip restore.",
-                MediaFileUtils::DesensitizePath(filePath).c_str());
+                MediaPathUtils::DesensitizePath(filePath).c_str());
             continue;
         }
         RestoreFileInfo fileInfo;
@@ -516,7 +518,7 @@ std::vector<string> MediaFileInterworkScanner::GetPhotosNotExists(const std::vec
 int32_t MediaFileInterworkScanner::SetRestoreFileAlbumId(std::vector<RestoreFileInfo> &destRestoreFiles)
 {
     for (RestoreFileInfo &fileInfo : destRestoreFiles) {
-        string albumPath = MediaFileUtils::GetParentPath(fileInfo.originFilePath);
+        string albumPath = MediaPathUtils::GetParentPath(fileInfo.originFilePath);
         string lPath;
         int32_t ret = MediaFileInterworkUtil::GetFileAlbumLPath(albumPath, lPath);
         if (albumCache_.find(lPath) == albumCache_.end()) {

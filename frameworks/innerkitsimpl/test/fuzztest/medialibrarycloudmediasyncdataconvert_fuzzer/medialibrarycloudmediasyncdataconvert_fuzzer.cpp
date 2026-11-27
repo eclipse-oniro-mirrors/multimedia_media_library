@@ -111,7 +111,6 @@ static void CloudFileDataConvertFuzzer()
     cloudFileDataConvert.HandleEditData(dataMap, path, isMovingPhoto);
     cloudFileDataConvert.HandleContent(dataMap, upLoadRecord);
     cloudFileDataConvert.HandleThumbnail(recordData, path, orientation);
-    cloudFileDataConvert.GetParentPath(path);
     cloudFileDataConvert.HandleLcd(recordData, path, orientation);
     cloudFileDataConvert.HandleAttachments(recordData, upLoadRecord);
 

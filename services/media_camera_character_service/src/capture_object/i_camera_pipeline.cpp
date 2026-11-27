@@ -18,6 +18,7 @@
 #include "camera_path_utils.h"
 #include "i_camera_pipeline.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 
 namespace OHOS {
@@ -65,7 +66,7 @@ static void InitCachePath(const CameraAssetInfo& assetInfo)
 
     std::string cacheDirPath = CameraPathUtils::GetCacheDir(path);
     CHECK_AND_RETURN_LOG(!cacheDirPath.empty(), "Can not get cache dir path");
-    CHECK_AND_RETURN_LOG(MediaFileUtils::CreateDirectory(cacheDirPath),
+    CHECK_AND_RETURN_LOG(MediaPureFileUtils::CreateDirectory(cacheDirPath),
         "Can not create dir %{private}s", cacheDirPath.c_str());
     MEDIA_INFO_LOG("InitCachePath success, fileId: %{public}d", assetInfo.GetFileId());
 }
@@ -92,4 +93,4 @@ bool ICameraPipeline::IsValid() const
 }
 
 } // namespace Media
-} // namespace OHOS
+} // namespace OHOS

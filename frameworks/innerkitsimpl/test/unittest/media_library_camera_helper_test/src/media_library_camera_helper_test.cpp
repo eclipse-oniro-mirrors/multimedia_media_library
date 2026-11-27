@@ -283,7 +283,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_CreatePhotoAsse
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_CreatePhotoAssetProxy_old_test01");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     callerInfo.ToString();
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::MOVING_PHOTO);
@@ -301,7 +301,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_CreatePhotoAsse
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_CreatePhotoAssetProxy_old_test02");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     const int32_t INVALID_VALUE = 100;
     CameraShotType shottype = static_cast<CameraShotType>(INVALID_VALUE);
@@ -320,7 +320,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_CreatePhotoAsse
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_CreatePhotoAssetProxy_new_test01");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
 
     CameraPresetPara presetPara = {
@@ -346,7 +346,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_CreatePhotoAsse
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_CreatePhotoAssetProxy_new_test02");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
 
     const int32_t INVALID_VALUE = 100;
@@ -386,7 +386,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_OpenAsset_test0
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_OpenAsset_test02");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -416,7 +416,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_OpenAsset_test0
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_OpenAsset_test03");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -446,7 +446,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_OpenAsset_test0
     MEDIA_INFO_LOG("enter MediaLibraryCameraManager_OpenAsset_test04");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -476,7 +476,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_GetDeferredPict
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
 
     // 1.构造 NEW_IMAGE 场景
@@ -523,7 +523,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_GetDeferredPict
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
 
     // 1.构造 YUV 场景
@@ -563,7 +563,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_GetDeferredPict
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
 
     // 1.构造 YUV 场景
@@ -603,7 +603,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, MediaLibraryCameraManager_GetDeferredPict
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
 
     // 1.构造 NEW_IMAGE 场景
@@ -668,7 +668,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test001, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -724,7 +724,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test002, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -763,7 +763,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test003, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -800,7 +800,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test004, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -844,7 +844,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -904,7 +904,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -948,7 +948,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -989,7 +989,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -1037,7 +1037,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test101, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1104,7 +1104,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test102, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1171,7 +1171,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
     MEDIA_INFO_LOG("enter PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_test101");
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -1242,7 +1242,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -1314,7 +1314,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::IMAGE,
@@ -1385,7 +1385,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test201, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::MOVING_PHOTO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1435,7 +1435,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test202, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::MOVING_PHOTO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1486,7 +1486,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::MOVING_PHOTO,
@@ -1541,7 +1541,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::MOVING_PHOTO,
@@ -1582,7 +1582,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test301, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::BURST);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1625,7 +1625,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test302, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::BURST);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1682,7 +1682,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test303, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::BURST);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1717,7 +1717,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::BURST,
@@ -1764,7 +1764,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::BURST,
@@ -1825,7 +1825,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_NEW_IMAGE_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     CameraPresetPara presetPara = {
         .cameraShotType = CameraShotType::BURST,
@@ -1878,7 +1878,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test401, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1939,7 +1939,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddPhotoProxy_test501, Te
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::CINEMATIC_VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -1987,7 +1987,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_GetVideoFd_test101, TestS
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2032,7 +2032,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_GetVideoFd_test201, TestS
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::CINEMATIC_VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2075,7 +2075,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_GetVideoFd_test202, TestS
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::CINEMATIC_VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2119,7 +2119,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_NotifyVideoSaveFinished_t
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::CINEMATIC_VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2158,7 +2158,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_test001,
 
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2204,7 +2204,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddVideo_V2ShootingMode_t
     constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2241,7 +2241,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_AddVideo_NonV2ShootingMod
     constexpr int32_t NORMAL_SHOOTING_MODE = 0;
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2274,7 +2274,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_V2Versio
     constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);
@@ -2308,7 +2308,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_EmptyVer
     constexpr int32_t CINEMATIC_SHOOTING_MODE = 24;
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
-        .userId = 0,
+        .userId = -1,
     };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::VIDEO);
     ASSERT_NE(photoAssetProxy, nullptr);

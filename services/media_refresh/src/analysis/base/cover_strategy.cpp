@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "cover_strategy.h"
+#include "media_string_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -75,10 +76,10 @@ bool CoverStrategyBase::isCurrentCoverDeleted(const UpdateAlbumData &oldAlbum, c
 {
     CHECK_AND_RETURN_RET_LOG(oldAlbum.albumCoverUri != "", false,
         "Empty cover before change, nothing to be deleted, id: %{public}d", oldAlbum.albumId);
-    
+
     std::string oldCoverFileIdStr = GetPhotoId(oldAlbum.albumCoverUri);
 
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(oldCoverFileIdStr), true,
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(oldCoverFileIdStr), true,
         "Invalid cover input, need refresh cover, id: %{public}d", oldAlbum.albumId);
 
     int32_t oldCoverFileId = std::stoi(oldCoverFileIdStr);

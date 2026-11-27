@@ -20,6 +20,7 @@
 #include <ani.h>
 #include "file_asset_ani.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_ani_utils.h"
 #include "photo_proxy.h"
 
@@ -64,7 +65,7 @@ ani_object MediaLibraryCommAni::CreatePhotoAssetAni(ani_env *env, const std::str
     CHECK_COND_RET(fileAsset != nullptr, nullptr, "fileAsset is nullptr");
     fileAsset->SetUri(uri);
     string fileId = MediaFileUtils::GetIdFromUri(uri);
-    if (MediaFileUtils::IsValidInteger(fileId)) {
+    if (MediaStringUtils::IsValidInteger(fileId)) {
         fileAsset->SetId(std::atoi(fileId.c_str()));
     }
 
@@ -104,7 +105,7 @@ ani_object MediaLibraryCommAni::CreatePhotoAssetAni(ani_env *env, const std::str
 
     fileAsset->SetUri(uri);
     string fileId = MediaFileUtils::GetIdFromUri(uri);
-    if (MediaFileUtils::IsValidInteger(fileId)) {
+    if (MediaStringUtils::IsValidInteger(fileId)) {
         fileAsset->SetId(std::atoi(fileId.c_str()));
     }
 

@@ -20,6 +20,7 @@
 #include "camera_path_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_upgrade.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
@@ -82,7 +83,7 @@ static void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.editData");
     for (const auto &dir : TEST_ROOT_DIRS) {
         std::string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -142,13 +143,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test01,
 {
     MEDIA_INFO_LOG("enter NewImagePipeline_SaveEditDataCamera_test01");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString(SOURCE_PATH, EDITDATA_CAMERA_STRING_VALID, BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
 
     // value 符合预期
     std::string editdata;
@@ -177,13 +178,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test02,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test02");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString(SOURCE_PATH, EDITDATA_CAMERA_NULL_STRING, BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
 
     // value 符合预期
     std::string editdata;
@@ -210,13 +211,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test03,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test03");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString(SOURCE_PATH, "", BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 }
 
 /**
@@ -227,13 +228,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test04,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test04");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString("", EDITDATA_CAMERA_STRING_VALID, BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 }
 
 /**
@@ -244,13 +245,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test05,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test05");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString("/invalid/path", EDITDATA_CAMERA_STRING_VALID, BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 }
 
 /**
@@ -261,14 +262,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test06,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test06");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString(SOURCE_PATH, EDITDATA_CAMERA_STRING_WITHOUT_COMPATIBLE_FORMAT,
         BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // value 符合预期
     std::string editdata;
@@ -285,14 +286,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test07,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test07");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString(SOURCE_PATH, EDITDATA_CAMERA_STRING_WITHOUT_FORMAT_VERSION,
         BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // value 符合预期
     std::string editdata;
@@ -309,14 +310,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByString_test08,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByString_test08");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByString(SOURCE_PATH, EDITDATA_CAMERA_STRING_WITHOUT_EDIT_DATA,
         BUNDLE_NAME_TEST);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // value 符合预期
     std::string editdata;
@@ -335,14 +336,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test01,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test01");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct(SOURCE_PATH, COMPATIBLE_FORMAT, FORMAT_VERSION, EDIT_DATA_FOR_TEST,
         BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
 
     // value 符合预期
     std::string editdata;
@@ -371,13 +372,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test02,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test02");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct(SOURCE_PATH, "", "", "", BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), true);
 
     // value 符合预期
     std::string editdata;
@@ -404,14 +405,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test03,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test03");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct("", COMPATIBLE_FORMAT, FORMAT_VERSION, EDIT_DATA_FOR_TEST,
         BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 }
 
 /**
@@ -422,14 +423,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test04,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test04");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct("/invalid/path", COMPATIBLE_FORMAT, FORMAT_VERSION, EDIT_DATA_FOR_TEST,
         BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 }
 
 /**
@@ -440,14 +441,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test05,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test05");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct(SOURCE_PATH, "", FORMAT_VERSION, EDIT_DATA_FOR_TEST,
         BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // value 符合预期
     std::string editdata;
@@ -464,14 +465,14 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test06,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test06");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct(SOURCE_PATH, COMPATIBLE_FORMAT, "", EDIT_DATA_FOR_TEST,
         BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // value 符合预期
     std::string editdata;
@@ -488,13 +489,13 @@ HWTEST_F(CameraPathUtilsTest, CameraPathUtils_SaveEditDataCameraByStruct_test07,
 {
     MEDIA_INFO_LOG("enter CameraPathUtils_SaveEditDataCameraByStruct_test07");
 
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/"), true);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists("/storage/cloud/files/.editData/Photo/"), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // 执行
     CameraPathUtils::SaveEditDataCameraByStruct(SOURCE_PATH, COMPATIBLE_FORMAT, FORMAT_VERSION, "", BUNDLE_NAME_CAMERA);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
+    ASSERT_EQ(MediaPureFileUtils::IsFileExists(EDITDATA_CAMERA_PATH), false);
 
     // value 符合预期
     std::string editdata;

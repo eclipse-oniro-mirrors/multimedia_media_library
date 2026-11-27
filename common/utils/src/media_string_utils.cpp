@@ -32,6 +32,17 @@ bool MediaStringUtils::ConvertToInt(const std::string &number, int& value)
     return ec == std::errc{} && ptr == number.data() + number.size();
 }
 
+// 需要兼容1.000, -2147483648等场景， 目前实现为ConvertToInt不完全消费场景.
+bool MediaStringUtils::IsValidInteger(const std::string &number)
+{
+    int convertValue = 0;
+    if (number.empty()) {
+        return false;
+    }
+    auto [ptr, ec] = std::from_chars(number.data(), number.data() + number.size(), convertValue);
+    return ec == std::errc{};
+}
+
 bool MediaStringUtils::StartsWith(const std::string &str, const std::string &prefix)
 {
     return str.compare(0, prefix.size(), prefix) == 0;
@@ -103,5 +114,43 @@ std::string MediaStringUtils::FillParams(const std::string &content, const std::
         }
     }
     return result;
+}
+
+std::string MediaStringUtils::ToStringWithCommaAndQuote(const std::vector<std::string> &values)
+{
+    std::stringstream os;
+    for (size_t i = 0; i < values.size(); ++i) {
+        os << "'" << values[i] << "'";
+        if (i != values.size() - 1) {
+            os << ",";
+        }
+    }
+    return os.str();
+}
+
+std::string MediaStringUtils::ToStringWithComma(const std::vector<std::string> &values)
+{
+    std::stringstream os;
+    for (size_t i = 0; i < values.size(); ++i) {
+        os << values[i];
+        if (i != values.size() - 1) {
+            os << ",";
+        }
+    }
+    return os.str();
+}
+
+bool MediaStringUtils::IsAccountId(const std::string &str)
+{
+    constexpr size_t ACCOUNT_ID_LENGTH = 6;
+    if (str.length() != ACCOUNT_ID_LENGTH) {
+        return false;
+    }
+    for (char c : str) {
+        if (!std::isdigit(static_cast<unsigned char>(c))) {
+            return false;
+        }
+    }
+    return true;
 }
 } // namespace OHOS::Media

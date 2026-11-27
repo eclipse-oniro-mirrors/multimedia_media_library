@@ -106,11 +106,8 @@ public:
     EXPORT int32_t UnregisterCustomRestoreCallback(std::shared_ptr<CustomRestoreCallback> callback);
 
 private:
-    void InitDataShareHelper();
-private:
     static const std::string NOTIFY_URI_PREFIX;
     static constexpr uint32_t CALLBACK_COUNT_MAX = 64;
-    shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
     string keyPath_;
     string albumLpath_;
     bool isDeduplication_;

@@ -28,6 +28,8 @@
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_req_vo.h"
 #include "media_resp_vo.h"
 #include "mdk_record_photos_data.h"
@@ -97,7 +99,7 @@ int32_t CloudMediaPhotoHandler::OnFetchRecordsInner(
             if (data.attributesMediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
                 MEDIA_INFO_LOG("Need clear VideoCache, attributesMediaType: %{public}d, localPath: %{public}s",
                     data.attributesMediaType,
-                    MediaFileUtils::DesensitizePath(data.localPath).c_str());
+                    MediaPathUtils::DesensitizePath(data.localPath).c_str());
                 CloudMediaClientUtils::InvalidVideoCache(data.localPath, userId_);
             }
         }
@@ -473,7 +475,7 @@ int32_t CloudMediaPhotoHandler::GetCopyRecords(std::vector<MDKRecord> &records, 
 void CloudMediaPhotoHandler::DeleteTempLivePhotoFile(std::string &livePhotoCachePath)
 {
     CHECK_AND_RETURN_LOG(!livePhotoCachePath.empty(), "livePhotoCachePath is empty");
-    CHECK_AND_RETURN(MediaFileUtils::IsFileExists(livePhotoCachePath));
+    CHECK_AND_RETURN(MediaPureFileUtils::IsFileExists(livePhotoCachePath));
     int result = unlink(livePhotoCachePath.c_str());
     CHECK_AND_RETURN_LOG(result == 0, "unlink err: %{public}d, result: %{public}d, livePhotoCachePath: %{public}s",
         errno, result, livePhotoCachePath.c_str());

@@ -19,6 +19,7 @@
 
 #include "cloud_mdkrecord_photos_vo.h"
 #include "cloud_media_client_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "media_log.h"
 
@@ -54,7 +55,7 @@ HWTEST_F(CloudMediaClientUtilsTest, GetLocalPath_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Start GetLocalPath_Test_001");
     std::string path = "/storage/cloud/files/Photo/1/IMG_001.jpg";
-    std::string result = CloudMediaClientUtils::GetLocalPath(path);
+    std::string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     std::string expected = "/storage/media/local/files/Photo/1/IMG_001.jpg";
     EXPECT_EQ(result, expected);
     MEDIA_INFO_LOG("End GetLocalPath_Test_001");
@@ -64,7 +65,7 @@ HWTEST_F(CloudMediaClientUtilsTest, GetLocalPath_Test_002, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Start GetLocalPath_Test_002");
     std::string path = "/storage/media/local/files/Photo/1/IMG_001.jpg";
-    std::string result = CloudMediaClientUtils::GetLocalPath(path);
+    std::string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     EXPECT_EQ(result, path);
     MEDIA_INFO_LOG("End GetLocalPath_Test_002");
 }
@@ -73,7 +74,7 @@ HWTEST_F(CloudMediaClientUtilsTest, GetLocalPath_Test_003, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Start GetLocalPath_Test_003");
     std::string path = "/storage/cloud/files/Video/2/VID_001.mp4";
-    std::string result = CloudMediaClientUtils::GetLocalPath(path);
+    std::string result = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     std::string expected = "/storage/media/local/files/Video/2/VID_001.mp4";
     EXPECT_EQ(result, expected);
     MEDIA_INFO_LOG("End GetLocalPath_Test_003");

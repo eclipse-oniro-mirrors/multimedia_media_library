@@ -31,6 +31,7 @@
 #include "result_set_utils.h"
 #include "scanner_utils.h"
 #include "medialibrary_data_manager.h"
+#include "medialibrary_unistore_manager.h"
 #include "userfilemgr_uri.h"
 
 using namespace std;
@@ -70,10 +71,13 @@ void MakeTestData()
     datashareValues.Put(CONST_MEDIA_DATA_DB_BUCKET_NAME, PIC_DIR_VALUES);
     ValuesBucket values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(datashareValues);
 
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+
     Uri uri(MEDIALIBRARY_DATA_URI);
     for (int i = 0; i < DATA_COUNT; i++) {
         int64_t rowId = -1;
-        MediaLibraryDataManager::GetInstance()->rdbStore_->Insert(rowId, CONST_MEDIALIBRARY_TABLE, values);
+        rdbStore->Insert(rowId, CONST_MEDIALIBRARY_TABLE, values);
     }
 }
 
@@ -170,10 +174,10 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_001, TestSize.Lev
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("QueryALLColumn");
-    auto mediaLibraryDataManager = MediaLibraryDataManager::GetInstance();
-    EXPECT_NE(mediaLibraryDataManager, nullptr);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    EXPECT_NE(rdbStore, nullptr);
     for (int i = 0; i < 50; i++) {
-        auto result = mediaLibraryDataManager->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
     }
     tracer.Finish();
     int64_t end = UTCTimeSeconds();
@@ -200,10 +204,10 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_002, TestSize.Lev
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("Query10Column");
-    auto mediaLibraryDataManager = MediaLibraryDataManager::GetInstance();
-    EXPECT_NE(mediaLibraryDataManager, nullptr);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    EXPECT_NE(rdbStore, nullptr);
     for (int i = 0; i < 50; i++) {
-        auto result = mediaLibraryDataManager->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
     }
     tracer.Finish();
     int64_t end = UTCTimeSeconds();
@@ -231,10 +235,10 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_003, TestSize.Lev
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("Query10Columnlimit50");
-    auto mediaLibraryDataManager = MediaLibraryDataManager::GetInstance();
-    EXPECT_NE(mediaLibraryDataManager, nullptr);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    EXPECT_NE(rdbStore, nullptr);
     for (int i = 0; i < 50; i++) {
-        auto result = mediaLibraryDataManager->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
     }
     tracer.Finish();
     int64_t end = UTCTimeSeconds();
@@ -262,8 +266,9 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_004, TestSize.Lev
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("GetALLColumn");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     for (int i = 0; i < 50; i++) {
-        auto result = MediaLibraryDataManager::GetInstance()->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
         ASSERT_NE(result, nullptr);
         int count;
         result->GetRowCount(count);
@@ -312,8 +317,9 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_005, TestSize.Lev
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("Get10Column");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     for (int i = 0; i < 50; i++) {
-        auto result = MediaLibraryDataManager::GetInstance()->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
         ASSERT_NE(result, nullptr);
         int count;
         result->GetRowCount(count);
@@ -362,8 +368,9 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_006, TestSize.Lev
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
     tracer.Start("Get10Columnlimit50");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     for (int i = 0; i < 50; i++) {
-        auto result = MediaLibraryDataManager::GetInstance()->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
         ASSERT_NE(result, nullptr);
         int count;
         result->GetRowCount(count);
@@ -626,8 +633,9 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_013, TestSize.Lev
     vector<string> columns;
 
     int64_t timeSum = 0;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     for (int i = 0; i < 50; i++) {
-        auto result = MediaLibraryDataManager::GetInstance()->rdbStore_->Query(predicates, columns);
+        auto result = rdbStore->Query(predicates, columns);
         ASSERT_NE(result, nullptr);
         int count;
         int64_t start = UTCTimeSeconds();

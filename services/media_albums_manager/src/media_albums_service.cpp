@@ -29,6 +29,9 @@
 #include "media_cloud_permission_check.h"
 #include "media_log.h"
 #include "media_library_error_code.h"
+#include "media_pure_file_utils.h"
+#include "media_path_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
@@ -457,7 +460,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAlbumsService::AlbumGetSelec
             (filterJson.is_discarded() || !filterJson.contains(fileIdField) || !filterJson[fileIdField].is_string());
         CHECK_AND_RETURN_RET_LOG(!cond, nullptr, "failed to verify the filter format");
         std::string fileId = filterJson["currentFileId"].get<std::string>();
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(fileId), nullptr,
+        CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(fileId), nullptr,
             "AlbumGetSelectedAssets get score fail");
         curFileId = std::stoi(fileId);
         maxScore = this->rdbOperation_.GetAssetScore(dto, curFileId);
@@ -869,7 +872,7 @@ int32_t MediaAlbumsService::SmartMoveAssets(ChangeRequestMoveAssetsDto &smartMov
         size_t pos = asset.find(PhotoColumn::PHOTO_URI_PREFIX);
         if (pos != string::npos) {
             string fileId = MediaLibraryDataManagerUtils::GetFileIdFromPhotoUri(asset);
-            CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(fileId));
+            CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(fileId));
             assets.push_back(fileId);
         }
     }
@@ -1218,8 +1221,9 @@ void MediaAlbumsService::ReportCloneDbStatus(int32_t reverseCloneStatus)
     const int32_t REVERSE_KVDB_CLOSE = 5;
     const int32_t REVERSE_KVDB_OPEN = 6;
     // 清理云切家XML
-    const std::string smartdataRetainPath = "/data/storage/el2/base/preferences/smartdata_retain.xml";
-    if (MediaFileUtils::IsFileExists(smartdataRetainPath)) {
+    const std::string smartdataRetainPath = MediaPathUtils::AdaptPreferencesPathForAllDevice(
+        "/data/storage/el2/base/preferences/smartdata_retain.xml", false);
+    if (MediaPureFileUtils::IsFileExists(smartdataRetainPath)) {
         if (MediaFileUtils::DeleteFile(smartdataRetainPath)) {
             MEDIA_INFO_LOG("Media_Reverse_Restore: Successfully deleted smartdata_retain.xml");
         } else {

@@ -28,8 +28,8 @@
 #include "media_change_effect.h"
 #include "media_edit_utils.h"
 #include "media_exif.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "media_values_bucket_utils.h"
 #include "medialibrary_asset_operations.h"
@@ -142,9 +142,9 @@ static int32_t GetPicture(const std::string& photoId, std::shared_ptr<Media::Pic
 static void UpdateEditDataPath(const std::string& oldFilePath, const std::string& extension)
 {
     MEDIA_INFO_LOG("UpdateEditDataPath enter, oldFilePath: %{public}s, extension: %{public}s.",
-        MediaFileUtils::DesensitizePath(oldFilePath).c_str(), extension.c_str());
+        MediaPathUtils::DesensitizePath(oldFilePath).c_str(), extension.c_str());
 
-    std::string editDataPath = MediaEditUtils::GetEditDataDir(oldFilePath);
+    std::string editDataPath = MediaEditUtils::GetEditDataDirForCloud(oldFilePath);
     std::string tempOutputPath = editDataPath;
     size_t pos = tempOutputPath.find_last_of('.');
     if (pos == string::npos) {
@@ -157,14 +157,14 @@ static void UpdateEditDataPath(const std::string& oldFilePath, const std::string
     int renameRet = rename(editDataPath.c_str(), tempOutputPath.c_str());
     if (renameRet != 0) {
         MEDIA_ERR_LOG("rename failed, errno: %{public}d, src: %{public}s, dest: %{public}s",
-            errno, MediaFileUtils::DesensitizePath(editDataPath).c_str(),
-            MediaFileUtils::DesensitizePath(tempOutputPath).c_str());
+            errno, MediaPathUtils::DesensitizePath(editDataPath).c_str(),
+            MediaPathUtils::DesensitizePath(tempOutputPath).c_str());
         return;
     }
 
     MEDIA_INFO_LOG("rename success, src: %{public}s, dest: %{public}s",
-        MediaFileUtils::DesensitizePath(editDataPath).c_str(),
-        MediaFileUtils::DesensitizePath(tempOutputPath).c_str());
+        MediaPathUtils::DesensitizePath(editDataPath).c_str(),
+        MediaPathUtils::DesensitizePath(tempOutputPath).c_str());
 }
 
 static void GetModityExtensionPath(const std::string& path, const std::string& extension, std::string& modifyFilePath)
@@ -198,8 +198,8 @@ static int32_t UpdateExtension(const CameraAssetInfo& assetInfo, const SaveCamer
     CHECK_AND_RETURN_RET_LOG(!tempData.modifyDisplayName.empty(), E_ERR, "modifyDisplayName is empty.");
 
     MEDIA_INFO_LOG("modifyFilePath: %{public}s, modifyDisplayName: %{public}s.",
-        MediaFileUtils::DesensitizePath(tempData.modifyFilePath).c_str(),
-        MediaFileUtils::DesensitizePath(tempData.modifyDisplayName).c_str());
+        MediaPathUtils::DesensitizePath(tempData.modifyFilePath).c_str(),
+        MediaPathUtils::DesensitizePath(tempData.modifyDisplayName).c_str());
     return E_OK;
 }
 
@@ -602,13 +602,13 @@ int32_t YuvPipeline::ProcessMultistagesPhotoInternal(const std::shared_ptr<FileA
         std::string editDataSourcePath;
         CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_SOURCE_PATH, path, editDataSourcePath);
         MEDIA_INFO_LOG("Photo is edited, save source only, photoId: %{public}s, path: %{public}s.",
-            assetInfo.GetPhotoId().c_str(), MediaFileUtils::DesensitizePath(editDataSourcePath).c_str());
+            assetInfo.GetPhotoId().c_str(), MediaPathUtils::DesensitizePath(editDataSourcePath).c_str());
         return FileUtils::SavePicture(editDataSourcePath, picture, assetInfo.GetMimeType(), true);
     }
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, path, editDataCameraPath);
     // 2.2 没有编辑过, 则正常落盘覆盖
-    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         // 没有editdata_camera，只落盘在Photo目录
         return SaveOnePictureForOnProcess(assetInfo, picture);
     } else {
@@ -646,7 +646,7 @@ int32_t YuvPipeline::SaveOnePictureForOnProcess(
     int32_t ret = FileUtils::SavePicture(assetInfo.GetPath(), picture, assetInfo.GetMimeType(), true);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("SavePicture failed, ret: %{public}d, path: %{public}s, photoId: %{public}s.",
-            ret, MediaFileUtils::DesensitizePath(assetInfo.GetPath()).c_str(), assetInfo.GetPhotoId().c_str());
+            ret, MediaPathUtils::DesensitizePath(assetInfo.GetPath()).c_str(), assetInfo.GetPhotoId().c_str());
     }
     auto c2paConfigInfo = assetInfo.GetC2PAConfigInfo();
     if (c2paConfigInfo.enableC2PA) {
@@ -670,7 +670,7 @@ int32_t YuvPipeline::SaveTwoPictureForOnProcess(
     int ret = FileUtils::SavePicture(editDataSourcePath, picture, assetInfo.GetMimeType(), true);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("SavePicture for source failed, ret: %{public}d, path: %{public}s, photoId: %{public}s.",
-            ret, MediaFileUtils::DesensitizePath(editDataSourcePath).c_str(), assetInfo.GetPhotoId().c_str());
+            ret, MediaPathUtils::DesensitizePath(editDataSourcePath).c_str(), assetInfo.GetPhotoId().c_str());
         CHECK_AND_RETURN_RET(ret == E_OK, ret);
     }
 
@@ -678,7 +678,7 @@ int32_t YuvPipeline::SaveTwoPictureForOnProcess(
     std::string editData;
     CHECK_AND_RETURN_RET_LOG(CameraPathUtils::ReadEditdataCameraFromFile(path, true, editData) == E_OK,
         E_HAS_FS_ERROR, "Failed to read editdata, path: %{public}s, photoId: %{public}s.",
-        MediaFileUtils::DesensitizePath(path).c_str(), assetInfo.GetPhotoId().c_str());
+        MediaPathUtils::DesensitizePath(path).c_str(), assetInfo.GetPhotoId().c_str());
 
     // 3.添加水印+落盘
     FileUtils::SavePictureWithFilters(picture, path, editData, editDataSourcePath);
@@ -761,7 +761,7 @@ int32_t YuvPipeline::ProcessEnhancementPhotoInternal(const std::shared_ptr<FileA
     std::string editDataCameraPath;
     CameraPathUtils::GetCameraPath(CameraPathType::EDIT_DATA_CAMERA_PATH, path, editDataCameraPath);
 
-    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (!MediaPureFileUtils::IsFileExists(editDataCameraPath)) {
         return ProcessEnhancementForSaveOneImage(assetInfo, picture, isManual);
     } else {
         return ProcessEnhancementForSaveTwoImage(assetInfo, picture, isManual);

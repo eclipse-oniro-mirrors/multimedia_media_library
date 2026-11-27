@@ -27,6 +27,7 @@
 #include "photos_clone.h"
 #include "userfile_manager_types.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "rdb_store_config.h"
 #include "rdb_helper.h"
 #include "rdb_open_callback.h"
@@ -66,8 +67,8 @@ public:
 static void CreateCloneRestoreTestDb()
 {
     NativeRdb::RdbHelper::DeleteRdbStore(CLONE_RESTORE_TEST_DB_PATH);
-    MediaFileUtils::CreateDirectory(CLONE_RESTORE_TEST_DB_DIR);
-    
+    MediaPureFileUtils::CreateDirectory(CLONE_RESTORE_TEST_DB_DIR);
+
     CloneRestoreTestDbCallBack callBack;
     NativeRdb::RdbStoreConfig config("");
     config.SetName(CLONE_FILE_INFO_RESTORE_DB);
@@ -107,7 +108,7 @@ void PhotosCloneTest::SetUpTestCase(void)
     MediaLibraryUnitTestUtils::Init();
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(g_rdbStore, nullptr);
-    MediaFileUtils::CreateDirectory(CLONE_RESTORE_TEST_DB_DIR);
+    MediaPureFileUtils::CreateDirectory(CLONE_RESTORE_TEST_DB_DIR);
 }
 
 void PhotosCloneTest::TearDownTestCase(void)
@@ -1269,9 +1270,9 @@ HWTEST_F(PhotosCloneTest, ApplyDeduplicationFileInfo_WithDb_Test_001, TestSize.L
     photosClone.OnStart(g_rdbStore->GetRaw(), nullptr);
     photosClone.SetRestoreInfo(CLONE_RESTORE_ID, "task_apply_db_001");
     photosClone.InitDeduplicationInfo();
-    
+
     std::string testNewPath = "/storage/emulated/0/Pictures/test_dedup_new.jpg";
-    MediaFileUtils::CreateDirectory("/storage/emulated/0/Pictures/");
+    MediaPureFileUtils::CreateDirectory("/storage/emulated/0/Pictures/");
     std::ofstream testFile(testNewPath);
     if (!testFile.is_open()) {
         MEDIA_ERR_LOG("Failed to create test file: %{public}s", testNewPath.c_str());
@@ -1307,9 +1308,9 @@ HWTEST_F(PhotosCloneTest, UpdateFileInfoFromCloneRestoreDb_Match_Test_001, TestS
     photosClone.OnStart(g_rdbStore->GetRaw(), nullptr);
     photosClone.SetRestoreInfo(CLONE_RESTORE_ID, "task_match_001");
     photosClone.InitDeduplicationInfo();
-    
+
     std::string testNewPath = "/storage/emulated/0/Pictures/test_dedup_new.jpg";
-    MediaFileUtils::CreateDirectory("/storage/emulated/0/Pictures/");
+    MediaPureFileUtils::CreateDirectory("/storage/emulated/0/Pictures/");
     std::ofstream testFile(testNewPath);
     if (!testFile.is_open()) {
         MEDIA_ERR_LOG("Failed to create test file: %{public}s", testNewPath.c_str());

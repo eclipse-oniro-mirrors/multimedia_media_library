@@ -16,6 +16,7 @@
 
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "rdb_store.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
@@ -98,7 +99,7 @@ void PhotoAlbumClone::TRACE_LOG(std::vector<PhotoAlbumDao::PhotoAlbumRowData> &a
             MediaFileUtils::DesensitizeName(info.albumName).c_str(),
             info.albumType,
             info.albumSubType,
-            MediaFileUtils::DesensitizePath(info.lPath).c_str(),
+            MediaPathUtils::DesensitizePath(info.lPath).c_str(),
             MediaFileUtils::DesensitizeName(info.bundleName).c_str(),
             info.priority);
     }
@@ -118,7 +119,7 @@ void PhotoAlbumClone::TRACE_LOG(const std::string &tableName, vector<AlbumInfo> 
             MediaFileUtils::DesensitizeName(albumInfo.albumBundleName).c_str(),
             static_cast<int32_t>(albumInfo.albumType),
             static_cast<int32_t>(albumInfo.albumSubType),
-            MediaFileUtils::DesensitizePath(albumInfo.lPath).c_str());
+            MediaPathUtils::DesensitizePath(albumInfo.lPath).c_str());
     }
     // fetch all albums from mediaLibraryRdb
     std::vector<PhotoAlbumDao::PhotoAlbumRowData> targetAlbumInfos = this->photoAlbumDao_.GetPhotoAlbums();

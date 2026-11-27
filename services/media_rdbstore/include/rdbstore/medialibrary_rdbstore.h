@@ -19,7 +19,9 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
+#include "account_scope.h"
 #include "medialibrary_async_worker.h"
 #include "medialibrary_unistore.h"
 #include "timer.h"
@@ -160,7 +162,16 @@ public:
     EXPORT static int32_t UpdateAttachmentSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::string &photoId, uint64_t attachmentSize);
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT static int32_t CloseAccountDb(int32_t accountId);
+#endif
+
 private:
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    bool InitMultiAccount(const NativeRdb::RdbStoreConfig &baseConfig, int version,
+        NativeRdb::RdbOpenCallback &openCallback, int32_t &ret);
+    bool CloseMultiAccount(int32_t timeoutMs, int32_t &ret);
+#endif
     // Insert
     static int32_t InsertInternal(int64_t &outRowId, const std::string &table, const NativeRdb::ValuesBucket &row);
     // BatchInsert
@@ -183,6 +194,15 @@ private:
     EXPORT static const std::string PhotoMapCodeFunc(const std::vector<std::string>& args);
     static std::mutex reconstructLock_;
     NativeRdb::RdbStoreConfig config_ {""};
+    std::string baseDatabaseDir_;
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    static std::mutex rdbStoreMapMutex_;
+    static std::unordered_map<int32_t, std::shared_ptr<NativeRdb::RdbStore>> rdbStoreMap_;
+    // 串行账号 DB 的关库(Release)与开库(GetRdbStore)文件操作，避免登出关库与登入开库对同一 db 文件并发。
+    // 与 rdbStoreMapMutex_ 分离，防止 GetRdbStore 回调(OnUpgrade 等)重入 rdbStoreMapMutex_ 导致死锁。
+    static std::mutex accountDbSwitchMutex_;
+#endif
 };
 
 class CompensateAlbumIdData : public AsyncTaskData {

@@ -40,6 +40,9 @@ public:
     EXPORT int32_t GetUserId();
     EXPORT void SetUserId(const int32_t userId);
 
+    // Resolve effective userid: If userId == -1, use member userId_; if also -1, get from GetCurrentAccountdId
+    EXPORT int32_t ResolveUserId(int32_t userId);
+
     // Init from SystemAbility (for CAPI/Tool layers without app context)
     EXPORT void InitFromSa(const int32_t userId = -1);
 

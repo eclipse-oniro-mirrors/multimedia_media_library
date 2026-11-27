@@ -57,6 +57,10 @@ static void Register(AsyncTaskData *data)
 
 bool CloneStatusListener::InitAsync()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    MEDIA_INFO_LOG("multi acount not support clone");
+    return true;
+#endif
     shared_ptr<MediaLibraryAsyncWorker> asyncWorker = MediaLibraryAsyncWorker::GetInstance();
     CHECK_AND_RETURN_RET_LOG(asyncWorker != nullptr, false, "can not get async worker");
     shared_ptr<MediaLibraryAsyncTask> asyncTask = make_shared<MediaLibraryAsyncTask>(

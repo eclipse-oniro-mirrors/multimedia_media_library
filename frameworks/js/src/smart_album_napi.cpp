@@ -20,6 +20,7 @@
 #include "media_library_napi.h"
 #include "media_smart_album_column.h"
 #include "media_smart_map_column.h"
+#include "media_string_utils.h"
 #include "medialibrary_client_errno.h"
 #include "medialibrary_napi_log.h"
 #include "medialibrary_tracer.h"
@@ -1303,7 +1304,7 @@ static void JSRecoverAssetExecute(napi_env env, void *data)
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(SMARTALBUMMAP_DB_ALBUM_ID, context->objectPtr->GetAlbumId());
     string fileId = MediaLibraryNapiUtils::GetFileIdFromUri(context->uri);
-    if (!MediaFileUtils::IsValidInteger(fileId)) {
+    if (!MediaStringUtils::IsValidInteger(fileId)) {
         context->SaveError(E_FAIL);
         return;
     }

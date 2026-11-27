@@ -22,6 +22,7 @@
 #include "exif_rotate_utils.h"
 #include "media_file_utils.h"
 #include "media_file_uri.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata_extractor.h"
 #include "photo_album_column.h"
@@ -88,8 +89,8 @@ void CloudUploadChecker::HandleNoOriginPhoto()
     MEDIA_INFO_LOG("start handle no origin photo!");
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     int32_t errCode = E_OK;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int32_t curFileId = prefs->GetInt(NO_ORIGIN_PHOTO_NUMBER, 0);
     MEDIA_INFO_LOG("start file id: %{public}d", curFileId);
@@ -221,7 +222,7 @@ void CloudUploadChecker::HandleMissingFile(
     const CheckedPhotoInfo &photoInfo, bool isMovingPhoto, std::vector<std::string> &noLcdList)
 {
     std::string lcdPath = GetThumbnailPath(photoInfo.path, THUMBNAIL_LCD_SUFFIX);
-    if (!MediaFileUtils::IsFileExists(lcdPath)) {
+    if (!MediaPureFileUtils::IsFileExists(lcdPath)) {
         MEDIA_WARN_LOG("lcd path does not exist, file_id: %{public}d", photoInfo.fileId);
         noLcdList.push_back(std::to_string(photoInfo.fileId));
         return;
@@ -253,7 +254,7 @@ void CloudUploadChecker::HandlePhotoInfos(const std::vector<CheckedPhotoInfo> &p
         }
 #endif
         bool isMovingPhoto = IsMovingPhoto(photoInfo.subtype, photoInfo.movingPhotoEffectMode);
-        if (MediaFileUtils::IsFileExists(photoInfo.path)) {
+        if (MediaPureFileUtils::IsFileExists(photoInfo.path)) {
             UpdateFileSize(photoInfo, isMovingPhoto);
             continue;
         }
@@ -327,8 +328,8 @@ void CloudUploadChecker::RepairNoOriginPhoto()
     CHECK_AND_RETURN_WARN_LOG(lock.try_lock(), "Repairing no origin photos has started, skipping this operation");
     MEDIA_INFO_LOG("start repair no origin photo!");
     int32_t errCode = E_OK;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int scanlineVersion = prefs->GetInt(SCANLINE_VERSION, SCANLINE_DEFAULT_VERSION);
     MEDIA_INFO_LOG("scanline version: %{public}d", scanlineVersion);

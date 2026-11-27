@@ -23,6 +23,7 @@
 #include "media_column.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "media_privacy_manager.h"
 #include "media_values_bucket_utils.h"
@@ -567,7 +568,7 @@ void CameraAssetPipeline::NotifyImageIfTempFile(bool isError)
         notifyUri += HIGH_TEMPERATURE;
     }
 
-    MEDIA_DEBUG_LOG("MultistagesCapture notify: %{public}s", MediaFileUtils::DesensitizePath(notifyUri).c_str());
+    MEDIA_DEBUG_LOG("MultistagesCapture notify: %{public}s", MediaPathUtils::DesensitizePath(notifyUri).c_str());
     watch->Notify(notifyUri, NOTIFY_UPDATE);
 }
 

@@ -22,7 +22,8 @@ namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 class MediaEditUtils {
 public:
-    EXPORT static std::string GetEditDataDir(const std::string &photoPath, int32_t userId = -1);
+    EXPORT static std::string GetEditDataDirForCloud(const std::string &photoPath, int32_t userId = -1);
+    EXPORT static std::string GetEditDataDirForLocal(const std::string &photoPath, int32_t userId = -1);
     EXPORT static std::string GetEditDataPath(const std::string &photoPath, int32_t userId = -1);
     EXPORT static std::string GetEditDataCameraPath(const std::string &photoPath, int32_t userId = -1);
     EXPORT static std::string GetTransCodePath(const std::string &photoPath, int32_t userId = -1);
@@ -35,7 +36,9 @@ public:
     EXPORT static std::string GetEnhancementTempMovingPhotoVideoPath(const std::string& photoPath, int32_t userId = -1);
     EXPORT static std::string GetEnhancementTempLivePhotoImagePath(const std::string& photoPath, int32_t userId = -1);
     EXPORT static bool CheckAndCreateEditDataDir(const std::string& photoPath);
-    EXPORT static std::string GetCacheDir(const std::string& photoPath, int32_t userId);
+
+    EXPORT static std::string GetCacheDirForCloud(const std::string& photoPath, int32_t userId = -1);
+    EXPORT static std::string GetCacheDirForLocal(const std::string& photoPath, int32_t userId = -1);
 };
 } // namespace OHOS::Media
 

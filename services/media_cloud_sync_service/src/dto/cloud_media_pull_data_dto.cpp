@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "cloud_media_dao_const.h"
+#include "media_path_utils.h"
 #include "cloud_media_sync_const.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -92,7 +93,7 @@ void CloudMediaPullDataDto::GetPropertiesInfo(std::stringstream &ss) const
        << "\"cFirstUpdateTime\": \"" << propertiesFirstUpdateTime << "\","
        << "\"cDetailTime\": \"" << propertiesDetailTime << "\","
        << "\"lFileId\": " << localFileId << ","
-       << "\"cPath\": \"" << MediaFileUtils::DesensitizePath(localPath) << "\","
+       << "\"cPath\": \"" << MediaPathUtils::DesensitizePath(localPath) << "\","
        << "\"lSize\": " << localSize << ","
        << "\"lcdSize\": " << lcdSize << ","
        << "\"thmSize\": " << thmSize << ","

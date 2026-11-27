@@ -19,6 +19,7 @@
 
 #include <sstream>
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 std::string OnDownloadAssetData::ToString() const
@@ -28,9 +29,9 @@ std::string OnDownloadAssetData::ToString() const
        << "\"fixFileType\": " << fixFileType << ","
        << "\"needSliceContent\": " << needSliceContent << ","
        << "\"needSliceRaw\": " << needSliceRaw << ","
-       << "\"path\": \"" << MediaFileUtils::DesensitizePath(path) << "\","
+       << "\"path\": \"" << MediaPathUtils::DesensitizePath(path) << "\","
        << "\"dateModified\": " << dateModified << ","
-       << "\"localPath\": \"" << MediaFileUtils::DesensitizePath(localPath) << "\","
+       << "\"localPath\": \"" << MediaPathUtils::DesensitizePath(localPath) << "\","
        << "\"err\": " << err << ","
        << "\"errorMsg\": \"" << errorMsg << ","
        << "\"fileUri\": " << fileUri << ","
@@ -47,9 +48,9 @@ std::string AssetFileNode::ToString() const
 {
     std::stringstream ss;
     ss << "{"
-       << "\"filePath\": \"" << MediaFileUtils::DesensitizePath(filePath) << "\","
-       << "\"liveVideoPath\": \"" << MediaFileUtils::DesensitizePath(liveVideoPath) << "\"";
-    ss << "}";
+       << "\"filePath\": \"" << MediaPathUtils::DesensitizePath(filePath) << "\","
+       << "\"liveVideoPath\": \"" << MediaPathUtils::DesensitizePath(liveVideoPath) << "\""
+       << "}";
     return ss.str();
 }
 }  // namespace OHOS::Media::CloudSync

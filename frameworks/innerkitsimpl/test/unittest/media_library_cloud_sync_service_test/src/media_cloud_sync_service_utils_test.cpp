@@ -22,6 +22,7 @@
 #include "cloud_media_dao_utils.h"
 #include "cloud_media_sync_utils.h"
 #include "cloud_media_dao_utils.h"
+#include "media_path_utils.h"
 #include "cloud_sync_convert.h"
 #include "exif_rotate_utils.h"
 #define protected public
@@ -33,6 +34,7 @@
 #include "safe_vector.h"
 #include "medialibrary_unittest_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_string_utils.h"
 #include "userfile_manager_types.h"
 
@@ -63,7 +65,7 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, ToStringWithCommaAndQuote_Test, TestSiz
     vector<string> values;
     values.emplace_back("hello");
     values.emplace_back("world");
-    string result = CloudMediaDaoUtils::ToStringWithCommaAndQuote(values);
+    string result = MediaStringUtils::ToStringWithCommaAndQuote(values);
     EXPECT_EQ(result, "'hello','world'");
 }
 
@@ -72,7 +74,7 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, ToStringWithComma_Test, TestSize.Level1
     vector<string> fileIds;
     fileIds.emplace_back("1");
     fileIds.emplace_back("2");
-    string result = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    string result = MediaStringUtils::ToStringWithComma(fileIds);
     EXPECT_EQ(result, "1,2");
 }
 
@@ -107,13 +109,13 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, VectorToString_Test, TestSize.Level1)
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLocalPath_Test, TestSize.Level1)
 {
-    string res = CloudMediaSyncUtils::GetLocalPath("");
+    string res = MediaPathUtils::ConvertCloudPathToLocalPath("");
     EXPECT_EQ(res, "");
 
-    res = CloudMediaSyncUtils::GetLocalPath("/storage/cloud");
+    res = MediaPathUtils::ConvertCloudPathToLocalPath("/storage/cloud");
     EXPECT_EQ(res, "/storage/cloud");
 
-    res = CloudMediaSyncUtils::GetLocalPath("/storage/cloud/files/test/cxx/html");
+    res = MediaPathUtils::ConvertCloudPathToLocalPath("/storage/cloud/files/test/cxx/html");
     EXPECT_EQ(res, "/storage/media/local/files/test/cxx/html");
 }
 
@@ -154,9 +156,9 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, GetThumbParentPath_Test, TestSize.Level
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, RemoveEditDataSourcePath_Test, TestSize.Level1)
 {
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
 
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     CloudMediaSyncUtils::RemoveEditDataSourcePath(path);
@@ -166,9 +168,9 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, RemoveEditDataSourcePath_Test, TestSize
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, BackUpEditDataSourcePath_Test01, TestSize.Level1)
 {
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(
         "/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg"), true);
 
@@ -184,9 +186,10 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, BackUpEditDataSourcePath_Test01, TestSi
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, BackUpEditDataSourcePath_Test02, TestSize.Level1)
 {
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
+    EXPECT_EQ(
+        MediaPureFileUtils::CreateDirectory("/storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg"), true);
 
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     CloudMediaSyncUtils::BackUpEditDataSourcePath(path);

@@ -27,7 +27,9 @@
 #include "media_clone_pending_task.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_album_fusion_utils.h"
 #include "media_upgrade.h"
 #include "medialibrary_errno.h"
@@ -130,13 +132,13 @@ bool RetryDeletePath(const std::string &path)
     if (path.empty()) {
         return true;
     }
-    if (!MediaFileUtils::IsFileExists(path)) {
+    if (!MediaPureFileUtils::IsFileExists(path)) {
         return true;
     }
     if (MediaFileUtils::DeleteFile(path)) {
         return true;
     }
-    return !MediaFileUtils::IsFileExists(path) || MediaFileUtils::DeleteFile(path);
+    return !MediaPureFileUtils::IsFileExists(path) || MediaFileUtils::DeleteFile(path);
 }
 
 bool RetryDeleteAssetRow(int32_t fileId)
@@ -353,9 +355,9 @@ void CleanupTestAssets()
 
 void CreateTestAssetFile(const std::string &path)
 {
-    std::string parent = MediaFileUtils::GetParentPath(path);
+    std::string parent = MediaPathUtils::GetParentPath(path);
     CHECK_AND_RETURN(!parent.empty());
-    CHECK_AND_RETURN(MediaFileUtils::CreateDirectory(parent));
+    CHECK_AND_RETURN(MediaPureFileUtils::CreateDirectory(parent));
     std::ofstream out(path);
     out << "clone_pending_record_utils_test";
     out.close();

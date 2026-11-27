@@ -19,6 +19,7 @@
 #include "dfx_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "media_column.h"
@@ -44,8 +45,8 @@ void DfxAnalyzer::FlushThumbnail(std::unordered_map<std::string, ThumbnailErrorI
         return;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_ERROR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(THUMBNAIL_ERROR_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
 
     for (auto entry: thumbnailErrorMap) {
@@ -67,8 +68,8 @@ void DfxAnalyzer::FlushCommonBehavior(std::unordered_map<string, CommonBehavior>
         return;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(COMMON_BEHAVIOR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(COMMON_BEHAVIOR_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -96,8 +97,8 @@ void DfxAnalyzer::FlushDeleteBehavior(std::unordered_map<string, int32_t> &delet
         return;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DELETE_BEHAVIOR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DELETE_BEHAVIOR_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -117,8 +118,8 @@ void DfxAnalyzer::FlushInvalidMap(const std::unordered_map<string, string> &inva
         return;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(INVALID_BEHAVIOR_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(COMMON_BEHAVIOR_FOR_FUSE_GETATTR_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     std::string typeStr = std::to_string(type);
     for (const auto& entry : invalidMap) {
@@ -135,8 +136,8 @@ void DfxAnalyzer::FlushAdaptationToMovingPhoto(AdaptationToMovingPhotoInfo& newA
         return;
     }
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(ADAPTATION_TO_MOVING_PHOTO_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(ADAPTATION_TO_MOVING_PHOTO_XML, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
 
     string unadaptedAppsStr = prefs->GetString(MOVING_PHOTO_KEY_UNADAPTED_PACKAGE);
@@ -186,7 +187,8 @@ int32_t DfxAnalyzer::CalculateAvgWaitTime(CinematicWaitType waitType, const Cine
 static bool CheckDfxFile(const string& dfxFileName, shared_ptr<NativePreferences::Preferences> &prefs)
 {
     int32_t errCode;
-    prefs = NativePreferences::PreferencesHelper::GetPreferences(dfxFileName, errCode);
+    prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(dfxFileName, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs, false, "get preferences error: %{public}d", errCode);
     return true;
 }
@@ -217,8 +219,8 @@ void DfxAnalyzer::FlushTranscodeAccessTimes(const TranscodeAccessType type, Tran
     string XML;
     bool success = GetTransCodeXML(transcodeType, XML);
     CHECK_AND_RETURN_LOG(success, "GetTranscodeXML failed");
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -249,8 +251,8 @@ void DfxAnalyzer::FlushTranscodeFailed(const TranscodeErrorType type, TranscodeT
     string XML;
     bool success = GetTransCodeXML(transcodeType, XML);
     CHECK_AND_RETURN_LOG(success, "GetTranscodeXML failed");
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -280,8 +282,8 @@ void DfxAnalyzer::FlushTranscodeCostTime(const int32_t costTime, TranscodeType t
     string XML;
     bool success = GetTransCodeXML(transcodeType, XML);
     CHECK_AND_RETURN_LOG(success, "GetTranscodeXML failed");
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -348,8 +350,8 @@ void DfxAnalyzer::FlushCinematicVideoInfo(CinematicVideoInfo& newCinematicVideoI
 void DfxAnalyzer::FlushAgingLcdCount(PhotoLcdStatistics stats)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(AGING_LCD_INFO, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     prefs->PutInt(LOCAL_LCD_NUM, stats.localPropertyCount);
     prefs->PutInt(CLOUD_LCD_NUM, stats.cloudPropertyCount);
@@ -363,8 +365,8 @@ void DfxAnalyzer::FlushAgingLcdCount(PhotoLcdStatistics stats)
 void DfxAnalyzer::FlushAgingLcdContinue()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(AGING_LCD_INFO, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     int32_t LcdContinueTimes = prefs->GetInt(AGING_CONTINUE_NUM.c_str(), 0);
     prefs->PutInt(AGING_CONTINUE_NUM, LcdContinueTimes + 1);
@@ -375,8 +377,8 @@ void DfxAnalyzer::FlushAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSi
     int64_t freeSizeOld, int64_t freeSize, int64_t totalTime)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(AGING_LCD_INFO, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     prefs->PutInt(AGING_LCD_NUM, hasAgingLcdNumber);
     prefs->PutInt(FLASH_TOTAL_SIZE, totalSize);
@@ -388,8 +390,8 @@ void DfxAnalyzer::FlushAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSi
 void DfxAnalyzer::FlushReadLcdTimes(bool isSuccess, NetConnStatusType netStatus)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(READ_LCD_INFO, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     const char* successKey = nullptr;
     const char* typeKey = nullptr;
@@ -437,8 +439,8 @@ void DfxAnalyzer::FlushReadLcdTimes(bool isSuccess, NetConnStatusType netStatus)
 void DfxAnalyzer::FlushThumbnailQuality(const int32_t southDeviceType)
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(READ_LCD_INFO, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
 
     std::string typeKey;
@@ -465,8 +467,8 @@ void DfxAnalyzer::FlushThumbnailQuality(const int32_t southDeviceType)
 void DfxAnalyzer::FlushVisitLcd()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(READ_LCD_INFO, true), errCode);
     CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
  
     int32_t systemAppVisitTimes = prefs->GetInt(SYSTEM_APP_VISIT_NUM, 0);

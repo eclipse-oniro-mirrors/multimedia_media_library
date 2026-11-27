@@ -27,6 +27,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "result_set_utils.h"
 #include "cloud_media_common.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media {
 /**
@@ -48,7 +49,7 @@ void BurstDao::CompleteBurstFileIds(std::vector<std::string> &fileIds, std::vect
 {
     CHECK_AND_RETURN_LOG(!fileIds.empty(), "CompleteBurstFileIds fileIds is empty");
     
-    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    std::string inClause = MediaStringUtils::ToStringWithComma(fileIds);
     MEDIA_DEBUG_LOG("input fileIds: %{public}s.", inClause.c_str());
     
     std::string sql = "SELECT p." + MediaColumn::MEDIA_ID + ", p." + MediaColumn::MEDIA_FILE_PATH

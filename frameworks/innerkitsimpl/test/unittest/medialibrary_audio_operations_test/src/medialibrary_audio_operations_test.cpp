@@ -16,6 +16,7 @@
 #define MLOG_TAG "audioOperationsTest"
 
 #include "medialibrary_audio_operations_test.h"
+#include "media_pure_file_utils.h"
 
 #include <chrono>
 #include <cstdint>
@@ -176,7 +177,7 @@ void ClearAndRestart()
     system("rm -rf /storage/cloud/files/*");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{private}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -851,7 +852,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_delete_api10_test_001, Test
     EXPECT_GE(fileId, E_OK);
     string filePath = GetFilePath(fileId);
     EXPECT_FALSE(filePath.empty());
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), true);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), true);
     int32_t count = GetAudioAssetCountIndb(AudioColumn::MEDIA_NAME, "audio.mp3");
     EXPECT_EQ(count, 1);
 
@@ -865,7 +866,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_delete_api10_test_001, Test
         [] (int32_t result) { EXPECT_GT(result, 0); });
 
     // test delete result
-    EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), false);
+    EXPECT_EQ(MediaPureFileUtils::IsFileExists(filePath), false);
     count = GetAudioAssetCountIndb(AudioColumn::MEDIA_NAME, "audio.mp3");
     EXPECT_EQ(count, 0);
 

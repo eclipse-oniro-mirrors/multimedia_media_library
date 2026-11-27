@@ -32,11 +32,28 @@
 #include "parameter.h"
 #include "parameters.h"
 #include "media_audio_column.h"
+#include "media_path_utils.h"
+
 
 namespace OHOS {
 namespace Media {
 namespace MediaTool {
-const string PATH_HEAD = "/storage/cloud/";
+static std::string FormatQueryPath(const std::string &path, const std::string &activeUserId)
+{
+    std::string outputPath = path;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    // Format the returned path only; account routing remains on the server.
+    outputPath = MediaPathUtils::RemoveAccountId(outputPath);
+#endif
+    const auto cloudRoot = MediaPathUtils::GetDir(MediaPathType::CLOUD_ROOT, AdaptAccount::NO);
+    const auto cloudFiles = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    if (!cloudRoot.empty() && !cloudFiles.empty() && cloudFiles.compare(0, cloudRoot.size(), cloudRoot) == 0 &&
+        outputPath.compare(0, cloudFiles.size(), cloudFiles) == 0) {
+        outputPath.insert(cloudRoot.size(), activeUserId + "/");
+    }
+    return outputPath;
+}
+
 static int32_t QueryMediaFiles(const QueryParam &queryParam)
 {
     std::vector<std::string> queryfilePaths;
@@ -65,10 +82,7 @@ static int32_t QueryMediaFiles(const QueryParam &queryParam)
         printf("path\n");
         do {
             auto path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-            auto pos = path.find("/storage/cloud/file", 0);
-            if (pos != string::npos) {
-                path.insert(pos + PATH_HEAD.length(), activeUserId + "/");
-            }
+            path = FormatQueryPath(path, activeUserId);
             printf("%s\n", path.c_str());
         } while (!resultSet->GoToNextRow());
         resultSet->Close();

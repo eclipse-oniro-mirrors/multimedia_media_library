@@ -16,6 +16,7 @@
 #define MLOG_TAG "BackupTest"
 
 #include "medialibrary_backup_test.h"
+#include "media_pure_file_utils.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -43,6 +44,7 @@
 #include "geo_knowledge_restore.h"
 #undef private
 #undef protected
+#include "media_path_utils.h"
 #include "mimetype_utils.h"
 #include "restore_map_code_utils.h"
 
@@ -369,7 +371,9 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_create_asset_path_by_id, T
     std::string extension = "jpg";
     std::string cloudPath;
     int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
-    std::string dir = RESTORE_CLOUD_DIR + "/" + to_string(uniqueId) + "/IMG_" +
+
+    std::string cloudPhotoDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO);
+    std::string dir = cloudPhotoDir + to_string(uniqueId) + "/IMG_" +
         to_string(MediaFileUtils::UTCTimeSeconds()) + "_00" + to_string(uniqueId) + "." + extension;
     int32_t errCode = BackupFileUtils::CreateAssetPathById(uniqueId, fileType, extension, cloudPath);
     MEDIA_INFO_LOG("dir: %{public}s, cloudPath: %{public}s", dir.c_str(), cloudPath.c_str());
@@ -465,7 +469,9 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_update_clone, TestSize.Lev
     std::string extension = "jpg";
     std::string cloudPath;
     int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
-    std::string dir = RESTORE_CLOUD_DIR + "/" + to_string(uniqueId) + "/IMG_" +
+
+    std::string cloudPhotoDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::NO);
+    std::string dir = cloudPhotoDir + to_string(uniqueId) + "/IMG_" +
         to_string(MediaFileUtils::UTCTimeSeconds()) + "_00" + to_string(uniqueId) + "." + extension;
     int32_t errCode = BackupFileUtils::CreateAssetPathById(uniqueId, fileType, extension, cloudPath);
     MEDIA_INFO_LOG("dir: %{public}s, cloudPath: %{public}s", dir.c_str(), cloudPath.c_str());
@@ -568,15 +574,15 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_handle_rest_data_not_del_d
     MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_not_del_db start");
     const string galleryDbPath = TEST_BACKUP_PATH + "/" + GALLERY_APP_NAME + "/ce/databases/gallery.db";
     const string externalDbPath = TEST_BACKUP_PATH + "/" + MEDIA_APP_NAME + "/ce/databases/external.db";
-    bool isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
-    bool isExternalDbExist = MediaFileUtils::IsFileExists(externalDbPath);
+    bool isGalleryDbExist = MediaPureFileUtils::IsFileExists(galleryDbPath);
+    bool isExternalDbExist = MediaPureFileUtils::IsFileExists(externalDbPath);
     EXPECT_EQ(isGalleryDbExist, true);
     EXPECT_EQ(isExternalDbExist, true);
 
     restoreService->restoreMode_ = RESTORE_MODE_PROC_MAIN_DATA;
     restoreService->HandleRestData();
-    isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
-    isExternalDbExist = MediaFileUtils::IsFileExists(externalDbPath);
+    isGalleryDbExist = MediaPureFileUtils::IsFileExists(galleryDbPath);
+    isExternalDbExist = MediaPureFileUtils::IsFileExists(externalDbPath);
     EXPECT_EQ(isGalleryDbExist, true);
     EXPECT_EQ(isExternalDbExist, true);
     MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_not_del_db end");
@@ -592,15 +598,15 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_handle_rest_data_del_db, T
     MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_del_db start");
     const string galleryDbPath = TEST_BACKUP_PATH + "/" + GALLERY_APP_NAME + "/ce/databases/gallery.db";
     const string externalDbPath = TEST_BACKUP_PATH + "/" + MEDIA_APP_NAME + "/ce/databases/external.db";
-    bool isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
-    bool isExternalDbExist = MediaFileUtils::IsFileExists(externalDbPath);
+    bool isGalleryDbExist = MediaPureFileUtils::IsFileExists(galleryDbPath);
+    bool isExternalDbExist = MediaPureFileUtils::IsFileExists(externalDbPath);
     EXPECT_EQ(isGalleryDbExist, true);
     EXPECT_EQ(isExternalDbExist, true);
 
     restoreService->restoreMode_ = RESTORE_MODE_PROC_ALL_DATA;
     restoreService->HandleRestData();
-    isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
-    isExternalDbExist = MediaFileUtils::IsFileExists(externalDbPath);
+    isGalleryDbExist = MediaPureFileUtils::IsFileExists(galleryDbPath);
+    isExternalDbExist = MediaPureFileUtils::IsFileExists(externalDbPath);
     EXPECT_EQ(isGalleryDbExist, false);
     EXPECT_EQ(isExternalDbExist, false);
     MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_del_db end");
@@ -2629,7 +2635,7 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_convert_to_moving_photo, T
 {
     MEDIA_INFO_LOG("medialib_backup_test_convert_to_moving_photo start");
     string livePhotoPath = "/data/test/backup_test_livephoto.jpg";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/data/test/"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(livePhotoPath), true);
 
     FileInfo info;
@@ -2656,7 +2662,7 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_file_access_helper, TestSi
 {
     MEDIA_INFO_LOG("medialib_backup_test_file_access_helper start");
     string backupFilePath = "/data/test/Pictures/Camera/Flower.png";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/Pictures/Camera/"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/data/test/Pictures/Camera/"), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(backupFilePath), true);
 
     string lowerCasePath = "/data/test/pictures/camera/flower.png";
@@ -2864,7 +2870,7 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_PreparePath, TestSize.Leve
 
     // normal dir and file
     path = "/data/test/GYH/test.txt";
-    MediaFileUtils::CreateDirectory("/data/test/GYH/");
+    MediaPureFileUtils::CreateDirectory("/data/test/GYH/");
     MediaFileUtils::CreateFile("path");
     result = BackupFileUtils::PreparePath(path);
     EXPECT_EQ(result, E_OK);

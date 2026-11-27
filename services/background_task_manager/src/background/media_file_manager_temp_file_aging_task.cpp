@@ -19,10 +19,12 @@
 
 #include "rdb_predicates.h"
 #include "preferences.h"
+#include "media_pure_file_utils.h"
 #include "preferences_helper.h"
 #include "dfx_utils.h"
 #include "media_file_utils.h"
 #include "media_edit_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -49,8 +51,8 @@ void MediaFileManagerTempFileAgingTask::Execute()
 void MediaFileManagerTempFileAgingTask::SetBatchStatus(int32_t startFileId)
 {
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_TEMP_FILE_AGING_EVENT, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(FILE_MANAGER_TEMP_FILE_AGING_EVENT, false), errCode);
     MEDIA_INFO_LOG("file_manager_temp_file_aging_events prefs errCode: %{public}d", errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "prefs is nullptr");
     prefs->PutInt("startFileId", startFileId);
@@ -61,8 +63,8 @@ void MediaFileManagerTempFileAgingTask::SetBatchStatus(int32_t startFileId)
 int32_t MediaFileManagerTempFileAgingTask::GetBatchStatus()
 {
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(FILE_MANAGER_TEMP_FILE_AGING_EVENT, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(FILE_MANAGER_TEMP_FILE_AGING_EVENT, false), errCode);
     MEDIA_INFO_LOG("file_manager_temp_file_aging_events prefs errCode: %{public}d", errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, prefsNullErrCode, "prefs is nullptr");
     int32_t defaultVal = 0;
@@ -136,7 +138,7 @@ void MediaFileManagerTempFileAgingTask::DeleteTempFiles(std::shared_ptr<MediaLib
             "Failed to delete temp file path: %{public}s, errno: %{public}d",
             DfxUtils::GetSafePath(path).c_str(), errno);
         std::string editDataPath = MediaEditUtils::GetEditDataPath(path);
-        if (MediaFileUtils::IsFileExists(editDataPath)) {
+        if (MediaPureFileUtils::IsFileExists(editDataPath)) {
             CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(editDataPath),
                 "Failed to delete edit data path: %{public}s, errno: %{public}d",
                 DfxUtils::GetSafePath(editDataPath).c_str(), errno);
@@ -164,7 +166,8 @@ void MediaFileManagerTempFileAgingTask::HandleMediaFileManagerTempFileAging()
         "ResultSet get column index fails");
     resultSet->GetInt(columnIndex, maxFileId);
 
-    CHECK_AND_EXECUTE(MediaFileUtils::IsFileExists(FILE_MANAGER_TEMP_FILE_AGING_EVENT),
+    CHECK_AND_EXECUTE(MediaPureFileUtils::IsFileExists(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(FILE_MANAGER_TEMP_FILE_AGING_EVENT, false)),
         SetBatchStatus(defaultValueZero));
     int32_t currStartFileId = GetBatchStatus();
     CHECK_AND_RETURN_LOG(currStartFileId != prefsNullErrCode, "prefs is nullptr");

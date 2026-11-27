@@ -28,8 +28,8 @@ namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 struct PhotoAssetProxyCallerInfo {
-    uint32_t callingUid;
-    int32_t userId;
+    uint32_t callingUid {0};
+    int32_t userId {-1};
     uint32_t callingTokenId {0};
     std::string packageName;
 

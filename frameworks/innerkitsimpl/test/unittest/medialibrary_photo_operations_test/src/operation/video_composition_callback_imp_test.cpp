@@ -21,6 +21,7 @@
 #include "result_set_utils.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "photo_album_column.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_data_manager.h"
@@ -102,7 +103,7 @@ static void ClearAndRestart()
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        bool ret = MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        bool ret = MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
         CHECK_AND_PRINT_LOG(ret, "make %{public}s dir failed, ret=%{public}d", dir.c_str(), ret);
     }
     CleanTestTables();
@@ -333,10 +334,10 @@ HWTEST_F(VideoCompositionCallbackImplTest, VideoComposition_Test_HandleAddFilter
     string dstFile = jpgDstDir + "/video.mp4";
     string testContent = "video_content_for_handle_error";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicSrcDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicSrcDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(heicSrcFile), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicSrcFile, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDstDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDstDir), true);
 
     string jpgSrcDir = "/data/test/IMG_0010.jpg";
     string jpgSrcFile = jpgSrcDir + "/source.mp4";
@@ -366,14 +367,14 @@ HWTEST_F(VideoCompositionCallbackImplTest, VideoComposition_Test_CallStartCompos
     string jpgVideoPath = jpgDir + "/source.mp4";
     string testContent = "composite_test_video";
 
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(jpgDir), true);
     EXPECT_EQ(MediaFileUtils::CreateFile(jpgVideoPath), true);
     EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgVideoPath, testContent), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(heicDir), true);
 
     string heicVideoPath = heicDir + "/source.mp4";
     string videoPath = "/data/test/composite_output/video.mp4";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/composite_output"), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory("/data/test/composite_output"), true);
 
     auto imp = make_shared<VideoCompositionCallbackImpl>();
     ASSERT_NE(imp, nullptr);

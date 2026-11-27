@@ -14,6 +14,7 @@
  */
 
 #include "medialibrary_multistages_deferred_capture3_fuzzer.h"
+#include "media_path_utils.h"
 #include "medialibrary_rdbstore_utils_fuzzer.h"
 
 #include <cstdint>
@@ -81,7 +82,7 @@ static int32_t InsertAsset(string photoId)
     values.PutLong(Media::MediaColumn::MEDIA_DATE_TRASHED, provider->ConsumeIntegral<int64_t>());
     values.PutString(Media::PhotoColumn::PHOTO_ID, photoId);
     values.PutString(Media::MediaColumn::MEDIA_NAME, FuzzMimeTypeAndDisplayNameExtension());
-    values.PutString(Media::MediaColumn::MEDIA_FILE_PATH, CLOUD_PHOTO_PATH +
+    values.PutString(Media::MediaColumn::MEDIA_FILE_PATH, MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO) +
         provider->ConsumeBytesAsString(NUM_BYTES) + "1234.jpg");
     int64_t fileId = 0;
     g_rdbStore->Insert(fileId, PHOTOS_TABLE, values);

@@ -21,7 +21,6 @@ namespace OHOS {
 namespace Media {
 class CloudMediaCommon {
 public:
-    static std::string ToStringWithComma(const std::vector<std::string> &fileIds);
     static std::string FillParams(const std::string &sql, const std::vector<std::string> &bindArgs);
     static int32_t ToInt32(const std::string &str);
 };

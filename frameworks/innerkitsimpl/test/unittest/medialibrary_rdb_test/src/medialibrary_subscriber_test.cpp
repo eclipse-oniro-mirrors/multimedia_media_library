@@ -33,10 +33,11 @@ namespace OHOS {
 namespace Media {
 constexpr int32_t SLEEP_TIME = 1;
 static constexpr int32_t EVENTTYPE = 7;
+static std::string LOCAL_FILES_DIR = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES);
 static const std::string DATA_CLONE_DESCRIPTION_JSON =
-    PhotoColumn::FILES_LOCAL_DIR + ".backup/restore/dataclone_description.json";
-const static std::string CLONE_FOLDER_PATH = PhotoColumn::FILES_LOCAL_DIR + ".backup/clone";
-const static std::string RESTORE_FOLDER_PATH = PhotoColumn::FILES_LOCAL_DIR + ".backup/restore";
+    LOCAL_FILES_DIR + ".backup/restore/dataclone_description.json";
+const static std::string CLONE_FOLDER_PATH = LOCAL_FILES_DIR + ".backup/clone";
+const static std::string RESTORE_FOLDER_PATH = LOCAL_FILES_DIR + ".backup/restore";
 const string CLOUD_UPDATE_EVENT = "usual.event.DUE_HAP_CFG_UPDATED";
 const string CLOUD_EVENT_INFO_TYPE = "type";
 const string CLOUD_EVENT_INFO_TYPE_VALUE = "medialibrary_kit_whitelist";

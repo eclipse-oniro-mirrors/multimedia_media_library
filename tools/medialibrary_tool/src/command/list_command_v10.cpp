@@ -36,17 +36,18 @@ static int32_t ListAsset(const ExecEnv &env, const std::string &tableName, const
     printf("Table Name: %s\n", tableName.c_str());
     std::shared_ptr<DataShare::DataShareResultSet> resultSet;
     auto res = UserFileClientEx::Query(tableName, uri, resultSet, true);
-    std::shared_ptr<FetchResult<FileAsset>> fetchResult = std::make_shared<FetchResult<FileAsset>>(resultSet);
-    MEDIA_DEBUG_LOG("fetchResult count:%{public}d", fetchResult->GetCount());
-    fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     if (res != Media::E_OK) {
         printf("%s query issue failed. tableName:%s, uri:%s\n", STR_FAIL.c_str(), tableName.c_str(),
             uri.c_str());
         return Media::E_ERR;
     }
-    if (fetchResult == nullptr) {
-        return Media::E_OK;
+    if (resultSet == nullptr) {
+        printf("%s query returned a null result set. tableName:%s\n", STR_FAIL.c_str(), tableName.c_str());
+        return Media::E_ERR;
     }
+    std::shared_ptr<FetchResult<FileAsset>> fetchResult = std::make_shared<FetchResult<FileAsset>>(resultSet);
+    MEDIA_DEBUG_LOG("fetchResult count:%{public}d", fetchResult->GetCount());
+    fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     DumpOpt dumpOpt;
     dumpOpt.count = fetchResult->GetCount();
     dumpOpt.columns = {
@@ -68,16 +69,17 @@ static int32_t ListAssets(const ExecEnv &env, const std::string &tableName)
     printf("Table Name: %s\n", tableName.c_str());
     std::shared_ptr<DataShare::DataShareResultSet> resultSet;
     auto res = UserFileClientEx::Query(tableName, "", resultSet, true);
-    std::shared_ptr<FetchResult<FileAsset>> fetchResult = std::make_shared<FetchResult<FileAsset>>(resultSet);
-    MEDIA_DEBUG_LOG("fetchResult count:%{public}d", fetchResult->GetCount());
-    fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     if (res != Media::E_OK) {
         printf("%s query issue failed. tableName:%s\n", STR_FAIL.c_str(), tableName.c_str());
         return Media::E_ERR;
     }
-    if (fetchResult == nullptr) {
-        return Media::E_OK;
+    if (resultSet == nullptr) {
+        printf("%s query returned a null result set. tableName:%s\n", STR_FAIL.c_str(), tableName.c_str());
+        return Media::E_ERR;
     }
+    std::shared_ptr<FetchResult<FileAsset>> fetchResult = std::make_shared<FetchResult<FileAsset>>(resultSet);
+    MEDIA_DEBUG_LOG("fetchResult count:%{public}d", fetchResult->GetCount());
+    fetchResult->SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     DumpOpt dumpOpt;
     dumpOpt.count = fetchResult->GetCount();
     MEDIA_DEBUG_LOG("count:%{public}d", dumpOpt.count);

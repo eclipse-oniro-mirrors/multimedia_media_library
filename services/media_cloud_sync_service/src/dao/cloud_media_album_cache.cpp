@@ -19,6 +19,7 @@
 
 #include <string>
 #include <utime.h>
+#include "media_path_utils.h"
 #include <vector>
 
 #include "medialibrary_errno.h"
@@ -90,7 +91,7 @@ int32_t CloudMediaAlbumCache::QueryAlbumBylPath(const std::string &lPath, std::o
         albumInfo = *it;
     }
     MEDIA_INFO_LOG("QueryAlbumBylPath, lPath: %{public}s, isFound: %{public}d",
-        MediaFileUtils::DesensitizePath(lPath).c_str(), isFound);
+        MediaPathUtils::DesensitizePath(lPath).c_str(), isFound);
     return E_OK;
 }
 

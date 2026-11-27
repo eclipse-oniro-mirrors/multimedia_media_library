@@ -36,6 +36,8 @@
 #include "moving_photo_file_utils.h"
 #include "photo_album_column.h"
 #include "result_set_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 namespace OHOS::Media {
 namespace {
@@ -67,12 +69,13 @@ bool IsPathUnderDirectory(const std::string &path, const std::string &directory)
 bool HasExistingLakeOrigin(const ReverseCloneAssetResource &resource)
 {
     return resource.IsLakeAsset() && IsPathUnderDirectory(resource.storagePath, LAKE_STORAGE_ROOT) &&
-        MediaFileUtils::IsFileExists(resource.storagePath);
+        MediaPureFileUtils::IsFileExists(resource.storagePath);
 }
 
 bool IsCloudResourcePath(const std::string &path)
 {
-    return IsPathUnderDirectory(path, RESTORE_FILES_CLOUD_DIR);
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    return IsPathUnderDirectory(path, cloudFilesDir);
 }
 
 std::string GetLocalPathByCloudPath(const std::string &cloudPath)
@@ -109,70 +112,71 @@ bool StrictRenameExistingResource(const std::string &src, const std::string &dst
 {
     CHECK_AND_RETURN_RET_LOG(!dst.empty(), false,
         "Reverse force absorb source resource skipped, src=%{public}s, dst is empty",
-        MediaFileUtils::DesensitizePath(src).c_str());
+        MediaPathUtils::DesensitizePath(src).c_str());
     int32_t errCode = BackupFileUtils::PreparePath(dst);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
         "Reverse force absorb prepare path failed, src=%{public}s, dst=%{public}s, errCode=%{public}d",
-        MediaFileUtils::DesensitizePath(src).c_str(), MediaFileUtils::DesensitizePath(dst).c_str(), errCode);
+        MediaPathUtils::DesensitizePath(src).c_str(), MediaPathUtils::DesensitizePath(dst).c_str());
     errno = 0;
     CHECK_AND_RETURN_RET_LOG(std::rename(src.c_str(), dst.c_str()) == 0, false,
         "Reverse force absorb strict rename failed, src=%{public}s, dst=%{public}s, errno=%{public}d",
-        MediaFileUtils::DesensitizePath(src).c_str(), MediaFileUtils::DesensitizePath(dst).c_str(), errno);
+        MediaPathUtils::DesensitizePath(src).c_str(), MediaPathUtils::DesensitizePath(dst).c_str(), errno);
     return true;
 }
 
 bool IsValidRequiredRename(const std::string &src, const std::string &dst)
 {
-    CHECK_AND_RETURN_RET_LOG(!src.empty() && MediaFileUtils::IsFileExists(src), false,
+    CHECK_AND_RETURN_RET_LOG(!src.empty() && MediaPureFileUtils::IsFileExists(src), false,
         "Reverse force absorb required source missing, src=%{public}s, dst=%{public}s",
-        MediaFileUtils::DesensitizePath(src).c_str(), MediaFileUtils::DesensitizePath(dst).c_str());
+        MediaPathUtils::DesensitizePath(src).c_str(), MediaPathUtils::DesensitizePath(dst).c_str());
     CHECK_AND_RETURN_RET_LOG(!dst.empty(), false, "Reverse force absorb required target invalid, src=%{public}s",
-        MediaFileUtils::DesensitizePath(src).c_str());
+        MediaPathUtils::DesensitizePath(src).c_str());
     return true;
 }
 
 std::string GetForceAbsorbBackupPath(const std::string &path)
 {
-    if (!IsPathUnderDirectory(path, RESTORE_FILES_LOCAL_DIR)) {
+    std::string localFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+    if (!IsPathUnderDirectory(path, localFilesDir)) {
         return "";
     }
-    return FORCE_ABSORB_BACKUP_ROOT + "/" + path.substr(RESTORE_FILES_LOCAL_DIR.length());
+    return FORCE_ABSORB_BACKUP_ROOT + "/" + path.substr(localFilesDir.length());
 }
 
 bool StrictRenameDirectoryWithBackup(const std::string &src, const std::string &dst)
 {
     CHECK_AND_RETURN_RET_LOG(!dst.empty(), false, "Reverse force absorb editData target is empty, src=%{public}s",
-        MediaFileUtils::DesensitizePath(src).c_str());
+        MediaPathUtils::DesensitizePath(src).c_str());
     std::string backup = GetForceAbsorbBackupPath(dst);
     CHECK_AND_RETURN_RET_LOG(!backup.empty(), false,
         "Reverse force absorb editData backup path invalid, dst=%{public}s",
-        MediaFileUtils::DesensitizePath(dst).c_str());
-    CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(backup) || MediaFileUtils::DeleteDir(backup), false,
+        MediaPathUtils::DesensitizePath(dst).c_str());
+    CHECK_AND_RETURN_RET_LOG(!MediaPureFileUtils::IsFileExists(backup) || MediaFileUtils::DeleteDir(backup), false,
         "Reverse force absorb delete stale editData backup failed, backup=%{public}s",
-        MediaFileUtils::DesensitizePath(backup).c_str());
-    if (!MediaFileUtils::IsFileExists(dst)) {
+        MediaPathUtils::DesensitizePath(backup).c_str());
+    if (!MediaPureFileUtils::IsFileExists(dst)) {
         return StrictRenameExistingResource(src, dst);
     }
     CHECK_AND_RETURN_RET(StrictRenameExistingResource(dst, backup), false);
     if (StrictRenameExistingResource(src, dst)) {
         CHECK_AND_WARN_LOG(MediaFileUtils::DeleteDir(backup),
             "Reverse force absorb editData succeeded but backup cleanup failed, backup=%{public}s",
-            MediaFileUtils::DesensitizePath(backup).c_str());
+            MediaPathUtils::DesensitizePath(backup).c_str());
         return true;
     }
     bool restored = StrictRenameExistingResource(backup, dst);
     CHECK_AND_PRINT_LOG(restored, "Reverse force absorb restore editData backup failed, backup=%{public}s, "
-        "dst=%{public}s", MediaFileUtils::DesensitizePath(backup).c_str(),
-        MediaFileUtils::DesensitizePath(dst).c_str());
+        "dst=%{public}s", MediaPathUtils::DesensitizePath(backup).c_str(),
+        MediaPathUtils::DesensitizePath(dst).c_str());
     return false;
 }
 
 bool ForceAbsorbEditDataResource(const std::string &srcEditData, const std::string &dstEditData)
 {
-    if (srcEditData.empty() || !MediaFileUtils::IsFileExists(srcEditData)) {
+    if (srcEditData.empty() || !MediaPureFileUtils::IsFileExists(srcEditData)) {
         return true;
     }
-    return MediaFileUtils::IsDirectory(srcEditData) ?
+    return MediaPureFileUtils::IsDirectory(srcEditData) ?
         StrictRenameDirectoryWithBackup(srcEditData, dstEditData) :
         StrictRenameExistingResource(srcEditData, dstEditData);
 }
@@ -201,7 +205,7 @@ bool ForceAbsorbOriginResources(const ReverseCloneAssetResource &source, const s
     }
     MEDIA_ERR_LOG("Reverse force absorb moving photo video failed after origin replaced, srcOrigin=%{public}s, "
         "dstOrigin=%{public}s",
-        MediaFileUtils::DesensitizePath(srcOrigin).c_str(), MediaFileUtils::DesensitizePath(dstOrigin).c_str());
+        MediaPathUtils::DesensitizePath(srcOrigin).c_str(), MediaPathUtils::DesensitizePath(dstOrigin).c_str());
     return false;
 }
 
@@ -245,18 +249,20 @@ bool ForceAbsorbSourceResourceOnCommitFailed(const ReverseCloneResourcePlan &pla
         "keepLakeOrigin=%{public}d, src=%{public}s, dst=%{public}s, editSrc=%{public}s, editDst=%{public}s, "
         "originSatisfied=%{public}d, editDataSatisfied=%{public}d",
         plan.absorbed.fileId, static_cast<int32_t>(plan.matchType), HasExistingLakeOrigin(sourceResource),
-        MediaFileUtils::DesensitizePath(srcOrigin).c_str(), MediaFileUtils::DesensitizePath(dstOrigin).c_str(),
-        MediaFileUtils::DesensitizePath(srcEditData).c_str(), MediaFileUtils::DesensitizePath(dstEditData).c_str(),
+        MediaPathUtils::DesensitizePath(srcOrigin).c_str(), MediaPathUtils::DesensitizePath(dstOrigin).c_str(),
+        MediaPathUtils::DesensitizePath(srcEditData).c_str(), MediaPathUtils::DesensitizePath(dstEditData).c_str(),
         originSatisfied, editDataSatisfied));
     return true;
 }
 
 std::string GetLocalThumbPathByCloudPath(const std::string &cloudPath)
 {
-    if (cloudPath.compare(0, RESTORE_FILES_CLOUD_DIR.length(), RESTORE_FILES_CLOUD_DIR) != 0) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    std::string localFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::NO);
+    if (cloudPath.compare(0, cloudFilesDir.length(), cloudFilesDir) != 0) {
         return "";
     }
-    return RESTORE_FILES_LOCAL_DIR + ".thumbs/" + cloudPath.substr(RESTORE_FILES_CLOUD_DIR.length());
+    return localFilesDir + ".thumbs/" + cloudPath.substr(cloudFilesDir.length());
 }
 
 std::string GetMovingPhotoVideoPathByCloudPath(const std::string &cloudPath)
@@ -266,13 +272,13 @@ std::string GetMovingPhotoVideoPathByCloudPath(const std::string &cloudPath)
 
 bool DeletePathIfExists(const std::string &path)
 {
-    if (path.empty() || !MediaFileUtils::IsFileExists(path)) {
+    if (path.empty() || !MediaPureFileUtils::IsFileExists(path)) {
         return true;
     }
-    bool isFile = !MediaFileUtils::IsDirectory(path);
+    bool isFile = !MediaPureFileUtils::IsDirectory(path);
     bool deleted = MediaFileUtils::DeleteFileOrFolder(path, isFile);
     CHECK_AND_PRINT_LOG(deleted, "RevRes stale target fallback delete failed, path=%{public}s",
-        MediaFileUtils::DesensitizePath(path).c_str());
+        MediaPathUtils::DesensitizePath(path).c_str());
     return deleted;
 }
 
@@ -522,10 +528,10 @@ void ReverseCloneResourceInheritHelper::LogDataConflictsBeforeInsert(
                 "conflictSize=%{public}lld, conflictStoragePath=%{public}s, conflictFileSourceType=%{public}d",
                 fileInfo.fileIdOld, conflictFileId,
                 static_cast<long long>(ToOriginalOldDeviceFileId(conflictFileId)),
-                MediaFileUtils::DesensitizePath(fileInfo.cloudPath).c_str(),
+                MediaPathUtils::DesensitizePath(fileInfo.cloudPath).c_str(),
                 fileInfo.displayName.c_str(), conflictDisplayName.c_str(), static_cast<long long>(fileInfo.fileSize),
                 static_cast<long long>(conflictSize),
-                MediaFileUtils::DesensitizePath(conflictStoragePath).c_str(), conflictFileSourceType);
+                MediaPathUtils::DesensitizePath(conflictStoragePath).c_str(), conflictFileSourceType);
         }
         resultSet->Close();
     }
@@ -747,7 +753,7 @@ void ReverseCloneResourceInheritHelper::UpdateAbsorbedPhotosVisible(
     for (const auto &fileInfo : fileInfos) {
         CHECK_AND_CONTINUE(fileInfo.fileIdOld > 0);
         CHECK_AND_CONTINUE(failedResourceFileIds.find(fileInfo.fileIdOld) == failedResourceFileIds.end() ||
-            MediaFileUtils::IsFileExists(GetLocalPathByCloudPath(fileInfo.cloudPath)));
+            MediaPureFileUtils::IsFileExists(GetLocalPathByCloudPath(fileInfo.cloudPath)));
         visibleIds.emplace_back(std::to_string(fileInfo.fileIdOld));
     }
     CHECK_AND_RETURN_LOG(!visibleIds.empty(), "UpdateAbsorbedPhotosVisible: visibleIds is empty");

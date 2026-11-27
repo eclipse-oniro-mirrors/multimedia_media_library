@@ -35,6 +35,7 @@
 #include <vector>
 #include <memory>
 
+#include "account_scope.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_errno.h"
 #include "media_scanner_const.h"
@@ -94,6 +95,11 @@ public:
     void SetIsSkipAlbumUpdate(bool isSkipAlbumUpdate);
 
     void SetCameraShotMovingPhoto(bool isCameraShotMovingPhoto);
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    void SetAccountId(int32_t accountId) { accountId_ = accountId; }
+    int32_t GetAccountId() const { return accountId_; }
+#endif
 
 private:
     /* file */
@@ -155,6 +161,7 @@ private:
     int32_t fileId_ = 0;
     bool isSkipAlbumUpdate_ = false;
     bool isCameraShotMovingPhoto_ = false;
+    int32_t accountId_ = -1;
 };
 
 class ScanErrCallback : public IMediaScannerCallback {

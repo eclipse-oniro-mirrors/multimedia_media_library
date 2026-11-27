@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media::CloudSync {
 void PhotosDto::GetAttachment(std::stringstream &ss) const
@@ -37,8 +38,8 @@ void PhotosDto::GetAttachment(std::stringstream &ss) const
 void PhotosDto::GetBasicInfo(std::stringstream &ss) const
 {
     ss << "\"cloudId\": \"" << this->cloudId << "\", "
-       << "\"data\": \"" << MediaFileUtils::DesensitizePath(this->data) << "\", "
-       << "\"path\": \"" << MediaFileUtils::DesensitizePath(this->path) << "\", "
+       << "\"data\": \"" << MediaPathUtils::DesensitizePath(this->data) << "\", "
+       << "\"path\": \"" << MediaPathUtils::DesensitizePath(this->path) << "\", "
        << "\"size\": " << this->size << ", "
        << "\"dateModified\": " << this->dateModified << ", "
        << "\"dirty\": " << this->dirty << ", "
@@ -69,7 +70,7 @@ void PhotosDto::GetAttributesInfo(std::stringstream &ss) const
        << "\"rotation\": " << this->rotation << ", "
        << "\"version\": " << this->version << ", "
        << "\"fileSourceType\": " << this->fileSourceType << ", "
-       << "\"storagePath\": \"" << MediaFileUtils::DesensitizePath(this->storagePath) << "\", "
+       << "\"storagePath\": \"" << MediaPathUtils::DesensitizePath(this->storagePath) << "\", "
        << "\"errorType\": " << this->errorType << ", "
        << "\"isShared\": " << this->isShared << ", "
        << "\"shareOwnerInfo\": " << this->shareOwnerInfo << ", "

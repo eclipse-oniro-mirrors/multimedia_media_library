@@ -56,6 +56,10 @@ ohos_executable("mediatool") {
 
   defines += [ "MEDIALIBRARY_MEDIATOOL_START=1" ]
 
+  if (media_library_multi_account_enable) {
+    defines += [ "MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT" ]
+  }
+
   deps += [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",

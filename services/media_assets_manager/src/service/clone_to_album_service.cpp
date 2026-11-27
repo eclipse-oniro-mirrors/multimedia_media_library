@@ -35,6 +35,8 @@
 #include "medialibrary_db_const.h"
 #include "media_file_utils.h"
 #include "media_edit_utils.h"
+#include "media_pure_file_utils.h"
+#include "media_string_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_rdb_utils.h"
 #include "result_set_utils.h"
@@ -141,7 +143,7 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo, std::unordered_set<std::st
         std::string renameTitle;
         std::string renameDisplayName;
         auto conflictChecker = [&occupiedPaths](const std::string &path) {
-            return MediaFileUtils::IsFileExists(path) || occupiedPaths.find(path) != occupiedPaths.end();
+            return MediaPureFileUtils::IsFileExists(path) || occupiedPaths.find(path) != occupiedPaths.end();
         };
         if (cloneAssetInfo.burstKey.empty()) {
             MediaFileAccessUtils::HandleSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName,
@@ -602,7 +604,7 @@ int32_t ValidateRequestForDir(CloneToAlbumReqBody &reqBody)
         return E_ERR;
     }
     reqBody.targetDir = TARGET_DIR + reqBody.targetDir;
-    if (!MediaFileUtils::IsDirectory(reqBody.targetDir)) {
+    if (!MediaPureFileUtils::IsDirectory(reqBody.targetDir)) {
         MEDIA_ERR_LOG("targetDir is not directory");
         return E_SCENE_ALBUM_NOT_EXIST;
     }
@@ -750,7 +752,7 @@ static int32_t ConvertAssetPathsToUris(std::vector<std::string> &assetsUri, cons
             MEDIA_ERR_LOG("targetDir is not file manager");
             return E_ERR;
         }
-        if (!MediaFileUtils::IsFileExists(assetPath)) {
+        if (!MediaPureFileUtils::IsFileExists(assetPath)) {
             MEDIA_ERR_LOG("assetPath is not exists %{public}s", assetPath.c_str());
             return E_ERR;
         }
@@ -879,7 +881,7 @@ int32_t CloneToAlbumService::QueryAssetInfo(const std::string &fileId, CloneAsse
         return E_ERR;
     }
 
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(fileId), E_ERR, "fileId is invailed");
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(fileId), E_ERR, "fileId is invailed");
     info.fileId = std::stoi(fileId);
     info.filePath = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
     info.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);

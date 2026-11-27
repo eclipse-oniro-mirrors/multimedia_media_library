@@ -21,6 +21,7 @@
 #include "rdb_predicates.h"
 
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "custom_restore_const.h"
 #include "media_time_utils.h"
 #include "medialibrary_unistore_manager.h"
@@ -57,8 +58,8 @@ void MediaShareDirtyDataCleaner::CheckDirtyData()
 bool MediaShareDirtyDataCleaner::UpdateCleanFlag(bool isNeedClean)
 {
     int32_t errCode;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(SHARE_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(SHARE_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get shared preferences error: %{public}d", errCode);
         return false;
@@ -74,8 +75,8 @@ bool MediaShareDirtyDataCleaner::UpdateCleanFlag(bool isNeedClean)
 bool MediaShareDirtyDataCleaner::UpdateShareTime(bool isStartShare)
 {
     int32_t errCode;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(SHARE_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(SHARE_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get shared preferences error: %{public}d", errCode);
         return false;
@@ -91,8 +92,8 @@ bool MediaShareDirtyDataCleaner::UpdateShareTime(bool isStartShare)
 bool MediaShareDirtyDataCleaner::IsNeedClean(int64_t &lastShareTime)
 {
     int32_t errCode;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(SHARE_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(SHARE_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get shared preferences error: %{public}d", errCode);
         return false;

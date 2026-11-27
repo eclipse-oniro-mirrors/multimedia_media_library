@@ -22,10 +22,12 @@
 #include "medialibrary_astc_stat.h"
 #include "medialibrary_type_const.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "thumbnail_const.h"
 #include "thumbnail_generate_worker.h"
 #include "thumbnail_generate_worker_manager.h"
+#include "media_path_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -201,8 +203,8 @@ bool MediaLibraryAstcStat::WriteAstcInfoToJsonFile(const PhasesStat& phasesStat,
 
 bool MediaLibraryAstcStat::WriteJsonFile(const std::string &filePath, const nlohmann::json &j)
 {
-    const std::string parentDir = MediaFileUtils::GetParentPath(filePath);
-    if (!MediaFileUtils::CreateDirectory(parentDir)) {
+    const std::string parentDir = MediaPathUtils::GetParentPath(filePath);
+    if (!MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("CreateDirectory failed, dir = %{public}s", DfxUtils::GetSafePath(parentDir).c_str());
         return false;
     }

@@ -28,6 +28,7 @@
 #include "lake_file_parser.h"
 #include "file_scan_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_utils.h"
@@ -56,7 +57,7 @@ static const std::string TEST_ENHANCED_IMAGE = "/data/test/file/IMG_001_enhanced
 
 void FileParserTest::SetUpTestCase()
 {
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
 }
 
 void FileParserTest::TearDownTestCase()
@@ -1894,7 +1895,7 @@ static std::shared_ptr<MediaLibraryRdbStore> g_cinematicV2RdbStore = nullptr;
 
 void FileParserCinematicV2Test::SetUpTestCase()
 {
-    MediaFileUtils::CreateDirectory(TEST_DIR_PATH);
+    MediaPureFileUtils::CreateDirectory(TEST_DIR_PATH);
     MediaLibraryUnitTestUtils::Init();
     g_cinematicV2RdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(g_cinematicV2RdbStore, nullptr);

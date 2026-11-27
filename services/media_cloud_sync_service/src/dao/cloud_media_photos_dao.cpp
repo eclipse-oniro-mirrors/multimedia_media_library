@@ -26,6 +26,8 @@
 #include "photos_po_writer.h"
 #include "photo_album_po_writer.h"
 #include "cloud_sync_convert.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_rdb_utils.h"
 #include "scanner_utils.h"
@@ -639,7 +641,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbumForMerge(const CloudMediaPullDataDto 
         MEDIA_INFO_LOG("FixData:ishidden");
         std::string lPath = CloudMediaSyncUtils::GetLpath(pullData);
         std::transform(lPath.begin(), lPath.end(), lPath.begin(), ::tolower);
-        MEDIA_INFO_LOG("FixData:GetLpath %{public}s", MediaFileUtils::DesensitizePath(lPath).c_str());
+        MEDIA_INFO_LOG("FixData:GetLpath %{public}s", MediaPathUtils::DesensitizePath(lPath).c_str());
         std::pair<int32_t, std::string> val;
         if (lpathToIdMap.Find(lPath, val)) {
             MEDIA_INFO_LOG("FixData: findlpath %{public}s", (val.second).c_str());
@@ -692,7 +694,7 @@ int32_t CloudMediaPhotosDao::FixAlbumIdToBeOtherAlbumId(int32_t &albumId)
         albumId = val.first;
     }
     MEDIA_INFO_LOG("FixAlbumId Lpath %{public}s, albumId %{public}d",
-        MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
+        MediaPathUtils::DesensitizePath(lPath).c_str(), albumId);
     return E_OK;
 }
 
@@ -709,7 +711,7 @@ void CloudMediaPhotosDao::GetSourceAlbumFromPath(const CloudMediaPullDataDto &pu
         albumId = val.first;
     }
     MEDIA_INFO_LOG("GetSourceAlbumFromPath Lpath %{public}s, albumId %{public}d",
-        MediaFileUtils::DesensitizePath(lPath).c_str(), albumId);
+        MediaPathUtils::DesensitizePath(lPath).c_str(), albumId);
 }
 
 std::shared_ptr<NativeRdb::ResultSet> CloudMediaPhotosDao::GetAllSysAlbumsQuery(
@@ -1023,8 +1025,8 @@ bool CloudMediaPhotosDao::JudgeConflict(
         MEDIA_INFO_LOG("JudgeConflict sourceAlbum empty: %{public}d, attributesSrcAlbumIds empty: %{public}d,"
             " local lPath: %{public}s, cloud lPath: %{public}s",
             localKeyData.sourceAlbum.empty(), pullData.attributesSrcAlbumIds.empty(),
-            MediaFileUtils::DesensitizePath(localKeyData.lPath).c_str(),
-            MediaFileUtils::DesensitizePath(cloudKeyData.lPath).c_str());
+            MediaPathUtils::DesensitizePath(localKeyData.lPath).c_str(),
+            MediaPathUtils::DesensitizePath(cloudKeyData.lPath).c_str());
         return localKeyData.lPath == cloudKeyData.lPath;
     } else {
         SafeMap<std::string, std::pair<int32_t, std::string>> albumLPathToIdMap = GetAlbumLPathToIdMap();
@@ -1110,7 +1112,7 @@ int32_t CloudMediaPhotosDao::GetCreatedRecords(int32_t size, std::vector<PhotosP
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "GetCreatedRecords Failed to get rdbStore.");
     /* build predicates */
-    std::string fileIdNotIn = CloudMediaDaoUtils::ToStringWithComma(this->photoCreateFailSet_.ToVector());
+    std::string fileIdNotIn = MediaStringUtils::ToStringWithComma(this->photoCreateFailSet_.ToVector());
     MEDIA_INFO_LOG("GetCreatedRecords fileIdNotIn:%{public}s", fileIdNotIn.c_str());
     bool notSupport = !PhotoAlbumUploadStatusOperation::IsSupportUploadStatus();
     std::vector<std::string> params = {
@@ -1151,7 +1153,7 @@ int32_t CloudMediaPhotosDao::GetMetaModifiedRecords(int32_t size, std::vector<Ph
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "GetMetaModifiedRecords Failed to get rdbStore.");
     /* build predicates */
-    std::string cloudIdNotIn = CloudMediaDaoUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
+    std::string cloudIdNotIn = MediaStringUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
     MEDIA_INFO_LOG("GetMetaModifiedRecords cloudIdNotIn:%{public}s", cloudIdNotIn.c_str());
     std::vector<NativeRdb::ValueObject> bindArgs = {size};
     std::string execSql;
@@ -1200,7 +1202,7 @@ int32_t CloudMediaPhotosDao::GetFileModifiedRecords(int32_t size, std::vector<Ph
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "GetFileModifiedRecords Failed to get rdbStore.");
     /* build predicates */
-    std::string cloudIdNotIn = CloudMediaDaoUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
+    std::string cloudIdNotIn = MediaStringUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
     MEDIA_INFO_LOG("GetFileModifiedRecords cloudIdNotIn:%{public}s", cloudIdNotIn.c_str());
     std::vector<NativeRdb::ValueObject> bindArgs = {size};
     std::string execSql;
@@ -1252,7 +1254,7 @@ int32_t CloudMediaPhotosDao::GetDeletedRecordsAsset(int32_t size, std::vector<Ph
     }
     queryPredicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     queryPredicates.Limit(size);
-    std::string cloudIdNotIn = CloudMediaDaoUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
+    std::string cloudIdNotIn = MediaStringUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
     MEDIA_INFO_LOG("GetDeletedRecordsAsset cloudIdNotIn:%{public}s", cloudIdNotIn.c_str());
     /* query */
     std::vector<string> queryColums = {};
@@ -1275,7 +1277,7 @@ int32_t CloudMediaPhotosDao::GetCopyRecords(int32_t size, std::vector<PhotosPo> 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "GetCopyRecords Failed to get rdbStore.");
     /* build predicates */
-    std::string fileIdNotIn = CloudMediaDaoUtils::ToStringWithComma(this->photoCopyFailSet_.ToVector());
+    std::string fileIdNotIn = MediaStringUtils::ToStringWithComma(this->photoCopyFailSet_.ToVector());
     MEDIA_DEBUG_LOG("GetCopyRecords fileIdNotIn:%{public}s", fileIdNotIn.c_str());
     std::vector<NativeRdb::ValueObject> bindArgs = {size};
     std::string execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_COPY_RECORDS, {fileIdNotIn});
@@ -1595,7 +1597,7 @@ int32_t CloudMediaPhotosDao::DeleteFileNotExistPhoto(
     MEDIA_INFO_LOG("deletedRows: %{public}d, ret: %{public}d, path: %{public}s",
                    deletedRows,
                    ret,
-                   MediaFileUtils::DesensitizePath(path).c_str());
+                   MediaPathUtils::DesensitizePath(path).c_str());
     return ret;
 }
 
@@ -2081,8 +2083,8 @@ bool CloudMediaPhotosDao::IsLocalFileExists(const PhotosDto &record)
 #endif
     bool isValid = !cloudFilePath.empty();
     CHECK_AND_RETURN_RET_LOG(isValid, false, "cloudFilePath empty, record: %{public}s", record.ToString().c_str());
-    std::string localFilePath = CloudMediaSyncUtils::GetLocalPath(cloudFilePath);
-    return MediaFileUtils::IsFileExists(localFilePath);
+    std::string localFilePath = MediaPathUtils::ConvertCloudPathToLocalPath(cloudFilePath);
+    return MediaPureFileUtils::IsFileExists(localFilePath);
 }
 
 int32_t CloudMediaPhotosDao::OnFdirtyHandlePosition(const PhotosDto &record, NativeRdb::ValuesBucket &valuesBucket)

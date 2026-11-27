@@ -26,6 +26,7 @@
 #include "medialibrary_business_code.h"
 #include "medialibrary_errno.h"
 #include "user_inner_ipc_client.h"
+#include "media_common_client.h"
 
 namespace OHOS {
 namespace Media {
@@ -52,24 +53,26 @@ MediaLibraryCameraManager *MediaLibraryCameraManager::GetMediaLibraryCameraManag
     return &mediaLibMgr;
 }
 
-void MediaLibraryCameraManager::InitMediaLibraryCameraManager(const sptr<IRemoteObject> &token)
+void MediaLibraryCameraManager::InitMediaLibraryCameraManager(const sptr<IRemoteObject> &token, int32_t userId)
 {
     std::unique_lock<std::mutex> locker(mutex_);
     token_ = token;
-    CHECK_AND_EXECUTE(sDataShareHelper_ != nullptr,
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI));
+    IPC::MediaCommonClient::GetInstance().Init(token_, userId);
+}
+
+std::shared_ptr<DataShare::DataShareHelper> MediaLibraryCameraManager::GetDataShareHelper(int32_t userId)
+{
+    IPC::MediaCommonClient::GetInstance().Init(token_, userId);
+    return IPC::MediaCommonClient::GetInstance().GetDataShareHelper(userId);
 }
 
 std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProxy(
     const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType, int32_t videoCount)
 {
     std::unique_lock<std::mutex> locker(mutex_);
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
-        "callerInfo: %{public}s, shotType: %{public}d, videoCount: %{public}d.",
-        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr,
-        callerInfo.ToString().c_str(), static_cast<int32_t>(cameraShotType), videoCount);
+    auto dataShareHelper = GetDataShareHelper(callerInfo.userId);
+    MEDIA_INFO_LOG("dataShareHelper is ready, ret = %{public}d, userId = %{public}d.",
+        dataShareHelper != nullptr, callerInfo.userId);
     std::shared_ptr<PhotoAssetProxy> photoAssetProxy = std::make_shared<PhotoAssetProxy>(
         dataShareHelper, callerInfo, cameraShotType, videoCount);
     return photoAssetProxy;
@@ -79,33 +82,26 @@ std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProx
     const PhotoAssetProxyCallerInfo &callerInfo, const CameraPresetPara &presetPara)
 {
     std::unique_lock<std::mutex> locker(mutex_);
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
-        "callerInfo: %{public}s, presetPara: %{public}s.",
-        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr,
-        callerInfo.ToString().c_str(), presetPara.ToString().c_str());
+    auto dataShareHelper = GetDataShareHelper(callerInfo.userId);
+    MEDIA_INFO_LOG("dataShareHelper is ready, ret = %{public}d, userId = %{public}d.",
+        dataShareHelper != nullptr, callerInfo.userId);
     std::shared_ptr<PhotoAssetProxy> photoAssetProxy = std::make_shared<PhotoAssetProxy>(
         dataShareHelper, callerInfo, presetPara);
     return photoAssetProxy;
 }
 
-DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std::string& photoId)
+DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std::string& photoId, int32_t userId)
 {
     MEDIA_INFO_LOG("GetEditData begin, photoId: %{public}s.", photoId.c_str());
     DeferredPictureInfo pictureInfo;
 
     std::unique_lock<std::mutex> locker(mutex_);
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(
-        dataShareHelper != nullptr, pictureInfo, "Failed to GetEditData, dataShareHelper is nullptr.");
     GetDeferredPictureInfoReqBody reqBody;
     reqBody.photoId = photoId;
 
     GetDeferredPictureInfoRespBody respBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFERRED_PICTURE_INFO);
-    IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+    IPC::UserInnerIPCClient().SetUserId(userId).Call(businessCode, reqBody, respBody);
 
     pictureInfo.editData = respBody.editData;
     pictureInfo.mimeType = respBody.mimeType;
@@ -120,7 +116,7 @@ DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std:
     return pictureInfo;
 }
 
-int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string &openMode)
+int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string &openMode, int32_t userId)
 {
     CHECK_AND_RETURN_RET(!openMode.empty(), E_ERR);
     CHECK_AND_RETURN_RET_LOG(MediaUriUtils::CheckUri(uri), E_ERR, "invalid uri");
@@ -132,15 +128,17 @@ int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string
     }
 
     std::unique_lock<std::mutex> locker(mutex_);
-    if (sDataShareHelper_ == nullptr) {
+    auto dataShareHelper = GetDataShareHelper(userId);
+    if (dataShareHelper == nullptr) {
         MEDIA_ERR_LOG("Failed to open Asset, datashareHelper is nullptr");
         return E_ERR;
     }
     Uri openUri(uri);
-    return sDataShareHelper_->OpenFile(openUri, openMode);
+    openUri = MediaUriUtils::GetMultiUri(openUri, userId);
+    return dataShareHelper->OpenFile(openUri, openMode);
 }
 
-int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func)
+int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func, int32_t userId)
 {
     MEDIA_INFO_LOG("RegisterPhotoStateCallback begin.");
     std::unique_lock<std::mutex> locker(mutex_);
@@ -148,15 +146,17 @@ int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMe
         callback_ = new MediaLowQualityMemoryCallback();
         CHECK_AND_RETURN_RET_LOG(callback_ != nullptr, E_ERR, "failed to get MediaLibraryCameraCallback.");
     }
-    return callback_->RegisterPhotoStateCallback(sDataShareHelper_, func);
+    auto dataShareHelper = GetDataShareHelper(userId);
+    return callback_->RegisterPhotoStateCallback(dataShareHelper, func);
 }
 
-int32_t MediaLibraryCameraManager::UnregisterPhotoStateCallback()
+int32_t MediaLibraryCameraManager::UnregisterPhotoStateCallback(int32_t userId)
 {
     MEDIA_INFO_LOG("UnregisterPhotoStateCallback begin.");
     std::unique_lock<std::mutex> locker(mutex_);
     CHECK_AND_RETURN_RET_LOG(callback_ != nullptr, E_ERR, "failed to get MediaLibraryCameraCallback.");
-    int32_t ret = callback_->UnregisterPhotoStateCallback(sDataShareHelper_);
+    auto dataShareHelper = GetDataShareHelper(userId);
+    int32_t ret = callback_->UnregisterPhotoStateCallback(dataShareHelper);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("failed to UnregisterPhotoStateCallback.");
         return ret;

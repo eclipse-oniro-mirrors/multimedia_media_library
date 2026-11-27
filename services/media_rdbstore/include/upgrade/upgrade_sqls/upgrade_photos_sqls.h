@@ -35,6 +35,7 @@
 #define COLUMN_PHOTO_SHARE_RISK_TYPE "share_risk_type"
 #define COLUMN_PHOTO_SHARE_DATE_DAY "share_date_day"
 #define COLUMN_PHOTO_SHARE_GROUP "share_group"
+#define COLUMN_PHOTO_ACCOUNT_ID "account_id"
 #define COLUMN_LOCAL_ENHANCEMENT_ABILITY "local_enhancement_ability"
 #define COLUMN_LOCAL_ENHANCEMENT_STATUS "local_enhancement_status"
 // index name should be added here

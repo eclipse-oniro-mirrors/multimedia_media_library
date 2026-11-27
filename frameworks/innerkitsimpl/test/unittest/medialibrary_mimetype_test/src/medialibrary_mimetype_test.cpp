@@ -20,6 +20,7 @@
 #include "medialibrary_errno.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #define private public
 #include "mimetype_utils.h"
 #undef public
@@ -313,7 +314,7 @@ HWTEST_F(MimeTypeTest, MimeTypeTest_GetMimeTypeFromContent_Test_001, TestSize.Le
 HWTEST_F(MimeTypeTest, MimeTypeTest_GetMimeTypeFromContent_Test_002, TestSize.Level1)
 {
     string dirPath = "/data/test/MimeTypeTest";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     string filePath = dirPath + "/test1.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     EXPECT_EQ(MediaFileUtils::IsDirEmpty(dirPath), false);
@@ -329,7 +330,7 @@ HWTEST_F(MimeTypeTest, MimeTypeTest_GetImageMimetype_Test_001, TestSize.Level1)
     auto imgMimetype1 = MimeTypeUtils::GetImageMimetype(filePath1, mimeType);
     EXPECT_EQ(imgMimetype1, E_INVALID_VALUES);
     string dirPath = "/data/test/MimeTypeTest";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     string filePath2 = dirPath + "/test2.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath2), true);
     EXPECT_EQ(MediaFileUtils::IsDirEmpty(dirPath), false);
@@ -343,7 +344,7 @@ HWTEST_F(MimeTypeTest, MimeTypeTest_GetVideoMimetype_Test_001, TestSize.Level1)
     MEDIA_INFO_LOG("MimeTypeTest_GetVideoMimetype_Test_001 start");
     auto mimeType = MimeTypeUtils::GetMimeTypeFromExtension("mp4");
     string dirPath = "/data/test/MimeTypeTest";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     string filePath = dirPath + "/testVideo1.mp4";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
     EXPECT_EQ(MediaFileUtils::IsDirEmpty(dirPath), false);
@@ -399,7 +400,7 @@ HWTEST_F(MimeTypeTest, MimeTypeTest_GetMimeTypeFromExtension_WithMap_Test_002, T
 HWTEST_F(MimeTypeTest, MimeTypeTest_GetMediaType_Test_001, TestSize.Level1)
 {
     string dirPath = "/data/test/MimeTypeTest";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     
     string imagePath = dirPath + "/test.jpg";
     EXPECT_EQ(MediaFileUtils::CreateFile(imagePath), true);
@@ -426,7 +427,7 @@ HWTEST_F(MimeTypeTest, MimeTypeTest_GetMediaType_Test_002, TestSize.Level1)
 HWTEST_F(MimeTypeTest, MimeTypeTest_GetMediaType_Test_003, TestSize.Level1)
 {
     string dirPath = "/data/test/MimeTypeTest";
-    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaPureFileUtils::CreateDirectory(dirPath), true);
     
     string filePath = dirPath + "/test.txt";
     EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);

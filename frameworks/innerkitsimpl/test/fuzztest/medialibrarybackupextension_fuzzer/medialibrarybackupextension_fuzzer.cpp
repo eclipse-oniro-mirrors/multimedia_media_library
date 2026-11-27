@@ -27,6 +27,7 @@
 #include "userfile_manager_types.h"
 #include "medialibrary_type_const.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 
 #include "ability_context_impl.h"
 #include "medialibrary_command.h"
@@ -171,7 +172,7 @@ static void ConvertCurrentPathFuzzer()
 {
     string curPath = "/test/test.txt";
     string resultPath = curPath;
-    MediaFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory("/test/");
     MediaFileUtils::CreateFile(curPath);
     string path = GetRandomFiles();
     BackupFileUtils::fileAccessHelper_->ConvertCurrentPath(path, resultPath);
@@ -355,7 +356,7 @@ static void ConvertToMovingPhotoFuzzer()
 {
     FileInfo info;
     string livePhotoPath = "/data/test/backup_test_livephoto.jpg";
-    MediaFileUtils::CreateDirectory("/data/test/");
+    MediaPureFileUtils::CreateDirectory("/data/test/");
     MediaFileUtils::CreateFile(livePhotoPath);
     info.filePath = livePhotoPath;
     BackupFileUtils::ConvertToMovingPhoto(info);
@@ -391,8 +392,8 @@ static void HandleRotateImageFuzzer()
     }
     string livePhotoPath = "/test/backup_test_livephoto.jpg";
     string targetPath = "/test/target";
-    MediaFileUtils::CreateDirectory("/test/");
-    MediaFileUtils::CreateDirectory(targetPath);
+    MediaPureFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory(targetPath);
     MediaFileUtils::CreateFile(livePhotoPath);
     int32_t exifRotate = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     bool isLcd = provider->ConsumeBool();
@@ -422,8 +423,8 @@ static void MoveFileFuzzer()
 {
     string oldPath = "/test/test.txt";
     string newPath = "/test/target";
-    MediaFileUtils::CreateDirectory("/test/");
-    MediaFileUtils::CreateDirectory(newPath);
+    MediaPureFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory(newPath);
     MediaFileUtils::CreateFile(oldPath);
     int32_t sceneCode = SceneCodeType();
     BackupFileUtils::MoveFile(oldPath, newPath, sceneCode);
@@ -469,8 +470,8 @@ static void HandleHdrImageFuzzer()
     }
     string sourceFile = "/test/backup_test_livephoto.jpg";
     string targetPath = "/test/target";
-    MediaFileUtils::CreateDirectory("/test/");
-    MediaFileUtils::CreateDirectory(targetPath);
+    MediaPureFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory(targetPath);
     MediaFileUtils::CreateFile(sourceFile);
     uint32_t err = E_OK;
     std::unique_ptr<ImageSource> imageSource = BackupFileUtils::LoadImageSource(sourceFile, err);
@@ -486,8 +487,8 @@ static void HandleSdrImageFuzzer()
     }
     string sourceFile = "/test/backup_test_livephoto.jpg";
     string targetPath = "/test/target";
-    MediaFileUtils::CreateDirectory("/test/");
-    MediaFileUtils::CreateDirectory(targetPath);
+    MediaPureFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory(targetPath);
     MediaFileUtils::CreateFile(sourceFile);
     uint32_t err = E_OK;
     std::unique_ptr<ImageSource> imageSource = BackupFileUtils::LoadImageSource(sourceFile, err);
@@ -503,7 +504,7 @@ static void FillMetadataFuzzer()
     }
     /*for success stat, create one of it*/
     string curPath = "/test/test.txt";
-    MediaFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory("/test/");
     MediaFileUtils::CreateFile(curPath);
 
     /*fill metadata*/
@@ -535,7 +536,7 @@ static void GetFileMetadataFuzzer()
     }
     /*for success stat, create one of it*/
     string curPath = "/test/test.txt";
-    MediaFileUtils::CreateDirectory("/test/");
+    MediaPureFileUtils::CreateDirectory("/test/");
     MediaFileUtils::CreateFile(curPath);
 
     /*fill metadata*/

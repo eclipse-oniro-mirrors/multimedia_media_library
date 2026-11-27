@@ -19,6 +19,7 @@
 
 #include "analysis_net_connect_observer.h"
 #include "media_column.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
@@ -49,7 +50,7 @@ int32_t AnalysisLcdAgingDao::QueryDownloadLcdInfo(const std::vector<int64_t> &fi
     for (auto fileId : fileIds) {
         fileIdStrs.push_back(std::to_string(fileId));
     }
-    std::string fileIdStr = PhotoOwnerAlbumIdOperation().ToStringWithComma(fileIdStrs);
+    std::string fileIdStr = MediaStringUtils::ToStringWithComma(fileIdStrs);
 
     std::string querySql = "SELECT P." + MediaColumn::MEDIA_ID + ", P." + PhotoColumn::PHOTO_CLOUD_ID + ", P." +
                            PhotoColumn::MEDIA_FILE_PATH + ", P." + PhotoColumn::MEDIA_NAME +
@@ -73,7 +74,7 @@ int32_t AnalysisLcdAgingDao::QueryDownloadLcdInfo(const std::vector<int64_t> &fi
         if (!info.filePath.empty() &&
             (thumb_status == static_cast<int32_t>(PhotoThumbStatusType::DOWNLOADED) ||
              thumb_status == static_cast<int32_t>(PhotoThumbStatusType::ONLY_LCD_DOWNLOADED))) {
-            info.localLcdPath = PhotoFileUtils::GetLocalLcdPath(info.filePath);
+            info.localLcdPath = MediaPathUtils::GetLocalThumbnailFilePath(info.filePath, ThumbnailFileType::LCD);
         }
         downloadInfos.push_back(info);
     }

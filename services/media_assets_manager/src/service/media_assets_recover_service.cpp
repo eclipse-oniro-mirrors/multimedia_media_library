@@ -30,6 +30,7 @@
 #include "photo_file_operation.h"
 #include "media_assets_service.h"
 #include "media_assets_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "lake_file_operations.h"
 #include "media_notify_suppress_manager.h"
@@ -266,7 +267,7 @@ int32_t MediaAssetsRecoverService::MoveAssetFileFromMediaToLake(
     bool isValid = photoInfo.ShouldHandleAsMediaFile();
     isValid = isValid && !lakePath.empty();
     CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "No need to move file, target is not in lake.");
-    isValid = isValid && !MediaFileUtils::IsFileExists(lakePath);
+    isValid = isValid && !MediaPureFileUtils::IsFileExists(lakePath);
     CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "No need to move file, target file already exists.");
     int32_t ret = LakeFileOperations::MoveLakeFile(mediaPath, lakePath);
     MEDIA_INFO_LOG(

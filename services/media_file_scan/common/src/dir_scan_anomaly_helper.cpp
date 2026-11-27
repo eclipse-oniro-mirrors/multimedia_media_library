@@ -19,6 +19,7 @@
 #include <filesystem>
 
 #include "file_scan_utils.h"
+#include "media_path_utils.h"
 #include "file_manager_scan_rule_config.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -44,7 +45,7 @@ static std::string NormalizeDirPath(const std::string &dirPath)
     std::string normalized = fs::absolute(fs::path(dirPath), ec).lexically_normal().string();
     if (ec) {
         MEDIA_ERR_LOG("NormalizeDirPath failed: %{public}s, path: %{public}s",
-            ec.message().c_str(), MediaFileUtils::DesensitizePath(dirPath).c_str());
+            ec.message().c_str(), MediaPathUtils::DesensitizePath(dirPath).c_str());
         return "";
     }
     return normalized;
@@ -99,7 +100,7 @@ int32_t DirScanAnomalyHelper::AddAnomalyDir(const std::string &dirPath)
 {
     std::string normalized = NormalizeDirPath(dirPath);
     CHECK_AND_RETURN_RET_LOG(!normalized.empty() && IsFileManagerDir(normalized), E_ERR,
-        "Invalid dir: %{public}s", MediaFileUtils::DesensitizePath(dirPath).c_str());
+        "Invalid dir: %{public}s", MediaPathUtils::DesensitizePath(dirPath).c_str());
 
     std::lock_guard<std::mutex> lock(mutex_);
     json dirs = GetDirsLocked();
@@ -107,14 +108,14 @@ int32_t DirScanAnomalyHelper::AddAnomalyDir(const std::string &dirPath)
     for (const auto &item : dirs) {
         if (item.is_string() && item.get<std::string>() == normalized) {
             MEDIA_DEBUG_LOG("Dir already in anomaly set: %{public}s",
-                MediaFileUtils::DesensitizePath(normalized).c_str());
+                MediaPathUtils::DesensitizePath(normalized).c_str());
             return E_OK;
         }
     }
 
     dirs.push_back(normalized);
     SaveDirsLocked(dirs);
-    MEDIA_INFO_LOG("AddAnomalyDir: %{public}s", MediaFileUtils::DesensitizePath(normalized).c_str());
+    MEDIA_INFO_LOG("AddAnomalyDir: %{public}s", MediaPathUtils::DesensitizePath(normalized).c_str());
     return E_OK;
 }
 
@@ -122,7 +123,7 @@ bool DirScanAnomalyHelper::MatchesAnomalyDir(const std::string &dirPath)
 {
     std::string normalized = NormalizeDirPath(dirPath);
     CHECK_AND_RETURN_RET_LOG(IsFileManagerDir(normalized), false,
-        "Not file manager dir: %{public}s", MediaFileUtils::DesensitizePath(normalized).c_str());
+        "Not file manager dir: %{public}s", MediaPathUtils::DesensitizePath(normalized).c_str());
 
     std::lock_guard<std::mutex> lock(mutex_);
     json dirs = GetDirsLocked();
@@ -152,7 +153,7 @@ int32_t DirScanAnomalyHelper::RemoveAnomalyDir(const std::string &dirPath)
 
     std::string normalized = NormalizeDirPath(dirPath);
     CHECK_AND_RETURN_RET_LOG(!normalized.empty(), E_ERR,
-        "NormalizeDirPath failed: %{public}s", MediaFileUtils::DesensitizePath(dirPath).c_str());
+        "NormalizeDirPath failed: %{public}s", MediaPathUtils::DesensitizePath(dirPath).c_str());
 
     std::lock_guard<std::mutex> lock(mutex_);
     json dirs = GetDirsLocked();
@@ -174,12 +175,12 @@ int32_t DirScanAnomalyHelper::RemoveAnomalyDir(const std::string &dirPath)
     }
     if (!removed) {
         MEDIA_DEBUG_LOG("Dir not in anomaly set: %{public}s",
-            MediaFileUtils::DesensitizePath(normalized).c_str());
+            MediaPathUtils::DesensitizePath(normalized).c_str());
         return E_OK;
     }
 
     SaveDirsLocked(dirs);
-    MEDIA_INFO_LOG("RemoveAnomalyDir: %{public}s", MediaFileUtils::DesensitizePath(normalized).c_str());
+    MEDIA_INFO_LOG("RemoveAnomalyDir: %{public}s", MediaPathUtils::DesensitizePath(normalized).c_str());
     return E_OK;
 }
 

@@ -34,13 +34,12 @@
 #include "media_edit_utils.h"
 #include "media_path_utils.h"
 #include "media_string_utils.h"
+#include "media_pure_file_utils.h"
 #include "single_file_moving_photo_utils.h"
 
 using namespace std;
 
 namespace OHOS::Media {
-const std::string MEDIA_EXTRA_DATA_DIR = MEDIA_EDIT_DATA_DIR;
-
 const std::string LIVE_PHOTO_CINEMAGRAPH_INFO = "CinemagraphInfo";
 const std::string LIVE_PHOTO_VIDEO_INFO_METADATA = "VideoInfoMetadata";
 const std::string LIVE_PHOTO_SIGHT_TREMBLE_META_DATA = "SightTrembleMetadata";
@@ -389,9 +388,9 @@ int32_t MovingPhotoFileUtils::CreateExtraData(const MovingPhotoExtraDataParams &
         return E_OK;
     }
     CHECK_AND_RETURN_RET_LOG(
-        MediaFileUtils::CreateDirectory(extraDir), E_ERR, "Cannot create dir %{private}s, errno:%{public}d",
+        MediaPureFileUtils::CreateDirectory(extraDir), E_ERR, "Cannot create dir %{private}s, errno:%{public}d",
         extraDir.c_str(), errno);
-    if (!MediaFileUtils::IsFileExists(extraPath) && MediaFileUtils::CreateAsset(extraPath) != E_OK) {
+    if (!MediaPureFileUtils::IsFileExists(extraPath) && MediaFileUtils::CreateAsset(extraPath) != E_OK) {
         MEDIA_ERR_LOG("Failed to create file, path:%{private}s, errno:%{public}d", extraPath.c_str(), errno);
         return E_HAS_FS_ERROR;
     }
@@ -495,7 +494,7 @@ uint32_t MovingPhotoFileUtils::GetFrameIndex(int64_t time, const int32_t fd)
 
 static bool IsValidLivePhotoCache(const string &movingPhotoImagepath, const string &cachePath, int32_t userId)
 {
-    if (!MediaFileUtils::IsFileExists(cachePath)) {
+    if (!MediaPureFileUtils::IsFileExists(cachePath)) {
         return false;
     }
     int64_t movingPhotoSize =
@@ -520,7 +519,7 @@ int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const string& movingPhotoImagep
     string videoPath = GetMovingPhotoVideoPath(movingPhotoImagepath, userId);
     string cacheDir = GetLivePhotoCacheDir(movingPhotoImagepath, userId);
     string extraPath = GetMovingPhotoExtraDataPath(movingPhotoImagepath, userId);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir),
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(cacheDir),
         E_HAS_FS_ERROR, "Cannot create dir %{private}s, errno %{public}d", cacheDir.c_str(), errno);
     string cachePath = GetLivePhotoCachePath(movingPhotoImagepath, userId);
     if (IsValidLivePhotoCache(movingPhotoImagepath, cachePath, userId)) {
@@ -581,15 +580,15 @@ int32_t MovingPhotoFileUtils::ConvertToSourceLivePhoto(const string& movingPhoto
 {
     string sourceImagePath = GetSourceMovingPhotoImagePath(movingPhotoImagePath, userId);
     string sourceVideoPath = GetSourceMovingPhotoVideoPath(movingPhotoImagePath, userId);
-    if (!MediaFileUtils::IsFileExists(sourceVideoPath)) {
+    if (!MediaPureFileUtils::IsFileExists(sourceVideoPath)) {
         sourceVideoPath = GetMovingPhotoVideoPath(movingPhotoImagePath, userId);
     }
     string extraDataPath = GetMovingPhotoExtraDataPath(movingPhotoImagePath, userId);
     string cacheDir = GetLivePhotoCacheDir(movingPhotoImagePath, userId);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
         "Cannot create dir %{private}s, errno %{public}d", cacheDir.c_str(), errno);
     string sourceCachePath = GetSourceLivePhotoCachePath(movingPhotoImagePath, userId);
-    if (MediaFileUtils::IsFileExists(sourceCachePath)) {
+    if (MediaPureFileUtils::IsFileExists(sourceCachePath)) {
         sourceLivePhotoPath = sourceCachePath;
         MEDIA_INFO_LOG("source live photo exists: %{private}s", sourceCachePath.c_str());
         return E_OK;
@@ -631,7 +630,7 @@ int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const std::string& movingPhotoI
     string videoPath = MediaPathUtils::AppendUserId(movingPhotoVideoPath, userId);
     string extraPath = MediaPathUtils::AppendUserId(movingPhotoExtraDataPath, userId);
     string cacheDir = GetLivePhotoCacheDir(movingPhotoImagePath, userId);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir),
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::CreateDirectory(cacheDir),
         E_HAS_FS_ERROR, "Cannot create dir %{private}s, errno %{public}d", cacheDir.c_str(), errno);
     
     string fileName = MediaFileUtils::GetFileName(movingPhotoImagePath);
@@ -897,7 +896,7 @@ int32_t MovingPhotoFileUtils::GetLivePhotoSize(const int32_t fd, int64_t &liveSi
 
 bool MovingPhotoFileUtils::IsLivePhotoAsset(const string &realPath)
 {
-    return !realPath.empty() && MediaFileUtils::IsFileExists(realPath) && IsLivePhoto(realPath);
+    return !realPath.empty() && MediaPureFileUtils::IsFileExists(realPath) && IsLivePhoto(realPath);
 }
 
 static int32_t SendLivePhotoByReadWrite(int32_t srcFd, int32_t destFd, int64_t sizeToSend, off_t srcOffset)
@@ -941,20 +940,20 @@ static void RemovePathIfExists(const std::string &path)
     if (access(path.c_str(), F_OK) != 0) {
         if (errno == ENOENT) {
             MEDIA_INFO_LOG("file does not exist, no need to remove: %{public}s, errno: %{public}d",
-                MediaFileUtils::DesensitizePath(path).c_str(), errno);
+                MediaPathUtils::DesensitizePath(path).c_str(), errno);
             return;
         } else {
             MEDIA_ERR_LOG("access failed for path: %{public}s, errno: %{public}d",
-                MediaFileUtils::DesensitizePath(path).c_str(), errno);
+                MediaPathUtils::DesensitizePath(path).c_str(), errno);
             return;
         }
     }
     if (unlink(path.c_str()) != 0) {
         MEDIA_ERR_LOG("unlink failed for path: %{public}s, errno: %{public}d",
-            MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            MediaPathUtils::DesensitizePath(path).c_str(), errno);
         return;
     }
-    MEDIA_DEBUG_LOG("unlink success for path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+    MEDIA_DEBUG_LOG("unlink success for path: %{public}s", MediaPathUtils::DesensitizePath(path).c_str());
 }
 
 static int32_t SendLivePhoto(const int32_t &livePhotoFd, const string &destPath, int64_t sizeToSend, off_t &offset)
@@ -966,7 +965,7 @@ static int32_t SendLivePhoto(const int32_t &livePhotoFd, const string &destPath,
     off_t totalSize = statSrc.st_size;
     CHECK_AND_RETURN_RET_LOG(sizeToSend <= totalSize - offset, E_INVALID_LIVE_PHOTO, "Failed to check sizeToSend");
 
-    if (!MediaFileUtils::IsFileExists(destPath) && MediaFileUtils::CreateAsset(destPath) != E_OK) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && MediaFileUtils::CreateAsset(destPath) != E_OK) {
         MEDIA_ERR_LOG("Failed to create file, path:%{private}s", destPath.c_str());
         return E_HAS_FS_ERROR;
     }
@@ -1587,14 +1586,18 @@ string MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(const string &imagePath,
         MEDIA_ERR_LOG("Invalid imagePath with path traversal: %{private}s", imagePath.c_str());
         return "";
     }
-    if (MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
+    std::string rootCloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::YES);
+    std::string rootMediaFilesDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_FILES, AdaptAccount::YES);
+    std::string rootCloudFilesDirNoAccount = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES, AdaptAccount::NO);
+    if (MediaStringUtils::StartsWith(imagePath, rootCloudFilesDir) ||
+        MediaStringUtils::StartsWith(imagePath, rootCloudFilesDirNoAccount)) {
         if (imagePath.find("custom_restore") != std::string::npos) {
             return imagePath + TMP;
         }
-        return MediaPathUtils::AppendUserId(MEDIA_EXTRA_DATA_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
-    } else if (MediaStringUtils::StartsWith(imagePath, LOCAL_ROOT_MEDIA_DIR)) {
-        return MediaPathUtils::AppendUserId(MEDIA_EXTRA_DATA_DIR, userId) +
-            imagePath.substr(LOCAL_ROOT_MEDIA_DIR.length());
+        return MediaEditUtils::GetEditDataDirForCloud(imagePath);
+    } else if (MediaStringUtils::StartsWith(imagePath, rootMediaFilesDir)) {
+        std::string editDataDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_EDIT_DATA, AdaptAccount::YES);
+        return MediaEditUtils::GetEditDataDirForLocal(imagePath);
     }
     return "";
 }
@@ -1628,10 +1631,10 @@ string MovingPhotoFileUtils::GetLivePhotoCacheDir(const string &imagePath, int32
         MEDIA_ERR_LOG("Invalid imagePath with path traversal: %{private}s", imagePath.c_str());
         return "";
     }
-    if (MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
-        return MediaPathUtils::AppendUserId(MEDIA_CACHE_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
-    } else if (MediaStringUtils::StartsWith(imagePath, LOCAL_ROOT_MEDIA_DIR)) {
-        return MediaPathUtils::AppendUserId(MEDIA_CACHE_DIR, userId) + imagePath.substr(LOCAL_ROOT_MEDIA_DIR.length());
+    if (MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, imagePath, AdaptAccount::YES)) {
+        return MediaEditUtils::GetCacheDirForCloud(imagePath, userId);
+    } else if (MediaPathUtils::CheckFilesPath(MediaPathType::LOCAL_FILES, imagePath, AdaptAccount::YES)) {
+        return MediaEditUtils::GetCacheDirForLocal(imagePath, userId);
     }
     return "";
 }
@@ -1692,24 +1695,24 @@ bool MovingPhotoFileUtils::IsExistsLivePhotoFiles(const std::string &imagePath)
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(imagePath, absImagePath),
         false,
         "file is not real path: %{public}s, errno: %{public}d",
-        MediaFileUtils::DesensitizePath(imagePath).c_str(),
+        MediaPathUtils::DesensitizePath(imagePath).c_str(),
         errno);
     std::string absVideoPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(videoPath, absVideoPath),
         false,
         "file is not real path: %{public}s, errno: %{public}d",
-        MediaFileUtils::DesensitizePath(videoPath).c_str(),
+        MediaPathUtils::DesensitizePath(videoPath).c_str(),
         errno);
-    isValid = MediaFileUtils::IsFileExists(absImagePath);
+    isValid = MediaPureFileUtils::IsFileExists(absImagePath);
     CHECK_AND_RETURN_RET_LOG(isValid,
         false,
         "file not exists, absImagePath: %{public}s",
-        MediaFileUtils::DesensitizePath(absImagePath).c_str());
-    isValid = MediaFileUtils::IsFileExists(absVideoPath);
+        MediaPathUtils::DesensitizePath(absImagePath).c_str());
+    isValid = MediaPureFileUtils::IsFileExists(absVideoPath);
     CHECK_AND_RETURN_RET_LOG(isValid,
         false,
         "file not exists, absVideoPath: %{public}s",
-        MediaFileUtils::DesensitizePath(absVideoPath).c_str());
+        MediaPathUtils::DesensitizePath(absVideoPath).c_str());
     return true;
 }
 
@@ -1920,14 +1923,14 @@ int32_t MovingPhotoFileUtils::GetExtraDataVersionByFilePath(const std::string &f
 {
     // extraDataPath: /storage/cloud/${userId}/files/.editData/Photo/${bucketId}/${name}.${suffix}/extraData
     std::string extraPath = GetMovingPhotoExtraDataPath(filePath);
-    bool isValid = !extraPath.empty() && MediaFileUtils::IsFileExists(extraPath);
+    bool isValid = !extraPath.empty() && MediaPureFileUtils::IsFileExists(extraPath);
     CHECK_AND_RETURN_RET(isValid, E_NO_SUCH_FILE);
 
     int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(extraPath, version);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
     isValid = version == LIVE_PHOTO_4D_VERSION;
     CHECK_AND_PRINT_INFO_LOG(
-        !isValid, "livephoto_4d_status, filePath: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+        !isValid, "livephoto_4d_status, filePath: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
     return E_OK;
 }
 
@@ -1954,7 +1957,7 @@ bool MovingPhotoFileUtils::DecomposeLivePhoto(const string &filePath)
     string videoPath = GetMovingPhotoVideoPath(filePath);
     string extraDataPath = GetMovingPhotoExtraDataPath(filePath);
     string extraPathDir = GetMovingPhotoExtraDataDir(filePath);
-    if (!MediaFileUtils::IsFileExists(extraPathDir) && !MediaFileUtils::CreateDirectory(extraPathDir)) {
+    if (!MediaPureFileUtils::IsFileExists(extraPathDir) && !MediaPureFileUtils::CreateDirectory(extraPathDir)) {
         MEDIA_WARN_LOG("Failed to create local extra data dir");
     }
     int32_t ret = ConvertToMovingPhoto(filePath, filePath, videoPath, extraDataPath);

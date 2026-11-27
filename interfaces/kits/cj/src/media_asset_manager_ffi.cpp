@@ -14,6 +14,7 @@
  */
 
 #include "media_asset_manager_ffi.h"
+#include "media_pure_file_utils.h"
 
 #include <fcntl.h>
 #include <string>
@@ -480,7 +481,7 @@ int32_t MediaAssetManagerImpl::GetFdFromSandBoxUri(const std::string &sandBoxUri
 {
     AppFileService::ModuleFileUri::FileUri destUri(sandBoxUri);
     string destPath = destUri.GetRealPath();
-    if (!MediaFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
+    if (!MediaPureFileUtils::IsFileExists(destPath) && !MediaFileUtils::CreateFile(destPath)) {
         LOGE("Create empty dest file in sandbox failed, path:%{private}s", destPath.c_str());
         return E_ERR;
     }

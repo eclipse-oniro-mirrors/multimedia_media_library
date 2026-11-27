@@ -80,7 +80,6 @@ int32_t MediaLibraryUnitTestUtils::InitUnistore(const NativeRdb::RdbStoreConfig 
     auto abilityContextImpl = std::make_shared<OHOS::AbilityRuntime::AbilityContextImpl>();
     abilityContextImpl->SetStageContext(stageContext);
     int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(abilityContextImpl, config, version, openCallback);
-    MediaLibraryDataManager::GetInstance()->rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (ret != E_OK) {
         MEDIA_ERR_LOG("init MediaLibraryUnistoreManager with config failed");
     }
@@ -90,7 +89,6 @@ int32_t MediaLibraryUnitTestUtils::InitUnistore(const NativeRdb::RdbStoreConfig 
 void MediaLibraryUnitTestUtils::StopUnistore()
 {
     std::lock_guard<std::mutex> lock(Mutex_);
-    MediaLibraryDataManager::GetInstance()->rdbStore_ = nullptr;
     MediaLibraryUnistoreManager::GetInstance().Stop();
 }
 
@@ -120,7 +118,7 @@ void MediaLibraryUnitTestUtils::CleanTestFiles()
     system("rm -rf /storage/cloud/files/Pictures/*");
     system("rm -rf /storage/cloud/files/Videos/*");
     system("rm -rf /storage/cloud/files/.*");
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
     predicates.GreaterThan(CONST_MEDIA_DATA_DB_ID, to_string(0));
     int32_t deletedRows = -1;
@@ -130,7 +128,7 @@ void MediaLibraryUnitTestUtils::CleanTestFiles()
 
 void MediaLibraryUnitTestUtils::ClearTable(const string &table)
 {
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::RdbPredicates predicates(table);
     int32_t rows = 0;
     int32_t ret = rdbStore->Delete(rows, predicates);
@@ -140,7 +138,7 @@ void MediaLibraryUnitTestUtils::ClearTable(const string &table)
 void MediaLibraryUnitTestUtils::CleanBundlePermission()
 {
     std::lock_guard<std::mutex> lock(Mutex_);
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(CONST_BUNDLE_PERMISSION_TABLE);
     predicates.GreaterThan(CONST_MEDIA_DATA_DB_ID, to_string(0));
     int32_t deletedRows = -1;
@@ -291,7 +289,7 @@ bool MediaLibraryUnitTestUtils::DeleteDir(const string &path, const string &dirI
     string cmd = "rm -rf " + path;
     system(cmd.c_str());
 
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
     predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, dirId)->Or()->EqualTo(CONST_MEDIA_DATA_DB_PARENT_ID, dirId);
     int32_t deletedRows = -1;

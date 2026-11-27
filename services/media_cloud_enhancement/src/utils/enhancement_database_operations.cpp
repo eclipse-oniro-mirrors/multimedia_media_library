@@ -25,6 +25,7 @@
 #include "media_string_utils.h"
 #include "media_time_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "scanner_utils.h"
 #include "mimetype_utils.h"
 #include "result_set_utils.h"

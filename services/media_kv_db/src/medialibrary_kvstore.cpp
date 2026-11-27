@@ -14,6 +14,8 @@
  */
 
 #include "medialibrary_kvstore.h"
+#include <algorithm>
+#include <cstring>
 
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
@@ -30,6 +32,51 @@ const size_t KVSTORE_MAX_NUMBER_BATCH_INSERT = 100;
 const OHOS::DistributedKv::StoreId KVSTORE_MONTH_STOREID_OLD_VERSION = {"medialibrary_month_astc"};
 const OHOS::DistributedKv::StoreId KVSTORE_YEAR_STOREID_OLD_VERSION = {"medialibrary_year_astc"};
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+std::string MediaLibraryKvStore::GetStoreId(const KvStoreValueType &valueType,
+    const MediaLibraryKvStoreRoute &route)
+{
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
+    if (route.multiAccountEnabled && route.accountId <= 0) {
+        return "";
+    }
+    std::string storeId;
+    switch (valueType) {
+        case KvStoreValueType::MONTH_ASTC:
+            storeId = KVSTORE_MONTH_STOREID.storeId;
+            break;
+        case KvStoreValueType::YEAR_ASTC:
+            storeId = KVSTORE_YEAR_STOREID.storeId;
+            break;
+        case KvStoreValueType::MONTH_ASTC_OLD_VERSION:
+            storeId = KVSTORE_MONTH_STOREID_OLD_VERSION.storeId;
+            break;
+        case KvStoreValueType::YEAR_ASTC_OLD_VERSION:
+            storeId = KVSTORE_YEAR_STOREID_OLD_VERSION.storeId;
+            break;
+        default:
+            return "";
+    }
+    return route.multiAccountEnabled ? storeId + "_" + std::to_string(route.accountId) : storeId;
+}
+
+int32_t MediaLibraryKvStore::RebuildKvStore(const KvStoreValueType &valueType, const std::string &baseDir,
+    const MediaLibraryKvStoreRoute &route)
+{
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
+    if (valueType != KvStoreValueType::MONTH_ASTC && valueType != KvStoreValueType::YEAR_ASTC) {
+        return E_ERR;
+    }
+    const auto storeId = GetStoreId(valueType, route);
+    CHECK_AND_RETURN_RET(!storeId.empty() && !baseDir.empty() && Close(), E_ERR);
+    auto status = dataManager_.DeleteKvStore(KVSTORE_APPID, {storeId}, baseDir);
+    CHECK_AND_RETURN_RET(status == Status::SUCCESS || status == Status::NOT_FOUND, static_cast<int32_t>(status));
+    int32_t ret = InitSingleKvstore(KvStoreRoleType::OWNER, storeId, baseDir);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    return Close() ? E_OK : E_ERR;
+}
+#endif
+
 MediaLibraryKvStore::~MediaLibraryKvStore()
 {
     Close();
@@ -38,6 +85,7 @@ MediaLibraryKvStore::~MediaLibraryKvStore()
 int32_t MediaLibraryKvStore::Init(
     const KvStoreRoleType &roleType, const KvStoreValueType &valueType, const std::string &baseDir)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryKvStore::InitKvStore");
     Options options;
@@ -51,6 +99,7 @@ int32_t MediaLibraryKvStore::Init(
 
 int32_t MediaLibraryKvStore::Insert(const std::string &key, const std::vector<uint8_t> &value)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("kvStorePtr_ is nullptr");
         return E_HAS_DB_ERROR;
@@ -69,6 +118,7 @@ int32_t MediaLibraryKvStore::Insert(const std::string &key, const std::vector<ui
 
 int32_t MediaLibraryKvStore::Delete(const std::string &key)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("kvStorePtr_ is nullptr");
         return E_HAS_DB_ERROR;
@@ -86,6 +136,7 @@ int32_t MediaLibraryKvStore::Delete(const std::string &key)
 
 int32_t MediaLibraryKvStore::DeleteBatch(const std::vector<std::string> &batchKeys)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("kvStorePtr_ is nullptr");
         return E_HAS_DB_ERROR;
@@ -107,6 +158,7 @@ int32_t MediaLibraryKvStore::DeleteBatch(const std::vector<std::string> &batchKe
 
 int32_t MediaLibraryKvStore::GetCount(const std::string& key, int32_t& count)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("kvStorePtr_ is nullptr");
         return E_HAS_DB_ERROR;
@@ -118,9 +170,10 @@ int32_t MediaLibraryKvStore::GetCount(const std::string& key, int32_t& count)
     dataQuery.Between(key, key);
     std::shared_ptr<KvStoreResultSet> output;
     Status status = kvStorePtr_->GetResultSet(dataQuery, output);
-    if (status != Status::SUCCESS) {
-        MEDIA_ERR_LOG("delete failed, status %{public}d", status);
+    if (status != Status::SUCCESS || output == nullptr) {
+        MEDIA_ERR_LOG("GetCount failed, status %{public}d", status);
         count = 0;
+        return status == Status::SUCCESS ? E_HAS_DB_ERROR : static_cast<int32_t>(status);
     } else {
         count = output->GetCount();
         status = kvStorePtr_->CloseResultSet(output);
@@ -130,6 +183,7 @@ int32_t MediaLibraryKvStore::GetCount(const std::string& key, int32_t& count)
 
 int32_t MediaLibraryKvStore::Query(const std::string &key, std::vector<uint8_t> &value)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("kvStorePtr_ is nullptr");
         return E_HAS_DB_ERROR;
@@ -171,7 +225,7 @@ int32_t FillBatchValues(std::vector<std::string> &batchKeys, std::vector<std::ve
     Status status = kvStorePtr->GetResultSet(dataQuery, resultSet);
     if (status != Status::SUCCESS || resultSet == nullptr) {
         MEDIA_ERR_LOG("GetResultSet error occur, status: %{public}d", status);
-        return static_cast<int32_t>(status);
+        return status == Status::SUCCESS ? E_HAS_DB_ERROR : static_cast<int32_t>(status);
     }
 
     if (!resultSet->MoveToNext()) {
@@ -223,6 +277,7 @@ int32_t FillBatchValues(std::vector<std::string> &batchKeys, std::vector<std::ve
 int32_t MediaLibraryKvStore::BatchQuery(
     std::vector<std::string> &batchKeys, std::vector<std::vector<uint8_t>> &values)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("kvStorePtr_ is nullptr");
         return E_HAS_DB_ERROR;
@@ -241,6 +296,7 @@ int32_t MediaLibraryKvStore::BatchQuery(
 
 bool MediaLibraryKvStore::Close()
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     MEDIA_INFO_LOG("MediaLibraryKvStore close");
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryKvStore::Close");
@@ -283,6 +339,7 @@ bool MediaLibraryKvStore::GetKvStoreOption(
 
 int32_t MediaLibraryKvStore::RebuildKvStore(const KvStoreValueType &valueType, const std::string &baseDir)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     MEDIA_INFO_LOG("Start RebuildKvStore, type %{public}d", valueType);
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryKvStore::RebuildKvStore");
@@ -318,6 +375,7 @@ int32_t MediaLibraryKvStore::RebuildKvStore(const KvStoreValueType &valueType, c
 
 int32_t MediaLibraryKvStore::BatchInsert(const std::vector<DistributedKv::Entry> &entries)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
     if (kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("KvStorePtr is nullptr");
         return E_HAS_DB_ERROR;
@@ -340,6 +398,8 @@ int32_t MediaLibraryKvStore::BatchInsert(const std::vector<DistributedKv::Entry>
 int32_t MediaLibraryKvStore::InitSingleKvstore(const KvStoreRoleType &roleType,
     const std::string &storeId, const std::string &baseDir)
 {
+    std::lock_guard<std::recursive_mutex> lock(storeMutex_);
+    CHECK_AND_RETURN_RET(!storeId.empty() && !baseDir.empty() && kvStorePtr_ == nullptr, E_ERR);
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryKvStore::InitKvStore");
     Options options;
@@ -362,9 +422,9 @@ int32_t MediaLibraryKvStore::InitSingleKvstore(const KvStoreRoleType &roleType,
 
     MEDIA_INFO_LOG("InitKvStore baseDir %{public}s", options.group.groupDir.c_str());
     Status status = dataManager_.GetSingleKvStore(options, KVSTORE_APPID, {storeId}, kvStorePtr_);
-    if (status != Status::SUCCESS) {
+    if (status != Status::SUCCESS || kvStorePtr_ == nullptr) {
         MEDIA_ERR_LOG("Init kvstore failed, status:%{public}d", status);
-        return static_cast<int32_t>(status);
+        return status == Status::SUCCESS ? E_HAS_DB_ERROR : static_cast<int32_t>(status);
     }
     return E_OK;
 }

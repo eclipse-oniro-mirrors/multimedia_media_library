@@ -282,17 +282,17 @@ bool CloudMediaAlbumDao::ReplaceCoverUriCondition(const std::string &coverUri, c
     if (DEFAULT_SCREENRECORDS_LPATH_LOWER.compare(lPathLower) == 0 &&
         SCREENSHOT_VIDEO_EXTENSION.compare(extension) != 0) {
         MEDIA_INFO_LOG("Not Allow Replace CoverUri lPath:%{public}s, coverUri:%{public}s",
-            MediaFileUtils::DesensitizePath(lPath).c_str(), coverUri.c_str());
+            MediaPathUtils::DesensitizePath(lPath).c_str(), coverUri.c_str());
         return false;
     }
     if (DEFAULT_SCREENSHOT_LPATH_LOWER.compare(lPathLower) == 0 &&
         SCREENSHOT_VIDEO_EXTENSION.compare(extension) == 0) {
         MEDIA_INFO_LOG("Not Allow Replace CoverUri lPath:%{public}s, coverUri:%{public}s",
-            MediaFileUtils::DesensitizePath(lPath).c_str(), coverUri.c_str());
+            MediaPathUtils::DesensitizePath(lPath).c_str(), coverUri.c_str());
         return false;
     }
     MEDIA_DEBUG_LOG("IsCoverIdExist:coverUri:%{public}s, lPath:%{public}s",
-        coverUri.c_str(), MediaFileUtils::DesensitizePath(lPath).c_str());
+        coverUri.c_str(), MediaPathUtils::DesensitizePath(lPath).c_str());
     return true;
 }
 
@@ -752,7 +752,7 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
     if (record.coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER &&
         IsNeedPullCoverByDateModified(record.lPath, record.coverCloudId)) {
         MEDIA_DEBUG_LOG("IsNeedPullCover:lPath:%{public}s, coverCloudId:%{public}s",
-            MediaFileUtils::DesensitizePath(record.lPath).c_str(), record.coverCloudId.c_str());
+            MediaPathUtils::DesensitizePath(record.lPath).c_str(), record.coverCloudId.c_str());
         string coverUri;
         if (IsCoverIdExist(record.coverCloudId) && GetCoverUriFromCoverCloudId(record.coverCloudId, coverUri)) {
             values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, record.coverUriSource);
@@ -979,8 +979,8 @@ int32_t CloudMediaAlbumDao::QueryCreatedAlbums(int32_t size, std::vector<PhotoAl
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
-    std::string cloudIdNotIn = CloudMediaDaoUtils::ToStringWithCommaAndQuote(this->albumCreateFailSet_);
-    std::string lpathNotIn = CloudMediaDaoUtils::ToStringWithCommaAndQuote(this->albumInsertFailSet_);
+    std::string cloudIdNotIn = MediaStringUtils::ToStringWithCommaAndQuote(this->albumCreateFailSet_);
+    std::string lpathNotIn = MediaStringUtils::ToStringWithCommaAndQuote(this->albumInsertFailSet_);
     bool notSupport = !PhotoAlbumUploadStatusOperation::IsSupportUploadStatus();
     std::vector<std::string> params = {
         cloudIdNotIn,
@@ -1083,7 +1083,7 @@ void CloudMediaAlbumDao::InsertAlbumModifyFailedRecord(const std::string &cloudI
 
 void CloudMediaAlbumDao::InsertAlbumInsertFailedRecord(const std::string &lPath)
 {
-    MEDIA_WARN_LOG("albumInsertFailSet_ add lPath: %{public}s", MediaFileUtils::DesensitizePath(lPath).c_str());
+    MEDIA_WARN_LOG("albumInsertFailSet_ add lPath: %{public}s", MediaPathUtils::DesensitizePath(lPath).c_str());
     albumInsertFailSet_.push_back(lPath);
 }
 
@@ -1387,7 +1387,7 @@ bool CloudMediaAlbumDao::IsCloudCoverDateModifiedUpdated(const std::string &lPat
     int64_t dateModifiedLocal = GetDateModified(coverCloudIdFromLocal);
 
     MEDIA_INFO_LOG("lPath:%{public}s, Cloud:%{public}s, Local:%{public}s",
-        MediaFileUtils::DesensitizePath(lPath).c_str(),
+        MediaPathUtils::DesensitizePath(lPath).c_str(),
         to_string(dateModifiedCloud).c_str(),
         to_string(dateModifiedLocal).c_str());
     return dateModifiedCloud > dateModifiedLocal;

@@ -215,6 +215,15 @@ public:
     EXPORT void SetNeedThumbnail(const VariantData &needThumbnail);
     EXPORT int32_t GetNeedThumbnail() const;
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    EXPORT void SetAccountId(const VariantData &accountId);
+    EXPORT int32_t GetAccountId() const;
+#endif
+
+    EXPORT void SetLivePhoto4dStatus(const VariantData &livePhoto4dStatus);
+    EXPORT int32_t GetLivePhoto4dStatus() const;
+
+
     EXPORT void Init();
     void InitV2();
 
@@ -308,6 +317,7 @@ private:
 
     // frame index of live photo
     int32_t frameIndex_ = 0;
+    int32_t livePhoto4dStatus_ = 0;
 
     int32_t isTemp_;
     int32_t photoQuality_ = 0;
@@ -331,8 +341,12 @@ private:
 
     int32_t fileSourceType_;
     int32_t needThumbnail_ = 1;
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    // mult account
+    int32_t accountId = -1;
+#endif
 };
 } // namespace Media
 } // namespace OHOS
-
 #endif // METADATA_H

@@ -14,6 +14,8 @@
  */
 #include "acl.h"
 
+#include "media_path_utils.h"
+
 #include <dirent.h>
 #include <list>
 #include <sys/stat.h>
@@ -22,6 +24,10 @@
 #include "medialibrary_errno.h"
 #include "media_log.h"
 #include "securec.h"
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_manager.h"
+#endif
 
 namespace OHOS {
 namespace Media {
@@ -262,7 +268,8 @@ void InitSandboxGroupEntry(AclXattrEntry& entry, uint32_t id, uint16_t access)
 
 int32_t Acl::AclSetDefault()
 {
-    if (EnableAcl(THUMB_DIR, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
+    std::string thumbDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_THUMB_PHOTO, AdaptAccount::YES);
+    if (EnableAcl(thumbDir, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
         MEDIA_DB_ACL_GROUP) != E_OK) {
         MEDIA_ERR_LOG("Failed to set the acl permission for the Photo dir");
         return E_ERR;
@@ -371,26 +378,38 @@ int32_t Acl::EnableAcl(const std::string& path, const char* aclAttrName, const u
 
 int32_t Acl::AclSetDatabase()
 {
-    if (EnableAcl(CONST_MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
-        ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the acl permission for the DB dir");
-        return E_ERR;
+    std::vector<std::string> databaseDirVec = { std::string(CONST_MEDIA_DB_DIR) };
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    const auto accountIds = AccountManager::GetInstance().GetAllAccounts();
+    for (const auto& accountId : accountIds) {
+        std::string accountDatabaseDir = std::string(CONST_MEDIA_DB_DIR) + "/" + std::to_string(accountId);
+        databaseDirVec.push_back(accountDatabaseDir);
     }
-    if (EnableAcl(RDB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
-        MEDIA_DB_ACL_GROUP) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the acl permission for the rdb dir");
-        return E_ERR;
+#endif
+    for (const auto& databaseDir : databaseDirVec) {
+        std::string rdbDir = std::string(databaseDir) + "/rdb";
+        if (EnableAcl(databaseDir, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+            ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the acl permission for the DB dir");
+            return E_ERR;
+        }
+        if (EnableAcl(rdbDir, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
+            MEDIA_DB_ACL_GROUP) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the acl permission for the rdb dir");
+            return E_ERR;
+        }
+        if (RecursiveEnableAcl(rdbDir, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
+            MEDIA_DB_ACL_GROUP) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the acl permission for the rdb sub dir");
+            return E_ERR;
+        }
+        if (RecursiveEnableAclExcludeDir(databaseDir, ACL_XATTR_ACCESS, ACL_PERM::Value::READ |
+            ACL_PERM::Value::WRITE | ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP, rdbDir) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the acl permission for the DB sub dir");
+            return E_ERR;
+        }
     }
-    if (RecursiveEnableAcl(RDB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
-        MEDIA_DB_ACL_GROUP) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the acl permission for the rdb sub dir");
-        return E_ERR;
-    }
-    if (RecursiveEnableAclExcludeDir(CONST_MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ |
-        ACL_PERM::Value::WRITE | ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP, RDB_DIR) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the acl permission for the DB sub dir");
-        return E_ERR;
-    }
+
     return E_OK;
 }
 
@@ -410,30 +429,44 @@ bool IsDirExist(const std::string &path)
 
 int32_t Acl::AclSetSlaveDatabase()
 {
-    if (!IsDirExist(CONST_MEDIA_DB_DIR)) {
-        MEDIA_ERR_LOG("Media database directory is not exist");
-        return E_ERR;
+    std::vector<std::string> databaseDirVec = { std::string(CONST_MEDIA_DB_DIR) };
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    const auto accountIds = AccountManager::GetInstance().GetAllAccounts();
+    for (const auto& accountId : accountIds) {
+        std::string accountDatabaseDir = std::string(CONST_MEDIA_DB_DIR) + "/" + std::to_string(accountId);
+        databaseDirVec.push_back(accountDatabaseDir);
     }
-    if (EnableAcl(RDB_DIR, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
-        ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the default acl permission for the DB dir");
-        return E_ERR;
-    }
-    if (RecursiveEnableAcl(RDB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
-        ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the acl permission for the DB dir");
-        return E_ERR;
+#endif
+    for (const auto& databaseDir : databaseDirVec) {
+        std::string rdbDir = std::string(databaseDir) + "/rdb";
+        std::string dbBinlogDir = std::string(databaseDir) + "/rdb/media_library.db_binlog";
+
+        if (!IsDirExist(databaseDir)) {
+            MEDIA_ERR_LOG("Media database directory is not exist");
+            return E_ERR;
+        }
+        if (EnableAcl(rdbDir, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+            ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the default acl permission for the DB dir");
+            return E_ERR;
+        }
+        if (RecursiveEnableAcl(rdbDir, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+            ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the acl permission for the DB dir");
+            return E_ERR;
+        }
+
+        if (!IsDirExist(dbBinlogDir)) {
+            MEDIA_ERR_LOG("binlog not exist");
+            continue;
+        }
+        if (EnableAcl(dbBinlogDir, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+            ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
+            MEDIA_ERR_LOG("Failed to set the acl default permission for the binlog dir");
+            return E_ERR;
+        }
     }
 
-    if (!IsDirExist(CONST_MEDIA_DB_BINLOG_DIR)) {
-        MEDIA_ERR_LOG("binlog not exist");
-        return E_OK;
-    }
-    if (EnableAcl(CONST_MEDIA_DB_BINLOG_DIR, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
-        ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
-        MEDIA_ERR_LOG("Failed to set the acl default permission for the binlog dir");
-        return E_ERR;
-    }
     return E_OK;
 }
 

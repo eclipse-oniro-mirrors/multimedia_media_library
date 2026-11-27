@@ -25,6 +25,7 @@
 #include "highlight_column.h"
 #include "kvstore.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const_sqls.h"
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_mocksinglekvstore.h"
@@ -100,7 +101,7 @@ void MediaLibraryIthumbnailHelperTest::SetUpTestCase(void)
 {
     InitRdbStore();
     if (!MediaFileUtils::IsDirExists(KV_STORE_DIR)) {
-        bool ret = MediaFileUtils::CreateDirectory(KV_STORE_DIR);
+        bool ret = MediaPureFileUtils::CreateDirectory(KV_STORE_DIR);
         ASSERT_EQ(ret, true);
     }
 }
@@ -228,7 +229,7 @@ HWTEST_F(MediaLibraryIthumbnailHelperTest, CacheSuccessState_test_001, TestSize.
     opts.row = "validRow";
     res = IThumbnailHelper::CacheSuccessState(opts, data);
     EXPECT_EQ(res, false);
-    opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
+    opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     res = IThumbnailHelper::CacheSuccessState(opts, data);
     EXPECT_EQ(res, false);
 }
@@ -296,7 +297,7 @@ HWTEST_F(MediaLibraryIthumbnailHelperTest, CreateLowQulityLcd_test_001, TestSize
     data.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
 
     MediaFileUtils::DeleteDir(ThumbnailFileUtils::GetThumbnailDir(data));
-    MediaFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
+    MediaPureFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
     MediaFileUtils::CopyFileUtil(LARGE_IMAGE_PATH, GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX));
     
     bool ret = IThumbnailHelper::DoCreateLcd(opts, data);
@@ -324,9 +325,9 @@ HWTEST_F(MediaLibraryIthumbnailHelperTest, CreateLowQulityLcd_test_002, TestSize
     data.mediaType = MediaType::MEDIA_TYPE_IMAGE;
 
     MediaFileUtils::DeleteDir(ThumbnailFileUtils::GetThumbnailDir(data));
-    MediaFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
+    MediaPureFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
     MediaFileUtils::CopyFileUtil(LARGE_IMAGE_PATH, GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX));
-    MediaFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbExDir(data));
+    MediaPureFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbExDir(data));
     MediaFileUtils::CopyFileUtil(LARGE_IMAGE_PATH, GetThumbnailPath(data.path, THUMBNAIL_LCD_EX_SUFFIX));
     
     bool ret = IThumbnailHelper::DoCreateLcd(opts, data);
@@ -355,7 +356,7 @@ HWTEST_F(MediaLibraryIthumbnailHelperTest, CreateLowQulityLcd_test_003, TestSize
     data.loaderOpts.isHdr = true;
 
     MediaFileUtils::DeleteDir(ThumbnailFileUtils::GetThumbnailDir(data));
-    MediaFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
+    MediaPureFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
     MediaFileUtils::CopyFileUtil(LARGE_IMAGE_PATH, GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX));
     
     bool ret = IThumbnailHelper::DoCreateLcd(opts, data);
@@ -384,9 +385,9 @@ HWTEST_F(MediaLibraryIthumbnailHelperTest, CreateLowQulityLcd_test_004, TestSize
     data.loaderOpts.isHdr = true;
 
     MediaFileUtils::DeleteDir(ThumbnailFileUtils::GetThumbnailDir(data));
-    MediaFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
+    MediaPureFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbnailDir(data));
     MediaFileUtils::CopyFileUtil(LARGE_IMAGE_PATH, GetThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX));
-    MediaFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbExDir(data));
+    MediaPureFileUtils::CreateDirectory(ThumbnailFileUtils::GetThumbExDir(data));
     MediaFileUtils::CopyFileUtil(LARGE_IMAGE_PATH, GetThumbnailPath(data.path, THUMBNAIL_LCD_EX_SUFFIX));
     
     bool ret = IThumbnailHelper::DoCreateLcd(opts, data);

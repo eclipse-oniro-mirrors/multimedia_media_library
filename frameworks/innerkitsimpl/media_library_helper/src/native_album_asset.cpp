@@ -18,6 +18,7 @@
 
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_type_const.h"
 
 using namespace std;
@@ -119,8 +120,8 @@ string NativeAlbumAsset::GetAlbumPath() const
 
 bool NativeAlbumAsset::CreateAlbumAsset()
 {
-    if (!(MediaFileUtils::IsDirectory(albumPath_))) {
-        return MediaFileUtils::CreateDirectory(albumPath_);
+    if (!(MediaPureFileUtils::IsDirectory(albumPath_))) {
+        return MediaPureFileUtils::CreateDirectory(albumPath_);
     } else {
         MEDIA_ERR_LOG("Cannot create album that already exists");
         return false;

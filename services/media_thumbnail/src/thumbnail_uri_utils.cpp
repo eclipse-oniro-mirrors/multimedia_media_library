@@ -21,8 +21,8 @@
 
 #include "media_column.h"
 #include "media_file_uri.h"
-#include "media_file_utils.h"
 #include "media_log.h"
+#include "media_string_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "thumbnail_const.h"
@@ -65,13 +65,13 @@ bool ThumbnailUriUtils::ParseThumbnailInfo(const string &uriString, string &outF
     }
 
     if (queryKey.count(THUMBNAIL_WIDTH) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[THUMBNAIL_WIDTH])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[THUMBNAIL_WIDTH])) {
             outSize.width = stoi(queryKey[THUMBNAIL_WIDTH]);
         }
     }
 
     if (queryKey.count(THUMBNAIL_HEIGHT) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[THUMBNAIL_HEIGHT])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[THUMBNAIL_HEIGHT])) {
             outSize.height = stoi(queryKey[THUMBNAIL_HEIGHT]);
         }
     }
@@ -112,13 +112,13 @@ bool ThumbnailUriUtils::ParseKeyFrameThumbnailInfo(const string &uriString, stri
     }
 
     if (queryKey.count(THUMBNAIL_BEGIN_STAMP) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[THUMBNAIL_BEGIN_STAMP])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[THUMBNAIL_BEGIN_STAMP])) {
             outBeginStamp = stoi(queryKey[THUMBNAIL_BEGIN_STAMP]);
         }
     }
 
     if (queryKey.count(THUMBNAIL_TYPE) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[THUMBNAIL_TYPE])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[THUMBNAIL_TYPE])) {
             outType = stoi(queryKey[THUMBNAIL_TYPE]);
         }
     }

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "medialibrary_multistages_capture_fuzzer.h"
+#include "media_path_utils.h"
 #include "medialibrary_rdbstore_utils_fuzzer.h"
 
 #include <cstdint>
@@ -137,7 +138,8 @@ static void MultistagesPhotoCaptureManagerTest()
 static void MultistagesVideoCaptureManagerTest()
 {
     std::string videoId = provider->ConsumeBytesAsString(NUM_BYTES);
-    std::string filePath = Media::CLOUD_FILE_PATH + provider->ConsumeBytesAsString(NUM_BYTES) + ".mp4";
+    std::string filePath = Media::MediaPathUtils::GetDir(Media::MediaPathType::CLOUD_FILES) +
+        provider->ConsumeBytesAsString(NUM_BYTES) + ".mp4";
     Media::MultiStagesVideoCaptureManager &instance =
         Media::MultiStagesVideoCaptureManager::GetInstance();
     int32_t fileId = InsertAsset(videoId);

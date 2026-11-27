@@ -23,6 +23,8 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_unistore_manager.h"
@@ -52,7 +54,8 @@ void MediaLivePhoto4dStatusTask::SetBatchStatus(int32_t startFileId)
 {
     MEDIA_INFO_LOG("livePhoto4dStatusTask::SetBatchStatus start, startFileId: %{public}d", startFileId);
     int32_t errCode = 0;
-    shared_ptr<Preferences> prefs = PreferencesHelper::GetPreferences(LIVE_PHOTO_4D_STATUS_EVENT, errCode);
+    shared_ptr<Preferences> prefs = PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LIVE_PHOTO_4D_STATUS_EVENT, true), errCode);
     CHECK_AND_RETURN_LOG(prefs != nullptr, "livePhoto4dStatusTask:Get preferences error: %{public}d", errCode);
     prefs->PutInt("startFileId", startFileId);
     prefs->FlushSync();
@@ -63,7 +66,8 @@ int32_t MediaLivePhoto4dStatusTask::GetBatchStatus()
 {
     MEDIA_INFO_LOG("livePhoto4dStatusTask::GetBatchStatus start");
     int32_t errCode = 0;
-    shared_ptr<Preferences> prefs = PreferencesHelper::GetPreferences(LIVE_PHOTO_4D_STATUS_EVENT, errCode);
+    shared_ptr<Preferences> prefs = PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(LIVE_PHOTO_4D_STATUS_EVENT, true), errCode);
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, prefsNullErrCode,
         "livePhoto4dStatusTask:Get preferences error: %{public}d", errCode);
     int32_t defaultVal = 0;
@@ -200,7 +204,7 @@ void MediaLivePhoto4dStatusTask::ProcessLivePhoto4d(const std::vector<LivePhoto4
         lastFileId = livePhoto.fileId;
 
         string extraDataPath = livePhoto.extraDataPath;
-        if (extraDataPath.empty() || !MediaFileUtils::IsFileExists(extraDataPath)) {
+        if (extraDataPath.empty() || !MediaPureFileUtils::IsFileExists(extraDataPath)) {
             MEDIA_WARN_LOG("livePhoto4dStatusTask:Extra data path not exists, file_id: %{public}d", livePhoto.fileId);
             continue;
         }

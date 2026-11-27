@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 #include "photos_clone.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 
 #include <uuid.h>
 #include <numeric>
@@ -183,9 +185,9 @@ PhotoAlbumDao::PhotoAlbumRowData PhotosClone::FindAlbumInfo(const FileInfo &file
         lPath = this->photoAlbumDao_.ParseSourcePathToLPath(fileInfo.sourcePath);
         MEDIA_INFO_LOG("Media_Restore: fix lPath of album.fileInfo.lPath: %{public}s, "
                        "lPathFromSourcePath: %{public}s, lowercase: %{public}s, FileInfo Object: %{public}s",
-            MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(),
-            MediaFileUtils::DesensitizePath(lPath).c_str(),
-            MediaFileUtils::DesensitizePath(this->ToLower(lPath)).c_str(),
+            MediaPathUtils::DesensitizePath(fileInfo.lPath).c_str(),
+            MediaPathUtils::DesensitizePath(lPath).c_str(),
+            MediaPathUtils::DesensitizePath(this->ToLower(lPath)).c_str(),
             this->ToString(fileInfo).c_str());
     }
     // Scenario 1, WHEN FileInfo is in /Pictures/Screenshots and Video type, THEN redirect to /Pictures/Screenrecords
@@ -195,8 +197,8 @@ PhotoAlbumDao::PhotoAlbumRowData PhotosClone::FindAlbumInfo(const FileInfo &file
         albumInfo = this->photoAlbumDao_.GetOrCreatePhotoAlbum(albumInfo);
         MEDIA_INFO_LOG("Media_Restore: screenshots redirect to screenrecords, fileInfo.lPath: %{public}s, "
                        "lPath: %{public}s, Object: %{public}s, albumInfo: %{public}s",
-            MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(),
-            MediaFileUtils::DesensitizePath(lPath).c_str(),
+            MediaPathUtils::DesensitizePath(fileInfo.lPath).c_str(),
+            MediaPathUtils::DesensitizePath(lPath).c_str(),
             this->ToString(fileInfo).c_str(),
             this->photoAlbumDao_.ToString(albumInfo).c_str());
         return albumInfo;
@@ -426,7 +428,7 @@ void PhotosClone::SetIsCloudPathExistInDb(std::vector<FileInfo> &fileInfos)
     std::vector<std::string> cloudPaths;
     for (auto &fileInfo : fileInfos) {
         // Source file exists. Data update required.
-        if (MediaFileUtils::IsFileExists(fileInfo.oldPath)) {
+        if (MediaPureFileUtils::IsFileExists(fileInfo.oldPath)) {
             fileInfo.isCloudPathExistInDb = true;
             existCount++;
             continue;
@@ -663,7 +665,7 @@ int32_t PhotosClone::InitCloneRestoreRdbStore()
     std::string CLONE_RESTORE_DB_PATH = OTHER_CLONE_PATH + CLONE_FILE_INFO_RESTORE_DB;
     MEDIA_INFO_LOG("LakeClone: InitCloneRestoreRdbStore start, dbPath: %{private}s", CLONE_RESTORE_DB_PATH.c_str());
 
-    if (!MediaFileUtils::IsFileExists(CLONE_RESTORE_DB_PATH)) {
+    if (!MediaPureFileUtils::IsFileExists(CLONE_RESTORE_DB_PATH)) {
         MEDIA_ERR_LOG("LakeClone: InitCloneRestoreRdbStore db file not exist, dbPath: %{private}s",
             CLONE_RESTORE_DB_PATH.c_str());
         return E_ERR;

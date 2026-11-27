@@ -46,6 +46,7 @@
 #include "media_log.h"
 #include "media_func_timer.h"
 #include "media_player_framework_utils.h"
+#include "media_pure_file_utils.h"
 #include "res_sched_client.h"
 #include "thumbnail_const.h"
 #include "thumbnail_file_utils.h"
@@ -63,7 +64,8 @@
 #endif
 #include "media_file_access_utils.h"
 #include "asset_accurate_refresh.h"
-#include "cloud_media_dao_utils.h"
+#include "media_string_utils.h"
+#include "media_path_utils.h"
 #include "accurate_common_data.h"
 #include "medialibrary_unistore_manager.h"
 #include "cloud_media_common.h"
@@ -147,15 +149,15 @@ bool CanCloudPhotoLoadLocalThumbnail(const ThumbnailData &data)
 {
     if (ThumbnailUtils::IsExCloudThumbnail(data)) {
         std::string localExLcdPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::LCD_EX);
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(localExLcdPath), false,
+        CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(localExLcdPath), false,
             "Local ex lcd:%{public}s is not exist,", DfxUtils::GetSafePath(localExLcdPath).c_str());
         return true;
     }
 
     std::string localLcdPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::LCD);
     std::string localThumbPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::THUMB);
-    bool isLocalLcdExist = MediaFileUtils::IsFileExists(localLcdPath);
-    bool isLocalThumbExist = MediaFileUtils::IsFileExists(localThumbPath);
+    bool isLocalLcdExist = MediaPureFileUtils::IsFileExists(localLcdPath);
+    bool isLocalThumbExist = MediaPureFileUtils::IsFileExists(localThumbPath);
     CHECK_AND_RETURN_RET_LOG(isLocalLcdExist && isLocalThumbExist, false,
         "Local lcd:%{public}s or thumb:%{public}s is not exist, isLcdExist:%{public}d, isThumbExist:%{public}d",
         DfxUtils::GetSafePath(localLcdPath).c_str(), DfxUtils::GetSafePath(localThumbPath).c_str(),
@@ -401,7 +403,7 @@ int32_t ThumbnailGenerateHelper::GetAvailableFile(ThumbRdbOpt &opts, ThumbnailDa
 
     // Check if unrotated file exists
     data.isOpeningCloudFile = false;
-    string fileParentPath = MediaFileUtils::GetParentPath(fileName);
+    string fileParentPath = MediaPathUtils::GetParentPath(fileName);
     string tempFileName = fileParentPath + "/THM_EX" + fileName.substr(fileParentPath.length());
     if (access(tempFileName.c_str(), F_OK) == 0) {
         fileName = tempFileName;
@@ -597,7 +599,7 @@ int32_t ThumbnailGenerateHelper::UpdateLcdFileSizeAndThumbStatus(const std::stri
     sql += " WHERE file_id IN ({0})";
 
     std::vector<std::string> ids = { id };
-    std::vector<std::string> params = {CloudSync::CloudMediaDaoUtils::ToStringWithCommaAndQuote(ids)};
+    std::vector<std::string> params = {MediaStringUtils::ToStringWithCommaAndQuote(ids)};
     std::string execSql = CloudMediaCommon::FillParams(sql, params);
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -1025,7 +1027,7 @@ bool ThumbnailGenerateHelper::CanLoadLocalThm(const ThumbnailData &data)
     CHECK_AND_RETURN_RET_LOG(!localThmPath.empty(), false,
         "Failed to Get GetLocalThumbnailFilePath, path:%{public}s", DfxUtils::GetSafePath(data.path).c_str());
 
-    bool isLocalThumbExist = MediaFileUtils::IsFileExists(localThmPath);
+    bool isLocalThumbExist = MediaPureFileUtils::IsFileExists(localThmPath);
     CHECK_AND_RETURN_RET_LOG(isLocalThumbExist, false,
         "Local thumb: %{public}s is not exist", DfxUtils::GetSafePath(localThmPath).c_str());
     return true;
@@ -1039,7 +1041,7 @@ bool ThumbnailGenerateHelper::CanLoadLocalLcd(const ThumbnailData &data)
     CHECK_AND_RETURN_RET_LOG(!localLcdPath.empty(), false,
         "Failed to Get GetLocalThumbnailFilePath, path:%{public}s", DfxUtils::GetSafePath(data.path).c_str());
 
-    bool isLocalLcdExist = MediaFileUtils::IsFileExists(localLcdPath);
+    bool isLocalLcdExist = MediaPureFileUtils::IsFileExists(localLcdPath);
     CHECK_AND_RETURN_RET_LOG(isLocalLcdExist, false,
         "Local lcd: %{public}s is not exist", DfxUtils::GetSafePath(localLcdPath).c_str());
     return true;

@@ -26,13 +26,12 @@
 #include "medialibrary_ptp_operations.h"
 #include "medialibrary_photo_operations.h"
 #include "result_set_utils.h"
+#include "media_path_utils.h"
 
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
-const std::string FUSE_ROOT_MEDIA_DIR = "/storage/cloud/files/Photo/";
 const std::string FUSE_OPEN_PHOTO_PRE = "/Photo";
-const std::string FUSE_LOCAL_MEDIA_DIR = "/storage/media/local/files/Photo/";
 const std::string FUSE_URI_PREFIX = "file://media";
 const std::string HIDDEN_ALBUM = ".hiddenAlbum";
 const std::string VIDEO_EXTENSION = "mp4";
@@ -123,7 +122,7 @@ int32_t MediaFuseHdcOperations::GetPathFromDisplayname(
         filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
     }
     resultSet->Close();
-    MEDIA_INFO_LOG("get filePath from db, filePath = %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+    MEDIA_INFO_LOG("get filePath from db, filePath = %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
     return E_SUCCESS;
 }
 
@@ -150,6 +149,7 @@ int32_t MediaFuseHdcOperations::GetAlbumIdFromAlbumName(const std::string &name,
         resultSet->Close();
         return E_SUCCESS;
     }
+    resultSet->Close();
     MEDIA_INFO_LOG("get albumId from db, albumId = %{private}d", albumId);
     return E_SUCCESS;
 }
@@ -160,7 +160,7 @@ int32_t MediaFuseHdcOperations::Parse(
     std::vector<std::string> args;
     int32_t res = GetArgs(path, args);
     CHECK_AND_RETURN_RET_LOG(res == E_SUCCESS, E_ERR, "GetArgs fail.");
-    if (args.size() < HDC_SECOND_ARGS) {
+    if (args.empty() || args.size() > 2) {
         MEDIA_ERR_LOG("invalid path.");
         return E_ERR;
     }
@@ -361,16 +361,22 @@ int32_t MediaFuseHdcOperations::HandleFilePath(
 
 int32_t MediaFuseHdcOperations::ConvertToLocalPhotoPath(const std::string &inputPath, std::string &output)
 {
-    if (inputPath.empty() || inputPath.find(FUSE_ROOT_MEDIA_DIR) != 0) {
+    output.clear();
+    std::string cloudPhotoDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_PHOTO, AdaptAccount::YES);
+    std::string localPhotoDir = MediaPathUtils::GetDir(MediaPathType::LOCAL_PHOTO, AdaptAccount::YES);
+    if (cloudPhotoDir.empty() || localPhotoDir.empty() || cloudPhotoDir.back() != '/' ||
+        localPhotoDir.back() != '/' || inputPath.size() <= cloudPhotoDir.size() ||
+        inputPath.compare(0, cloudPhotoDir.size(), cloudPhotoDir) != 0) {
         MEDIA_ERR_LOG("ConvertToLocalPhotoPath inputPath err, filePath:%{private}s", inputPath.c_str());
         return E_ERR;
     }
-    output = FUSE_LOCAL_MEDIA_DIR + inputPath.substr(FUSE_ROOT_MEDIA_DIR.length());
+    output = localPhotoDir + inputPath.substr(cloudPhotoDir.length());
     return E_SUCCESS;
 }
 
 int32_t MediaFuseHdcOperations::CreateFd(const std::string &displayName, const int32_t &albumId, int32_t &fd)
 {
+    fd = -1;
     std::string title;
     std::string extension;
     int ret = ExtractFileNameAndExtension(displayName, title, extension);
@@ -406,7 +412,7 @@ int32_t MediaFuseHdcOperations::CreateFd(const std::string &displayName, const i
     Uri uri(fileUriStr);
     MediaLibraryCommand openLivePhotoCmd(uri, Media::OperationType::OPEN);
     fd = MediaLibraryPhotoOperations::Open(openLivePhotoCmd, "w");
-    if (fd <= 0) {
+    if (fd < 0) {
         string fileId = MediaFileUtils::GetIdFromUri(uri.ToString());
         NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
         rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, fileId);
@@ -564,7 +570,7 @@ std::string MediaFuseHdcOperations::JpgToMp4(const std::string& displayName)
 bool MediaFuseHdcOperations::FillDirectoryEntry(
     void *buf, fuse_fill_dir_t filler, const std::string &name, const std::string &fullPath, off_t nextoff)
 {
-    struct stat st;
+    struct stat st {};
     if (lstat(fullPath.c_str(), &st) == -1) {
         st.st_mode = S_IFREG | FILE_PERMISSION;
         st.st_nlink = 1;
@@ -620,7 +626,7 @@ int32_t MediaFuseHdcOperations::ReadAlbumDir(
         std::string localPath;
         if (ConvertToLocalPhotoPath(filePath, localPath) != E_SUCCESS) {
             MEDIA_ERR_LOG(
-                "Failed to convert to local path: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
+                "Failed to convert to local path: %{public}s", MediaPathUtils::DesensitizePath(filePath).c_str());
             continue;
         }
         std::set<std::string> fileNames{displayName};
@@ -631,6 +637,7 @@ int32_t MediaFuseHdcOperations::ReadAlbumDir(
             fileNames.insert(videoName);
         }
         if (++count >= FUSE_MAX_PAGE_NUM) {
+            resultSet->Close();
             return E_SUCCESS;
         }
         for (const auto& name : fileNames) {
@@ -638,6 +645,7 @@ int32_t MediaFuseHdcOperations::ReadAlbumDir(
             off_t nextoff = (name == displayName) ? (++curr_off) : curr_off;
             if (FillDirectoryEntry(buf, filler, name, fullPath, nextoff)) {
                 //filler is full
+                resultSet->Close();
                 return E_SUCCESS;
             }
         }

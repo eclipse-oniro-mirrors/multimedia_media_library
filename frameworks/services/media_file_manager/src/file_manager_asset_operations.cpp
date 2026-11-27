@@ -22,6 +22,7 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
@@ -34,6 +35,7 @@
 #include "moving_photo_file_utils.h"
 #include "file_management_utils.h"
 #include "photo_file_operation.h"
+#include "media_path_utils.h"
 
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Media::AccurateRefresh;
@@ -48,11 +50,7 @@ static void UpdateModifyTime(const string &path, int64_t localMtime)
     // set mtime
     times[1] = times[0];
 
-    string pathToModifyTime = path;
-    if (MediaStringUtils::StartsWith(path, PhotoColumn::FILES_CLOUD_DIR)) {
-        pathToModifyTime.replace(0, PhotoColumn::FILES_CLOUD_DIR.length(), PhotoColumn::FILES_LOCAL_DIR);
-    }
-
+    string pathToModifyTime = MediaPathUtils::ConvertCloudPathToLocalPath(path);
     if (utimes(pathToModifyTime.c_str(), times) < 0) {
         MEDIA_ERR_LOG("utimes failed %{public}d, path: %{public}s", errno,
             DfxUtils::GetSafePath(pathToModifyTime).c_str());
@@ -63,7 +61,7 @@ static bool MoveAsset(const std::string &srcPath, const std::string &destPath, b
 {
     bool ret = false;
     if (isLocalRename) {
-        std::string localPath = FileManagementUtils::GetLocalPath(destPath);
+        std::string localPath = MediaPathUtils::ConvertCloudPathToLocalPath(destPath);
         bool opRet = MediaFileUtils::MoveFile(srcPath, localPath);
         if (!opRet) {
             MEDIA_WARN_LOG("MoveFile failed, try CrossPolicy mode.");
@@ -95,8 +93,8 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(
         DfxUtils::GetSafePath(destPath).c_str());
     int64_t originalDataModified = 0;
     bool isDateModifiedValid = MediaFileUtils::GetDateModified(srcPath, originalDataModified);
-    std::string parentDir = MediaFileUtils::GetParentPath(destPath);
-    if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+    std::string parentDir = MediaPathUtils::GetParentPath(destPath);
+    if (!MediaPureFileUtils::IsFileExists(parentDir) && !MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(destPath).c_str());
     }
@@ -121,8 +119,8 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(const PhotosPo &photoIn
         return E_ERR;
     }
     string filePath = photoInfo.data.value_or("");
-    std::string parentDir = MediaFileUtils::GetParentPath(filePath);
-    if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+    std::string parentDir = MediaPathUtils::GetParentPath(filePath);
+    if (!MediaPureFileUtils::IsFileExists(parentDir) && !MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(filePath).c_str());
     }
@@ -152,8 +150,8 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(const PhotosPo &photoIn
         return E_ERR;
     }
     string filePath = photoInfo.data.value_or("");
-    std::string parentDir = MediaFileUtils::GetParentPath(filePath);
-    if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+    std::string parentDir = MediaPathUtils::GetParentPath(filePath);
+    if (!MediaPureFileUtils::IsFileExists(parentDir) && !MediaPureFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(filePath).c_str());
     }
@@ -299,7 +297,7 @@ static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
 static std::string ConvertPath(const std::string &originalPath)
 {
     const std::string oldPrefix = "/storage/emulated/0/FromDocs/";
-    const std::string newPrefix = "/storage/media/local/files/Docs/";
+    std::string newPrefix = MediaPathUtils::GetDir(MediaPathType::LOCAL_DOCS);
     if (originalPath.compare(0, oldPrefix.size(), oldPrefix) == 0) {
         return newPrefix + originalPath.substr(oldPrefix.size());
     }
@@ -359,13 +357,13 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
         UpdateFileManageAssetInfo(refresh, mediaId, innerFileSourcePath, tmpDisplayName, tmpTitle);
         return E_OK;
     }
-    if (!MediaFileUtils::IsFileExists(outerFilePath)) {
+    if (!MediaPureFileUtils::IsFileExists(outerFilePath)) {
         MEDIA_ERR_LOG("file not exist %{public}s", DfxUtils::GetSafePath(outerFilePath).c_str());
         return E_ERR;
     }
     std::string tmpInnerFilePath = innerFileSourcePath;
     // 同路径存在同名文件
-    if (MediaFileUtils::IsFileExists(tmpInnerFilePath)) {
+    if (MediaPureFileUtils::IsFileExists(tmpInnerFilePath)) {
         if (MediaFileAccessUtils::HandleSameNameRename(tmpInnerFilePath, tmpInnerFilePath,
             tmpTitle, tmpDisplayName) != E_OK) {
             MEDIA_ERR_LOG("can not move file to %{public}s", DfxUtils::GetSafePath(tmpInnerFilePath).c_str());

@@ -21,6 +21,7 @@
 #include "cloud_media_asset_manager.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "dfx_manager.h"
 #include "media_library_monitor.h"
 #include "preferences.h"
@@ -90,8 +91,8 @@ static void HandleLoopTask(DfxData *data)
     Monitor::MediaLibraryMonitor::GetInstance().Tick();
 
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-       NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -118,8 +119,8 @@ static void HandleLoopTask(DfxData *data)
 void DfxWorker::Prepare()
 {
     int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(DFX_COMMON_XML, true), errCode);
     if (!prefs) {
         MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
         return;
@@ -143,8 +144,8 @@ bool DfxWorker::IsThumbnailUpdate()
         MEDIA_INFO_LOG("update thumbnail version from %{public}d to %{public}d", thumbnailVersion_,
             LATEST_THUMBNAIL_ERROR_VERSION);
         int32_t errCode;
-        shared_ptr<NativePreferences::Preferences> prefs =
-            NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_ERROR_XML, errCode);
+        shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+            MediaPathUtils::AdaptPreferencesPathForAllDevice(THUMBNAIL_ERROR_XML, true), errCode);
         if (!prefs) {
             MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
             return false;
@@ -162,8 +163,8 @@ bool DfxWorker::IsDeleteStatisticUpdate()
         MEDIA_INFO_LOG("update delete statistic version from %{public}d to %{public}d", deleteStatisticVersion_,
             LATEST_DELETE_STATISTIC_VERSION);
         int32_t errCode;
-        shared_ptr<NativePreferences::Preferences> prefs =
-            NativePreferences::PreferencesHelper::GetPreferences(DELETE_BEHAVIOR_XML, errCode);
+        shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+            MediaPathUtils::AdaptPreferencesPathForAllDevice(DELETE_BEHAVIOR_XML, true), errCode);
         if (!prefs) {
             MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
             return false;

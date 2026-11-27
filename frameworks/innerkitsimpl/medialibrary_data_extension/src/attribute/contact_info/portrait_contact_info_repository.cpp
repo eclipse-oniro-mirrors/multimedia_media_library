@@ -19,6 +19,7 @@
  
 #include "analysis_album_attribute_const.h"
 #include "media_log.h"
+#include "media_string_utils.h"
 #include "medialibrary_errno.h"
 #include "photo_album_column.h"
 #include "result_set_utils.h"
@@ -107,7 +108,7 @@ static int32_t GetPortraitAlbumIds(const std::string &albumId,
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_INNER_FAIL, "uniStore is nullptr! failed query album order");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(albumId), E_INVALID_VALUES,
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(albumId), E_INVALID_VALUES,
         "invalid albumId: %{public}s", albumId.c_str());
     const std::string queryPortraitAlbumIds = "SELECT " + ALBUM_ID + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " +
         GROUP_TAG + " IN(SELECT " + GROUP_TAG + " FROM " + ANALYSIS_ALBUM_TABLE +

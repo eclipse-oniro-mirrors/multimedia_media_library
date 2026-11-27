@@ -16,6 +16,7 @@
 #define MLOG_TAG "Media_Background"
 
 #include "media_fix_lcd_file_size_task.h"
+#include "media_pure_file_utils.h"
 
 #include "rdb_predicates.h"
 #include "preferences.h"

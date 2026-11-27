@@ -43,6 +43,7 @@ protected:
 
 private:
     void AddDefaultInsertPhotoValues(NativeRdb::ValuesBucket& values);
+    void AddMultiAccountInsertPhotoValues(NativeRdb::ValuesBucket& values);
 };
 } // namespace Media
 } // namespace OHOS

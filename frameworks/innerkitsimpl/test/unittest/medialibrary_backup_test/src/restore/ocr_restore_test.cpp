@@ -23,7 +23,9 @@
 #include "backup_const.h"
 #include "backup_database_utils.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
@@ -229,9 +231,9 @@ void OCRRestoreTest::SetUpTestCase(void)
         "file_id INT UNIQUE, status INT, ocr INT, label INT, aesthetics_score INT)",
     });
     // ensure the parent directory exists before creating the gallery source db
-    const std::string galleryDir = MediaFileUtils::GetParentPath(TEST_OCR_BACKUP_PATH);
-    if (!MediaFileUtils::IsFileExists(galleryDir) &&
-        !MediaFileUtils::CreateDirectory(galleryDir)) {
+    const std::string galleryDir = MediaPathUtils::GetParentPath(TEST_OCR_BACKUP_PATH);
+    if (!MediaPureFileUtils::IsFileExists(galleryDir) &&
+        !MediaPureFileUtils::CreateDirectory(galleryDir)) {
         MEDIA_ERR_LOG("Gallery source dir %{public}s create failed", galleryDir.c_str());
         ASSERT_TRUE(false);
         return;

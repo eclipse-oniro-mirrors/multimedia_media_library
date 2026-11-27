@@ -61,9 +61,10 @@ public:
     EXPORT int32_t UnregisterObserverExtProvider(const Uri &uri,
         std::shared_ptr<DataShare::DataShareObserver> dataObserver, const int32_t userId = -1);
     EXPORT static std::string GetBundleName();
-    EXPORT static sptr<AppExecFwk::IBundleMgr> GetSysBundleManager();
+    EXPORT static int32_t GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
 
 protected:
+    EXPORT static sptr<AppExecFwk::IBundleMgr> GetSysBundleManager();
     virtual EXPORT bool IsNoIpc(Uri &uri, OperationObject &object, const DataShare::DataSharePredicates &predicates,
         bool isIgnoreSELinux = false);
     virtual EXPORT std::shared_ptr<DataShare::DataShareResultSet> QueryWithoutIpc(

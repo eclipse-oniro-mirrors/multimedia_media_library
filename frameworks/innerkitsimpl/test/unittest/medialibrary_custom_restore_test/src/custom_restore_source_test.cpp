@@ -17,6 +17,8 @@
 
 #include "custom_restore_const.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
+#include "media_path_utils.h"
 #include "media_log.h"
 #include "rdb_helper.h"
 
@@ -49,8 +51,8 @@ int32_t CustomRestoreRdbCallbackTest::OnUpgrade(NativeRdb::RdbStore &store, int 
 
 shared_ptr<NativeRdb::RdbStore> CustomRestoreSourceTest::Init(const string &dbPath)
 {
-    std::string dbDir = MediaFileUtils::GetParentPath(dbPath);
-    if (!MediaFileUtils::IsFileExists(dbDir) && !MediaFileUtils::CreateDirectory(dbDir)) {
+    std::string dbDir = MediaPathUtils::GetParentPath(dbPath);
+    if (!MediaFileUtils::IsDirExists(dbDir) && !MediaPureFileUtils::CreateDirectory(dbDir)) {
         MEDIA_ERR_LOG("CreateDirectory failed. dbDir: %{public}s", dbDir.c_str());
         return nullptr;
     }

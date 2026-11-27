@@ -36,6 +36,7 @@
 #include "media_file_utils.h"
 #include "media_file_uri.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_scanner.h"
 #include "medialibrary_rdb_transaction.h"
 #include "os_account_manager.h"
@@ -1201,7 +1202,7 @@ static bool IsOtherDynamicImageExist(const std::string &videoPath)
     const std::string imagePathPrefix = videoPath.substr(0, destPos);
     static const char *imageExtList[] = {".jpg", ".heic", ".JPG", ".HEIC"};
     for (const char *ext : imageExtList) {
-        if (MediaFileUtils::IsFileExists(imagePathPrefix + ext)) {
+        if (MediaPureFileUtils::IsFileExists(imagePathPrefix + ext)) {
             return true;
         }
     }

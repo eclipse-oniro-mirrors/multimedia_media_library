@@ -18,6 +18,7 @@
 #include "photos_restore.h"
 #include "backup_const.h"
 #include "backup_file_utils.h"
+#include "media_path_utils.h"
 #include "userfile_manager_types.h"
 #include "rdb_store.h"
 #include "result_set_utils.h"
@@ -96,9 +97,9 @@ PhotoAlbumDao::PhotoAlbumRowData PhotosRestore::FindAlbumInfo(const FileInfo &fi
         lPath = this->photoAlbumDao_.ParseSourcePathToLPath(fileInfo.sourcePath);
         MEDIA_INFO_LOG("Media_Restore: fix lPath of album.fileInfo.lPath: %{public}s, "
                        "lPathFromSourcePath: %{public}s, lowercase: %{public}s, FileInfo Object: %{public}s",
-            MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(),
-            MediaFileUtils::DesensitizePath(lPath).c_str(),
-            MediaFileUtils::DesensitizePath(this->ToLower(lPath)).c_str(),
+            MediaPathUtils::DesensitizePath(fileInfo.lPath).c_str(),
+            MediaPathUtils::DesensitizePath(lPath).c_str(),
+            MediaPathUtils::DesensitizePath(this->ToLower(lPath)).c_str(),
             this->ToString(fileInfo).c_str());
     }
     PhotoAlbumDao::PhotoAlbumRowData albumInfo;
@@ -109,8 +110,8 @@ PhotoAlbumDao::PhotoAlbumRowData PhotosRestore::FindAlbumInfo(const FileInfo &fi
         albumInfo = this->photoAlbumDao_.GetOrCreatePhotoAlbum(albumInfo);
         MEDIA_INFO_LOG("Media_Restore: screenshots redirect to screenrecords, fileInfo.lPath: %{public}s, "
                        "lPathForScreenshot: %{public}s, Object: %{public}s, albumInfo: %{public}s",
-            MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(),
-            MediaFileUtils::DesensitizePath(lPath).c_str(),
+            MediaPathUtils::DesensitizePath(fileInfo.lPath).c_str(),
+            MediaPathUtils::DesensitizePath(lPath).c_str(),
             this->ToString(fileInfo).c_str(),
             this->photoAlbumDao_.ToString(albumInfo).c_str());
         return albumInfo;
@@ -148,8 +149,8 @@ std::string PhotosRestore::FindPackageName(const FileInfo &fileInfo)
 {
     PhotoAlbumDao::PhotoAlbumRowData albumInfo = this->FindAlbumInfo(fileInfo);
     CHECK_AND_PRINT_LOG(!albumInfo.lPath.empty(), "Can not find PhotoAlbum. fileInfo.lPath= %{public}s,"
-        " fileInfo.sourcePath= %{public}s", MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(),
-        MediaFileUtils::DesensitizePath(fileInfo.sourcePath).c_str());
+        " fileInfo.sourcePath= %{public}s", MediaPathUtils::DesensitizePath(fileInfo.lPath).c_str(),
+        MediaPathUtils::DesensitizePath(fileInfo.sourcePath).c_str());
     return albumInfo.albumName;
 }
 
@@ -312,7 +313,7 @@ std::string PhotosRestore::FindSourcePath(const FileInfo &fileInfo)
         lPath = fileInfo.lPath;
     } else {
         MEDIA_ERR_LOG("Media_Restore: fileInfo.lPath is empty. Use default lPath: %{public}s",
-            MediaFileUtils::DesensitizePath(lPath).c_str());
+            MediaPathUtils::DesensitizePath(lPath).c_str());
     }
     return this->SOURCE_PATH_PREFIX + lPath + "/" + fileInfo.displayName;
 }

@@ -22,6 +22,7 @@
 #include "media_file_utils.h"
 #include "mimetype_utils.h"
 #include "scanner_utils.h"
+#include "media_path_utils.h"
 #include "userfile_manager_types.h"
 #include "medialibrary_errno.h"
 #include "permission_utils.h"
@@ -169,10 +170,10 @@ HWTEST_F(MediaLibraryScannerTest, medialib_IsFileHidden_test_001, TestSize.Level
 HWTEST_F(MediaLibraryScannerTest, medialib_GetParentPath_test_001, TestSize.Level0)
 {
     string path = "";
-    string ret = ScannerUtils::GetParentPath(path);
+    string ret = MediaPathUtils::GetParentPath(path);
     EXPECT_EQ(ret, "");
     path = "medialib_GetParentPath_test_001/test";
-    ret = ScannerUtils::GetParentPath(path);
+    ret = MediaPathUtils::GetParentPath(path);
     EXPECT_EQ(ret, "medialib_GetParentPath_test_001");
 }
 

@@ -20,6 +20,8 @@
 #include <thread>
 #include <chrono>
 
+#include "account_db_deferred_closer.h"
+#include "account_scope.h"
 #include "album_scan_info_column.h"
 #include "album_plugin_table_event_handler.h"
 #include "cloud_sync_helper.h"
@@ -88,6 +90,10 @@
 #include "medialibrary_rdb_helper.h"
 #include "rdb_table_strategy_manager.h"
 #include "share_member_column.h"
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "account_manager.h"
+#endif
+#include "media_path_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -166,6 +172,12 @@ constexpr int32_t MILLIS_PER_SEC = 1000;
 
 shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::rdbStore_;
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+std::unordered_map<int32_t, std::shared_ptr<NativeRdb::RdbStore>> MediaLibraryRdbStore::rdbStoreMap_;
+std::mutex MediaLibraryRdbStore::rdbStoreMapMutex_;
+std::mutex MediaLibraryRdbStore::accountDbSwitchMutex_;
+#endif
+
 std::mutex MediaLibraryRdbStore::reconstructLock_;
 
 constexpr int32_t POS_ALBUM_ID = 0;
@@ -176,6 +188,7 @@ const int TRASH_ALBUM_TYPE_VALUES = 2;
 
 const int32_t ARG_COUNT = 2;
 const std::string TRASH_ALBUM_NAME_VALUES = "TrashAlbum";
+static const std::string TASK_PROGRESS_XML = "/data/storage/el2/base/preferences/task_progress.xml";
 
 const int32_t DEFAULT_LEVEL = 20;
 
@@ -295,7 +308,16 @@ MediaLibraryRdbStore::MediaLibraryRdbStore(const shared_ptr<OHOS::AbilityRuntime
         MEDIA_ERR_LOG("Failed to get context");
         return;
     }
-    string databaseDir = context->GetDatabaseDir();
+    baseDatabaseDir_ = context->GetDatabaseDir();
+    string databaseDir = baseDatabaseDir_;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t currentAccountId = 0;
+    if (AccountManager::GetInstance().GetForegroundAccountId(currentAccountId)) {
+        databaseDir = databaseDir + "/" + std::to_string(currentAccountId);
+        MEDIA_INFO_LOG("databaseDir=%{private}s, accountId=%{public}d", databaseDir.c_str(), currentAccountId);
+    }
+#endif
+
     string name = CONST_MEDIA_DATA_ABILITY_DB_NAME;
     int32_t errCode = 0;
     string realPath = RdbSqlUtils::GetDefaultDatabasePath(databaseDir, name, errCode);
@@ -963,6 +985,7 @@ namespace {
         {PhotoColumn::C2PA_CONFIG_INFO, "TEXT"},
         {PhotoColumn::LOCAL_ENHANCEMENT_ABILITY, "INT NOT NULL DEFAULT 0"},
         {PhotoColumn::LOCAL_ENHANCEMENT_STATUS, "INT NOT NULL DEFAULT 0"},
+        {PhotoColumn::PHOTO_ACCOUNT_ID, "INT NOT NULL DEFAULT 0"},
     };
 
     constexpr size_t PHOTO_TABLE_COLUMN_COUNT = sizeof(PHOTO_TABLE_COLUMNS) / sizeof(ColumnInfo);
@@ -973,7 +996,7 @@ void MediaLibraryRdbStore::CheckAndAddPhotoTableColumns(const shared_ptr<MediaLi
     MEDIA_INFO_LOG("start check and add photo table columns");
     CHECK_AND_RETURN_LOG(store != nullptr, "CheckAndAddPhotoTableColumns rdbStore is nullptr!");
     auto rawStore = store->GetRawChecked();
-    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore is null");
     auto &rdbStore = *rawStore.get();
 
     for (size_t i = 0; i < PHOTO_TABLE_COLUMN_COUNT; ++i) {
@@ -1000,7 +1023,7 @@ void MediaLibraryRdbStore::AddUpgradeIndex(const shared_ptr<MediaLibraryRdbStore
     };
     MEDIA_INFO_LOG("start create idx again");
     auto rawStore = store->GetRawChecked();
-    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore is null");
     ExecSqls(sqls, *rawStore.get());
     MEDIA_INFO_LOG("end create idx again");
 }
@@ -1118,15 +1141,69 @@ static int32_t AddAlbumSubtypeAndNameIdx(RdbStore& store)
 }
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_ALBUM_SUBTYPE_AND_NAME_INDEX, "Vision", AddAlbumSubtypeAndNameIdx);
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+bool MediaLibraryRdbStore::InitMultiAccount(const NativeRdb::RdbStoreConfig &baseConfig, int version,
+    NativeRdb::RdbOpenCallback &openCallback, int32_t &ret)
+{
+    int32_t foregroundAccountId = 0;
+    if (!AccountManager::GetInstance().GetForegroundAccountId(foregroundAccountId)) {
+        return false;
+    }
+
+    int32_t accountId = AccountScope::Get();
+    if (accountId == INVALID_ACCOUNT_ID) {
+        accountId = foregroundAccountId;
+    }
+    std::string databaseDir = baseDatabaseDir_ + "/" + std::to_string(accountId);
+    int32_t pathErrCode = 0;
+    std::string realPath = RdbSqlUtils::GetDefaultDatabasePath(databaseDir, baseConfig.GetName(), pathErrCode);
+    NativeRdb::RdbStoreConfig config = baseConfig;
+    config.SetPath(realPath);
+    MEDIA_INFO_LOG("Update config path for accountId=%{public}d, databaseDir=%{private}s",
+        accountId, databaseDir.c_str());
+
+    // accountDbSwitchMutex_ 与 CloseAccountDb 的 Release 串行，避免开库与关库对同一 db 文件并发。
+    // 不用 rdbStoreMapMutex_：GetRdbStore 可能回调 OnUpgrade/OnCreate，若持 rdbStoreMapMutex_ 会重入死锁。
+    std::lock_guard<std::mutex> switchLock(accountDbSwitchMutex_);
+    int32_t errCode = 0;
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaLibraryRdbStore::Init GetRdbStore");
+    auto store = RdbHelper::GetRdbStore(config, version, openCallback, errCode);
+    tracer.Finish();
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("GetRdbStore is failed, accountId=%{public}d", accountId);
+        ret = errCode;
+        return true;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(rdbStoreMapMutex_);
+        rdbStoreMap_[accountId] = store;
+        MEDIA_INFO_LOG("MediaLibraryRdbStore::Init(), SUCCESS, accountId=%{public}d, mapSize=%{public}zu",
+            accountId, rdbStoreMap_.size());
+    }
+    ret = E_OK;
+    return true;
+}
+#endif
+
 int32_t MediaLibraryRdbStore::Init()
 {
     MEDIA_INFO_LOG("Init rdb store: [version: %{public}d]", MEDIA_RDB_VERSION);
-    if (std::atomic_load(&rdbStore_) != nullptr) {
+    if (CheckRdbStore()) {
         return E_OK;
     }
 
     int32_t errCode = 0;
     MediaLibraryDataCallBack rdbDataCallBack;
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t ret;
+    if (InitMultiAccount(config_, MEDIA_RDB_VERSION, rdbDataCallBack, ret)) {
+        return ret;
+    }
+#endif
+
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::Init GetRdbStore");
     auto store = RdbHelper::GetRdbStore(config_, MEDIA_RDB_VERSION, rdbDataCallBack, errCode);
@@ -1135,7 +1212,6 @@ int32_t MediaLibraryRdbStore::Init()
         MEDIA_ERR_LOG("GetRdbStore is failed ");
         return errCode;
     }
-
     std::atomic_store(&rdbStore_, store);
     MEDIA_INFO_LOG("MediaLibraryRdbStore::Init(), SUCCESS");
     return E_OK;
@@ -1169,19 +1245,26 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_UPDATE_MDIRTY_TRIGGER_FOR_TDIRTY, "Photos", 
 int32_t MediaLibraryRdbStore::Init(const RdbStoreConfig &config, int version, RdbOpenCallback &openCallback)
 {
     MEDIA_INFO_LOG("Init rdb store: [version: %{public}d]", version);
-    if (std::atomic_load(&rdbStore_) != nullptr) {
+    if (CheckRdbStore()) {
         return E_OK;
     }
+
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t ret;
+    if (InitMultiAccount(config, version, openCallback, ret)) {
+        return ret;
+    }
+#endif
+
     int32_t errCode = 0;
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::Init GetRdbStore with config");
     auto store = RdbHelper::GetRdbStore(config, version, openCallback, errCode);
     tracer.Finish();
     if (store == nullptr) {
-        MEDIA_ERR_LOG("GetRdbStore with config is failed");
+        MEDIA_ERR_LOG("GetRdbStore is failed ");
         return errCode;
     }
-
     std::atomic_store(&rdbStore_, store);
     MEDIA_INFO_LOG("MediaLibraryRdbStore::Init with config, SUCCESS");
     return E_OK;
@@ -1191,6 +1274,36 @@ MediaLibraryRdbStore::~MediaLibraryRdbStore() = default;
 
 void MediaLibraryRdbStore::Stop()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = 0;
+    if (AccountManager::GetInstance().GetForegroundAccountId(accountId)) {
+        // 锁顺序统一为 accountDbSwitchMutex_ -> rdbStoreMapMutex_，与 CloseAccountDb 一致。
+        std::lock_guard<std::mutex> switchLock(accountDbSwitchMutex_);
+        std::vector<std::shared_ptr<NativeRdb::RdbStore>> stores;
+        {
+            std::lock_guard<std::mutex> lock(rdbStoreMapMutex_);
+            MEDIA_INFO_LOG("Stop: clearing rdbStoreMap_, size=%{public}zu", rdbStoreMap_.size());
+            for (auto& [id, store] : rdbStoreMap_) {
+                if (store != nullptr) {
+                    stores.push_back(std::move(store));
+                }
+            }
+            rdbStoreMap_.clear();
+        }
+        // Release outside rdbStoreMapMutex_ to avoid blocking map queries during Release.
+        NativeRdb::RdbStore::ReleaseOption option;
+        option.waitTime = MILLIS_PER_SEC;
+        option.clearMetadata = true;
+        for (auto& store : stores) {
+            int32_t ret = store->Release(option);
+            if (ret != NativeRdb::E_OK) {
+                MEDIA_ERR_LOG("Stop: Release failed, ret=%{public}d", ret);
+            }
+        }
+        MEDIA_INFO_LOG("Stop() done, released=%{public}zu", stores.size());
+        return;
+    }
+#endif
     auto old = std::atomic_load(&rdbStore_);
     if (old) {
         std::atomic_store(&rdbStore_, std::shared_ptr<NativeRdb::RdbStore>());
@@ -1198,8 +1311,58 @@ void MediaLibraryRdbStore::Stop()
     MEDIA_INFO_LOG("Stop() done");
 }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+bool MediaLibraryRdbStore::CloseMultiAccount(int32_t timeoutMs, int32_t &ret)
+{
+    int32_t foregroundAccountId = 0;
+    if (!AccountManager::GetInstance().GetForegroundAccountId(foregroundAccountId)) {
+        return false;
+    }
+
+    int32_t accountId = AccountScope::Get();
+    if (accountId == INVALID_ACCOUNT_ID) {
+        accountId = foregroundAccountId;
+    }
+    std::shared_ptr<NativeRdb::RdbStore> store;
+    {
+        std::lock_guard<std::mutex> lock(rdbStoreMapMutex_);
+        auto it = rdbStoreMap_.find(accountId);
+        if (it == rdbStoreMap_.end() || it->second == nullptr) {
+            MEDIA_INFO_LOG("Close: store not found, accountId=%{public}d", accountId);
+            ret = E_OK;
+            return true;
+        }
+        store = it->second;
+        rdbStoreMap_.erase(it);
+    }
+
+    std::string databaseDir = baseDatabaseDir_ + "/" + std::to_string(accountId);
+    int32_t pathErrCode = 0;
+    std::string realPath = RdbSqlUtils::GetDefaultDatabasePath(databaseDir, config_.GetName(), pathErrCode);
+    NativeRdb::RdbStoreConfig config = config_;
+    config.SetPath(realPath);
+
+    NativeRdb::RdbStore::ReleaseOption option;
+    option.waitTime = std::max(MILLIS_PER_SEC, timeoutMs);
+    option.clearMetadata = true;
+    ret = store->Release(option);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Close: Release failed, accountId=%{public}d, ret=%{public}d", accountId, ret);
+    }
+    NativeRdb::RdbHelper::ClearStoreCache(config);
+    MEDIA_INFO_LOG("Close: done, accountId=%{public}d", accountId);
+    return true;
+}
+#endif
+
 int32_t MediaLibraryRdbStore::Close(int32_t timeoutMs)
 {
+    int32_t ret;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    if (CloseMultiAccount(timeoutMs, ret)) {
+        return ret;
+    }
+#endif
     if (rdbStore_ == nullptr) {
         MEDIA_INFO_LOG("Close: rdbStore is already null");
         return E_OK;
@@ -1207,7 +1370,7 @@ int32_t MediaLibraryRdbStore::Close(int32_t timeoutMs)
     NativeRdb::RdbStore::ReleaseOption option;
     option.waitTime = std::max(MILLIS_PER_SEC, timeoutMs);
     option.clearMetadata = true;
-    int32_t ret = rdbStore_->Release(option);
+    ret = rdbStore_->Release(option);
     if (ret == NativeRdb::E_OK) {
         MEDIA_INFO_LOG("CloseRdbStore: Release succeeded");
         std::atomic_store(&rdbStore_, std::shared_ptr<NativeRdb::RdbStore>());
@@ -1217,6 +1380,35 @@ int32_t MediaLibraryRdbStore::Close(int32_t timeoutMs)
     return E_ERR;
 }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+int32_t MediaLibraryRdbStore::CloseAccountDb(int32_t accountId)
+{
+    // 锁顺序统一为 accountDbSwitchMutex_ -> rdbStoreMapMutex_，与 InitMultiAccount 一致，避免死锁。
+    std::lock_guard<std::mutex> switchLock(accountDbSwitchMutex_);
+    std::shared_ptr<NativeRdb::RdbStore> store;
+    {
+        std::lock_guard<std::mutex> lock(rdbStoreMapMutex_);
+        auto it = rdbStoreMap_.find(accountId);
+        if (it == rdbStoreMap_.end() || it->second == nullptr) {
+            return E_OK;
+        }
+        store = it->second;
+        rdbStoreMap_.erase(it);
+    }
+    MEDIA_INFO_LOG("CloseAccountDb: releasing accountId=%{public}d", accountId);
+    NativeRdb::RdbStore::ReleaseOption option;
+    // same 1s floor as Close()
+    option.waitTime = MILLIS_PER_SEC;
+    option.clearMetadata = true;
+    int32_t ret = store->Release(option);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("CloseAccountDb: Release failed, accountId=%{public}d, ret=%{public}d", accountId, ret);
+        return E_ERR;
+    }
+    return E_OK;
+}
+#endif
+
 const NativeRdb::RdbStoreConfig &MediaLibraryRdbStore::GetConfig() const
 {
     return config_;
@@ -1224,19 +1416,61 @@ const NativeRdb::RdbStoreConfig &MediaLibraryRdbStore::GetConfig() const
 
 bool MediaLibraryRdbStore::CheckRdbStore()
 {
-    return std::atomic_load(&rdbStore_) != nullptr;
+    return GetRawChecked() != nullptr;
 }
 
 shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::GetRaw()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = AccountScope::Get();
+    int32_t foregroundAccountId = 0;
+    if (AccountManager::GetInstance().GetForegroundAccountId(foregroundAccountId)) {
+        int32_t targetAccountId = (accountId != INVALID_ACCOUNT_ID) ? accountId : foregroundAccountId;
+        std::shared_ptr<NativeRdb::RdbStore> store;
+        {
+            std::lock_guard<std::mutex> lock(rdbStoreMapMutex_);
+            auto it = rdbStoreMap_.find(targetAccountId);
+            if (it == rdbStoreMap_.end()) {
+                MEDIA_ERR_LOG("GetRaw: rdbstore is not in map, accountId=%{public}d, mapSize=%{public}zu",
+                    targetAccountId, rdbStoreMap_.size());
+                return nullptr;
+            }
+            store = it->second;
+        }
+        MEDIA_DEBUG_LOG("GetRaw: accountId=%{public}d, store=%{public}p", targetAccountId, store.get());
+        AccountDbDeferredCloser::GetInstance().ResetIfPending(targetAccountId);
+        return store;
+    }
+#endif
     return std::atomic_load(&rdbStore_);
 }
 
 shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::GetRawChecked()
 {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = AccountScope::Get();
+    int32_t foregroundAccountId = 0;
+    if (AccountManager::GetInstance().GetForegroundAccountId(foregroundAccountId)) {
+        int32_t targetAccountId = (accountId != INVALID_ACCOUNT_ID) ? accountId : foregroundAccountId;
+        std::shared_ptr<NativeRdb::RdbStore> store;
+        {
+            std::lock_guard<std::mutex> lock(rdbStoreMapMutex_);
+            auto it = rdbStoreMap_.find(targetAccountId);
+            if (it == rdbStoreMap_.end() || it->second == nullptr) {
+                MEDIA_ERR_LOG("GetRawChecked: rdbStore is null, accountId=%{public}d, mapSize=%{public}zu",
+                    targetAccountId, rdbStoreMap_.size());
+                return nullptr;
+            }
+            store = it->second;
+        }
+        MEDIA_DEBUG_LOG("GetRawChecked: accountId=%{public}d, store=%{public}p", targetAccountId, store.get());
+        AccountDbDeferredCloser::GetInstance().ResetIfPending(targetAccountId);
+        return store;
+    }
+#endif
     auto store = std::atomic_load(&rdbStore_);
     if (store == nullptr) {
-        MEDIA_ERR_LOG("rdbStore_ is null, maybe not initialized or already stopped");
+        MEDIA_ERR_LOG("rdbStore is null, maybe not initialized or already stopped");
     }
     return store;
 }
@@ -1245,7 +1479,6 @@ int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::InsertCmd");
-
     return InsertInternal(rowId, cmd.GetTableName(), cmd.GetValueBucket());
 }
 
@@ -1265,9 +1498,10 @@ int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::strin
     NativeRdb::ValuesBucket tmpValues = row;
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
-    int32_t strategyRet = RdbTableStrategyManager::GetInstance().ExtendInsertValues(
-        table, tmpValues, *GetRaw().get(), config);
+    int32_t strategyRet =
+        RdbTableStrategyManager::GetInstance().ExtendInsertValues(table, tmpValues, *store.get(), config);
     if (strategyRet != E_OK) {
         MEDIA_ERR_LOG("Failed to ExtendInsertValues, ret: %{public}d.", strategyRet);
         return strategyRet;
@@ -1276,11 +1510,11 @@ int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::strin
     int32_t ret = MediaLibraryRdbHelper::ExecSqlWithRetry(
         [&, store]() { return store->Insert(outRowId, table, tmpValues); });
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->Insert failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("rdbStore->Insert failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return E_HAS_DB_ERROR;
     }
-    MEDIA_DEBUG_LOG("rdbStore_->Insert end, outRowId = %d, ret = %{public}d", (int)outRowId, ret);
+    MEDIA_DEBUG_LOG("rdbStore->Insert end, outRowId = %d, ret = %{public}d", (int)outRowId, ret);
     return ret;
 }
 
@@ -1298,7 +1532,7 @@ int32_t MediaLibraryRdbStore::BatchInsert(MediaLibraryCommand &cmd, int64_t& out
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRdbStore::BatchInsertCmd");
-    
+
     return BatchInsertInternal(outInsertNum, cmd.GetTableName(), values);
 }
 
@@ -1306,15 +1540,17 @@ int32_t MediaLibraryRdbStore::BatchInsertInternal(int64_t &outRowId, const std::
     const std::vector<NativeRdb::ValuesBucket> &values)
 {
     DfxTimer dfxTimer(DfxType::RDB_BATCHINSERT, INVALID_DFX, RDB_TIME_OUT, false);
-    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+    auto store = MediaLibraryRdbStore::GetRawChecked();
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
     
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
     int32_t strategyRet =
-        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *GetRaw().get(), config);
+        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *store.get(), config);
     if (strategyRet != E_OK) {
         MEDIA_ERR_LOG("Failed to ExtendBatchInsertValues, ret: %{public}d.", strategyRet);
         return strategyRet;
@@ -1372,7 +1608,7 @@ int32_t MediaLibraryRdbStore::Delete(MediaLibraryCommand &cmd, int32_t &deletedR
     /* local delete */
     int32_t ret = DeleteInternal(*(cmd.GetAbsRdbPredicates()), deletedRows);
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->Delete failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("rdbStore->Delete failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return E_HAS_DB_ERROR;
     }
@@ -1383,7 +1619,7 @@ int32_t MediaLibraryRdbStore::Update(MediaLibraryCommand &cmd, int32_t &changedR
 {
     auto store = MediaLibraryRdbStore::GetRawChecked();
     if (store == nullptr) {
-        MEDIA_ERR_LOG("rdbStore_ is nullptr");
+        MEDIA_ERR_LOG("rdbStore is nullptr");
         return E_HAS_DB_ERROR;
     }
 
@@ -1395,7 +1631,7 @@ int32_t MediaLibraryRdbStore::Update(MediaLibraryCommand &cmd, int32_t &changedR
             cmd.GetAbsRdbPredicates()->GetWhereClause(), cmd.GetAbsRdbPredicates()->GetWhereArgs());
     });
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->Update failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("rdbStore->Update failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return E_HAS_DB_ERROR;
     }
@@ -1408,7 +1644,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::Query(MediaLibraryCommand
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->QueryByCmd");
 
-    return QueryInternal(*cmd.GetAbsRdbPredicates(), columns, true);
+    return QueryInternal(*cmd.GetAbsRdbPredicates(), columns, true, false);
 }
 
 static void PrintPredicatesInfo(const AbsRdbPredicates& predicates, const vector<string>& columns)
@@ -1430,7 +1666,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryWithFilter(const Abs
     MediaLibraryTracer tracer;
     tracer.Start("RdbStore->QueryByPredicates");
 
-    return QueryInternal(predicates, columns, true);
+    return QueryInternal(predicates, columns, true, false);
 }
 
 int32_t MediaLibraryRdbStore::ExecuteSql(const std::string &sql)
@@ -1567,11 +1803,12 @@ int32_t MediaLibraryRdbStore::UpdateWithDateTime(ValuesBucket &values, const Abs
     return changedRows;
 }
 
-shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QuerySql(const string &sql, const vector<string> &selectionArgs)
+shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QuerySql(const string &sql,
+    const vector<string> &selectionArgs)
 {
     auto store = MediaLibraryRdbStore::GetRawChecked();
     if (store == nullptr) {
-        MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+        MEDIA_ERR_LOG("rdbStore is nullptr");
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
             {KEY_OPT_TYPE, OptType::QUERY}};
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_OPT_ERR, map);
@@ -2444,8 +2681,8 @@ REGISTER_SYNC_UPGRADE_TASK(VERSION_ADD_CLOUD_VERSION, "Photos", AddCloudVersion)
 
 static string UpdateCloudPathSql(const string &table, const string &column)
 {
-    static const string LOCAL_PATH = "/storage/media/local/";
-    static const string CLOUD_PATH = "/storage/cloud/";
+    std::string localPath = MediaPathUtils::GetDir(MediaPathType::LOCAL_ROOT, AdaptAccount::NO);
+    std::string cloudPath = MediaPathUtils::GetDir(MediaPathType::CLOUD_ROOT, AdaptAccount::NO);
     /*
      * replace only once:
      * UPDATE photos
@@ -2453,10 +2690,10 @@ static string UpdateCloudPathSql(const string &table, const string &column)
      * substring(data, len(local_path) + 1));
      */
     return "UPDATE " + table + " SET " + column + " = (REPLACE(SUBSTRING(" +
-        column + ", 1, " + to_string(LOCAL_PATH.length()) + "), '" +
-        LOCAL_PATH + "', '" + CLOUD_PATH + "') || SUBSTRING(" + column + ", " +
-        to_string(LOCAL_PATH.length() + 1) + "))" +
-        " WHERE " + column + " LIKE '" + LOCAL_PATH + "%';";
+        column + ", 1, " + to_string(localPath.length()) + "), '" +
+        localPath + "', '" + cloudPath + "') || SUBSTRING(" + column + ", " +
+        to_string(localPath.length() + 1) + "))" +
+        " WHERE " + column + " LIKE '" + localPath + "%';";
 }
 
 static int32_t UpdateMdirtyTriggerForSdirty(RdbStore &store)
@@ -5719,7 +5956,8 @@ static void UpgradeFromAllVersionFirstPart(RdbStore &store, unordered_map<string
         !photoColumnExists.at(PhotoColumn::PHOTO_DETAIL_TIME)) {
         int32_t errCode = 0;
         shared_ptr<NativePreferences::Preferences> prefs =
-            NativePreferences::PreferencesHelper::GetPreferences(RDB_FIX_RECORDS, errCode);
+            NativePreferences::PreferencesHelper::GetPreferences(
+                MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_FIX_RECORDS), errCode);
         if (prefs != nullptr) {
             // before current version, detail time column has existed, need to fix other information
             prefs->PutInt(DETAIL_TIME_FIXED, NEED_FIXED);
@@ -5739,8 +5977,8 @@ static void UpgradeFromAllVersionFirstPart(RdbStore &store, unordered_map<string
     if (photoColumnExists.find(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE) == photoColumnExists.end() ||
         !photoColumnExists.at(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE)) {
         int32_t errCode = 0;
-        shared_ptr<NativePreferences::Preferences> prefs =
-            NativePreferences::PreferencesHelper::GetPreferences(RDB_FIX_RECORDS, errCode);
+        shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+            MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_FIX_RECORDS, true), errCode);
         if (prefs != nullptr) {
             // before current version, thumbnail visible column has existed, need to fix other information
             prefs->PutInt(THUMBNAIL_VISIBLE_FIXED, NEED_FIXED);
@@ -6415,8 +6653,8 @@ static int32_t AsyncUpgradeFromAllVersionFirstPart(RdbStore& rdbStore)
 {
     MEDIA_INFO_LOG("Start VERSION_ADD_DETAIL_TIME");
     int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(RDB_FIX_RECORDS, errCode);
+    shared_ptr<NativePreferences::Preferences> prefs = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_FIX_RECORDS, true), errCode);
     if (prefs != nullptr) {
         MEDIA_INFO_LOG("prefs errCode: %{public}d", errCode);
         int32_t detailTimeFixed = prefs->GetInt(DETAIL_TIME_FIXED, 0);
@@ -6613,7 +6851,8 @@ int32_t MediaLibraryDataCallBack::OnUpgrade(RdbStore &store, int32_t oldVersion,
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
 
     // 使用新的数据库同步升级框架
-    UpgradeManagerConfig config(false, RDB_UPGRADE_EVENT, RDB_CONFIG, oldVersion, newVersion);
+    UpgradeManagerConfig config(false, MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_UPGRADE_EVENT, true),
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(RDB_CONFIG, true), oldVersion, newVersion);
     UpgradeManager::GetInstance().Initialize(config);
     int32_t ret = UpgradeManager::GetInstance().UpgradeSync(store);
     if (ret != E_OK) {
@@ -6740,9 +6979,10 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsertWithReturn(co
     pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     TableStrategyConfig config = {
         .enableDefault = true,
+        .enableAccountId = true,
     };
     int32_t strategyRet =
-        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *GetRaw().get(), config);
+        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *store.get(), config);
     if (strategyRet != E_OK) {
         MEDIA_ERR_LOG("Failed to ExtendBatchInsertValues, ret: %{public}d.", strategyRet);
         return retWithResults;
@@ -6753,12 +6993,12 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsertWithReturn(co
         return retWithResults.first;
     });
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->BatchInsert failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("rdbStore->BatchInsert failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return {ret, -1};
     }
 
-    MEDIA_DEBUG_LOG("rdbStore_->BatchInsert end, ret = %{public}d", ret);
+    MEDIA_DEBUG_LOG("rdbStore->BatchInsert end, ret = %{public}d", ret);
     return retWithResults;
 }
 
@@ -6781,7 +7021,7 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::ExecuteSqlWithReturn(con
         return retWithResults.first;
     });
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->ExecuteSql failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("rdbStore->ExecuteSql failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return {E_HAS_DB_ERROR, -1};
     }
@@ -6868,7 +7108,7 @@ int MediaLibraryRdbStore::Restore(const std::string &backupPath, const std::vect
 int32_t MediaLibraryRdbStore::DataCallBackOnCreate()
 {
     auto store = MediaLibraryRdbStore::GetRawChecked();
-    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR, "rdbStore_ is nullptr");
+    CHECK_AND_RETURN_RET_LOG(store != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
     MediaLibraryDataCallBack callback;
     int32_t ret = callback.OnCreate(*store);
     if (ret != NativeRdb::E_OK) {
@@ -6896,7 +7136,7 @@ void MediaLibraryRdbStore::AddUpgradeTable(const shared_ptr<MediaLibraryRdbStore
     };
     MEDIA_INFO_LOG("start create table");
     auto rawStore = store->GetRawChecked();
-    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore is null");
     ExecSqls(sqls, *rawStore.get());
     MEDIA_INFO_LOG("end create table");
 }
@@ -6906,7 +7146,7 @@ void MediaLibraryRdbStore::CheckAndAddPhotoAlbumColumns(const shared_ptr<MediaLi
     MEDIA_INFO_LOG("start check and add columns");
     CHECK_AND_RETURN_LOG(store != nullptr, "CheckAndAddPhotoAlbumColumns rdbStore is nullptr!");
     auto rawStore = store->GetRawChecked();
-    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore_ is null");
+    CHECK_AND_RETURN_LOG(rawStore != nullptr, "rdbStore is null");
     std::vector<std::string> sqls;
     if (!MediaLibraryRdbHelper::HasColumnInTable(*rawStore, PhotoAlbumColumns::CHANGE_TIME,
         PhotoAlbumColumns::TABLE)) {

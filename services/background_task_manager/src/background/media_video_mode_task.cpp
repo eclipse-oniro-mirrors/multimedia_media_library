@@ -21,7 +21,8 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "dfx_utils.h"
-#include "media_file_utils.h"
+#include "media_path_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "photo_video_mode_operation.h"
@@ -112,14 +113,14 @@ void MediaVideoModeTask::UpdateVideoMode(std::shared_ptr<MediaLibraryRdbStore> &
         const std::string filePath = videoModeInfo.filePaths[i];  // 对应第 i 个 path
         MEDIA_DEBUG_LOG("UpdateVideoMode fileId = %{public}d, filePath = %{public}s",
             fileId,
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         unique_ptr<Metadata> videoModeData = make_unique<Metadata>();
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
         string realPath = MediaFileAccessUtils::GetAssetRealPath(filePath);
         string absVideoPath;
         if (!PathToRealPath(realPath, absVideoPath)) {
             MEDIA_ERR_LOG(
-                "file is not real path, file path: %{public}s", MediaFileUtils::DesensitizePath(realPath).c_str());
+                "file is not real path, file path: %{public}s", MediaPathUtils::DesensitizePath(realPath).c_str());
             continue;
         }
         videoModeData->SetFilePath(realPath);
@@ -149,7 +150,7 @@ void MediaVideoModeTask::HandleMediaFileManagerVideoMode()
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbstore is nullptr");
     int32_t maxFileId = PhotoVideoModeOperation::GetMaxFileId(rdbStore);
     MEDIA_INFO_LOG("HandleMediaFileManagerVideoMode maxFileId = %{public}d", maxFileId);
-    CHECK_AND_EXECUTE(MediaFileUtils::IsFileExists(FILE_MANAGER_VIDEO_MODE_EVENT),
+    CHECK_AND_EXECUTE(MediaPureFileUtils::IsFileExists(FILE_MANAGER_VIDEO_MODE_EVENT),
         SetBatchStatus(defaultValueZero));
     int32_t currStartFileId = GetBatchStatus();
     CHECK_AND_RETURN_LOG(currStartFileId != prefsNullErrCode, "prefs is nullptr");

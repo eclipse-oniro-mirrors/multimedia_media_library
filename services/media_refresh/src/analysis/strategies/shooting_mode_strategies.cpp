@@ -16,7 +16,7 @@
 #include "shooting_mode_strategies.h"
 
 #include "analysis_strategy_registry.h"
-
+#include "media_string_utils.h"
 namespace OHOS {
 namespace Media {
 namespace AccurateRefresh {
@@ -24,7 +24,7 @@ namespace AccurateRefresh {
 int ShootingModeCountStrategy::HandleUpdateOperation(const PhotoAssetChangeData &data,
     const UpdateAlbumData &baseInfo) const
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(baseInfo.albumName), DELTA_NO_CHANGE,
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::IsValidInteger(baseInfo.albumName), DELTA_NO_CHANGE,
         "Invalid shooting mode album, id: %{public}d. name: %{public}s", baseInfo.albumId, baseInfo.albumName.c_str());
     ShootingModeAlbumType currentType = static_cast<ShootingModeAlbumType>(std::stoi(baseInfo.albumName));
 

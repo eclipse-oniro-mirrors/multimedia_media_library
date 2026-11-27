@@ -26,6 +26,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -390,7 +391,7 @@ void AnalysisAlbumRefreshExecution::RefreshAllAlbum(const vector<string> &albumI
     if (albumIdList.size() < MAX_ANALYSIS_ALBUM_OPERATION_SIZE) {
         // 1. 构造受影响的albumId
         for (auto albumIdStr : albumIdList) {
-            CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(albumIdStr));
+            CHECK_AND_CONTINUE(MediaStringUtils::IsValidInteger(albumIdStr));
             affectedAlbumIds.emplace_back(std::stoi(albumIdStr));
         }
 

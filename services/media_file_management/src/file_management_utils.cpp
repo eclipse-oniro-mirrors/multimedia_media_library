@@ -15,6 +15,7 @@
 
 #define MLOG_TAG "FileManagementUtils"
 #include "file_management_utils.h"
+#include "media_path_utils.h"
 
 #include <string>
 #include <map>
@@ -36,8 +37,6 @@
 
 namespace OHOS::Media {
 using namespace AccurateRefresh;
-const std::string PHOTO_CLOUD_PATH_URI = "/storage/cloud/files/";
-const std::string PHOTO_MEDIA_PATH_URI = "/storage/media/local/files/";
 const std::vector<string> PHOTO_QUERY_COLUMN = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_TYPE,
     MediaColumn::MEDIA_TITLE, PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_POSITION, MediaColumn::MEDIA_FILE_PATH,
     PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::MEDIA_NAME,
@@ -68,16 +67,6 @@ int32_t FileManagementUtils::GetRelativeDir(std::string& target, std::string& re
         target.pop_back();
     }
     return E_OK;
-}
-
-std::string FileManagementUtils::GetLocalPath(const std::string &path)
-{
-    std::string localPath = path;
-    size_t pos = localPath.find(PHOTO_CLOUD_PATH_URI);
-    if (pos != std::string::npos) {
-        localPath.replace(pos, PHOTO_CLOUD_PATH_URI.length(), PHOTO_MEDIA_PATH_URI);
-    }
-    return localPath;
 }
 
 std::string FileManagementUtils::ReplaceLastSegment(const std::string& data, const std::string& displayname)
@@ -136,13 +125,13 @@ int64_t FileManagementUtils::CalculateTotalSize(const std::vector<std::string> &
         std::string filePath = MediaUriUtils::GetPathFromUri(asset);
         if (filePath.empty()) {
             MEDIA_ERR_LOG("Failed to get file path from uri: %{public}s",
-                MediaFileUtils::DesensitizePath(filePath).c_str());
+                MediaPathUtils::DesensitizePath(filePath).c_str());
             continue;
         }
         size_t fileSize = 0;
         if (!MediaFileUtils::GetFileSize(filePath, fileSize)) {
             MEDIA_ERR_LOG("Failed to get file size: %{public}s",
-                MediaFileUtils::DesensitizePath(filePath).c_str());
+                MediaPathUtils::DesensitizePath(filePath).c_str());
             continue;
         }
         totalSize += static_cast<int64_t>(fileSize);
@@ -273,7 +262,7 @@ int32_t FileManagementUtils::GetFileMtime(const string &filePath, time_t &mtime)
     struct stat statInfo {};
     if (stat(filePath.c_str(), &statInfo) != 0) {
         MEDIA_ERR_LOG("Get file mtime failed, path = %{public}s",
-            MediaFileUtils::DesensitizePath(filePath).c_str());
+            MediaPathUtils::DesensitizePath(filePath).c_str());
         return E_ERR;
     }
     mtime = statInfo.st_mtime;

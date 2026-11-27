@@ -21,6 +21,7 @@
 #include <gtest/hwext/gtest-ext.h>
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
@@ -101,7 +102,7 @@ std::shared_ptr<NativeRdb::RdbStore> CreateCloneInfoDb()
 
 void WriteAncoTestFile(const std::string &path, const std::string &content)
 {
-    ASSERT_TRUE(MediaFileUtils::CreateDirectory(TEST_ROOT));
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(TEST_ROOT));
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     ASSERT_TRUE(out.is_open());
     out << content;
@@ -159,7 +160,7 @@ public:
     static void TearDownTestCase() {}
     void SetUp() override
     {
-        ASSERT_TRUE(MediaFileUtils::CreateDirectory(TEST_ROOT));
+        ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(TEST_ROOT));
     }
     void TearDown() override
     {

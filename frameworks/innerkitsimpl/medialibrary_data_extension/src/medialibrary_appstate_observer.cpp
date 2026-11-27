@@ -25,6 +25,7 @@
 #include "media_log.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_unistore_manager.h"
 #include "permission_utils.h"
 #include "system_ability_definition.h"
 
@@ -214,7 +215,7 @@ void MedialibraryAppStateObserver::WaitAndRevoke(int64_t tokenId)
         return;
     }
     MEDIA_INFO_LOG("MedialibraryAppStateObserver OnAppStopped, tokenId:%{public}ld", static_cast<long>(tokenId));
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Uripermission Delete failed, rdbStore is null.");
 
     int32_t deletedRowsPermission = DeleteTemporaryPermission(rdbStore, tokenId);

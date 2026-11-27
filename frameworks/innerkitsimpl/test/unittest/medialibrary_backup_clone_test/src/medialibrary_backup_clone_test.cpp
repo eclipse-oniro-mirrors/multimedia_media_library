@@ -16,6 +16,7 @@
 #define MLOG_TAG "BackupCloneTest"
 
 #include "medialibrary_backup_clone_test.h"
+#include "media_pure_file_utils.h"
 
 #define private public
 #define protected public
@@ -698,7 +699,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_GetCloneD
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -733,7 +734,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_002,
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -752,7 +753,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_Init_003,
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -1252,7 +1253,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HasSameFi
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(OTHERS_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
     FileInfo fileInfo;
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -1274,7 +1275,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HasSameFi
     fileInfo.displayName = "test.jpg";
     fileInfo.fileSize = 100;
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -1409,7 +1410,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HandleSel
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -1431,7 +1432,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HandleSel
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(I_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -1461,7 +1462,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HandleSel
     unique_ptr<OthersCloneRestore> othersClone = std::make_unique<OthersCloneRestore>(OTHERS_PHONE_CLONE_RESTORE,
         "", "{\"type\":\"unicast\",\"details\":[{\"type\":\"iosDeviceType\",\"detail\":\"test\"}]}");
 
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -2837,7 +2838,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_start_backup_tes
     restoreService->errorCode_ = RestoreError::SUCCESS;
     restoreService->StartBackup();
     EXPECT_NE(restoreService->errorCode_, RestoreError::SUCCESS);
-    EXPECT_EQ(ret, MediaFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
+    EXPECT_EQ(ret, MediaPureFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
 }
 
 
@@ -2851,7 +2852,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_start_backup_tes
     restoreService->errorCode_ = RestoreError::SUCCESS;
     restoreService->StartBackup();
     EXPECT_NE(restoreService->errorCode_, RestoreError::SUCCESS);
-    EXPECT_EQ(ret, MediaFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
+    EXPECT_EQ(ret, MediaPureFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_start_backup_test_003, TestSize.Level2)
@@ -2867,7 +2868,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_start_backup_tes
     restoreService->errorCode_ = RestoreError::SUCCESS;
     restoreService->StartBackup();
     EXPECT_NE(restoreService->errorCode_, RestoreError::SUCCESS);
-    EXPECT_EQ(ret, MediaFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
+    EXPECT_EQ(ret, MediaPureFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
@@ -2884,7 +2885,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_start_backup_tes
     restoreService->errorCode_ = RestoreError::SUCCESS;
     restoreService->StartBackup();
     EXPECT_EQ(restoreService->errorCode_, RestoreError::SUCCESS);
-    EXPECT_EQ(ret, MediaFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
+    EXPECT_EQ(ret, MediaPureFileUtils::IsFileExists(CLONE_KVDB_BACKUP_DIR));
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
@@ -3006,7 +3007,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_IsIosMovi
     const std::string testDir = "/data/test/others_clone_dynamic_ut";
     const std::string imagePath = testDir + "/test_DYNAMIC.jpg";
     const std::string videoPath = testDir + "/test_DYNAMIC.mp4";
-    MediaFileUtils::CreateDirectory(testDir);
+    MediaPureFileUtils::CreateDirectory(testDir);
     {
         std::ofstream imageFile(imagePath, std::ios::binary);
         imageFile << "img";
@@ -3033,7 +3034,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_IsIosMovi
     const std::string testDir = "/data/test/others_clone_dynamic_ut";
     const std::string imagePath = testDir + "/test_DYNAMIC.jpg";
     const std::string videoPath = testDir + "/test_DYNAMIC.mp4";
-    MediaFileUtils::CreateDirectory(testDir);
+    MediaPureFileUtils::CreateDirectory(testDir);
     {
         std::ofstream imageFile(imagePath, std::ios::binary);
         imageFile << "img";
@@ -5219,7 +5220,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_preprocess_invalidate_
     EXPECT_FALSE(restoreService->BackupPreprocess());
     EXPECT_TRUE(restoreService->dirMappingList_.empty());
     std::string tmpDir = "/data/test/backup/storage/media/local/files/.backup/backup/media_temp_rdb";
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(tmpDir));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(tmpDir));
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
     restoreService->backupRestoreDir_ = "";
@@ -7167,7 +7168,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_get_numbered_path_with_ext_001,
 // Branch: no conflict → return original
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_no_conflict_004, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     std::string path = LAKE_TEST_DIR + "noconflict.jpg";
     EXPECT_EQ(BackupFileUtils::ResolveLakeTargetStoragePath(path), path);
 }
@@ -7175,7 +7176,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_no_conflict_004,
 // Branch: conflict found → return numbered path
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_conflict_found_005, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     std::string path = LAKE_TEST_DIR + "conflict.jpg";
     std::string path1 = LAKE_TEST_DIR + "conflict(1).jpg";
     LakeCreateTestFile(path);
@@ -7188,7 +7189,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_conflict_found_0
 // Branch: exhausted → return empty
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_target_exhausted_006, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     std::string path = LAKE_TEST_DIR + "exhaust.jpg";
     LakeCreateTestFile(path);
     for (int32_t i = 1; i <= 1000; i++) {
@@ -7327,7 +7328,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_lake_source_015, 
 // Branch: non-lake, no conflict → return original path, no rename
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_no_conflict_016, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     FileInfo fileInfo;
     fileInfo.needStoreAtStoragePath = true;
     fileInfo.fileSourceType = 0;
@@ -7341,7 +7342,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_no_conflict_016, 
 // Branch: non-lake, conflict found → rename
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_conflict_rename_017, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     std::string path = LAKE_TEST_DIR + "resolve_conf.jpg";
     std::string path1 = LAKE_TEST_DIR + "resolve_conf(1).jpg";
     LakeCreateTestFile(path);
@@ -7362,7 +7363,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_conflict_rename_0
 // Branch: non-lake, exhausted → return empty
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_exhausted_018, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     std::string path = LAKE_TEST_DIR + "resolve_exh.jpg";
     LakeCreateTestFile(path);
     for (int32_t i = 1; i <= 1000; i++) {
@@ -7383,7 +7384,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_resolve_local_exhausted_018, Te
 // Branch: new lake file → early return, only update time
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_new_lake_019, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     FileInfo fileInfo;
     fileInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
     fileInfo.storagePath = LAKE_TEST_DIR + "new_lake.jpg";
@@ -7398,7 +7399,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_new_lake_019, TestSize
 // Branch: lake source already at dest → update time, no move
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_already_at_dest_021, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     FileInfo fileInfo;
     fileInfo.isNew = false;
     fileInfo.needStoreAtStoragePath = true;
@@ -7415,8 +7416,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_already_at_dest_021, T
 // Branch: MoveFile (deleteOriginalFile=true, standalone photo)
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_move_file_022, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DATA_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DATA_DIR);
     FileInfo fileInfo;
     fileInfo.isNew = false;
     fileInfo.isRelatedToPhotoMap = 0;
@@ -7424,10 +7425,10 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_move_file_022, TestSiz
     fileInfo.cloudPath = "/storage/cloud/files/Photo/0/movefile.jpg";
     fileInfo.filePath = LAKE_TEST_BACKUP_DIR + "Photo/0/movefile.jpg";
     fileInfo.dateModified = 1000;
-    MediaFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
     LakeCreateTestFile(fileInfo.filePath);
     EXPECT_EQ(restoreService->MovePicture(fileInfo), E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(LAKE_TEST_DATA_DIR + "movefile.jpg"));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(LAKE_TEST_DATA_DIR + "movefile.jpg"));
     MediaFileUtils::DeleteFile(fileInfo.filePath);
     MediaFileUtils::DeleteFile(LAKE_TEST_DATA_DIR + "movefile.jpg");
 }
@@ -7435,8 +7436,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_move_file_022, TestSiz
 // Branch: CopyFile (deleteOriginalFile=false, album photo)
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_copy_file_023, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DATA_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DATA_DIR);
     FileInfo fileInfo;
     fileInfo.isNew = false;
     fileInfo.isRelatedToPhotoMap = 1;
@@ -7444,11 +7445,11 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_move_pic_copy_file_023, TestSiz
     fileInfo.cloudPath = "/storage/cloud/files/Photo/0/copyfile.jpg";
     fileInfo.filePath = LAKE_TEST_BACKUP_DIR + "Photo/0/copyfile.jpg";
     fileInfo.dateModified = 1000;
-    MediaFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
     LakeCreateTestFile(fileInfo.filePath);
     EXPECT_EQ(restoreService->MovePicture(fileInfo), E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(LAKE_TEST_DATA_DIR + "copyfile.jpg"));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(LAKE_TEST_DATA_DIR + "copyfile.jpg"));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     MediaFileUtils::DeleteFile(fileInfo.filePath);
     MediaFileUtils::DeleteFile(LAKE_TEST_DATA_DIR + "copyfile.jpg");
 }
@@ -7568,7 +7569,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_fill_merged_store_false_029, Te
 // Branch: cross-lake (inside lake static → outside moving) → delete source lake file
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_delete_source_030, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     FileInfo fileInfo;
     fileInfo.needMove = true;
     fileInfo.subtype = 0;
@@ -7578,7 +7579,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_delete_source_030, T
     fileInfo.filePath = LAKE_TEST_DIR + "cross_del.jpg";
     fileInfo.isStoragePathExistInDb = false;
     LakeCreateTestFile(fileInfo.filePath);
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     PhotosDao::PhotosRowData rowData;
     rowData.storagePath = "";
     rowData.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
@@ -7588,13 +7589,13 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_delete_source_030, T
     EXPECT_FALSE(fileInfo.needStoreAtStoragePath);
     EXPECT_FALSE(fileInfo.needUpdatePositionToLocalAndCloud);
     EXPECT_TRUE(fileInfo.needMergeThumbnail);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
 }
 
 // Branch: cross-lake but isStoragePathExistInDb=true → keep source lake file
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_keep_if_in_db_031, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     FileInfo fileInfo;
     fileInfo.needMove = true;
     fileInfo.subtype = 0;
@@ -7604,21 +7605,21 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_keep_if_in_db_031, T
     fileInfo.filePath = LAKE_TEST_DIR + "cross_keep.jpg";
     fileInfo.isStoragePathExistInDb = true;
     LakeCreateTestFile(fileInfo.filePath);
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     PhotosDao::PhotosRowData rowData;
     rowData.storagePath = "";
     rowData.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
     rowData.effectMode = 0;
     restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
     EXPECT_FALSE(fileInfo.needMove);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     MediaFileUtils::DeleteFile(fileInfo.filePath);
 }
 
 // Branch: cross-lake mismatch but source is non-lake → no deletion
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_non_lake_source_032, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_BACKUP_DIR + "Photo/0/");
     FileInfo fileInfo;
     fileInfo.needMove = true;
     fileInfo.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
@@ -7627,21 +7628,21 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_non_lake_source_032,
     fileInfo.storagePath = "";
     fileInfo.filePath = LAKE_TEST_BACKUP_DIR + "Photo/0/nondel.jpg";
     LakeCreateTestFile(fileInfo.filePath);
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     PhotosDao::PhotosRowData rowData;
     rowData.storagePath = "/mnt/data/100/HO_MEDIA/Pictures/IMG.jpg";
     rowData.subtype = 0;
     rowData.effectMode = 0;
     restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
     EXPECT_FALSE(fileInfo.needMove);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     MediaFileUtils::DeleteFile(fileInfo.filePath);
 }
 
 // Branch: needMove=false (IsSameAssetForCloudIdMove=false), no mismatch → delete source lake file
 HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_content_mismatch_033, TestSize.Level2)
 {
-    MediaFileUtils::CreateDirectory(LAKE_TEST_DIR);
+    MediaPureFileUtils::CreateDirectory(LAKE_TEST_DIR);
     FileInfo fileInfo;
     fileInfo.needMove = false;
     fileInfo.subtype = 0;
@@ -7651,19 +7652,19 @@ HWTEST_F(MediaLibraryBackupCloneTest, lake_clone_cross_lake_content_mismatch_033
     fileInfo.filePath = LAKE_TEST_DIR + "content_mismatch.jpg";
     fileInfo.isStoragePathExistInDb = false;
     LakeCreateTestFile(fileInfo.filePath);
-    ASSERT_TRUE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    ASSERT_TRUE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
     PhotosDao::PhotosRowData rowData;
     rowData.storagePath = "";
     rowData.subtype = 0;
     rowData.effectMode = 0;
     restoreService->HandleLakeDuplicateMigration(fileInfo, rowData);
     EXPECT_FALSE(fileInfo.needMove);
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(fileInfo.filePath));
+    EXPECT_FALSE(MediaPureFileUtils::IsFileExists(fileInfo.filePath));
 }
 
 static shared_ptr<NativeRdb::RdbStore> CreateDualCloneTestStore()
 {
-    MediaFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
+    MediaPureFileUtils::CreateDirectory(CONFIG_DB_DIRECTORY);
     std::string path = CONFIG_DB_DIRECTORY + "/photo_MediaInfo.db";
     NativeRdb::RdbStoreConfig config(path);
     CloneOpenCall helper;
@@ -7990,7 +7991,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_cleanup_temp_backup_dir_001, 
  
     // Branch 2: temp backup dir exists, should be deleted and return true
     std::string tmpDir = std::string(TEST_PATH) + "/storage/media/local/files/.backup/backup/media_temp_rdb";
-    ASSERT_TRUE(MediaFileUtils::CreateDirectory(tmpDir));
+    ASSERT_TRUE(MediaPureFileUtils::CreateDirectory(tmpDir));
     EXPECT_TRUE(MediaFileUtils::IsDirExists(tmpDir));
     EXPECT_TRUE(restoreService->CleanupTempBackupDir());
     EXPECT_FALSE(MediaFileUtils::IsDirExists(tmpDir));

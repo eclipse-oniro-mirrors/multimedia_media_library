@@ -15,6 +15,7 @@
 #define MLOG_TAG "MediaLibraryBackupUtils"
 
 #include "backup_database_helper.h"
+#include "media_pure_file_utils.h"
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"
 #include "media_file_utils.h"
@@ -40,7 +41,7 @@ void BackupDatabaseHelper::InitDb(int32_t dbType, const std::string &prefix)
     CHECK_AND_RETURN_LOG(DB_INFO_MAP.count(dbType) != 0, "No such db type: %{public}d", dbType);
     DbInfo dbInfo = DB_INFO_MAP.at(dbType);
     std::string dbFullPath = prefix + dbInfo.path;
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(dbFullPath),
+    CHECK_AND_RETURN_LOG(MediaPureFileUtils::IsFileExists(dbFullPath),
         "Db not exist, type: %{public}d, path: %{public}s", dbType,
         BackupFileUtils::GarbleFilePath(dbFullPath, DEFAULT_RESTORE_ID).c_str());
 

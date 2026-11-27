@@ -155,7 +155,7 @@ void MediaLibraryRdbUtilsAlbumCoverTest::SetUpTestCase(void)
 
 static void ClearPhotos()
 {
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     int32_t deletedRows = -1;
     auto ret = rdbStore->Delete(deletedRows, predicates);

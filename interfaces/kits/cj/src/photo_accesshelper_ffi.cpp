@@ -14,6 +14,7 @@
  */
 
 #include "photo_accesshelper_ffi.h"
+#include "media_string_utils.h"
 #include "photo_asset_helper.h"
 
 using namespace OHOS::FFI;
@@ -898,7 +899,7 @@ int64_t CreatePhotoAssetImpl(const std::string &uri, int32_t cameraShotType, con
     std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
     fileAsset->SetUri(uri);
     std::string fileId = MediaFileUtils::GetIdFromUri(uri);
-    if (MediaFileUtils::IsValidInteger(fileId)) {
+    if (MediaStringUtils::IsValidInteger(fileId)) {
         fileAsset->SetId(stoi(fileId));
     }
 

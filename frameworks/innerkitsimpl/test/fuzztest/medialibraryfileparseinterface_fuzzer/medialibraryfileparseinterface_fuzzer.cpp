@@ -14,6 +14,7 @@
  */
 
 #include "medialibraryfileparseinterface_fuzzer.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_rdbstore_utils_fuzzer.h"
 
 #include <cstdint>
@@ -155,7 +156,7 @@ static void MediaFileUtilsTest()
     MEDIA_INFO_LOG("MediaFileUtilsTest start");
     std::string srcFile = ROOT_MEDIA_DIR + to_string(provider->ConsumeIntegralInRange<uint32_t>(NUM_1, NUM_16))
         + "/" + "srctest.jpg";
-    if (!MediaFileUtils::IsFileExists(srcFile)) {
+    if (!MediaPureFileUtils::IsFileExists(srcFile)) {
         MediaFileUtils::CreateFile(srcFile);
     }
     std::string dstFile = ROOT_MEDIA_DIR + to_string(provider->ConsumeIntegralInRange<uint32_t>(NUM_1, NUM_16))
@@ -165,7 +166,7 @@ static void MediaFileUtilsTest()
 
     string path = ROOT_MEDIA_DIR + to_string(provider->ConsumeIntegralInRange<uint32_t>(NUM_1, NUM_16))
         + "/" + "test.mp4";
-    if (!MediaFileUtils::IsFileExists(path)) {
+    if (!MediaPureFileUtils::IsFileExists(path)) {
         MediaFileUtils::CreateFile(path);
     }
     MovingPhotoFileUtils::CheckMovingPhotoVideo(path);
@@ -198,7 +199,7 @@ static void MovingPhotoFileUtilsTest()
     MEDIA_INFO_LOG("MovingPhotoFileUtilsTest start");
     int32_t fileid = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test.mp4");
     std::string videoPath = GetFilePath(fileid);
-    if (!MediaFileUtils::IsFileExists(videoPath)) {
+    if (!MediaPureFileUtils::IsFileExists(videoPath)) {
         MediaFileUtils::CreateFile(videoPath);
     }
     uint32_t frameIndex = 0;
@@ -219,7 +220,7 @@ static void ExtractAVMetadataTest()
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
     std::variant<int32_t, std::string, int64_t, double> variantData = ROOT_MEDIA_DIR + "test.jpg";
     std::string path = std::get<std::string>(variantData);
-    if (!MediaFileUtils::IsFileExists(path)) {
+    if (!MediaPureFileUtils::IsFileExists(path)) {
         MediaFileUtils::CreateFile(path);
     }
     data->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));

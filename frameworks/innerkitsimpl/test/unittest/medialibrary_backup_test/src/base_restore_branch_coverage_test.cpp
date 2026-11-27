@@ -20,6 +20,7 @@
 #undef private
 #undef protected
 
+#include "media_pure_file_utils.h"
 #include "medialibrary_errno.h"
 
 using namespace testing::ext;
@@ -75,8 +76,8 @@ FileInfo BuildBaseInfo()
 
 void PrepareDir()
 {
-    if (!MediaFileUtils::IsDirectory(TEST_DIR)) {
-        (void)MediaFileUtils::CreateDirectory(TEST_DIR);
+    if (!MediaPureFileUtils::IsDirectory(TEST_DIR)) {
+        (void)MediaPureFileUtils::CreateDirectory(TEST_DIR);
     }
 }
 
@@ -198,11 +199,11 @@ HWTEST_F(BaseRestoreBranchCoverageTest, MoveFile_CopyFallback_001, TestSize.Leve
     TestBaseRestore restore;
     std::string src = TEST_DIR + "/src_fallback.txt";
     std::string dst = TEST_DIR + "/sub/dst_fallback.txt";
-    (void)MediaFileUtils::CreateDirectory(TEST_DIR + "/sub");
+    (void)MediaPureFileUtils::CreateDirectory(TEST_DIR + "/sub");
     WriteFile(src, "hello-fallback");
     int32_t ret = restore.MoveFile(src, dst);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(dst));
+    EXPECT_TRUE(MediaPureFileUtils::IsFileExists(dst));
 }
 
 // 验证 MoveFile 在源文件不存在时返回失败码。

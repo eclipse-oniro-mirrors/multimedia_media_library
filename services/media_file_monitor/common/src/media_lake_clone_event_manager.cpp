@@ -27,6 +27,7 @@
 #include "lake_scan_rule_config.h"
 #include "media_file_change_manager.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "media_thread.h"
 #include "parameters.h"
 #include "preferences.h"
@@ -169,8 +170,8 @@ void MediaLakeCloneEventManager::RunGlobalScanner()
 
     MEDIA_INFO_LOG("LakeClone: Start RunGlobalScanner");
     int errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> pref =
-        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    std::shared_ptr<NativePreferences::Preferences> pref = NativePreferences::PreferencesHelper::GetPreferences(
+        MediaPathUtils::AdaptPreferencesPathForAllDevice(TASK_PROGRESS_XML, true), errCode);
     if (errCode == E_OK && pref != nullptr) {
         pref->PutInt(FILE_PROCESS_STATUS_KEY, TASK_STATUS_PHASE_ONE);
         pref->Flush();

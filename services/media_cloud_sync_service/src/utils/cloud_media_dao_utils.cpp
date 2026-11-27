@@ -28,30 +28,6 @@
 
 namespace OHOS::Media::CloudSync {
 
-std::string CloudMediaDaoUtils::ToStringWithCommaAndQuote(const std::vector<std::string> &values)
-{
-    std::stringstream os;
-    for (size_t i = 0; i < values.size(); ++i) {
-        os << "'" << values[i] << "'";
-        if (i != values.size() - 1) {
-            os << ",";
-        }
-    }
-    return os.str();
-}
-
-std::string CloudMediaDaoUtils::ToStringWithComma(const std::vector<std::string> &fileIds)
-{
-    std::stringstream os;
-    for (size_t i = 0; i < fileIds.size(); ++i) {
-        os << fileIds[i];
-        if (i != fileIds.size() - 1) {
-            os << ",";
-        }
-    }
-    return os.str();
-}
-
 std::vector<std::string> CloudMediaDaoUtils::GetNumbers(const std::vector<std::string> &albumIds)
 {
     std::vector<std::string> numbers;

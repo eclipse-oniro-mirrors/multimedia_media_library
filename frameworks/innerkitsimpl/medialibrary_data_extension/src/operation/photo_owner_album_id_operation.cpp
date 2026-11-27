@@ -19,6 +19,7 @@
 #include <sstream>
 
 #include "album_accurate_refresh.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "userfile_manager_types.h"
@@ -41,30 +42,6 @@ std::string PhotoOwnerAlbumIdOperation::ToStringWithComma(const std::vector<Nati
         bindArgs[i].GetString(tempStr);
         os << tempStr;
         if (i != bindArgs.size() - 1) {
-            os << ",";
-        }
-    }
-    return os.str();
-}
-
-std::string PhotoOwnerAlbumIdOperation::ToStringWithComma(const std::vector<std::string> &fileIds) const
-{
-    std::stringstream os;
-    for (size_t i = 0; i < fileIds.size(); ++i) {
-        os << fileIds[i];
-        if (i != fileIds.size() - 1) {
-            os << ",";
-        }
-    }
-    return os.str();
-}
-
-std::string PhotoOwnerAlbumIdOperation::ToStringWithCommaAndQuote(const std::vector<std::string> &fileIds) const
-{
-    std::stringstream os;
-    for (size_t i = 0; i < fileIds.size(); ++i) {
-        os << "'" << fileIds[i] << "'";
-        if (i != fileIds.size() - 1) {
             os << ",";
         }
     }
@@ -177,7 +154,7 @@ int32_t PhotoOwnerAlbumIdOperation::FixPhotoRelation()
 
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     // Distinguish between files with and without albums
-    std::string fileIdWithComma = this->ToStringWithComma(this->fileIds_);
+    std::string fileIdWithComma = MediaStringUtils::ToStringWithComma(this->fileIds_);
     bool containsScreenVideo = false;
     std::vector<std::string> fileIdsWithoutAlbum = this->GetFileIdsWithoutAlbum(fileIdWithComma, containsScreenVideo);
     std::vector<std::string> fileIdsWithAlbum = this->GetFileIdsWithAlbum(fileIdWithComma, containsScreenVideo);
@@ -262,7 +239,8 @@ std::vector<std::string> PhotoOwnerAlbumIdOperation::GetOwnerAlbumIds(const std:
     bool conn = this->rdbStore_ == nullptr || fileIds.empty();
     CHECK_AND_RETURN_RET_LOG(!conn, result, "Media_Operation: rdbStore_ is null or fileIds is empty.");
 
-    std::string sql = this->FillParams(this->SQL_PHOTO_OWNER_ALBUM_ID_QUERY, {this->ToStringWithComma(fileIds)});
+    std::string sql = this->FillParams(this->SQL_PHOTO_OWNER_ALBUM_ID_QUERY,
+        {MediaStringUtils::ToStringWithComma(fileIds)});
     auto resultSet = this->rdbStore_->QuerySql(sql);
     conn = resultSet == nullptr;
     CHECK_AND_RETURN_RET_LOG(!conn, result, "Media_Operation: QuerySql failed, sql: %{public}s.", sql.c_str());
@@ -281,7 +259,8 @@ int32_t PhotoOwnerAlbumIdOperation::ResetAlbumDirty(const std::vector<std::strin
     bool conn = this->rdbStore_ == nullptr || ownerAlbumIds.empty();
     CHECK_AND_RETURN_RET_LOG(!conn, E_OK, "Media_Operation: rdbStore_ is null or ownerAlbumIds is empty.");
 
-    std::string sql = this->FillParams(this->SQL_PHOTO_ALBUM_DIRTY_UPDATE, {this->ToStringWithComma(ownerAlbumIds)});
+    std::string sql = this->FillParams(this->SQL_PHOTO_ALBUM_DIRTY_UPDATE,
+        {MediaStringUtils::ToStringWithComma(ownerAlbumIds)});
     int32_t err = this->rdbStore_->ExecuteSql(sql);
     conn = err != NativeRdb::E_OK;
     CHECK_AND_RETURN_RET_LOG(
@@ -299,7 +278,8 @@ std::unordered_map<std::string, std::vector<MediaData>> PhotoOwnerAlbumIdOperati
     bool conn = this->rdbStore_ == nullptr || fileIds.empty();
     CHECK_AND_RETURN_RET_LOG(!conn, result, "Media_Operation: rdbStore_ is null or fileIds is empty.");
 
-    std::string sql = this->FillParams(this->SQL_PHOTOS_SOURCE_PATH_QUERY, {this->ToStringWithComma(fileIds)});
+    std::string sql = this->FillParams(this->SQL_PHOTOS_SOURCE_PATH_QUERY,
+        {MediaStringUtils::ToStringWithComma(fileIds)});
     auto resultSet = this->rdbStore_->QuerySql(sql);
     conn = resultSet == nullptr;
     CHECK_AND_RETURN_RET_LOG(!conn, result, "Media_Operation: QuerySql failed, sql: %{public}s.", sql.c_str());
@@ -552,7 +532,8 @@ int32_t PhotoOwnerAlbumIdOperation::UpdatePhotoOwnerAlbumId(
         fileIds.size(),
         ownerAlbumId.c_str());
 
-    std::string sql = this->FillParams(this->SQL_PHOTOS_OWNER_ALBUM_ID_UPDATE, {this->ToStringWithComma(fileIds)});
+    std::string sql = this->FillParams(this->SQL_PHOTOS_OWNER_ALBUM_ID_UPDATE,
+        {MediaStringUtils::ToStringWithComma(fileIds)});
     std::vector<NativeRdb::ValueObject> params = {ownerAlbumId};
     int32_t err = this->rdbStore_->ExecuteSql(sql, params);
     conn = err != NativeRdb::E_OK;

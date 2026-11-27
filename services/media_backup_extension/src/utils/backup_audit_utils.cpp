@@ -21,6 +21,7 @@
 #include "backup_const.h"
 #include "upgrade_restore_task_report.h"
 #include "media_file_utils.h"
+#include "media_path_utils.h"
 
 namespace OHOS::Media {
 
@@ -35,7 +36,7 @@ void BackupAuditUtils::RecordCloudIdEmptyAudit(const FileInfo &fileInfo, const s
     
     std::string extendInfo = scenario + ", fileId: " + std::to_string(fileInfo.fileIdOld) + 
         ", displayName: " + MediaFileUtils::DesensitizeName(fileInfo.displayName) + 
-        ", filePath: " + MediaFileUtils::DesensitizePath(fileInfo.filePath);
+        ", filePath: " + MediaPathUtils::DesensitizePath(fileInfo.filePath);
     ErrorInfo errorInfo(RestoreError::PHOTOS_CLOUD_ID_EMPTY, 1, "", extendInfo);
     UpgradeRestoreTaskReport(sceneCode, taskId).ReportErrorInAudit(errorInfo);
 }

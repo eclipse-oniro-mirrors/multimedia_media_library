@@ -34,6 +34,7 @@
 #include "media_file_utils.h"
 #include "media_file_uri.h"
 #include "media_log.h"
+#include "media_pure_file_utils.h"
 #include "media_scanner_manager.h"
 #include "media_unique_number_column.h"
 #include "medialibrary_album_operations.h"
@@ -123,11 +124,11 @@ int32_t MediaLibraryTranscodeDataAgingOperation::DeleteTranscodePhotos(const std
 {
     CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_INNER_FAIL, "filePath is empty");
 
-    auto editPath = MediaEditUtils::GetEditDataDir(filePath);
+    auto editPath = MediaEditUtils::GetEditDataDirForCloud(filePath);
     CHECK_AND_RETURN_RET_LOG(!editPath.empty(), E_INNER_FAIL, "editPath is empty");
 
     auto transcodeFile = editPath + "/transcode.jpg";
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(transcodeFile), E_OK, "Transcode photo is not exists");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists(transcodeFile), E_OK, "Transcode photo is not exists");
 
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteFile(transcodeFile), E_INNER_FAIL,
         "Failed to delete transcode photo");
@@ -183,7 +184,7 @@ void MediaLibraryTranscodeDataAgingOperation::ModifyTransCodeFileExif(const Exif
 {
     string transCodePath = MediaEditUtils::GetTransCodePath(path);
     MEDIA_DEBUG_LOG("transCodePath path is %{public}s", transCodePath.c_str());
-    if (!MediaFileUtils::IsFileExists(transCodePath)) {
+    if (!MediaPureFileUtils::IsFileExists(transCodePath)) {
         MEDIA_DEBUG_LOG("transCodePath path is not exists.");
         return;
     }
@@ -292,11 +293,11 @@ int32_t MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(std:
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetExistCompatibleDuplicate(), E_INNER_FAIL,
         "SetTranscodeUriToFileAsset compatible duplicate is not exist, fileAsset uri: %{public}s",
         fileAsset->GetUri().c_str());
-    string path = MediaEditUtils::GetEditDataDir(fileAsset->GetPath());
+    string path = MediaEditUtils::GetEditDataDirForCloud(fileAsset->GetPath());
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INNER_FAIL,
         "Get edit data dir path failed, fileAsset uri: %{public}s", fileAsset->GetUri().c_str());
     string newPath = path + "/transcode.jpg";
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists((newPath)), E_INNER_FAIL, "transcode.jpg is not exist");
+    CHECK_AND_RETURN_RET_LOG(MediaPureFileUtils::IsFileExists((newPath)), E_INNER_FAIL, "transcode.jpg is not exist");
     
     CHECK_AND_RETURN_RET_LOG(IsUriTranscoded(fileAsset, inputUri, newPath), E_OK, "fileAsset uri is transcoded");
     

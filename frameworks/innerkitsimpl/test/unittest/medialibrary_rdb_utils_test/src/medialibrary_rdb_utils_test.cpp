@@ -79,7 +79,7 @@ void MediaLibraryRdbUtilsTest::SetUpTestCase(void)
 
 void ClearPhotos()
 {
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     int32_t deletedRows = -1;
     auto ret = rdbStore->Delete(deletedRows, predicates);
@@ -445,14 +445,14 @@ HWTEST_F(MediaLibraryRdbUtilsTest, medialib_rdbutils_TransformOwnerAppIdToTokenI
     RdbPredicates predicates(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
     predicates.EqualTo(AppUriPermissionColumn::FILE_ID, id1);
     vector<string> columns;
-    auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     auto resultSet = rdbStore->Query(predicates, columns);
     int32_t rowCount = 0;
     resultSet->GetRowCount(rowCount);
     resultSet->Close();
     MEDIA_INFO_LOG("MediaLibraryRestoreTest::rowCount:%{public}d", rowCount);
     MediaLibraryRdbUtils::TransformOwnerAppIdToTokenId(*rdbStore->GetRaw().get());
-    auto resultSetAfter = MediaLibraryDataManager::GetInstance()->rdbStore_->Query(predicates, columns);
+    auto resultSetAfter = rdbStore->Query(predicates, columns);
     int32_t rowCountAfter = 0;
     resultSetAfter->GetRowCount(rowCountAfter);
     resultSetAfter->Close();

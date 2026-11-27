@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "result_set_utils.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_unistore_manager.h"
@@ -154,7 +155,7 @@ void ClearAndRestart(std::shared_ptr<MediaLibraryRdbStore> rdbStore)
     system("rm -rf /storage/cloud/files/.cache");
     for (const auto &dir : TEST_ROOT_DIRS) {
         string ROOT_PATH = "/storage/cloud/100/files/";
-        MediaFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
+        MediaPureFileUtils::CreateDirectory(ROOT_PATH + dir + "/");
     }
     CleanTestTables(rdbStore);
     SetTestTables(rdbStore);

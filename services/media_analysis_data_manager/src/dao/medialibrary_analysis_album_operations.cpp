@@ -22,6 +22,7 @@
 #include "medialibrary_object_utils.h"
 #include "medialibrary_data_manager.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "result_set_utils.h"
 #include "photo_album_column.h"
 #include "story_album_column.h"
@@ -91,7 +92,7 @@ static int32_t GetArgsValueByName(const string &valueName, const string &whereCl
         MEDIA_ERR_LOG("whereArgs is invalid");
         return E_INDEX;
     }
-    if (!MediaFileUtils::IsValidInteger(whereArgs[argsIndex])) {
+    if (!MediaStringUtils::IsValidInteger(whereArgs[argsIndex])) {
         MEDIA_ERR_LOG("whereArgs is not a valid integer");
         return E_INDEX;
     }

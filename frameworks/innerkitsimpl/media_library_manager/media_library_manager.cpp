@@ -127,7 +127,7 @@ void MediaLibraryManager::InitMediaLibraryManager(const sptr<IRemoteObject> &tok
     token_ = token;
     auto &client = IPC::MediaCommonClient::GetInstance();
     client.Init(token);
-    sDataShareHelper_ = client.GetOrCreateDataShareHelper(-1);
+    sDataShareHelper_ = client.GetDataShareHelper(-1);
 }
 
 sptr<IRemoteObject> MediaLibraryManager::InitToken()
@@ -145,7 +145,7 @@ void MediaLibraryManager::InitMediaLibraryManager()
     if (token_ != nullptr) {
         auto &client = IPC::MediaCommonClient::GetInstance();
         client.Init(token_);
-        sDataShareHelper_ = client.GetOrCreateDataShareHelper(-1);
+        sDataShareHelper_ = client.GetDataShareHelper(-1);
     }
 }
 
@@ -173,9 +173,9 @@ shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::GetDataShareHelper()
             MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
             return nullptr;
         }
-        Uri uri = Uri(MEDIALIBRARY_DATA_URI);
-        std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUser).ToString();
-        currentDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, multiUri);
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.Init(token_, activeUser);
+        currentDataShareHelper_ = client.GetDataShareHelper(activeUser);
         if (currentDataShareHelper_ != nullptr) {
             userId_ = activeUser;
         } else {
@@ -288,12 +288,6 @@ int32_t MediaLibraryManager::UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAl
 
 string MediaLibraryManager::CreateAsset(const string &displayName)
 {
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    if (dataShareHelper == nullptr || displayName.empty()) {
-        MEDIA_ERR_LOG("Failed to create Asset, datashareHelper is nullptr");
-        return "";
-    }
     MediaType mediaType = MediaFileUtils::GetMediaType(displayName);
     CHECK_AND_RETURN_RET_LOG((mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO),
         "", "Failed to create Asset, invalid file type.");
@@ -304,7 +298,7 @@ string MediaLibraryManager::CreateAsset(const string &displayName)
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_ASSET);
     CreateAssetRespBody respBody;
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     if (errCode != 0) {
         MEDIA_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
         return "";
@@ -365,19 +359,14 @@ int32_t MediaLibraryManager::CloseAsset(const string &uri, const int32_t fd)
 {
     int32_t retVal = E_FAIL;
 
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    if (dataShareHelper != nullptr) {
-        if (close(fd) == E_SUCCESS) {
-            CloseAssetReqBody reqBody;
-            reqBody.uri = uri;
-            retVal = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(
-                static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CLOSE_ASSET), reqBody);
-        }
-
-        if (retVal == E_FAIL) {
-            MEDIA_ERR_LOG("Failed to close the file");
-        }
+    if (close(fd) == E_SUCCESS) {
+        CloseAssetReqBody reqBody;
+        reqBody.uri = uri;
+        retVal = IPC::UserInnerIPCClient().Call(
+            static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CLOSE_ASSET), reqBody);
+    }
+    if (retVal == E_FAIL) {
+        MEDIA_ERR_LOG("Failed to close the file");
     }
 
     return retVal;
@@ -407,12 +396,12 @@ int32_t MediaLibraryManager::GetAstcYearAndMonth(const std::vector<string> &uris
 
 int32_t MediaLibraryManager::QueryTotalSize(MediaVolume &outMediaVolume)
 {
-    auto dataShareHelper = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_FAIL, "dataShareHelper is null");
     vector<string> columns;
     Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_QUERYOPRN_QUERYVOLUME + "/" + CONST_MEDIA_QUERYOPRN_QUERYVOLUME);
     DataSharePredicates predicates;
-    auto queryResultSet = dataShareHelper->Query(uri, predicates, columns);
+    auto &client = IPC::MediaCommonClient::GetInstance();
+    int errCode = 0;
+    auto queryResultSet = client.Query(uri, predicates, columns, errCode);
     CHECK_AND_RETURN_RET_LOG(queryResultSet != nullptr, E_FAIL, "queryResultSet is null!");
     auto count = 0;
     auto ret = queryResultSet->GetRowCount(count);
@@ -481,10 +470,6 @@ std::shared_ptr<DataShareResultSet> MediaLibraryManager::GetResultSetFromDb(stri
         }
     }
 
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, nullptr, "dataShareHelper is null");
-
     GetResultSetFromDbReqBody reqBody;
     reqBody.columnName = columnName;
     reqBody.value = value;
@@ -492,7 +477,7 @@ std::shared_ptr<DataShareResultSet> MediaLibraryManager::GetResultSetFromDb(stri
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_RESULT_SET_FROM_DB);
     GetResultSetFromDbRespBody respBody;
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     if (errCode != 0) {
         MEDIA_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
         return nullptr;
@@ -503,7 +488,7 @@ std::shared_ptr<DataShareResultSet> MediaLibraryManager::GetResultSetFromDb(stri
 static int32_t SolvePath(const string &filePath, string &tempPath, string &userId)
 {
     CHECK_AND_RETURN_RET(!filePath.empty(), E_INVALID_PATH);
-    string prePath = PRE_PATH_VALUES;
+    string prePath = MediaPathUtils::GetDir(MediaPathType::CLOUD_ROOT);         // todo: accountId
     if (filePath.find(prePath) != 0) {
         return E_CHECK_ROOT_DIR_FAIL;
     }
@@ -540,18 +525,15 @@ int32_t MediaLibraryManager::CheckResultSet(std::shared_ptr<DataShareResultSet> 
     return E_SUCCESS;
 }
 
-static std::shared_ptr<DataShareResultSet> GetFilePathResultSetFromDb(const string &virId, sptr<IRemoteObject> token)
+static std::shared_ptr<DataShareResultSet> GetFilePathResultSetFromDb(const string &virId)
 {
     GetFilePathFromUriReqBody reqBody;
     GetFilePathFromUriRespBody respBody;
     reqBody.virtualId = virId;
 
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_FILEPATH_FROM_URI);
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, nullptr, "dataShareHelper is null");
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     if (errCode != 0) {
         MEDIA_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
     }
@@ -571,7 +553,7 @@ int32_t MediaLibraryManager::GetFilePathFromUri(const Uri &fileUri, string &file
     }
 #endif
     vector<string> columns = { CONST_MEDIA_DATA_DB_FILE_PATH };
-    auto resultSet = GetFilePathResultSetFromDb(virtualId, token_);
+    auto resultSet = GetFilePathResultSetFromDb(virtualId);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_INVALID_URI,
         "GetFilePathFromUri::uri is not correct: %{private}s", uri.c_str());
     if (CheckResultSet(resultSet) != E_SUCCESS) {
@@ -579,10 +561,10 @@ int32_t MediaLibraryManager::GetFilePathFromUri(const Uri &fileUri, string &file
     }
 
     std::string tempPath = ResultSetUtils::GetStringValFromColumn(1, resultSet);
-    if (tempPath.find(ROOT_MEDIA_DIR) != 0) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, tempPath)) {
         return E_CHECK_ROOT_DIR_FAIL;
     }
-    string relativePath = tempPath.substr((ROOT_MEDIA_DIR + DOCS_PATH).length());
+    string relativePath = tempPath.substr(MediaPathUtils::GetDir(MediaPathType::CLOUD_DOCS).length());
     auto pos = relativePath.find('/');
     if (pos == string::npos) {
         return E_INVALID_ARGUMENTS;
@@ -592,7 +574,7 @@ int32_t MediaLibraryManager::GetFilePathFromUri(const Uri &fileUri, string &file
         return E_DIR_CHECK_DIR_FAIL;
     }
 
-    string prePath = PRE_PATH_VALUES;
+    string prePath = MediaPathUtils::GetDir(MediaPathType::CLOUD_ROOT);         // todo: accountId
     string postpath = tempPath.substr(prePath.length());
     tempPath = prePath + userId + "/" + postpath;
     filePath = tempPath;
@@ -607,11 +589,8 @@ static std::shared_ptr<DataShareResultSet> GetUriResultSetFromDb(
     reqBody.tempPath = tempPath;
 
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_URI_FROM_FILEPATH);
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, nullptr, "dataShareHelper is null");
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     if (errCode != 0) {
         MEDIA_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
     }
@@ -626,10 +605,10 @@ int32_t MediaLibraryManager::GetUriFromFilePath(const string &filePath, Uri &fil
 
     string tempPath;
     SolvePath(filePath, tempPath, userId);
-    if (tempPath.find(ROOT_MEDIA_DIR) != 0) {
+    if (!MediaPathUtils::CheckFilesPath(MediaPathType::CLOUD_FILES, tempPath)) {
         return E_CHECK_ROOT_DIR_FAIL;
     }
-    string relativePath = tempPath.substr((ROOT_MEDIA_DIR + DOCS_PATH).length());
+    string relativePath = tempPath.substr(MediaPathUtils::GetDir(MediaPathType::CLOUD_DOCS).length());
     auto pos = relativePath.find('/');
     if (pos == string::npos) {
         return E_INVALID_ARGUMENTS;
@@ -659,12 +638,13 @@ int32_t MediaLibraryManager::GetUriFromFilePath(const string &filePath, Uri &fil
 
 std::string MediaLibraryManager::GetSandboxPath(const std::string &path, const Size &size, bool isAstc)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    std::string cloudFilesDir = MediaPathUtils::GetDir(MediaPathType::CLOUD_FILES);
+    if (path.length() < cloudFilesDir.length()) {
         return "";
     }
     int min = std::min(size.width, size.height);
     int max = std::max(size.width, size.height);
-    std::string suffixStr = path.substr(ROOT_MEDIA_DIR.length()) + "/";
+    std::string suffixStr = path.substr(cloudFilesDir.length()) + "/";
     if (min == DEFAULT_ORIGINAL && max == DEFAULT_ORIGINAL) {
         suffixStr += "LCD.jpg";
     } else if (min <= DEFAULT_THUMBNAIL_SIZE && max <= MAX_DEFAULT_THUMBNAIL_SIZE) {
@@ -680,7 +660,7 @@ static int32_t GetFdFromSandbox(const string &path, string &sandboxPath, bool is
 {
     int32_t fd = -1;
     CHECK_AND_RETURN_RET_LOG(!sandboxPath.empty(), fd, "OpenThumbnail sandboxPath is empty, path :%{public}s",
-        MediaFileUtils::DesensitizePath(path).c_str());
+        MediaPathUtils::DesensitizePath(path).c_str());
     string absFilePath;
     CHECK_AND_RETURN_RET(!PathToRealPath(sandboxPath, absFilePath), open(absFilePath.c_str(), O_RDONLY));
     CHECK_AND_RETURN_RET(isAstc, fd);
@@ -720,8 +700,16 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
         userId = str.substr(pos, end - pos);
         MEDIA_ERR_LOG("OpenThumbnail for other user is %{public}s", userId.c_str());
     }
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper = userId != "" ? DataShare::DataShareHelper::Creator(token_,
-        MEDIALIBRARY_DATA_URI + "?" + MULTI_USER_URI_FLAG + userId) : sDataShareHelper_;
+    shared_ptr<DataShare::DataShareHelper> dataShareHelper;
+    if (userId != "") {
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        int32_t userIdNum = -1;
+        MediaStringUtils::ConvertToInt(userId, userIdNum);
+        client.Init(token_, userIdNum);
+        dataShareHelper = client.GetDataShareHelper(userIdNum);
+    } else {
+        dataShareHelper = sDataShareHelper_;
+    }
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "Failed to open thumbnail, dataShareHelper is nullptr");
     if (path.empty()) {
         MEDIA_ERR_LOG("OpenThumbnail path is empty");
@@ -741,7 +729,7 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     }
     CHECK_AND_RETURN_RET(fd <= 0, fd);
     MEDIA_INFO_LOG("OpenThumbnail from andboxPath failed, errno %{public}d path :%{public}s fd %{public}d",
-        errno, MediaFileUtils::DesensitizePath(path).c_str(), fd);
+        errno, MediaPathUtils::DesensitizePath(path).c_str(), fd);
     CHECK_AND_EXECUTE(!IsAsciiString(path), uriStr += "&" + THUMBNAIL_PATH + "=" + path);
     MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_MEDIA_LIBRARY);
     Uri openUri(uriStr);
@@ -776,12 +764,12 @@ static void GetUriParamsFromQueryKey(UriParams& uriParams,
         uriParams.path = queryKey[THUMBNAIL_PATH];
     }
     if (queryKey.count(THUMBNAIL_WIDTH) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[THUMBNAIL_WIDTH])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[THUMBNAIL_WIDTH])) {
             uriParams.size.width = stoi(queryKey[THUMBNAIL_WIDTH]);
         }
     }
     if (queryKey.count(THUMBNAIL_HEIGHT) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[THUMBNAIL_HEIGHT])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[THUMBNAIL_HEIGHT])) {
             uriParams.size.height = stoi(queryKey[THUMBNAIL_HEIGHT]);
         }
     }
@@ -793,7 +781,7 @@ static void GetUriParamsFromQueryKey(UriParams& uriParams,
     }
     uriParams.dynamicRange = DecodeDynamicRange::AUTO;
     if (queryKey.count(DYNAMIC_RANGE) != 0) {
-        if (MediaFileUtils::IsValidInteger(queryKey[DYNAMIC_RANGE])) {
+        if (MediaStringUtils::IsValidInteger(queryKey[DYNAMIC_RANGE])) {
             uriParams.dynamicRange = static_cast<DecodeDynamicRange>(stoi(queryKey[DYNAMIC_RANGE]));
         }
     }
@@ -925,7 +913,7 @@ std::unique_ptr<PixelMap> MediaLibraryManager::GetThumbnail(const Uri &uri)
     auto pixelmap = QueryThumbnail(uriParams);
     if (pixelmap == nullptr) {
         MEDIA_ERR_LOG("pixelmap is null, uri :%{public}s, path :%{public}s",
-            uriParams.fileUri.c_str(), MediaFileUtils::DesensitizePath(uriParams.path).c_str());
+            uriParams.fileUri.c_str(), MediaPathUtils::DesensitizePath(uriParams.path).c_str());
     }
     return pixelmap;
 }
@@ -958,9 +946,19 @@ static int32_t GetAstcsByOffset(const vector<string> &uriBatch, vector<vector<ui
     }
 
     vector<string> newTimeIdBatch;
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = -1;
+    int32_t queryStatus = MediaAssetRdbStore::GetInstance()->QueryTimeIdBatch(start, count, newTimeIdBatch,
+        accountId);
+    CHECK_AND_RETURN_RET_LOG(queryStatus == E_OK, queryStatus, "Query ASTC time ids failed");
+    const MediaLibraryKvStoreRoute route {accountId > 0, accountId};
+    MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(KvStoreRoleType::VISITOR, valueType);
+    auto kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::VISITOR, valueType, route);
+#else
     MediaAssetRdbStore::GetInstance()->QueryTimeIdBatch(start, count, newTimeIdBatch);
     MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(KvStoreRoleType::VISITOR, valueType);
     auto kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::VISITOR, valueType);
+#endif
     if (kvStore == nullptr) {
         MEDIA_ERR_LOG("GetAstcsByOffset kvStore is nullptr");
         return E_DB_FAIL;
@@ -998,7 +996,15 @@ static int32_t GetAstcsBatch(const vector<string> &uriBatch, vector<vector<uint8
     }
 
     MediaLibraryKvStoreManager::GetInstance().EnsureKvStoreFresh(KvStoreRoleType::VISITOR, valueType);
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    int32_t accountId = -1;
+    CHECK_AND_RETURN_RET_LOG(MediaAssetRdbStore::GetInstance()->GetKvStoreAccountId(accountId), E_DB_FAIL,
+        "Cannot acquire ASTC account from visitor RDB");
+    const MediaLibraryKvStoreRoute route {accountId > 0, accountId};
+    auto kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::VISITOR, valueType, route);
+#else
     auto kvStore = MediaLibraryKvStoreManager::GetInstance().GetKvStore(KvStoreRoleType::VISITOR, valueType);
+#endif
     CHECK_AND_RETURN_RET_LOG(kvStore != nullptr, E_DB_FAIL, "GetAstcsBatch kvStore is nullptr");
     int32_t status = kvStore->BatchQuery(timeIdBatch, astcBatch);
     CHECK_AND_RETURN_RET_LOG(status == E_OK, status, "GetAstcsBatch failed, status %{public}d", status);
@@ -1072,14 +1078,14 @@ std::unique_ptr<PixelMap> MediaLibraryManager::GetAstc(const Uri &uri)
     UniqueFd uniqueFd(MediaLibraryManager::OpenThumbnail(openUriStr, uriParams.path, uriParams.size, true));
     if (uniqueFd.Get() < 0) {
         MEDIA_ERR_LOG("OpenThumbnail failed, errCode is %{public}d, uri :%{public}s, path :%{public}s",
-            uniqueFd.Get(), uriParams.fileUri.c_str(), MediaFileUtils::DesensitizePath(uriParams.path).c_str());
+            uniqueFd.Get(), uriParams.fileUri.c_str(), MediaPathUtils::DesensitizePath(uriParams.path).c_str());
         return nullptr;
     }
     tracer.Finish();
     auto pixelmap = DecodeAstc(uniqueFd);
     if (pixelmap == nullptr) {
         MEDIA_ERR_LOG("pixelmap is null, uri :%{public}s, path :%{public}s",
-            uriParams.fileUri.c_str(), MediaFileUtils::DesensitizePath(uriParams.path).c_str());
+            uriParams.fileUri.c_str(), MediaPathUtils::DesensitizePath(uriParams.path).c_str());
     }
     return pixelmap;
 }
@@ -1115,9 +1121,16 @@ int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri, const strin
         MEDIA_INFO_LOG(
             "ReadMovingPhotoVideo for other user is %{public}s", MediaFileUtils::DesensitizeName(userId).c_str());
     }
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper = userId != "" ?
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI + "?" + MULTI_USER_URI_FLAG + userId) :
-        sDataShareHelper_;
+    shared_ptr<DataShare::DataShareHelper> dataShareHelper;
+    if (userId != "") {
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        int32_t userIdNum = -1;
+        MediaStringUtils::ConvertToInt(userId, userIdNum);
+        client.Init(token_, userIdNum);
+        dataShareHelper = client.GetDataShareHelper(userIdNum);
+    } else {
+        dataShareHelper = sDataShareHelper_;
+    }
     if (!MediaFileUtils::IsMediaLibraryUri(uri)) {
         return OpenReadOnlyAppSandboxVideo(uri);
     }
@@ -1281,14 +1294,14 @@ int64_t MediaLibraryManager::GetMovingPhotoDateModified(const string &uri)
 std::unordered_map<std::string, std::string> MediaLibraryManager::GetUrisByOldUris(std::vector<std::string> uris)
 {
     MEDIA_INFO_LOG("Start request uris by old uris, size: %{public}zu", uris.size());
-    return TabOldPhotosClient(*this).GetUrisByOldUris(uris);
+    return TabOldPhotosClient().GetUrisByOldUris(uris);
 }
 
 int32_t MediaLibraryManager::GetClonedAssetUris(const std::vector<std::string> &oldUris,
     std::map<std::string, std::string> &clonedUris)
 {
     MEDIA_INFO_LOG("Start GetClonedAssetUris, size: %{public}zu", oldUris.size());
-    return TabOldPhotosClient(*this).GetClonedAssetUrisInner(oldUris, clonedUris);
+    return TabOldPhotosClient().GetClonedAssetUrisInner(oldUris, clonedUris);
 }
 
 int32_t MediaLibraryManager::GetAlbumLpath(uint32_t ownerAlbumId, std::string &lpath)
@@ -1316,9 +1329,6 @@ int32_t MediaLibraryManager::GetAlbumLpaths(uint32_t albumType, std::shared_ptr<
     MEDIA_DEBUG_LOG("MediaLibraryManager::GetAlbumLpaths Start.");
     CHECK_AND_RETURN_RET_LOG(albumType == PhotoAlbumType::USER || albumType == PhotoAlbumType::SOURCE, E_FAIL,
         "GetAlbumLpaths albumType not support");
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_FAIL, "dataShareHelper is nullptr");
 
     QueryAlbumsReqBody reqBody;
     reqBody.albumType = static_cast<int32_t>(albumType);
@@ -1328,7 +1338,7 @@ int32_t MediaLibraryManager::GetAlbumLpaths(uint32_t albumType, std::shared_ptr<
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_PAH_QUERY_PHOTO_ALBUMS);
     QueryAlbumsRespBody respBody;
     int32_t errCode =
-        IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+        IPC::UserInnerIPCClient().Call(businessCode, reqBody, respBody);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "after IPC::UserDefineIPCClient().Call, errCode: %{public}d.",
         errCode);
     resultSet = respBody.resultSet;
@@ -1339,14 +1349,11 @@ int32_t MediaLibraryManager::GetAlbumLpaths(uint32_t albumType, std::shared_ptr<
 int32_t MediaLibraryManager::RetainCloudMediaAsset(CloudMediaRetainType retainType)
 {
     MEDIA_DEBUG_LOG("MediaLibraryManager::RetainCloudMediaAsset Start.");
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_FAIL, "dataShareHelper is nullptr");
 
     RetainCloudMediaAssetReqBody reqBody;
     reqBody.cloudMediaRetainType = static_cast<int32_t>(retainType);
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_RETAIN_CLOUDMEDIA_ASSET);
-    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+    int32_t errCode = IPC::UserInnerIPCClient().Call(businessCode, reqBody);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "after IPC::UserDefineIPCClient().Call, errCode: %{public}d.",
         errCode);
     MEDIA_DEBUG_LOG("MediaLibraryManager::RetainCloudMediaAsset End.");
@@ -1801,10 +1808,6 @@ void MediaLibraryManager::BatchUpdateMetaDataModified(const std::vector<std::str
 {
     MEDIA_INFO_LOG("BatchUpdateMetaDataModified fileIds size: %{public}zu", fileIds.size());
     CHECK_AND_RETURN_LOG(!fileIds.empty(), "fileIds is empty");
-    
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_LOG(dataShareHelper != nullptr, "dataShareHelper is nullptr");
 
     constexpr size_t BATCH_SIZE = 500;
     size_t totalSize = fileIds.size();
@@ -1819,7 +1822,7 @@ void MediaLibraryManager::BatchUpdateMetaDataModified(const std::vector<std::str
         BatchUpdateMetaDataModifiedReqBody reqBody;
         reqBody.fileIds = batchIds;
         uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED);
-        int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+        int32_t errCode = IPC::UserInnerIPCClient().Call(businessCode, reqBody);
         if (errCode < 0) {
             MEDIA_ERR_LOG("BatchUpdateMetaDataModified batch %{public}zu failed, errCode: %{public}d",
                 batchIndex, errCode);
@@ -1842,16 +1845,12 @@ int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskS
         "isCritical does not match photoRiskStatus %{public}d, expected isCritical: %{public}d",
         photoRiskStatus, expectedCritical);
 
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "dataShareHelper is nullptr");
-
     SetPhotoCriticalReqBody reqBody;
     reqBody.fileId = fileId;
     reqBody.photoRiskStatus = photoRiskStatus;
     reqBody.isCritical = isCritical;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL);
-    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+    int32_t errCode = IPC::UserInnerIPCClient().Call(businessCode, reqBody);
     if (errCode < 0) {
         MEDIA_ERR_LOG("SetPhotoCritical failed, errCode: %{public}d", errCode);
         return errCode;

@@ -32,6 +32,9 @@
 #include "media_fuse_manager.h"
 #include "singleton.h"
 #include "xcollie_helper.h"
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+#include "media_fuse_account_task.h"
+#endif
 
 namespace OHOS {
 namespace Media {
@@ -210,7 +213,206 @@ static int ReleaseDir(const char *path, struct fuse_file_info *fi)
     return E_ERR;
 }
 
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+template<typename Operation>
+static int RunAccountTask(const std::shared_ptr<FuseAccountTask> &task, Operation operation)
+{
+    return RunFuseAccountTask(task, operation);
+}
+
+template<typename Operation>
+static int RunAccountRequest(Operation operation)
+{
+    int error = 0;
+    auto task = FuseAccountTask::Begin(error);
+    return error != 0 ? error : RunAccountTask(task, operation);
+}
+
+template<typename Operation>
+static int OpenAccountFile(const char *path, struct fuse_file_info *fi, Operation operation)
+{
+    if (path == nullptr || fi == nullptr) {
+        return -EINVAL;
+    }
+    int error = 0;
+    auto task = FuseAccountTask::Begin(error);
+    if (error != 0) {
+        return error;
+    }
+    int result = RunAccountTask(task, operation);
+    if (result != E_OK || !task) {
+        return result;
+    }
+    int fd = static_cast<int>(fi->fh);
+    if (fd < 0) {
+        return -EBADF;
+    }
+    if (task->IsCancelled() || !FuseAccountFiles::GetInstance().Insert(fd, task, path)) {
+        CloseCancelledFuseFile(path, fd);
+        fi->fh = static_cast<uint64_t>(-1);
+        return -ECANCELED;
+    }
+    return E_OK;
+}
+
+template<typename Operation>
+static int UseAccountFile(struct fuse_file_info *fi, Operation operation)
+{
+    if (fi == nullptr) {
+        return -EINVAL;
+    }
+    auto file = FuseAccountFiles::GetInstance().Find(static_cast<int>(fi->fh));
+    if (file) {
+        int result = RunAccountTask(file->task, operation);
+        // Bytes may already have been transferred; cancellation is not rollback.
+        return file->task->IsCancelled() ? -ECANCELED : result;
+    }
+    // Missing state is not permission to reinterpret an fd in the new account.
+    return AccountEnableChecker::IsMultiAccountEnabled() ? -EBADF : operation();
+}
+
+static int AccountGetAttr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
+{
+    if (fi != nullptr && FuseAccountDirectories::IsDirectoryHandle(fi->fh)) {
+        auto directory = FuseAccountDirectories::GetInstance().Find(fi->fh);
+        if (!directory) {
+            return -EBADF;
+        }
+        // A directory ID must not reach the HDC fstat(real fd) branch.
+        return RunAccountTask(directory->task, [&]() { return GetAttr(directory->path.c_str(), stbuf, nullptr); });
+    }
+    if (fi != nullptr) {
+        auto file = FuseAccountFiles::GetInstance().Find(static_cast<int>(fi->fh));
+        if (file) {
+            return RunAccountTask(file->task, [&]() { return GetAttr(path, stbuf, fi); });
+        }
+    }
+    return RunAccountRequest([&]() { return GetAttr(path, stbuf, fi); });
+}
+
+static int AccountOpen(const char *path, struct fuse_file_info *fi)
+{
+    return OpenAccountFile(path, fi, [&]() { return Open(path, fi); });
+}
+
+static int AccountCreate(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    return OpenAccountFile(path, fi, [&]() { return Create(path, mode, fi); });
+}
+
+static int AccountRead(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+    return UseAccountFile(fi, [&]() { return Read(path, buf, size, offset, fi); });
+}
+
+static int AccountWrite(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+    return UseAccountFile(fi, [&]() { return Write(path, buf, size, offset, fi); });
+}
+
+static int AccountRelease(const char *path, struct fuse_file_info *fi)
+{
+    if (fi == nullptr) {
+        return -EINVAL;
+    }
+    int fd = static_cast<int>(fi->fh);
+    auto file = FuseAccountFiles::GetInstance().Take(fd);
+    if (!file) {
+        if (!AccountEnableChecker::IsMultiAccountEnabled()) {
+            return Release(path, fi);
+        }
+        return CloseCancelledFuseFile(path, fd);
+    }
+    fi->fh = static_cast<uint64_t>(-1);
+    if (file->task->IsCancelled() || fuse_get_context() == nullptr) {
+        int result = CloseCancelledFuseFile(file->path.c_str(), fd);
+        return result == E_OK ? -ECANCELED : result;
+    }
+    FuseAccountTaskScope scope(file->task);
+    struct fuse_file_info releaseInfo = *fi;
+    releaseInfo.fh = static_cast<uint64_t>(fd);
+    return Release(file->path.c_str(), &releaseInfo);
+}
+
+static int AccountUnlink(const char *path)
+{
+    return RunAccountRequest([&]() { return Unlink(path); });
+}
+
+static int AccountOpenDir(const char *path, struct fuse_file_info *fi)
+{
+    if (path == nullptr || fi == nullptr) {
+        return -EINVAL;
+    }
+    // Preserve the original caller check before allocating any account state.
+    int result = OpenDir(path, fi);
+    if (result != E_OK) {
+        return result;
+    }
+    int error = 0;
+    auto task = FuseAccountTask::Begin(error);
+    if (error != 0 || !task) {
+        return error;
+    }
+    uint64_t handle = FuseAccountDirectories::GetInstance().Insert(task, path);
+    if (handle == 0) {
+        return -EMFILE;
+    }
+    if (task->IsCancelled()) {
+        FuseAccountDirectories::GetInstance().Take(handle);
+        return -ECANCELED;
+    }
+    fi->fh = handle;
+    return E_OK;
+}
+
+static int AccountReadDir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
+    struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+{
+    if (fi == nullptr) {
+        return -EINVAL;
+    }
+    auto directory = FuseAccountDirectories::GetInstance().Find(fi->fh);
+    if (!directory) {
+        return AccountEnableChecker::IsMultiAccountEnabled() ? -EBADF :
+            ReadDir(path, buf, filler, offset, fi, flags);
+    }
+    int result = RunAccountTask(directory->task, [&]() {
+        return ReadDir(directory->path.c_str(), buf, filler, offset, fi, flags);
+    });
+    // Reject this callback's result if logout arrived while filling its buffer.
+    return directory->task->IsCancelled() ? -ECANCELED : result;
+}
+
+static int AccountReleaseDir(const char *path, struct fuse_file_info *fi)
+{
+    if (fi == nullptr) {
+        return -EINVAL;
+    }
+    auto directory = FuseAccountDirectories::GetInstance().Take(fi->fh);
+    if (!directory) {
+        return AccountEnableChecker::IsMultiAccountEnabled() ? -EBADF : ReleaseDir(path, fi);
+    }
+    fi->fh = 0;
+    // Cleanup is required even after cancellation or loss of the FUSE context.
+    AccountScope scope(directory->task->GetAccountId());
+    return ReleaseDir(directory->path.c_str(), fi);
+}
+#endif // MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+
 static const struct fuse_operations fuseOperations = {
+#ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
+    .getattr    = AccountGetAttr,
+    .open       = AccountOpen,
+    .read       = AccountRead,
+    .unlink     = AccountUnlink,
+    .write      = AccountWrite,
+    .release    = AccountRelease,
+    .opendir    = AccountOpenDir,
+    .readdir    = AccountReadDir,
+    .releasedir = AccountReleaseDir,
+    .create     = AccountCreate,
+#else
     .getattr    = GetAttr,
     .open       = Open,
     .read       = Read,
@@ -221,6 +423,7 @@ static const struct fuse_operations fuseOperations = {
     .readdir    = ReadDir,
     .releasedir = ReleaseDir,
     .create     = Create,
+#endif
 };
 
 int32_t MediaFuseDaemon::StartFuse()
@@ -280,3 +483,4 @@ void MediaFuseDaemon::DaemonThread()
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS
+
