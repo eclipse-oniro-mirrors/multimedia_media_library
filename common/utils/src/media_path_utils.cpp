@@ -308,6 +308,15 @@ bool MediaPathUtils::CheckPathTraversal(const std::string& path)
     return path.find("..") != std::string::npos;
 }
 
+bool MediaPathUtils::CheckPathTraversalStrict(const std::string& path)
+{
+    // Pad both ends with '/' so a single "/../" lookup covers all segment forms:
+    // leading "../x", inner "x/../y", trailing "x/.." and the bare "..".
+    // '\' is a legal filename character on OHOS, so "a\b\.." is one file name,
+    // not a traversal path; only '/'-separated segments are checked here.
+    return ("/" + path + "/").find("/../") != std::string::npos;
+}
+
 std::string MediaPathUtils::GetFileName(const std::string &filePath)
 {
     std::string fileName;

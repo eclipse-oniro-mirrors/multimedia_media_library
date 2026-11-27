@@ -938,8 +938,8 @@ static napi_value ParseArgsCreateAssetCommon(
     CHECK_COND_WITH_MESSAGE(env,
         MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[PARAM2], extension) == napi_ok,
         "The extension parameter must be a string and within 260 characters");
-    CHECK_COND_WITH_MESSAGE(
-        env, mediaType == MediaFileUtils::GetMediaType("." + extension), "The extension does notmatch the photoType");
+    CHECK_COND_WITH_MESSAGE(env, mediaType == MediaFileUtils::GetMediaTypeFromExtension(extension),
+        "The extension does notmatch the photoType");
     context->valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
 

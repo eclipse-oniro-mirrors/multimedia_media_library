@@ -883,7 +883,7 @@ static bool ParseArgsCreateAssetCommon(ani_env *env, ani_enum_item photoType, an
     CHECK_COND_WITH_RET_MESSAGE(env,
         MediaLibraryAniUtils::GetParamStringPathMax(env, extension, extensionStr) == ANI_OK, false,
         "Failed to get extension");
-    CHECK_COND_WITH_RET_MESSAGE(env, mediaType == MediaFileUtils::GetMediaType("." + extensionStr), false,
+    CHECK_COND_WITH_RET_MESSAGE(env, mediaType == MediaFileUtils::GetMediaTypeFromExtension(extensionStr), false,
         "Failed to check extension");
     context->valuesBucket.Put(CONST_ASSET_EXTENTION, extensionStr);
     context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
