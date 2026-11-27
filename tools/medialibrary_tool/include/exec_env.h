@@ -28,6 +28,7 @@ struct SendParam {
     bool isCreateThumbSyncInSend = false;
     bool isRemoveOriginFileInSend = true;
     bool isFile = true;
+    bool isRecognizeMovingPhotoInSend = false;
     std::string sendPath; // real path for sending
 };
 

@@ -27,11 +27,14 @@ class UserFileClientEx {
 public:
     static int32_t Init();
     static int32_t InsertExt(const std::string &tableName, const std::string &name,
-        std::string &outString, bool isRestart = false);
+        std::string &outString, bool isRestart = false, bool isMovingPhoto = false);
     static int32_t Query(const std::string &tableName, const std::string &uri,
         std::shared_ptr<DataShare::DataShareResultSet> &resultSet, bool isList = false, bool isRestart = false);
-    static int Open(const std::string &uri, const std::string &mode, bool isRestart = false);
+    static int Open(const std::string &uri, const std::string &mode, bool isRestart = false,
+        bool noNeedWatchNotify = false);
     static int Close(const std::string &uri, const int fileFd, const std::string &mode,
+        bool isCreateThumbSync = false, bool isRestart = false);
+    static int CompleteMovingPhoto(const std::string &uri, int32_t version,
         bool isCreateThumbSync = false, bool isRestart = false);
     static int Trash(const std::string &uri, bool isRestart = false);
     static int Delete(const std::string &uri, bool isRestart = false);

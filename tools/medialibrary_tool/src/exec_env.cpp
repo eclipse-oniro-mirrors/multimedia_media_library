@@ -62,6 +62,7 @@ std::string ExecEnv::ToStr() const
         AppendStr(str, "isFile", sendParam.isFile);
         AppendStr(str, "isRemoveOriginFileInSend", sendParam.isRemoveOriginFileInSend);
         AppendStr(str, "isRemoveOriginFileInSend", sendParam.isRemoveOriginFileInSend);
+        AppendStr(str, "isRecognizeMovingPhotoInSend", sendParam.isRecognizeMovingPhotoInSend);
     }
     if (optArgs.cmdType == OptCmdType::TYPE_DELETE) {
         AppendStr(str, "isOnlyDeleteDb", deleteParam.isOnlyDeleteDb);

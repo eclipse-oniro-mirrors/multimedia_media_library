@@ -39,6 +39,7 @@
 #include "userfile_manager_types.h"
 #include "mediatool_uri.h"
 #include "media_audio_column.h"
+#include "userfilemgr_uri.h"
 
 using namespace OHOS::DataShare;
 namespace OHOS {
@@ -238,7 +239,7 @@ static string GetFileExtension(const string& pathOrDisplayName)
 }
 
 int32_t UserFileClientEx::InsertExt(const std::string &tableName, const std::string &name,
-    std::string &outString, bool isRestart)
+    std::string &outString, bool isRestart, bool isMovingPhoto)
 {
     if (isRestart && Init() != Media::E_OK) {
         MEDIA_ERR_LOG("Init failed");
@@ -258,10 +259,18 @@ int32_t UserFileClientEx::InsertExt(const std::string &tableName, const std::str
     }
     string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(GetFileExtension(name));
     values.Put(MediaColumn::MEDIA_TYPE, MimeTypeUtils::GetMediaTypeFromMimeType(mimeType));
+    if (isMovingPhoto) {
+        CHECK_AND_RETURN_RET_LOG(tableName == PhotoColumn::PHOTOS_TABLE &&
+            MimeTypeUtils::GetMediaTypeFromMimeType(mimeType) == MediaType::MEDIA_TYPE_IMAGE, Media::E_ERR,
+            "Moving photo creation requires image, table:%{public}s, mime:%{public}s",
+            tableName.c_str(), mimeType.c_str());
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    }
     values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, "com.mediatool.album");
     values.Put(MediaColumn::MEDIA_OWNER_APPID, "mediatool.appid");
     values.Put(MediaColumn::MEDIA_PACKAGE_NAME, "mediatool");
-    MEDIA_INFO_LOG("insertext. insertUri:%{public}s, name:%{public}s", insertUri.ToString().c_str(), name.c_str());
+    MEDIA_INFO_LOG("insertext. insertUri:%{public}s, name:%{private}s, movingPhoto:%{public}d",
+        insertUri.ToString().c_str(), name.c_str(), isMovingPhoto);
     auto ret = UserFileClient::InsertExt(insertUri, values, outString);
     if (ret <= 0) {
         MEDIA_ERR_LOG("insertext failed. ret:%{public}d", ret);
@@ -319,7 +328,8 @@ int32_t UserFileClientEx::Query(const std::string &tableName, const std::string 
     return Media::E_OK;
 }
 
-int UserFileClientEx::Open(const std::string &uri, const std::string &mode, bool isRestart)
+int UserFileClientEx::Open(const std::string &uri, const std::string &mode, bool isRestart,
+    bool noNeedWatchNotify)
 {
     if (isRestart && Init() != Media::E_OK) {
         MEDIA_ERR_LOG("Init failed");
@@ -331,8 +341,13 @@ int UserFileClientEx::Open(const std::string &uri, const std::string &mode, bool
     std::string uriWithKey {uri};
     MediaFileUtils::UriAppendKeyValue(uriWithKey, CONST_IS_TOOL_OPEN,
         CONST_TOOL_OPEN_TRUE);
+    if (noNeedWatchNotify) {
+        MediaFileUtils::UriAppendKeyValue(uriWithKey, CONST_MEDIA_WHETHER_NEED_WATCH_NOTIFY,
+            CONST_NO_NEED_WATCH_NOTIFY);
+    }
     Uri openUri(uriWithKey);
-    MEDIA_INFO_LOG("open. uri:%{public}s, mode:%{public}s", uriWithKey.c_str(), mode.c_str());
+    MEDIA_INFO_LOG("open. uri:%{private}s, mode:%{public}s, noNeedWatchNotify:%{public}d",
+        uriWithKey.c_str(), mode.c_str(), noNeedWatchNotify);
     return UserFileClient::OpenFile(openUri, mode);
 }
 
@@ -379,6 +394,35 @@ int UserFileClientEx::Close(const std::string &uri, const int fileFd, const std:
         return Media::E_FAIL;
     }
     return ret;
+}
+
+int UserFileClientEx::CompleteMovingPhoto(const std::string &uri, int32_t version,
+    bool isCreateThumbSync, bool isRestart)
+{
+    CHECK_AND_RETURN_RET_LOG(!uri.empty() &&
+        (version == TOOL_MOVING_PHOTO_JPEG_VERSION || version == TOOL_MOVING_PHOTO_HEIF_VERSION),
+        Media::E_INVALID_VALUES, "Invalid moving photo completion arguments, version:%{public}d", version);
+    CHECK_AND_RETURN_RET_LOG(GetTableNameByUri(uri) == PhotoColumn::PHOTOS_TABLE, Media::E_INVALID_VALUES,
+        "Moving photo completion requires photo URI, uri:%{private}s", uri.c_str());
+    if (isRestart && Init() != Media::E_OK) {
+        MEDIA_ERR_LOG("Reconnect for moving photo completion failed");
+        return Media::E_ERR;
+    }
+    CHECK_AND_RETURN_RET_LOG(UserFileClient::IsValid(), Media::E_ERR, "Moving photo completion client unavailable");
+    DataShare::DataShareValuesBucket values;
+    values.Put(CONST_MEDIA_DATA_DB_URI, uri);
+    values.Put(CONST_TOOL_MOVING_PHOTO_VERSION, version);
+    if (isCreateThumbSync) {
+        values.Put(CLOSE_CREATE_THUMB_STATUS, CREATE_THUMB_SYNC_STATUS);
+    }
+    Uri closeUri(GetCloseUri(PhotoColumn::PHOTOS_TABLE));
+    MEDIA_INFO_LOG("Submit moving photo completion, uri:%{private}s, version:%{public}d, sync:%{public}d",
+        uri.c_str(), version, isCreateThumbSync);
+    const int32_t result = UserFileClient::Insert(closeUri, values);
+    if (result != Media::E_OK) {
+        MEDIA_ERR_LOG("Submit moving photo completion failed, ret:%{public}d, uri:%{private}s", result, uri.c_str());
+    }
+    return result;
 }
 
 int32_t UserFileClientEx::Trash(const std::string &uri, bool isRestart)

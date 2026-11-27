@@ -81,6 +81,7 @@ ohos_executable("mediatool") {
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "icu:shared_icuuc",
+    "image_framework:image_native",
     "init:libbegetutil",
     "ipc:ipc_napi",
     "ipc:ipc_single",
