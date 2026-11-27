@@ -16,6 +16,7 @@
 #define MLOG_TAG "DataManager"
 
 #include "medialibrary_data_manager.h"
+#include "dummy_data_share_helper.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -424,6 +425,10 @@ __attribute__((no_sanitize("cfi"))) int32_t MediaLibraryDataManager::InitMediaLi
         AlbumsRefreshManager::GetInstance().AddAlbumRefreshTask(info);
     }
     auto shareHelper = MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
+    if (shareHelper == nullptr) {
+        MEDIA_INFO_LOG("init: shareHelper is nullptr, create dummy");
+        shareHelper = DummyDataShareHelper::GetInstance();
+    }
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
     watchSystemObserver_ = std::make_shared<WatchSystemHandler>();
 #endif
@@ -1075,7 +1080,10 @@ __attribute__((no_sanitize("cfi"))) void MediaLibraryDataManager::ClearMediaLibr
     BackgroundCloudFileProcessor::StopTimer();
 #endif
     auto shareHelper = MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
-    CHECK_AND_RETURN_LOG(shareHelper != nullptr, "DataShareHelper is null");
+    if (shareHelper == nullptr) {
+        // same as InitMediaLibraryMgr
+        shareHelper = DummyDataShareHelper::GetInstance();
+    }
 
     shareHelper->UnregisterObserverExt(Uri(PhotoColumn::PHOTO_CLOUD_URI_PREFIX), cloudPhotoObserver_);
     shareHelper->UnregisterObserverExt(Uri(PhotoColumn::PHOTO_CLOUD_GALLERY_REBUILD_URI_PREFIX), cloudPhotoObserver_);
