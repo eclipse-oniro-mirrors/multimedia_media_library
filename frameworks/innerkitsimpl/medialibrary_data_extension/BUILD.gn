@@ -1016,6 +1016,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/upgrade/upgrade_modules/upgrade_album_module.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/utils/medialibrary_rdb_helper.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/utils/medialibrary_rdb_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/utils/last_visit_time_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/files_table_strategy.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/photo_album_table_strategy.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/photo_map_table_strategy.cpp",

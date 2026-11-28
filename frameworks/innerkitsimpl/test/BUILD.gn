@@ -84,6 +84,7 @@ group("test") {
     # "unittest/media_lake_load_test:unittest",
     "unittest/media_library_related_system_state_test:unittest",
     # "unittest/madvise_utils_test:unittest",
+    # "unittest/last_visit_time_manager_test:unittest",
     # "unittest/media_analysis_data_service_test:unittest",
     # "unittest/media_library_lcd_aging_test:unittest",
     # "unittest/media_assets_controller_service_test:unittest",

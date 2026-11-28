@@ -104,6 +104,7 @@
 #include "media_values_bucket_utils.h"
 #include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdb_operations.h"
+#include "last_visit_time_manager.h"
 #include "medialibrary_unistore_manager.h"
 #include "media_manage_share_permission_check.h"
 #ifdef MEDIALIBRARY_MULTI_ACCOUNT_SUPPORT
@@ -111,6 +112,7 @@
 #include "account_manager.h"
 #include <variant>
 #endif
+
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -784,12 +786,11 @@ static void UpdateLastVisitTime(MediaLibraryCommand &cmd, const string &id)
     if (cmd.GetTableName() != PhotoColumn::PHOTOS_TABLE) {
         return;
     }
-    std::thread([=] {
-        int32_t changedRows = MediaLibraryRdbOperations::UpdateLastVisitTime(id);
-        if (changedRows <= 0) {
-            MEDIA_ERR_LOG("update lastVisitTime Failed, changedRows = %{public}d.", changedRows);
-        }
-    }).detach();
+    // Batch the write through LastVisitTimeManager: per-open UPDATE transactions
+    // on the shared rdb connection block concurrent read queries (e.g. GetFileAssetFromDb
+    // in other OpenFile requests), which can stall UI sync-binder callers for 100ms+. Batching
+    // all open ids of a 2s window into one parameterized UPDATE removes that contention.
+    LastVisitTimeManager::GetInstance().MarkVisited(id);
 }
 
 static void GetType(string &uri, int32_t &type)
