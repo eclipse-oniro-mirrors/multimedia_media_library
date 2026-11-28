@@ -1608,8 +1608,8 @@ bool ThumbnailUtils::CheckDateTaken(ThumbRdbOpt &opts, ThumbnailData &data)
     vector<string> column = {
         CONST_MEDIA_DATA_DB_DATE_TAKEN,
     };
-    vector<string> selectionArgs;
-    string strQueryCondition = string(CONST_MEDIA_DATA_DB_ID) + " = " + data.id;
+    vector<string> selectionArgs = { data.id };
+    string strQueryCondition = string(CONST_MEDIA_DATA_DB_ID) + " = ?";
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.SetWhereClause(strQueryCondition);
     rdbPredicates.SetWhereArgs(selectionArgs);

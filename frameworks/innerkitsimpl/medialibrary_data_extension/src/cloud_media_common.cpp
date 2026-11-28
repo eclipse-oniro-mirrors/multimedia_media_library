@@ -24,15 +24,24 @@ std::string CloudMediaCommon::FillParams(const std::string &sql, const std::vect
     std::string flag;
     const std::string leftBrace = "{";
     const std::string rightBrace = "}";
-    std::string val;
     std::string result = sql;
     for (size_t i = 0; i < bindArgs.size(); i++) {
         flag = leftBrace + std::to_string(i) + rightBrace;
-        val = bindArgs[i];
+        // Escape single quotes so that values substituted into a quoted SQL literal
+        // cannot break out of the literal and inject arbitrary SQL.
+        std::string escaped;
+        escaped.reserve(bindArgs[i].size());
+        for (char c : bindArgs[i]) {
+            if (c == '\'') {
+                escaped += "''";
+            } else {
+                escaped += c;
+            }
+        }
         size_t pos = result.find(flag);
         while (pos != std::string::npos) {
             os.str("");
-            os << result.substr(0, pos) << bindArgs[i];
+            os << result.substr(0, pos) << escaped;
             os << (pos + flag.length() <= result.length() ? result.substr(pos + flag.length()) : "");
             result = os.str();
             os.str("");

@@ -55,9 +55,9 @@ void MedialibraryEventDbOperations::CreateEvent(EventType type, const std::strin
     const std::string typeStr = EventTypeToString(type);
 
     std::string sql = "INSERT INTO " + TabOperationLogColumn::TABLE + " (" +
-        TabOperationLogColumn::EVENT_TYPE + ", " + TabOperationLogColumn::FILE_UIID + ") VALUES ('" +
-        typeStr + "', '" + unique_id + "')";
-    int32_t ret = rdbStore->ExecuteSql(sql);
+        TabOperationLogColumn::EVENT_TYPE + ", " + TabOperationLogColumn::FILE_UIID + ") VALUES (?, ?)";
+    std::vector<NativeRdb::ValueObject> bindArgs = { typeStr, unique_id };
+    int32_t ret = rdbStore->ExecuteSql(sql, bindArgs);
     CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
         "Failed to execute sql, photoId is %{public}s, error code is %{public}d", unique_id.c_str(), ret);
 }
