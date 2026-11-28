@@ -239,7 +239,7 @@ HWTEST_F(LastVisitTimeManagerTest, MarkVisited_AsyncDebounce_PersistedAutomatica
  
 /*
  * @tc.desc MarkVisited more ids than one batch then Flush test: 
- * ids are split into MAX_BATCH_SIZE chunks and all persisted.
+ *   ids are split into MAX_BATCH_SIZE chunks and all persisted.
  * @tc.Co-authored-by Agent
  */
 HWTEST_F(LastVisitTimeManagerTest, MarkVisited_ExceedBatchSize_AllPersisted_007, TestSize.Level1)
